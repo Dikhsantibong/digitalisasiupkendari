@@ -26,7 +26,7 @@ export function NavUser() {
 
     return (
         <SidebarMenu>
-            <SidebarMenuItem>
+            <SidebarMenuItem className="border-t border-sidebar-border pt-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
