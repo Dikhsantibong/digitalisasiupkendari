@@ -19,3 +19,12 @@ export type AuthLayoutProps = {
     title?: string;
     description?: string;
 };
+
+/**
+ * A Wayfinder form definition, as returned by `Controller.action.form()`,
+ * accepted by the Inertia `<Form>` component.
+ */
+export type FormAction = {
+    action: string;
+    method: 'get' | 'post' | 'put' | 'patch' | 'delete';
+};

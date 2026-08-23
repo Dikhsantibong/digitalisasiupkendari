@@ -25,7 +25,6 @@ export default function Welcome() {
                                 >
                                     Log in
                                 </Link>
-
                             </>
                         )}
                     </nav>

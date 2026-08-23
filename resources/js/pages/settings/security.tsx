@@ -13,8 +13,7 @@ import { edit } from '@/routes/security';
 
 type Props = {
     passwordRules: string;
-} &
-    ManageTwoFactorProps;
+} & ManageTwoFactorProps;
 
 export default function Security(props: Props) {
     const passwordInput = useRef<HTMLInputElement>(null);
@@ -127,8 +126,6 @@ export default function Security(props: Props) {
                 requiresConfirmation={props.requiresConfirmation}
                 twoFactorEnabled={props.twoFactorEnabled}
             />
-
-
         </>
     );
 }

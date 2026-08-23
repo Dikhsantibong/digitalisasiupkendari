@@ -21,7 +21,6 @@ export default function Login({ status, canResetPassword }: Props) {
         <>
             <Head title="Log in" />
 
-
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
@@ -89,8 +88,6 @@ export default function Login({ status, canResetPassword }: Props) {
                                 Log in
                             </Button>
                         </div>
-
-
                     </>
                 )}
             </Form>

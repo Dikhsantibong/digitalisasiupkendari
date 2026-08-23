@@ -50,9 +50,13 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                                 size="sm"
                                 variant="ghost"
                                 asChild
-                                className={cn('w-full justify-start rounded-md', {
-                                    'bg-accent text-accent-foreground font-medium border-l-2 border-primary rounded-l-none': isCurrentOrParentUrl(item.href),
-                                })}
+                                className={cn(
+                                    'w-full justify-start rounded-md',
+                                    {
+                                        'rounded-l-none border-l-2 border-primary bg-accent font-medium text-accent-foreground':
+                                            isCurrentOrParentUrl(item.href),
+                                    },
+                                )}
                             >
                                 <Link href={item.href}>
                                     {item.icon && (
