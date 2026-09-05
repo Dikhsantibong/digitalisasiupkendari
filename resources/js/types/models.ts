@@ -51,6 +51,29 @@ export type UnitRow = {
     is_active: boolean;
     service_unit_id: number | null;
     service_unit: string | null;
+    machines_count?: number | null;
+    machines_capacity?: string | null;
+};
+
+export type MachineRow = {
+    id: number;
+    name: string;
+    type: string | null;
+    serial_number: string | null;
+    capacity_kw: string | null;
+    is_active: boolean;
+    unit_id: number;
+    unit: string | null;
+};
+
+export type EmployeeRow = {
+    id: number;
+    name: string;
+    nip: string | null;
+    position: string | null;
+    is_active: boolean;
+    unit_id: number | null;
+    unit: string | null;
 };
 
 export type RoleRow = {

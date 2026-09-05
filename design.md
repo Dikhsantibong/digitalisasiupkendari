@@ -130,7 +130,7 @@ Background utama aplikasi.
 Contoh:
 
 ```text
-#F5F7F9
+#F1F7FC
 ```
 
 ### Level 1 — Content Surface
@@ -162,7 +162,7 @@ Digunakan secara terbatas untuk:
 Contoh:
 
 ```text
-#F8FAFC
+#EAF4FB
 ```
 
 Jangan membuat terlalu banyak variasi surface.
@@ -173,20 +173,31 @@ Jangan membuat terlalu banyak variasi surface.
 
 Gunakan warna secara sistematis.
 
+Identitas warna aplikasi mengikuti **brand PLN Nusantara Power**: dominan
+**biru muda + putih**, dengan **kuning pisang** (warna kotak logo PLN) sebagai
+aksen yang dipakai **sangat terbatas** (hanya untuk warning / highlight
+sesekali), bukan warna utama.
+
 Struktur warna:
 
 ```text
-Primary
-Neutral
-Success
-Warning
-Danger
-Info
+Primary   → PLN Blue
+Neutral   → Blue-tinted grey + white
+Success   → Green
+Warning   → Banana Yellow (aksen logo PLN, terbatas)
+Danger    → Red
+Info      → PLN Blue
 ```
 
 Gunakan satu warna primary sebagai identitas utama interface.
 
-Jangan menggunakan banyak warna aksen dalam satu halaman.
+Jangan menggunakan banyak warna aksen dalam satu halaman. Kuning pisang **tidak**
+digunakan sebagai background besar atau warna dominan — cukup untuk status
+warning dan penekanan kecil.
+
+> **Catatan tema:** Aplikasi dikunci pada tema terang (light). Fitur pengubahan
+> tema (Appearance) di halaman Settings dinonaktifkan, sehingga tampilan selalu
+> konsisten biru–putih untuk seluruh pengguna. Dark mode tidak digunakan.
 
 ---
 
@@ -205,40 +216,57 @@ Gunakan satu warna korporat utama untuk:
 Arah warna:
 
 ```text
-Dark Navy / Corporate Blue
+PLN Blue (Light/Corporate Blue)
 ```
 
 Contoh:
 
 ```text
-Primary:       #0B2C4D
-Primary Hover: #123F66
-Primary Light: #EAF2F8
+Primary:       #0C7DBB   (PLN Blue)
+Primary Hover: #0A6BA1
+Primary Light: #E0F0FA   (accent / selected background)
+Sidebar Blue:  #0B6AA2   (sidebar solid, teks putih)
 ```
 
-Warna akhir dapat disesuaikan dengan brand guideline yang digunakan.
+Sidebar menggunakan warna PLN Blue solid dengan teks putih; active state memakai
+lapisan putih transparan. **Tanpa gradient.**
 
 ---
 
 ## 4.2 Neutral Colors
 
-Gunakan neutral colors untuk mayoritas interface.
+Gunakan neutral colors (dengan sedikit rona biru) untuk mayoritas interface.
 
 Contoh:
 
 ```text
-Text Primary:   #1F2937
-Text Secondary: #4B5563
-Text Muted:     #6B7280
+Text Primary:   #16323F
+Text Secondary: #40566B
+Text Muted:     #5B7280
 
-Border:         #D9DEE5
-Divider:        #E5E7EB
+Border:         #CFE1EE
+Divider:        #DCEAF4
 
-Background:     #F5F7F9
-Surface:        #FFFFFF
+Background:     #F1F7FC   (Level 0)
+Surface:        #FFFFFF   (Level 1)
+Secondary:      #EAF4FB   (Level 2)
 ```
 
 Hindari pure black untuk sebagian besar teks.
+
+---
+
+## 4.3 Accent — Banana Yellow
+
+Kuning pisang (warna kotak logo PLN) hanya dipakai terbatas:
+
+```text
+Warning / Accent: #F5C400
+Warning Text:     #7A5300
+```
+
+Gunakan untuk status warning, penekanan kecil, atau satu seri pada chart. Jangan
+jadikan warna utama halaman.
 
 ---
 

@@ -27,6 +27,8 @@ class UnitController extends Controller
         $units = Unit::query()
             ->visibleTo($request->user())
             ->with('serviceUnit:id,name')
+            ->withCount('machines')
+            ->withSum('machines', 'capacity_kw')
             ->when($request->string('search')->trim()->value(), function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
@@ -182,6 +184,8 @@ class UnitController extends Controller
             'is_active' => $unit->is_active,
             'service_unit_id' => $unit->service_unit_id,
             'service_unit' => $unit->relationLoaded('serviceUnit') ? $unit->serviceUnit?->name : null,
+            'machines_count' => $unit->machines_count ?? null,
+            'machines_capacity' => $unit->machines_sum_capacity_kw,
         ];
     }
 

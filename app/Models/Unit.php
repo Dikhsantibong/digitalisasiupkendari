@@ -67,6 +67,22 @@ class Unit extends Model
     }
 
     /**
+     * @return HasMany<Machine, $this>
+     */
+    public function machines(): HasMany
+    {
+        return $this->hasMany(Machine::class);
+    }
+
+    /**
+     * @return HasMany<Employee, $this>
+     */
+    public function employees(): HasMany
+    {
+        return $this->hasMany(Employee::class);
+    }
+
+    /**
      * @return HasMany<RoleAssignment, $this>
      */
     public function roleAssignments(): HasMany

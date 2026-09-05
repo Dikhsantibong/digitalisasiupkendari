@@ -20,6 +20,7 @@ import { useIndexFilters } from '@/hooks/use-index-filters';
 import { usePermissions } from '@/hooks/use-permissions';
 import { formatNumber } from '@/lib/format';
 import { dashboard } from '@/routes';
+import machines from '@/routes/admin/machines';
 import units from '@/routes/admin/units';
 import type { IdName, Option, Paginated, UnitRow } from '@/types';
 
@@ -136,6 +137,9 @@ export default function UnitsIndex({ units: page, filters, options }: Props) {
                                     <TableHead>Tipe</TableHead>
                                     <TableHead>Lokasi</TableHead>
                                     <TableHead className="text-right">
+                                        Jumlah Mesin
+                                    </TableHead>
+                                    <TableHead className="text-right">
                                         Kapasitas (MW)
                                     </TableHead>
                                     <TableHead>Status</TableHead>
@@ -166,9 +170,27 @@ export default function UnitsIndex({ units: page, filters, options }: Props) {
                                             {unit.location ?? '—'}
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums">
-                                            {formatNumber(
-                                                unit.installed_capacity_mw,
+                                            {unit.machines_count ? (
+                                                <Link
+                                                    href={machines.index({
+                                                        query: {
+                                                            unit_id: String(
+                                                                unit.id,
+                                                            ),
+                                                        },
+                                                    })}
+                                                    className="font-medium text-primary hover:underline"
+                                                >
+                                                    {unit.machines_count}
+                                                </Link>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    0
+                                                </span>
                                             )}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                            {formatNumber(unit.machines_capacity)}
                                         </TableCell>
                                         <TableCell>
                                             <StatusBadge

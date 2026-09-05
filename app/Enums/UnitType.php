@@ -11,6 +11,7 @@ enum UnitType: string
     case Pltd = 'pltd';
     case Pltg = 'pltg';
     case Pltm = 'pltm';
+    case Pltmg = 'pltmg';
 
     public function label(): string
     {
@@ -19,6 +20,7 @@ enum UnitType: string
             self::Pltd => 'PLTD',
             self::Pltg => 'PLTG',
             self::Pltm => 'PLTM',
+            self::Pltmg => 'PLTMG',
         };
     }
 
@@ -29,6 +31,7 @@ enum UnitType: string
             self::Pltd => 'Pembangkit Listrik Tenaga Diesel',
             self::Pltg => 'Pembangkit Listrik Tenaga Gas',
             self::Pltm => 'Pembangkit Listrik Tenaga Minihidro',
+            self::Pltmg => 'Pembangkit Listrik Tenaga Mesin Gas',
         };
     }
 }

@@ -7,6 +7,7 @@ use App\Enums\RoleName;
 use App\Enums\UnitStatus;
 use App\Enums\UnitType;
 use App\Models\ActivityLog;
+use App\Models\Machine;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
@@ -78,6 +79,22 @@ class UnitManagementTest extends TestCase
         $this->actingAs($operator)
             ->get(route('admin.units.show', $otherUnit))
             ->assertForbidden();
+    }
+
+    public function test_unit_list_accumulates_machine_capacity_and_counts_machines(): void
+    {
+        $unit = Unit::factory()->create();
+        Machine::factory()->forUnit($unit)->create(['capacity_kw' => 1.5]);
+        Machine::factory()->forUnit($unit)->create(['capacity_kw' => 2.25]);
+        Machine::factory()->forUnit($unit)->create(['capacity_kw' => null]);
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->get(route('admin.units.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('units.data.0.machines_count', 3)
+                ->where('units.data.0.machines_capacity', fn ($value): bool => (float) $value === 3.75),
+            );
     }
 
     public function test_super_admin_can_create_a_unit_and_the_action_is_logged(): void

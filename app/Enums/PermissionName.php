@@ -24,6 +24,18 @@ enum PermissionName: string
     case UnitUpdate = 'unit.update';
     case UnitDelete = 'unit.delete';
 
+    case MachineViewAny = 'machine.view_any';
+    case MachineView = 'machine.view';
+    case MachineCreate = 'machine.create';
+    case MachineUpdate = 'machine.update';
+    case MachineDelete = 'machine.delete';
+
+    case EmployeeViewAny = 'employee.view_any';
+    case EmployeeView = 'employee.view';
+    case EmployeeCreate = 'employee.create';
+    case EmployeeUpdate = 'employee.update';
+    case EmployeeDelete = 'employee.delete';
+
     case UserViewAny = 'user.view_any';
     case UserView = 'user.view';
     case UserCreate = 'user.create';
@@ -79,7 +91,17 @@ enum PermissionName: string
             self::UnitView,
             self::UnitCreate,
             self::UnitUpdate,
-            self::UnitDelete => PermissionGroup::MasterData,
+            self::UnitDelete,
+            self::MachineViewAny,
+            self::MachineView,
+            self::MachineCreate,
+            self::MachineUpdate,
+            self::MachineDelete,
+            self::EmployeeViewAny,
+            self::EmployeeView,
+            self::EmployeeCreate,
+            self::EmployeeUpdate,
+            self::EmployeeDelete => PermissionGroup::MasterData,
 
             self::UserViewAny,
             self::UserView,
@@ -139,6 +161,18 @@ enum PermissionName: string
             self::UnitCreate => 'Menambah unit',
             self::UnitUpdate => 'Mengubah unit',
             self::UnitDelete => 'Menghapus unit',
+
+            self::MachineViewAny => 'Melihat daftar mesin',
+            self::MachineView => 'Melihat detail mesin',
+            self::MachineCreate => 'Menambah mesin',
+            self::MachineUpdate => 'Mengubah mesin',
+            self::MachineDelete => 'Menghapus mesin',
+
+            self::EmployeeViewAny => 'Melihat daftar pegawai',
+            self::EmployeeView => 'Melihat detail pegawai',
+            self::EmployeeCreate => 'Menambah pegawai',
+            self::EmployeeUpdate => 'Mengubah pegawai',
+            self::EmployeeDelete => 'Menghapus pegawai',
 
             self::UserViewAny => 'Melihat daftar pengguna',
             self::UserView => 'Melihat detail pengguna',

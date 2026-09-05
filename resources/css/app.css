@@ -69,146 +69,142 @@
 }
 
 /*
- * Corporate Enterprise Design System
- * Primary: Dark Navy #0B2C4D
- * Background: #F5F7F9 (Level 0)
- * Surface: #FFFFFF (Level 1)
- * Secondary Surface: #F8FAFC (Level 2)
- * Border: #D9DEE5
- * Text Primary: #1F2937
- * Text Secondary: #4B5563
- * Text Muted: #6B7280
+ * PLN Nusantara Power Design System
+ * Identity: light blue + white, with banana yellow (logo accent) used sparingly.
+ *
+ * Primary (PLN Blue):  #0C7DBB
+ * Background (Level 0): #F1F7FC
+ * Surface (Level 1):   #FFFFFF
+ * Secondary (Level 2): #EAF4FB
+ * Border:              #CFE1EE
+ * Text Primary:        #16323F
+ * Text Secondary:      #40566B
+ * Text Muted:          #5B7280
+ * Accent (Banana):     #F5C400 (warnings / occasional highlight only)
  */
 
 :root {
     /* Core surfaces */
-    --background: #f5f7f9;
-    --foreground: #1f2937;
+    --background: #f1f7fc;
+    --foreground: #16323f;
 
     /* Card / Content surface */
     --card: #ffffff;
-    --card-foreground: #1f2937;
+    --card-foreground: #16323f;
 
     /* Popover */
     --popover: #ffffff;
-    --popover-foreground: #1f2937;
+    --popover-foreground: #16323f;
 
-    /* Primary — Dark Navy Corporate */
-    --primary: #0b2c4d;
+    /* Primary — PLN Blue */
+    --primary: #0c7dbb;
     --primary-foreground: #ffffff;
 
-    /* Secondary */
-    --secondary: #f8fafc;
-    --secondary-foreground: #1f2937;
+    /* Secondary — soft light blue surface */
+    --secondary: #eaf4fb;
+    --secondary-foreground: #0c4a6b;
 
     /* Muted */
-    --muted: #f1f5f9;
-    --muted-foreground: #6b7280;
+    --muted: #eef5fb;
+    --muted-foreground: #5b7280;
 
-    /* Accent */
-    --accent: #eaf2f8;
-    --accent-foreground: #0b2c4d;
+    /* Accent — light blue */
+    --accent: #e0f0fa;
+    --accent-foreground: #0b5c8c;
 
     /* Destructive */
     --destructive: #dc2626;
-    --destructive-foreground: #dc2626;
+    --destructive-foreground: #ffffff;
 
     /* Borders */
-    --border: #d9dee5;
-    --input: #d9dee5;
-    --ring: #0b2c4d;
+    --border: #cfe1ee;
+    --input: #cfe1ee;
+    --ring: #0c7dbb;
 
-    /* Charts — Corporate subtle palette */
-    --chart-1: #0b2c4d;
-    --chart-2: #2563eb;
-    --chart-3: #059669;
-    --chart-4: #d97706;
-    --chart-5: #7c3aed;
+    /* Charts — PLN blue family with a single banana-yellow accent */
+    --chart-1: #0c7dbb;
+    --chart-2: #38a6dd;
+    --chart-3: #7cc6e8;
+    --chart-4: #f5c400;
+    --chart-5: #0a5680;
 
     /* Border radius — enterprise: 6px */
     --radius: 0.375rem;
 
-    /* Sidebar — Dark Navy themed */
-    --sidebar: #0b2c4d;
-    --sidebar-foreground: #e2e8f0;
+    /* Sidebar — PLN Blue */
+    --sidebar: #0b6aa2;
+    --sidebar-foreground: #e6f2fb;
     --sidebar-primary: #ffffff;
-    --sidebar-primary-foreground: #0b2c4d;
-    --sidebar-accent: rgba(255, 255, 255, 0.1);
+    --sidebar-primary-foreground: #0b6aa2;
+    --sidebar-accent: rgba(255, 255, 255, 0.14);
     --sidebar-accent-foreground: #ffffff;
-    --sidebar-border: rgba(255, 255, 255, 0.12);
-    --sidebar-ring: rgba(255, 255, 255, 0.2);
+    --sidebar-border: rgba(255, 255, 255, 0.16);
+    --sidebar-ring: rgba(255, 255, 255, 0.35);
 
     /* Semantic colors */
-    --success: #059669;
-    --success-foreground: #065f46;
-    --warning: #d97706;
-    --warning-foreground: #92400e;
-    --info: #2563eb;
-    --info-foreground: #1e40af;
+    --success: #16a34a;
+    --success-foreground: #14532d;
+    --warning: #f5c400; /* banana yellow — PLN logo accent */
+    --warning-foreground: #7a5300;
+    --info: #0c7dbb;
+    --info-foreground: #0c4a6b;
 }
 
+/*
+ * Dark mode is intentionally disabled for this application: the interface is
+ * locked to the PLN light (blue/white) theme. These values mirror :root so the
+ * appearance never changes even if a `.dark` class is applied.
+ */
 .dark {
-    /* Core surfaces */
-    --background: #0f172a;
-    --foreground: #e2e8f0;
+    --background: #f1f7fc;
+    --foreground: #16323f;
 
-    /* Card */
-    --card: #1e293b;
-    --card-foreground: #e2e8f0;
+    --card: #ffffff;
+    --card-foreground: #16323f;
 
-    /* Popover */
-    --popover: #1e293b;
-    --popover-foreground: #e2e8f0;
+    --popover: #ffffff;
+    --popover-foreground: #16323f;
 
-    /* Primary */
-    --primary: #93c5fd;
-    --primary-foreground: #0b2c4d;
+    --primary: #0c7dbb;
+    --primary-foreground: #ffffff;
 
-    /* Secondary */
-    --secondary: #334155;
-    --secondary-foreground: #e2e8f0;
+    --secondary: #eaf4fb;
+    --secondary-foreground: #0c4a6b;
 
-    /* Muted */
-    --muted: #334155;
-    --muted-foreground: #94a3b8;
+    --muted: #eef5fb;
+    --muted-foreground: #5b7280;
 
-    /* Accent */
-    --accent: #334155;
-    --accent-foreground: #e2e8f0;
+    --accent: #e0f0fa;
+    --accent-foreground: #0b5c8c;
 
-    /* Destructive */
-    --destructive: #ef4444;
-    --destructive-foreground: #fca5a5;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
 
-    /* Borders */
-    --border: #334155;
-    --input: #334155;
-    --ring: #93c5fd;
+    --border: #cfe1ee;
+    --input: #cfe1ee;
+    --ring: #0c7dbb;
 
-    /* Charts */
-    --chart-1: #60a5fa;
-    --chart-2: #34d399;
-    --chart-3: #fbbf24;
-    --chart-4: #a78bfa;
-    --chart-5: #fb923c;
+    --chart-1: #0c7dbb;
+    --chart-2: #38a6dd;
+    --chart-3: #7cc6e8;
+    --chart-4: #f5c400;
+    --chart-5: #0a5680;
 
-    /* Sidebar — Darker navy */
-    --sidebar: #0a1929;
-    --sidebar-foreground: #cbd5e1;
-    --sidebar-primary: #93c5fd;
-    --sidebar-primary-foreground: #0b2c4d;
-    --sidebar-accent: rgba(255, 255, 255, 0.08);
-    --sidebar-accent-foreground: #e2e8f0;
-    --sidebar-border: rgba(255, 255, 255, 0.08);
-    --sidebar-ring: rgba(255, 255, 255, 0.15);
+    --sidebar: #0b6aa2;
+    --sidebar-foreground: #e6f2fb;
+    --sidebar-primary: #ffffff;
+    --sidebar-primary-foreground: #0b6aa2;
+    --sidebar-accent: rgba(255, 255, 255, 0.14);
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: rgba(255, 255, 255, 0.16);
+    --sidebar-ring: rgba(255, 255, 255, 0.35);
 
-    /* Semantic */
-    --success: #34d399;
-    --success-foreground: #a7f3d0;
-    --warning: #fbbf24;
-    --warning-foreground: #fde68a;
-    --info: #60a5fa;
-    --info-foreground: #bfdbfe;
+    --success: #16a34a;
+    --success-foreground: #14532d;
+    --warning: #f5c400;
+    --warning-foreground: #7a5300;
+    --info: #0c7dbb;
+    --info-foreground: #0c4a6b;
 }
 
 @layer base {

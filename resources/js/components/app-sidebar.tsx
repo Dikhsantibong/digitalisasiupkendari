@@ -1,10 +1,12 @@
 import { Link } from '@inertiajs/react';
 import {
     Building2,
+    Cog,
     Factory,
     History,
     LayoutGrid,
     ShieldCheck,
+    UserCog,
     Users,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -23,6 +25,8 @@ import {
 import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import activityLogs from '@/routes/admin/activity-logs';
+import employees from '@/routes/admin/employees';
+import machines from '@/routes/admin/machines';
 import roles from '@/routes/admin/roles';
 import serviceUnits from '@/routes/admin/service-units';
 import units from '@/routes/admin/units';
@@ -51,6 +55,16 @@ export function AppSidebar() {
                     title: 'Unit Pembangkit',
                     href: units.index(),
                     icon: Factory,
+                },
+                can('machine.view_any') && {
+                    title: 'Master Mesin',
+                    href: machines.index(),
+                    icon: Cog,
+                },
+                can('employee.view_any') && {
+                    title: 'Master Pegawai',
+                    href: employees.index(),
+                    icon: UserCog,
                 },
             ].filter(Boolean) as NavGroup['items'],
         },

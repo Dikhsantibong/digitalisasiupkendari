@@ -51,6 +51,8 @@ class OrganizationSeeder extends Seeder
         ['code' => 'PLTD-EREKE', 'name' => 'PLTD Ereke', 'type' => UnitType::Pltd, 'service_unit' => 'UL-BAUBAU'],
         ['code' => 'PLTM-RONGI', 'name' => 'PLTM Rongi', 'type' => UnitType::Pltm, 'service_unit' => 'UL-BAUBAU'],
         ['code' => 'PLTM-WINNING', 'name' => 'PLTM Winning', 'type' => UnitType::Pltm, 'service_unit' => 'UL-BAUBAU'],
+        ['code' => 'PLTU-BARUTA', 'name' => 'PLTU Baruta', 'type' => UnitType::Pltu, 'service_unit' => 'UL-BAUBAU'],
+        ['code' => 'PLTMG-BAUBAU', 'name' => 'PLTMG Bau-Bau', 'type' => UnitType::Pltmg, 'service_unit' => 'UL-BAUBAU'],
 
         ['code' => 'PLTD-KOLAKA', 'name' => 'PLTD Kolaka', 'type' => UnitType::Pltd, 'service_unit' => 'UL-KOLAKA'],
         ['code' => 'PLTG-KOLAKA', 'name' => 'PLTG Kolaka', 'type' => UnitType::Pltg, 'service_unit' => 'UL-KOLAKA'],
@@ -59,10 +61,12 @@ class OrganizationSeeder extends Seeder
         ['code' => 'PLTD-LANIPANIPA', 'name' => 'PLTD Lanipa-Nipa', 'type' => UnitType::Pltd, 'service_unit' => 'UL-KOLAKA'],
 
         ['code' => 'PLTU-MORAMO', 'name' => 'PLTU Moramo', 'type' => UnitType::Pltu, 'service_unit' => null],
+        ['code' => 'PLTMG-KENDARI', 'name' => 'PLTMG Kendari', 'type' => UnitType::Pltmg, 'service_unit' => null],
         ['code' => 'PLTD-WUAWUA', 'name' => 'PLTD Wua-Wua', 'type' => UnitType::Pltd, 'service_unit' => null],
         ['code' => 'PLTD-LANGARA', 'name' => 'PLTD Langara', 'type' => UnitType::Pltd, 'service_unit' => null],
         ['code' => 'PLTM-LANGARA', 'name' => 'PLTM Langara', 'type' => UnitType::Pltm, 'service_unit' => null],
         ['code' => 'PLTD-PASARWAJO', 'name' => 'PLTD Pasarwajo', 'type' => UnitType::Pltd, 'service_unit' => null],
+        ['code' => 'PLTD-LADUMPI', 'name' => 'PLTD Ladumpi', 'type' => UnitType::Pltd, 'service_unit' => null],
     ];
 
     public function run(): void

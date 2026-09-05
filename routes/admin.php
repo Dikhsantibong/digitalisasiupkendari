@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\MachineController;
 use App\Http\Controllers\Admin\RoleAssignmentController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceUnitController;
@@ -20,6 +22,10 @@ Route::middleware(['auth', 'verified'])
             ->parameters(['service-units' => 'service_unit']);
 
         Route::resource('units', UnitController::class);
+
+        Route::resource('machines', MachineController::class)->except(['show']);
+
+        Route::resource('employees', EmployeeController::class)->except(['show']);
 
         Route::resource('users', UserController::class);
 
