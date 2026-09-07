@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\FuelType;
 use Database\Factories\MachineFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -17,17 +20,20 @@ use Illuminate\Support\Carbon;
  * @property int $unit_id
  * @property string $name
  * @property string|null $type
+ * @property FuelType|null $fuel_type
  * @property string|null $serial_number
  * @property string|null $capacity_kw
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
+ * @property-read Collection<int, LubricantType> $lubricantTypes
  */
 #[Fillable([
     'unit_id',
     'name',
     'type',
+    'fuel_type',
     'serial_number',
     'capacity_kw',
     'is_active',
@@ -43,6 +49,7 @@ class Machine extends Model
     protected function casts(): array
     {
         return [
+            'fuel_type' => FuelType::class,
             'is_active' => 'boolean',
         ];
     }
@@ -53,6 +60,17 @@ class Machine extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * The lubricant types this machine uses. The operator completes this per
+     * machine — the source Excel never modelled it.
+     *
+     * @return BelongsToMany<LubricantType, $this>
+     */
+    public function lubricantTypes(): BelongsToMany
+    {
+        return $this->belongsToMany(LubricantType::class, 'machine_lubricant_type');
     }
 
     /**

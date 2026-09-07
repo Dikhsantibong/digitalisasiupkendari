@@ -99,31 +99,18 @@ enum RoleName: string
                 PermissionName::ReportProjectExport,
             ],
 
-            self::TeamLeaderOperasi,
-            self::TeamLeaderPemeliharaan => [
-                PermissionName::UnitViewAny,
-                PermissionName::UnitView,
-                PermissionName::MachineViewAny,
-                PermissionName::MachineView,
-                PermissionName::EmployeeViewAny,
-                PermissionName::EmployeeView,
-                PermissionName::ReportUnitViewAny,
-                PermissionName::ReportUnitView,
-                PermissionName::ReportUnitCreate,
-                PermissionName::ReportUnitUpdate,
-                PermissionName::ReportUnitDelete,
-                PermissionName::ReportUnitSubmit,
-                PermissionName::ReportUnitExport,
-                PermissionName::ProjectViewAny,
-                PermissionName::ProjectView,
-                PermissionName::ProjectCreate,
-                PermissionName::ProjectUpdate,
-                PermissionName::ReportProjectViewAny,
-                PermissionName::ReportProjectView,
-                PermissionName::ReportProjectCreate,
-                PermissionName::ReportProjectUpdate,
-                PermissionName::ReportProjectSubmit,
-                PermissionName::ReportProjectExport,
+            self::TeamLeaderPemeliharaan => $this->teamLeaderBasePermissions(),
+
+            self::TeamLeaderOperasi => [
+                ...$this->teamLeaderBasePermissions(),
+                // The operasi module belongs exclusively to TL Operasi.
+                PermissionName::OperasiInputView,
+                PermissionName::OperasiInputWrite,
+                PermissionName::OperasiLaporanView,
+                PermissionName::OperasiBeritaAcaraView,
+                PermissionName::OperasiBeritaAcaraCreate,
+                PermissionName::OperasiMasterViewAny,
+                PermissionName::OperasiMasterManage,
             ],
 
             self::SiteLeader => [
@@ -177,5 +164,40 @@ enum RoleName: string
                 PermissionName::ReportProjectView,
             ],
         };
+    }
+
+    /**
+     * The permissions shared by every unit-scoped team leader, before any
+     * module-specific grants are layered on top.
+     *
+     * @return list<PermissionName>
+     */
+    private function teamLeaderBasePermissions(): array
+    {
+        return [
+            PermissionName::UnitViewAny,
+            PermissionName::UnitView,
+            PermissionName::MachineViewAny,
+            PermissionName::MachineView,
+            PermissionName::EmployeeViewAny,
+            PermissionName::EmployeeView,
+            PermissionName::ReportUnitViewAny,
+            PermissionName::ReportUnitView,
+            PermissionName::ReportUnitCreate,
+            PermissionName::ReportUnitUpdate,
+            PermissionName::ReportUnitDelete,
+            PermissionName::ReportUnitSubmit,
+            PermissionName::ReportUnitExport,
+            PermissionName::ProjectViewAny,
+            PermissionName::ProjectView,
+            PermissionName::ProjectCreate,
+            PermissionName::ProjectUpdate,
+            PermissionName::ReportProjectViewAny,
+            PermissionName::ReportProjectView,
+            PermissionName::ReportProjectCreate,
+            PermissionName::ReportProjectUpdate,
+            PermissionName::ReportProjectSubmit,
+            PermissionName::ReportProjectExport,
+        ];
     }
 }

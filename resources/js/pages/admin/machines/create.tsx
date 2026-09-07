@@ -4,11 +4,13 @@ import { MachineForm } from '@/components/machine-form';
 import { PageHeader } from '@/components/page-header';
 import { dashboard } from '@/routes';
 import machines from '@/routes/admin/machines';
-import type { IdName } from '@/types';
+import type { IdName, LubricantOption, Option } from '@/types';
 
 type Props = {
     options: {
         units: IdName[];
+        lubricant_types: LubricantOption[];
+        fuel_types: Option[];
     };
 };
 

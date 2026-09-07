@@ -11,6 +11,7 @@ enum PermissionGroup: string
     case AccessManagement = 'access_management';
     case Monitoring = 'monitoring';
     case ReportUnit = 'report_unit';
+    case Operasi = 'operasi';
     case Project = 'project';
     case ReportProject = 'report_project';
     case System = 'system';
@@ -22,6 +23,7 @@ enum PermissionGroup: string
             self::AccessManagement => 'Manajemen Akses',
             self::Monitoring => 'Monitoring',
             self::ReportUnit => 'Laporan Unit',
+            self::Operasi => 'Operasi',
             self::Project => 'Project',
             self::ReportProject => 'Laporan Project',
             self::System => 'Sistem',

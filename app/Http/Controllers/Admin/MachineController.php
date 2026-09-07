@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ActivityEvent;
+use App\Enums\FuelType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\MachineRequest;
+use App\Models\LubricantType;
 use App\Models\Machine;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -23,7 +25,7 @@ class MachineController extends Controller
 
         $machines = Machine::query()
             ->visibleTo($request->user())
-            ->with('unit:id,name')
+            ->with('unit:id,name', 'lubricantTypes:id,name')
             ->when($request->string('search')->trim()->value(), function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
@@ -57,6 +59,7 @@ class MachineController extends Controller
         $this->authorize('create', Machine::class);
 
         $machine = Machine::query()->create($request->validatedAttributes());
+        $machine->lubricantTypes()->sync($request->lubricantTypeIds());
 
         $this->activityLogger->log(
             ActivityEvent::Created,
@@ -74,6 +77,8 @@ class MachineController extends Controller
     {
         $this->authorize('update', $machine);
 
+        $machine->load('lubricantTypes:id,name');
+
         return Inertia::render('admin/machines/edit', [
             'machine' => $this->presentMachine($machine),
             'options' => $this->options($request),
@@ -85,6 +90,7 @@ class MachineController extends Controller
         $this->authorize('update', $machine);
 
         $machine->update($request->validatedAttributes());
+        $machine->lubricantTypes()->sync($request->lubricantTypeIds());
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
@@ -125,11 +131,18 @@ class MachineController extends Controller
             'id' => $machine->id,
             'name' => $machine->name,
             'type' => $machine->type,
+            'fuel_type' => $machine->fuel_type?->value,
             'serial_number' => $machine->serial_number,
             'capacity_kw' => $machine->capacity_kw,
             'is_active' => $machine->is_active,
             'unit_id' => $machine->unit_id,
             'unit' => $machine->relationLoaded('unit') ? $machine->unit?->name : null,
+            'lubricant_type_ids' => $machine->relationLoaded('lubricantTypes')
+                ? $machine->lubricantTypes->pluck('id')->all()
+                : [],
+            'lubricant_types' => $machine->relationLoaded('lubricantTypes')
+                ? $machine->lubricantTypes->pluck('name')->all()
+                : [],
         ];
     }
 
@@ -145,6 +158,15 @@ class MachineController extends Controller
                 ->visibleTo($request->user())
                 ->orderBy('name')
                 ->get(['id', 'name'])
+                ->all(),
+            'lubricant_types' => LubricantType::query()
+                ->visibleTo($request->user())
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'unit_id'])
+                ->all(),
+            'fuel_types' => collect(FuelType::cases())
+                ->map(fn (FuelType $type): array => ['value' => $type->value, 'label' => $type->label()])
                 ->all(),
         ];
     }

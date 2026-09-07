@@ -223,6 +223,21 @@ Format penamaan: `modul.aksi`.
 |---|---|
 | `setting.manage` | Mengelola pengaturan aplikasi |
 
+### 5.8 Operasi
+
+Modul OPERASI (pencatatan operasi harian pembangkit). Seluruh menu **hanya**
+untuk role **TL Operasi** (role lain → 403); Super Admin memperoleh via bypass.
+
+| Permission | Keterangan |
+|---|---|
+| `operasi.input.view` | Melihat input operasi |
+| `operasi.input.write` | Mengisi input operasi (grid harian, Star-Stop, feeder, pasokan, penerimaan BBM) |
+| `operasi.laporan.view` | Melihat & mencetak laporan operasi |
+| `operasi.berita_acara.view` | Melihat berita acara operasi |
+| `operasi.berita_acara.create` | Membuat berita acara operasi |
+| `operasi.master.view_any` | Melihat master data operasi (feeder, tangki, pelumas, kode status, faktor kalibrasi) |
+| `operasi.master.manage` | Mengelola master data operasi |
+
 ---
 
 ## 6. Matriks Role × Permission
@@ -278,6 +293,13 @@ Super Admin memiliki seluruh permission (termasuk yang ditambahkan di masa depan
 | `report_project.approve` | ✓ | ✓ | | | ✓ | |
 | `report_project.export` | ✓ | ✓ | ✓ | ✓ | ✓ | |
 | `setting.manage` | ✓ | | | | | |
+| `operasi.input.view` | ✓ | | ✓ | | | |
+| `operasi.input.write` | ✓ | | ✓ | | | |
+| `operasi.laporan.view` | ✓ | | ✓ | | | |
+| `operasi.berita_acara.view` | ✓ | | ✓ | | | |
+| `operasi.berita_acara.create` | ✓ | | ✓ | | | |
+| `operasi.master.view_any` | ✓ | | ✓ | | | |
+| `operasi.master.manage` | ✓ | | ✓ | | | |
 
 Matriks ini adalah **kondisi awal (seed)**. Super Admin dapat mengubahnya dari
 antarmuka aplikasi tanpa perlu deploy ulang.
@@ -352,12 +374,120 @@ ActivityLog    n─1 User, Unit, ServiceUnit
 
 ---
 
+## 8A. Modul OPERASI (Fase 2)
+
+Modul pencatatan operasi harian pembangkit, hasil reverse-engineering file Excel
+MASTER LAPORAN OPERASI. Tiga menu: **Input**, **Laporan**, **Berita Acara**.
+Referensi rinci: `modul-operasi.md` & `prompt-implementasi-operasi.md`.
+
+### 8A.1 Prinsip
+
+- **Multi-unit.** Seluruh tabel transaksi & master turunan ber-`unit_id` (FK ke
+  `units`). Data tiap unit dipisah `unit_id`; user hanya melihat unit-nya.
+- **Master existing dipakai ulang (FK, tidak dibuat ulang):** `unit_id`→`units`,
+  `engine_id`→`machines`, `employee_id`→`employees`, identitas kop/BA→`service_units`.
+- **Registry modul.** Tabel `work_modules` (seed `operasi`); permission/laporan/
+  dokumen menempel ke modul agar modul berikutnya tidak menyentuh modul ini.
+- **Scope unit** tetap lewat `role_assignments` + `AccessControl` (bukan pivot baru).
+  Model turunan memakai trait `App\Models\Concerns\BelongsToUnit`
+  (relasi `unit()` + `scopeVisibleTo`).
+- **Struktur folder** mengikuti konvensi existing (`app/Http/Controllers/Operasi/`,
+  `resources/js/pages/operasi/`), tanpa membuat base folder `app/Modules` baru.
+- **Angka dihitung, bukan diketik.** Jam operasi/HAR/gangguan diturunkan dari log
+  Star-Stop; stand awal auto-carry; SFC/total/standby hasil kalkulasi — semua di
+  satu service kalkulasi yang dipakai grid, laporan, dan berita acara.
+
+### 8A.2 Perubahan master mesin (ALTER)
+
+```text
+machines (existing)  + fuel_type ENUM(hsd_mfo|hsd_only) NULL
+machine_lubricant_type  (pivot machine_id × lubricant_type_id)
+```
+Nilai `fuel_type` & pelumas diisi user per mesin lewat form edit mesin
+(permission `machine.update` — Manager UL / Super Admin). Belum diasumsikan.
+
+### 8A.3 Master turunan (per unit)
+
+```text
+report_periods       id, unit_id, month, year, total_days, total_hours,
+                     pic_employee_id (FK employees), locked_at; unique(unit,month,year)
+feeders              id, unit_id, name, feeder_type, sort_order, is_active
+auxiliary_sources    id, unit_id, name, description, sort_order, is_active
+fuel_tanks           id, unit_id, code, name, fuel_type(hsd|mfo),
+                     capacity_liter, is_daily_tank, sort_order, is_active
+lubricant_types      id, unit_id, code, name, unit_of_measure(drum|liter),
+                     sort_order, is_active
+calibration_factors  id, unit_id, engine_id (nullable), factor_type(kwh|hsd|mfo),
+                     value(decimal 20,10), effective_date, notes
+unit_status_codes    id, unit_id (nullable=global), code, label,
+                     category(operasi|har|gangguan|standby), is_active
+```
+
+### 8A.4 Input harian (per unit)
+
+```text
+engine_status_logs     Star-Stop; SUMBER JAM (durasi start→stop per kategori)
+daily_engine_reports   1 baris = 1 mesin × 1 tanggal (pembacaan meter);
+                       stand awal & jam TIDAK disimpan (auto); unique(engine,date)
+daily_feeder_readings  stand akhir feeder harian; unique(feeder,date)
+daily_auxiliary_readings stand kWh/BBM pasokan cadangan harian
+fuel_receipts          register penerimaan BBM (manual)
+lubricant_receipts     register penerimaan pelumas (manual)
+physical_stock_takes   opname fisik akhir periode (tangki/pelumas)
+```
+
+### 8A.5 Status implementasi
+
+| Bagian | Status |
+|---|---|
+| Skema DB, model, factory, enum (FuelType, TankFuelType, StatusCodeCategory, LubricantUnit, CalibrationFactorType, StockItemType) | ✅ Selesai |
+| Registry `work_modules` + seed `operasi` | ✅ Selesai |
+| Permission `operasi.*` + mapping ke TL Operasi | ✅ Selesai |
+| ALTER mesin (`fuel_type` + pelumas) + UI form mesin | ✅ Selesai |
+| Seeder master Poasia (feeder, pelumas, tangki, kode status) | ✅ Selesai |
+| Service kalkulasi (`OperasiCalculator`): carry-over stand awal, faktor kalibrasi, produksi/pemakaian, subtotal periode I/II/III, **rekap jam dari Star-Stop** (operasi/HAR/gangguan + standby = sisa jam) | ✅ Selesai |
+| Menu Input — grid harian mesin (react-data-grid, header berkelompok ala-Excel: KWH PRODUKSI, PEMAKAIAN SENDIRI, BEBAN PUNCAK, PELUMAS, BBM HSD/MFO, AIR) + simpan | ✅ Selesai |
+| Menu Input — **Star-Stop** (`engine_status_logs`): tambah/hapus entri start-stop, durasi auto, kartu rekap jam operasi/HAR/gangguan/standby | ✅ Selesai |
+| Menu Input — **Feeder** (`daily_feeder_readings`): grid stand akhir per feeder × tanggal | ✅ Selesai |
+| Menu Input — **Pasokan Cadangan** (`daily_auxiliary_readings`): grid stand kWh & BBM per sumber × tanggal | ✅ Selesai |
+| Menu Input — **Penerimaan BBM** (`fuel_receipts`): register tambah/hapus + total HSD/MFO | ✅ Selesai |
+| **Report registry** (`app/Services/Operasi/Reports/`: `OperasiReport` kontrak + `ReportRegistry` + `MonthlyEngineReport`) — laporan didaftarkan lewat definisi, satu `LaporanController` merender semuanya | ✅ Selesai |
+| Menu Laporan — pilih unit/mesin/periode → satu klik **preview cetak** (`operasi/laporan/monthly-engine`, print-to-PDF via browser): rekap harian + subtotal periode + rekap jam + SFC bruto/netto | ✅ Selesai |
+| **Document engine** — `document_templates` (nomor surat tetap per template + override per unit, `DocumentTemplateService`), `document_records` (snapshot arsip), helper `App\Support\Indonesian` (tanggal + terbilang), `BeritaAcaraBuilder` | ✅ Selesai |
+| Menu Berita Acara — 3 dokumen (BA HSD, BA MFO, BA Opname Pelumas). Alur: pilih unit/jenis/periode → dokumen di-generate (angka auto) → **diedit di editor** dengan **2 mode yang bisa dipilih**: **Teks/Word (TinyMCE)** atau **Excel/spreadsheet (x-spreadsheet)** → **Simpan** (HTML di `content_html` atau grid di `content_grid`, plus `format`; diarsip di `document_records`, bisa dibuka & diedit lagi) → **Unduh PDF** (dompdf, dari mode terakhir yang disimpan) atau **Unduh Excel** (.xlsx via SheetJS). **Kop surat (logo + org + kotak dokumen)** tampil di kedua editor & PDF dengan format identik: di mode **Teks** kop menyatu inline (bisa diedit), di mode **Excel** kop ditampilkan sebagai **banner di atas grid** (karena x-spreadsheet tidak bisa menaruh gambar di sel) dan ditambahkan otomatis saat render PDF/xlsx. Logo `public/logo/sidebar-logo.png` di-embed data URI saat render PDF. Angka auto (persediaan awal carry-over opname, penerimaan, pemakaian per mesin, administrasi A−B−C, selisih E−D); TTD dari master Pegawai; nomor surat tetap. `DocumentGridBuilder` membangun grid & merender grid→HTML untuk PDF | ✅ Selesai |
+| Menu Laporan — mode **Excel** (`operasi/laporan/{report}/excel`): laporan dibuka sebagai spreadsheet, bisa **Unduh Excel** (.xlsx) atau **Cetak/PDF** (halaman print) | ✅ Selesai |
+| **CRUD Master Operasi** — satu layar generik `operasi/master/{resource}` (config-driven `OperasiMasterRegistry` + satu `MasterController`; skema field mendorong validasi & form otomatis) untuk feeder, pasokan cadangan, tangki BBM, jenis pelumas, faktor kalibrasi (per unit) & kode status (global). Gating `operasi.master.view_any`/`manage` | ✅ Selesai |
+| **CRUD Template BA** — `operasi/document-template`: atur nomor surat / judul / revisi tiap jenis BA; **default global** + **override per unit** (menimpa global saat cetak). Nomor tetap, bukan auto-increment. Gating `operasi.master.manage` | ✅ Selesai |
+
+### 8A.6 Catatan terbuka modul OPERASI
+
+- Rumus **Cummins flow meter IN/OUT** memakai default aman, diisolasi & bertanda
+  "asumsi — menunggu verifikasi tim operasi".
+- Kapasitas tangki & katalog lengkap kode status Star-Stop belum final (seed
+  placeholder, dilengkapi user via CRUD master).
+- **Nomor surat BA** tetap per jenis dokumen (bukan auto-increment). Kini
+  **editable lewat UI** (`operasi/document-template`): default global + override
+  per unit. Keputusan apakah dipakai nomor sama untuk semua unit atau beda per
+  unit diserahkan ke user (tinggal isi override bila perlu).
+- **Grid Input (menu Input):** kolom hasil (produksi, netto, pakai HSD/MFO) &
+  stand awal read-only, dihitung server via `OperasiCalculator` lalu dimuat ulang
+  setelah "Simpan" (satu sumber rumus, tidak diduplikasi di frontend). Editing per
+  sel + navigasi keyboard sudah jalan; **paste multi-sel dari Excel** & recompute
+  live saat mengetik menyusul (penyempurnaan berikutnya). Field MFO hanya tampil &
+  disimpan untuk mesin `hsd_mfo`.
+- **Paste dari Excel** ✅ — hook `useExcelPaste` (di `components/operasi/grid.tsx`)
+  dipakai grid Laporan Harian, Feeder, dan Pasokan Cadangan: salin blok dari Excel,
+  klik sel awal, Ctrl+V → mengisi turun & ke kanan ke kolom-kolom yang bisa diedit
+  (kolom hasil/otomatis dilewati, tetap sejajar).
+
+---
+
 ## 9. Roadmap Fase
 
 | Fase | Cakupan | Status |
 |---|---|---|
-| **1** | Fondasi: master UL & unit, role, permission, penugasan, Super Admin (manajemen akses, pemantauan aktivitas, pemantauan unit) | Sedang dikerjakan |
-| **2** | Modul Laporan Unit: input harian/bulanan, alur pengajuan & persetujuan | Berikutnya |
+| **1** | Fondasi: master UL & unit, role, permission, penugasan, Super Admin (manajemen akses, pemantauan aktivitas, pemantauan unit) | Selesai |
+| **2** | Modul OPERASI (lihat 8A): Input (5 tab), Laporan, Berita Acara — **selesai** | Selesai |
 | **3** | Modul Project: perencanaan, progres, milestone | Direncanakan |
 | **4** | Modul Laporan Project | Direncanakan |
 | **5** | Ekspor PDF & Excel untuk laporan unit dan laporan project | Direncanakan |
@@ -378,6 +508,10 @@ modul baru + case permission baru + mapping role.
 | Auth | Laravel Fortify (login, 2FA, passkey, reset password) |
 | Otorisasi | Gate + Policy berbasis permission, tanpa paket eksternal |
 | Routing frontend | Laravel Wayfinder (`@/routes`, `@/actions`) |
+| Grid input (modul OPERASI) | `react-data-grid` (MIT) — grid ala-Excel per sel |
+| PDF (modul OPERASI, Berita Acara) | `barryvdh/laravel-dompdf` |
+| Editor dokumen (Berita Acara) | `tinymce` + `@tinymce/tinymce-react` (self-host, lisensi GPL) — WYSIWYG ala-Word |
+| Editor spreadsheet (Berita Acara & Laporan) | `x-data-spreadsheet` (MIT) — edit ala-Excel; `xlsx` (SheetJS) untuk unduh .xlsx; `less` (dev, build-time untuk x-spreadsheet) |
 | Database | SQLite untuk pengembangan; siap dipindah ke MySQL/PostgreSQL |
 | Testing | PHPUnit (feature test diutamakan) |
 | Code style | Laravel Pint |

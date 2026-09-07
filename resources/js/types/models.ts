@@ -59,11 +59,21 @@ export type MachineRow = {
     id: number;
     name: string;
     type: string | null;
+    fuel_type: string | null;
     serial_number: string | null;
     capacity_kw: string | null;
     is_active: boolean;
     unit_id: number;
     unit: string | null;
+    lubricant_type_ids?: number[];
+    lubricant_types?: string[];
+};
+
+/** A lubricant type option, tagged with its owning unit for client filtering. */
+export type LubricantOption = {
+    id: number;
+    name: string;
+    unit_id: number;
 };
 
 export type EmployeeRow = {

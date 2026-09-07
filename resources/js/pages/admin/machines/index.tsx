@@ -23,6 +23,11 @@ import { dashboard } from '@/routes';
 import machines from '@/routes/admin/machines';
 import type { IdName, MachineRow, Paginated } from '@/types';
 
+const FUEL_TYPE_LABELS: Record<string, string> = {
+    hsd_mfo: 'HSD + MFO',
+    hsd_only: 'HSD saja',
+};
+
 type Props = {
     machines: Paginated<MachineRow>;
     filters: {
@@ -114,6 +119,7 @@ export default function MachinesIndex({
                                     <TableHead>Mesin</TableHead>
                                     <TableHead>Unit Pembangkit</TableHead>
                                     <TableHead>Tipe</TableHead>
+                                    <TableHead>Bahan Bakar</TableHead>
                                     <TableHead>Serial Number</TableHead>
                                     <TableHead className="text-right">
                                         Kapasitas (kW)
@@ -148,6 +154,17 @@ export default function MachinesIndex({
                                         </TableCell>
                                         <TableCell>
                                             {machine.type ?? '—'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {machine.fuel_type ? (
+                                                (FUEL_TYPE_LABELS[
+                                                    machine.fuel_type
+                                                ] ?? machine.fuel_type)
+                                            ) : (
+                                                <StatusBadge tone="warning">
+                                                    Lengkapi
+                                                </StatusBadge>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {machine.serial_number ?? '—'}

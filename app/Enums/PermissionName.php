@@ -61,6 +61,14 @@ enum PermissionName: string
     case ReportUnitApprove = 'report_unit.approve';
     case ReportUnitExport = 'report_unit.export';
 
+    case OperasiInputView = 'operasi.input.view';
+    case OperasiInputWrite = 'operasi.input.write';
+    case OperasiLaporanView = 'operasi.laporan.view';
+    case OperasiBeritaAcaraView = 'operasi.berita_acara.view';
+    case OperasiBeritaAcaraCreate = 'operasi.berita_acara.create';
+    case OperasiMasterViewAny = 'operasi.master.view_any';
+    case OperasiMasterManage = 'operasi.master.manage';
+
     case ProjectViewAny = 'project.view_any';
     case ProjectView = 'project.view';
     case ProjectCreate = 'project.create';
@@ -126,6 +134,14 @@ enum PermissionName: string
             self::ReportUnitSubmit,
             self::ReportUnitApprove,
             self::ReportUnitExport => PermissionGroup::ReportUnit,
+
+            self::OperasiInputView,
+            self::OperasiInputWrite,
+            self::OperasiLaporanView,
+            self::OperasiBeritaAcaraView,
+            self::OperasiBeritaAcaraCreate,
+            self::OperasiMasterViewAny,
+            self::OperasiMasterManage => PermissionGroup::Operasi,
 
             self::ProjectViewAny,
             self::ProjectView,
@@ -198,6 +214,14 @@ enum PermissionName: string
             self::ReportUnitSubmit => 'Mengajukan laporan unit',
             self::ReportUnitApprove => 'Menyetujui laporan unit',
             self::ReportUnitExport => 'Mengekspor laporan unit',
+
+            self::OperasiInputView => 'Melihat input operasi',
+            self::OperasiInputWrite => 'Mengisi input operasi',
+            self::OperasiLaporanView => 'Melihat & mencetak laporan operasi',
+            self::OperasiBeritaAcaraView => 'Melihat berita acara operasi',
+            self::OperasiBeritaAcaraCreate => 'Membuat berita acara operasi',
+            self::OperasiMasterViewAny => 'Melihat master data operasi',
+            self::OperasiMasterManage => 'Mengelola master data operasi',
 
             self::ProjectViewAny => 'Melihat daftar project',
             self::ProjectView => 'Melihat detail project',

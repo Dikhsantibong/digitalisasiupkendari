@@ -10,4 +10,5 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 });
 
 require __DIR__.'/admin.php';
+require __DIR__.'/operasi.php';
 require __DIR__.'/settings.php';

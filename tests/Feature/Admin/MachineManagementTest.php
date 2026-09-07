@@ -3,8 +3,10 @@
 namespace Tests\Feature\Admin;
 
 use App\Enums\ActivityEvent;
+use App\Enums\FuelType;
 use App\Enums\RoleName;
 use App\Models\ActivityLog;
+use App\Models\LubricantType;
 use App\Models\Machine;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
@@ -91,6 +93,48 @@ class MachineManagementTest extends TestCase
             'event' => ActivityEvent::Created->value,
             'unit_id' => $unit->id,
         ]);
+    }
+
+    public function test_a_machine_can_be_given_a_fuel_type_and_lubricant_types(): void
+    {
+        $unit = Unit::factory()->create();
+        $lubricantA = LubricantType::factory()->forUnit($unit)->create();
+        $lubricantB = LubricantType::factory()->forUnit($unit)->create();
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->post(route('admin.machines.store'), [
+                'unit_id' => $unit->id,
+                'name' => 'MIRRLEES #1',
+                'fuel_type' => FuelType::HsdMfo->value,
+                'is_active' => '1',
+                'lubricant_type_ids' => [$lubricantA->id, $lubricantB->id],
+            ])
+            ->assertRedirect(route('admin.machines.index'));
+
+        $machine = Machine::query()->where('name', 'MIRRLEES #1')->firstOrFail();
+
+        $this->assertSame(FuelType::HsdMfo, $machine->fuel_type);
+        $this->assertEqualsCanonicalizing(
+            [$lubricantA->id, $lubricantB->id],
+            $machine->lubricantTypes()->pluck('lubricant_types.id')->all(),
+        );
+    }
+
+    public function test_a_machine_cannot_take_a_lubricant_type_from_another_unit(): void
+    {
+        $unit = Unit::factory()->create();
+        $foreignLubricant = LubricantType::factory()->create();
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->post(route('admin.machines.store'), [
+                'unit_id' => $unit->id,
+                'name' => 'MESIN Y',
+                'is_active' => '1',
+                'lubricant_type_ids' => [$foreignLubricant->id],
+            ])
+            ->assertSessionHasErrors('lubricant_type_ids.0');
+
+        $this->assertDatabaseMissing('machines', ['name' => 'MESIN Y']);
     }
 
     public function test_creating_a_machine_requires_a_unit(): void
