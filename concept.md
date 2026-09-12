@@ -238,6 +238,20 @@ untuk role **TL Operasi** (role lain → 403); Super Admin memperoleh via bypass
 | `operasi.master.view_any` | Melihat master data operasi (feeder, tangki, pelumas, kode status, faktor kalibrasi) |
 | `operasi.master.manage` | Mengelola master data operasi |
 
+### 5.9 Pemeliharaan (HAR)
+
+Modul PEMELIHARAAN (laporan bulanan HAR). **TL Pemeliharaan** = isi + lihat;
+**Manager UL** = lihat/cetak (read-only); Super Admin via bypass.
+
+| Permission | Keterangan |
+|---|---|
+| `har.input.view` | Melihat input pemeliharaan |
+| `har.input.write` | Mengisi input pemeliharaan (WO/SR, log kegiatan, biaya, foto) |
+| `har.laporan.view` | Melihat & mencetak laporan pemeliharaan |
+| `har.executive.view` | Melihat executive summary pemeliharaan |
+| `har.master.view_any` | Melihat master data pemeliharaan (types, cycles, status, work group, SR category) |
+| `har.master.manage` | Mengelola master data pemeliharaan |
+
 ---
 
 ## 6. Matriks Role × Permission
@@ -300,6 +314,12 @@ Super Admin memiliki seluruh permission (termasuk yang ditambahkan di masa depan
 | `operasi.berita_acara.create` | ✓ | | ✓ | | | |
 | `operasi.master.view_any` | ✓ | | ✓ | | | |
 | `operasi.master.manage` | ✓ | | ✓ | | | |
+| `har.input.view` | ✓ | | | ✓ | | |
+| `har.input.write` | ✓ | | | ✓ | | |
+| `har.laporan.view` | ✓ | ✓ | | ✓ | | |
+| `har.executive.view` | ✓ | ✓ | | ✓ | | |
+| `har.master.view_any` | ✓ | | | ✓ | | |
+| `har.master.manage` | ✓ | | | ✓ | | |
 
 Matriks ini adalah **kondisi awal (seed)**. Super Admin dapat mengubahnya dari
 antarmuka aplikasi tanpa perlu deploy ulang.
@@ -458,6 +478,7 @@ physical_stock_takes   opname fisik akhir periode (tangki/pelumas)
 | Menu Laporan — mode **Excel** (`operasi/laporan/{report}/excel`): laporan dibuka sebagai spreadsheet, bisa **Unduh Excel** (.xlsx) atau **Cetak/PDF** (halaman print) | ✅ Selesai |
 | **CRUD Master Operasi** — satu layar generik `operasi/master/{resource}` (config-driven `OperasiMasterRegistry` + satu `MasterController`; skema field mendorong validasi & form otomatis) untuk feeder, pasokan cadangan, tangki BBM, jenis pelumas, faktor kalibrasi (per unit) & kode status (global). Gating `operasi.master.view_any`/`manage` | ✅ Selesai |
 | **CRUD Template BA** — `operasi/document-template`: atur nomor surat / judul / revisi tiap jenis BA; **default global** + **override per unit** (menimpa global saat cetak). Nomor tetap, bukan auto-increment. Gating `operasi.master.manage` | ✅ Selesai |
+| **Logsheet Operator** (`operasi/input/logsheet`, addendum) — layer input lapangan **per jam**: role `operator` (permission `operasi.logsheet.write`), TL Operasi & Manager UL `operasi.logsheet.view` (read-only), Super Admin via bypass. Satu lembar per mesin per hari (`operator_logsheets` + `operator_logsheet_readings` model panjang). **UI form sederhana** (bukan grid Excel): tabel baca-saja slot waktu × parameter (header berkelompok: Coolant 1/2, Winding L1–L3, Ampere R/S/T, Flow IN/OUT) + tombol **Isi Data** → **modal** pilih **Jam** + input parameter → **Simpan** langsung mengisi jam tsb (upsert per time_slot, tidak menghapus jam lain). **Shift A–D** (dropdown, tanpa nama operator). Slot 01:00–24:00 + 17:30/18:30/19:30/20:30/21:30. Parameter dari master `logsheet_parameters` (`plant_type=all`, seed 22 param §2; PLTM/PLTG disiapkan belum diisi). **Kirim** mengunci lembar dari edit operator. Auto-agregasi ke `daily_engine_reports` **disiapkan tapi belum aktif**: service kosong `LogsheetAggregator` (TODO) + kolom `daily_engine_reports.source` (manual|logsheet, default manual); alur input manual TL Operasi tidak berubah | ✅ Selesai |
 
 ### 8A.6 Catatan terbuka modul OPERASI
 
@@ -482,13 +503,160 @@ physical_stock_takes   opname fisik akhir periode (tangki/pelumas)
 
 ---
 
+## 8B. Modul PEMELIHARAAN / HAR (Fase 3)
+
+Laporan bulanan Team Leader Pemeliharaan, hasil reverse-engineering file Excel
+LAPORAN HAR (unit PLTD Wua-Wua). **Sejajar** dengan modul OPERASI — pola &
+fondasi generik dipakai ulang (RBAC, `work_modules`, `report_periods`, document
+engine, report registry, komponen grid). Referensi: `modul-har.md` &
+`prompt-implementasi-har.md`.
+
+### 8B.1 Prinsip
+
+- **Berbasis Work Order (WO) & Service Request (SR)**, bukan pembacaan meter.
+  Input campuran grid (daftar WO/SR) + form (log kegiatan, foto).
+- **Sumber WO/SR di balik satu interface** `App\Services\Har\WorkOrderSource`
+  (2 implementasi: `ManualWorkOrderSource` aktif; `WpcWorkOrderSource` placeholder
+  untuk koneksi DB WPC PLN nanti). Controller/laporan hanya bergantung interface;
+  kolom `source` (manual|wpc) membedakan asal data. Config `config/har.php`
+  (WPC) sengaja kosong sampai fase integrasi. **Tidak ada koneksi WPC di-hardcode.**
+- **Multi-unit & master existing** (FK, tidak dibuat ulang): `unit_id`→`units`,
+  `engine_id`→`machines`, penandatangan→`employees`, identitas→`service_units`.
+  Semua tabel transaksi ber-`unit_id` (trait `BelongsToUnit`).
+- **Akses:** TL Pemeliharaan (isi+lihat) & Manager UL (lihat saja). Manager UL
+  memakai scope service_unit yang sudah ada (lihat unit di bawah UL-nya).
+- **No. Dokumen ISO** (FMKD-314-…) tetap per jenis sheet, editable (pola sama BA).
+
+### 8B.2 Master pemeliharaan (global, CRUD)
+
+```text
+maintenance_types    PM/PdM/CM/FLM/ENJI (code, name, category)
+maintenance_cycles   P1=7D, P2=14D, P4=84D (code, name, interval_days)
+wo_statuses          APPR/CLOSE/WAPPR/INPRG (code, name, is_closed)
+work_groups          MECHD/ELECD (code, name)
+sr_categories        CM/FLM/PDM/CANCEL (code, name)
+```
+Diseed placeholder (`HarMasterSeeder`); dilengkapi user via CRUD.
+
+### 8B.3 Transaksi (per unit)
+
+```text
+service_requests   sr_number, description, sr_category_id, status(open|close),
+                   engine_id, source(manual|wpc), report_period_id
+work_orders        wonum, description, maintenance_type_id, engine_id,
+                   work_group_id, wo_status_id, cycle_id, report/sched/actual date,
+                   waiting_reason(shutdown|material|jasa), service_cost, material_cost,
+                   source, report_period_id
+maintenance_costs  akumulasi bulanan per unit (override manual, flag use_manual);
+                   default = SUM biaya dari work_orders
+maintenance_activities (+ _tasks, _materials)  log kegiatan HARMES (inti, manual)
+maintenance_schedules  matriks rencana vs realisasi per mesin (scope har|pelumas|air),
+                       schedule_data JSON (granularitas menunggu konfirmasi user)
+maintenance_attachments  foto lampiran (storage, simpan path)
+har_document_records  dokumen laporan HAR editable per unit+periode (type=bulanan);
+                      format(html|grid), content_html, content_grid JSON, snapshot,
+                      document_number — pola sama document_records modul Operasi
+```
+
+### 8B.4 Status implementasi
+
+| Bagian | Status |
+|---|---|
+| Registry `work_modules` seed `pemeliharaan` | ✅ Selesai |
+| Permission `har.*` + grup Pemeliharaan + mapping (TL Pemeliharaan penuh, Manager UL view) | ✅ Selesai |
+| Enum (WorkOrderSource, WoWaitingReason, ServiceRequestStatus, MaintenanceScope, SchedulePlanType) | ✅ Selesai |
+| Skema DB + model + factory (master + transaksi) | ✅ Selesai |
+| Seed master pemeliharaan placeholder (`HarMasterSeeder`) | ✅ Selesai |
+| Interface `WorkOrderSource` + `ManualWorkOrderSource` (aktif) + `WpcWorkOrderSource` (placeholder) + config `har.php` | ✅ Selesai |
+| **Master engine generik dibagikan** — `MasterRegistry` (interface) + `MasterFields` (trait skema) + trait controller `ManagesMasterResources` + komponen React `components/master/master-screen.tsx`; dipakai ulang Operasi **dan** HAR (halaman = wrapper tipis) | ✅ Selesai |
+| **CRUD master pemeliharaan** — `har/master/{resource}` (jenis pemeliharaan, siklus, status WO, work group, kategori SR — semua global) via engine bersama; gating `har.master.view_any`/`manage` | ✅ Selesai |
+| Menu Input — **Work Order** (`har/input/work-order`): grid ala-Excel (react-data-grid + paste), tambah/hapus baris, FK diketik sebagai **kode** (jenis/work group/status/siklus) & nama mesin lalu di-resolve server-side; simpan meng-upsert per (unit, periode, wonum) & menghapus baris yang dibuang; `report_period` auto | ✅ Selesai |
+| Menu Input — **Service Request** (`har/input/service-request`): grid ala-Excel + paste, FK (kategori) sebagai kode + nama mesin di-resolve server-side, status open/close; upsert per (unit, periode, no SR) + rekonsiliasi hapus | ✅ Selesai |
+| Menu Input — **Log Kegiatan HARMES** (`har/input/activity`): tabel + dialog form (tanggal, mesin, jenis HAR, hasil, no WO/SR/LH-05/TUG-9, keterangan) dengan sub-daftar **uraian kegiatan** & **material** dinamis; create/update (replace sub-daftar) / delete (cascade) | ✅ Selesai |
+| Menu Input — **Biaya** (`har/input/cost`): total otomatis dari biaya WO periode + **override manual bulanan** (`maintenance_costs`, flag `use_manual`), kartu efektif (badge sumber) + **akumulasi YTD** | ✅ Selesai |
+| **Menu Laporan** (`har/laporan`) — `HarReportBuilder` (baca WO/SR via `WorkOrderSource`): **Laporan Bulanan dokumen penuh** — (1) SR Summary, (2) WO Summary, (3) rekap WO per jenis, (4) WO tertunda, (5) akumulasi biaya, (6) **Rencana vs Realisasi** per lingkup, (7) **Log Kegiatan HARMES** (uraian + material), (8) **Lampiran Foto** — semua di satu halaman print → PDF (window.print) + **Executive Summary** otomatis. Gating `har.laporan.view` / `har.executive.view` (TL Pemeliharaan & Manager UL) | ✅ Selesai |
+| Menu Input — **Rencana vs Realisasi** (`har/input/schedule`): matriks mesin × tanggal per lingkup (HAR/pelumas/air) & jenis (rencana/realisasi), grid + paste, disimpan `schedule_data` JSON per mesin | ✅ Selesai |
+| Menu Input — **Lampiran Foto** (`har/input/attachment`): unggah foto ke storage (disk public, simpan path), galeri + hapus (file ikut terhapus); kait opsional ke mesin/WO | ✅ Selesai |
+| **Dokumen Laporan HAR editable** (`har/laporan/dokumen`) — tombol "Lihat & Edit Dokumen": laporan bulanan penuh terisi otomatis (`HarDocumentBuilder` + `HarDocumentGridBuilder`) lalu diedit **dua mode** — teks (RichText/TinyMCE, ekspor PDF) atau spreadsheet (x-spreadsheet, ekspor Excel .xlsx & PDF), **pakai ulang** komponen bersama `components/document/document-editor.tsx`. Disimpan sbg HTML/grid di `har_document_records` (per unit+periode), PDF via dompdf dari konten tersunting + kop/logo. Gating view `har.laporan.view`, simpan `har.input.write` (Manager UL lihat saja) | ✅ Selesai |
+| **No. Dokumen ISO (FMKD-314-…)** — default per bagian dari `config/har.php` (bukan auto-generate), tampil di kop + tiap judul bagian, **editable langsung di dalam dokumen** (tersimpan bersama konten) | ✅ Selesai |
+| Integrasi DB WPC (`WpcWorkOrderSource`) | ⏳ Fase lanjut |
+
+### 8B.5 Catatan terbuka modul HAR
+
+- **Cakupan akses Manager UL**: dipakai scope service_unit existing (lihat unit di
+  bawah UL). Konfirmasi bila perlu lintas-UL.
+- **Daftar lengkap status WO/kategori SR/siklus** dari WPC belum final → seed
+  placeholder + CRUD.
+- **Granularitas matriks Rencana vs Realisasi** (per-tanggal 31 hari vs ringkasan)
+  belum dikonfirmasi → disimpan sebagai JSON fleksibel.
+- **Detail teknis WPC** (jenis DB, skema, kredensial) menyusul di fase integrasi.
+
+---
+
+## 8C. Modul K3 & KEAMANAN (Fase 4)
+
+Laporan kinerja bulanan TL K3L & Keamanan (5 file sumber: LAPKIN induk + Patroli
++ Emergency Facility + Lampiran + Sertifikat). SEJAJAR dengan Operasi/HAR —
+**pakai ulang** RBAC, `work_modules`, master engine generik, `report_periods`,
+document engine, dan komponen grid. Referensi: `modul-k3.md`,
+`prompt-implementasi-k3.md`.
+
+### 8C.1 Prinsip
+
+- Multi-unit: format form sama antar unit; data & nama unit beda; semua tabel
+  transaksi/master turunan ber-`unit_id` (trait `BelongsToUnit`). Master global
+  (jenis kegiatan, kategori APD/alat) tanpa unit.
+- Data K3 = mayoritas **inspeksi & inventaris berkala** (harian/mingguan/bulanan)
+  + log keamanan. Form checklist seragam pakai pola generik `inspections` +
+  `inspection_results` (bukan 28 tabel terpisah) — tabel khusus hanya untuk
+  struktur unik (APAR, emergency, sertifikat, patroli).
+- **No. Dokumen ISO** (SMT-FM-AK3-*, FMZ-*) tetap per form, editable (bukan
+  auto-generate) — pola sama BA/HAR.
+- Kadaluarsa sertifikat/APAR = **label/badge** di monitoring (aktif / mendekati
+  ≤60 hari / expired), bukan push notification.
+- Akses: role baru **TL K3 & Keamanan** (`tl_k3`, isi + lihat penuh); Manager UL
+  hanya `k3.laporan.view` + `k3.monitoring.view` (read-only).
+
+### 8C.2 Status implementasi
+
+| Bagian | Status |
+|---|---|
+| Registry `work_modules` seed `k3` | ✅ Selesai |
+| Permission `k3.*` (input/laporan/monitoring/master) + grup **K3 & Keamanan** + role `TeamLeaderK3` penuh, Manager UL view; matrix di seeder | ✅ Selesai |
+| **Master engine generik diperluas** — field `relation` kini mendukung sumber tabel & label sembarang + flag unit-scoped (mundur-kompatibel dgn `machines` Operasi), agar `apd_items → apd_categories` (global) bisa dipakai | ✅ Selesai |
+| **Master K3 (CRUD)** via engine bersama — global: jenis kegiatan, kategori APD, kategori alat sertifikasi; per-unit: lokasi patroli, pos keamanan, fasilitas darurat, item APD, APAR/APAB, kotak P3K, item checklist inspeksi. Halaman `k3/master/{resource}`, gating `k3.master.view_any`/`manage`; seed placeholder global (`K3MasterSeeder`) | ✅ Selesai |
+| **Menu Input — Time Frame** (`k3/input/time-frame`): matriks kegiatan K3 × tanggal per jenis (rencana/realisasi), grid + paste, disimpan `plan_days`/`real_days` JSON di `k3_activity_plans` per (unit,periode,jenis kegiatan) | ✅ Selesai |
+| **Menu Input — Laporan Kecelakaan** (`k3/input/accident`): grid PAK/PAHK per periode (replace-all), tombol cepat **Tandai NIHIL**, kategori enum `AccidentCategory` | ✅ Selesai |
+| **Menu Input — Inspeksi (engine generik)** (`k3/input/inspection`): `inspections` + `inspection_results`; item checklist diambil dari master `inspection_checklists` per `form_code`, header + grid hasil (kondisi/tindak lanjut/nilai/catatan), upsert 1 sesi per (unit,periode,form) + replace hasil — pola dipakai semua form checklist seragam | ✅ Selesai |
+| **Menu Input — Inspeksi APAR/APAB** (`k3/input/apar-check`): grid per tabung (dari master `fire_extinguishers`) — kondisi tabung/nozzle/tekanan/pin-segel, tgl periksa, exp date; upsert per (unit,periode,tabung) | ✅ Selesai |
+| **Menu Input — Kesiapan Fasilitas Darurat** (`k3/input/emergency`): grid per fasilitas (dari master), filter periode bulanan/mingguan (M1–M4); Ready/Not Ready/Total + **% kesiapan otomatis** (tidak dipaksa bila sumber teks); upsert per (unit,periode,minggu) | ✅ Selesai |
+| **Menu Input — Patroli Keamanan** (`k3/input/patrol`): matriks lokasi (POA…) × tanggal, cap jumlah scan/hari + **total kumulatif otomatis** per lokasi; upsert per (unit,lokasi,tgl), nol menghapus | ✅ Selesai |
+| Menu Input — inventaris APD, Kotak/Isi P3K, Alat Tanggap Darurat (bisa pakai engine inspeksi generik) | ⏳ Direncanakan |
+| Menu Input — Keamanan lain (apel, mutasi tamu, kondisi CCTV) | ⏳ Direncanakan |
+| **Menu Input — Sertifikasi Peralatan** (`k3/input/certificate`): grid registri sertifikat per unit (replace-all), kategori diketik sbg kode & di-resolve ke master global; tanggal ijin/uji/uji-ulang | ✅ Selesai |
+| **Menu Monitoring** (`k3/monitoring`) — `K3MonitoringService`: **badge status** sertifikat & APAR (aktif/mendekati ≤`config('k3.expiry_warning_days')`=60h/expired, dihitung dari tgl uji ulang & exp date, sisa hari) + ringkasan bulan (kecelakaan NIHIL/korban, kegiatan terealisasi, total scan patroli, % kesiapan darurat, hitung expired/mendekati). Gating `k3.monitoring.view` (TL K3 & Manager UL). Label sistem, bukan push | ✅ Selesai |
+| **Menu Lampiran** (`k3/input/attachment`): unggah dokumen/foto (JPG/PNG/PDF) per periode ke storage (disk public, simpan path), galeri + hapus (file ikut terhapus) | ✅ Selesai |
+| **Menu Laporan — Dokumen K3 penuh editable** (`k3/laporan/dokumen`) — `K3ReportBuilder` merangkum semua input (Time Frame, kecelakaan, APAR, kesiapan darurat, patroli kumulatif, sertifikat + status, inspeksi, lampiran) → `K3DocumentBuilder` + `K3DocumentGridBuilder`, diedit **dua mode** (teks/TinyMCE→PDF, spreadsheet/x-spreadsheet→Excel & PDF) via komponen bersama `document-editor.tsx`, disimpan di `k3_document_records`, PDF via dompdf + kop/logo. No. Dokumen ISO (SMT-FM-AK3-*) default `config/k3.php`, editable di dokumen. Gating view `k3.laporan.view`, simpan `k3.input.write` | ✅ Selesai |
+| Menu Input pelengkap — inventaris APD, Kotak/Isi P3K, Alat Tanggap Darurat (pakai engine inspeksi generik), Keamanan lain (apel, tamu, CCTV) | ⏳ Opsional lanjut |
+
+### 8C.3 Catatan terbuka modul K3
+
+- **Ambang "mendekati expired"** default ≤60 hari (dari prompt) — bisa disesuaikan.
+- **Daftar final form** (beberapa Excel bertanda "(NO)"/"(old)" = versi lama) —
+  konfirmasi mana yang aktif saat membangun input/laporan.
+- **Seed per-unit** (POA1–14, emergency facility Poasia, dll.) menyusul per unit.
+
+---
+
 ## 9. Roadmap Fase
 
 | Fase | Cakupan | Status |
 |---|---|---|
 | **1** | Fondasi: master UL & unit, role, permission, penugasan, Super Admin (manajemen akses, pemantauan aktivitas, pemantauan unit) | Selesai |
 | **2** | Modul OPERASI (lihat 8A): Input (5 tab), Laporan, Berita Acara — **selesai** | Selesai |
-| **3** | Modul Project: perencanaan, progres, milestone | Direncanakan |
+| **3** | Modul PEMELIHARAAN/HAR (lihat 8B): master + Input (WO, SR, Log Kegiatan, Biaya, Rencana/Realisasi, Foto), Laporan & Executive Summary — **selesai**; sisa hanya integrasi DB WPC (fase lanjut) | Selesai |
+| **4** | Modul K3 & KEAMANAN (lihat 8C): master + Input (Time Frame, Kecelakaan, Inspeksi generik, APAR, Kesiapan Darurat, Patroli, Sertifikat, Lampiran), Monitoring (badge status), Laporan **dokumen penuh editable** — **selesai**; sisa hanya input pelengkap opsional (APD/P3K/tanggap darurat, apel/tamu/CCTV) | Selesai |
+| **3b** | Modul Project: perencanaan, progres, milestone | Direncanakan |
 | **4** | Modul Laporan Project | Direncanakan |
 | **5** | Ekspor PDF & Excel untuk laporan unit dan laporan project | Direncanakan |
 | **6** | Dashboard analitik lintas unit & indikator kinerja | Direncanakan |

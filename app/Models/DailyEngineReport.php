@@ -37,7 +37,7 @@ use Illuminate\Support\Carbon;
  * @property-read Machine $engine
  */
 #[Fillable([
-    'unit_id', 'engine_id', 'report_date',
+    'unit_id', 'engine_id', 'report_date', 'source',
     'kwh_produksi_stand_akhir', 'kwh_pakai_sendiri_stand_akhir',
     'beban_puncak_pagi_kw', 'beban_puncak_malam_kw', 'pemakaian_pelumas_liter',
     'flowmeter_hsd_stand_akhir', 'flowmeter_hsd_tambah_liter',

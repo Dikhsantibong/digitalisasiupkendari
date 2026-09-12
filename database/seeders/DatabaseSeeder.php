@@ -22,8 +22,13 @@ class DatabaseSeeder extends Seeder
             OrganizationSeeder::class,
             MachineSeeder::class,
             OperasiPoasiaSeeder::class,
+            OperasiMasterSeeder::class,
+            HarMasterSeeder::class,
+            K3MasterDataSeeder::class,
+            LogsheetParameterSeeder::class,
             DocumentTemplateSeeder::class,
             SuperAdminSeeder::class,
+            DemoAccountSeeder::class,
         ]);
     }
 }

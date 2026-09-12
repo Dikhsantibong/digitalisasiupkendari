@@ -33,10 +33,10 @@ export function NavCollapsible({
     return (
         <Collapsible
             defaultOpen={hasActive}
-            className="group/collapsible px-2 py-0"
+            className="group/collapsible"
             asChild
         >
-            <SidebarGroup className="px-0 py-0">
+            <SidebarGroup className="px-2 py-0">
                 <SidebarGroupLabel
                     asChild
                     className="cursor-pointer hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"

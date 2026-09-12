@@ -14,6 +14,7 @@ enum RoleName: string
     case ManagerUl = 'manager_ul';
     case TeamLeaderOperasi = 'tl_operasi';
     case TeamLeaderPemeliharaan = 'tl_pemeliharaan';
+    case TeamLeaderK3 = 'tl_k3';
     case SiteLeader = 'site_leader';
     case Operator = 'operator';
 
@@ -24,6 +25,7 @@ enum RoleName: string
             self::ManagerUl => 'Manager UL',
             self::TeamLeaderOperasi => 'TL Operasi',
             self::TeamLeaderPemeliharaan => 'TL Pemeliharaan',
+            self::TeamLeaderK3 => 'TL K3 & Keamanan',
             self::SiteLeader => 'Site Leader',
             self::Operator => 'Operator',
         };
@@ -36,6 +38,7 @@ enum RoleName: string
             self::ManagerUl => 'Memimpin satu unit layanan dan memantau seluruh unit pembangkit di bawahnya.',
             self::TeamLeaderOperasi => 'Mengelola kegiatan operasi pada unit pembangkit yang ditugaskan.',
             self::TeamLeaderPemeliharaan => 'Mengelola kegiatan pemeliharaan pada unit pembangkit yang ditugaskan.',
+            self::TeamLeaderK3 => 'Mengelola kegiatan K3 & keamanan pada unit pembangkit yang ditugaskan.',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
             self::Operator => 'Mencatat data operasi harian pada unit pembangkit yang ditugaskan.',
         };
@@ -48,6 +51,7 @@ enum RoleName: string
             self::ManagerUl => RoleScope::ServiceUnit,
             self::TeamLeaderOperasi,
             self::TeamLeaderPemeliharaan,
+            self::TeamLeaderK3,
             self::SiteLeader,
             self::Operator => RoleScope::Unit,
         };
@@ -97,9 +101,26 @@ enum RoleName: string
                 PermissionName::ReportProjectView,
                 PermissionName::ReportProjectApprove,
                 PermissionName::ReportProjectExport,
+                // Manager oversees maintenance reporting across their UL (read-only).
+                PermissionName::HarLaporanView,
+                PermissionName::HarExecutiveView,
+                // Manager oversees K3 & security reporting across their UL (read-only).
+                PermissionName::K3LaporanView,
+                PermissionName::K3MonitoringView,
+                // Manager verifies operator logsheets (read-only).
+                PermissionName::OperasiLogsheetView,
             ],
 
-            self::TeamLeaderPemeliharaan => $this->teamLeaderBasePermissions(),
+            self::TeamLeaderPemeliharaan => [
+                ...$this->teamLeaderBasePermissions(),
+                // The pemeliharaan (HAR) module belongs to TL Pemeliharaan.
+                PermissionName::HarInputView,
+                PermissionName::HarInputWrite,
+                PermissionName::HarLaporanView,
+                PermissionName::HarExecutiveView,
+                PermissionName::HarMasterViewAny,
+                PermissionName::HarMasterManage,
+            ],
 
             self::TeamLeaderOperasi => [
                 ...$this->teamLeaderBasePermissions(),
@@ -111,6 +132,19 @@ enum RoleName: string
                 PermissionName::OperasiBeritaAcaraCreate,
                 PermissionName::OperasiMasterViewAny,
                 PermissionName::OperasiMasterManage,
+                // TL Operasi verifies operator logsheets (read-only).
+                PermissionName::OperasiLogsheetView,
+            ],
+
+            self::TeamLeaderK3 => [
+                ...$this->teamLeaderBasePermissions(),
+                // The K3 & security module belongs to TL K3 & Keamanan.
+                PermissionName::K3InputView,
+                PermissionName::K3InputWrite,
+                PermissionName::K3LaporanView,
+                PermissionName::K3MonitoringView,
+                PermissionName::K3MasterViewAny,
+                PermissionName::K3MasterManage,
             ],
 
             self::SiteLeader => [
@@ -162,6 +196,9 @@ enum RoleName: string
                 PermissionName::ProjectView,
                 PermissionName::ReportProjectViewAny,
                 PermissionName::ReportProjectView,
+                // The operator fills the hourly logsheet; no other operasi menus.
+                PermissionName::OperasiLogsheetWrite,
+                PermissionName::OperasiLogsheetView,
             ],
         };
     }

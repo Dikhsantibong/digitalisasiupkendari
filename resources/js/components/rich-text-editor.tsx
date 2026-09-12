@@ -16,6 +16,7 @@ import 'tinymce/plugins/code/plugin.min.js';
 import 'tinymce/plugins/table/plugin.min.js';
 import 'tinymce/plugins/wordcount/plugin.min.js';
 import 'tinymce/plugins/pagebreak/plugin.min.js';
+import 'tinymce/plugins/autoresize/plugin.min.js';
 import contentCss from 'tinymce/skins/content/default/content.min.css?inline';
 
 /**
@@ -28,12 +29,15 @@ export function RichTextEditor({
     onChange,
     disabled = false,
     extraContentStyle = '',
+    autoGrow = false,
 }: {
     value: string;
     onChange: (html: string) => void;
     disabled?: boolean;
     /** Extra CSS injected into the editing surface (e.g. the document's own styles). */
     extraContentStyle?: string;
+    /** Grow the editor to fit the whole document instead of scrolling inside a fixed box. */
+    autoGrow?: boolean;
 }) {
     return (
         <Editor
@@ -48,7 +52,11 @@ export function RichTextEditor({
                     body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 12px; color: #000; margin: 12px; }
                     table { border-collapse: collapse; }
                     ${extraContentStyle}`,
-                height: 640,
+                // With autoGrow the editor expands to the content height (whole
+                // document visible, no inner scrollbar); otherwise a fixed box.
+                height: autoGrow ? undefined : 640,
+                min_height: autoGrow ? 640 : undefined,
+                autoresize_bottom_margin: 24,
                 menubar: 'edit view insert format table',
                 branding: false,
                 promotion: false,
@@ -65,6 +73,7 @@ export function RichTextEditor({
                     'table',
                     'wordcount',
                     'pagebreak',
+                    ...(autoGrow ? ['autoresize'] : []),
                 ],
                 toolbar:
                     'undo redo | blocks fontfamily fontsize | ' +

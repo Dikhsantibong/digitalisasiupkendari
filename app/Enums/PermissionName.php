@@ -68,6 +68,22 @@ enum PermissionName: string
     case OperasiBeritaAcaraCreate = 'operasi.berita_acara.create';
     case OperasiMasterViewAny = 'operasi.master.view_any';
     case OperasiMasterManage = 'operasi.master.manage';
+    case OperasiLogsheetView = 'operasi.logsheet.view';
+    case OperasiLogsheetWrite = 'operasi.logsheet.write';
+
+    case HarInputView = 'har.input.view';
+    case HarInputWrite = 'har.input.write';
+    case HarLaporanView = 'har.laporan.view';
+    case HarExecutiveView = 'har.executive.view';
+    case HarMasterViewAny = 'har.master.view_any';
+    case HarMasterManage = 'har.master.manage';
+
+    case K3InputView = 'k3.input.view';
+    case K3InputWrite = 'k3.input.write';
+    case K3LaporanView = 'k3.laporan.view';
+    case K3MonitoringView = 'k3.monitoring.view';
+    case K3MasterViewAny = 'k3.master.view_any';
+    case K3MasterManage = 'k3.master.manage';
 
     case ProjectViewAny = 'project.view_any';
     case ProjectView = 'project.view';
@@ -141,7 +157,23 @@ enum PermissionName: string
             self::OperasiBeritaAcaraView,
             self::OperasiBeritaAcaraCreate,
             self::OperasiMasterViewAny,
-            self::OperasiMasterManage => PermissionGroup::Operasi,
+            self::OperasiMasterManage,
+            self::OperasiLogsheetView,
+            self::OperasiLogsheetWrite => PermissionGroup::Operasi,
+
+            self::HarInputView,
+            self::HarInputWrite,
+            self::HarLaporanView,
+            self::HarExecutiveView,
+            self::HarMasterViewAny,
+            self::HarMasterManage => PermissionGroup::Pemeliharaan,
+
+            self::K3InputView,
+            self::K3InputWrite,
+            self::K3LaporanView,
+            self::K3MonitoringView,
+            self::K3MasterViewAny,
+            self::K3MasterManage => PermissionGroup::K3,
 
             self::ProjectViewAny,
             self::ProjectView,
@@ -222,6 +254,22 @@ enum PermissionName: string
             self::OperasiBeritaAcaraCreate => 'Membuat berita acara operasi',
             self::OperasiMasterViewAny => 'Melihat master data operasi',
             self::OperasiMasterManage => 'Mengelola master data operasi',
+            self::OperasiLogsheetView => 'Melihat logsheet operator',
+            self::OperasiLogsheetWrite => 'Mengisi logsheet operator',
+
+            self::HarInputView => 'Melihat input pemeliharaan',
+            self::HarInputWrite => 'Mengisi input pemeliharaan (WO/SR, log kegiatan, biaya, foto)',
+            self::HarLaporanView => 'Melihat & mencetak laporan pemeliharaan',
+            self::HarExecutiveView => 'Melihat executive summary pemeliharaan',
+            self::HarMasterViewAny => 'Melihat master data pemeliharaan',
+            self::HarMasterManage => 'Mengelola master data pemeliharaan',
+
+            self::K3InputView => 'Melihat input K3 & keamanan',
+            self::K3InputWrite => 'Mengisi input K3 & keamanan (inspeksi, patroli, sertifikat, lampiran)',
+            self::K3LaporanView => 'Melihat & mencetak laporan K3 & keamanan',
+            self::K3MonitoringView => 'Melihat monitoring status K3 (sertifikat/APAR)',
+            self::K3MasterViewAny => 'Melihat master data K3 & keamanan',
+            self::K3MasterManage => 'Mengelola master data K3 & keamanan',
 
             self::ProjectViewAny => 'Melihat daftar project',
             self::ProjectView => 'Melihat detail project',

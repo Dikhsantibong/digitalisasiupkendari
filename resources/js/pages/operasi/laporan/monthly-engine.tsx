@@ -10,6 +10,8 @@ const PRINT_STYLES = `
     .print-area, .print-area * { visibility: visible; }
     .print-area { position: absolute; inset: 0; margin: 0; padding: 16px; }
     .no-print { display: none !important; }
+    /* The cover fills the first printed sheet; the report starts on the next. */
+    .report-cover { page-break-after: always; min-height: 96vh; }
 }
 `;
 
@@ -97,6 +99,40 @@ export default function MonthlyEngineReport({ report, data }: Props) {
             </div>
 
             <div className="print-area mx-auto max-w-[1100px] bg-white p-6 text-slate-900">
+                <div className="report-cover mb-8 flex min-h-[1000px] flex-col items-center justify-between border-4 border-double border-slate-800 p-10 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                        <img src="/logo/sidebar-logo.png" alt="PLN" className="h-16" />
+                        <p className="text-base font-semibold uppercase tracking-wide text-slate-800">PT PLN Nusantara Power</p>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">
+                            {data.unit.service_unit ?? 'Unit Pelaksana Pengendalian Pembangkitan Kendari'}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-5">
+                        <span className="h-1 w-28 rounded bg-slate-800" />
+                        <h1 className="text-3xl font-bold uppercase leading-tight tracking-wide text-slate-900">
+                            Laporan Kinerja
+                            <br />
+                            Operasi
+                        </h1>
+                        <div className="rounded bg-slate-800 px-8 py-3 text-xl font-semibold uppercase tracking-wide text-white">
+                            {data.unit.name}
+                        </div>
+                        {data.engine && (
+                            <p className="text-sm uppercase tracking-wide text-slate-600">{data.engine.name}</p>
+                        )}
+                        <p className="text-base text-slate-700">
+                            Periode <span className="font-semibold">{data.period.label}</span>
+                        </p>
+                        <span className="h-1 w-28 rounded bg-slate-800" />
+                    </div>
+
+                    <div className="flex flex-col items-center gap-1">
+                        <p className="text-xl font-bold uppercase tracking-widest text-slate-900">UP Kendari</p>
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500">Unit Pelaksana Pengendalian Pembangkitan Kendari</p>
+                    </div>
+                </div>
+
                 <header className="mb-4 text-center">
                     <p className="text-sm font-semibold uppercase">
                         {data.unit.service_unit ?? 'UNIT LAYANAN'}

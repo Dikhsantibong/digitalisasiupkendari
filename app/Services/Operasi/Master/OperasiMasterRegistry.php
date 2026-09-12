@@ -7,11 +7,14 @@ use App\Enums\LubricantUnit;
 use App\Enums\StatusCodeCategory;
 use App\Enums\TankFuelType;
 use App\Models\AuxiliarySource;
+use App\Models\BbmType;
 use App\Models\CalibrationFactor;
 use App\Models\Feeder;
 use App\Models\FuelTank;
 use App\Models\LubricantType;
 use App\Models\UnitStatusCode;
+use App\Services\Master\MasterFields;
+use App\Services\Master\MasterRegistry;
 
 /**
  * The catalogue of operasi master data managed through one generic CRUD screen.
@@ -19,8 +22,10 @@ use App\Models\UnitStatusCode;
  * means adding an entry here. Field types drive both the validation rules and
  * the form the frontend renders.
  */
-class OperasiMasterRegistry
+class OperasiMasterRegistry implements MasterRegistry
 {
+    use MasterFields;
+
     /**
      * @return array<string, array<string, mixed>>
      */
@@ -92,6 +97,19 @@ class OperasiMasterRegistry
                     self::text('notes', 'Catatan'),
                 ],
             ],
+            'bbm-types' => [
+                'label' => 'Jenis BBM (Global)',
+                'model' => BbmType::class,
+                'unit_scoped' => false,
+                'order' => ['sort_order', 'code'],
+                'fields' => [
+                    self::text('code', 'Kode', required: true),
+                    self::text('name', 'Nama', required: true),
+                    self::text('category', 'Kategori'),
+                    self::number('sort_order', 'Urutan'),
+                    self::bool('is_active', 'Aktif'),
+                ],
+            ],
             'status-codes' => [
                 'label' => 'Kode Status (Global)',
                 'model' => UnitStatusCode::class,
@@ -130,62 +148,5 @@ class OperasiMasterRegistry
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * @return array{key: string, label: string, type: string, required: bool}
-     */
-    private static function text(string $key, string $label, bool $required = false): array
-    {
-        return ['key' => $key, 'label' => $label, 'type' => 'text', 'required' => $required];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function number(string $key, string $label, bool $required = false, string $step = '1'): array
-    {
-        return ['key' => $key, 'label' => $label, 'type' => 'number', 'required' => $required, 'step' => $step];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function bool(string $key, string $label): array
-    {
-        return ['key' => $key, 'label' => $label, 'type' => 'bool', 'required' => false, 'default' => true];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function date(string $key, string $label, bool $required = false): array
-    {
-        return ['key' => $key, 'label' => $label, 'type' => 'date', 'required' => $required];
-    }
-
-    /**
-     * @param  list<\BackedEnum>  $cases
-     * @return array<string, mixed>
-     */
-    private static function enumSelect(string $key, string $label, array $cases, bool $required = false): array
-    {
-        $options = array_map(
-            fn (\BackedEnum $case): array => [
-                'value' => $case->value,
-                'label' => method_exists($case, 'label') ? $case->label() : (string) $case->value,
-            ],
-            $cases,
-        );
-
-        return ['key' => $key, 'label' => $label, 'type' => 'select', 'required' => $required, 'options' => $options];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private static function relation(string $key, string $label, string $source): array
-    {
-        return ['key' => $key, 'label' => $label, 'type' => 'relation', 'required' => false, 'source' => $source];
     }
 }
