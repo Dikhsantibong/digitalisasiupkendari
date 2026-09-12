@@ -30,7 +30,7 @@ export default function K3LaporanIndex({ filters, options }: Props) {
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title="Laporan K3 & Keamanan"
-                    description="Pilih unit & periode, lalu buka dokumen laporan penuh untuk diedit & dicetak."
+                    description="Pilih unit & periode, lalu lihat & cetak laporan penuh, atau buka dokumen untuk diedit (teks/Excel)."
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
@@ -62,10 +62,12 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                                 Gabungan semua form (Time Frame, kecelakaan, APAR, kesiapan darurat, patroli, sertifikat, inspeksi, lampiran) terisi otomatis — bisa diedit teks/Excel lalu cetak PDF.
                             </p>
                         </div>
-                        <Button onClick={() => router.get(document.edit(query).url)}>
-                            <FilePen className="size-4" />
-                            Lihat &amp; Edit Dokumen
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <Button onClick={() => router.get(document.edit(query).url)}>
+                                <FilePen className="size-4" />
+                                Buka Dokumen (Lihat, Edit &amp; Cetak)
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

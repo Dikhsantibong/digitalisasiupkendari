@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Operasi;
+namespace App\Http\Controllers\Operator;
 
 use App\Enums\ActivityEvent;
 use App\Enums\LogsheetStatus;
@@ -12,6 +12,7 @@ use App\Models\Machine;
 use App\Models\OperatorLogsheet;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Operasi\LogsheetAggregator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -22,11 +23,16 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Operator logsheet (modul OPERASI, layer input lapangan). One sheet per machine
- * per day. The operator fills one time slot at a time through a simple form
- * (a "Create" modal), each save landing on that hour for that machine. TL Operasi
- * & Manager view read-only. Parameters come from the {@see LogsheetParameter}
- * master (never hardcoded); time slots are values, not a fixed 24 rows.
+ * Operator logsheet — the field-data-entry layer of the standalone OPERATOR
+ * module (no longer part of OPERASI). One sheet per machine per day: the
+ * operator fills one time slot at a time through a simple "Create" modal, each
+ * save landing on that hour for that machine. TL Operasi & Manager view
+ * read-only. Parameters come from the {@see LogsheetParameter} master (never
+ * hardcoded); time slots are values, not a fixed 24 rows.
+ *
+ * The OPERASI module may later aggregate these readings into its daily engine
+ * reports via {@see LogsheetAggregator} — that hook is
+ * prepared but intentionally not wired.
  */
 class LogsheetController extends Controller
 {
@@ -51,7 +57,7 @@ class LogsheetController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiLogsheetView), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetView), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -90,7 +96,7 @@ class LogsheetController extends Controller
 
         $isSubmitted = $logsheet?->status === LogsheetStatus::Submitted;
 
-        return Inertia::render('operasi/input/logsheet', [
+        return Inertia::render('operator/logsheet', [
             'filters' => ['unit_id' => $unit->id, 'engine_id' => $engine?->id, 'log_date' => $logDate],
             'stats' => $engine === null ? [] : $this->dayStats($parameters, $logsheet, count(self::SLOTS)),
             'header' => [
@@ -112,7 +118,7 @@ class LogsheetController extends Controller
                 'machines' => $machines->all(),
             ],
             // The operator can edit only a draft sheet; TL/Manager never write.
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiLogsheetWrite) && ! $isSubmitted,
+            'can_write' => $user->hasPermissionTo(PermissionName::OperatorLogsheetWrite) && ! $isSubmitted,
             'is_submitted' => $isSubmitted,
         ]);
     }
@@ -124,7 +130,7 @@ class LogsheetController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiLogsheetWrite), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetWrite), 403);
 
         [$unit, $engine] = $this->resolveTarget($request);
 
@@ -179,7 +185,7 @@ class LogsheetController extends Controller
     public function submit(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiLogsheetWrite), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetWrite), 403);
 
         [$unit, $engine] = $this->resolveTarget($request);
         $request->validate(['log_date' => ['required', 'date']]);

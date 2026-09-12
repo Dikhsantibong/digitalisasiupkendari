@@ -2,6 +2,7 @@
     /** @var array<string, mixed> $data */
     $report = $data['report'];
     $numbers = $data['document']['numbers'] ?? [];
+    $num = fn (string $key) => ! empty($numbers[$key]) ? ' <small>('.$numbers[$key].')</small>' : '';
     $rupiah = fn ($v) => 'Rp '.number_format((float) $v, 0, ',', '.');
     $dayMap = function (array $map): string {
         $parts = [];
@@ -12,15 +13,130 @@
         }
         return $parts === [] ? '—' : implode(' · ', $parts);
     };
+
+    $rowsForTypes = function (array $codes) use ($report): array {
+        $wanted = array_map('strtolower', $codes);
+
+        return collect($report['wo_by_type'])
+            ->filter(fn ($g): bool => in_array(strtolower($g['type']), $wanted, true))
+            ->flatMap(fn ($g) => $g['rows'])->values()->all();
+    };
+    $rowsForWaiting = function (array $keys) use ($report): array {
+        return collect($report['wo_waiting'])
+            ->filter(fn ($g): bool => in_array($g['key'], $keys, true))
+            ->flatMap(fn ($g) => $g['rows'])->values()->all();
+    };
+
+    $woPm = $rowsForTypes(['PM']);
+    $woPdm = $rowsForTypes(['PDM', 'PdM']);
+    $woEnji = $rowsForTypes(['ENJI']);
+    $waitingShutdown = $rowsForWaiting(['shutdown']);
+    $waitingMaterialJasa = $rowsForWaiting(['material', 'jasa']);
+    $waitingCount = collect($report['wo_waiting'])->sum(fn ($g): int => count($g['rows']));
+    $totalTasks = collect($report['activities'])->sum(fn ($a): int => count($a['tasks']));
+
+    $sections = [
+        'Executive Summary',
+        'Daftar Isi',
+        'Istilah dan Definisi',
+        'Isi Laporan',
+        'Work Order Summary (Fix)',
+        'Akumulasi Biaya Pemeliharaan',
+        'Rekapitulasi Work Order Task',
+        'Work Order PM (Preventive Maintenance)',
+        'Work Order PdM (Predictive Maintenance)',
+        'Work Order ENJI (Engineering)',
+        'Work Order Waiting Shutdown',
+        'Work Order Waiting Material & Jasa',
+        'Lampiran',
+    ];
+
+    $glossary = [
+        ['WO (Work Order)', 'Perintah kerja pemeliharaan yang menjadi dasar pelaksanaan pekerjaan.'],
+        ['SR (Service Request)', 'Permintaan pekerjaan/perbaikan sebelum diterbitkan menjadi Work Order.'],
+        ['PM (Preventive Maintenance)', 'Pemeliharaan terjadwal untuk mencegah kerusakan berdasarkan jam operasi/kalender.'],
+        ['PdM (Predictive Maintenance)', 'Pemeliharaan berbasis kondisi melalui pemantauan/pengukuran parameter.'],
+        ['CM (Corrective Maintenance)', 'Pemeliharaan perbaikan setelah ditemukan kelainan/kerusakan.'],
+        ['ENJI (Engineering)', 'Pekerjaan rekayasa/modifikasi untuk peningkatan keandalan atau kinerja.'],
+        ['Waiting Shutdown', 'Work Order yang menunggu kesempatan mesin berhenti (shutdown) untuk dikerjakan.'],
+        ['Waiting Material / Jasa', 'Work Order yang tertunda karena menunggu ketersediaan material atau jasa pihak ketiga.'],
+        ['HARMES', 'Pemeliharaan Mesin — log kegiatan harian pemeliharaan pembangkit.'],
+        ['Rencana vs Realisasi', 'Perbandingan jadwal pemeliharaan yang direncanakan terhadap yang terealisasi.'],
+    ];
 @endphp
+
+{{-- 1. COVER --}}
+<div class="har-cover" id="sec-1">
+    <img src="/logo/sidebar-logo.png" alt="Logo">
+    <div class="har-cover-org">PT PLN Nusantara Power</div>
+    <div class="har-cover-sub">{{ $report['unit']['service_unit'] ?? 'Unit Pelaksana Pengendalian Pembangkitan Kendari' }}</div>
+    <div class="har-cover-rule"></div>
+    <div class="har-cover-title">Laporan Kinerja<br>Pemeliharaan</div>
+    <div class="har-cover-unit">{{ $report['unit']['name'] }}</div>
+    <div class="har-cover-period">Periode <strong>{{ $report['period']['label'] }}</strong></div>
+    <div class="har-cover-rule"></div>
+    <div class="har-cover-footer">UP Kendari<small>Unit Pelaksana Pengendalian Pembangkitan Kendari</small></div>
+</div>
 
 @include('har.laporan.letterhead', ['data' => $data])
 
-<div class="har-h2">1. Service Request Summary @if(!empty($numbers['sr_summary']))<small>({{ $numbers['sr_summary'] }})</small>@endif</div>
+{{-- 2. EXECUTIVE SUMMARY --}}
+<div class="har-h2" id="sec-2">2. Executive Summary</div>
+<p class="har-p">
+    Laporan ini merangkum kinerja pemeliharaan {{ $report['unit']['name'] }} pada periode
+    <strong>{{ $report['period']['label'] }}</strong>. Sepanjang periode tercatat
+    <strong>{{ $report['wo_summary']['total'] }}</strong> Work Order dengan tingkat penyelesaian
+    <strong>{{ $report['wo_summary']['percent'] }}%</strong> ({{ $report['wo_summary']['complete'] }} selesai,
+    {{ $report['wo_summary']['open'] }} berjalan), serta {{ $report['sr_summary']['total'] }} Service Request
+    ({{ $report['sr_summary']['open'] }} open). Terdapat {{ $waitingCount }} Work Order berstatus menunggu.
+    Total biaya pemeliharaan efektif periode ini <strong>{{ $rupiah($report['cost']['effective_total']) }}</strong>
+    (akumulasi tahun berjalan {{ $rupiah($report['cost']['ytd']) }}).
+</p>
 <table class="har-data">
+    <tr><th>Total WO</th><th>% Complete</th><th>Total SR</th><th>WO Waiting</th><th>Biaya Efektif</th></tr>
     <tr>
-        <th>Total SR</th><th>Open</th><th>Close</th><th>Per Kategori</th>
+        <td class="c">{{ $report['wo_summary']['total'] }}</td>
+        <td class="c">{{ $report['wo_summary']['percent'] }}%</td>
+        <td class="c">{{ $report['sr_summary']['total'] }}</td>
+        <td class="c">{{ $waitingCount }}</td>
+        <td class="r">{{ $rupiah($report['cost']['effective_total']) }}</td>
     </tr>
+</table>
+
+{{-- 3. DAFTAR ISI --}}
+<div class="har-h2 break-before" id="sec-3">3. Daftar Isi</div>
+@php
+    $toc = array_merge([['Cover', 'sec-1']], collect($sections)->map(fn ($t, $i): array => [$t, 'sec-'.($i + 2)])->all());
+@endphp
+@foreach($toc as $i => [$tocTitle, $anchor])
+    <table class="toc-item"><tr>
+        <td class="n">{{ $i + 1 }}.</td>
+        <td>{{ $tocTitle }}</td>
+        <td class="dots"></td>
+        <td class="pg"><a href="#{{ $anchor }}"></a></td>
+    </tr></table>
+@endforeach
+
+{{-- 4. ISTILAH DAN DEFINISI --}}
+<div class="har-h2 break-before" id="sec-4">4. Istilah dan Definisi</div>
+<table class="har-data">
+    <tr><th style="width:30%">Istilah</th><th>Definisi</th></tr>
+    @foreach($glossary as [$term, $def])
+        <tr><td><strong>{{ $term }}</strong></td><td>{{ $def }}</td></tr>
+    @endforeach
+</table>
+
+{{-- 5. ISI LAPORAN --}}
+<div class="har-h2 break-before" id="sec-5">5. Isi Laporan</div>
+<p class="har-p">
+    Bagian ini memuat rincian pelaksanaan pemeliharaan {{ $report['unit']['name'] }} periode
+    {{ $report['period']['label'] }}, meliputi ringkasan Service Request, rencana versus realisasi
+    pemeliharaan, dan log kegiatan HARMES.
+</p>
+
+<div class="har-h3">5.1 Ringkasan Service Request{!! $num('sr_summary') !!}</div>
+<table class="har-data">
+    <tr><th>Total SR</th><th>Open</th><th>Close</th><th>Per Kategori</th></tr>
     <tr>
         <td class="c">{{ $report['sr_summary']['total'] }}</td>
         <td class="c">{{ $report['sr_summary']['open'] }}</td>
@@ -29,66 +145,7 @@
     </tr>
 </table>
 
-<div class="har-h2">2. Work Order Summary @if(!empty($numbers['wo_summary']))<small>({{ $numbers['wo_summary'] }})</small>@endif</div>
-<table class="har-data">
-    <tr><th>Total WO</th><th>Complete</th><th>Open</th><th>% Complete</th></tr>
-    <tr>
-        <td class="c">{{ $report['wo_summary']['total'] }}</td>
-        <td class="c">{{ $report['wo_summary']['complete'] }}</td>
-        <td class="c">{{ $report['wo_summary']['open'] }}</td>
-        <td class="c">{{ $report['wo_summary']['percent'] }}%</td>
-    </tr>
-</table>
-
-<div class="har-h2">3. Rekapitulasi WO per Jenis @if(!empty($numbers['wo_by_type']))<small>({{ $numbers['wo_by_type'] }})</small>@endif</div>
-@forelse($report['wo_by_type'] as $group)
-    <p><strong>{{ $group['type'] }}</strong></p>
-    <table class="har-data">
-        <tr>
-            <th>WONUM</th><th>Deskripsi</th><th>Mesin</th><th>Report</th>
-            <th>Sched Start</th><th>Sched Finish</th><th>Status</th><th>Group</th>
-        </tr>
-        @foreach($group['rows'] as $r)
-            <tr>
-                <td>{{ $r['wonum'] }}</td>
-                <td>{{ $r['description'] ?? '—' }}</td>
-                <td>{{ $r['engine'] ?? '—' }}</td>
-                <td class="c">{{ $r['report_date'] ?? '—' }}</td>
-                <td class="c">{{ $r['sched_start'] ?? '—' }}</td>
-                <td class="c">{{ $r['sched_finish'] ?? '—' }}</td>
-                <td class="c">{{ $r['status'] ?? '—' }}</td>
-                <td class="c">{{ $r['work_group'] ?? '—' }}</td>
-            </tr>
-        @endforeach
-    </table>
-@empty
-    <p class="har-note">Tidak ada Work Order.</p>
-@endforelse
-
-<div class="har-h2">4. WO Tertunda</div>
-@forelse($report['wo_waiting'] as $group)
-    <p><strong>{{ $group['reason'] }}</strong></p>
-    <ul>
-        @foreach($group['rows'] as $r)
-            <li>{{ $r['wonum'] }} — {{ $r['description'] ?? '' }} ({{ $r['status'] ?? '—' }})</li>
-        @endforeach
-    </ul>
-@empty
-    <p class="har-note">Tidak ada WO tertunda.</p>
-@endforelse
-
-<div class="har-h2">5. Akumulasi Biaya Pemeliharaan @if(!empty($numbers['cost']))<small>({{ $numbers['cost'] }})</small>@endif</div>
-<table class="har-data">
-    <tr><th>Jasa (WO)</th><th>Material (WO)</th><th>Efektif ({{ $report['cost']['source'] }})</th><th>Akumulasi YTD</th></tr>
-    <tr>
-        <td class="r">{{ $rupiah($report['cost']['auto_service']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['auto_material']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['effective_total']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['ytd']) }}</td>
-    </tr>
-</table>
-
-<div class="har-h2">6. Rencana vs Realisasi @if(!empty($numbers['schedules']))<small>({{ $numbers['schedules'] }})</small>@endif</div>
+<div class="har-h3">5.2 Rencana vs Realisasi{!! $num('schedules') !!}</div>
 @forelse($report['schedules'] as $scope)
     <p><strong>{{ $scope['scope'] }}</strong></p>
     <table class="har-data">
@@ -105,7 +162,7 @@
     <p class="har-note">Belum ada jadwal.</p>
 @endforelse
 
-<div class="har-h2">7. Log Kegiatan HARMES @if(!empty($numbers['activities']))<small>({{ $numbers['activities'] }})</small>@endif</div>
+<div class="har-h3">5.3 Log Kegiatan HARMES{!! $num('activities') !!}</div>
 @forelse($report['activities'] as $a)
     @if($loop->first)
         <table class="har-data">
@@ -130,7 +187,81 @@
     <p class="har-note">Belum ada log kegiatan.</p>
 @endforelse
 
-<div class="har-h2">8. Lampiran Foto</div>
+{{-- 6. WORK ORDER SUMMARY (FIX) --}}
+<div class="har-h2 break-before" id="sec-6">6. Work Order Summary (Fix){!! $num('wo_summary') !!}</div>
+<table class="har-data">
+    <tr><th>Total WO</th><th>Complete (Fix)</th><th>Open</th><th>% Complete</th></tr>
+    <tr>
+        <td class="c">{{ $report['wo_summary']['total'] }}</td>
+        <td class="c">{{ $report['wo_summary']['complete'] }}</td>
+        <td class="c">{{ $report['wo_summary']['open'] }}</td>
+        <td class="c">{{ $report['wo_summary']['percent'] }}%</td>
+    </tr>
+</table>
+
+{{-- 7. AKUMULASI BIAYA PEMELIHARAAN --}}
+<div class="har-h2 break-before" id="sec-7">7. Akumulasi Biaya Pemeliharaan{!! $num('cost') !!}</div>
+<table class="har-data">
+    <tr><th>Jasa (WO)</th><th>Material (WO)</th><th>Total Otomatis</th><th>Efektif ({{ $report['cost']['source'] }})</th><th>Akumulasi YTD</th></tr>
+    <tr>
+        <td class="r">{{ $rupiah($report['cost']['auto_service']) }}</td>
+        <td class="r">{{ $rupiah($report['cost']['auto_material']) }}</td>
+        <td class="r">{{ $rupiah($report['cost']['auto_total']) }}</td>
+        <td class="r">{{ $rupiah($report['cost']['effective_total']) }}</td>
+        <td class="r">{{ $rupiah($report['cost']['ytd']) }}</td>
+    </tr>
+</table>
+<p class="har-muted">
+    Sumber biaya: {{ $report['cost']['source'] === 'manual' ? 'input manual' : 'akumulasi otomatis dari Work Order' }}.
+    YTD = akumulasi Januari s.d. bulan laporan.
+</p>
+
+{{-- 8. REKAPITULASI WORK ORDER TASK --}}
+<div class="har-h2 break-before" id="sec-8">8. Rekapitulasi Work Order Task{!! $num('wo_by_type') !!}</div>
+<table class="har-data">
+    <tr><th>Jenis Work Order</th><th>Jumlah WO</th><th>Porsi</th></tr>
+    @forelse($report['wo_by_type'] as $g)
+        <tr>
+            <td>{{ $g['type'] }}</td>
+            <td class="c">{{ count($g['rows']) }}</td>
+            <td class="c">{{ $report['wo_summary']['total'] > 0 ? round(count($g['rows']) / $report['wo_summary']['total'] * 100).'%' : '—' }}</td>
+        </tr>
+    @empty
+        <tr><td class="c" colspan="3">Tidak ada Work Order.</td></tr>
+    @endforelse
+    <tr>
+        <td><strong>Total</strong></td>
+        <td class="c"><strong>{{ $report['wo_summary']['total'] }}</strong></td>
+        <td class="c"><strong>100%</strong></td>
+    </tr>
+</table>
+<p class="har-muted">
+    Total uraian task (dari log kegiatan HARMES): <strong>{{ $totalTasks }}</strong> item pada
+    {{ count($report['activities']) }} kegiatan.
+</p>
+
+{{-- 9. WO PM (tabel lengkap) --}}
+<div class="har-h2 break-before" id="sec-9">9. Work Order PM (Preventive Maintenance)</div>
+@include('har.laporan.partials.wo-table', ['rows' => $woPm])
+
+{{-- 10. WO PdM (tabel lengkap) --}}
+<div class="har-h2 break-before" id="sec-10">10. Work Order PdM (Predictive Maintenance)</div>
+@include('har.laporan.partials.wo-table', ['rows' => $woPdm])
+
+{{-- 11. WO ENJI (tabel lengkap) --}}
+<div class="har-h2 break-before" id="sec-11">11. Work Order ENJI (Engineering)</div>
+@include('har.laporan.partials.wo-table', ['rows' => $woEnji])
+
+{{-- 12. WO WAITING SHUTDOWN --}}
+<div class="har-h2 break-before" id="sec-12">12. Work Order Waiting Shutdown</div>
+@include('har.laporan.partials.waiting-table', ['rows' => $waitingShutdown])
+
+{{-- 13. WO WAITING MATERIAL & JASA --}}
+<div class="har-h2 break-before" id="sec-13">13. Work Order Waiting Material &amp; Jasa</div>
+@include('har.laporan.partials.waiting-table', ['rows' => $waitingMaterialJasa])
+
+{{-- 14. LAMPIRAN --}}
+<div class="har-h2 break-before" id="sec-14">14. Lampiran</div>
 @forelse($report['attachments'] as $a)
     <div class="har-fig">
         <img src="{{ $a['url'] }}" alt="{{ $a['title'] }}">

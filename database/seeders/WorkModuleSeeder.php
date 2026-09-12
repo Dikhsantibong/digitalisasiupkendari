@@ -19,22 +19,28 @@ class WorkModuleSeeder extends Seeder
      */
     private const MODULES = [
         [
+            'code' => 'operator',
+            'name' => 'Operator',
+            'description' => 'Layer input lapangan operator: logsheet harian per mesin dan jadwal/absensi shift. Modul tersendiri; datanya dapat ditarik OPERASI.',
+            'sort_order' => 1,
+        ],
+        [
             'code' => 'operasi',
             'name' => 'Operasi',
             'description' => 'Pencatatan operasi harian pembangkit, laporan, dan berita acara.',
-            'sort_order' => 1,
+            'sort_order' => 2,
         ],
         [
             'code' => 'pemeliharaan',
             'name' => 'Pemeliharaan',
             'description' => 'Laporan pemeliharaan (HAR): Work Order & Service Request, log kegiatan, biaya, dan executive summary.',
-            'sort_order' => 2,
+            'sort_order' => 3,
         ],
         [
             'code' => 'k3',
             'name' => 'K3 & Keamanan',
             'description' => 'Laporan kinerja K3 & keamanan: inspeksi & inventaris berkala, patroli, sertifikasi peralatan, dan monitoring status.',
-            'sort_order' => 3,
+            'sort_order' => 4,
         ],
     ];
 

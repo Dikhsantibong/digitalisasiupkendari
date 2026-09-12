@@ -47,6 +47,7 @@ Route::middleware(['auth', 'verified'])
 
         Route::get('laporan/dokumen', [DocumentController::class, 'edit'])->name('laporan.document.edit');
         Route::post('laporan/dokumen', [DocumentController::class, 'store'])->name('laporan.document.store');
+        Route::post('laporan/dokumen/muat-ulang', [DocumentController::class, 'regenerate'])->name('laporan.document.regenerate');
         Route::get('laporan/dokumen/pdf', [DocumentController::class, 'pdf'])->name('laporan.document.pdf');
 
         Route::get('master/{resource}', [MasterController::class, 'index'])->name('master.index');

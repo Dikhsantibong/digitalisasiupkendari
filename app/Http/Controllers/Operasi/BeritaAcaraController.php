@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operasi;
 use App\Enums\ActivityEvent;
 use App\Enums\BeritaAcaraType;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\EmbedsReportLogo;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentRecord;
 use App\Models\ReportPeriod;
@@ -28,6 +29,8 @@ use Inertia\Response;
  */
 class BeritaAcaraController extends Controller
 {
+    use EmbedsReportLogo;
+
     public function __construct(
         private readonly ActivityLogger $activityLogger,
         private readonly BeritaAcaraBuilder $builder,
@@ -205,24 +208,6 @@ class BeritaAcaraController extends Controller
             ->where('month', $month)
             ->where('year', $year)
             ->first();
-    }
-
-    /**
-     * Inline the letterhead logo as a data URI so dompdf renders it without any
-     * remote-file access. The stored/edited HTML keeps the small public URL,
-     * which the browser editor loads directly.
-     */
-    private function embedAssets(string $html): string
-    {
-        $path = public_path('logo/sidebar-logo.png');
-
-        if (! is_file($path)) {
-            return $html;
-        }
-
-        $dataUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
-
-        return str_replace('/logo/sidebar-logo.png', $dataUri, $html);
     }
 
     /**

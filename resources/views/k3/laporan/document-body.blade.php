@@ -3,9 +3,45 @@
     $report = $data['report'];
     $numbers = $data['document']['numbers'] ?? [];
     $num = fn (string $key) => ! empty($numbers[$key]) ? ' ('.$numbers[$key].')' : '';
+
+    $accidents = $report['accidents'];
+    $accInjuries = ($accidents['nihil'] ?? false)
+        ? 0
+        : collect($accidents['rows'])->sum(fn ($r): int => (int) $r['luka_ringan'] + (int) $r['luka_berat'] + (int) $r['meninggal']);
+    $patrolTotal = collect($report['patrol'])->sum('total');
+
+    $sections = [
+        'Executive Summary',
+        'Daftar Isi',
+        'Istilah dan Definisi',
+        'Isi Laporan',
+        'Time Frame Kinerja K3',
+        'Laporan Kecelakaan (PAK/PAHK)',
+        'Inspeksi APAR/APAB',
+        'Kesiapan Fasilitas Darurat',
+        'Rekap Patroli Keamanan',
+        'Sertifikasi Peralatan',
+        'Inspeksi Checklist',
+        'Lampiran',
+    ];
+
+    $glossary = [
+        ['K3', 'Keselamatan dan Kesehatan Kerja.'],
+        ['SMK3', 'Sistem Manajemen Keselamatan dan Kesehatan Kerja.'],
+        ['Time Frame', 'Rencana vs realisasi program kerja K3 pada periode berjalan.'],
+        ['PAK', 'Penyakit Akibat Kerja.'],
+        ['PAHK', 'Penyakit Akibat Hubungan Kerja.'],
+        ['NIHIL', 'Tidak ada kejadian kecelakaan/penyakit akibat kerja pada periode ini.'],
+        ['APAR', 'Alat Pemadam Api Ringan.'],
+        ['APAB', 'Alat Pemadam Api Berat.'],
+        ['P3K', 'Pertolongan Pertama Pada Kecelakaan.'],
+        ['Patroli Keamanan', 'Ronda keamanan terjadwal yang dicatat melalui titik scan (RFID) per lokasi.'],
+        ['Sertifikasi Peralatan', 'Riwayat pengujian & masa berlaku sertifikat alat (crane, bejana tekan, dll.).'],
+    ];
 @endphp
 
-<div class="k3-cover">
+{{-- 1. COVER --}}
+<div class="k3-cover" id="sec-1">
     <img src="/logo/sidebar-logo.png" alt="Logo" style="height:60px;">
     <div class="k3-cover-org">PT PLN Nusantara Power</div>
     <div class="k3-cover-sub">{{ $report['unit']['service_unit'] ?? 'Unit Pelaksana Pengendalian Pembangkitan Kendari' }}</div>
@@ -19,7 +55,63 @@
 
 @include('k3.laporan.letterhead', ['data' => $data])
 
-<div class="k3-h2">1. Time Frame Kinerja K3{{ $num('time_frame') }}</div>
+{{-- 2. EXECUTIVE SUMMARY --}}
+<div class="k3-h2" id="sec-2">2. Executive Summary</div>
+<p class="k3-p">
+    Laporan ini merangkum kinerja K3 &amp; Keamanan {{ $report['unit']['name'] }} pada periode
+    <strong>{{ $report['period']['label'] }}</strong>. Status kecelakaan kerja:
+    <strong>{{ ($accidents['nihil'] ?? false) ? 'NIHIL' : $accInjuries.' korban tercatat' }}</strong>.
+    Terdapat {{ count($report['time_frame']) }} program Time Frame, {{ count($report['apar']) }} unit APAR/APAB,
+    {{ count($report['emergency']) }} jenis fasilitas darurat, {{ $patrolTotal }} total scan patroli,
+    {{ count($report['certificates']) }} sertifikat peralatan, dan {{ count($report['inspections']) }} inspeksi checklist.
+</p>
+<table class="k3-data">
+    <tr>
+        <th>Kecelakaan</th><th>Time Frame</th><th>APAR/APAB</th><th>Scan Patroli</th><th>Sertifikat</th><th>Inspeksi</th>
+    </tr>
+    <tr>
+        <td class="c">{{ ($accidents['nihil'] ?? false) ? 'NIHIL' : $accInjuries }}</td>
+        <td class="c">{{ count($report['time_frame']) }}</td>
+        <td class="c">{{ count($report['apar']) }}</td>
+        <td class="c">{{ $patrolTotal }}</td>
+        <td class="c">{{ count($report['certificates']) }}</td>
+        <td class="c">{{ count($report['inspections']) }}</td>
+    </tr>
+</table>
+
+{{-- 3. DAFTAR ISI --}}
+<div class="k3-h2 break-before" id="sec-3">3. Daftar Isi</div>
+@php
+    $toc = array_merge([['Cover', 'sec-1']], collect($sections)->map(fn ($t, $i): array => [$t, 'sec-'.($i + 2)])->all());
+@endphp
+@foreach($toc as $i => [$tocTitle, $anchor])
+    <table class="toc-item"><tr>
+        <td class="n">{{ $i + 1 }}.</td>
+        <td>{{ $tocTitle }}</td>
+        <td class="dots"></td>
+        <td class="pg"><a href="#{{ $anchor }}"></a></td>
+    </tr></table>
+@endforeach
+
+{{-- 4. ISTILAH DAN DEFINISI --}}
+<div class="k3-h2 break-before" id="sec-4">4. Istilah dan Definisi</div>
+<table class="k3-data">
+    <tr><th style="width:30%">Istilah</th><th>Definisi</th></tr>
+    @foreach($glossary as [$term, $def])
+        <tr><td><strong>{{ $term }}</strong></td><td>{{ $def }}</td></tr>
+    @endforeach
+</table>
+
+{{-- 5. ISI LAPORAN --}}
+<div class="k3-h2 break-before" id="sec-5">5. Isi Laporan</div>
+<p class="k3-p">
+    Bagian ini memuat rincian pelaksanaan program K3 &amp; Keamanan {{ $report['unit']['name'] }} periode
+    {{ $report['period']['label'] }}: capaian Time Frame, catatan kecelakaan kerja, kesiapan sarana proteksi
+    kebakaran &amp; tanggap darurat, patroli keamanan, sertifikasi peralatan, dan inspeksi berkala.
+</p>
+
+{{-- 6. TIME FRAME --}}
+<div class="k3-h2 break-before" id="sec-6">6. Time Frame Kinerja K3{{ $num('time_frame') }}</div>
 @forelse($report['time_frame'] as $tf)
     @if($loop->first)
         <table class="k3-data">
@@ -36,7 +128,8 @@
     <p class="k3-note">Belum ada data Time Frame.</p>
 @endforelse
 
-<div class="k3-h2">2. Laporan Kecelakaan (PAK/PAHK){{ $num('accidents') }}</div>
+{{-- 7. LAPORAN KECELAKAAN --}}
+<div class="k3-h2 break-before" id="sec-7">7. Laporan Kecelakaan (PAK/PAHK){{ $num('accidents') }}</div>
 @if($report['accidents']['nihil'])
     <p class="k3-nihil">NIHIL — tidak ada kejadian pada periode ini.</p>
 @else
@@ -54,7 +147,8 @@
     </table>
 @endif
 
-<div class="k3-h2">3. Inspeksi APAR/APAB{{ $num('apar') }}</div>
+{{-- 8. INSPEKSI APAR/APAB --}}
+<div class="k3-h2 break-before" id="sec-8">8. Inspeksi APAR/APAB{{ $num('apar') }}</div>
 @forelse($report['apar'] as $ap)
     @if($loop->first)
         <table class="k3-data">
@@ -72,7 +166,8 @@
     <p class="k3-note">Belum ada APAR/APAB.</p>
 @endforelse
 
-<div class="k3-h2">4. Kesiapan Fasilitas Darurat{{ $num('emergency_tools') }}</div>
+{{-- 9. KESIAPAN FASILITAS DARURAT --}}
+<div class="k3-h2 break-before" id="sec-9">9. Kesiapan Fasilitas Darurat{{ $num('emergency_tools') }}</div>
 @forelse($report['emergency'] as $em)
     @if($loop->first)
         <table class="k3-data">
@@ -90,7 +185,8 @@
     <p class="k3-note">Belum ada data kesiapan fasilitas darurat.</p>
 @endforelse
 
-<div class="k3-h2">5. Rekap Patroli Keamanan (Kumulatif)</div>
+{{-- 10. REKAP PATROLI KEAMANAN --}}
+<div class="k3-h2 break-before" id="sec-10">10. Rekap Patroli Keamanan (Kumulatif)</div>
 @forelse($report['patrol'] as $pt)
     @if($loop->first)
         <table class="k3-data">
@@ -102,7 +198,8 @@
     <p class="k3-note">Belum ada log patroli.</p>
 @endforelse
 
-<div class="k3-h2">6. Sertifikasi Peralatan{{ $num('certificates') }}</div>
+{{-- 11. SERTIFIKASI PERALATAN --}}
+<div class="k3-h2 break-before" id="sec-11">11. Sertifikasi Peralatan{{ $num('certificates') }}</div>
 @forelse($report['certificates'] as $cert)
     @if($loop->first)
         <table class="k3-data">
@@ -120,7 +217,8 @@
     <p class="k3-note">Belum ada data sertifikat.</p>
 @endforelse
 
-<div class="k3-h2">7. Inspeksi Checklist{{ $num('inspections') }}</div>
+{{-- 12. INSPEKSI CHECKLIST --}}
+<div class="k3-h2 break-before" id="sec-12">12. Inspeksi Checklist{{ $num('inspections') }}</div>
 @forelse($report['inspections'] as $ins)
     @if($loop->first)
         <table class="k3-data">
@@ -137,7 +235,8 @@
     <p class="k3-note">Belum ada inspeksi checklist.</p>
 @endforelse
 
-<div class="k3-h2">8. Lampiran</div>
+{{-- 13. LAMPIRAN --}}
+<div class="k3-h2 break-before" id="sec-13">13. Lampiran</div>
 @forelse($report['attachments'] as $att)
     <div class="k3-fig">
         <img src="{{ $att['url'] }}" alt="{{ $att['title'] }}">

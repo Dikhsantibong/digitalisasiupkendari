@@ -1,0 +1,16 @@
+---
+paths:
+  - 'app/Http/Controllers/Operator/**'
+  - 'app/Services/Operator/**'
+---
+
+# Controllers Operator
+
+## Modul OPERATOR = modul tersendiri (bukan bagian OPERASI)
+Keputusan user: layer input lapangan operator dipisah jadi **modul sendiri** `operator` (bukan sub-OPERASI). Route file `routes/operator.php`, prefix+name `operator.`, controllers `App\Http\Controllers\Operator\**`, halaman Inertia `operator/{logsheet,absensi}`, permission grup `PermissionGroup::Operator` (`operator.logsheet.*`, `operator.absensi.*`), menu sidebar grup "Operator", `work_modules` code `operator`. OPERASI boleh menarik data operator NANTI lewat `App\Services\Operasi\LogsheetAggregator` (+ kolom `daily_engine_reports.source`) — hook SUDAH disiapkan tapi SENGAJA belum di-wire; jangan implementasikan penarikan tanpa diminta. Saat menambah kapabilitas operator, taruh permission di grup Operator (bukan Operasi).
+
+## Logsheet Operator + gotcha kolom date
+Role `operator` (RoleName::Operator) punya `operator.logsheet.write`+`view` & `operator.absensi.view`, TANPA operasi.* (uji: operator ke `operasi.input.daily-report.index` → 403). TL Operasi & Manager UL dapat `operator.logsheet.view` (read-only). Parameter kolom dari master `logsheet_parameters` (JANGAN hardcode; plant_type=all sekarang). Slot waktu = nilai (bukan 24 baris tetap): template jam + 17:30/18:30/19:30/20:30/21:30. `operator_logsheets` unique(engine_id,log_date), status draft|submitted (LogsheetStatus); submit mengunci (store pada sheet submitted → 422). Readings key frontend `p_{id}`. GOTCHA date: kolom `date` (cast 'date') tersimpan '00:00:00' di SQLite → JANGAN `where('log_date',$str)`; pakai `whereDate(...)`, dan di test query model lalu bandingkan `->toDateString()`.
+
+## Absensi & Jadwal Shift + role Project Leader
+`AbsensiController` route `operator.absensi.{index,store,generate}`, permission `operator.absensi.view`/`.write`. Grant: Operator=view; **Project Leader** (`RoleName::ProjectLeaderOperasi`, role TERSENDIRI scope Unit = operator senior: semua permission operator + absensi.view/write + operasi.laporan.view)=write; TL Operasi=view+write; Manager UL=view. Project Leader adalah role sendiri (keputusan user), 1 operator per unit di-assign via DemoAccountSeeder (`project-leader.{slug}@upkendari.co.id`) — JANGAN pakai flag/label di user. Data: `work_schedules` unique(unit_id,year,month,group_type) + `work_schedule_entries` (1 sel = employee×tanggal, `attendance_code_id` nullable) — rekap & % kehadiran TIDAK disimpan, dihitung `App\Services\Operator\AttendanceCalculator` (present=code.hitung_hadir P/S/M ÷ scheduled=semua sel non-kosong termasuk OFF → rotasi bersih 6/8=0.75). Master global `attendance_codes` (P,S,M,OFF,C,SKT,I,A — "S"=Sore beda dgn "SKT"=Sakit) + per-unit `shift_patterns` (regu, sequence koma-pisah; generate opsional lalu tetap editable) via OperasiMasterRegistry (slug `attendance-codes`, `shift-patterns` — masih di master OPERASI walau dipakai modul Operator). `holidays` global (2026, indikatif) buat mewarnai kolom, TIDAK ubah shift. Pegawai dari master existing + kolom `employees.regu` (nullable; shift=regu terisi, non_shift=null). Cetak PDF: bukan react-data-grid (virtualized) — tabel HTML `.absensi-print` (hidden print:block) + trik visibility + `@page landscape`.

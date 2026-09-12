@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 #[Fillable([
     'unit_id', 'type', 'month', 'year', 'document_number',
-    'content_html', 'content_grid', 'format', 'snapshot', 'created_by',
+    'content_html', 'content_grid', 'format', 'content_version', 'snapshot', 'created_by',
 ])]
 class K3DocumentRecord extends Model
 {

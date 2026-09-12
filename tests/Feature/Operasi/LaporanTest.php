@@ -6,6 +6,7 @@ use App\Enums\FuelType;
 use App\Enums\RoleName;
 use App\Models\DailyEngineReport;
 use App\Models\Machine;
+use App\Models\OperasiReportDocument;
 use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -99,6 +100,92 @@ class LaporanTest extends TestCase
                 ->has('grid.rows')
                 ->has('print_url'),
             );
+    }
+
+    public function test_the_report_document_editor_opens_with_content_and_grid(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->get(route('operasi.laporan.document.edit', [
+                'report' => self::REPORT,
+                'unit_id' => $unit->id,
+                'engine_id' => $engine->id,
+                'month' => 8,
+                'year' => 2026,
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('operasi/laporan/document')
+                ->where('report.code', self::REPORT)
+                ->where('format', 'html')
+                ->where('has_saved', false)
+                ->has('content')
+                ->has('grid.rows')
+                ->has('letterhead')
+                ->has('pdf_url'),
+            );
+    }
+
+    public function test_saving_the_report_document_persists_and_reopens_saved(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $this->actingAs($user)
+            ->post(route('operasi.laporan.document.store', ['report' => self::REPORT]), [
+                'unit_id' => $unit->id,
+                'engine_id' => $engine->id,
+                'month' => 8,
+                'year' => 2026,
+                'format' => 'grid',
+                'content_grid' => ['rows' => [], 'cols' => 3],
+            ])
+            ->assertRedirect();
+
+        $record = OperasiReportDocument::query()
+            ->where('unit_id', $unit->id)->where('report_code', self::REPORT)
+            ->where('engine_id', $engine->id)->where('month', 8)->where('year', 2026)
+            ->first();
+        $this->assertNotNull($record);
+        $this->assertSame('grid', $record->format);
+
+        $this->actingAs($user)
+            ->get(route('operasi.laporan.document.edit', [
+                'report' => self::REPORT, 'unit_id' => $unit->id, 'engine_id' => $engine->id,
+                'month' => 8, 'year' => 2026,
+            ]))
+            ->assertInertia(fn ($page) => $page->where('has_saved', true)->where('format', 'grid'));
+    }
+
+    public function test_the_report_document_pdf_streams(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->get(route('operasi.laporan.document.pdf', [
+                'report' => self::REPORT, 'unit_id' => $unit->id, 'engine_id' => $engine->id,
+                'month' => 8, 'year' => 2026,
+            ]))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_the_report_document_respects_unit_scope(): void
+    {
+        $ownUnit = Unit::factory()->create();
+        $foreignUnit = Unit::factory()->create();
+        $foreignEngine = Machine::factory()->forUnit($foreignUnit)->create();
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+            ->get(route('operasi.laporan.document.edit', [
+                'report' => self::REPORT, 'unit_id' => $foreignUnit->id, 'engine_id' => $foreignEngine->id,
+                'month' => 8, 'year' => 2026,
+            ]))
+            ->assertForbidden();
     }
 
     public function test_an_unknown_report_code_is_not_found(): void

@@ -77,10 +77,11 @@ import auxiliary from '@/routes/operasi/input/auxiliary';
 import dailyReport from '@/routes/operasi/input/daily-report';
 import feeder from '@/routes/operasi/input/feeder';
 import fuelReceipt from '@/routes/operasi/input/fuel-receipt';
-import logsheet from '@/routes/operasi/input/logsheet';
 import starStop from '@/routes/operasi/input/star-stop';
 import laporan from '@/routes/operasi/laporan';
 import master from '@/routes/operasi/master';
+import absensi from '@/routes/operator/absensi';
+import logsheet from '@/routes/operator/logsheet';
 import type { NavGroup } from '@/types';
 
 export function AppSidebar() {
@@ -134,13 +135,23 @@ export function AppSidebar() {
             ].filter(Boolean) as NavGroup['items'],
         },
         {
-            label: 'Operasi',
+            label: 'Operator',
             items: [
-                can('operasi.logsheet.view') && {
+                can('operator.logsheet.view') && {
                     title: 'Logsheet Operator',
                     href: logsheet.index(),
                     icon: NotebookPen,
                 },
+                can('operator.absensi.view') && {
+                    title: 'Absensi & Jadwal',
+                    href: absensi.index(),
+                    icon: CalendarRange,
+                },
+            ].filter(Boolean) as NavGroup['items'],
+        },
+        {
+            label: 'Operasi',
+            items: [
                 can('operasi.input.view') && {
                     title: 'Input Harian',
                     href: dailyReport.index(),

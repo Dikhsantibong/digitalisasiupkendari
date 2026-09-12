@@ -68,8 +68,13 @@ enum PermissionName: string
     case OperasiBeritaAcaraCreate = 'operasi.berita_acara.create';
     case OperasiMasterViewAny = 'operasi.master.view_any';
     case OperasiMasterManage = 'operasi.master.manage';
-    case OperasiLogsheetView = 'operasi.logsheet.view';
-    case OperasiLogsheetWrite = 'operasi.logsheet.write';
+
+    // The Operator module (logsheet + shift schedule) is separate from Operasi.
+    // Operasi may later pull these figures, but the capabilities are their own.
+    case OperatorLogsheetView = 'operator.logsheet.view';
+    case OperatorLogsheetWrite = 'operator.logsheet.write';
+    case OperatorAbsensiView = 'operator.absensi.view';
+    case OperatorAbsensiWrite = 'operator.absensi.write';
 
     case HarInputView = 'har.input.view';
     case HarInputWrite = 'har.input.write';
@@ -157,9 +162,12 @@ enum PermissionName: string
             self::OperasiBeritaAcaraView,
             self::OperasiBeritaAcaraCreate,
             self::OperasiMasterViewAny,
-            self::OperasiMasterManage,
-            self::OperasiLogsheetView,
-            self::OperasiLogsheetWrite => PermissionGroup::Operasi,
+            self::OperasiMasterManage => PermissionGroup::Operasi,
+
+            self::OperatorLogsheetView,
+            self::OperatorLogsheetWrite,
+            self::OperatorAbsensiView,
+            self::OperatorAbsensiWrite => PermissionGroup::Operator,
 
             self::HarInputView,
             self::HarInputWrite,
@@ -254,8 +262,10 @@ enum PermissionName: string
             self::OperasiBeritaAcaraCreate => 'Membuat berita acara operasi',
             self::OperasiMasterViewAny => 'Melihat master data operasi',
             self::OperasiMasterManage => 'Mengelola master data operasi',
-            self::OperasiLogsheetView => 'Melihat logsheet operator',
-            self::OperasiLogsheetWrite => 'Mengisi logsheet operator',
+            self::OperatorLogsheetView => 'Melihat logsheet operator',
+            self::OperatorLogsheetWrite => 'Mengisi logsheet operator',
+            self::OperatorAbsensiView => 'Melihat jadwal & absensi shift',
+            self::OperatorAbsensiWrite => 'Menjadwalkan & mengisi absensi shift',
 
             self::HarInputView => 'Melihat input pemeliharaan',
             self::HarInputWrite => 'Mengisi input pemeliharaan (WO/SR, log kegiatan, biaya, foto)',

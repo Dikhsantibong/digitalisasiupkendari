@@ -3,10 +3,12 @@
 namespace App\Services\Operasi;
 
 /**
- * Prepared, NOT YET ACTIVE. The future path that rolls an operator logsheet up
- * into the TL Operasi daily engine report. Wiring exists (the `source` column on
- * daily_engine_reports and this service) but nothing calls it yet — TL Operasi
- * still types the daily figures manually.
+ * Prepared, NOT YET ACTIVE. The future bridge from the standalone OPERATOR
+ * module into OPERASI: it rolls a submitted operator logsheet up into the TL
+ * Operasi daily engine report. This is the "OPERASI can later pull operator
+ * data" hook — the wiring exists (the `source` column on daily_engine_reports
+ * and this service) but nothing calls it yet, so the two modules stay
+ * independent and TL Operasi still types the daily figures manually.
  *
  * Planned aggregation once activated:
  *  - beban_puncak_pagi_kw  = MAX(Load) over the morning slots

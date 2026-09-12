@@ -56,6 +56,7 @@ export default function HarLaporanDocument({
                     { text: 'SISTEM MANAJEMEN TERINTEGRASI (9001-14001-45001-SMK3-SMP)' },
                 ]}
                 saveUrl={document.store().url}
+                regenerateUrl={document.regenerate().url}
                 saveExtra={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }}
             />
         </>

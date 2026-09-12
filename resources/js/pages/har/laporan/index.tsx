@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { FileBarChart, FilePen, Gauge } from 'lucide-react';
+import { FilePen, Gauge } from 'lucide-react';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -67,13 +67,9 @@ export default function HarLaporanIndex({ filters, options, can_executive }: Pro
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="secondary" onClick={() => router.get(laporan.monthly(query).url)}>
-                                <FileBarChart className="size-4" />
-                                Lihat &amp; Cetak
-                            </Button>
                             <Button onClick={() => router.get(document.edit(query).url)}>
                                 <FilePen className="size-4" />
-                                Lihat &amp; Edit Dokumen
+                                Buka Dokumen (Lihat, Edit &amp; Cetak)
                             </Button>
                         </div>
                     </div>

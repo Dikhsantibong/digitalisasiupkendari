@@ -28,6 +28,39 @@ class DocumentTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_regenerate_rebuilds_a_stale_saved_document_from_the_template(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+
+        // A document saved with an old, hand-edited body (no cover, no sections).
+        HarDocumentRecord::query()->create([
+            'unit_id' => $unit->id, 'type' => 'bulanan', 'month' => 9, 'year' => 2026,
+            'format' => 'html', 'content_html' => '<p>Isi lama</p>', 'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('har.laporan.document.regenerate'), ['unit_id' => $unit->id, 'month' => 9, 'year' => 2026])
+            ->assertRedirect();
+
+        $record = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('month', 9)->firstOrFail();
+        $this->assertStringNotContainsString('Isi lama', (string) $record->content_html);
+        $this->assertStringContainsString('Executive Summary', (string) $record->content_html);
+        $this->assertStringContainsString('har-cover', (string) $record->content_html);
+        $this->assertStringContainsString('14. Lampiran', (string) $record->content_html);
+    }
+
+    public function test_regenerate_requires_write_permission(): void
+    {
+        $serviceUnit = ServiceUnit::factory()->create();
+        $unit = Unit::factory()->create(['service_unit_id' => $serviceUnit->id]);
+
+        // Manager UL may view the report but not write it.
+        $this->actingAs($this->userWithRole(RoleName::ManagerUl, $serviceUnit))
+            ->post(route('har.laporan.document.regenerate'), ['unit_id' => $unit->id, 'month' => 9, 'year' => 2026])
+            ->assertForbidden();
+    }
+
     public function test_tl_pemeliharaan_sees_the_generated_document(): void
     {
         $unit = Unit::factory()->create();
@@ -70,10 +103,12 @@ class DocumentTest extends TestCase
         $unit = Unit::factory()->create();
         $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
 
-        HarDocumentRecord::query()->create([
-            'unit_id' => $unit->id, 'type' => 'bulanan', 'month' => 8, 'year' => 2026,
-            'format' => 'html', 'content_html' => '<p>Versi tersimpan</p>', 'document_number' => 'FMKD-314-10.3.3',
-        ]);
+        // Save through the endpoint so the document is stamped with the current
+        // template version (a document saved against the current layout reloads).
+        $this->actingAs($user)->post(route('har.laporan.document.store'), [
+            'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
+            'format' => 'html', 'content_html' => '<p>Versi tersimpan</p>',
+        ])->assertRedirect();
 
         $this->actingAs($user)
             ->get(route('har.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))

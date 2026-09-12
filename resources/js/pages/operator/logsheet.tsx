@@ -24,7 +24,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { dashboard } from '@/routes';
-import logsheet from '@/routes/operasi/input/logsheet';
+import logsheet from '@/routes/operator/logsheet';
 import type { IdName } from '@/types';
 
 type Parameter = { id: number; name: string; sub_channel: string | null; label: string; unit_of_measure: string | null };

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\K3;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Models\K3DocumentRecord;
 use App\Models\Unit;
@@ -11,7 +13,6 @@ use App\Services\ActivityLogger;
 use App\Services\K3\K3DocumentBuilder;
 use App\Services\K3\K3DocumentGridBuilder;
 use App\Services\Operasi\DocumentGridBuilder;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -26,6 +27,17 @@ use Inertia\Response;
  */
 class DocumentController extends Controller
 {
+    use EmbedsReportLogo;
+    use RendersReportPdf;
+
+    /**
+     * Current report-body template version. Bump when the layout changes so
+     * documents saved against an older layout re-render from the new template.
+     * v3 = full framework (cover, exec summary, daftar isi, istilah) + one
+     * section per page; v4 = corporate polish (footer + page numbers, ToC leaders).
+     */
+    private const BODY_VERSION = 4;
+
     public function __construct(
         private readonly K3DocumentBuilder $builder,
         private readonly K3DocumentGridBuilder $gridBuilder,
@@ -46,7 +58,7 @@ class DocumentController extends Controller
         ];
 
         $data = $this->builder->build($unit, $month, $year);
-        $record = $this->existingRecord($unit->id, $month, $year);
+        $record = $this->currentRecord($unit->id, $month, $year);
 
         return Inertia::render('k3/laporan/document', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
@@ -71,7 +83,7 @@ class DocumentController extends Controller
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
 
         $data = $this->builder->build($unit, $month, $year);
-        $record = $this->existingRecord($unit->id, $month, $year);
+        $record = $this->currentRecord($unit->id, $month, $year);
 
         if ($record !== null && $record->format === 'grid' && ! empty($record->content_grid)) {
             $content = $this->builder->letterhead($data).$this->grids->gridToHtml($record->content_grid);
@@ -79,10 +91,12 @@ class DocumentController extends Controller
             $content = $record?->content_html ?? $this->builder->bodyHtml($data);
         }
 
-        $pdf = Pdf::loadView('k3.laporan.pdf-shell', ['content' => $this->embedAssets($content)])->setPaper('a4');
-        $filename = "Laporan-K3-{$unit->id}-{$month}-{$year}.pdf";
-
-        return $request->boolean('download') ? $pdf->download($filename) : $pdf->stream($filename);
+        return $this->streamReportPdf(
+            $request,
+            'k3.laporan.pdf-shell',
+            ['content' => $this->embedAssets($content)],
+            "Laporan-K3-{$unit->id}-{$month}-{$year}.pdf",
+        );
     }
 
     public function store(Request $request): RedirectResponse
@@ -114,6 +128,7 @@ class DocumentController extends Controller
         }
         $record->document_number = $data['document']['number'];
         $record->format = $validated['format'];
+        $record->content_version = self::BODY_VERSION;
         if (array_key_exists('content_html', $validated) && $validated['content_html'] !== null) {
             $record->content_html = $validated['content_html'];
         }
@@ -135,6 +150,47 @@ class DocumentController extends Controller
         return back();
     }
 
+    /**
+     * Rebuild the saved document from the latest data & template, discarding any
+     * manual edits — so an improved report layout reaches a document that was
+     * already saved with the old layout.
+     */
+    public function regenerate(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::K3InputWrite), 403);
+
+        $unit = $this->resolveUnit($request);
+        [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
+
+        $data = $this->builder->build($unit, $month, $year);
+
+        $record = K3DocumentRecord::query()->firstOrNew([
+            'unit_id' => $unit->id, 'type' => 'bulanan', 'month' => $month, 'year' => $year,
+        ]);
+        if (! $record->exists) {
+            $record->created_by = $user->id;
+        }
+        $record->document_number = $data['document']['number'];
+        $record->format = 'html';
+        $record->content_version = self::BODY_VERSION;
+        $record->content_html = $this->builder->bodyHtml($data);
+        $record->content_grid = $this->gridBuilder->build($data);
+        $record->snapshot = $data['report'];
+        $record->save();
+
+        $this->activityLogger->log(
+            ActivityEvent::Updated,
+            "Memuat ulang Laporan K3 {$unit->name} periode {$month}/{$year}",
+            $record,
+            unit: $unit->id,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen dimuat ulang dari data terbaru.']);
+
+        return back();
+    }
+
     private function existingRecord(int $unitId, int $month, int $year): ?K3DocumentRecord
     {
         return K3DocumentRecord::query()
@@ -143,17 +199,15 @@ class DocumentController extends Controller
             ->first();
     }
 
-    private function embedAssets(string $html): string
+    /**
+     * The saved document only when built from the current template version; a
+     * stale one is ignored so the fresh template renders instead.
+     */
+    private function currentRecord(int $unitId, int $month, int $year): ?K3DocumentRecord
     {
-        $path = public_path('logo/sidebar-logo.png');
+        $record = $this->existingRecord($unitId, $month, $year);
 
-        if (! is_file($path)) {
-            return $html;
-        }
-
-        $dataUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
-
-        return str_replace('/logo/sidebar-logo.png', $dataUri, $html);
+        return $record !== null && (int) $record->content_version === self::BODY_VERSION ? $record : null;
     }
 
     private function resolveUnit(Request $request): Unit

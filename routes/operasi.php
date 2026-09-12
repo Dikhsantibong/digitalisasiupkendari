@@ -7,7 +7,7 @@ use App\Http\Controllers\Operasi\DocumentTemplateController;
 use App\Http\Controllers\Operasi\FeederReadingController;
 use App\Http\Controllers\Operasi\FuelReceiptController;
 use App\Http\Controllers\Operasi\LaporanController;
-use App\Http\Controllers\Operasi\LogsheetController;
+use App\Http\Controllers\Operasi\LaporanDocumentController;
 use App\Http\Controllers\Operasi\MasterController;
 use App\Http\Controllers\Operasi\StarStopController;
 use Illuminate\Support\Facades\Route;
@@ -50,12 +50,12 @@ Route::middleware(['auth', 'verified'])
         Route::delete('input/penerimaan-bbm/{fuelReceipt}', [FuelReceiptController::class, 'destroy'])
             ->name('input.fuel-receipt.destroy');
 
-        Route::get('input/logsheet', [LogsheetController::class, 'index'])->name('input.logsheet.index');
-        Route::post('input/logsheet', [LogsheetController::class, 'store'])->name('input.logsheet.store');
-        Route::post('input/logsheet/submit', [LogsheetController::class, 'submit'])->name('input.logsheet.submit');
-
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/{report}/excel', [LaporanController::class, 'spreadsheet'])->name('laporan.spreadsheet');
+        Route::get('laporan/{report}/dokumen', [LaporanDocumentController::class, 'edit'])->name('laporan.document.edit');
+        Route::post('laporan/{report}/dokumen', [LaporanDocumentController::class, 'store'])->name('laporan.document.store');
+        Route::post('laporan/{report}/dokumen/muat-ulang', [LaporanDocumentController::class, 'regenerate'])->name('laporan.document.regenerate');
+        Route::get('laporan/{report}/dokumen/pdf', [LaporanDocumentController::class, 'pdf'])->name('laporan.document.pdf');
         Route::get('laporan/{report}', [LaporanController::class, 'show'])->name('laporan.show');
 
         Route::get('berita-acara', [BeritaAcaraController::class, 'index'])->name('berita-acara.index');

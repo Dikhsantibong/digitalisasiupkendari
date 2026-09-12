@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { ArrowLeft, Download, FileSpreadsheet, FileText, Save } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, FileText, Printer, RotateCcw, Save } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -10,6 +10,9 @@ import { downloadGridAsXlsx } from '@/lib/spreadsheet';
 import type { DocumentGrid, GridCell } from '@/lib/spreadsheet';
 
 export type DocumentEditorMode = 'html' | 'grid';
+
+/** The editor's active view: the two edit modes plus the true-to-print PDF preview. */
+type ViewMode = DocumentEditorMode | 'pdf';
 
 export type DocumentEditorProps = {
     title: string;
@@ -31,6 +34,8 @@ export type DocumentEditorProps = {
     xlsxHeaderLines: { text: string; bold?: boolean }[];
     saveUrl: string;
     saveExtra: Record<string, string | number>;
+    /** Optional: POST endpoint that rebuilds the document from the latest data/template. */
+    regenerateUrl?: string;
 };
 
 /** Scoped styling for the letterhead banner shown above the spreadsheet editor. */
@@ -70,12 +75,23 @@ export function DocumentEditor({
     xlsxHeaderLines,
     saveUrl,
     saveExtra,
+    regenerateUrl,
 }: DocumentEditorProps) {
-    const [mode, setMode] = useState<DocumentEditorMode>(format);
+    const [mode, setMode] = useState<ViewMode>(format);
     const [html, setHtml] = useState(content);
     const [gridState, setGridState] = useState<DocumentGrid>(grid);
     const [saving, setSaving] = useState(false);
+    const [regenerating, setRegenerating] = useState(false);
     const [savedFormat, setSavedFormat] = useState<DocumentEditorMode | null>(hasSaved ? format : null);
+    // Bumped whenever the preview should refetch (on open, and after each save).
+    const [previewKey, setPreviewKey] = useState(0);
+
+    const editMode: DocumentEditorMode = mode === 'grid' ? 'grid' : 'html';
+
+    const openPreview = () => {
+        setPreviewKey((k) => k + 1);
+        setMode('pdf');
+    };
 
     const save = () => {
         setSaving(true);
@@ -83,16 +99,35 @@ export function DocumentEditor({
             saveUrl,
             {
                 ...saveExtra,
-                format: mode,
-                content_html: mode === 'html' ? html : undefined,
-                content_grid: mode === 'grid' ? gridState : undefined,
+                format: editMode,
+                content_html: editMode === 'html' ? html : undefined,
+                content_grid: editMode === 'grid' ? gridState : undefined,
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setSavedFormat(mode),
+                onSuccess: () => {
+                    setSavedFormat(editMode);
+                    setPreviewKey((k) => k + 1);
+                },
                 onFinish: () => setSaving(false),
             },
         );
+    };
+
+    const regenerate = () => {
+        if (!regenerateUrl) {
+            return;
+        }
+
+        if (!window.confirm('Muat ulang dokumen dari data & template terbaru? Perubahan manual yang tersimpan akan ditimpa.')) {
+            return;
+        }
+
+        setRegenerating(true);
+        router.post(regenerateUrl, saveExtra, {
+            preserveScroll: true,
+            onFinish: () => setRegenerating(false),
+        });
     };
 
     const downloadPdf = () => {
@@ -140,16 +175,17 @@ export function DocumentEditor({
                                 Unduh Excel
                             </Button>
                         )}
-                        <Button
-                            variant="secondary"
-                            onClick={downloadPdf}
-                            disabled={savedFormat === null}
-                            title={savedFormat === null ? 'Simpan dulu' : undefined}
-                        >
+                        <Button variant="secondary" onClick={downloadPdf}>
                             <Download className="size-4" />
                             Unduh PDF
                         </Button>
-                        {canEdit && (
+                        {canEdit && regenerateUrl && (
+                            <Button variant="secondary" onClick={regenerate} disabled={regenerating}>
+                                <RotateCcw className="size-4" />
+                                {regenerating ? 'Memuat…' : 'Muat Ulang dari Data'}
+                            </Button>
+                        )}
+                        {canEdit && mode !== 'pdf' && (
                             <Button onClick={save} disabled={saving}>
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
@@ -175,6 +211,13 @@ export function DocumentEditor({
                     >
                         <FileSpreadsheet className="size-4" /> Excel
                     </button>
+                    <button
+                        type="button"
+                        onClick={openPreview}
+                        className={`flex items-center gap-1 px-3 py-1.5 ${mode === 'pdf' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                    >
+                        <Printer className="size-4" /> Pratinjau PDF
+                    </button>
                 </div>
                 <span className="text-muted-foreground">{numberLabel}:</span>
                 <span className="font-medium">{documentNumber}</span>
@@ -185,9 +228,15 @@ export function DocumentEditor({
                 ) : (
                     <StatusBadge tone="neutral">Belum disimpan</StatusBadge>
                 )}
-                {pdfMismatch && (
+                {pdfMismatch && mode !== 'pdf' && (
                     <span className="text-amber-600">
                         PDF mengikuti versi tersimpan ({savedFormat === 'grid' ? 'Excel' : 'Teks'}). Simpan mode ini agar PDF ikut berubah.
+                    </span>
+                )}
+                {mode === 'pdf' && (
+                    <span className="text-muted-foreground">
+                        Pratinjau ini identik dengan hasil cetak/unduh PDF. Menampilkan versi terakhir yang disimpan
+                        {savedFormat === null ? ' (belum ada — menampilkan hasil bawaan)' : ''}; simpan dulu agar perubahan ikut tampil.
                     </span>
                 )}
             </div>
@@ -205,19 +254,28 @@ export function DocumentEditor({
                 </div>
             )}
 
-            <div className="rounded-md border border-border bg-card p-2">
-                {mode === 'html' ? (
-                    <RichTextEditor
-                        value={html}
-                        extraContentStyle={contentStyles}
-                        onChange={setHtml}
-                        disabled={!canEdit}
-                        autoGrow
-                    />
-                ) : (
-                    <SpreadsheetEditor grid={gridState} onChange={setGridState} />
-                )}
-            </div>
+            {mode === 'pdf' ? (
+                <iframe
+                    key={previewKey}
+                    title="Pratinjau PDF"
+                    src={`${pdfUrl}${pdfUrl.includes('?') ? '&' : '?'}v=${previewKey}`}
+                    className="h-[80vh] w-full rounded-md border border-border bg-white"
+                />
+            ) : (
+                <div className="rounded-md border border-border bg-card p-2">
+                    {mode === 'html' ? (
+                        <RichTextEditor
+                            value={html}
+                            extraContentStyle={contentStyles}
+                            onChange={setHtml}
+                            disabled={!canEdit}
+                            autoGrow
+                        />
+                    ) : (
+                        <SpreadsheetEditor grid={gridState} onChange={setGridState} />
+                    )}
+                </div>
+            )}
         </div>
     );
 }

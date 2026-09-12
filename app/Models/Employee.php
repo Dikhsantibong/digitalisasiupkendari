@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string|null $nip
  * @property string|null $position
+ * @property string|null $regu
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -28,6 +29,7 @@ use Illuminate\Support\Carbon;
     'name',
     'nip',
     'position',
+    'regu',
     'is_active',
 ])]
 class Employee extends Model

@@ -10,6 +10,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 });
 
 require __DIR__.'/admin.php';
+require __DIR__.'/operator.php';
 require __DIR__.'/operasi.php';
 require __DIR__.'/har.php';
 require __DIR__.'/k3.php';

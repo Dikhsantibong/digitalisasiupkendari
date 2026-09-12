@@ -2,16 +2,19 @@
 
 namespace App\Services\Operasi\Master;
 
+use App\Enums\AttendanceCodeType;
 use App\Enums\CalibrationFactorType;
 use App\Enums\LubricantUnit;
 use App\Enums\StatusCodeCategory;
 use App\Enums\TankFuelType;
+use App\Models\AttendanceCode;
 use App\Models\AuxiliarySource;
 use App\Models\BbmType;
 use App\Models\CalibrationFactor;
 use App\Models\Feeder;
 use App\Models\FuelTank;
 use App\Models\LubricantType;
+use App\Models\ShiftPattern;
 use App\Models\UnitStatusCode;
 use App\Services\Master\MasterFields;
 use App\Services\Master\MasterRegistry;
@@ -119,6 +122,34 @@ class OperasiMasterRegistry implements MasterRegistry
                     self::text('code', 'Kode', required: true),
                     self::text('label', 'Keterangan', required: true),
                     self::enumSelect('category', 'Kategori', StatusCodeCategory::cases(), required: true),
+                    self::bool('is_active', 'Aktif'),
+                ],
+            ],
+            'attendance-codes' => [
+                'label' => 'Kode Absensi/Shift (Global)',
+                'model' => AttendanceCode::class,
+                'unit_scoped' => false,
+                'order' => ['sort_order', 'code'],
+                'fields' => [
+                    self::text('code', 'Kode', required: true),
+                    self::text('label', 'Keterangan', required: true),
+                    self::enumSelect('type', 'Tipe', AttendanceCodeType::cases(), required: true),
+                    self::text('jam_mulai', 'Jam Mulai'),
+                    self::text('jam_selesai', 'Jam Selesai'),
+                    self::bool('hitung_hadir', 'Hitung Hadir'),
+                    self::number('sort_order', 'Urutan'),
+                    self::bool('is_active', 'Aktif'),
+                ],
+            ],
+            'shift-patterns' => [
+                'label' => 'Pola Shift per Regu',
+                'model' => ShiftPattern::class,
+                'unit_scoped' => true,
+                'order' => ['regu'],
+                'fields' => [
+                    self::text('regu', 'Regu', required: true),
+                    self::text('sequence', 'Urutan Kode (pisah koma)', required: true),
+                    self::number('cycle_days', 'Panjang Siklus'),
                     self::bool('is_active', 'Aktif'),
                 ],
             ],

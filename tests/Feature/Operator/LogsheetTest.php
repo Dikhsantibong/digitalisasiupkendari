@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature\Operasi;
+namespace Tests\Feature\Operator;
 
 use App\Enums\LogsheetStatus;
 use App\Enums\RoleName;
@@ -33,7 +33,7 @@ class LogsheetTest extends TestCase
     public function test_a_role_without_logsheet_permission_is_forbidden(): void
     {
         $this->actingAs($this->userWithRole(RoleName::SiteLeader, Unit::factory()->create()))
-            ->get(route('operasi.input.logsheet.index'))
+            ->get(route('operator.logsheet.index'))
             ->assertForbidden();
     }
 
@@ -51,10 +51,10 @@ class LogsheetTest extends TestCase
         $engine = $this->engineForUnit($unit);
 
         $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
-            ->get(route('operasi.input.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
+            ->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operasi/input/logsheet')
+                ->component('operator/logsheet')
                 ->where('can_write', true)
                 ->where('is_submitted', false)
                 ->has('parameters', 22)
@@ -70,7 +70,7 @@ class LogsheetTest extends TestCase
         $paramId = LogsheetParameter::query()->where('code', 'LOAD')->value('id');
         $operator = $this->userWithRole(RoleName::Operator, $unit);
 
-        $this->actingAs($operator)->post(route('operasi.input.logsheet.store'), [
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',
             'shift' => 'A', 'time_slot' => '01:00', 'values' => ['p_'.$paramId => '250'],
         ])->assertRedirect();
@@ -82,11 +82,11 @@ class LogsheetTest extends TestCase
         $this->assertSame('01:00', substr((string) $logsheet->readings()->first()->time_slot, 0, 5));
 
         // Saving another slot adds a row; re-saving the first slot overwrites it.
-        $this->actingAs($operator)->post(route('operasi.input.logsheet.store'), [
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',
             'time_slot' => '02:00', 'values' => ['p_'.$paramId => '300'],
         ])->assertRedirect();
-        $this->actingAs($operator)->post(route('operasi.input.logsheet.store'), [
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',
             'time_slot' => '01:00', 'values' => ['p_'.$paramId => '260'],
         ])->assertRedirect();
@@ -104,7 +104,7 @@ class LogsheetTest extends TestCase
         Machine::factory()->create(['unit_id' => $otherUnit->id, 'is_active' => true, 'name' => 'MAK #1']);
 
         $this->actingAs($this->userWithRole(RoleName::Operator, $poasia))
-            ->get(route('operasi.input.logsheet.index'))
+            ->get(route('operator.logsheet.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 // Only the operator's own unit and its machines are offered.
@@ -120,7 +120,7 @@ class LogsheetTest extends TestCase
         $engine = $this->engineForUnit($unit);
 
         $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
-            ->post(route('operasi.input.logsheet.store'), [
+            ->post(route('operator.logsheet.store'), [
                 'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',
                 'shift' => 'Pagi', 'time_slot' => '01:00', 'values' => [],
             ])
@@ -133,7 +133,7 @@ class LogsheetTest extends TestCase
         $engine = $this->engineForUnit($unit);
         $operator = $this->userWithRole(RoleName::Operator, $unit);
 
-        $this->actingAs($operator)->post(route('operasi.input.logsheet.submit'), [
+        $this->actingAs($operator)->post(route('operator.logsheet.submit'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',
         ])->assertRedirect();
 
@@ -143,10 +143,10 @@ class LogsheetTest extends TestCase
 
         // Reopening shows it locked, and a further save is rejected.
         $this->actingAs($operator)
-            ->get(route('operasi.input.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
+            ->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
             ->assertInertia(fn ($page) => $page->where('can_write', false)->where('is_submitted', true));
 
-        $this->actingAs($operator)->post(route('operasi.input.logsheet.store'), [
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10', 'time_slot' => '01:00', 'values' => [],
         ])->assertStatus(422);
     }
@@ -157,12 +157,12 @@ class LogsheetTest extends TestCase
         $engine = $this->engineForUnit($unit);
 
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
-            ->get(route('operasi.input.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
+            ->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('can_write', false));
 
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
-            ->post(route('operasi.input.logsheet.store'), [
+            ->post(route('operator.logsheet.store'), [
                 'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10', 'time_slot' => '01:00', 'values' => [],
             ])
             ->assertForbidden();
@@ -175,7 +175,7 @@ class LogsheetTest extends TestCase
         $foreignEngine = $this->engineForUnit($foreignUnit);
 
         $this->actingAs($this->userWithRole(RoleName::Operator, $ownUnit))
-            ->post(route('operasi.input.logsheet.store'), [
+            ->post(route('operator.logsheet.store'), [
                 'unit_id' => $foreignUnit->id, 'engine_id' => $foreignEngine->id, 'log_date' => '2026-08-10', 'time_slot' => '01:00', 'values' => [],
             ])
             ->assertForbidden();

@@ -50,7 +50,7 @@ class DashboardController extends Controller
         $now = Carbon::now();
 
         $has = fn (PermissionName $p): bool => $user->hasPermissionTo($p);
-        $canOperasi = $has(PermissionName::OperasiInputView) || $has(PermissionName::OperasiLogsheetView);
+        $canOperasi = $has(PermissionName::OperasiInputView) || $has(PermissionName::OperatorLogsheetView);
         $canHar = $has(PermissionName::HarInputView) || $has(PermissionName::HarLaporanView);
         $canK3 = $has(PermissionName::K3InputView) || $has(PermissionName::K3LaporanView) || $has(PermissionName::K3MonitoringView);
         $canUnits = $user->can('viewAny', Unit::class);

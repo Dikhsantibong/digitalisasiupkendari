@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { FileSpreadsheet, Printer } from 'lucide-react';
+import { FilePenLine } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import {
     OPERASI_MONTHS,
@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/operasi/laporan';
+import document from '@/routes/operasi/laporan/document';
 import type { IdName } from '@/types';
 
 type ReportDef = {
@@ -47,12 +48,8 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
         year: filters.year,
     });
 
-    const openReport = (report: ReportDef) => {
-        router.get(laporan.show(report.code, { query: reportQuery() }).url);
-    };
-
-    const openExcel = (report: ReportDef) => {
-        router.get(laporan.spreadsheet(report.code, { query: reportQuery() }).url);
+    const openDocument = (report: ReportDef) => {
+        router.get(document.edit(report.code, { query: reportQuery() }).url);
     };
 
     return (
@@ -117,19 +114,11 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                     <div>
                                         <div className="flex flex-wrap gap-2">
                                             <Button
-                                                onClick={() => openReport(report)}
+                                                onClick={() => openDocument(report)}
                                                 disabled={needsEngine}
                                             >
-                                                <Printer className="size-4" />
-                                                Lihat &amp; Cetak
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                onClick={() => openExcel(report)}
-                                                disabled={needsEngine}
-                                            >
-                                                <FileSpreadsheet className="size-4" />
-                                                Excel
+                                                <FilePenLine className="size-4" />
+                                                Buka Dokumen (Lihat, Edit &amp; Cetak)
                                             </Button>
                                         </div>
                                         {needsEngine && (

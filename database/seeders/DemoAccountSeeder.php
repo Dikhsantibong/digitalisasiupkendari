@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
  *  - TL Pemeliharaan: one per unit
  *  - TL K3          : one per unit
  *  - Site Leader    : one per unit
+ *  - Project Leader : one per unit (senior operator: scheduling + reports)
  *  - Operator       : four per unit (shift A–D)
  *
  * Idempotent: re-running updates the same accounts (keyed by e-mail) and
@@ -53,6 +54,7 @@ class DemoAccountSeeder extends Seeder
             $this->account("tl-har.{$slug}@".self::DOMAIN, "TL Pemeliharaan {$name}", 'Team Leader Pemeliharaan', RoleName::TeamLeaderPemeliharaan, $unit);
             $this->account("tl-k3.{$slug}@".self::DOMAIN, "TL K3 & Keamanan {$name}", 'Team Leader K3 & Keamanan', RoleName::TeamLeaderK3, $unit);
             $this->account("site-leader.{$slug}@".self::DOMAIN, "Site Leader {$name}", 'Site Leader', RoleName::SiteLeader, $unit);
+            $this->account("project-leader.{$slug}@".self::DOMAIN, "Project Leader {$name}", 'Project Leader Operasi', RoleName::ProjectLeaderOperasi, $unit);
 
             for ($n = 1; $n <= 4; $n++) {
                 $this->account("operator{$n}.{$slug}@".self::DOMAIN, "Operator {$n} {$name}", 'Operator (Shift '.chr(64 + $n).')', RoleName::Operator, $unit);

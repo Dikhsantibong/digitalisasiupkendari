@@ -11,7 +11,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Menu Laporan (modul K3): entry point to the editable full report document.
+ * Menu Laporan (modul K3): entry point to the editable full report document,
+ * which also carries the true-to-print PDF preview.
  */
 class LaporanController extends Controller
 {

@@ -16,6 +16,7 @@ enum RoleName: string
     case TeamLeaderPemeliharaan = 'tl_pemeliharaan';
     case TeamLeaderK3 = 'tl_k3';
     case SiteLeader = 'site_leader';
+    case ProjectLeaderOperasi = 'project_leader_operasi';
     case Operator = 'operator';
 
     public function label(): string
@@ -27,6 +28,7 @@ enum RoleName: string
             self::TeamLeaderPemeliharaan => 'TL Pemeliharaan',
             self::TeamLeaderK3 => 'TL K3 & Keamanan',
             self::SiteLeader => 'Site Leader',
+            self::ProjectLeaderOperasi => 'Project Leader Operasi',
             self::Operator => 'Operator',
         };
     }
@@ -40,6 +42,7 @@ enum RoleName: string
             self::TeamLeaderPemeliharaan => 'Mengelola kegiatan pemeliharaan pada unit pembangkit yang ditugaskan.',
             self::TeamLeaderK3 => 'Mengelola kegiatan K3 & keamanan pada unit pembangkit yang ditugaskan.',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
+            self::ProjectLeaderOperasi => 'Operator senior yang menjadwalkan shift regu, mengelola absensi & laporan pada unit pembangkit yang ditugaskan.',
             self::Operator => 'Mencatat data operasi harian pada unit pembangkit yang ditugaskan.',
         };
     }
@@ -53,6 +56,7 @@ enum RoleName: string
             self::TeamLeaderPemeliharaan,
             self::TeamLeaderK3,
             self::SiteLeader,
+            self::ProjectLeaderOperasi,
             self::Operator => RoleScope::Unit,
         };
     }
@@ -107,8 +111,10 @@ enum RoleName: string
                 // Manager oversees K3 & security reporting across their UL (read-only).
                 PermissionName::K3LaporanView,
                 PermissionName::K3MonitoringView,
-                // Manager verifies operator logsheets (read-only).
-                PermissionName::OperasiLogsheetView,
+                // Manager oversees the Operator module (read-only): field
+                // logsheets and the shift schedule / attendance.
+                PermissionName::OperatorLogsheetView,
+                PermissionName::OperatorAbsensiView,
             ],
 
             self::TeamLeaderPemeliharaan => [
@@ -132,8 +138,11 @@ enum RoleName: string
                 PermissionName::OperasiBeritaAcaraCreate,
                 PermissionName::OperasiMasterViewAny,
                 PermissionName::OperasiMasterManage,
-                // TL Operasi verifies operator logsheets (read-only).
-                PermissionName::OperasiLogsheetView,
+                // TL Operasi also oversees the Operator module: verifies field
+                // logsheets and manages the shift schedule & attendance.
+                PermissionName::OperatorLogsheetView,
+                PermissionName::OperatorAbsensiView,
+                PermissionName::OperatorAbsensiWrite,
             ],
 
             self::TeamLeaderK3 => [
@@ -180,27 +189,53 @@ enum RoleName: string
                 PermissionName::ReportProjectExport,
             ],
 
+            // The project leader is a senior operator: it holds every operator
+            // permission and adds shift scheduling, attendance management, and
+            // operasi report access. One operator per unit is assigned this role
+            // instead of a bare Operator — the Operator role itself is untouched.
+            self::ProjectLeaderOperasi => [
+                ...$this->operatorBasePermissions(),
+                PermissionName::OperatorAbsensiView,
+                PermissionName::OperatorAbsensiWrite,
+                PermissionName::OperasiLaporanView,
+            ],
+
             self::Operator => [
-                PermissionName::UnitViewAny,
-                PermissionName::UnitView,
-                PermissionName::MachineViewAny,
-                PermissionName::MachineView,
-                PermissionName::EmployeeViewAny,
-                PermissionName::EmployeeView,
-                PermissionName::ReportUnitViewAny,
-                PermissionName::ReportUnitView,
-                PermissionName::ReportUnitCreate,
-                PermissionName::ReportUnitUpdate,
-                PermissionName::ReportUnitSubmit,
-                PermissionName::ProjectViewAny,
-                PermissionName::ProjectView,
-                PermissionName::ReportProjectViewAny,
-                PermissionName::ReportProjectView,
-                // The operator fills the hourly logsheet; no other operasi menus.
-                PermissionName::OperasiLogsheetWrite,
-                PermissionName::OperasiLogsheetView,
+                ...$this->operatorBasePermissions(),
+                // The operator sees the shift schedule they belong to (read-only).
+                PermissionName::OperatorAbsensiView,
             ],
         };
+    }
+
+    /**
+     * The permissions shared by the operator and the project leader (a senior
+     * operator). The project leader layers scheduling and reporting on top.
+     *
+     * @return list<PermissionName>
+     */
+    private function operatorBasePermissions(): array
+    {
+        return [
+            PermissionName::UnitViewAny,
+            PermissionName::UnitView,
+            PermissionName::MachineViewAny,
+            PermissionName::MachineView,
+            PermissionName::EmployeeViewAny,
+            PermissionName::EmployeeView,
+            PermissionName::ReportUnitViewAny,
+            PermissionName::ReportUnitView,
+            PermissionName::ReportUnitCreate,
+            PermissionName::ReportUnitUpdate,
+            PermissionName::ReportUnitSubmit,
+            PermissionName::ProjectViewAny,
+            PermissionName::ProjectView,
+            PermissionName::ReportProjectViewAny,
+            PermissionName::ReportProjectView,
+            // The operator fills the hourly logsheet (Operator module).
+            PermissionName::OperatorLogsheetWrite,
+            PermissionName::OperatorLogsheetView,
+        ];
     }
 
     /**

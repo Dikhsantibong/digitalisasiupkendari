@@ -124,30 +124,39 @@ class HarReportBuilder
                 'rows' => $group->map(fn (WorkOrder $wo): array => [
                     'wonum' => $wo->wonum,
                     'description' => $wo->description,
+                    'type' => $wo->maintenanceType?->code,
+                    'engine' => $wo->engine?->name,
+                    'work_group' => $wo->workGroup?->code,
+                    'status' => $wo->status?->code,
+                    'cycle' => $wo->cycle?->code,
                     'report_date' => $wo->report_date?->format('Y-m-d'),
                     'sched_start' => $wo->sched_start?->format('Y-m-d'),
                     'sched_finish' => $wo->sched_finish?->format('Y-m-d'),
-                    'status' => $wo->status?->code,
-                    'work_group' => $wo->workGroup?->code,
-                    'engine' => $wo->engine?->name,
+                    'waiting' => $wo->waiting_reason?->label(),
+                    'service_cost' => (float) $wo->service_cost,
+                    'material_cost' => (float) $wo->material_cost,
                 ])->values()->all(),
             ])->values()->all();
     }
 
     /**
      * @param  Collection<int, WorkOrder>  $wos
-     * @return list<array{reason: string, rows: list<array<string, mixed>>}>
+     * @return list<array{key: string, reason: string, rows: list<array<string, mixed>>}>
      */
     private function woWaiting($wos): array
     {
         return $wos->filter(fn (WorkOrder $wo): bool => $wo->waiting_reason !== null)
             ->groupBy(fn (WorkOrder $wo): string => $wo->waiting_reason->value)
             ->map(fn ($group, string $reason): array => [
+                'key' => $reason,
                 'reason' => WoWaitingReason::from($reason)->label(),
                 'rows' => $group->map(fn (WorkOrder $wo): array => [
                     'wonum' => $wo->wonum,
                     'description' => $wo->description,
                     'status' => $wo->status?->code,
+                    'engine' => $wo->engine?->name,
+                    'report_date' => $wo->report_date?->format('Y-m-d'),
+                    'work_group' => $wo->workGroup?->code,
                 ])->values()->all(),
             ])->values()->all();
     }
