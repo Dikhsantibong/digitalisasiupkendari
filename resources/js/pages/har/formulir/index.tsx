@@ -34,6 +34,7 @@ type FormulirCard = {
     description: string;
     icon: typeof Wrench;
     target: string;
+    active?: boolean;
 };
 
 const FORMULIR_LIST: FormulirCard[] = [
@@ -42,24 +43,28 @@ const FORMULIR_LIST: FormulirCard[] = [
         description: 'Checklist pemeriksaan sistem pelumasan awal (prelube pump, tekanan oli, dan kesiapan pelumasan mesin).',
         icon: Droplet,
         target: '/har/formulir/prelube-test',
+        active: true,
     },
     {
         title: 'Formulir Checklist Hydrotest',
         description: 'Checklist pengujian tekanan hidrolik (hydrotest) pipa, bejana tekan, cooler, dan sistem pendingin.',
         icon: Waves,
         target: '/har/formulir/hydrotest',
+        active: true,
     },
     {
         title: 'Formulir Checklist Timing Injection Pump',
         description: 'Checklist dan verifikasi sudut penyemprotan bahan bakar (timing injection) pompa injeksi mesin.',
         icon: Timer,
         target: '/har/formulir/timing-injection-pump',
+        active: true,
     },
     {
         title: 'Formulir Pengukuran Defleksi Crankshaft',
         description: 'Pencatatan pengukuran kelurusan (alignment) dan defleksi poros engkol (crankshaft) tiap silinder mesin.',
         icon: Sliders,
         target: '/har/formulir/defleksi-crankshaft',
+        active: true,
     },
     {
         title: 'Formulir Pemeriksaan Kondisi Kekencangan Baut Counter Weight',
@@ -84,12 +89,14 @@ const FORMULIR_LIST: FormulirCard[] = [
         description: 'Pencatatan celah katup hisap (inlet valve) dan katup buang (exhaust valve) pada silinder head.',
         icon: Ruler,
         target: '/har/formulir/clearance-valve',
+        active: true,
     },
     {
         title: 'Formulir Pengukuran Tekanan Pembakaran',
         description: 'Pencatatan tekanan kompresi (Pcomp) dan tekanan pembakaran maksimum (Pmax) tiap silinder mesin.',
         icon: Flame,
         target: '/har/formulir/tekanan-pembakaran',
+        active: true,
     },
     {
         title: 'Formulir Pengukuran Tekanan Vibrasi',
@@ -160,12 +167,18 @@ export default function HarFormulirIndex({ filters, options }: Props) {
                             >
                                 <div>
                                     <div className="mb-2 flex items-center justify-between gap-2">
-                                        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                        <div className={`flex size-9 items-center justify-center rounded-lg ${item.active ? 'bg-primary text-primary-foreground' : 'bg-primary/10 text-primary'}`}>
                                             <Icon className="size-5" />
                                         </div>
-                                        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                                            Sementara Disusun
-                                        </Badge>
+                                        {item.active ? (
+                                            <Badge variant="outline" className="border-emerald-600/30 bg-emerald-50 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                                                Tersedia
+                                            </Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                                                Sementara Disusun
+                                            </Badge>
+                                        )}
                                     </div>
                                     <h2 className="text-base font-semibold text-foreground">
                                         {item.title}
@@ -176,18 +189,35 @@ export default function HarFormulirIndex({ filters, options }: Props) {
                                 </div>
 
                                 <div className="space-y-1.5 pt-2">
-                                    <Button
-                                        disabled
-                                        variant="outline"
-                                        className="w-full cursor-not-allowed justify-center gap-2 opacity-75"
-                                        title="Tombol sementara dinonaktifkan (formulir sedang disusun)"
-                                    >
-                                        <Icon className="size-4" />
-                                        Buka Formulir
-                                    </Button>
-                                    <p className="text-center text-[11px] text-muted-foreground italic">
-                                        * Tombol belum difungsikan (formulir sedang disusun)
-                                    </p>
+                                    {item.active ? (
+                                        <>
+                                            <Button
+                                                onClick={() => router.get(item.target, { unit_id: filters.unit_id })}
+                                                className="w-full justify-center gap-2"
+                                            >
+                                                <Icon className="size-4" />
+                                                Buka Formulir
+                                            </Button>
+                                            <p className="text-center text-[11px] text-muted-foreground">
+                                                Input data, atur layout, &amp; cetak PDF
+                                            </p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                disabled
+                                                variant="outline"
+                                                className="w-full cursor-not-allowed justify-center gap-2 opacity-75"
+                                                title="Tombol sementara dinonaktifkan (formulir sedang disusun)"
+                                            >
+                                                <Icon className="size-4" />
+                                                Buka Formulir
+                                            </Button>
+                                            <p className="text-center text-[11px] text-muted-foreground italic">
+                                                * Tombol belum difungsikan (formulir sedang disusun)
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         );
