@@ -46,8 +46,61 @@ class DocumentTest extends TestCase
         $record = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('month', 9)->firstOrFail();
         $this->assertStringNotContainsString('Isi lama', (string) $record->content_html);
         $this->assertStringContainsString('Executive Summary', (string) $record->content_html);
+        $this->assertStringContainsString('MAINTENANCE SUMMARY', (string) $record->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A9', (string) $record->content_html);
+        $this->assertStringContainsString('Rekapitulasi WO Terbit dan Complete', (string) $record->content_html);
+        $this->assertStringContainsString('Rekapitulasi Status WO', (string) $record->content_html);
+        $this->assertStringContainsString('Penyelesaian Work Order Task', (string) $record->content_html);
+        $this->assertStringContainsString('Maintenance Mix Bulan ini', (string) $record->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A11', (string) $record->content_html);
+        $this->assertStringContainsString('Rekap Task WO', (string) $record->content_html);
+        $this->assertStringContainsString('Jumlah Task Preventive', (string) $record->content_html);
+        $this->assertStringContainsString('Har Listrik', (string) $record->content_html);
+        $this->assertStringContainsString('Har Mekanik 1', (string) $record->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A12', (string) $record->content_html);
+        $this->assertStringContainsString('WO PREVENTIVE MAINTANANCE', (string) $record->content_html);
+        $this->assertStringContainsString('WORK GROUP', (string) $record->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A13', (string) $record->content_html);
+        $this->assertStringContainsString('WO PREDICTIVE MAINTANANCE', (string) $record->content_html);
+        $this->assertStringContainsString('WO PdM YANG TERBIT BULAN INI', (string) $record->content_html);
+        $this->assertStringContainsString('Waiting Plant Condition', (string) $record->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A14', (string) $record->content_html);
+        $this->assertStringContainsString('WO CORRECTIVE MAINTANANCE', (string) $record->content_html);
+        $this->assertStringContainsString('Tidak ada data Work Order CM pada periode ini.', (string) $record->content_html);
         $this->assertStringContainsString('har-cover', (string) $record->content_html);
-        $this->assertStringContainsString('14. Lampiran', (string) $record->content_html);
+        $this->assertStringContainsString('Lampiran', (string) $record->content_html);
+    }
+
+    public function test_document_renders_real_maintenance_work_orders_when_present(): void
+    {
+        $this->seed(\Database\Seeders\OrganizationSeeder::class);
+        $this->seed(\Database\Seeders\MachineSeeder::class);
+        $this->seed(\Database\Seeders\HarMasterSeeder::class);
+        $this->seed(\Database\Seeders\HarSeeder::class);
+
+        $unit = Unit::query()->where('code', 'PLTD-WUAWUA')->firstOrFail();
+        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+
+        $this->actingAs($user)
+            ->post(route('har.laporan.document.regenerate'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026])
+            ->assertRedirect();
+
+        $record = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('month', 8)->where('year', 2026)->firstOrFail();
+        $html = (string) $record->content_html;
+
+        // PM Work Orders
+        $this->assertStringContainsString('WO13258', $html);
+        $this->assertStringContainsString('PM WUAW INSPECTION COMPRESI', $html);
+
+        // CM Work Orders
+        $this->assertStringContainsString('WO13349', $html);
+        $this->assertStringContainsString('PERBAIKAN KWH PELANGGAN', $html);
+
+        // Waiting Work Orders and CM notes
+        $this->assertStringContainsString('WO11369', $html);
+        $this->assertStringContainsString('Waiting Shutdown', $html);
+        $this->assertStringContainsString('WO10932', $html);
+        $this->assertStringContainsString('Menunggu kajian dari tim Engineering UPKD', $html);
     }
 
     public function test_regenerate_requires_write_permission(): void

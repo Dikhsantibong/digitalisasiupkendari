@@ -42,6 +42,7 @@ class ServiceUnitController extends Controller
                 'description' => $serviceUnit->description,
                 'is_active' => $serviceUnit->is_active,
                 'units_count' => $serviceUnit->units_count,
+                'manager' => $serviceUnit->manager()?->name,
             ]),
             'filters' => $request->only(['search']),
             'unassignedUnits' => Unit::query()

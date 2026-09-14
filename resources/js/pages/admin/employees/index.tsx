@@ -27,9 +27,13 @@ type Props = {
     filters: {
         search?: string;
         unit_id?: string;
+        service_unit_id?: string;
+        position?: string;
     };
     options: {
         units: IdName[];
+        service_units?: IdName[];
+        positions: string[];
     };
 };
 
@@ -44,6 +48,8 @@ export default function EmployeesIndex({
         {
             search: filters.search,
             unit_id: filters.unit_id,
+            service_unit_id: filters.service_unit_id,
+            position: filters.position,
         },
     );
 
@@ -53,7 +59,7 @@ export default function EmployeesIndex({
             <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
                 <PageHeader
                     title="Master Pegawai"
-                    description="Data pegawai dan penempatannya pada unit pembangkit."
+                    description="Data pegawai dan penempatannya pada unit pembangkit atau unit layanan."
                     actions={
                         can('employee.create') && (
                             <Button asChild>
@@ -84,6 +90,28 @@ export default function EmployeesIndex({
                                 label: unit.name,
                             }))}
                         />
+                        {options.service_units && options.service_units.length > 0 && (
+                            <FilterSelect
+                                value={values.service_unit_id}
+                                onChange={(value) => setFilter('service_unit_id', value)}
+                                placeholder="Unit Layanan"
+                                allLabel="Semua UL"
+                                options={options.service_units.map((su) => ({
+                                    value: String(su.id),
+                                    label: su.name,
+                                }))}
+                            />
+                        )}
+                        <FilterSelect
+                            value={values.position}
+                            onChange={(value) => setFilter('position', value)}
+                            placeholder="Jabatan"
+                            allLabel="Semua Jabatan"
+                            options={(options.positions ?? []).map((position) => ({
+                                value: position,
+                                label: position,
+                            }))}
+                        />
                     </FilterBar>
 
                     {page.data.length === 0 ? (
@@ -112,8 +140,9 @@ export default function EmployeesIndex({
                                 <TableRow>
                                     <TableHead>Nama</TableHead>
                                     <TableHead>NID/NIP</TableHead>
-                                    <TableHead>Unit Pembangkit</TableHead>
+                                    <TableHead>Penempatan / Unit</TableHead>
                                     <TableHead>Jabatan</TableHead>
+                                    <TableHead className="w-28 text-center">Tanda Tangan</TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="w-24 text-right">
                                         Aksi
@@ -142,11 +171,40 @@ export default function EmployeesIndex({
                                         <TableCell className="text-muted-foreground tabular-nums">
                                             {employee.nip ?? '—'}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {employee.unit ?? '—'}
+                                        <TableCell>
+                                            {employee.service_unit ? (
+                                                <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+                                                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">
+                                                        UL
+                                                    </span>
+                                                    {employee.service_unit}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    {employee.unit ?? '—'}
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             {employee.position ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            {employee.signature_url ? (
+                                                <div
+                                                    className="inline-flex items-center justify-center rounded border border-border bg-white px-1.5 py-0.5 shadow-xs"
+                                                    title={`Tanda tangan ${employee.name}`}
+                                                >
+                                                    <img
+                                                        src={employee.signature_url}
+                                                        alt={`Tanda tangan ${employee.name}`}
+                                                        className="h-7 max-w-[80px] object-contain"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs italic text-muted-foreground">
+                                                    Belum ada
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <StatusBadge

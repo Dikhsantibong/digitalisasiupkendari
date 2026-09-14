@@ -12,9 +12,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Menu Laporan (modul HAR): the monthly maintenance report and the executive
- * summary. Both are computed by {@see HarReportBuilder} and previewed for
- * print-to-PDF.
+ * Menu Laporan (modul HAR): the monthly maintenance report. Computed by
+ * {@see HarReportBuilder} and previewed for print-to-PDF.
  */
 class LaporanController extends Controller
 {
@@ -38,7 +37,6 @@ class LaporanController extends Controller
                 'year' => (int) ($request->integer('year') ?: $now->year),
             ],
             'options' => ['units' => $units->all(), 'years' => range($now->year - 3, $now->year + 1)],
-            'can_executive' => $user->hasPermissionTo(PermissionName::HarExecutiveView),
         ]);
     }
 
@@ -52,19 +50,6 @@ class LaporanController extends Controller
 
         return Inertia::render('har/laporan/monthly', [
             'data' => $this->builder->monthly($unit, $month, $year),
-        ]);
-    }
-
-    public function executive(Request $request): Response
-    {
-        $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarExecutiveView), 403);
-
-        $unit = $this->resolveUnit($request);
-        [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
-
-        return Inertia::render('har/laporan/executive', [
-            'data' => $this->builder->executive($unit, $month, $year),
         ]);
     }
 

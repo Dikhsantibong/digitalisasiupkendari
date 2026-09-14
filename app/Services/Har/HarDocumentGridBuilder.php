@@ -57,30 +57,172 @@ class HarDocumentGridBuilder
         }
         $push([$this->c('')]);
 
-        // 2. WO Summary.
-        $title('2. Work Order Summary', $numbers['wo_summary'] ?? null);
+        // 2. Maintenance Summary (FMKD-314-10.3.3-A9)
+        if (isset($report['maintenance_summary'])) {
+            $ms = $report['maintenance_summary'];
+            $title('2. Maintenance Summary', $numbers['maintenance_summary'] ?? 'FMKD-314-10.3.3-A9');
+
+            // 2.1 Rekap WO Terbit dan Complete
+            $push([$this->c('2.1 Rekapitulasi WO Terbit dan Complete (192.168.3.85/wpc-ditgas)', true)]);
+            $push([
+                $this->c('BULAN', true, 'c'),
+                $this->c('TERBIT', true, 'c'),
+                $this->c('JAN', true, 'c'), $this->c('FEB', true, 'c'), $this->c('MAR', true, 'c'),
+                $this->c('APR', true, 'c'), $this->c('MEI', true, 'c'), $this->c('JUN', true, 'c'),
+                $this->c('JUL', true, 'c'), $this->c('AUG', true, 'c'), $this->c('SEP', true, 'c'),
+                $this->c('OKT', true, 'c'), $this->c('NOV', true, 'c'), $this->c('DES', true, 'c'),
+                $this->c('OPEN', true, 'c'),
+            ]);
+            foreach ($ms['rekap_terbit_complete']['rows'] ?? [] as $r) {
+                $push([
+                    $this->c((string) $r['bulan'], false, 'c'),
+                    $this->c((string) $r['terbit'], false, 'c'),
+                    $this->c((string) ($r['complete'][1] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][2] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][3] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][4] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][5] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][6] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][7] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][8] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][9] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][10] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][11] ?? 0), false, 'c'),
+                    $this->c((string) ($r['complete'][12] ?? 0), false, 'c'),
+                    $this->c((string) $r['open'], false, 'c'),
+                ]);
+            }
+            $push([$this->c('')]);
+
+            // 2.2 Rekapitulasi Status WO
+            $push([$this->c('2.2 Rekapitulasi Status WO (192.168.3.85/wpc-ditgas)', true)]);
+            $cols = $ms['rekap_status']['columns'] ?? ['CM', 'EM', 'WR', 'RTF', 'PM', 'PDM', 'EJ', 'PAM', 'CP', 'OH', 'ADM', 'OP', 'KOSONG'];
+            $header2 = array_merge([$this->c('STATUS', true, 'c')], array_map(fn ($c) => $this->c($c, true, 'c'), $cols), [$this->c('TOTAL', true, 'c')]);
+            $push($header2);
+            foreach ($ms['rekap_status']['rows'] ?? [] as $sr) {
+                $rowCells = [$this->c((string) $sr['status'], true, 'c')];
+                foreach ($cols as $colName) {
+                    $rowCells[] = $this->c((string) ($sr['values'][$colName] ?? 0), false, 'c');
+                }
+                $rowCells[] = $this->c((string) ($sr['total'] ?? 0), true, 'c');
+                $push($rowCells);
+            }
+            $push([$this->c('')]);
+
+            // 2.3 Penyelesaian Work Order Task
+            $push([$this->c('2.3 Penyelesaian Work Order Task', true)]);
+            $push([
+                $this->c('NO', true, 'c'),
+                $this->c('MAINTENANCE TYPE', true, 'l'),
+                $this->c('RENCANA FREQ', true, 'c'),
+                $this->c('RENCANA %', true, 'c'),
+                $this->c('REALISASI FREQ', true, 'c'),
+                $this->c('REALISASI %', true, 'c'),
+                $this->c('BIAYA MATERIAL', true, 'r'),
+                $this->c('BIAYA JASA', true, 'r'),
+            ]);
+            foreach ($ms['tasks']['rows'] ?? [] as $tr) {
+                $push([
+                    $this->c((string) $tr['no'], false, 'c'),
+                    $this->c((string) $tr['name'], false, 'l'),
+                    $this->c((string) $tr['rencana_freq'], false, 'c'),
+                    $this->c($tr['rencana_pct'].'%', false, 'c'),
+                    $this->c((string) $tr['realisasi_freq'], false, 'c'),
+                    $this->c($tr['realisasi_pct'].'%', false, 'c'),
+                    $this->c($tr['material_cost'] > 0 ? $rupiah($tr['material_cost']) : '—', false, 'r'),
+                    $this->c($tr['service_cost'] > 0 ? $rupiah($tr['service_cost']) : '—', false, 'r'),
+                ]);
+            }
+            $push([$this->c('')]);
+        }
+
+        // 3. WO Summary.
+        $title('3. Work Order Summary', $numbers['wo_summary'] ?? null);
         $push([$this->c('Total WO', true), $this->c((string) $report['wo_summary']['total']), $this->c('Complete', true), $this->c((string) $report['wo_summary']['complete']), $this->c('Open', true), $this->c((string) $report['wo_summary']['open']), $this->c('%', true), $this->c($report['wo_summary']['percent'].'%')]);
         $push([$this->c('')]);
 
         // 3. Rekap WO per jenis.
         $title('3. Rekapitulasi WO per Jenis', $numbers['wo_by_type'] ?? null);
         foreach ($report['wo_by_type'] as $group) {
-            $push([$this->c('Jenis: '.$group['type'], true)]);
-            $push([$this->c('WONUM', true, 'c'), $this->c('Deskripsi', true, 'c'), $this->c('Mesin', true, 'c'), $this->c('Report', true, 'c'), $this->c('Sched Start', true, 'c'), $this->c('Sched Finish', true, 'c'), $this->c('Status', true, 'c'), $this->c('Group', true, 'c')]);
-            foreach ($group['rows'] as $r) {
+            $typeUpper = strtoupper($group['type']);
+            $isPm = $typeUpper === 'PM';
+            $isPdm = in_array($typeUpper, ['PDM', 'PdM'], true);
+            $isCm = in_array($typeUpper, ['CM', 'CORRECTIVE'], true);
+            $gNumber = match (true) {
+                $isPm => $numbers['wo_pm'] ?? 'FMKD-314-10.3.3-A12',
+                $isPdm => $numbers['wo_pdm'] ?? 'FMKD-314-10.3.3-A13',
+                $isCm => $numbers['wo_cm'] ?? 'FMKD-314-10.3.3-A14',
+                default => null,
+            };
+            $gTitle = match (true) {
+                $isPm => 'WO Preventive Maintenance',
+                $isPdm => 'WO Predictive Maintenance',
+                $isCm => 'WO Corrective Maintenance',
+                default => 'Jenis: '.$group['type'],
+            };
+            if ($gNumber) {
+                $title($gTitle, $gNumber);
+            } else {
+                $push([$this->c($gTitle, true)]);
+            }
+            $push([$this->c('NO', true, 'c'), $this->c('WONUM', true, 'c'), $this->c('DESCRIPTION', true, 'c'), $this->c('REPORT DATE', true, 'c'), $this->c('SCHED START', true, 'c'), $this->c('SCHED FINISH', true, 'c'), $this->c('STATUS', true, 'c'), $this->c('WORK GROUP', true, 'c')]);
+            foreach ($group['rows'] as $idx => $r) {
                 $push([
-                    $this->c((string) $r['wonum']),
+                    $this->c((string) ($idx + 1), false, 'c'),
+                    $this->c((string) $r['wonum'], false, 'c'),
                     $this->c((string) ($r['description'] ?? '')),
-                    $this->c((string) ($r['engine'] ?? '')),
-                    $this->c((string) ($r['report_date'] ?? '')),
-                    $this->c((string) ($r['sched_start'] ?? '')),
-                    $this->c((string) ($r['sched_finish'] ?? '')),
-                    $this->c((string) ($r['status'] ?? '')),
-                    $this->c((string) ($r['work_group'] ?? '')),
+                    $this->c((string) ($r['report_date'] ?? ''), false, 'c'),
+                    $this->c((string) ($r['sched_start'] ?? ''), false, 'c'),
+                    $this->c((string) ($r['sched_finish'] ?? ''), false, 'c'),
+                    $this->c((string) ($r['status'] ?? ''), false, 'c'),
+                    $this->c((string) ($r['work_group'] ?? ''), false, 'c'),
                 ]);
             }
         }
         $push([$this->c('')]);
+
+        // Rekapitulasi WO Task (FMKD-314-10.3.3-A11)
+        if (isset($report['rekap_task_wo'])) {
+            $rt = $report['rekap_task_wo'];
+            $title('Rekapitulasi WO Task (Preventive, Proactive, Predictive, Corrective, Emergency, ECP)', $numbers['rekap_task_wo'] ?? 'FMKD-314-10.3.3-A11');
+            $push([
+                $this->c('NO', true, 'c'),
+                $this->c('URAIAN', true, 'l'),
+                $this->c('RENCANA [Freq]', true, 'c'),
+                $this->c('RENCANA %', true, 'c'),
+                $this->c('REALISASI FREK', true, 'c'),
+                $this->c('REALISASI % Compliance', true, 'c'),
+            ]);
+            foreach ($rt['categories'] ?? [] as $cat) {
+                $push([
+                    $this->c((string) $cat['no'], true, 'c'),
+                    $this->c((string) $cat['title'], true, 'l'),
+                    $this->c((string) $cat['rencana_freq'], true, 'c'),
+                    $this->c(($cat['rencana_pct'] > 0 ? number_format($cat['rencana_pct'], 1, ',', '.') : '0').'%', true, 'c'),
+                    $this->c((string) $cat['realisasi_freq'], true, 'c'),
+                    $this->c(($cat['realisasi_pct'] > 0 ? number_format($cat['realisasi_pct'], 1, ',', '.') : '0').'%', true, 'c'),
+                ]);
+                foreach ($cat['disciplines'] ?? [] as $d) {
+                    $push([
+                        $this->c('', false, 'c'),
+                        $this->c('  '.$d['name'], false, 'l'),
+                        $this->c((string) $d['rencana_freq'], false, 'c'),
+                        $this->c(($d['rencana_pct'] > 0 ? number_format($d['rencana_pct'], 1, ',', '.') : '0').'%', false, 'c'),
+                        $this->c((string) $d['realisasi_freq'], false, 'c'),
+                        $this->c(($d['realisasi_pct'] > 0 ? number_format($d['realisasi_pct'], 1, ',', '.') : '0').'%', false, 'c'),
+                    ]);
+                }
+            }
+            $push([
+                $this->c('TOTAL', true, 'c'),
+                $this->c('', true, 'c'),
+                $this->c((string) ($rt['total_rencana_freq'] ?? 0), true, 'c'),
+                $this->c((($rt['total_rencana_pct'] ?? 0) > 0 ? number_format($rt['total_rencana_pct'], 1, ',', '.') : '0').'%', true, 'c'),
+                $this->c((string) ($rt['total_realisasi_freq'] ?? 0), true, 'c'),
+                $this->c((($rt['total_realisasi_pct'] ?? 0) > 0 ? number_format($rt['total_realisasi_pct'], 1, ',', '.') : '0').'%', true, 'c'),
+            ]);
+            $push([$this->c('')]);
+        }
 
         // 4. WO tertunda.
         $title('4. WO Tertunda', null);

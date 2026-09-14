@@ -6,7 +6,9 @@ use App\Http\Controllers\K3\CertificateController;
 use App\Http\Controllers\K3\DocumentController;
 use App\Http\Controllers\K3\EmergencyFacilityController;
 use App\Http\Controllers\K3\FireExtinguisherCheckController;
+use App\Http\Controllers\K3\InputHubController;
 use App\Http\Controllers\K3\InspectionController;
+use App\Http\Controllers\K3\JadwalController;
 use App\Http\Controllers\K3\LaporanController;
 use App\Http\Controllers\K3\MasterController;
 use App\Http\Controllers\K3\MonitoringController;
@@ -23,6 +25,9 @@ Route::middleware(['auth', 'verified'])
     ->prefix('k3')
     ->name('k3.')
     ->group(function (): void {
+        Route::get('jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+        Route::get('input', [InputHubController::class, 'index'])->name('input.index');
+
         Route::get('input/time-frame', [TimeFrameController::class, 'index'])->name('input.time-frame.index');
         Route::post('input/time-frame', [TimeFrameController::class, 'store'])->name('input.time-frame.store');
 

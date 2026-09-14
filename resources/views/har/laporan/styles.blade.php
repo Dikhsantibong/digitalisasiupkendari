@@ -35,17 +35,103 @@ body { font-size: 11px; color: #000; }
 .har-p { text-align: justify; line-height: 1.5; margin: 4px 0; }
 .har-muted { color: #555; font-size: 10px; }
 .break-before { page-break-before: always; }
-/* Corporate cover — first printed sheet, report starts on the next page. */
-.har-cover { page-break-after: always; border: 4px double #1e293b; text-align: center; padding: 48px 30px; }
-.har-cover img { height: 60px; }
-.har-cover .har-cover-org { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #1e293b; margin-top: 10px; }
-.har-cover .har-cover-sub { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin-top: 4px; }
-.har-cover .har-cover-rule { width: 120px; height: 4px; background: #1e293b; margin: 26px auto; }
-.har-cover .har-cover-title { font-size: 30px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; color: #0f172a; line-height: 1.2; }
-.har-cover .har-cover-unit { display: inline-block; background: #1e293b; color: #fff; font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; padding: 12px 32px; margin: 20px 0; }
-.har-cover .har-cover-period { font-size: 15px; color: #334155; }
-.har-cover .har-cover-footer { font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 3px; color: #0f172a; margin-top: 44px; }
-.har-cover .har-cover-footer small { display: block; font-size: 10px; font-weight: normal; letter-spacing: 1px; color: #64748b; margin-top: 4px; }
+/* Corporate cover — redesigned matching PLN + MKP branding */
+.har-cover {
+    page-break-after: always;
+    margin: -16mm -12mm -22mm -12mm;
+    padding: 0;
+    width: 210mm;
+    min-height: 297mm;
+    height: 297mm;
+    position: relative;
+    overflow: hidden;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+.har-cover-bg {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    height: 297mm;
+    z-index: 1;
+}
+.har-cover-content {
+    position: relative;
+    z-index: 10;
+    padding-top: 32mm;
+    text-align: center;
+}
+.har-logos-table {
+    margin: 0 auto;
+    border-collapse: collapse;
+}
+.har-logo-cell-left { vertical-align: middle; text-align: right; padding-right: 18px; }
+.har-logo-divider-cell { vertical-align: middle; width: 3px; text-align: center; }
+.har-logo-vdiv { width: 2px; height: 48px; background-color: #0b2545; }
+.har-logo-cell-right { vertical-align: middle; text-align: left; padding-left: 18px; }
+.har-logo-pln { height: 50px; }
+.har-logo-mkp { height: 45px; }
+
+.har-cover-title-wrap {
+    margin-top: 28mm;
+    text-align: center;
+}
+.har-cover-main-title {
+    font-size: 26pt;
+    font-weight: bold;
+    color: #0b2545;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    line-height: 1.3;
+    margin: 0;
+}
+.har-cover-title-line {
+    width: 220px;
+    height: 2.5px;
+    background-color: #0284c7;
+    margin: 16px auto 0;
+}
+.har-cover-spec-box {
+    margin: 26mm auto 0;
+    width: 145mm;
+    border: 2px solid #0284c7;
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 16px 22px;
+    text-align: left;
+}
+.har-spec-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.har-spec-table td {
+    padding: 4px 0;
+    font-size: 10.5pt;
+    font-weight: bold;
+    color: #0b2545;
+    text-transform: uppercase;
+}
+.har-spec-label { width: 55mm; }
+.har-spec-colon { width: 6mm; text-align: center; }
+
+.har-cover-pillars-badge {
+    position: absolute;
+    left: 14mm;
+    bottom: 12mm;
+    z-index: 10;
+    background: #ffffff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    border: 1px solid #cbd5e1;
+}
+.har-pillars-table { border-collapse: collapse; }
+.har-pillar-item { vertical-align: middle; padding: 0 6px; }
+.har-pillar-sep { vertical-align: middle; color: #cbd5e1; font-size: 14pt; padding: 0 2px; }
+.har-p-icon { width: 18px; height: 18px; vertical-align: middle; display: inline-block; }
+.har-p-text { vertical-align: middle; display: inline-block; margin-left: 4px; color: #0b2545; line-height: 1.1; }
+.har-p-text strong { font-size: 7pt; display: block; font-weight: bold; }
+.har-p-text small { font-size: 5.5pt; color: #0b2545; }
 .har-toc { width: 100%; border-collapse: collapse; margin-top: 4px; }
 .har-toc td { padding: 2px 4px; }
 .har-toc td.n { width: 28px; font-weight: bold; }

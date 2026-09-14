@@ -265,6 +265,10 @@ class BeritaAcaraBuilder
 
     private function employeeName(Unit $unit, string $positionKeyword): ?string
     {
+        if (str_contains(strtolower($positionKeyword), 'manajer') || str_contains(strtolower($positionKeyword), 'manager')) {
+            return $unit->manager()?->name;
+        }
+
         return $unit->employees()
             ->where('is_active', true)
             ->where('position', 'like', "%{$positionKeyword}%")

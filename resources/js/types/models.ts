@@ -35,6 +35,7 @@ export type ServiceUnitRow = {
     description: string | null;
     is_active: boolean;
     units_count: number;
+    manager?: string | null;
 };
 
 export type UnitRow = {
@@ -84,6 +85,10 @@ export type EmployeeRow = {
     is_active: boolean;
     unit_id: number | null;
     unit: string | null;
+    service_unit_id?: number | null;
+    service_unit?: string | null;
+    signature_url?: string | null;
+    has_signature?: boolean;
 };
 
 export type RoleRow = {

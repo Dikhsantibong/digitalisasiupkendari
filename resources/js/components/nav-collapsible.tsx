@@ -12,6 +12,9 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { useCurrentUrl } from '@/hooks/use-current-url';
 import type { NavItem } from '@/types';
@@ -28,7 +31,11 @@ export function NavCollapsible({
     items: NavItem[];
 }) {
     const { isCurrentUrl } = useCurrentUrl();
-    const hasActive = items.some((item) => isCurrentUrl(item.href));
+    const hasActive = items.some((item) =>
+        item.href
+            ? isCurrentUrl(item.href)
+            : item.items?.some((sub) => isCurrentUrl(sub.href)),
+    );
 
     return (
         <Collapsible
@@ -49,20 +56,69 @@ export function NavCollapsible({
                 <CollapsibleContent>
                     <SidebarGroupContent>
                         <SidebarMenu>
-                            {items.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton
-                                        asChild
-                                        isActive={isCurrentUrl(item.href)}
-                                        tooltip={{ children: item.title }}
-                                    >
-                                        <Link href={item.href} prefetch>
-                                            {item.icon && <item.icon />}
-                                            <span>{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
+                            {items.map((item) => {
+                                if (item.items && item.items.length > 0) {
+                                    const isSubActive = item.items.some((sub) =>
+                                        isCurrentUrl(sub.href),
+                                    );
+                                    return (
+                                        <Collapsible
+                                            key={item.title}
+                                            asChild
+                                            defaultOpen={isSubActive}
+                                            className="group/sub-collapsible"
+                                        >
+                                            <SidebarMenuItem>
+                                                <CollapsibleTrigger asChild>
+                                                    <SidebarMenuButton
+                                                        tooltip={{ children: item.title }}
+                                                        className="cursor-pointer"
+                                                        isActive={isSubActive}
+                                                    >
+                                                        {item.icon && <item.icon />}
+                                                        <span>{item.title}</span>
+                                                        <ChevronRight className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/sub-collapsible:rotate-90" />
+                                                    </SidebarMenuButton>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent>
+                                                    <SidebarMenuSub>
+                                                        {item.items.map((subItem) => (
+                                                            <SidebarMenuSubItem key={subItem.title}>
+                                                                <SidebarMenuSubButton
+                                                                    asChild
+                                                                    isActive={isCurrentUrl(subItem.href)}
+                                                                >
+                                                                    <Link href={subItem.href} prefetch>
+                                                                        {subItem.icon && (
+                                                                            <subItem.icon className="size-3.5" />
+                                                                        )}
+                                                                        <span>{subItem.title}</span>
+                                                                    </Link>
+                                                                </SidebarMenuSubButton>
+                                                            </SidebarMenuSubItem>
+                                                        ))}
+                                                    </SidebarMenuSub>
+                                                </CollapsibleContent>
+                                            </SidebarMenuItem>
+                                        </Collapsible>
+                                    );
+                                }
+
+                                return (
+                                    <SidebarMenuItem key={item.title}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            isActive={item.href ? isCurrentUrl(item.href) : false}
+                                            tooltip={{ children: item.title }}
+                                        >
+                                            <Link href={item.href ?? '#'} prefetch>
+                                                {item.icon && <item.icon />}
+                                                <span>{item.title}</span>
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                );
+                            })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </CollapsibleContent>

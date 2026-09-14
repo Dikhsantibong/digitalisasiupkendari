@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { FilePen, Gauge } from 'lucide-react';
+import { FilePen } from 'lucide-react';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -14,10 +14,9 @@ import type { IdName } from '@/types';
 type Props = {
     filters: { unit_id: number; month: number; year: number };
     options: { units: IdName[]; years: number[] };
-    can_executive: boolean;
 };
 
-export default function HarLaporanIndex({ filters, options, can_executive }: Props) {
+export default function HarLaporanIndex({ filters, options }: Props) {
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
             laporan.index().url,
@@ -30,11 +29,11 @@ export default function HarLaporanIndex({ filters, options, can_executive }: Pro
 
     return (
         <>
-            <Head title="Laporan Pemeliharaan" />
+            <Head title="Laporan Pemeliharaan Pembangkit" />
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
-                    title="Laporan Pemeliharaan"
-                    description="Pilih unit & periode, lalu buka laporan bulanan atau executive summary untuk dicetak."
+                    title="Laporan Pemeliharaan Pembangkit"
+                    description="Pilih unit & periode, lalu buka dokumen laporan pemeliharaan pembangkit untuk dilihat, diedit & dicetak."
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
@@ -61,7 +60,7 @@ export default function HarLaporanIndex({ filters, options, can_executive }: Pro
                 <div className="grid gap-3 md:grid-cols-2">
                     <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
                         <div>
-                            <h2 className="text-base font-semibold text-foreground">Laporan Bulanan HAR</h2>
+                            <h2 className="text-base font-semibold text-foreground">Laporan Pemeliharaan Pembangkit</h2>
                             <p className="mt-1 text-[13px] text-muted-foreground">
                                 SR & WO summary, rekap WO per jenis, WO tertunda, biaya, rencana/realisasi, log kegiatan & foto.
                             </p>
@@ -73,21 +72,6 @@ export default function HarLaporanIndex({ filters, options, can_executive }: Pro
                             </Button>
                         </div>
                     </div>
-
-                    {can_executive && (
-                        <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-                            <div>
-                                <h2 className="text-base font-semibold text-foreground">Executive Summary</h2>
-                                <p className="mt-1 text-[13px] text-muted-foreground">
-                                    Rangkuman otomatis: jumlah SR/WO, % complete, biaya & akumulatif, WO tertunda.
-                                </p>
-                            </div>
-                            <Button onClick={() => router.get(laporan.executive(query).url)}>
-                                <Gauge className="size-4" />
-                                Lihat &amp; Cetak
-                            </Button>
-                        </div>
-                    )}
                 </div>
             </div>
         </>
@@ -97,6 +81,6 @@ export default function HarLaporanIndex({ filters, options, can_executive }: Pro
 HarLaporanIndex.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Laporan Pemeliharaan', href: laporan.index() },
+        { title: 'Laporan Pemeliharaan Pembangkit', href: laporan.index() },
     ],
 };

@@ -42,15 +42,101 @@
 
 {{-- 1. COVER --}}
 <div class="k3-cover" id="sec-1">
-    <img src="/logo/sidebar-logo.png" alt="Logo" style="height:60px;">
-    <div class="k3-cover-org">PT PLN Nusantara Power</div>
-    <div class="k3-cover-sub">{{ $report['unit']['service_unit'] ?? 'Unit Pelaksana Pengendalian Pembangkitan Kendari' }}</div>
-    <div class="k3-cover-rule"></div>
-    <div class="k3-cover-title">Laporan Kinerja<br>K3 &amp; Keamanan</div>
-    <div class="k3-cover-unit">{{ $report['unit']['name'] }}</div>
-    <div class="k3-cover-period">Periode <strong>{{ $report['period']['label'] }}</strong></div>
-    <div class="k3-cover-rule"></div>
-    <div class="k3-cover-footer">UP Kendari<small>Unit Pelaksana Pengendalian Pembangkitan Kendari</small></div>
+    <svg class="k3-cover-bg" viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="0,0 210,0 0,270" fill="#0b2545" />
+        <polygon points="210,0 248,0 0,320 0,270" fill="#00a3e0" />
+        <polygon points="248,0 262,0 0,338 0,320" fill="#f59e0b" />
+        <polygon points="0,110 135,35 110,170 0,230" fill="#0080b0" opacity="0.25" />
+        <polygon points="460,1123 794,520 794,1123" fill="#005b82" />
+        <path d="M 0 715 Q 220 815 540 735 Q 568 725 565 750 C 560 780 480 960 470 1123 L 0 1123 Z" fill="#0b2545" />
+        <path d="M 0 707 Q 220 807 540 727 Q 575 717 572 750 C 567 780 487 960 477 1123 L 470 1123 C 480 960 560 780 565 750 Q 568 725 540 735 Q 220 815 0 715 Z" fill="#f59e0b" />
+    </svg>
+
+    <div class="k3-cover-content">
+        <div class="k3-cover-logos">
+            <table class="k3-logos-table">
+                <tr>
+                    <td class="k3-logo-cell-left">
+                        <img src="/logo/sidebar-logo.png" class="k3-logo-pln" alt="PLN Nusantara Power">
+                    </td>
+                    <td class="k3-logo-divider-cell">
+                        <div class="k3-logo-vdiv"></div>
+                    </td>
+                    <td class="k3-logo-cell-right">
+                        <img src="/logo/mkp.jpg" class="k3-logo-mkp" alt="Mitra Karya Prima">
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="k3-cover-title-wrap">
+            <h1 class="k3-cover-main-title">
+                LAPORAN K3 LINGKUNGAN<br>PEMBANGKIT
+            </h1>
+            <div class="k3-cover-title-line"></div>
+        </div>
+
+        <div class="k3-cover-spec-box">
+            <table class="k3-spec-table">
+                <tr>
+                    <td class="k3-spec-label">NAMA PEMBANGKIT</td>
+                    <td class="k3-spec-colon">:</td>
+                    <td class="k3-spec-val">{{ strtoupper($report['unit']['name'] ?? '') }}</td>
+                </tr>
+                <tr>
+                    <td class="k3-spec-label">PERIODE PELAPORAN</td>
+                    <td class="k3-spec-colon">:</td>
+                    <td class="k3-spec-val">BULAN {{ strtoupper($report['period']['label'] ?? '') }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="k3-cover-pillars-badge">
+        <table class="k3-pillars-table">
+            <tr>
+                <td class="k3-pillar-item">
+                    <svg class="k3-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                    <span class="k3-p-text">
+                        <strong>ANDAL</strong><small>RELIABLE</small>
+                    </span>
+                </td>
+                <td class="k3-pillar-sep">|</td>
+                <td class="k3-pillar-item">
+                    <svg class="k3-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span class="k3-p-text">
+                        <strong>EFISIEN</strong><small>EFFICIENT</small>
+                    </span>
+                </td>
+                <td class="k3-pillar-sep">|</td>
+                <td class="k3-pillar-item">
+                    <svg class="k3-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+                    </svg>
+                    <span class="k3-p-text">
+                        <strong>BERSIH</strong><small>CLEAN</small>
+                    </span>
+                </td>
+                <td class="k3-pillar-sep">|</td>
+                <td class="k3-pillar-item">
+                    <svg class="k3-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    <span class="k3-p-text">
+                        <strong>AMAN</strong><small>SAFE</small>
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
 </div>
 
 @include('k3.laporan.letterhead', ['data' => $data])

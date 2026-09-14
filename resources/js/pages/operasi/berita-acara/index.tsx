@@ -1,13 +1,15 @@
 import { Head, router } from '@inertiajs/react';
-import { FileText } from 'lucide-react';
+import { FileCog, FileText } from 'lucide-react';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import beritaAcara from '@/routes/operasi/berita-acara';
+import documentTemplate from '@/routes/operasi/document-template';
 import type { IdName } from '@/types';
 
 type DocType = { value: string; label: string; title: string };
@@ -22,6 +24,7 @@ type Props = {
 };
 
 export default function BeritaAcaraIndex({ filters, types, options }: Props) {
+    const { can } = usePermissions();
     const visit = (patch: Partial<Filters>) => {
         router.get(
             beritaAcara.index().url,
@@ -49,6 +52,18 @@ export default function BeritaAcaraIndex({ filters, types, options }: Props) {
                 <PageHeader
                     title="Berita Acara"
                     description="Pilih unit dan periode, lalu satu klik untuk melihat & mencetak dokumen resmi."
+                    actions={
+                        can('operasi.master.manage') && (
+                            <Button
+                                variant="outline"
+                                onClick={() => router.get(documentTemplate.index().url)}
+                                className="gap-2"
+                            >
+                                <FileCog className="size-4" />
+                                Kelola Template BA
+                            </Button>
+                        )
+                    }
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">

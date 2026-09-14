@@ -54,10 +54,10 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
 
     return (
         <>
-            <Head title="Laporan Operasi" />
+            <Head title="Laporan Operasi Pembangkit" />
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
-                    title="Laporan Operasi"
+                    title="Laporan Operasi Pembangkit"
                     description="Pilih unit, mesin, dan periode, lalu satu klik untuk melihat & mencetak."
                 />
 
@@ -140,6 +140,6 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
 LaporanIndex.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Laporan Operasi', href: laporan.index() },
+        { title: 'Laporan Operasi Pembangkit', href: laporan.index() },
     ],
 };

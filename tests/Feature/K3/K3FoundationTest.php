@@ -55,4 +55,34 @@ class K3FoundationTest extends TestCase
         $this->assertDatabaseHas('work_modules', ['code' => 'k3', 'is_active' => true]);
         $this->assertNotNull(WorkModule::query()->where('code', 'k3')->first());
     }
+
+    public function test_authorized_user_can_access_k3_jadwal_and_input_hub(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+
+        $this->actingAs($user)
+            ->get(route('k3.jadwal.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('k3/jadwal/index'));
+
+        $this->actingAs($user)
+            ->get(route('k3.input.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('k3/input/index'));
+    }
+
+    public function test_unauthorized_user_cannot_access_k3_jadwal_or_input_hub(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $this->actingAs($user)
+            ->get(route('k3.jadwal.index'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('k3.input.index'))
+            ->assertForbidden();
+    }
 }

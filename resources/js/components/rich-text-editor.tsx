@@ -61,6 +61,11 @@ export function RichTextEditor({
                 branding: false,
                 promotion: false,
                 statusbar: true,
+                extended_valid_elements:
+                    'svg[*],defs[*],pattern[*],desc[*],metadata[*],g[*],mask[*],path[*],line[*],marker[*],rect[*],circle[*],ellipse[*],polygon[*],polyline[*],linearGradient[*],radialGradient[*],stop[*],text[*],tspan[*],use[*],img[*]',
+                custom_elements:
+                    '~svg,~defs,~pattern,~desc,~metadata,~g,~mask,~path,~line,~marker,~rect,~circle,~ellipse,~polygon,~polyline,~linearGradient,~radialGradient,~stop,~text,~tspan,~use',
+                allow_svg_data_urls: true,
                 plugins: [
                     'advlist',
                     'autolink',

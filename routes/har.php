@@ -4,6 +4,9 @@ use App\Http\Controllers\Har\ActivityController;
 use App\Http\Controllers\Har\AttachmentController;
 use App\Http\Controllers\Har\CostController;
 use App\Http\Controllers\Har\DocumentController;
+use App\Http\Controllers\Har\FormulirController;
+use App\Http\Controllers\Har\InputHubController;
+use App\Http\Controllers\Har\JadwalController;
 use App\Http\Controllers\Har\LaporanController;
 use App\Http\Controllers\Har\MasterController;
 use App\Http\Controllers\Har\ScheduleController;
@@ -20,6 +23,10 @@ Route::middleware(['auth', 'verified'])
     ->prefix('har')
     ->name('har.')
     ->group(function (): void {
+        Route::get('jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+        Route::get('input', [InputHubController::class, 'index'])->name('input.index');
+        Route::get('formulir', [FormulirController::class, 'index'])->name('formulir.index');
+
         Route::get('input/work-order', [WorkOrderController::class, 'index'])->name('input.work-order.index');
         Route::post('input/work-order', [WorkOrderController::class, 'store'])->name('input.work-order.store');
 
@@ -43,7 +50,6 @@ Route::middleware(['auth', 'verified'])
 
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/bulanan', [LaporanController::class, 'monthly'])->name('laporan.monthly');
-        Route::get('laporan/executive', [LaporanController::class, 'executive'])->name('laporan.executive');
 
         Route::get('laporan/dokumen', [DocumentController::class, 'edit'])->name('laporan.document.edit');
         Route::post('laporan/dokumen', [DocumentController::class, 'store'])->name('laporan.document.store');

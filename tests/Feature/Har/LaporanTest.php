@@ -67,8 +67,7 @@ class LaporanTest extends TestCase
             ->get(route('har.laporan.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('har/laporan/index')
-                ->where('can_executive', true),
+                ->component('har/laporan/index'),
             );
     }
 
@@ -88,24 +87,10 @@ class LaporanTest extends TestCase
                 ->where('data.sr_summary.total', 1)
                 ->where('data.cost.auto_total', 300)
                 ->has('data.wo_by_type', 1)
-                ->has('data.wo_waiting', 1),
-            );
-    }
-
-    public function test_the_executive_summary_condenses_the_report(): void
-    {
-        $unit = Unit::factory()->create();
-        $this->seedReportData($unit);
-
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
-            ->get(route('har.laporan.executive', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->component('har/laporan/executive')
-                ->where('data.wo_total', 2)
-                ->where('data.wo_complete', 1)
-                ->where('data.waiting_count', 1)
-                ->where('data.cost_total', 300),
+                ->has('data.wo_waiting', 1)
+                ->has('data.rekap_task_wo.categories', 6)
+                ->where('data.rekap_task_wo.total_rencana_freq', 2)
+                ->where('data.rekap_task_wo.total_realisasi_freq', 1),
             );
     }
 

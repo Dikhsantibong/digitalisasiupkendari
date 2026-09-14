@@ -83,6 +83,29 @@ class Unit extends Model
     }
 
     /**
+     * The Manager UL for this generating unit, resolved from its parent service unit or directly.
+     */
+    public function manager(): ?Employee
+    {
+        if ($this->service_unit_id !== null && $this->serviceUnit) {
+            $suManager = $this->serviceUnit->manager();
+            if ($suManager !== null) {
+                return $suManager;
+            }
+        }
+
+        return $this->employees()
+            ->where('is_active', true)
+            ->where(function (Builder $q): void {
+                $q->where('position', 'like', '%manager ul%')
+                    ->orWhere('position', 'like', '%manajer ul%')
+                    ->orWhere('position', 'like', '%manager%')
+                    ->orWhere('position', 'like', '%manajer%');
+            })
+            ->first();
+    }
+
+    /**
      * @return HasMany<RoleAssignment, $this>
      */
     public function roleAssignments(): HasMany

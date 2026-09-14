@@ -79,4 +79,43 @@ class HarFoundationTest extends TestCase
 
         (new WpcWorkOrderSource)->workOrders(Unit::factory()->create(), 8, 2026);
     }
+
+    public function test_authorized_user_can_access_har_jadwal_and_input_hub(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+
+        $this->actingAs($user)
+            ->get(route('har.jadwal.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('har/jadwal/index'));
+
+        $this->actingAs($user)
+            ->get(route('har.input.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('har/input/index'));
+
+        $this->actingAs($user)
+            ->get(route('har.formulir.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('har/formulir/index'));
+    }
+
+    public function test_unauthorized_user_cannot_access_har_jadwal_or_input_hub(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $this->actingAs($user)
+            ->get(route('har.jadwal.index'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('har.input.index'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('har.formulir.index'))
+            ->assertForbidden();
+    }
 }

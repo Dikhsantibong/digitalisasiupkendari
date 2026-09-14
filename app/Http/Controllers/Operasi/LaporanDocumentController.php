@@ -36,9 +36,9 @@ class LaporanDocumentController extends Controller
      * documents saved against an older layout re-render from the new template.
      * v2 = full framework (cover, exec summary, daftar isi, istilah) + one
      * section per page; v3 = corporate polish (footer + page numbers, ToC
-     * leaders, landscape wide tables).
+     * leaders, landscape wide tables); v4 = redesigned corporate cover matching MKP+PLN branding.
      */
-    private const BODY_VERSION = 3;
+    private const BODY_VERSION = 4;
 
     public function __construct(
         private readonly ReportRegistry $registry,

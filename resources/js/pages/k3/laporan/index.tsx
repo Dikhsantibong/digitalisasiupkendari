@@ -26,11 +26,11 @@ export default function K3LaporanIndex({ filters, options }: Props) {
 
     return (
         <>
-            <Head title="Laporan K3 & Keamanan" />
+            <Head title="Laporan K3 Lingkungan Pembangkit" />
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
-                    title="Laporan K3 & Keamanan"
-                    description="Pilih unit & periode, lalu lihat & cetak laporan penuh, atau buka dokumen untuk diedit (teks/Excel)."
+                    title="Laporan K3 Lingkungan Pembangkit"
+                    description="Pilih unit & periode, lalu lihat & cetak laporan K3 lingkungan pembangkit, atau buka dokumen untuk diedit."
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
@@ -57,7 +57,7 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                 <div className="grid gap-3 md:grid-cols-2">
                     <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
                         <div>
-                            <h2 className="text-base font-semibold text-foreground">Dokumen Laporan K3 Penuh</h2>
+                            <h2 className="text-base font-semibold text-foreground">Laporan K3 Lingkungan Pembangkit</h2>
                             <p className="mt-1 text-[13px] text-muted-foreground">
                                 Gabungan semua form (Time Frame, kecelakaan, APAR, kesiapan darurat, patroli, sertifikat, inspeksi, lampiran) terisi otomatis — bisa diedit teks/Excel lalu cetak PDF.
                             </p>
@@ -78,6 +78,6 @@ export default function K3LaporanIndex({ filters, options }: Props) {
 K3LaporanIndex.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Laporan K3', href: laporan.index() },
+        { title: 'Laporan K3 Lingkungan Pembangkit', href: laporan.index() },
     ],
 };

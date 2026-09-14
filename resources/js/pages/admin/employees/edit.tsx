@@ -10,6 +10,7 @@ type Props = {
     employee: EmployeeRow;
     options: {
         units: IdName[];
+        service_units?: IdName[];
     };
 };
 

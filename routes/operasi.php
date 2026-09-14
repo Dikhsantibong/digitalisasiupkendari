@@ -6,6 +6,8 @@ use App\Http\Controllers\Operasi\DailyReportController;
 use App\Http\Controllers\Operasi\DocumentTemplateController;
 use App\Http\Controllers\Operasi\FeederReadingController;
 use App\Http\Controllers\Operasi\FuelReceiptController;
+use App\Http\Controllers\Operasi\InputHubController;
+use App\Http\Controllers\Operasi\JadwalController;
 use App\Http\Controllers\Operasi\LaporanController;
 use App\Http\Controllers\Operasi\LaporanDocumentController;
 use App\Http\Controllers\Operasi\MasterController;
@@ -21,6 +23,9 @@ Route::middleware(['auth', 'verified'])
     ->prefix('operasi')
     ->name('operasi.')
     ->group(function (): void {
+        Route::get('jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+        Route::get('input', [InputHubController::class, 'index'])->name('input.index');
+
         Route::get('input/laporan-harian', [DailyReportController::class, 'index'])
             ->name('input.daily-report.index');
         Route::post('input/laporan-harian', [DailyReportController::class, 'store'])

@@ -18,9 +18,9 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Assembles the HAR monthly report and its executive summary from the same
- * data, reading Work Orders / Service Requests only through the
- * {@see WorkOrderSource} interface (so WPC can replace the source later).
+ * Assembles the HAR monthly report, reading Work Orders / Service Requests
+ * only through the {@see WorkOrderSource} interface (so WPC can replace
+ * the source later).
  */
 class HarReportBuilder
 {
@@ -31,15 +31,18 @@ class HarReportBuilder
      */
     public function monthly(Unit $unit, int $month, int $year): array
     {
-        $unit->loadMissing('serviceUnit:id,name');
+        $unit->loadMissing(['serviceUnit:id,name', 'machines' => fn ($q) => $q->where('is_active', true)->orderBy('name')]);
         $workOrders = $this->source->workOrders($unit, $month, $year);
         $serviceRequests = $this->source->serviceRequests($unit, $month, $year);
 
         return [
             'unit' => ['name' => $unit->name, 'service_unit' => $unit->serviceUnit?->name],
             'period' => ['month' => $month, 'year' => $year, 'label' => Indonesian::monthName($month).' '.$year],
-            'sr_summary' => $this->srSummary($serviceRequests),
+            'machines' => $unit->machines->pluck('name')->all(),
+            'sr_summary' => $this->srSummary($serviceRequests, $unit),
+            'maintenance_summary' => $this->maintenanceSummary($workOrders, $unit, $month, $year),
             'wo_summary' => $this->woSummary($workOrders),
+            'rekap_task_wo' => $this->rekapTaskWo($workOrders),
             'wo_by_type' => $this->woByType($workOrders),
             'wo_waiting' => $this->woWaiting($workOrders),
             'cost' => $this->cost($unit->id, $month, $year),
@@ -50,36 +53,10 @@ class HarReportBuilder
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    public function executive(Unit $unit, int $month, int $year): array
-    {
-        $report = $this->monthly($unit, $month, $year);
-
-        return [
-            'unit' => $report['unit'],
-            'period' => $report['period'],
-            'sr_total' => $report['sr_summary']['total'],
-            'sr_open' => $report['sr_summary']['open'],
-            'wo_total' => $report['wo_summary']['total'],
-            'wo_complete' => $report['wo_summary']['complete'],
-            'wo_percent' => $report['wo_summary']['percent'],
-            'wo_by_type' => collect($report['wo_by_type'])->map(fn (array $g): array => [
-                'type' => $g['type'],
-                'count' => count($g['rows']),
-            ])->all(),
-            'waiting_count' => collect($report['wo_waiting'])->sum(fn (array $g): int => count($g['rows'])),
-            'cost_total' => $report['cost']['effective_total'],
-            'cost_ytd' => $report['cost']['ytd'],
-            'cost_source' => $report['cost']['source'],
-        ];
-    }
-
-    /**
      * @param  Collection<int, ServiceRequest>  $srs
      * @return array<string, mixed>
      */
-    private function srSummary($srs): array
+    private function srSummary($srs, Unit $unit): array
     {
         $byCategory = $srs->groupBy(fn ($sr): string => $sr->category?->code ?? 'Lainnya')
             ->map(fn ($group, string $code): array => ['category' => $code, 'count' => $group->count()])
@@ -87,11 +64,36 @@ class HarReportBuilder
 
         $open = $srs->filter(fn ($sr): bool => $sr->status->value === 'open')->count();
 
+        $byEngine = $srs->groupBy(fn ($sr): string => $sr->engine?->name ?? 'Common')
+            ->map(fn ($group, string $engine): array => [
+                'engine' => $engine,
+                'total' => $group->count(),
+                'terbit' => $group->filter(fn ($sr) => strtoupper($sr->category?->code ?? '') !== 'CANCEL')->count(),
+                'cancel' => $group->filter(fn ($sr) => strtoupper($sr->category?->code ?? '') === 'CANCEL')->count(),
+                'flm' => $group->filter(fn ($sr) => strtoupper($sr->category?->code ?? '') === 'FLM')->count(),
+                'cm' => $group->filter(fn ($sr) => strtoupper($sr->category?->code ?? '') === 'CM')->count(),
+                'pdm' => $group->filter(fn ($sr) => strtoupper($sr->category?->code ?? '') === 'PDM')->count(),
+            ])
+            ->values()->all();
+
+        $topAssets = $srs->groupBy(fn ($sr) => $sr->description ?: ($sr->sr_number ?: 'Asset'))
+            ->map(fn ($group, $desc) => [
+                'asset' => $group->first()->sr_number ?? '—',
+                'freq' => $group->count(),
+                'description' => $desc,
+            ])
+            ->sortByDesc('freq')
+            ->take(5)
+            ->values()
+            ->all();
+
         return [
             'total' => $srs->count(),
             'open' => $open,
             'close' => $srs->count() - $open,
             'by_category' => $byCategory,
+            'by_engine' => $byEngine,
+            'top_assets' => $topAssets,
         ];
     }
 
@@ -331,4 +333,323 @@ class HarReportBuilder
 
         return round($total, 2);
     }
+
+    /**
+     * @param  Collection<int, WorkOrder>  $wos
+     * @return array<string, mixed>
+     */
+    private function maintenanceSummary(Collection $wos, Unit $unit, int $month, int $year): array
+    {
+        return [
+            'rekap_terbit_complete' => $this->rekapTerbitComplete($unit, $year),
+            'rekap_status' => $this->rekapStatus($unit, $wos),
+            'tasks' => $this->tasksBreakdown($wos),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rekapTerbitComplete(Unit $unit, int $year): array
+    {
+        $allWos = WorkOrder::query()
+            ->where('unit_id', $unit->id)
+            ->where(function ($q) use ($year) {
+                $q->whereYear('report_date', '<=', $year)
+                    ->orWhereNull('report_date');
+            })
+            ->with(['status:id,code,is_closed'])
+            ->get();
+
+        if ($allWos->isEmpty()) {
+            return [
+                'url' => '192.168.3.85/wpc-ditgas',
+                'rows' => [],
+            ];
+        }
+
+        $periods = [];
+        $priorYearLabel = (string) ($year - 1);
+        $priorWos = $allWos->filter(fn ($w) => $w->report_date && $w->report_date->year < $year);
+        if ($priorWos->isNotEmpty()) {
+            $periods[$priorYearLabel] = $priorWos;
+        }
+
+        for ($m = 1; $m <= 12; $m++) {
+            $mKey = sprintf('%04d%02d', $year, $m);
+            $mWos = $allWos->filter(fn ($w) => $w->report_date && $w->report_date->year == $year && $w->report_date->month == $m);
+            if ($mWos->isNotEmpty()) {
+                $periods[$mKey] = $mWos;
+            }
+        }
+
+        $rows = [];
+        foreach ($periods as $label => $group) {
+            $terbit = $group->count();
+            $complete = [];
+            $totalComplete = 0;
+            for ($c = 1; $c <= 12; $c++) {
+                $cCount = $group->filter(function ($w) use ($year, $c) {
+                    if ($w->actual_finish && $w->actual_finish->year == $year && $w->actual_finish->month == $c) {
+                        return true;
+                    }
+
+                    return false;
+                })->count();
+                $complete[$c] = $cCount;
+                $totalComplete += $cCount;
+            }
+            $open = max(0, $terbit - $totalComplete);
+            $rows[] = [
+                'bulan' => $label,
+                'terbit' => $terbit,
+                'complete' => $complete,
+                'open' => $open,
+            ];
+        }
+
+        return [
+            'url' => '192.168.3.85/wpc-ditgas',
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, WorkOrder>  $wos
+     * @return array<string, mixed>
+     */
+    private function rekapStatus(Unit $unit, Collection $wos): array
+    {
+        $types = ['CM', 'EM', 'WR', 'RTF', 'PM', 'PDM', 'EJ', 'PAM', 'CP', 'OH', 'ADM', 'OP', 'KOSONG'];
+        $statuses = ['APPR', 'CLOSE', 'WAPPR', 'WMATL', 'WPROC', 'WSCH'];
+
+        if ($wos->isEmpty()) {
+            return [
+                'url' => '192.168.3.85/wpc-ditgas',
+                'columns' => $types,
+                'rows' => [],
+                'totals' => array_fill_keys($types, 0),
+                'grand_total' => 0,
+            ];
+        }
+
+        $rows = [];
+        $totals = array_fill_keys($types, 0);
+        $grandTotal = 0;
+
+        foreach ($statuses as $statusCode) {
+            $forStatus = $wos->filter(fn (WorkOrder $w) => strtoupper($w->status?->code ?? '') === $statusCode);
+            $values = [];
+            $rowTotal = 0;
+
+            foreach ($types as $typeCode) {
+                if ($typeCode === 'KOSONG') {
+                    $c = $forStatus->filter(fn (WorkOrder $w) => empty($w->maintenanceType?->code))->count();
+                } else {
+                    $c = $forStatus->filter(fn (WorkOrder $w) => strtoupper($w->maintenanceType?->code ?? '') === $typeCode)->count();
+                }
+                $values[$typeCode] = $c;
+                $rowTotal += $c;
+                $totals[$typeCode] += $c;
+            }
+
+            $rows[] = [
+                'status' => $statusCode,
+                'values' => $values,
+                'total' => $rowTotal,
+            ];
+            $grandTotal += $rowTotal;
+        }
+
+        return [
+            'url' => '192.168.3.85/wpc-ditgas',
+            'columns' => $types,
+            'rows' => $rows,
+            'totals' => $totals,
+            'grand_total' => $grandTotal,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, WorkOrder>  $wos
+     * @return array<string, mixed>
+     */
+    private function tasksBreakdown(Collection $wos): array
+    {
+        $definitions = [
+            1 => ['name' => 'Preventive Maintenance', 'codes' => ['PM']],
+            2 => ['name' => 'Proactive Maintenance', 'codes' => ['PAM', 'PaM']],
+            3 => ['name' => 'Predictive Maintenance', 'codes' => ['PDM', 'PdM']],
+            4 => ['name' => 'Enjiniring / Modifikasi', 'codes' => ['EJ', 'ENJI', 'MODIF']],
+            5 => ['name' => 'Run to Failure Maintenance', 'codes' => ['RTF']],
+            6 => ['name' => 'Corrective Maintenance', 'codes' => ['CM']],
+            7 => ['name' => 'Emergency Maintenance', 'codes' => ['EM', 'EMERGENCY']],
+            8 => ['name' => 'Overhaul', 'codes' => ['OH', 'OVERHAUL']],
+        ];
+
+        $totalRencana = $wos->count();
+        $closedWos = $wos->filter(fn (WorkOrder $w) => (bool) ($w->status?->is_closed ?? false));
+        $totalRealisasi = $closedWos->count();
+
+        $rows = [];
+        $totalMat = 0.0;
+        $totalSvc = 0.0;
+
+        foreach ($definitions as $no => $d) {
+            $codesUpper = array_map('strtoupper', $d['codes']);
+            $plannedForType = $wos->filter(fn (WorkOrder $w) => in_array(strtoupper($w->maintenanceType?->code ?? ''), $codesUpper, true));
+            $closedForType = $closedWos->filter(fn (WorkOrder $w) => in_array(strtoupper($w->maintenanceType?->code ?? ''), $codesUpper, true));
+
+            $rFreq = $plannedForType->count();
+            $rPct = $totalRencana > 0 ? round(($rFreq / $totalRencana) * 100, 1) : 0.0;
+
+            $aFreq = $closedForType->count();
+            $aPct = $totalRealisasi > 0 ? round(($aFreq / $totalRealisasi) * 100, 1) : 0.0;
+
+            $matCost = (float) $closedForType->sum('material_cost');
+            $svcCost = (float) $closedForType->sum('service_cost');
+
+            $totalMat += $matCost;
+            $totalSvc += $svcCost;
+
+            $rows[] = [
+                'no' => $no,
+                'name' => $d['name'],
+                'code' => $d['codes'][0],
+                'rencana_freq' => $rFreq,
+                'rencana_pct' => $rPct,
+                'realisasi_freq' => $aFreq,
+                'realisasi_pct' => $aPct,
+                'keterangan' => '',
+                'material_cost' => $matCost,
+                'service_cost' => $svcCost,
+            ];
+        }
+
+        $colors = ['#5b9bd5', '#9e480e', '#255e91', '#70ad47', '#4472c4', '#ed7d31', '#a5a5a5', '#ffc000'];
+        $mix = [];
+        foreach ($rows as $idx => $r) {
+            $mix[] = [
+                'label' => $r['name'],
+                'pct' => $r['realisasi_pct'],
+                'freq' => $r['realisasi_freq'],
+                'color' => $colors[$idx % count($colors)],
+            ];
+        }
+
+        return [
+            'rows' => $rows,
+            'total_rencana_freq' => $totalRencana,
+            'total_rencana_pct' => $totalRencana > 0 ? 100.0 : 0.0,
+            'total_realisasi_freq' => $totalRealisasi,
+            'total_realisasi_pct' => $totalRealisasi > 0 ? 100.0 : 0.0,
+            'total_material_cost' => $totalMat,
+            'total_service_cost' => $totalSvc,
+            'total_cost' => $totalMat + $totalSvc,
+            'mix' => $mix,
+        ];
+    }
+
+    /**
+     * Rekapitulasi WO Task (Preventive, Proactive, Predictive, Corrective, Emergency, ECP)
+     * Format Standar PLN NP FMKD-314-10.3.3-A11.
+     *
+     * @param  Collection<int, WorkOrder>  $wos
+     * @return array<string, mixed>
+     */
+    private function rekapTaskWo(Collection $wos): array
+    {
+        $disciplinesDef = [
+            'listrik' => '- Har Listrik',
+            'ic' => '- Har I&C',
+            'mekanik_1' => '- Har Mekanik 1',
+            'mekanik_2' => '- Har Mekanik 2',
+            'civil' => '- Har Civil',
+        ];
+
+        $categoriesDef = [
+            'I' => ['title' => 'Jumlah Task Proactive', 'codes' => ['PAM', 'PaM']],
+            'II' => ['title' => 'Jumlah Task Preventive', 'codes' => ['PM']],
+            'III' => ['title' => 'Jumlah Task Predictive', 'codes' => ['PDM', 'PdM']],
+            'IV' => ['title' => 'Jumlah Task Corrective', 'codes' => ['CM']],
+            'V' => ['title' => 'Jumlah Task Emergency', 'codes' => ['EM', 'EMERGENCY']],
+            'VI' => ['title' => 'Jumlah Task ECP', 'codes' => ['ECP', 'EJ', 'ENJI', 'MODIF', 'OH', 'OVERHAUL']],
+        ];
+
+        $matchDiscipline = function (WorkOrder $w, string $discKey): bool {
+            $code = strtoupper($w->workGroup?->code ?? '');
+            $name = strtoupper($w->workGroup?->name ?? '');
+            $combined = $code.' '.$name;
+
+            return match ($discKey) {
+                'listrik' => str_contains($combined, 'ELEC') || str_contains($combined, 'LISTRIK'),
+                'ic' => str_contains($combined, 'I&C') || str_contains($combined, 'INSTRUM') || str_contains($combined, 'IC'),
+                'mekanik_1' => (str_contains($combined, 'MECH') || str_contains($combined, 'MEK') || (!str_contains($combined, 'ELEC') && !str_contains($combined, 'LISTRIK') && !str_contains($combined, 'CIVIL') && !str_contains($combined, 'SIPIL') && !str_contains($combined, 'I&C'))) && !str_contains($combined, '2'),
+                'mekanik_2' => (str_contains($combined, 'MECH') || str_contains($combined, 'MEK')) && str_contains($combined, '2'),
+                'civil' => str_contains($combined, 'CIVIL') || str_contains($combined, 'SIPIL'),
+                default => false,
+            };
+        };
+
+        $categories = [];
+        $totalRencanaFreq = 0;
+        $totalRealisasiFreq = 0;
+
+        foreach ($categoriesDef as $roman => $cDef) {
+            $codesUpper = array_map('strtoupper', $cDef['codes']);
+            $catWos = $wos->filter(fn (WorkOrder $w) => in_array(strtoupper($w->maintenanceType?->code ?? ''), $codesUpper, true));
+            $catClosed = $catWos->filter(fn (WorkOrder $w) => (bool) ($w->status?->is_closed ?? false));
+
+            $catRFreq = $catWos->count();
+            $catAFreq = $catClosed->count();
+
+            $totalRencanaFreq += $catRFreq;
+            $totalRealisasiFreq += $catAFreq;
+
+            $disciplines = [];
+            foreach ($disciplinesDef as $dKey => $dName) {
+                $dPlanned = $catWos->filter(fn (WorkOrder $w) => $matchDiscipline($w, $dKey));
+                $dClosed = $catClosed->filter(fn (WorkOrder $w) => $matchDiscipline($w, $dKey));
+
+                $dRFreq = $dPlanned->count();
+                $dAFreq = $dClosed->count();
+
+                $dRPct = $catRFreq > 0 ? round(($dRFreq / $catRFreq) * 100, 1) : 0.0;
+                $dAPct = $dRFreq > 0 ? round(($dAFreq / $dRFreq) * 100, 1) : 0.0;
+
+                $disciplines[] = [
+                    'name' => $dName,
+                    'rencana_freq' => $dRFreq,
+                    'rencana_pct' => $dRPct,
+                    'realisasi_freq' => $dAFreq,
+                    'realisasi_pct' => $dAPct,
+                ];
+            }
+
+            $catRPct = $catRFreq > 0 ? 100.0 : 0.0;
+            $catAPct = $catRFreq > 0 ? round(($catAFreq / $catRFreq) * 100, 1) : 0.0;
+
+            $categories[] = [
+                'no' => $roman.'.',
+                'title' => $cDef['title'],
+                'rencana_freq' => $catRFreq,
+                'rencana_pct' => $catRPct,
+                'realisasi_freq' => $catAFreq,
+                'realisasi_pct' => $catAPct,
+                'disciplines' => $disciplines,
+            ];
+        }
+
+        $totalRPct = $totalRencanaFreq > 0 ? 100.0 : 0.0;
+        $totalAPct = $totalRencanaFreq > 0 ? round(($totalRealisasiFreq / $totalRencanaFreq) * 100, 1) : 0.0;
+
+        return [
+            'categories' => $categories,
+            'total_rencana_freq' => $totalRencanaFreq,
+            'total_rencana_pct' => $totalRPct,
+            'total_realisasi_freq' => $totalRealisasiFreq,
+            'total_realisasi_pct' => $totalAPct,
+        ];
+    }
 }
+

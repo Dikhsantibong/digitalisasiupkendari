@@ -99,37 +99,95 @@ export default function MonthlyEngineReport({ report, data }: Props) {
             </div>
 
             <div className="print-area mx-auto max-w-[1100px] bg-white p-6 text-slate-900">
-                <div className="report-cover mb-8 flex min-h-[1000px] flex-col items-center justify-between border-4 border-double border-slate-800 p-10 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                        <img src="/logo/sidebar-logo.png" alt="PLN" className="h-16" />
-                        <p className="text-base font-semibold uppercase tracking-wide text-slate-800">PT PLN Nusantara Power</p>
-                        <p className="text-xs uppercase tracking-wide text-slate-500">
-                            {data.unit.service_unit ?? 'Unit Pelaksana Pengendalian Pembangkitan Kendari'}
-                        </p>
-                    </div>
+                <div className="report-cover relative mb-8 min-h-[1100px] overflow-hidden bg-white shadow-xs">
+                    <svg className="pointer-events-none absolute inset-0 size-full" viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
+                        <polygon points="0,0 210,0 0,270" fill="#0b2545" />
+                        <polygon points="210,0 248,0 0,320 0,270" fill="#00a3e0" />
+                        <polygon points="248,0 262,0 0,338 0,320" fill="#f59e0b" />
+                        <polygon points="0,110 135,35 110,170 0,230" fill="#0080b0" opacity="0.25" />
+                        <polygon points="460,1123 794,520 794,1123" fill="#005b82" />
+                        <path d="M 0 715 Q 220 815 540 735 Q 568 725 565 750 C 560 780 480 960 470 1123 L 0 1123 Z" fill="#0b2545" />
+                        <path d="M 0 707 Q 220 807 540 727 Q 575 717 572 750 C 567 780 487 960 477 1123 L 470 1123 C 480 960 560 780 565 750 Q 568 725 540 735 Q 220 815 0 715 Z" fill="#f59e0b" />
+                    </svg>
 
-                    <div className="flex flex-col items-center gap-5">
-                        <span className="h-1 w-28 rounded bg-slate-800" />
-                        <h1 className="text-3xl font-bold uppercase leading-tight tracking-wide text-slate-900">
-                            Laporan Kinerja
-                            <br />
-                            Operasi
-                        </h1>
-                        <div className="rounded bg-slate-800 px-8 py-3 text-xl font-semibold uppercase tracking-wide text-white">
-                            {data.unit.name}
+                    <div className="relative z-10 flex flex-col items-center px-10 pt-28">
+                        <div className="flex items-center justify-center gap-6">
+                            <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-14 object-contain" />
+                            <div className="h-12 w-[1.5px] bg-[#0b2545]" />
+                            <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="h-12 object-contain" />
                         </div>
-                        {data.engine && (
-                            <p className="text-sm uppercase tracking-wide text-slate-600">{data.engine.name}</p>
-                        )}
-                        <p className="text-base text-slate-700">
-                            Periode <span className="font-semibold">{data.period.label}</span>
-                        </p>
-                        <span className="h-1 w-28 rounded bg-slate-800" />
+
+                        <div className="mt-24 text-center">
+                            <h1 className="text-3xl font-extrabold uppercase tracking-wider text-[#0b2545] sm:text-4xl">
+                                Laporan Operasi<br />Pembangkit
+                            </h1>
+                            <div className="mx-auto mt-4 h-[2.5px] w-56 bg-[#0284c7]" />
+                        </div>
+
+                        <div className="mx-auto mt-20 w-full max-w-[540px] rounded-2xl border-2 border-[#0284c7] bg-white p-6 shadow-xs">
+                            <table className="w-full text-left text-sm font-bold uppercase text-[#0b2545]">
+                                <tbody>
+                                    <tr>
+                                        <td className="w-48 py-1.5">Nama Pembangkit</td>
+                                        <td className="w-4 py-1.5 text-center">:</td>
+                                        <td className="py-1.5">{data.unit.name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="py-1.5">Periode Pelaporan</td>
+                                        <td className="py-1.5 text-center">:</td>
+                                        <td className="py-1.5">BULAN {data.period.label}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col items-center gap-1">
-                        <p className="text-xl font-bold uppercase tracking-widest text-slate-900">UP Kendari</p>
-                        <p className="text-[11px] uppercase tracking-wide text-slate-500">Unit Pelaksana Pengendalian Pembangkitan Kendari</p>
+                    <div className="absolute bottom-10 left-10 z-10 flex items-center gap-3 rounded-md border border-slate-200 bg-white px-3.5 py-2 shadow-md">
+                        <div className="flex items-center gap-1.5">
+                            <svg className="size-4.5 text-[#0a2540]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <polyline points="9 12 11 14 15 10"/>
+                            </svg>
+                            <div className="flex flex-col leading-none">
+                                <span className="text-[9px] font-extrabold text-[#0a2540]">ANDAL</span>
+                                <span className="text-[7px] font-semibold text-[#0a2540]/80">RELIABLE</span>
+                            </div>
+                        </div>
+                        <div className="h-6 w-px bg-slate-200" />
+                        <div className="flex items-center gap-1.5">
+                            <svg className="size-4.5 text-[#0a2540]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                            <div className="flex flex-col leading-none">
+                                <span className="text-[9px] font-extrabold text-[#0a2540]">EFISIEN</span>
+                                <span className="text-[7px] font-semibold text-[#0a2540]/80">EFFICIENT</span>
+                            </div>
+                        </div>
+                        <div className="h-6 w-px bg-slate-200" />
+                        <div className="flex items-center gap-1.5">
+                            <svg className="size-4.5 text-[#0a2540]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                                <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+                            </svg>
+                            <div className="flex flex-col leading-none">
+                                <span className="text-[9px] font-extrabold text-[#0a2540]">BERKELANJUTAN</span>
+                                <span className="text-[7px] font-semibold text-[#0a2540]/80">SUSTAINABLE</span>
+                            </div>
+                        </div>
+                        <div className="h-6 w-px bg-slate-200" />
+                        <div className="flex items-center gap-1.5">
+                            <svg className="size-4.5 text-[#0a2540]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="9" cy="7" r="3"/>
+                                <path d="M3 18v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1"/>
+                                <circle cx="17" cy="9" r="2.5"/>
+                                <path d="M17 14h2a3 3 0 0 1 3 3v1"/>
+                            </svg>
+                            <div className="flex flex-col leading-none">
+                                <span className="text-[9px] font-extrabold text-[#0a2540]">KOLABORATIF</span>
+                                <span className="text-[7px] font-semibold text-[#0a2540]/80">COLLABORATIVE</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

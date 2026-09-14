@@ -57,20 +57,107 @@
     };
 @endphp
 
+{{-- SEGMENT A (portrait): cover + ringkasan + daftar isi + istilah + isi laporan --}}
+<div class="seg-a">
 {{-- 1. COVER --}}
 <div class="op-cover" id="sec-1">
-    <img src="/logo/sidebar-logo.png" alt="Logo">
-    <div class="op-cover-org">PT PLN Nusantara Power</div>
-    <div class="op-cover-sub">{{ $report['unit']['service_unit'] ?? 'Unit Pelaksana Pengendalian Pembangkitan Kendari' }}</div>
-    <div class="op-cover-rule"></div>
-    <div class="op-cover-title">Laporan Kinerja<br>Operasi</div>
-    <div class="op-cover-unit">{{ $report['unit']['name'] }}</div>
-    @if(!empty($report['engine']['name']))
-        <div class="op-cover-period">{{ $report['engine']['name'] }}</div>
-    @endif
-    <div class="op-cover-period">Periode <strong>{{ $report['period']['label'] }}</strong></div>
-    <div class="op-cover-rule"></div>
-    <div class="op-cover-footer">UP Kendari<small>Unit Pelaksana Pengendalian Pembangkitan Kendari</small></div>
+    <svg class="op-cover-bg" viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="0,0 210,0 0,270" fill="#0b2545" />
+        <polygon points="210,0 248,0 0,320 0,270" fill="#00a3e0" />
+        <polygon points="248,0 262,0 0,338 0,320" fill="#f59e0b" />
+        <polygon points="0,110 135,35 110,170 0,230" fill="#0080b0" opacity="0.25" />
+        <polygon points="460,1123 794,520 794,1123" fill="#005b82" />
+        <path d="M 0 715 Q 220 815 540 735 Q 568 725 565 750 C 560 780 480 960 470 1123 L 0 1123 Z" fill="#0b2545" />
+        <path d="M 0 707 Q 220 807 540 727 Q 575 717 572 750 C 567 780 487 960 477 1123 L 470 1123 C 480 960 560 780 565 750 Q 568 725 540 735 Q 220 815 0 715 Z" fill="#f59e0b" />
+    </svg>
+
+    <div class="op-cover-content">
+        <div class="op-cover-logos">
+            <table class="op-logos-table">
+                <tr>
+                    <td class="op-logo-cell-left">
+                        <img src="/logo/sidebar-logo.png" class="op-logo-pln" alt="PLN Nusantara Power">
+                    </td>
+                    <td class="op-logo-divider-cell">
+                        <div class="op-logo-vdiv"></div>
+                    </td>
+                    <td class="op-logo-cell-right">
+                        <img src="/logo/mkp.jpg" class="op-logo-mkp" alt="Mitra Karya Prima">
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="op-cover-title-wrap">
+            <h1 class="op-cover-main-title">
+                LAPORAN OPERASI<br>PEMBANGKIT
+            </h1>
+            <div class="op-cover-title-line"></div>
+        </div>
+
+        <div class="op-cover-spec-box">
+            <table class="op-spec-table">
+                <tr>
+                    <td class="op-spec-label">NAMA PEMBANGKIT</td>
+                    <td class="op-spec-colon">:</td>
+                    <td class="op-spec-val">{{ strtoupper($report['unit']['name'] ?? '') }}</td>
+                </tr>
+                <tr>
+                    <td class="op-spec-label">PERIODE PELAPORAN</td>
+                    <td class="op-spec-colon">:</td>
+                    <td class="op-spec-val">BULAN {{ strtoupper($report['period']['label'] ?? '') }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="op-cover-pillars-badge">
+        <table class="op-pillars-table">
+            <tr>
+                <td class="op-pillar-item">
+                    <svg class="op-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
+                    <span class="op-p-text">
+                        <strong>ANDAL</strong><small>RELIABLE</small>
+                    </span>
+                </td>
+                <td class="op-pillar-sep">|</td>
+                <td class="op-pillar-item">
+                    <svg class="op-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span class="op-p-text">
+                        <strong>EFISIEN</strong><small>EFFICIENT</small>
+                    </span>
+                </td>
+                <td class="op-pillar-sep">|</td>
+                <td class="op-pillar-item">
+                    <svg class="op-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+                    </svg>
+                    <span class="op-p-text">
+                        <strong>BERKELANJUTAN</strong><small>SUSTAINABLE</small>
+                    </span>
+                </td>
+                <td class="op-pillar-sep">|</td>
+                <td class="op-pillar-item">
+                    <svg class="op-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="9" cy="7" r="3"/>
+                        <path d="M3 18v-1a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v1"/>
+                        <circle cx="17" cy="9" r="2.5"/>
+                        <path d="M17 14h2a3 3 0 0 1 3 3v1"/>
+                    </svg>
+                    <span class="op-p-text">
+                        <strong>KOLABORATIF</strong><small>COLLABORATIVE</small>
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
 </div>
 
 @include('operasi.laporan.partials.letterhead', ['report' => $report, 'title' => $reportTitle])
@@ -81,7 +168,7 @@
     Laporan ini merangkum kinerja operasi {{ $report['unit']['name'] }}@if(!empty($report['engine']['name'])) — {{ $report['engine']['name'] }}@endif
     pada periode <strong>{{ $report['period']['label'] }}</strong>. Produksi netto tercatat
     <strong>{{ $fmt($total['kwh_netto'] ?? null) }} kWh</strong> dengan total pemakaian bahan bakar
-    {{ $fmt($report['total_bbm']) }} liter dan SFC netto {{ $fmt($report['sfc']['netto'] ?? null) }} L/kWh@if($hours), serta {{ $fmt($hours['operasi']) }} jam operasi@endif.
+    {{ $fmt($report['total_bbm']) }} liter dan SFC netto {{ $fmt($report['sfc']['netto'] ?? null) }} L/kWh @if($hours), serta {{ $fmt($hours['operasi']) }} jam operasi @endif.
 </p>
 <table class="op-data">
     <tr><th>kWh Produksi</th><th>kWh Netto</th><th>Total BBM (L)</th><th>SFC Netto</th><th>Jam Operasi</th></tr>

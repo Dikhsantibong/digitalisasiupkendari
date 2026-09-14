@@ -33,9 +33,9 @@ export default function K3LaporanDocument({
 }: Props) {
     return (
         <>
-            <Head title="Dokumen Laporan K3" />
+            <Head title="Dokumen Laporan K3 Lingkungan Pembangkit" />
             <DocumentEditor
-                title="Dokumen Laporan K3 & Keamanan"
+                title="Dokumen Laporan K3 Lingkungan Pembangkit"
                 description="Laporan penuh terisi otomatis. Edit sebagai teks (seperti Word) atau spreadsheet (seperti Excel), simpan, lalu unduh PDF atau Excel."
                 backUrl={laporan.index().url}
                 backLabel="Kembali"
@@ -66,7 +66,7 @@ export default function K3LaporanDocument({
 K3LaporanDocument.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Laporan K3', href: laporan.index() },
+        { title: 'Laporan K3 Lingkungan Pembangkit', href: laporan.index() },
         { title: 'Dokumen', href: laporan.index() },
     ],
 };

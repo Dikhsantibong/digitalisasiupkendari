@@ -64,6 +64,22 @@ class EmployeeManagementTest extends TestCase
             ->assertInertia(fn ($page) => $page->has('employees.data', 2));
     }
 
+    public function test_employees_can_be_filtered_by_position(): void
+    {
+        Employee::factory()->create(['position' => 'Operator']);
+        Employee::factory()->create(['position' => 'Operator']);
+        Employee::factory()->create(['position' => 'Team Leader Operasi']);
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->get(route('admin.employees.index', ['position' => 'Operator']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('admin/employees/index')
+                ->has('employees.data', 2)
+                ->where('filters.position', 'Operator')
+            );
+    }
+
     public function test_super_admin_can_create_an_employee_and_the_action_is_logged(): void
     {
         $unit = Unit::factory()->create();
@@ -130,15 +146,120 @@ class EmployeeManagementTest extends TestCase
         $this->assertDatabaseMissing('employees', ['name' => 'Pegawai X']);
     }
 
+    public function test_super_admin_can_create_an_employee_with_signature(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $unit = Unit::factory()->create();
+        $signature = \Illuminate\Http\UploadedFile::fake()->image('ttd.png', 200, 80);
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->post(route('admin.employees.store'), [
+                'unit_id' => $unit->id,
+                'name' => 'Manager UL Test',
+                'nip' => '999888777',
+                'position' => 'Manager UL',
+                'is_active' => '1',
+                'signature' => $signature,
+            ])
+            ->assertRedirect(route('admin.employees.index'));
+
+        $employee = Employee::query()->where('nip', '999888777')->firstOrFail();
+        $this->assertNotNull($employee->signature_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->signature_path);
+    }
+
+    public function test_super_admin_can_create_an_employee_with_canvas_base64_signature(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $unit = Unit::factory()->create();
+        $fakeBase64 = 'data:image/png;base64,' . base64_encode('fake-canvas-png-bytes');
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->post(route('admin.employees.store'), [
+                'unit_id' => $unit->id,
+                'name' => 'TL K3 Canvas',
+                'nip' => '999888666',
+                'position' => 'Team Leader K3 & Keamanan',
+                'is_active' => '1',
+                'signature_base64' => $fakeBase64,
+            ])
+            ->assertRedirect(route('admin.employees.index'));
+
+        $employee = Employee::query()->where('nip', '999888666')->firstOrFail();
+        $this->assertNotNull($employee->signature_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->signature_path);
+        $this->assertSame('fake-canvas-png-bytes', \Illuminate\Support\Facades\Storage::disk('public')->get($employee->signature_path));
+    }
+
+    public function test_super_admin_can_update_employee_signature(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $oldPath = 'signatures/old_ttd.png';
+        \Illuminate\Support\Facades\Storage::disk('public')->put($oldPath, 'old content');
+
+        $employee = Employee::factory()->create([
+            'position' => 'Team Leader Operasi',
+            'signature_path' => $oldPath,
+        ]);
+
+        $newSignature = \Illuminate\Http\UploadedFile::fake()->image('new_ttd.png', 200, 80);
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->put(route('admin.employees.update', $employee), [
+                'name' => $employee->name,
+                'position' => $employee->position,
+                'is_active' => '1',
+                'signature' => $newSignature,
+            ])
+            ->assertRedirect(route('admin.employees.index'));
+
+        $employee->refresh();
+        $this->assertNotSame($oldPath, $employee->signature_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($oldPath);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->signature_path);
+    }
+
+    public function test_super_admin_can_remove_employee_signature(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $path = 'signatures/test_ttd.png';
+        \Illuminate\Support\Facades\Storage::disk('public')->put($path, 'signature content');
+
+        $employee = Employee::factory()->create([
+            'position' => 'Team Leader K3 & Keamanan',
+            'signature_path' => $path,
+        ]);
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->put(route('admin.employees.update', $employee), [
+                'name' => $employee->name,
+                'position' => $employee->position,
+                'is_active' => '1',
+                'remove_signature' => '1',
+            ])
+            ->assertRedirect(route('admin.employees.index'));
+
+        $employee->refresh();
+        $this->assertNull($employee->signature_path);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($path);
+    }
+
     public function test_super_admin_can_delete_an_employee(): void
     {
-        $employee = Employee::factory()->create();
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $path = 'signatures/deleted_employee_ttd.png';
+        \Illuminate\Support\Facades\Storage::disk('public')->put($path, 'signature content');
+
+        $employee = Employee::factory()->create([
+            'signature_path' => $path,
+        ]);
 
         $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
             ->delete(route('admin.employees.destroy', $employee))
             ->assertRedirect(route('admin.employees.index'));
 
         $this->assertDatabaseMissing('employees', ['id' => $employee->id]);
+        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($path);
         $this->assertSame(
             1,
             ActivityLog::query()->where('event', ActivityEvent::Deleted->value)->count(),

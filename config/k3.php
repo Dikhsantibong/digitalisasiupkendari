@@ -26,7 +26,7 @@ return [
     |
     */
     'document' => [
-        'title' => 'LAPORAN KINERJA K3 & KEAMANAN',
+        'title' => 'LAPORAN K3 LINGKUNGAN PEMBANGKIT',
         'revision' => '00',
         'numbers' => [
             'report' => 'SMT-FM-AK3-00',

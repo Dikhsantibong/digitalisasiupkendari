@@ -56,6 +56,30 @@ class ServiceUnit extends Model
     }
 
     /**
+     * @return HasMany<Employee, $this>
+     */
+    public function employees(): HasMany
+    {
+        return $this->hasMany(Employee::class);
+    }
+
+    /**
+     * The Manager UL for this service unit.
+     */
+    public function manager(): ?Employee
+    {
+        return $this->employees()
+            ->where('is_active', true)
+            ->where(function (Builder $q): void {
+                $q->where('position', 'like', '%manager ul%')
+                    ->orWhere('position', 'like', '%manajer ul%')
+                    ->orWhere('position', 'like', '%manager%')
+                    ->orWhere('position', 'like', '%manajer%');
+            })
+            ->first();
+    }
+
+    /**
      * Limit the query to the service units the given user may see.
      *
      * @param  Builder<$this>  $query

@@ -9,6 +9,7 @@ import type { IdName } from '@/types';
 type Props = {
     options: {
         units: IdName[];
+        service_units?: IdName[];
     };
 };
 

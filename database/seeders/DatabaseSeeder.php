@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             OperasiPoasiaSeeder::class,
             OperasiMasterSeeder::class,
             HarMasterSeeder::class,
+            HarSeeder::class,
             K3MasterDataSeeder::class,
             LogsheetParameterSeeder::class,
             AttendanceCodeSeeder::class,

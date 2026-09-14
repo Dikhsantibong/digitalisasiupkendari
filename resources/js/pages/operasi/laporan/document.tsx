@@ -73,7 +73,7 @@ export default function OperasiLaporanDocument({
 OperasiLaporanDocument.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Laporan Operasi', href: laporan.index() },
+        { title: 'Laporan Operasi Pembangkit', href: laporan.index() },
         { title: 'Dokumen', href: laporan.index() },
     ],
 };

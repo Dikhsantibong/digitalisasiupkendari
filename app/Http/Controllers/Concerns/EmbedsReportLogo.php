@@ -16,18 +16,26 @@ trait EmbedsReportLogo
 {
     protected function embedAssets(string $html): string
     {
-        $path = public_path('logo/sidebar-logo.png');
-
-        if (! is_file($path)) {
-            return $html;
+        $plnPath = public_path('logo/sidebar-logo.png');
+        if (is_file($plnPath)) {
+            $plnUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($plnPath));
+            $html = (string) preg_replace(
+                '#src=(["\'])[^"\']*logo/(?:sidebar-logo|logo)\.png\1#i',
+                'src="'.$plnUri.'"',
+                $html,
+            );
         }
 
-        $dataUri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
+        $mkpPath = public_path('logo/mkp.jpg');
+        if (is_file($mkpPath)) {
+            $mkpUri = 'data:image/jpeg;base64,'.base64_encode((string) file_get_contents($mkpPath));
+            $html = (string) preg_replace(
+                '#src=(["\'])[^"\']*logo/mkp\.jpg\1#i',
+                'src="'.$mkpUri.'"',
+                $html,
+            );
+        }
 
-        return (string) preg_replace(
-            '#src=(["\'])[^"\']*logo/sidebar-logo\.png\1#i',
-            'src="'.$dataUri.'"',
-            $html,
-        );
+        return $html;
     }
 }

@@ -36,14 +36,21 @@ return [
     |
     */
     'document' => [
-        'title' => 'LAPORAN PEMELIHARAAN (HAR)',
+        'title' => 'LAPORAN PEMELIHARAAN PEMBANGKIT',
         'revision' => '00',
         'numbers' => [
             'report' => 'FMKD-314-10.3.3',
+            'executive' => 'FMKD-314-10.3.3-A7',
+            'sr_map' => 'FMKD-314-10.3.3-A8',
             'sr_summary' => 'FMKD-314-10.3.3-A8',
+            'maintenance_summary' => 'FMKD-314-10.3.3-A9',
             'wo_summary' => 'FMKD-314-10.3.3-A9',
             'cost' => 'FMKD-314-10.3.3-A10',
-            'wo_by_type' => 'FMKD-314-10.3.3-A12',
+            'rekap_task_wo' => 'FMKD-314-10.3.3-A11',
+            'wo_by_type' => 'FMKD-314-10.3.3-A11',
+            'wo_pm' => 'FMKD-314-10.3.3-A12',
+            'wo_pdm' => 'FMKD-314-10.3.3-A13',
+            'wo_cm' => 'FMKD-314-10.3.3-A14',
             'schedules' => 'FMKD-314-10.3.1-A1',
             'activities' => 'FMKD-314-10.3.3-A3',
         ],

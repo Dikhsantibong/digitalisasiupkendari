@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,8 +43,71 @@ type WaitingRow = {
 type Data = {
     unit: { name: string; service_unit: string | null };
     period: { label: string };
-    sr_summary: { total: number; open: number; close: number; by_category: { category: string; count: number }[] };
+    sr_summary: {
+        total: number;
+        open: number;
+        close: number;
+        by_category: { category: string; count: number }[];
+        by_engine?: { engine: string; total: number; terbit: number; cancel: number; flm: number; cm: number; pdm: number }[];
+        top_assets?: { asset: string; freq: number; description: string }[];
+    };
+    maintenance_summary?: {
+        rekap_terbit_complete: {
+            url: string;
+            rows: { bulan: string; terbit: number; complete: Record<number, number>; open: number }[];
+        };
+        rekap_status: {
+            url: string;
+            columns: string[];
+            rows: { status: string; values: Record<string, number>; total: number }[];
+            totals: Record<string, number>;
+            grand_total: number;
+        };
+        tasks: {
+            rows: {
+                no: number;
+                name: string;
+                code: string;
+                rencana_freq: number;
+                rencana_pct: number;
+                realisasi_freq: number;
+                realisasi_pct: number;
+                keterangan: string;
+                material_cost: number;
+                service_cost: number;
+            }[];
+            total_rencana_freq: number;
+            total_rencana_pct: number;
+            total_realisasi_freq: number;
+            total_realisasi_pct: number;
+            total_material_cost: number;
+            total_service_cost: number;
+            total_cost: number;
+            mix: { label: string; pct: number; freq: number; color: string }[];
+        };
+    };
     wo_summary: { total: number; complete: number; open: number; percent: number };
+    rekap_task_wo?: {
+        categories: {
+            no: string;
+            title: string;
+            rencana_freq: number;
+            rencana_pct: number;
+            realisasi_freq: number;
+            realisasi_pct: number;
+            disciplines: {
+                name: string;
+                rencana_freq: number;
+                rencana_pct: number;
+                realisasi_freq: number;
+                realisasi_pct: number;
+            }[];
+        }[];
+        total_rencana_freq: number;
+        total_rencana_pct: number;
+        total_realisasi_freq: number;
+        total_realisasi_pct: number;
+    };
     wo_by_type: { type: string; rows: WoRow[] }[];
     wo_waiting: { key: string; reason: string; rows: WaitingRow[] }[];
     cost: {
@@ -93,12 +157,16 @@ const SECTIONS = [
     'Executive Summary',
     'Daftar Isi',
     'Istilah dan Definisi',
+    'Service Request Map',
+    'Service Request Summary',
+    'Maintenance Summary',
     'Isi Laporan',
     'Work Order Summary (Fix)',
     'Akumulasi Biaya Pemeliharaan',
     'Rekapitulasi Work Order Task',
     'Work Order PM (Preventive Maintenance)',
     'Work Order PdM (Predictive Maintenance)',
+    'Work Order CM (Corrective Maintenance)',
     'Work Order ENJI (Engineering)',
     'Work Order Waiting Shutdown',
     'Work Order Waiting Material & Jasa',
@@ -135,6 +203,47 @@ function SectionTitle({ n, title, id, breakBefore }: { n: number; title: string;
         <h2 id={id} className={`mb-2 mt-6 border-b-2 border-slate-800 pb-1 text-[15px] font-bold uppercase tracking-wide text-slate-900 ${breakBefore ? 'break-before' : ''}`}>
             {n}. {title}
         </h2>
+    );
+}
+
+function SectionKop({ title, docNumber, date }: { title: string; docNumber: string; date: string }) {
+    return (
+        <div className="mb-3 border border-slate-900 font-sans text-xs">
+            <div className="flex border-b border-slate-900">
+                <div className="flex w-44 items-center justify-center border-r border-slate-900 p-2">
+                    <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-8" />
+                </div>
+                <div className="flex flex-1 flex-col items-center justify-center p-2 text-center">
+                    <span className="text-sm font-bold tracking-wider">PLN NUSANTARA POWER</span>
+                    <span className="text-xs font-bold">UP KENDARI</span>
+                </div>
+                <div className="flex w-24 items-center justify-center border-l border-slate-900 p-2">
+                    <img src="/logo/k3.png" alt="K3" className="h-10" />
+                </div>
+            </div>
+            <div className="border-b border-slate-900 bg-white py-1 text-center text-[11px] font-bold tracking-wider">
+                INTEGRATED MANAGEMENT SYSTEM
+            </div>
+            <div className="grid grid-cols-12">
+                <div className="col-span-8 flex flex-col items-center justify-center border-r border-slate-900 bg-[#7fa9d8] p-2 text-center text-xs font-bold leading-tight text-slate-900">
+                    <span>{title}</span>
+                </div>
+                <div className="col-span-4 text-[10px]">
+                    <div className="flex border-b border-slate-900 px-2 py-1">
+                        <span className="w-20 font-medium">No. Dokumen</span>
+                        <span className="font-semibold">: {docNumber}</span>
+                    </div>
+                    <div className="flex border-b border-slate-900 px-2 py-1">
+                        <span className="w-20 font-medium">Revisi</span>
+                        <span className="font-semibold">: 01</span>
+                    </div>
+                    <div className="flex px-2 py-1">
+                        <span className="w-20 font-medium">Tanggal</span>
+                        <span className="font-semibold">: {date}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -224,15 +333,102 @@ function WaitingTable({ rows }: { rows: WaitingRow[] }) {
 export default function MonthlyReport({ data }: { data: Data }) {
     const woPm = groupFor(data, 'PM');
     const woPdm = groupFor(data, 'PDM', 'PdM');
+    const woCm = groupFor(data, 'CM');
     const woEnji = groupFor(data, 'ENJI');
     const waitingShutdown = waitingFor(data, 'shutdown');
     const waitingMaterialJasa = waitingFor(data, 'material', 'jasa');
     const waitingCount = data.wo_waiting.reduce((sum, g) => sum + g.rows.length, 0);
     const totalTasks = data.activities.reduce((sum, a) => sum + a.tasks.length, 0);
 
+    // Service Request calculations
+    const srByCategory = data.sr_summary.by_category ?? [];
+    const srCountFor = (codes: string[]) => {
+        const u = codes.map((c) => c.toUpperCase());
+        return srByCategory
+            .filter((c) => u.includes(c.category.toUpperCase()))
+            .reduce((sum, c) => sum + c.count, 0);
+    };
+    const srCm = srCountFor(['CM', 'CORRECTIVE MAINTENANCE (CM)', 'CORECTIVE MAINTENANCE (CM)']);
+    const srFlm = srCountFor(['FLM', 'FIRST LINE MAINTENANCE (FLM)']);
+    const srCancel = srCountFor(['CANCEL', 'DIBATALKAN']);
+    const srPdm = srCountFor(['PDM', 'PREDICTIVE MAINTENANCE (PDM)', 'PREDICTIVE MAINTENANCE']);
+    const srTotal = data.sr_summary.total;
+    const srCmPct = srTotal > 0 ? Math.round((srCm / srTotal) * 100) : 0;
+    const srFlmPct = srTotal > 0 ? Math.round((srFlm / srTotal) * 100) : 0;
+    const srCancelPct = srTotal > 0 ? Math.round((srCancel / srTotal) * 100) : 0;
+    const srPdmPct = srTotal > 0 ? Math.round((srPdm / srTotal) * 100) : 0;
+
+    let srMapMax = Math.max(14, srCm, srFlm, srCancel, srPdm);
+    srMapMax = Math.ceil(srMapMax / 2) * 2;
+    if (srMapMax < 14) srMapMax = 14;
+    const srMapTicks: number[] = [];
+    for (let t = 0; t <= srMapMax; t += 2) srMapTicks.push(t);
+
+    const srByEngine = data.sr_summary.by_engine ?? [];
+    const totalTerbit = srByEngine.reduce((sum, e) => sum + e.terbit, 0);
+    const totalCancel = srByEngine.reduce((sum, e) => sum + e.cancel, 0);
+    const totalFlm = srByEngine.reduce((sum, e) => sum + e.flm, 0);
+
+    const unitSrRows = srByEngine.map((e) => ({
+        name: e.engine,
+        terbit: e.terbit,
+        cancel: e.cancel,
+        flm: e.flm,
+        pct: totalTerbit > 0 ? Math.round((e.terbit / totalTerbit) * 100) : 0,
+    }));
+
+    const piePalette = ['#a94442', '#8ea351', '#61558f', '#eb7347', '#3b7ea1', '#e09f3e'];
+    const pieSlices = unitSrRows.filter((r) => r.pct > 0);
+    let curPieAngle = -90;
+    const pieSlicesWithAngles = pieSlices.map((s, idx) => {
+        const pColor = piePalette[idx % piePalette.length];
+        const aSpan = (s.pct / 100) * 360;
+        const a1 = (curPieAngle * Math.PI) / 180;
+        const a2 = ((curPieAngle + aSpan) * Math.PI) / 180;
+        const cx = 140;
+        const cy = 90;
+        const r = 55;
+        const x1 = Math.round((cx + r * Math.cos(a1)) * 100) / 100;
+        const y1 = Math.round((cy + r * Math.sin(a1)) * 100) / 100;
+        const x2 = Math.round((cx + r * Math.cos(a2)) * 100) / 100;
+        const y2 = Math.round((cy + r * Math.sin(a2)) * 100) / 100;
+        const largeArc = aSpan > 180 ? 1 : 0;
+        const d = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+
+        const midA = ((curPieAngle + aSpan / 2) * Math.PI) / 180;
+        const lx1 = Math.round((cx + r * 0.85 * Math.cos(midA)) * 100) / 100;
+        const ly1 = Math.round((cy + r * 0.85 * Math.sin(midA)) * 100) / 100;
+        const lx2 = Math.round((cx + r * 1.35 * Math.cos(midA)) * 100) / 100;
+        const ly2 = Math.round((cy + r * 1.35 * Math.sin(midA)) * 100) / 100;
+        const anchor: 'start' | 'end' = Math.cos(midA) >= 0 ? 'start' : 'end';
+        const tx = Math.cos(midA) >= 0 ? lx2 + 2 : lx2 - 2;
+
+        curPieAngle += aSpan;
+
+        return { ...s, pColor, d, lx1, ly1, lx2, ly2, anchor, tx };
+    });
+
+    const flmRowsReversed = [...unitSrRows].reverse();
+    const flmMaxVal = Math.max(4, ...unitSrRows.map((r) => r.flm), 0);
+    const flmTicks: number[] = [];
+    for (let t = 0; t <= flmMaxVal; t += 1) flmTicks.push(t);
+
+    const srSummaryOpen = data.sr_summary.open;
+    const srSummaryClose = data.sr_summary.close;
+    const srSummaryTotal = srSummaryOpen + srSummaryClose;
+    const srSummaryOpenPct = srSummaryTotal > 0 ? Math.round((srSummaryOpen / srSummaryTotal) * 100) : 0;
+    const srSummaryClosePct = srSummaryTotal > 0 ? 100 - srSummaryOpenPct : 0;
+
+    let c1Max = Math.max(12, srSummaryOpen, srSummaryClose);
+    if (c1Max % 2 !== 0) c1Max++;
+    const c1Ticks: number[] = [];
+    for (let t = 0; t <= c1Max; t += 2) c1Ticks.push(t);
+
+    const top5SrAssets = data.sr_summary.top_assets ?? [];
+
     return (
         <>
-            <Head title={`Laporan HAR — ${data.unit.name}`} />
+            <Head title={`Laporan Pemeliharaan Pembangkit — ${data.unit.name}`} />
             <style>{PRINT_STYLES}</style>
 
             <div className="flex min-h-screen flex-col bg-slate-200">
@@ -250,34 +446,47 @@ export default function MonthlyReport({ data }: { data: Data }) {
                 <div className="print-canvas flex-1 overflow-auto p-4 md:p-8">
                     <div className="print-area mx-auto min-h-[1123px] w-full max-w-[794px] bg-white p-10 text-[12px] text-slate-900 shadow-xl">
                         {/* 1. COVER */}
-                        <div className="report-cover mb-8 flex min-h-[1000px] flex-col items-center justify-between border-4 border-double border-slate-800 p-10 text-center">
-                            <div className="flex flex-col items-center gap-3">
-                                <img src="/logo/sidebar-logo.png" alt="PLN" className="h-16" />
-                                <p className="text-base font-semibold uppercase tracking-wide text-slate-800">PT PLN Nusantara Power</p>
-                                <p className="text-xs uppercase tracking-wide text-slate-500">
-                                    {data.unit.service_unit ?? 'Unit Pelaksana Pengendalian Pembangkitan Kendari'}
-                                </p>
-                            </div>
-
-                            <div className="flex flex-col items-center gap-5">
-                                <span className="h-1 w-28 rounded bg-slate-800" />
-                                <h1 className="text-3xl font-bold uppercase leading-tight tracking-wide text-slate-900">
-                                    Laporan Kinerja
-                                    <br />
-                                    Pemeliharaan
-                                </h1>
-                                <div className="rounded bg-slate-800 px-8 py-3 text-xl font-semibold uppercase tracking-wide text-white">
-                                    {data.unit.name}
+                        <div className="report-cover relative mb-8 flex min-h-[1050px] flex-col items-center justify-between overflow-hidden rounded-lg border border-slate-200 bg-white p-12 text-center shadow-sm">
+                            <div className="relative z-10 flex w-full flex-col items-center">
+                                <div className="flex items-center justify-center gap-5">
+                                    <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-14 object-contain" />
+                                    <div className="h-12 w-[2px] bg-[#0b2545]" />
+                                    <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="h-12 object-contain" />
                                 </div>
-                                <p className="text-base text-slate-700">
-                                    Periode <span className="font-semibold">{data.period.label}</span>
-                                </p>
-                                <span className="h-1 w-28 rounded bg-slate-800" />
+
+                                <div className="mt-16 text-center">
+                                    <h1 className="text-3xl font-extrabold uppercase tracking-widest text-[#0b2545]">
+                                        LAPORAN PEMELIHARAAN<br />PEMBANGKIT
+                                    </h1>
+                                    <div className="mx-auto mt-4 h-1 w-28 bg-[#0284c7]" />
+                                </div>
+
+                                <div className="mt-14 w-full max-w-lg rounded-2xl border-2 border-[#0284c7] bg-white p-6 text-left shadow-sm">
+                                    <table className="w-full text-xs font-bold uppercase text-[#0b2545]">
+                                        <tbody>
+                                            <tr>
+                                                <td className="w-44 py-1">NAMA PEMBANGKIT</td>
+                                                <td className="w-4 py-1 text-center">:</td>
+                                                <td className="py-1 text-slate-800">{data.unit.name}</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="w-44 py-1">PERIODE PELAPORAN</td>
+                                                <td className="w-4 py-1 text-center">:</td>
+                                                <td className="py-1 text-slate-800">BULAN {data.period.label}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
 
-                            <div className="flex flex-col items-center gap-1">
-                                <p className="text-xl font-bold uppercase tracking-widest text-slate-900">UP Kendari</p>
-                                <p className="text-[11px] uppercase tracking-wide text-slate-500">Unit Pelaksana Pengendalian Pembangkitan Kendari</p>
+                            <div className="relative z-10 mt-auto flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2 text-[10px] text-[#0b2545]">
+                                <span className="font-bold">ANDAL</span>
+                                <span className="mx-3 text-slate-300">|</span>
+                                <span className="font-bold">EFISIEN</span>
+                                <span className="mx-3 text-slate-300">|</span>
+                                <span className="font-bold">BERSIH</span>
+                                <span className="mx-3 text-slate-300">|</span>
+                                <span className="font-bold">AMAN</span>
                             </div>
                         </div>
 
@@ -341,14 +550,410 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        {/* 5. ISI LAPORAN */}
-                        <SectionTitle n={5} title="Isi Laporan" id="sec-body" breakBefore />
+                        {/* 5. SERVICE REQUEST MAP */}
+                        <div className="break-before" id="sec-sr-map">
+                            <SectionKop title="SERVICE REQUEST MAP" docNumber="FMKD-314-10.3.3-A8" date={data.period.label} />
+
+                            <div className="mb-1 text-[11px] font-bold text-slate-800">SERVICE REQUEST MAP BULAN INI</div>
+                            <table className="mb-4 w-full border-collapse border border-slate-900 text-[11px]">
+                                <thead>
+                                    <tr className="bg-slate-100 font-bold text-slate-900">
+                                        <th className="w-10 border border-slate-900 p-1 text-center">NO</th>
+                                        <th className="border border-slate-900 p-1 text-left">SERVICE REQUEST</th>
+                                        <th className="w-24 border border-slate-900 p-1 text-center">JUMLAH</th>
+                                        <th className="w-28 border border-slate-900 p-1 text-center">PERSENTASE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-slate-900 p-1 text-center">1</td>
+                                        <td className="border border-slate-900 p-1 text-left">CORECTIVE MAINTENANCE (CM)</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srCm}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srCmPct}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-900 p-1 text-center">2</td>
+                                        <td className="border border-slate-900 p-1 text-left">FIRST LINE MAINTENANCE (FLM)</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srFlm}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srFlmPct}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-900 p-1 text-center">3</td>
+                                        <td className="border border-slate-900 p-1 text-left">CANCEL</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srCancel}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srCancelPct}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-900 p-1 text-center">4</td>
+                                        <td className="border border-slate-900 p-1 text-left">PREDICTIVE MAINTENANCE (PDM)</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srPdm}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srPdmPct}%</td>
+                                    </tr>
+                                    <tr className="bg-slate-100 font-bold">
+                                        <td colSpan={2} className="border border-slate-900 p-1 text-center">TOTAL SERVICE REQUEST</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srTotal}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srTotal > 0 ? '100%' : '0%'}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            {/* Chart 1: SR Map Horizontal Bar Chart */}
+                            <div className="mb-4 rounded border border-slate-300 bg-white p-3 text-center">
+                                <div className="mb-2 text-center text-xs font-bold text-slate-800">SERVICE REQUEST MAP</div>
+                                <svg viewBox="0 0 520 130" className="mx-auto block h-28 w-full font-sans">
+                                    {srMapTicks.map((t) => {
+                                        const tx = 160 + (t / srMapMax) * 340;
+                                        return (
+                                            <g key={t}>
+                                                <line x1={tx} y1={10} x2={tx} y2={105} stroke="#e5e7eb" strokeWidth={0.8} />
+                                                <text x={tx} y={117} textAnchor="middle" fontSize={8} fill="#444">{t}</text>
+                                            </g>
+                                        );
+                                    })}
+                                    <line x1={160} y1={10} x2={160} y2={105} stroke="#999" strokeWidth={1} />
+                                    <line x1={160} y1={105} x2={500} y2={105} stroke="#999" strokeWidth={1} />
+                                    {[
+                                        { label: 'PREDICTIVE MAINTENANCE (PDM)', val: srPdm },
+                                        { label: 'CANCEL', val: srCancel },
+                                        { label: 'FIRST LINE MAINTENANCE (FLM)', val: srFlm },
+                                        { label: 'CORECTIVE MAINTENANCE (CM)', val: srCm },
+                                    ].map((b, bIdx) => {
+                                        const by = 16 + bIdx * 23;
+                                        const bw = srMapMax > 0 ? (b.val / srMapMax) * 340 : 0;
+                                        return (
+                                            <g key={b.label}>
+                                                <text x={155} y={by + 10} textAnchor="end" fontSize={8} fill="#000">{b.label}</text>
+                                                {bw > 0 && <rect x={160} y={by} width={bw} height={13} fill="#5b9bd5" />}
+                                                {bw > 0 && <text x={160 + bw + 5} y={by + 10} fontSize={8} fontWeight="bold" fill="#333">{b.val}</text>}
+                                            </g>
+                                        );
+                                    })}
+                                </svg>
+                            </div>
+
+                            {/* Table: SR TERBIT PER UNIT */}
+                            <div className="mb-1 text-[11px] font-bold text-slate-800">SR TERBIT PER UNIT</div>
+                            <table className="mb-4 w-full border-collapse border border-slate-900 text-[10px]">
+                                <thead>
+                                    <tr className="bg-slate-100 font-bold text-slate-900">
+                                        <th rowSpan={2} className="w-10 border border-slate-900 p-1 text-center">NO</th>
+                                        <th rowSpan={2} className="border border-slate-900 p-1 text-center">GROUP UNIT/ MESIN</th>
+                                        <th colSpan={4} className="border border-slate-900 p-1 text-center">JUMLAH SERVICE REQUEST</th>
+                                    </tr>
+                                    <tr className="bg-slate-100 font-bold text-slate-900">
+                                        <th className="w-20 border border-slate-900 p-1 text-center">TERBIT</th>
+                                        <th className="w-24 border border-slate-900 p-1 text-center">PERSENTASE</th>
+                                        <th className="w-20 border border-slate-900 p-1 text-center">CANCEL</th>
+                                        <th className="w-20 border border-slate-900 p-1 text-center">FLM</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {unitSrRows.map((row, idx) => (
+                                        <tr key={row.name}>
+                                            <td className="border border-slate-900 p-1 text-center">{idx + 1}</td>
+                                            <td className="border border-slate-900 p-1 text-left">{row.name}</td>
+                                            <td className="border border-slate-900 p-1 text-center">{row.terbit}</td>
+                                            <td className="border border-slate-900 p-1 text-center">{row.pct}%</td>
+                                            <td className="border border-slate-900 p-1 text-center">{row.cancel}</td>
+                                            <td className="border border-slate-900 p-1 text-center">{row.flm}</td>
+                                        </tr>
+                                    ))}
+                                    <tr className="bg-slate-100 font-bold">
+                                        <td colSpan={2} className="border border-slate-900 p-1 text-center">TOTAL</td>
+                                        <td className="border border-slate-900 p-1 text-center">{totalTerbit}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{totalTerbit > 0 ? '100%' : '0%'}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{totalCancel}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{totalFlm}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            {/* Charts Side-by-Side: Donut Pie & FLM per Unit */}
+                            <div className="mb-4 grid grid-cols-2 gap-3">
+                                <div className="flex flex-col items-center justify-center rounded border border-slate-300 bg-white p-2">
+                                    <svg viewBox="0 0 280 180" className="h-44 w-full font-sans">
+                                        {pieSlicesWithAngles.length === 0 ? (
+                                            <text x={140} y={90} fontSize={9} fill="#888" textAnchor="middle">Tidak ada data Service Request</text>
+                                        ) : (
+                                            pieSlicesWithAngles.map((s) => (
+                                                <g key={s.name}>
+                                                    <path d={s.d} fill={s.pColor} stroke="#fff" strokeWidth={1.2} />
+                                                    <line x1={s.lx1} y1={s.ly1} x2={s.lx2} y2={s.ly2} stroke="#444" strokeWidth={0.8} />
+                                                    <text x={s.tx} y={s.ly2} fontSize={7.5} fill="#000" textAnchor={s.anchor}>{s.name}</text>
+                                                    <text x={s.tx} y={s.ly2 + 9} fontSize={7.5} fontWeight="bold" fill="#000" textAnchor={s.anchor}>{s.pct}%</text>
+                                                </g>
+                                            ))
+                                        )}
+                                    </svg>
+                                </div>
+                                <div className="rounded border border-slate-300 bg-white p-2">
+                                    <div className="mb-1 text-center text-[10px] font-bold">FLM PER UNIT</div>
+                                    <svg viewBox="0 0 280 180" className="h-44 w-full font-sans">
+                                        {flmTicks.map((t) => {
+                                            const tx = 75 + (t / flmMaxVal) * 175;
+                                            return (
+                                                <g key={t}>
+                                                    <line x1={tx} y1={24} x2={tx} y2={150} stroke="#e5e7eb" strokeWidth={0.8} />
+                                                    <text x={tx} y={162} textAnchor="middle" fontSize={8} fill="#444">{t}</text>
+                                                </g>
+                                            );
+                                        })}
+                                        <line x1={75} y1={24} x2={75} y2={150} stroke="#999" strokeWidth={1} />
+                                        <line x1={75} y1={150} x2={250} y2={150} stroke="#999" strokeWidth={1} />
+                                        {flmRowsReversed.map((fr, rIdx) => {
+                                            const ry = 30 + rIdx * 20;
+                                            const rw = flmMaxVal > 0 ? (fr.flm / flmMaxVal) * 175 : 0;
+                                            return (
+                                                <g key={fr.name}>
+                                                    <text x={70} y={ry + 10} textAnchor="end" fontSize={7.5} fill="#000">{fr.name}</text>
+                                                    {rw > 0 && <rect x={75} y={ry} width={rw} height={13} fill="#5b9bd5" />}
+                                                    <text x={75 + rw + 4} y={ry + 10} fontSize={7.5} fontWeight="bold" fill="#000">{fr.flm}</text>
+                                                </g>
+                                            );
+                                        })}
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 6. SERVICE REQUEST SUMMARY */}
+                        <div className="break-before" id="sec-sr-summary">
+                            <SectionKop title="SERVICE REQUEST SUMMARY" docNumber="FMKD-314-10.3.3-A9" date={data.period.label} />
+
+                            <div className="mb-1 text-[11px] font-bold text-slate-800">SR AKTIF PER STATUS BULAN INI</div>
+                            <table className="mb-4 w-72 border-collapse border border-slate-900 text-[11px]">
+                                <thead>
+                                    <tr className="bg-slate-100 font-bold text-slate-900">
+                                        <th className="w-10 border border-slate-900 p-1 text-center">NO</th>
+                                        <th className="border border-slate-900 p-1 text-left">SERVICE REQUEST</th>
+                                        <th className="w-20 border border-slate-900 p-1 text-center">JUMLAH</th>
+                                        <th className="w-24 border border-slate-900 p-1 text-center">PERSENTASE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td className="border border-slate-900 p-1 text-center">1</td>
+                                        <td className="border border-slate-900 p-1 text-left">OPEN</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srSummaryOpen}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srSummaryOpenPct}%</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="border border-slate-900 p-1 text-center">2</td>
+                                        <td className="border border-slate-900 p-1 text-left">CLOSED</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srSummaryClose}</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srSummaryClosePct}%</td>
+                                    </tr>
+                                    <tr className="bg-slate-100 font-bold">
+                                        <td className="border border-slate-900 p-1 text-center">3</td>
+                                        <td className="border border-slate-900 p-1 text-left">SR TERBIT BULAN INI</td>
+                                        <td className="border border-slate-900 p-1 text-center">{srSummaryTotal}</td>
+                                        <td className="border border-slate-900 p-1 text-center">100%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            {/* Chart 1: SR Status Horizontal Bar Chart */}
+                            <div className="mb-4 rounded border border-slate-300 bg-white p-3 text-center">
+                                <div className="mb-2 text-center text-xs font-bold tracking-wider text-slate-600">SERVICE REQUEST STATUS</div>
+                                <svg viewBox="0 0 540 120" className="mx-auto block h-28 w-full font-sans">
+                                    {c1Ticks.map((t) => {
+                                        const tx = 65 + (t / c1Max) * 445;
+                                        return (
+                                            <g key={t}>
+                                                <line x1={tx} y1={10} x2={tx} y2={85} stroke="#e5e7eb" strokeDasharray="2,2" strokeWidth={0.8} />
+                                                <text x={tx} y={99} textAnchor="middle" fontSize={8} fill="#555">{t}</text>
+                                            </g>
+                                        );
+                                    })}
+                                    <line x1={65} y1={10} x2={65} y2={85} stroke="#bbb" strokeWidth={1} />
+                                    <line x1={65} y1={85} x2={510} y2={85} stroke="#bbb" strokeWidth={1} />
+                                    {/* CLOSED */}
+                                    <text x={57} y={23} textAnchor="end" fontSize={8} fill="#333">CLOSED</text>
+                                    {c1Max > 0 && srSummaryClose > 0 && (
+                                        <>
+                                            <rect x={65} y={12} width={(srSummaryClose / c1Max) * 445} height={16} fill="#62b0f4" />
+                                            <text x={65 + (srSummaryClose / c1Max) * 445 + 5} y={24} fontSize={8} fontWeight="bold" fill="#333">{srSummaryClose}</text>
+                                        </>
+                                    )}
+                                    {/* OPEN */}
+                                    <text x={57} y={56} textAnchor="end" fontSize={8} fill="#333">OPEN</text>
+                                    {c1Max > 0 && srSummaryOpen > 0 && (
+                                        <>
+                                            <rect x={65} y={45} width={(srSummaryOpen / c1Max) * 445} height={16} fill="#62b0f4" />
+                                            <text x={65 + (srSummaryOpen / c1Max) * 445 + 5} y={57} fontSize={8} fontWeight="bold" fill="#333">{srSummaryOpen}</text>
+                                        </>
+                                    )}
+                                </svg>
+                            </div>
+
+                            {/* Chart 2: Top 5 Frequency SR Unit */}
+                            <div className="mb-4 rounded border border-slate-300 bg-white p-3 text-center">
+                                <div className="mb-2 text-center text-xs font-bold tracking-wider text-slate-800">TOP FIVE FREQUENCY SERVICE REQUEST (SR) UNIT</div>
+                                <svg viewBox="0 0 540 180" className="mx-auto block h-40 w-full font-sans">
+                                    <line x1={30} y1={90} x2={510} y2={90} stroke="#bbb" strokeWidth={1} />
+                                    {top5SrAssets.length === 0 ? (
+                                        <text x={270} y={55} fontSize={9} fill="#888" textAnchor="middle">Tidak ada data frekuensi Service Request</text>
+                                    ) : (
+                                        top5SrAssets.map((assetItem, idx) => {
+                                            const c2Centers = [80, 175, 270, 365, 460];
+                                            const cx = c2Centers[idx] ?? (80 + idx * 95);
+                                            const freq = assetItem.freq;
+                                            const barH = Math.max(14, freq * 22);
+                                            const barY = 90 - barH;
+                                            const lbl = assetItem.asset.length > 18 ? assetItem.asset.substring(0, 18) + '...' : assetItem.asset;
+                                            return (
+                                                <g key={assetItem.asset + idx}>
+                                                    <line x1={cx - 33} y1={12} x2={cx - 33} y2={90} stroke="#f0f0f0" strokeWidth={0.8} />
+                                                    <line x1={cx + 33} y1={12} x2={cx + 33} y2={90} stroke="#f0f0f0" strokeWidth={0.8} />
+                                                    <rect x={cx - 23} y={barY} width={46} height={barH} fill="#62b0f4" />
+                                                    <text x={cx} y={barY + barH / 2 + 4} fill="#fff" fontSize={10} fontWeight="bold" textAnchor="middle">{freq}</text>
+                                                    <text x={cx} y={98} fill="#222" fontSize={8} fontWeight="bold" textAnchor="end" transform={`rotate(-45 ${cx} 98)`}>{lbl}</text>
+                                                </g>
+                                            );
+                                        })
+                                    )}
+                                </svg>
+                            </div>
+
+                            {/* Table: Keterangan Top 5 Assets */}
+                            <div className="mb-1 text-[11px] font-bold text-slate-800">KETERANGAN</div>
+                            <table className="mb-4 w-full border-collapse text-[11px]">
+                                <thead>
+                                    <tr className="border-b font-bold text-slate-900">
+                                        <th className="w-56 p-1 text-left">Asset</th>
+                                        <th className="w-16 p-1 text-center">Freq</th>
+                                        <th className="p-1 text-left">Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {top5SrAssets.length === 0 ? (
+                                        <tr><td colSpan={3} className="p-2 text-center italic text-slate-400">Tidak ada data Service Request pada periode ini.</td></tr>
+                                    ) : (
+                                        top5SrAssets.map((row) => (
+                                            <tr key={row.asset + row.description} className="border-b border-slate-100">
+                                                <td className="p-1 font-medium text-slate-800">{row.asset}</td>
+                                                <td className="p-1 text-center font-bold text-slate-700">{row.freq}</td>
+                                                <td className="p-1 text-slate-600">{row.description}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* 7. MAINTENANCE SUMMARY */}
+                        {data.maintenance_summary && (
+                            <>
+                                <SectionTitle n={7} title="Maintenance Summary" id="sec-maintenance-summary" breakBefore />
+
+                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">7.1 Rekapitulasi WO Terbit dan Complete</h3>
+                                <table className="mb-4 w-full border-collapse text-[10px] text-center">
+                                    <thead>
+                                        <tr className="bg-slate-100">
+                                            <th className="border px-1 py-1">BULAN</th>
+                                            <th className="border px-1 py-1">TERBIT</th>
+                                            <th className="border px-1 py-1">JAN</th>
+                                            <th className="border px-1 py-1">FEB</th>
+                                            <th className="border px-1 py-1">MAR</th>
+                                            <th className="border px-1 py-1">APR</th>
+                                            <th className="border px-1 py-1">MEI</th>
+                                            <th className="border px-1 py-1">JUN</th>
+                                            <th className="border px-1 py-1">JUL</th>
+                                            <th className="border px-1 py-1">AUG</th>
+                                            <th className="border px-1 py-1">SEP</th>
+                                            <th className="border px-1 py-1">OKT</th>
+                                            <th className="border px-1 py-1">NOV</th>
+                                            <th className="border px-1 py-1">DES</th>
+                                            <th className="border px-1 py-1">OPEN</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.maintenance_summary.rekap_terbit_complete.rows.map((r) => (
+                                            <tr key={r.bulan}>
+                                                <td className="border px-1 py-1 font-semibold">{r.bulan}</td>
+                                                <td className="border px-1 py-1">{r.terbit}</td>
+                                                {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                                                    <td key={m} className={`border px-1 py-1 ${r.complete[m] ? 'font-bold' : 'text-slate-400'}`}>
+                                                        {r.complete[m] ?? 0}
+                                                    </td>
+                                                ))}
+                                                <td className="border px-1 py-1 font-bold text-blue-600">{r.open}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">7.2 Rekapitulasi Status WO</h3>
+                                <table className="mb-4 w-full border-collapse text-[10px] text-center">
+                                    <thead>
+                                        <tr className="bg-slate-100">
+                                            <th className="border px-1 py-1 text-left">STATUS</th>
+                                            {data.maintenance_summary.rekap_status.columns.map((c) => (
+                                                <th key={c} className="border px-1 py-1">{c}</th>
+                                            ))}
+                                            <th className="border px-1 py-1">TOTAL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.maintenance_summary.rekap_status.rows.map((sr) => (
+                                            <tr key={sr.status}>
+                                                <td className="border px-1 py-1 text-left font-semibold">{sr.status}</td>
+                                                {data.maintenance_summary!.rekap_status.columns.map((c) => (
+                                                    <td key={c} className={`border px-1 py-1 ${sr.values[c] ? 'font-bold' : 'text-slate-400'}`}>
+                                                        {sr.values[c] ?? 0}
+                                                    </td>
+                                                ))}
+                                                <td className="border px-1 py-1 font-bold text-blue-600">{sr.total}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">7.3 Penyelesaian Work Order Task</h3>
+                                <table className="mb-4 w-full border-collapse text-[10px]">
+                                    <thead>
+                                        <tr className="bg-slate-100 text-center">
+                                            <th className="border px-1 py-1" rowSpan={2}>NO</th>
+                                            <th className="border px-2 py-1 text-left" rowSpan={2}>MAINTENANCE TYPE</th>
+                                            <th className="border px-1 py-1" colSpan={2}>RENCANA</th>
+                                            <th className="border px-1 py-1" colSpan={2}>REALISASI</th>
+                                            <th className="border px-1 py-1" colSpan={2}>BIAYA PEMELIHARAAN</th>
+                                        </tr>
+                                        <tr className="bg-slate-100 text-center">
+                                            <th className="border px-1 py-1">FREQ</th>
+                                            <th className="border px-1 py-1">%</th>
+                                            <th className="border px-1 py-1">FREQ</th>
+                                            <th className="border px-1 py-1">%</th>
+                                            <th className="border px-1 py-1">Material</th>
+                                            <th className="border px-1 py-1">Jasa</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.maintenance_summary.tasks.rows.map((tr) => (
+                                            <tr key={tr.no}>
+                                                <td className="border px-1 py-1 text-center">{tr.no}</td>
+                                                <td className="border px-2 py-1 font-medium">{tr.name}</td>
+                                                <td className="border px-1 py-1 text-center">{tr.rencana_freq || ''}</td>
+                                                <td className="border px-1 py-1 text-center">{tr.rencana_pct}%</td>
+                                                <td className="border px-1 py-1 text-center">{tr.realisasi_freq || ''}</td>
+                                                <td className="border px-1 py-1 text-center">{tr.realisasi_pct}%</td>
+                                                <td className="border px-1 py-1 text-right">{tr.material_cost > 0 ? rupiah(tr.material_cost) : '-'}</td>
+                                                <td className="border px-1 py-1 text-right">{tr.service_cost > 0 ? rupiah(tr.service_cost) : '-'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </>
+                        )}
+
+                        {/* 8. ISI LAPORAN */}
+                        <SectionTitle n={8} title="Isi Laporan" id="sec-body" breakBefore />
                         <p className="mb-3 text-justify leading-relaxed">
                             Bagian ini memuat rincian pelaksanaan pemeliharaan {data.unit.name} periode {data.period.label},
                             meliputi ringkasan Service Request, rencana versus realisasi pemeliharaan, dan log kegiatan HARMES.
                         </p>
 
-                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">5.1 Ringkasan Service Request</h3>
+                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">8.1 Ringkasan Service Request</h3>
                         <table className="mb-4 w-full border-collapse text-[11px]">
                             <tbody>
                                 <tr>
@@ -363,7 +968,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">5.2 Rencana vs Realisasi</h3>
+                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">8.2 Rencana vs Realisasi</h3>
                         {data.schedules.length === 0 ? (
                             <p className="mb-4 text-slate-500">Belum ada jadwal.</p>
                         ) : (
@@ -392,7 +997,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             ))
                         )}
 
-                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">5.3 Log Kegiatan HARMES</h3>
+                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">8.3 Log Kegiatan HARMES</h3>
                         {data.activities.length === 0 ? (
                             <p className="mb-4 text-slate-500">Belum ada log kegiatan.</p>
                         ) : (
@@ -440,8 +1045,8 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </table>
                         )}
 
-                        {/* 6. WORK ORDER SUMMARY (FIX) */}
-                        <SectionTitle n={6} title="Work Order Summary (Fix)" id="sec-wo-summary" breakBefore />
+                        {/* 9. WORK ORDER SUMMARY (FIX) */}
+                        <SectionTitle n={9} title="Work Order Summary (Fix)" id="sec-wo-summary" breakBefore />
                         <table className="mb-4 w-full border-collapse text-[11px]">
                             <tbody>
                                 <tr>
@@ -453,8 +1058,8 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        {/* 7. AKUMULASI BIAYA PEMELIHARAAN */}
-                        <SectionTitle n={7} title="Akumulasi Biaya Pemeliharaan" id="sec-cost" />
+                        {/* 10. AKUMULASI BIAYA PEMELIHARAAN */}
+                        <SectionTitle n={10} title="Akumulasi Biaya Pemeliharaan" id="sec-cost" />
                         <table className="mb-2 w-full border-collapse text-[11px]">
                             <tbody>
                                 <tr>
@@ -471,70 +1076,411 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             akumulasi Januari s.d. bulan laporan.
                         </p>
 
-                        {/* 8. REKAPITULASI WORK ORDER TASK */}
-                        <SectionTitle n={8} title="Rekapitulasi Work Order Task" id="sec-recap" />
-                        <table className="mb-2 w-full border-collapse text-[11px]">
-                            <thead>
-                                <tr className="bg-slate-100">
-                                    <th className="border px-2 py-1 text-left">Jenis Work Order</th>
-                                    <th className="border px-2 py-1">Jumlah WO</th>
-                                    <th className="border px-2 py-1">Porsi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data.wo_by_type.length === 0 ? (
-                                    <tr>
-                                        <td className="border px-2 py-1 text-center text-slate-500" colSpan={3}>
-                                            Tidak ada Work Order.
-                                        </td>
+                        {/* 11. REKAPITULASI WORK ORDER TASK */}
+                        <div className="break-before" id="sec-recap">
+                            {/* Kop Standard PLN NP */}
+                            <div className="mb-3 border border-slate-900 font-sans text-xs">
+                                <div className="flex border-b border-slate-900">
+                                    <div className="flex w-44 items-center justify-center border-r border-slate-900 p-2">
+                                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-8" />
+                                    </div>
+                                    <div className="flex flex-1 flex-col items-center justify-center p-2 text-center">
+                                        <span className="text-sm font-bold tracking-wider">PLN NUSANTARA POWER</span>
+                                        <span className="text-xs font-bold">UP KENDARI</span>
+                                    </div>
+                                    <div className="flex w-24 items-center justify-center border-l border-slate-900 p-2">
+                                        <img src="/logo/k3.png" alt="K3" className="h-10" />
+                                    </div>
+                                </div>
+                                <div className="border-b border-slate-900 bg-white py-1 text-center text-[11px] font-bold tracking-wider">
+                                    INTEGRATED MANAGEMENT SYSTEM
+                                </div>
+                                <div className="grid grid-cols-12">
+                                    <div className="col-span-8 flex flex-col items-center justify-center border-r border-slate-900 bg-[#7fa9d8] p-2 text-center text-xs font-bold leading-tight text-slate-900">
+                                        <span>REKAPITULASI</span>
+                                        <span>WO TASK PREVENTIVE, PROACTIVE, PREDICTIVE,</span>
+                                        <span>CORRECTIVE, EMERGENCY, ECP</span>
+                                    </div>
+                                    <div className="col-span-4 text-[10px]">
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">No. Dokumen</span>
+                                            <span className="font-semibold">: FMKD-314-10.3.3-A11</span>
+                                        </div>
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">Revisi</span>
+                                            <span className="font-semibold">: 01</span>
+                                        </div>
+                                        <div className="flex px-2 py-1">
+                                            <span className="w-20 font-medium">Tanggal</span>
+                                            <span className="font-semibold">: {data.period.label}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mb-1 text-[11px] font-medium italic text-slate-700">Rekap Task WO</div>
+
+                            {data.rekap_task_wo ? (
+                                <table className="mb-2 w-full border-collapse border border-slate-900 text-[11px]">
+                                    <thead>
+                                        <tr className="bg-white text-center font-bold text-slate-900">
+                                            <th rowSpan={2} className="w-10 border border-slate-900 px-2 py-1">NO</th>
+                                            <th rowSpan={2} className="border border-slate-900 px-3 py-1 text-center">URAIAN</th>
+                                            <th colSpan={2} className="w-48 border border-slate-900 px-2 py-1">
+                                                <div>RENCANA</div>
+                                                <div className="text-[9px] font-normal">(Base On Schedule Finsihed)</div>
+                                            </th>
+                                            <th colSpan={2} className="w-52 border border-slate-900 px-2 py-1">
+                                                <div>REALISASI</div>
+                                                <div className="text-[9px] font-normal">(Base On Sched Finish Status Comp and Close)</div>
+                                            </th>
+                                        </tr>
+                                        <tr className="bg-white text-center font-bold text-slate-900">
+                                            <th className="w-24 border border-slate-900 px-2 py-1">[Freq]</th>
+                                            <th className="w-24 border border-slate-900 px-2 py-1">%</th>
+                                            <th className="w-24 border border-slate-900 px-2 py-1">FREKWENSI</th>
+                                            <th className="w-28 border border-slate-900 px-2 py-1">% Compliance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.rekap_task_wo.categories.map((cat) => (
+                                            <Fragment key={cat.no}>
+                                                <tr className="bg-[#595959] font-bold text-white">
+                                                    <td className="border border-slate-900 px-2 py-1 text-center">{cat.no}</td>
+                                                    <td className="border border-slate-900 px-2 py-1 text-left">{cat.title}</td>
+                                                    <td className="border border-slate-900 px-2 py-1 text-center">{cat.rencana_freq}</td>
+                                                    <td className="border border-slate-900 px-2 py-1 text-center">{cat.rencana_pct > 0 ? `${cat.rencana_pct.toString().replace('.', ',')}%` : '0%'}</td>
+                                                    <td className="border border-slate-900 px-2 py-1 text-center">{cat.realisasi_freq}</td>
+                                                    <td className="border border-slate-900 px-2 py-1 text-center">{cat.realisasi_pct > 0 ? `${cat.realisasi_pct.toString().replace('.', ',')}%` : '0%'}</td>
+                                                </tr>
+                                                {cat.disciplines.map((d, dIdx) => (
+                                                    <tr key={dIdx} className="bg-white hover:bg-slate-50">
+                                                        <td className="border border-slate-900 px-2 py-0.5 text-center"></td>
+                                                        <td className="border border-slate-900 px-2 py-0.5 pl-6 text-left">{d.name}</td>
+                                                        <td className="border border-slate-900 px-2 py-0.5 text-center">{d.rencana_freq}</td>
+                                                        <td className="border border-slate-900 px-2 py-0.5 text-center">{d.rencana_pct > 0 ? `${d.rencana_pct.toString().replace('.', ',')}%` : '0%'}</td>
+                                                        <td className="border border-slate-900 px-2 py-0.5 text-center">{d.realisasi_freq}</td>
+                                                        <td className="border border-slate-900 px-2 py-0.5 text-center">{d.realisasi_pct > 0 ? `${d.realisasi_pct.toString().replace('.', ',')}%` : '0%'}</td>
+                                                    </tr>
+                                                ))}
+                                            </Fragment>
+                                        ))}
+                                        <tr className="bg-slate-100 font-bold">
+                                            <td colSpan={2} className="border border-slate-900 px-3 py-1.5 text-center">TOTAL</td>
+                                            <td className="border border-slate-900 px-2 py-1.5 text-center">{data.rekap_task_wo.total_rencana_freq}</td>
+                                            <td className="border border-slate-900 px-2 py-1.5 text-center">{data.rekap_task_wo.total_rencana_pct > 0 ? `${data.rekap_task_wo.total_rencana_pct.toString().replace('.', ',')}%` : '0%'}</td>
+                                            <td className="border border-slate-900 px-2 py-1.5 text-center">{data.rekap_task_wo.total_realisasi_freq}</td>
+                                            <td className="border border-slate-900 px-2 py-1.5 text-center">{data.rekap_task_wo.total_realisasi_pct > 0 ? `${data.rekap_task_wo.total_realisasi_pct.toString().replace('.', ',')}%` : '0%'}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <table className="mb-2 w-full border-collapse text-[11px]">
+                                    <thead>
+                                        <tr className="bg-slate-100">
+                                            <th className="border px-2 py-1 text-left">Jenis Work Order</th>
+                                            <th className="border px-2 py-1">Jumlah WO</th>
+                                            <th className="border px-2 py-1">Porsi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.wo_by_type.map((g) => (
+                                            <tr key={g.type}>
+                                                <td className="border px-2 py-1 text-left">{g.type}</td>
+                                                <td className="border px-2 py-1 text-center">{g.rows.length}</td>
+                                                <td className="border px-2 py-1 text-center">
+                                                    {data.wo_summary.total > 0
+                                                        ? `${Math.round((g.rows.length / data.wo_summary.total) * 100)}%`
+                                                        : '—'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+
+                            <p className="mb-4 text-[10px] text-slate-500">
+                                Total uraian task (dari log kegiatan HARMES): <span className="font-semibold">{totalTasks}</span> item pada{' '}
+                                {data.activities.length} kegiatan.
+                            </p>
+                        </div>
+
+                        {/* 12. WO PM (WO PREVENTIVE MAINTANANCE - FMKD-314-10.3.3-A12) */}
+                        <div className="break-before" id="sec-wo-pm">
+                            {/* Kop Standard PLN NP */}
+                            <div className="mb-3 border border-slate-900 font-sans text-xs">
+                                <div className="flex border-b border-slate-900">
+                                    <div className="flex w-44 items-center justify-center border-r border-slate-900 p-2">
+                                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-8" />
+                                    </div>
+                                    <div className="flex flex-1 flex-col items-center justify-center p-2 text-center">
+                                        <span className="text-sm font-bold tracking-wider">PLN NUSANTARA POWER</span>
+                                        <span className="text-xs font-bold">UP KENDARI</span>
+                                    </div>
+                                    <div className="flex w-24 items-center justify-center border-l border-slate-900 p-2">
+                                        <img src="/logo/k3.png" alt="K3" className="h-10" />
+                                    </div>
+                                </div>
+                                <div className="border-b border-slate-900 bg-white py-1 text-center text-[11px] font-bold tracking-wider">
+                                    INTEGRATED MANAGEMENT SYSTEM
+                                </div>
+                                <div className="grid grid-cols-12">
+                                    <div className="col-span-8 flex flex-col items-center justify-center border-r border-slate-900 bg-[#7fa9d8] p-2 text-center text-xs font-bold leading-tight text-slate-900">
+                                        <span>WO PREVENTIVE MAINTANANCE</span>
+                                    </div>
+                                    <div className="col-span-4 text-[10px]">
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">No. Dokumen</span>
+                                            <span className="font-semibold">: FMKD-314-10.3.3-A12</span>
+                                        </div>
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">Revisi</span>
+                                            <span className="font-semibold">: 01</span>
+                                        </div>
+                                        <div className="flex px-2 py-1">
+                                            <span className="w-20 font-medium">Tanggal</span>
+                                            <span className="font-semibold">: {data.period.label}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <table className="mb-4 w-full border-collapse border border-slate-900 text-[10px]">
+                                <thead>
+                                    <tr className="bg-white text-center font-bold text-slate-900">
+                                        <th className="w-10 border border-slate-900 px-2 py-1">NO</th>
+                                        <th className="w-20 border border-slate-900 px-2 py-1">WONUM</th>
+                                        <th className="border border-slate-900 px-3 py-1 text-center">DESCRIPTION</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">REPORT DATE</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">SCHED START</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">SCHED FINISH</th>
+                                        <th className="w-16 border border-slate-900 px-2 py-1">STATUS</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">WORK GROUP</th>
                                     </tr>
-                                ) : (
-                                    data.wo_by_type.map((g) => (
-                                        <tr key={g.type}>
-                                            <td className="border px-2 py-1 text-left">{g.type}</td>
-                                            <td className="border px-2 py-1 text-center">{g.rows.length}</td>
-                                            <td className="border px-2 py-1 text-center">
-                                                {data.wo_summary.total > 0
-                                                    ? `${Math.round((g.rows.length / data.wo_summary.total) * 100)}%`
-                                                    : '—'}
+                                </thead>
+                                <tbody>
+                                    {woPm.length > 0 ? (
+                                        woPm.map((r, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50">
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{idx + 1}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center font-semibold">{r.wonum}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-left">{r.description || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.report_date || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.sched_start || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.sched_finish || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.status || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.work_group || '—'}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={8} className="border border-slate-900 p-4 text-center italic text-slate-500">
+                                                Tidak ada data Work Order PM pada periode ini.
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                                <tr className="bg-slate-50 font-semibold">
-                                    <td className="border px-2 py-1 text-left">Total</td>
-                                    <td className="border px-2 py-1 text-center">{data.wo_summary.total}</td>
-                                    <td className="border px-2 py-1 text-center">100%</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p className="mb-4 text-[10px] text-slate-500">
-                            Total uraian task (dari log kegiatan HARMES): <span className="font-semibold">{totalTasks}</span> item pada{' '}
-                            {data.activities.length} kegiatan.
-                        </p>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
 
-                        {/* 9. WO PM */}
-                        <SectionTitle n={9} title="Work Order PM (Preventive Maintenance)" id="sec-wo-pm" breakBefore />
-                        <WoTable rows={woPm} />
+                        {/* 13. WO PDM (WO PREDICTIVE MAINTANANCE - FMKD-314-10.3.3-A13) */}
+                        <div className="break-before" id="sec-wo-pdm">
+                            {/* Kop Standard PLN NP */}
+                            <div className="mb-3 border border-slate-900 font-sans text-xs">
+                                <div className="flex border-b border-slate-900">
+                                    <div className="flex w-44 items-center justify-center border-r border-slate-900 p-2">
+                                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-8" />
+                                    </div>
+                                    <div className="flex flex-1 flex-col items-center justify-center p-2 text-center">
+                                        <span className="text-sm font-bold tracking-wider">PLN NUSANTARA POWER</span>
+                                        <span className="text-xs font-bold">UP KENDARI</span>
+                                    </div>
+                                    <div className="flex w-24 items-center justify-center border-l border-slate-900 p-2">
+                                        <img src="/logo/k3.png" alt="K3" className="h-10" />
+                                    </div>
+                                </div>
+                                <div className="border-b border-slate-900 bg-white py-1 text-center text-[11px] font-bold tracking-wider">
+                                    INTEGRATED MANAGEMENT SYSTEM
+                                </div>
+                                <div className="grid grid-cols-12">
+                                    <div className="col-span-8 flex flex-col items-center justify-center border-r border-slate-900 bg-[#7fa9d8] p-2 text-center text-xs font-bold leading-tight text-slate-900">
+                                        <span>WO PREDICTIVE MAINTANANCE</span>
+                                    </div>
+                                    <div className="col-span-4 text-[10px]">
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">No. Dokumen</span>
+                                            <span className="font-semibold">: FMKD-314-10.3.3-A13</span>
+                                        </div>
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">Revisi</span>
+                                            <span className="font-semibold">: 01</span>
+                                        </div>
+                                        <div className="flex px-2 py-1">
+                                            <span className="w-20 font-medium">Tanggal</span>
+                                            <span className="font-semibold">: {data.period.label}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
-                        {/* 10. WO PDM */}
-                        <SectionTitle n={10} title="Work Order PdM (Predictive Maintenance)" id="sec-wo-pdm" />
-                        <WoTable rows={woPdm} />
+                            <div className="mb-1 text-[11px] font-bold text-slate-900">WO PdM YANG TERBIT BULAN INI</div>
 
-                        {/* 11. WO ENJI */}
-                        <SectionTitle n={11} title="Work Order ENJI (Engineering)" id="sec-wo-enji" />
+                            <table className="mb-3 w-full border-collapse border border-slate-900 text-[10px]">
+                                <thead>
+                                    <tr className="bg-white text-center font-bold text-slate-900">
+                                        <th className="w-10 border border-slate-900 px-2 py-1">NO</th>
+                                        <th className="w-20 border border-slate-900 px-2 py-1">WONUM</th>
+                                        <th className="border border-slate-900 px-3 py-1 text-center">DESCRIPTION</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">REPORT DATE</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">SCHED START</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">SCHED FINISH</th>
+                                        <th className="w-16 border border-slate-900 px-2 py-1">STATUS</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">WORK GROUP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {woPdm.length > 0 ? (
+                                        woPdm.map((r, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50">
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{idx + 1}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center font-semibold">{r.wonum}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-left">{r.description || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.report_date || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.sched_start || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.sched_finish || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.status || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.work_group || '—'}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        Array.from({ length: 16 }).map((_, idx) => (
+                                            <tr key={idx} className="h-6">
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{idx + 1}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5"></td>
+                                                <td className="border border-slate-900 px-2 py-0.5"></td>
+                                                <td className="border border-slate-900 px-2 py-0.5"></td>
+                                                <td className="border border-slate-900 px-2 py-0.5"></td>
+                                                <td className="border border-slate-900 px-2 py-0.5"></td>
+                                                <td className="border border-slate-900 px-2 py-0.5"></td>
+                                                <td className="border border-slate-900 px-2 py-0.5"></td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+
+                            <div className="mb-4 text-[10px] leading-relaxed text-slate-700">
+                                <div className="font-bold italic">Keterangan:</div>
+                                <div className="italic"><span className="font-semibold">Inprogres</span> : WO dalam proses pelaksanaan pekerjaan oleh eksekutor</div>
+                                <div className="italic"><span className="font-semibold">Close</span> : Scope pekerjaan WO sudah diselesaikan, dan proses transaksi kebutuhan material/spare part/tools oleh Warehouse telah selesai</div>
+                                <div className="italic"><span className="font-semibold">Inplanning</span> : WO dalam proses perencanaan</div>
+                                <div className="italic"><span className="font-semibold">Proses SCM</span> : WO dalam proses pada stream Supply Chain Management (SCM)</div>
+                                <div className="italic"><span className="font-semibold">Waiting Plant Condition</span> : WO menunggu kondisi unit atau peralatan</div>
+                            </div>
+                        </div>
+
+                        {/* 14. WO CM (WO CORRECTIVE MAINTANANCE - FMKD-314-10.3.3-A14) */}
+                        <div className="break-before" id="sec-wo-cm">
+                            {/* Kop Standard PLN NP */}
+                            <div className="mb-3 border border-slate-900 font-sans text-xs">
+                                <div className="flex border-b border-slate-900">
+                                    <div className="flex w-44 items-center justify-center border-r border-slate-900 p-2">
+                                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-8" />
+                                    </div>
+                                    <div className="flex flex-1 flex-col items-center justify-center p-2 text-center">
+                                        <span className="text-sm font-bold tracking-wider">PLN NUSANTARA POWER</span>
+                                        <span className="text-xs font-bold">UP KENDARI</span>
+                                    </div>
+                                    <div className="flex w-24 items-center justify-center border-l border-slate-900 p-2">
+                                        <img src="/logo/k3.png" alt="K3" className="h-10" />
+                                    </div>
+                                </div>
+                                <div className="border-b border-slate-900 bg-white py-1 text-center text-[11px] font-bold tracking-wider">
+                                    INTEGRATED MANAGEMENT SYSTEM
+                                </div>
+                                <div className="grid grid-cols-12">
+                                    <div className="col-span-8 flex flex-col items-center justify-center border-r border-slate-900 bg-[#7fa9d8] p-2 text-center text-xs font-bold leading-tight text-slate-900">
+                                        <span>WO CORRECTIVE MAINTANANCE</span>
+                                    </div>
+                                    <div className="col-span-4 text-[10px]">
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">No. Dokumen</span>
+                                            <span className="font-semibold">: FMKD-314-10.3.3-A14</span>
+                                        </div>
+                                        <div className="flex border-b border-slate-900 px-2 py-1">
+                                            <span className="w-20 font-medium">Revisi</span>
+                                            <span className="font-semibold">: 01</span>
+                                        </div>
+                                        <div className="flex px-2 py-1">
+                                            <span className="w-20 font-medium">Tanggal</span>
+                                            <span className="font-semibold">: {data.period.label}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <table className="mb-3 w-full border-collapse border border-slate-900 text-[10px]">
+                                <thead>
+                                    <tr className="bg-white text-center font-bold text-slate-900">
+                                        <th className="w-10 border border-slate-900 px-2 py-1">NO</th>
+                                        <th className="w-20 border border-slate-900 px-2 py-1">WONUM</th>
+                                        <th className="border border-slate-900 px-3 py-1 text-center">DESCRIPTION</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">REPORT DATE</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">SCHED START</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">SCHED FINISH</th>
+                                        <th className="w-16 border border-slate-900 px-2 py-1">STATUS</th>
+                                        <th className="w-24 border border-slate-900 px-2 py-1">WORK GROUP</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {woCm.length > 0 ? (
+                                        woCm.map((r, idx) => (
+                                            <tr key={idx} className="hover:bg-slate-50">
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{idx + 1}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center font-semibold">{r.wonum}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-left">{r.description || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.report_date || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.sched_start || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.sched_finish || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.status || '—'}</td>
+                                                <td className="border border-slate-900 px-2 py-0.5 text-center">{r.work_group || '—'}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={8} className="border border-slate-900 p-4 text-center italic text-slate-500">
+                                                Tidak ada data Work Order CM pada periode ini.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+
+                            {woCm.filter((r) => r.status && r.status.toUpperCase() !== 'CLOSE').length > 0 && (
+                                <div className="mb-4 text-[10px] leading-relaxed text-slate-700">
+                                    {woCm
+                                        .filter((r) => r.status && r.status.toUpperCase() !== 'CLOSE')
+                                        .map((r) => (
+                                            <div key={r.wonum}>- {r.wonum} : {r.status} {r.description ? `(${r.description})` : ''}</div>
+                                        ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 15. WO ENJI */}
+                        <SectionTitle n={15} title="Work Order ENJI (Engineering)" id="sec-wo-enji" />
                         <WoTable rows={woEnji} />
 
-                        {/* 12. WO WAITING SHUTDOWN */}
-                        <SectionTitle n={12} title="Work Order Waiting Shutdown" id="sec-wait-sd" breakBefore />
+                        {/* 16. WO WAITING SHUTDOWN */}
+                        <SectionTitle n={16} title="Work Order Waiting Shutdown" id="sec-wait-sd" breakBefore />
                         <WaitingTable rows={waitingShutdown} />
 
-                        {/* 13. WO WAITING MATERIAL & JASA */}
-                        <SectionTitle n={13} title="Work Order Waiting Material & Jasa" id="sec-wait-mj" />
+                        {/* 17. WO WAITING MATERIAL & JASA */}
+                        <SectionTitle n={17} title="Work Order Waiting Material & Jasa" id="sec-wait-mj" />
                         <WaitingTable rows={waitingMaterialJasa} />
 
-                        {/* 14. LAMPIRAN */}
-                        <SectionTitle n={14} title="Lampiran" id="sec-attachments" breakBefore />
+                        {/* 18. LAMPIRAN */}
+                        <SectionTitle n={18} title="Lampiran" id="sec-attachments" breakBefore />
                         {data.attachments.length === 0 ? (
                             <p className="text-slate-500">Belum ada lampiran foto.</p>
                         ) : (

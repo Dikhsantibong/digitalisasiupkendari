@@ -37,9 +37,16 @@ class DocumentController extends Controller
      * stale and re-rendered from the current template automatically.
      * v2 = 14-section layout + cover; v3 = each section on its own page;
      * v4 = corporate polish (footer + page numbers, ToC leaders, full WO tables
-     * in landscape).
+     * in landscape); v5 = PLN NP corporate kop; v6 = Service Request Summary added;
+     * v7 = Maintenance Summary added; v8 = Rekapitulasi WO Task added;
+     * v9 = WO Preventive Maintenance ISO FMKD-314-10.3.3-A12 added;
+     * v10 = WO Predictive Maintenance ISO FMKD-314-10.3.3-A13 added;
+     * v11 = WO Corrective Maintenance ISO FMKD-314-10.3.3-A14 added;
+     * v12 = Removed hardcoded fallback dummy data across all report sections and seeded authentic maintenance data;
+     * v13 = Converted Service Request Map and Summary charts to base64 SVG images for Dompdf & TinyMCE compatibility;
+     * v14 = Redesigned corporate cover with dual logos (PLN NP + MKP) and title Laporan Pemeliharaan Pembangkit.
      */
-    private const BODY_VERSION = 4;
+    private const BODY_VERSION = 14;
 
     public function __construct(
         private readonly HarDocumentBuilder $builder,

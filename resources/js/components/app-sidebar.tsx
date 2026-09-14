@@ -22,6 +22,7 @@ import {
     ScrollText,
     ShieldCheck,
     Siren,
+    SquarePen,
     TimerReset,
     UserCog,
     Users,
@@ -52,35 +53,24 @@ import roles from '@/routes/admin/roles';
 import serviceUnits from '@/routes/admin/service-units';
 import units from '@/routes/admin/units';
 import users from '@/routes/admin/users';
-import harActivity from '@/routes/har/input/activity';
-import harAttachment from '@/routes/har/input/attachment';
-import harCost from '@/routes/har/input/cost';
-import harSchedule from '@/routes/har/input/schedule';
-import harServiceRequest from '@/routes/har/input/service-request';
-import harWorkOrder from '@/routes/har/input/work-order';
+import harFormulir from '@/routes/har/formulir';
+import harInput from '@/routes/har/input';
+import harJadwal from '@/routes/har/jadwal';
 import harLaporan from '@/routes/har/laporan';
 import harMaster from '@/routes/har/master';
-import k3Accident from '@/routes/k3/input/accident';
-import k3AparCheck from '@/routes/k3/input/apar-check';
-import k3Attachment from '@/routes/k3/input/attachment';
-import k3Certificate from '@/routes/k3/input/certificate';
-import k3Emergency from '@/routes/k3/input/emergency';
-import k3Inspection from '@/routes/k3/input/inspection';
-import k3Patrol from '@/routes/k3/input/patrol';
-import k3TimeFrame from '@/routes/k3/input/time-frame';
+import k3Input from '@/routes/k3/input';
+import k3Jadwal from '@/routes/k3/jadwal';
 import k3Laporan from '@/routes/k3/laporan';
 import k3Master from '@/routes/k3/master';
 import k3Monitoring from '@/routes/k3/monitoring';
 import beritaAcara from '@/routes/operasi/berita-acara';
 import documentTemplate from '@/routes/operasi/document-template';
-import auxiliary from '@/routes/operasi/input/auxiliary';
-import dailyReport from '@/routes/operasi/input/daily-report';
-import feeder from '@/routes/operasi/input/feeder';
-import fuelReceipt from '@/routes/operasi/input/fuel-receipt';
-import starStop from '@/routes/operasi/input/star-stop';
+import operasiInput from '@/routes/operasi/input';
+import operasiJadwal from '@/routes/operasi/jadwal';
 import laporan from '@/routes/operasi/laporan';
 import master from '@/routes/operasi/master';
 import absensi from '@/routes/operator/absensi';
+import operatorLaporan from '@/routes/operator/laporan';
 import logsheet from '@/routes/operator/logsheet';
 import type { NavGroup } from '@/types';
 
@@ -147,50 +137,35 @@ export function AppSidebar() {
                     href: absensi.index(),
                     icon: CalendarRange,
                 },
+                can('operator.logsheet.view') && {
+                    title: 'Laporan Operator',
+                    href: operatorLaporan.index(),
+                    icon: FileBarChart,
+                },
             ].filter(Boolean) as NavGroup['items'],
         },
         {
             label: 'Operasi',
             items: [
                 can('operasi.input.view') && {
-                    title: 'Input Harian',
-                    href: dailyReport.index(),
-                    icon: Gauge,
+                    title: 'Jadwal',
+                    href: operasiJadwal.index(),
+                    icon: CalendarRange,
                 },
                 can('operasi.input.view') && {
-                    title: 'Star-Stop',
-                    href: starStop.index(),
-                    icon: TimerReset,
-                },
-                can('operasi.input.view') && {
-                    title: 'Feeder',
-                    href: feeder.index(),
-                    icon: Zap,
-                },
-                can('operasi.input.view') && {
-                    title: 'Pasokan Cadangan',
-                    href: auxiliary.index(),
-                    icon: Plug,
-                },
-                can('operasi.input.view') && {
-                    title: 'Penerimaan BBM',
-                    href: fuelReceipt.index(),
-                    icon: Fuel,
-                },
-                can('operasi.laporan.view') && {
-                    title: 'Laporan',
-                    href: laporan.index(),
-                    icon: FileBarChart,
+                    title: 'Input',
+                    href: operasiInput.index(),
+                    icon: SquarePen,
                 },
                 can('operasi.berita_acara.view') && {
                     title: 'Berita Acara',
                     href: beritaAcara.index(),
                     icon: FileSignature,
                 },
-                can('operasi.master.manage') && {
-                    title: 'Template BA',
-                    href: documentTemplate.index(),
-                    icon: FileCog,
+                can('operasi.laporan.view') && {
+                    title: 'Laporan Operasi Pembangkit',
+                    href: laporan.index(),
+                    icon: FileBarChart,
                 },
             ].filter(Boolean) as NavGroup['items'],
         },
@@ -198,37 +173,22 @@ export function AppSidebar() {
             label: 'Pemeliharaan',
             items: [
                 can('har.input.view') && {
-                    title: 'Work Order',
-                    href: harWorkOrder.index(),
-                    icon: ClipboardList,
-                },
-                can('har.input.view') && {
-                    title: 'Service Request',
-                    href: harServiceRequest.index(),
-                    icon: ClipboardCheck,
-                },
-                can('har.input.view') && {
-                    title: 'Log Kegiatan',
-                    href: harActivity.index(),
-                    icon: NotebookPen,
-                },
-                can('har.input.view') && {
-                    title: 'Biaya',
-                    href: harCost.index(),
-                    icon: Wallet,
-                },
-                can('har.input.view') && {
-                    title: 'Rencana vs Realisasi',
-                    href: harSchedule.index(),
+                    title: 'Jadwal',
+                    href: harJadwal.index(),
                     icon: CalendarRange,
                 },
                 can('har.input.view') && {
-                    title: 'Lampiran Foto',
-                    href: harAttachment.index(),
-                    icon: Image,
+                    title: 'Input',
+                    href: harInput.index(),
+                    icon: SquarePen,
+                },
+                can('har.input.view') && {
+                    title: 'Formulir',
+                    href: harFormulir.index(),
+                    icon: ClipboardCheck,
                 },
                 can('har.laporan.view') && {
-                    title: 'Laporan HAR',
+                    title: 'Laporan Pemeliharaan Pembangkit',
                     href: harLaporan.index(),
                     icon: FileBarChart,
                 },
@@ -238,52 +198,17 @@ export function AppSidebar() {
             label: 'K3 & Keamanan',
             items: [
                 can('k3.input.view') && {
-                    title: 'Time Frame',
-                    href: k3TimeFrame.index(),
+                    title: 'Jadwal',
+                    href: k3Jadwal.index(),
                     icon: CalendarRange,
                 },
                 can('k3.input.view') && {
-                    title: 'Laporan Kecelakaan',
-                    href: k3Accident.index(),
-                    icon: ClipboardCheck,
-                },
-                can('k3.input.view') && {
-                    title: 'Inspeksi Checklist',
-                    href: k3Inspection.index(),
-                    icon: ClipboardList,
-                },
-                can('k3.input.view') && {
-                    title: 'Inspeksi APAR/APAB',
-                    href: k3AparCheck.index(),
-                    icon: Flame,
-                },
-                can('k3.input.view') && {
-                    title: 'Fasilitas Darurat',
-                    href: k3Emergency.index(),
-                    icon: Siren,
-                },
-                can('k3.input.view') && {
-                    title: 'Patroli Keamanan',
-                    href: k3Patrol.index(),
-                    icon: ShieldCheck,
-                },
-                can('k3.input.view') && {
-                    title: 'Sertifikasi Peralatan',
-                    href: k3Certificate.index(),
-                    icon: ScrollText,
-                },
-                can('k3.input.view') && {
-                    title: 'Lampiran K3',
-                    href: k3Attachment.index(),
-                    icon: Image,
-                },
-                can('k3.monitoring.view') && {
-                    title: 'Monitoring K3',
-                    href: k3Monitoring.index(),
-                    icon: Gauge,
+                    title: 'Input',
+                    href: k3Input.index(),
+                    icon: SquarePen,
                 },
                 can('k3.laporan.view') && {
-                    title: 'Laporan K3',
+                    title: 'Laporan K3 Lingkungan Pembangkit',
                     href: k3Laporan.index(),
                     icon: FileBarChart,
                 },

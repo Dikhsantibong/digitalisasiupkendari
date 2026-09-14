@@ -34,9 +34,10 @@ class DocumentController extends Controller
      * Current report-body template version. Bump when the layout changes so
      * documents saved against an older layout re-render from the new template.
      * v3 = full framework (cover, exec summary, daftar isi, istilah) + one
-     * section per page; v4 = corporate polish (footer + page numbers, ToC leaders).
+     * section per page; v4 = corporate polish (footer + page numbers, ToC leaders);
+     * v5 = redesigned corporate cover with dual logos (PLN NP + MKP) and title Laporan K3 Lingkungan Pembangkit.
      */
-    private const BODY_VERSION = 4;
+    private const BODY_VERSION = 5;
 
     public function __construct(
         private readonly K3DocumentBuilder $builder,

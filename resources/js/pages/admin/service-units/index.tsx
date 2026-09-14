@@ -102,6 +102,7 @@ export default function ServiceUnitsIndex({
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Unit Layanan</TableHead>
+                                    <TableHead>Manager UL</TableHead>
                                     <TableHead>Deskripsi</TableHead>
                                     <TableHead className="text-right">
                                         Jumlah Unit
@@ -127,6 +128,17 @@ export default function ServiceUnitsIndex({
                                             <span className="block text-xs text-muted-foreground">
                                                 {serviceUnit.code}
                                             </span>
+                                        </TableCell>
+                                        <TableCell>
+                                            {serviceUnit.manager ? (
+                                                <span className="font-medium text-foreground">
+                                                    {serviceUnit.manager}
+                                                </span>
+                                            ) : (
+                                                <span className="text-muted-foreground">
+                                                    —
+                                                </span>
+                                            )}
                                         </TableCell>
                                         <TableCell className="text-muted-foreground">
                                             {serviceUnit.description ?? '—'}

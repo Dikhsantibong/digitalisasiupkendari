@@ -15,20 +15,25 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int|null $unit_id
+ * @property int|null $service_unit_id
  * @property string $name
  * @property string|null $nip
  * @property string|null $position
+ * @property string|null $signature_path
  * @property string|null $regu
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Unit|null $unit
+ * @property-read ServiceUnit|null $serviceUnit
  */
 #[Fillable([
     'unit_id',
+    'service_unit_id',
     'name',
     'nip',
     'position',
+    'signature_path',
     'regu',
     'is_active',
 ])]
@@ -36,6 +41,11 @@ class Employee extends Model
 {
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
+
+    public function signatureUrl(): ?string
+    {
+        return $this->signature_path ? \Illuminate\Support\Facades\Storage::disk('public')->url($this->signature_path) : null;
+    }
 
     /**
      * @return array<string, string>
@@ -56,7 +66,15 @@ class Employee extends Model
     }
 
     /**
-     * Limit the query to the employees whose unit the given user may see.
+     * @return BelongsTo<ServiceUnit, $this>
+     */
+    public function serviceUnit(): BelongsTo
+    {
+        return $this->belongsTo(ServiceUnit::class);
+    }
+
+    /**
+     * Limit the query to the employees whose unit or service unit the given user may see.
      *
      * @param  Builder<$this>  $query
      */
@@ -66,6 +84,9 @@ class Employee extends Model
             return;
         }
 
-        $query->whereIn('unit_id', $user->accessibleUnitIds());
+        $query->where(function (Builder $q) use ($user): void {
+            $q->whereIn('unit_id', $user->accessibleUnitIds())
+                ->orWhereIn('service_unit_id', $user->accessibleServiceUnitIds());
+        });
     }
 }

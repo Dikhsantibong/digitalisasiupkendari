@@ -37,6 +37,7 @@ class HarMasterSeeder extends Seeder
         $cycles = [
             ['code' => 'P1', 'name' => 'Siklus 7 Hari', 'interval_days' => 7],
             ['code' => 'P2', 'name' => 'Siklus 14 Hari', 'interval_days' => 14],
+            ['code' => 'P3', 'name' => 'Siklus 28 Hari', 'interval_days' => 28],
             ['code' => 'P4', 'name' => 'Siklus 84 Hari', 'interval_days' => 84],
         ];
         foreach ($cycles as $i => $cycle) {
@@ -50,6 +51,7 @@ class HarMasterSeeder extends Seeder
             ['code' => 'WAPPR', 'name' => 'Waiting Approval', 'is_closed' => false],
             ['code' => 'APPR', 'name' => 'Approved', 'is_closed' => false],
             ['code' => 'INPRG', 'name' => 'In Progress', 'is_closed' => false],
+            ['code' => 'WPTW', 'name' => 'Waiting Permit to Work', 'is_closed' => false],
             ['code' => 'CLOSE', 'name' => 'Closed', 'is_closed' => true],
         ];
         foreach ($statuses as $i => $status) {
