@@ -77,24 +77,41 @@ enum ReportModule: string
     }
 
     /**
-     * Lembar Pengesahan, in signing order (the page prints it reversed:
-     * Mengetahui · Menyetujui · Memeriksa).
+     * The Team Leader jabatan that approves (menyetujui) this module's report.
+     * HAR, PDM and Logistik are approved by TL Pemeliharaan; Operasi by TL
+     * Operasi; K3 by TL K3 & Keamanan.
+     */
+    public function teamLeaderPosition(): EmployeePosition
+    {
+        return match ($this) {
+            self::Operasi => EmployeePosition::TeamLeaderOperasi,
+            self::K3 => EmployeePosition::TeamLeaderK3,
+            self::Har, self::Pdm, self::Logistik => EmployeePosition::TeamLeaderPemeliharaan,
+        };
+    }
+
+    /**
+     * The approval chain — and the Lembar Pengesahan, printed in the same
+     * order: the Koordinator of the report's divisi memeriksa (verifikasi),
+     * the Team Leader sesuai modul menyetujui, the Manager UL mengesahkan (last).
      *
      * @return list<array{caption: string, position: EmployeePosition}>
      */
     public function pengesahanSigners(): array
     {
         return [
-            ['caption' => 'Memeriksa', 'position' => EmployeePosition::KoordinatorPemeliharaan],
-            ['caption' => 'Menyetujui', 'position' => EmployeePosition::TeamLeaderPemeliharaan],
-            ['caption' => 'Mengetahui', 'position' => EmployeePosition::ManagerUl],
+            ['caption' => 'Memeriksa', 'position' => EmployeePosition::koordinatorFor($this->division())],
+            ['caption' => 'Menyetujui', 'position' => $this->teamLeaderPosition()],
+            ['caption' => 'Mengesahkan', 'position' => EmployeePosition::ManagerUl],
         ];
     }
 
     /**
      * The signature block inside the report (after the Lembar Pengesahan):
      * Project Leader + the Office of the report's divisi; the PdM report is
-     * signed by the Koordinator Pemeliharaan + PIC PDM instead.
+     * signed by the Koordinator Pemeliharaan + PIC PDM instead. Not part of the
+     * approval chain: the signers are frozen when the report is diajukan and
+     * their signatures print once the Manager UL has made it FINAL.
      *
      * @return list<array{caption: string, position: EmployeePosition}>
      */

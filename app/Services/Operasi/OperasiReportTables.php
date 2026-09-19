@@ -161,8 +161,8 @@ class OperasiReportTables
     }
 
     /**
-     * Lembar Pengesahan (Mengetahui Manager UL · Menyetujui TL Pemeliharaan ·
-     * Memeriksa Koordinator Pemeliharaan) and the in-report block (Project
+     * Lembar Pengesahan (Memeriksa Koordinator Operasi · Menyetujui TL
+     * Pemeliharaan · Mengesahkan Manager UL) and the in-report block (Project
      * Leader · Office Operasi) of the unit, from the report workflow.
      *
      * @return array{tempat_tanggal: string, blocks: array{pengesahan: string, laporan: string}}

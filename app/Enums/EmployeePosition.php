@@ -65,6 +65,21 @@ enum EmployeePosition: string
     }
 
     /**
+     * The Koordinator jabatan of a divisi (work_modules.code) — the pemeriksa
+     * (verifikator) of that divisi's Laporan Pembangkit.
+     */
+    public static function koordinatorFor(string $division): self
+    {
+        return match ($division) {
+            'pemeliharaan' => self::KoordinatorPemeliharaan,
+            'operasi' => self::KoordinatorOperasi,
+            'k3' => self::KoordinatorK3,
+            'pdm' => self::KoordinatorPdm,
+            'logistik' => self::KoordinatorLogistik,
+        };
+    }
+
+    /**
      * The Office jabatan of a divisi (work_modules.code).
      */
     public static function officeFor(string $division): self

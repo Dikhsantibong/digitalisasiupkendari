@@ -7,6 +7,7 @@ import { bunny } from 'laravel-vite-plugin/fonts';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+    publicDir: 'public',
     // Pre-bundle ExcelJS (used by the HAR jadwal Excel exports) so the dev
     // server does not hit a mid-session re-optimize when a jadwal page is
     // first opened, which surfaces as "Failed to fetch dynamically imported

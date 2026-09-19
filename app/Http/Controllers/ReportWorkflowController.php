@@ -13,10 +13,12 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 /**
- * The actions of the Laporan Pembangkit workflow — Ajukan, Verifikasi, Tolak
- * and Setujui / Sahkan / Tanda Tangani — for every report module. Each action
- * is authorised by {@see ReportWorkflowService} (permission + unit scope, or
- * the signer's own linked employee), whatever buttons the page shows.
+ * The actions of the Laporan Pembangkit workflow for every report module:
+ * Ajukan (pembuat), Verifikasi (Koordinator divisi), Setujui (Team Leader
+ * sesuai modul), Sahkan (Manager UL, last) and Tolak (whoever's turn it is).
+ * Each action is authorised by {@see ReportWorkflowService} (write
+ * permission + unit scope to ajukan; the signer's own linked employee, in
+ * order, for every other step), whatever buttons the page shows.
  */
 class ReportWorkflowController extends Controller
 {
@@ -32,7 +34,7 @@ class ReportWorkflowController extends Controller
 
         $workflow = $this->workflows->submit($request->user(), $module, $unit, $month, $year, $validated['note'] ?? null);
 
-        return $this->done($workflow, "Mengajukan {$module->label()} {$unit->name} periode {$month}/{$year}", 'Laporan diajukan untuk verifikasi.');
+        return $this->done($workflow, "Mengajukan {$module->label()} {$unit->name} periode {$month}/{$year}", 'Laporan diajukan untuk diverifikasi Koordinator.');
     }
 
     public function verify(Request $request, ReportModule $module): RedirectResponse
@@ -42,7 +44,7 @@ class ReportWorkflowController extends Controller
 
         $workflow = $this->workflows->verify($request->user(), $workflow, $validated['note'] ?? null);
 
-        return $this->done($workflow, "Memverifikasi {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", 'Laporan terverifikasi dan diteruskan ke pengesahan.');
+        return $this->done($workflow, "Memverifikasi {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", "Laporan diverifikasi dan diteruskan ke {$module->teamLeaderPosition()->value} untuk disetujui.");
     }
 
     public function reject(Request $request, ReportModule $module): RedirectResponse
@@ -55,18 +57,24 @@ class ReportWorkflowController extends Controller
         return $this->done($workflow, "Menolak {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", 'Laporan ditolak dan dikembalikan untuk perbaikan.');
     }
 
-    public function sign(Request $request, ReportModule $module): RedirectResponse
+    public function approve(Request $request, ReportModule $module): RedirectResponse
     {
         $workflow = $this->workflow($request, $module);
         $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
 
-        $workflow = $this->workflows->sign($request->user(), $workflow, $validated['note'] ?? null);
+        $workflow = $this->workflows->approve($request->user(), $workflow, $validated['note'] ?? null);
 
-        return $this->done(
-            $workflow,
-            "Menandatangani {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}",
-            $workflow->status->value === 'final' ? 'Laporan telah FINAL.' : 'Tanda tangan tersimpan.',
-        );
+        return $this->done($workflow, "Menyetujui {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", 'Laporan disetujui dan diteruskan ke Manager UL untuk pengesahan.');
+    }
+
+    public function ratify(Request $request, ReportModule $module): RedirectResponse
+    {
+        $workflow = $this->workflow($request, $module);
+        $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
+
+        $workflow = $this->workflows->ratify($request->user(), $workflow, $validated['note'] ?? null);
+
+        return $this->done($workflow, "Mengesahkan {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", 'Laporan disahkan dan telah FINAL.');
     }
 
     /**

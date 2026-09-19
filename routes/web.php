@@ -10,7 +10,7 @@ Route::inertia('/', 'welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
-    // Workflow Laporan Pembangkit (ajukan → verifikasi → pengesahan → tanda tangan → final),
+    // Workflow Laporan Pembangkit (ajukan → verifikasi Koordinator → setujui TL Pemeliharaan → sahkan Manager UL → final),
     // authorised inside ReportWorkflowService.
     Route::prefix('laporan-workflow/{module}')
         ->name('report-workflow.')
@@ -18,8 +18,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->group(function (): void {
             Route::post('ajukan', [ReportWorkflowController::class, 'submit'])->name('submit');
             Route::post('verifikasi', [ReportWorkflowController::class, 'verify'])->name('verify');
+            Route::post('setujui', [ReportWorkflowController::class, 'approve'])->name('approve');
+            Route::post('sahkan', [ReportWorkflowController::class, 'ratify'])->name('ratify');
             Route::post('tolak', [ReportWorkflowController::class, 'reject'])->name('reject');
-            Route::post('tanda-tangan', [ReportWorkflowController::class, 'sign'])->name('sign');
         });
 });
 

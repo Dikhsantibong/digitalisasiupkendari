@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * One signer of a report workflow: a Lembar Pengesahan signer (stage
- * "pengesahan") or an in-report signer (stage "tanda_tangan"), frozen to the
- * employee holding the jabatan in the report's unit when it was submitted.
+ * One signer of a report workflow, frozen to the employee holding the jabatan
+ * in the report's unit when it was submitted: an approval step (stage
+ * "pengesahan": 1 Koordinator memeriksa, 2 Team Leader modul menyetujui,
+ * 3 Manager UL mengesahkan) or an in-report signer (stage "tanda_tangan"),
+ * which is not acted on and prints once the report is FINAL.
  *
  * @property int $id
  * @property int $report_workflow_id

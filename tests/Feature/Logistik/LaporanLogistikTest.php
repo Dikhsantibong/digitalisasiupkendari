@@ -43,7 +43,7 @@ class LaporanLogistikTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Containerized Poasia']);
         Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Ridwan Bahudi', 'position' => 'Office Logistik']);
-        Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Amirullah', 'position' => 'Koordinator Pemeliharaan']);
+        Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Amirullah', 'position' => 'Koordinator Logistik']);
         LogistikRekomendasi::factory()->create(['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'uraian' => 'Ketersediaan stok material khusus']);
 
         $keys = [

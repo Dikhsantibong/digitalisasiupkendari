@@ -283,9 +283,9 @@ class DocumentTest extends TestCase
 
         $html = (string) HarDocumentRecord::query()->where('unit_id', $unit->id)->where('month', 8)->firstOrFail()->content_html;
 
-        // Lembar Pengesahan: Mengetahui Manager UL · Menyetujui TL Pemeliharaan · Memeriksa Koordinator Pemeliharaan
+        // Lembar Pengesahan in workflow order: Memeriksa Koordinator Pemeliharaan · Menyetujui TL Pemeliharaan · Mengesahkan Manager UL
         $pengesahan = $this->block($html, 'ttd-pengesahan');
-        $this->assertMatchesRegularExpression('/MENGETAHUI.*Manager UL.*CAHYO MANAGER UL.*MENYETUJUI.*Team Leader Pemeliharaan.*AHMAD TL HAR.*MEMERIKSA.*Koordinator Pemeliharaan.*BUDI KOORDINATOR HAR/is', $pengesahan);
+        $this->assertMatchesRegularExpression('/MEMERIKSA.*Koordinator Pemeliharaan.*BUDI KOORDINATOR HAR.*MENYETUJUI.*Team Leader Pemeliharaan.*AHMAD TL HAR.*MENGESAHKAN.*Manager UL.*CAHYO MANAGER UL/is', $pengesahan);
 
         // Tanda tangan laporan (Resume Statistik): Project Leader + Office Pemeliharaan
         $laporan = $this->block($html, 'ttd-laporan');

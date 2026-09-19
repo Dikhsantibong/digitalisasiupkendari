@@ -3,7 +3,6 @@
 namespace App\Services\Reports;
 
 use App\Enums\EmployeePosition;
-use App\Enums\PermissionName;
 use App\Enums\ReportModule;
 use App\Enums\ReportStatus;
 use App\Models\Employee;
@@ -16,18 +15,22 @@ use Illuminate\Support\Facades\View;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The verification & pengesahan workflow of the Laporan Pembangkit:
+ * The verification & pengesahan workflow of the Laporan Pembangkit, in the
+ * hierarchy pemeriksaan → persetujuan → pengesahan:
  *
- *   DRAFT ─ajukan→ DIAJUKAN ─verifikasi→ VERIFIKASI ─pengesahan (Koordinator
- *   Pemeliharaan → TL Pemeliharaan → Manager UL)→ DISETUJUI … DISAHKAN
- *   ─tanda tangan (Project Leader + Office divisi; PdM: Koordinator
- *   Pemeliharaan + PIC PDM)→ DITANDATANGANI … FINAL
+ *   DRAFT ─ajukan→ DIAJUKAN ─verifikasi (Koordinator divisi, memeriksa)→
+ *   VERIFIKASI ─setujui (Team Leader sesuai modul, menyetujui)→ DISETUJUI
+ *   ─sahkan (Manager UL, mengesahkan — always last)→ DISAHKAN → FINAL
  *
- * A verifier or the signer whose turn it is may reject (DITOLAK); the report
- * is then editable again and must be diajukan kembali, which re-freezes the
- * signers. Every transition is authorised here (permission + unit scope for
- * ajukan / verifikasi; the signer's own linked account for each signature),
- * never by role name, and written to the audit trail.
+ * Each step is open only in its own status and only to the account linked to
+ * the employee frozen for that step when the report was diajukan (Koordinator
+ * of the report's divisi, Team Leader sesuai modul and Manager UL of its
+ * unit), so no step can be skipped. The signer whose turn it is may instead
+ * reject (DITOLAK): the report is editable again and must be diajukan kembali,
+ * which re-freezes the signers. The in-report signers (Project Leader + Office;
+ * PdM: Koordinator Pemeliharaan + PIC PDM) are frozen too but do not act —
+ * their signatures print once the report is FINAL. Every transition is
+ * authorised here, never by role name, and written to the audit trail.
  */
 class ReportWorkflowService
 {
@@ -62,38 +65,47 @@ class ReportWorkflowService
             && $user->canAccessUnit($unit);
     }
 
-    public function canVerify(User $user, ?ReportWorkflow $workflow): bool
-    {
-        return $workflow !== null
-            && $workflow->status === ReportStatus::Diajukan
-            && $user->hasPermissionTo(PermissionName::ReportUnitApprove)
-            && $user->canAccessUnit($workflow->unit_id)
-            && $workflow->submitted_by !== $user->id;
-    }
-
     /**
-     * The step the user may sign now: the first unsigned step, in its stage's
-     * turn, assigned to the employee linked to the user's own account.
+     * The approval step the user may act on now: the next unsigned step
+     * (1 Koordinator, 2 Team Leader modul, 3 Manager UL), only while the report
+     * is in that step's status, and only for the account linked to the
+     * employee frozen for it. A Koordinator does not verify a report they
+     * submitted themselves.
      */
-    public function signableStep(User $user, ?ReportWorkflow $workflow): ?ReportWorkflowStep
+    public function actionableStep(User $user, ?ReportWorkflow $workflow): ?ReportWorkflowStep
     {
         $step = $workflow?->currentStep();
-        if ($step === null || $step->employee_id === null) {
+        if ($step === null || $step->employee_id === null || ! in_array($step->sequence, [1, 2, 3], true)) {
             return null;
         }
 
-        $stageOpen = $step->isPengesahan()
-            ? in_array($workflow->status, [ReportStatus::Verifikasi, ReportStatus::Disetujui], true)
-            : in_array($workflow->status, [ReportStatus::Disahkan, ReportStatus::Ditandatangani], true);
+        if ($workflow->status !== ReportStatus::awaitingStep($step->sequence)) {
+            return null;
+        }
+
+        if ($step->sequence === 1 && $workflow->submitted_by === $user->id) {
+            return null;
+        }
 
         $employee = $this->employeeOf($user);
 
-        return $stageOpen && $employee !== null && $employee->is_active && $employee->id === $step->employee_id ? $step : null;
+        return $employee !== null && $employee->is_active && $employee->id === $step->employee_id ? $step : null;
     }
 
+    /**
+     * Verifikasi (1), Setujui (2) or Sahkan (3) — whether it is the user's turn.
+     */
+    public function canAct(User $user, ?ReportWorkflow $workflow, int $sequence): bool
+    {
+        return $this->actionableStep($user, $workflow)?->sequence === $sequence;
+    }
+
+    /**
+     * Only the signer whose step is open may reject, at that step.
+     */
     public function canReject(User $user, ?ReportWorkflow $workflow): bool
     {
-        return $this->canVerify($user, $workflow) || $this->signableStep($user, $workflow) !== null;
+        return $this->actionableStep($user, $workflow) !== null;
     }
 
     /**
@@ -150,30 +162,36 @@ class ReportWorkflowService
         });
     }
 
+    /**
+     * Koordinator divisi memeriksa: DIAJUKAN → VERIFIKASI.
+     */
     public function verify(User $user, ReportWorkflow $workflow, ?string $note = null): ReportWorkflow
     {
-        abort_unless($this->canVerify($user, $workflow), 403);
+        return $this->advance($user, $workflow, 1, $note);
+    }
 
-        return DB::transaction(function () use ($user, $workflow, $note): ReportWorkflow {
-            $from = $workflow->status;
-            $workflow->fill([
-                'status' => ReportStatus::Verifikasi,
-                'verified_by' => $user->id,
-                'verified_at' => now(),
-                'verification_note' => $note,
-            ])->save();
+    /**
+     * Team Leader modul menyetujui: VERIFIKASI → DISETUJUI.
+     */
+    public function approve(User $user, ReportWorkflow $workflow, ?string $note = null): ReportWorkflow
+    {
+        return $this->advance($user, $workflow, 2, $note);
+    }
 
-            $this->log($workflow, $user, 'verifikasi', $from, $note);
-
-            return $workflow->fresh();
-        });
+    /**
+     * Manager UL mengesahkan (last): DISETUJUI → DISAHKAN → FINAL.
+     */
+    public function ratify(User $user, ReportWorkflow $workflow, ?string $note = null): ReportWorkflow
+    {
+        return $this->advance($user, $workflow, 3, $note);
     }
 
     public function reject(User $user, ReportWorkflow $workflow, string $reason): ReportWorkflow
     {
-        abort_unless($this->canReject($user, $workflow), 403);
+        $step = $this->actionableStep($user, $workflow);
+        abort_if($step === null, 403);
 
-        return DB::transaction(function () use ($user, $workflow, $reason): ReportWorkflow {
+        return DB::transaction(function () use ($user, $workflow, $reason, $step): ReportWorkflow {
             $from = $workflow->status;
             $workflow->fill([
                 'status' => ReportStatus::Ditolak,
@@ -183,38 +201,7 @@ class ReportWorkflowService
             ])->save();
             $workflow->steps()->update(['signed_by' => null, 'signed_at' => null, 'note' => null]);
 
-            $this->log($workflow, $user, 'tolak', $from, $reason);
-
-            return $workflow->fresh();
-        });
-    }
-
-    /**
-     * Setujui / Sahkan (Lembar Pengesahan) or Tanda Tangani (in-report block):
-     * signs the user's step and advances the status; the last signature makes
-     * the report FINAL.
-     */
-    public function sign(User $user, ReportWorkflow $workflow, ?string $note = null): ReportWorkflow
-    {
-        $step = $this->signableStep($user, $workflow);
-        abort_if($step === null, 403);
-
-        return DB::transaction(function () use ($user, $workflow, $step, $note): ReportWorkflow {
-            $from = $workflow->status;
-            $step->fill(['signed_by' => $user->id, 'signed_at' => now(), 'note' => $note])->save();
-
-            $remaining = $workflow->steps()->whereNull('signed_at')->get();
-            $pengesahanLeft = $remaining->contains(fn (ReportWorkflowStep $s): bool => $s->isPengesahan());
-
-            $to = match (true) {
-                $remaining->isEmpty() => ReportStatus::Final,
-                $step->isPengesahan() => $pengesahanLeft ? ReportStatus::Disetujui : ReportStatus::Disahkan,
-                default => ReportStatus::Ditandatangani,
-            };
-
-            $workflow->fill(['status' => $to, 'finalized_at' => $to === ReportStatus::Final ? now() : null])->save();
-
-            $this->log($workflow, $user, $this->signAction($workflow, $step), $from, $note, $step->position);
+            $this->log($workflow, $user, 'tolak', $from, $reason, $step->position);
 
             return $workflow->fresh();
         });
@@ -232,7 +219,6 @@ class ReportWorkflowService
     {
         $workflow = $this->find($module, $unit->id, $month, $year);
         $status = $this->status($workflow);
-        $signable = $this->signableStep($user, $workflow);
         $userName = fn (?User $u): ?string => $u?->name;
 
         return [
@@ -266,9 +252,10 @@ class ReportWorkflowService
             ])->reverse()->values()->all() ?? [],
             'can' => [
                 'submit' => $this->canSubmit($user, $module, $unit, $workflow),
-                'verify' => $this->canVerify($user, $workflow),
+                'verify' => $this->canAct($user, $workflow, 1),
+                'approve' => $this->canAct($user, $workflow, 2),
+                'ratify' => $this->canAct($user, $workflow, 3),
                 'reject' => $this->canReject($user, $workflow),
-                'sign' => $signable !== null ? $this->signLabel($workflow, $signable) : null,
             ],
         ];
     }
@@ -284,17 +271,19 @@ class ReportWorkflowService
         $workflow = $this->find($module, $unit->id, $month, $year);
         $rows = collect($this->signerRows($module, $unit, $workflow));
         $final = $this->status($workflow) === ReportStatus::Final;
+        // The in-report signers do not act: once FINAL they are dated with the pengesahan.
+        $finalizedAt = $workflow?->finalized_at?->toIso8601String();
         $cells = fn (string $stage): array => $rows->where('stage', $stage)->map(fn (array $row): array => [
             'caption' => $row['caption'],
             'position' => $row['position'],
             'name' => $row['name'],
             'image' => $final ? $row['image'] : null,
-            'signed_at' => $final ? $row['signed_at'] : null,
+            'signed_at' => $final ? ($row['signed_at'] ?? $finalizedAt) : null,
         ])->values()->all();
 
         return [
-            // Printed Mengetahui · Menyetujui · Memeriksa (reverse signing order).
-            'pengesahan' => View::make('reports.partials.signature-block', ['id' => 'ttd-pengesahan', 'signers' => array_reverse($cells(ReportWorkflowStep::STAGE_PENGESAHAN))])->render(),
+            // Printed in workflow order: Memeriksa · Menyetujui · Mengesahkan.
+            'pengesahan' => View::make('reports.partials.signature-block', ['id' => 'ttd-pengesahan', 'signers' => $cells(ReportWorkflowStep::STAGE_PENGESAHAN)])->render(),
             'laporan' => View::make('reports.partials.signature-block', ['id' => 'ttd-laporan', 'signers' => $cells(ReportWorkflowStep::STAGE_TANDA_TANGAN)])->render(),
         ];
     }
@@ -383,7 +372,7 @@ class ReportWorkflowService
                 'signed_at' => $step->signed_at?->toIso8601String(),
                 'signed_by' => $step->signer?->name,
                 'image' => $this->signatories->signatureImage($step->employee),
-                'current' => $current?->is($step) === true && ! in_array($workflow->status, [ReportStatus::Diajukan, ReportStatus::Ditolak], true),
+                'current' => $current?->is($step) === true && in_array($step->sequence, [1, 2, 3], true) && $workflow->status === ReportStatus::awaitingStep($step->sequence),
             ])->values()->all();
         }
 
@@ -407,28 +396,35 @@ class ReportWorkflowService
         return $user->relationLoaded('employee') ? $user->employee : $user->load('employee')->employee;
     }
 
-    private function isLastPengesahan(ReportWorkflow $workflow, ReportWorkflowStep $step): bool
+    /**
+     * Sign the user's open approval step and move the report on; the Manager
+     * UL's pengesahan makes it DISAHKAN and then FINAL.
+     */
+    private function advance(User $user, ReportWorkflow $workflow, int $sequence, ?string $note): ReportWorkflow
     {
-        return $step->isPengesahan()
-            && $step->sequence === $workflow->steps->where('stage', ReportWorkflowStep::STAGE_PENGESAHAN)->max('sequence');
-    }
+        $step = $this->actionableStep($user, $workflow);
+        abort_unless($step?->sequence === $sequence, 403);
 
-    private function signLabel(ReportWorkflow $workflow, ReportWorkflowStep $step): string
-    {
-        return match (true) {
-            ! $step->isPengesahan() => 'Tanda Tangani',
-            $this->isLastPengesahan($workflow, $step) => 'Sahkan',
-            default => 'Setujui',
-        };
-    }
+        return DB::transaction(function () use ($user, $workflow, $step, $sequence, $note): ReportWorkflow {
+            $from = $workflow->status;
+            $step->fill(['signed_by' => $user->id, 'signed_at' => now(), 'note' => $note])->save();
 
-    private function signAction(ReportWorkflow $workflow, ReportWorkflowStep $step): string
-    {
-        return match ($this->signLabel($workflow, $step)) {
-            'Sahkan' => 'sahkan',
-            'Setujui' => 'setujui',
-            default => 'tanda_tangan',
-        };
+            if ($sequence === 1) {
+                $workflow->fill(['status' => ReportStatus::Verifikasi, 'verified_by' => $user->id, 'verified_at' => now(), 'verification_note' => $note])->save();
+                $this->log($workflow, $user, 'verifikasi', $from, $note, $step->position);
+            } elseif ($sequence === 2) {
+                $workflow->fill(['status' => ReportStatus::Disetujui])->save();
+                $this->log($workflow, $user, 'setujui', $from, $note, $step->position);
+            } else {
+                $workflow->fill(['status' => ReportStatus::Disahkan])->save();
+                $this->log($workflow, $user, 'sahkan', $from, $note, $step->position);
+
+                $workflow->fill(['status' => ReportStatus::Final, 'finalized_at' => now()])->save();
+                $this->log($workflow, $user, 'final', ReportStatus::Disahkan, null, $step->position);
+            }
+
+            return $workflow->fresh();
+        });
     }
 
     private function log(ReportWorkflow $workflow, User $user, string $action, ?ReportStatus $from, ?string $note, ?string $jabatan = null): void

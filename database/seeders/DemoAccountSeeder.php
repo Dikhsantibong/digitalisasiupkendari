@@ -22,9 +22,10 @@ use Illuminate\Support\Str;
  *  - Site Leader    : one per unit
  *  - Project Leader : one per unit (senior operator: scheduling + reports)
  *  - Operator       : four per unit (shift A–D)
- *  - Report signers : Koordinator Pemeliharaan, Office (Pemeliharaan, Operasi,
- *                     K3, Logistik) and PIC PDM, one per unit, with the TL
- *                     role of their divisi
+ *  - Report signers : the Koordinator of every divisi (pemeriksa of its
+ *                     report), Office (Pemeliharaan, Operasi, K3, Logistik)
+ *                     and PIC PDM, one per unit, with the TL role of their
+ *                     divisi
  *
  * Each account that holds a report-signer jabatan is linked to that
  * employee (employees.user_id, seeded by {@see EmployeeSeeder}), so it can
@@ -50,6 +51,10 @@ class DemoAccountSeeder extends Seeder
      */
     private const SIGNER_ACCOUNTS = [
         'koordinator-har' => [EmployeePosition::KoordinatorPemeliharaan, RoleName::TeamLeaderPemeliharaan],
+        'koordinator-operasi' => [EmployeePosition::KoordinatorOperasi, RoleName::TeamLeaderOperasi],
+        'koordinator-k3' => [EmployeePosition::KoordinatorK3, RoleName::TeamLeaderK3],
+        'koordinator-logistik' => [EmployeePosition::KoordinatorLogistik, RoleName::TeamLeaderLogistik],
+        'koordinator-pdm' => [EmployeePosition::KoordinatorPdm, RoleName::TeamLeaderPdm],
         'office-har' => [EmployeePosition::OfficePemeliharaan, RoleName::TeamLeaderPemeliharaan],
         'office-operasi' => [EmployeePosition::OfficeOperasi, RoleName::TeamLeaderOperasi],
         'office-k3' => [EmployeePosition::OfficeK3, RoleName::TeamLeaderK3],

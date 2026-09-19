@@ -59,6 +59,8 @@ trait InteractsWithReportWorkflow
      */
     protected function withCurrentSignatures(string $html, ReportModule $module, Unit $unit, int $month, int $year): string
     {
+        $html = (string) preg_replace('#src=(["\'])(\.\./)+logo/#i', 'src=$1/logo/', $html);
+
         return $this->reportWorkflows()->refreshSignatureBlocks($html, $module, $unit, $month, $year);
     }
 }

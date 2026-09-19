@@ -48,6 +48,9 @@ export function RichTextEditor({
             init={{
                 skin: false,
                 content_css: false,
+                relative_urls: false,
+                remove_script_host: false,
+                convert_urls: false,
                 content_style: `${contentCss}
                     body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 12px; color: #000; margin: 12px; }
                     table { border-collapse: collapse; }

@@ -118,8 +118,8 @@ class PdmDocumentBuilder
     }
 
     /**
-     * Lembar Pengesahan (Mengetahui Manager UL · Menyetujui TL Pemeliharaan ·
-     * Memeriksa Koordinator Pemeliharaan) and the in-report block
+     * Lembar Pengesahan (Memeriksa Koordinator PDM · Menyetujui TL
+     * Pemeliharaan · Mengesahkan Manager UL) and the in-report block
      * (Koordinator Pemeliharaan · PIC PDM) of the unit, from the report workflow.
      *
      * @return array{tempat_tanggal: string, blocks: array{pengesahan: string, laporan: string}}

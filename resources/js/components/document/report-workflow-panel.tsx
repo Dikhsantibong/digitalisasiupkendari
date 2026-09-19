@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { CheckCircle2, ChevronDown, Circle, History, PenLine, Send, ShieldCheck, XCircle } from 'lucide-react';
+import { BadgeCheck, CheckCircle2, ChevronDown, Circle, History, Send, ShieldCheck, Stamp, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -32,10 +32,10 @@ export type ReportWorkflowState = {
     steps: ReportWorkflowStep[];
     logs: { id: number; user: string | null; jabatan: string | null; action: string; from: string | null; to: string; note: string | null; at: string | null }[];
     /** What the backend will accept from the current user — the only source for the buttons. */
-    can: { submit: boolean; verify: boolean; reject: boolean; sign: string | null };
+    can: { submit: boolean; verify: boolean; approve: boolean; ratify: boolean; reject: boolean };
 };
 
-type Action = 'submit' | 'verify' | 'reject' | 'sign';
+type Action = 'submit' | 'verify' | 'approve' | 'ratify' | 'reject';
 
 const ACTION_LABELS: Record<string, string> = {
     ajukan: 'Ajukan',
@@ -44,6 +44,7 @@ const ACTION_LABELS: Record<string, string> = {
     tolak: 'Tolak',
     setujui: 'Setujui',
     sahkan: 'Sahkan',
+    final: 'Final',
     tanda_tangan: 'Tanda Tangani',
 };
 
@@ -51,9 +52,10 @@ const formatDateTime = (iso: string | null) =>
     iso ? new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
 /**
- * Status, verification, pengesahan and tanda tangan of a Laporan Pembangkit
- * with the actions the current user may take. The buttons come from the
- * backend (`can`), which validates every action again.
+ * Status and approval chain of a Laporan Pembangkit — Koordinator divisi
+ * memeriksa → Team Leader sesuai modul menyetujui → Manager UL mengesahkan —
+ * with the actions the current user may take. The buttons come from the backend
+ * (`can`), which validates every action again.
  */
 export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWorkflowState; target: Record<string, string | number> }) {
     const [action, setAction] = useState<Action | null>(null);
@@ -63,6 +65,10 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
 
     const { can } = workflow;
     const resubmit = workflow.status === 'ditolak';
+
+    const chain = workflow.steps.filter((step) => step.stage === 'pengesahan');
+    const documentSigners = workflow.steps.filter((step) => step.stage === 'tanda_tangan');
+    const tlPosition = chain.find((s) => s.sequence === 2)?.position ?? 'Team Leader';
 
     const dialogs: Record<Action, { title: string; description: string; confirm: string; field: 'note' | 'reason'; required: boolean }> = {
         submit: {
@@ -74,8 +80,22 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
         },
         verify: {
             title: 'Verifikasi Laporan',
-            description: 'Laporan dinyatakan sesuai dan diteruskan ke proses pengesahan.',
+            description: `Sebagai Koordinator, Anda menyatakan isi laporan telah diperiksa. Laporan diteruskan ke ${tlPosition} untuk disetujui.`,
             confirm: 'Verifikasi',
+            field: 'note',
+            required: false,
+        },
+        approve: {
+            title: 'Setujui Laporan',
+            description: `Sebagai ${tlPosition}, Anda menyetujui laporan yang telah diperiksa Koordinator. Laporan diteruskan ke Manager UL untuk disahkan.`,
+            confirm: 'Setujui',
+            field: 'note',
+            required: false,
+        },
+        ratify: {
+            title: 'Sahkan Laporan',
+            description: 'Sebagai Manager UL, Anda memberikan pengesahan terakhir. Laporan menjadi FINAL dan tidak dapat diubah lagi.',
+            confirm: 'Sahkan',
             field: 'note',
             required: false,
         },
@@ -85,13 +105,6 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
             confirm: 'Tolak',
             field: 'reason',
             required: true,
-        },
-        sign: {
-            title: `${can.sign ?? 'Tanda Tangani'} Laporan`,
-            description: 'Tindakan ini tercatat atas nama Anda sesuai jabatan pada Master Pegawai.',
-            confirm: can.sign ?? 'Tanda Tangani',
-            field: 'note',
-            required: false,
         },
     };
 
@@ -120,10 +133,6 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
         );
     };
 
-    const groups: { stage: ReportWorkflowStep['stage']; title: string }[] = [
-        { stage: 'pengesahan', title: 'Pengesahan' },
-        { stage: 'tanda_tangan', title: 'Tanda Tangan Laporan' },
-    ];
     const dialog = action ? dialogs[action] : null;
     const errorText = errors.workflow ?? errors.reason ?? errors.note ?? errors.unit_id;
 
@@ -147,10 +156,16 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
                             Verifikasi
                         </Button>
                     )}
-                    {can.sign && (
-                        <Button size="sm" onClick={() => open('sign')}>
-                            <PenLine className="size-4" />
-                            {can.sign}
+                    {can.approve && (
+                        <Button size="sm" onClick={() => open('approve')}>
+                            <BadgeCheck className="size-4" />
+                            Setujui
+                        </Button>
+                    )}
+                    {can.ratify && (
+                        <Button size="sm" onClick={() => open('ratify')}>
+                            <Stamp className="size-4" />
+                            Sahkan
                         </Button>
                     )}
                     {can.reject && (
@@ -178,36 +193,47 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
                     <dl className="grid grid-cols-[88px_1fr] gap-x-2 gap-y-0.5 text-xs">
                         <dt className="text-muted-foreground">Diajukan</dt>
                         <dd>{workflow.submitted ? `${workflow.submitted.by ?? '-'} · ${formatDateTime(workflow.submitted.at)}` : 'Belum'}</dd>
-                        <dt className="text-muted-foreground">Verifikator</dt>
+                        <dt className="text-muted-foreground">Diverifikasi</dt>
                         <dd>{workflow.verification ? `${workflow.verification.by ?? '-'} · ${formatDateTime(workflow.verification.at)}` : 'Belum'}</dd>
                         <dt className="text-muted-foreground">Catatan</dt>
                         <dd>{workflow.verification?.note || '-'}</dd>
                     </dl>
                 </div>
-                {groups.map((group) => (
-                    <div key={group.stage} className="rounded-md border border-border p-2.5">
-                        <div className="mb-1 font-medium">{group.title}</div>
-                        <ol className="flex flex-col gap-1 text-xs">
-                            {workflow.steps
-                                .filter((step) => step.stage === group.stage)
-                                .map((step) => (
-                                    <li key={`${step.stage}-${step.sequence}`} className={`flex items-start gap-1.5 rounded px-1 py-0.5 ${step.current ? 'bg-primary/10' : ''}`}>
-                                        {step.signed ? <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> : <Circle className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
-                                        <div className="min-w-0">
-                                            <div>
-                                                <span className="font-medium">{step.caption}</span> — {step.position}
-                                            </div>
-                                            <div className="text-muted-foreground">
-                                                {step.name ?? <span className="text-destructive">Belum ada pegawai dengan jabatan ini</span>}
-                                                {' · '}
-                                                {step.signed ? `Sudah (${formatDateTime(step.signed_at)})` : step.current ? 'Menunggu' : 'Belum'}
-                                            </div>
-                                        </div>
-                                    </li>
-                                ))}
-                        </ol>
-                    </div>
-                ))}
+                <div className="rounded-md border border-border p-2.5">
+                    <div className="mb-1 font-medium">Pemeriksaan → Persetujuan → Pengesahan</div>
+                    <ol className="flex flex-col gap-1 text-xs">
+                        {chain.map((step) => (
+                            <li key={`${step.stage}-${step.sequence}`} className={`flex items-start gap-1.5 rounded px-1 py-0.5 ${step.current ? 'bg-primary/10' : ''}`}>
+                                {step.signed ? <CheckCircle2 className="mt-0.5 size-3.5 shrink-0 text-emerald-600" /> : <Circle className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />}
+                                <div className="min-w-0">
+                                    <div>
+                                        <span className="font-medium">
+                                            {step.sequence}. {step.caption}
+                                        </span>{' '}
+                                        — {step.position}
+                                    </div>
+                                    <div className="text-muted-foreground">
+                                        {step.name ?? <span className="text-destructive">Belum ada pegawai dengan jabatan ini</span>}
+                                        {' · '}
+                                        {step.signed ? `Sudah (${formatDateTime(step.signed_at)})` : step.current ? 'Menunggu' : 'Belum'}
+                                    </div>
+                                </div>
+                            </li>
+                        ))}
+                    </ol>
+                </div>
+                <div className="rounded-md border border-border p-2.5">
+                    <div className="mb-1 font-medium">Tanda Tangan Dokumen</div>
+                    <ul className="flex flex-col gap-1 text-xs">
+                        {documentSigners.map((step) => (
+                            <li key={`${step.stage}-${step.sequence}`}>
+                                <span className="font-medium">{step.caption}</span> — {step.position}
+                                <div className="text-muted-foreground">{step.name ?? <span className="text-destructive">Belum ada pegawai dengan jabatan ini</span>}</div>
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">Tercetak di laporan setelah disahkan Manager UL (FINAL).</p>
+                </div>
             </div>
 
             {workflow.logs.length > 0 && (

@@ -52,7 +52,7 @@ export function SCurveChart({ points, monthLabel }: { points: SCurvePoint[]; mon
         points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${x(p.day).toFixed(1)} ${y(p[key]).toFixed(1)}`).join(' ');
     const realArea = `${line('real')} L ${x(points[points.length - 1]?.day ?? 1).toFixed(1)} ${y(0).toFixed(1)} L ${x(1).toFixed(1)} ${y(0).toFixed(1)} Z`;
     const ticks = [1, Math.ceil(days / 2), days].filter((d, i, a) => a.indexOf(d) === i);
-    const gridVals = [0, 0.5, 1].map((f) => Math.round(max * f));
+    const gridVals = [...new Set([0, 0.5, 1].map((f) => Math.round(max * f)))];
 
     return (
         <ChartCard title="Kurva S — Rencana vs Realisasi Kegiatan K3" subtitle={`Kumulatif ${monthLabel}`}>

@@ -110,10 +110,12 @@ class ReportWorkflow extends Model
     }
 
     /**
-     * The next step waiting for its signer, in workflow order.
+     * The next approval step (Koordinator → Team Leader modul → Manager UL)
+     * still waiting for its signer. The in-report tanda tangan steps are not
+     * part of the approval chain.
      */
     public function currentStep(): ?ReportWorkflowStep
     {
-        return $this->steps->first(fn (ReportWorkflowStep $step): bool => $step->signed_at === null);
+        return $this->steps->first(fn (ReportWorkflowStep $step): bool => $step->isPengesahan() && $step->signed_at === null);
     }
 }
