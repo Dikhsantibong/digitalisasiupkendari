@@ -29,12 +29,12 @@ class MonthlyEngineReport implements OperasiReport
 
     public function title(): string
     {
-        return 'Laporan Operasi Bulanan (per Mesin)';
+        return 'Laporan Operasi Pembangkit';
     }
 
     public function description(): string
     {
-        return 'Rekap harian kWh, pemakaian BBM & pelumas, jam operasi/HAR/gangguan, dan SFC untuk satu mesin.';
+        return 'Tersusun sesuai daftar isi: resume statistik, seluruh jadwal & laporan operasi (garis merah bila belum ada data), input data aplikasi pembangkit per mesin, dan lampiran — PDF gabungan Portrait & Landscape.';
     }
 
     public function requiresEngine(): bool

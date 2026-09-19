@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { FilePen } from 'lucide-react';
+import { Building2, FilePen } from 'lucide-react';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/har/laporan';
 import document from '@/routes/har/laporan/document';
+import pengusahaan from '@/routes/har/laporan/pengusahaan';
 import type { IdName } from '@/types';
 
 type Props = {
@@ -62,13 +63,28 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                         <div>
                             <h2 className="text-base font-semibold text-foreground">Laporan Pemeliharaan Pembangkit</h2>
                             <p className="mt-1 text-[13px] text-muted-foreground">
-                                SR & WO summary, rekap WO per jenis, WO tertunda, biaya, rencana/realisasi, log kegiatan & foto.
+                                Lembar pengesahan, resume statistik, dan rekap lengkap seluruh jadwal pemeliharaan (Harian, P0-P5, Piket On Call, Patrol Cek, Meeting, Pembuatan IK).
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Button onClick={() => router.get(document.edit(query).url)}>
                                 <FilePen className="size-4" />
-                                Buka Dokumen (Lihat, Edit &amp; Cetak)
+                                Buka Dokumen Pemeliharaan (Lihat, Edit &amp; Cetak)
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
+                        <div>
+                            <h2 className="text-base font-semibold text-foreground">Laporan Pengusahaan Pembangkit</h2>
+                            <p className="mt-1 text-[13px] text-muted-foreground">
+                                Executive summary, istilah &amp; definisi, service request, maintenance summary, rekapitulasi WO task, detail WO per kategori, dan lampiran.
+                            </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <Button onClick={() => router.get(pengusahaan.edit(query).url)}>
+                                <Building2 className="size-4" />
+                                Buka Dokumen Pengusahaan (Lihat, Edit &amp; Cetak)
                             </Button>
                         </div>
                     </div>

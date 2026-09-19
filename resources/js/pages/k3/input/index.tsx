@@ -1,13 +1,18 @@
 import { Head, router } from '@inertiajs/react';
 import {
+    BellRing,
     CalendarRange,
+    Cctv,
     ClipboardCheck,
     ClipboardList,
+    Droplets,
     Flame,
     Gauge,
+    HardHat,
     Image,
     ScrollText,
     ShieldCheck,
+    SignpostBig,
     Siren,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
@@ -15,12 +20,19 @@ import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import k3Accident from '@/routes/k3/input/accident';
+import k3AirLimbah from '@/routes/k3/input/air-limbah';
+import k3ApdInventory from '@/routes/k3/input/apd-inventory';
 import k3AparCheck from '@/routes/k3/input/apar-check';
 import k3Attachment from '@/routes/k3/input/attachment';
+import k3Cctv from '@/routes/k3/input/cctv';
 import k3Certificate from '@/routes/k3/input/certificate';
 import k3Emergency from '@/routes/k3/input/emergency';
+import k3EmergencyFacility from '@/routes/k3/input/emergency-facility';
+import k3FireAlarm from '@/routes/k3/input/fire-alarm';
+import k3Hydrant from '@/routes/k3/input/hydrant';
 import k3Inspection from '@/routes/k3/input/inspection';
 import k3Patrol from '@/routes/k3/input/patrol';
+import k3Rambu from '@/routes/k3/input/rambu';
 import k3TimeFrame from '@/routes/k3/input/time-frame';
 import k3Monitoring from '@/routes/k3/monitoring';
 
@@ -60,6 +72,62 @@ const INPUT_MENUS: InputCard[] = [
         icon: Flame,
         url: k3AparCheck.index().url,
         buttonLabel: 'Buka Input APAR/APAB',
+    },
+    {
+        title: 'Patrol Check Sistem Fire Fighting',
+        description: 'Inspeksi sistem pemadam kebakaran: lokasi, merk/jenis APAR, tekanan tabung, kondisi fisik/selang/segel, hasil inspeksi, dan masa kadaluarsa.',
+        icon: Flame,
+        url: k3AparCheck.index().url,
+        buttonLabel: 'Buka Patrol Check Fire Fighting',
+    },
+    {
+        title: 'Inspeksi Hydrant',
+        description: 'Pencatatan hasil inspeksi hydrant: lokasi, jenis, kondisi hose/nozzle/box, dan tekanan.',
+        icon: Droplets,
+        url: k3Hydrant.index().url,
+        buttonLabel: 'Buka Inspeksi Hydrant',
+    },
+    {
+        title: 'Daftar CCTV',
+        description: 'Pendataan titik CCTV terpasang beserta status (on/off/rusak) dan dokumentasi foto.',
+        icon: Cctv,
+        url: k3Cctv.index().url,
+        buttonLabel: 'Buka Daftar CCTV',
+    },
+    {
+        title: 'Inspeksi Fire Alarm',
+        description: 'Pemeriksaan sistem fire alarm: lokasi, kondisi, dan panel indikator.',
+        icon: BellRing,
+        url: k3FireAlarm.index().url,
+        buttonLabel: 'Buka Inspeksi Fire Alarm',
+    },
+    {
+        title: 'Inspeksi Rambu-Rambu K3 & B3',
+        description: 'Pemeriksaan kelengkapan dan kondisi rambu-rambu K3 dan B3 di area pembangkit.',
+        icon: SignpostBig,
+        url: k3Rambu.index().url,
+        buttonLabel: 'Buka Inspeksi Rambu-Rambu',
+    },
+    {
+        title: 'Pemeriksaan Emergency Facility',
+        description: 'Matriks kesiapan peralatan darurat (fire pump, detector, APAR, APD, dll) beserta % kesiapan, kendala, dan tindak lanjut.',
+        icon: Siren,
+        url: k3EmergencyFacility.index().url,
+        buttonLabel: 'Buka Emergency Facility',
+    },
+    {
+        title: 'Daftar Inventaris APD',
+        description: 'Inventaris Alat Pelindung Diri per kelompok & subkategori: jumlah, satuan, lokasi penyimpanan, dan foto.',
+        icon: HardHat,
+        url: k3ApdInventory.index().url,
+        buttonLabel: 'Buka Inventaris APD',
+    },
+    {
+        title: 'Logbook Pemantauan Air Limbah',
+        description: 'Pencatatan pemantauan pemanfaatan air limbah: area penyiraman, waktu, metode, debit flow meter, rotasi, frekuensi, dan PIC.',
+        icon: Droplets,
+        url: k3AirLimbah.index().url,
+        buttonLabel: 'Buka Logbook Air Limbah',
     },
     {
         title: 'Fasilitas Darurat',

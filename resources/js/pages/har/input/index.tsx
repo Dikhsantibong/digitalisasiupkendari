@@ -3,8 +3,10 @@ import {
     CalendarRange,
     ClipboardCheck,
     ClipboardList,
+    FileWarning,
     Image,
     NotebookPen,
+    ShieldAlert,
     Wallet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
@@ -14,8 +16,10 @@ import harInput from '@/routes/har/input';
 import harActivity from '@/routes/har/input/activity';
 import harAttachment from '@/routes/har/input/attachment';
 import harCost from '@/routes/har/input/cost';
+import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
 import harSchedule from '@/routes/har/input/schedule';
 import harServiceRequest from '@/routes/har/input/service-request';
+import harUnsafeCondition from '@/routes/har/input/unsafe-condition';
 import harWorkOrder from '@/routes/har/input/work-order';
 
 type InputCard = {
@@ -29,45 +33,67 @@ type InputCard = {
 const INPUT_MENUS: InputCard[] = [
     {
         title: 'Work Order',
-        description: 'Pencatatan, perencanaan, dan pelacakan status Work Order pemeliharaan unit pembangkit.',
+        description:
+            'Pencatatan, perencanaan, dan pelacakan status Work Order pemeliharaan unit pembangkit.',
         icon: ClipboardList,
         url: harWorkOrder.index().url,
         buttonLabel: 'Buka Input Work Order',
     },
     {
         title: 'Service Request',
-        description: 'Pencatatan permintaan perbaikan dan pemeliharaan mesin atau peralatan pembangkit.',
+        description:
+            'Pencatatan permintaan perbaikan dan pemeliharaan mesin atau peralatan pembangkit.',
         icon: ClipboardCheck,
         url: harServiceRequest.index().url,
         buttonLabel: 'Buka Input Service Request',
     },
     {
         title: 'Log Kegiatan',
-        description: 'Pencatatan log aktivitas dan riwayat pelaksanaan pekerjaan pemeliharaan berkala maupun korektif.',
+        description:
+            'Pencatatan log aktivitas dan riwayat pelaksanaan pekerjaan pemeliharaan berkala maupun korektif.',
         icon: NotebookPen,
         url: harActivity.index().url,
         buttonLabel: 'Buka Input Log Kegiatan',
     },
     {
         title: 'Biaya',
-        description: 'Pencatatan realisasi biaya pemeliharaan, pembelian spare part, dan jasa pemeliharaan.',
+        description:
+            'Pencatatan realisasi biaya pemeliharaan, pembelian spare part, dan jasa pemeliharaan.',
         icon: Wallet,
         url: harCost.index().url,
         buttonLabel: 'Buka Input Biaya',
     },
     {
         title: 'Rencana vs Realisasi',
-        description: 'Pemantauan dan evaluasi perbandingan antara target rencana pemeliharaan dengan realisasinya.',
+        description:
+            'Pemantauan dan evaluasi perbandingan antara target rencana pemeliharaan dengan realisasinya.',
         icon: CalendarRange,
         url: harSchedule.index().url,
         buttonLabel: 'Buka Input Rencana vs Realisasi',
     },
     {
         title: 'Lampiran Foto',
-        description: 'Unggah dokumentasi foto sebelum (before), sedang berlangsung (in progress), dan sesudah (after) pemeliharaan.',
+        description:
+            'Unggah dokumentasi foto sebelum (before), sedang berlangsung (in progress), dan sesudah (after) pemeliharaan.',
         icon: Image,
         url: harAttachment.index().url,
         buttonLabel: 'Buka Input Lampiran Foto',
+    },
+    {
+        title: 'Unsafe Action & Unsafe Condition',
+        description:
+            'Pencatatan, pelaporan, dan evaluasi tindak lanjut temuan tindakan tidak aman (unsafe action) serta kondisi berbahaya (unsafe condition).',
+        icon: ShieldAlert,
+        url: harUnsafeCondition.index().url,
+        buttonLabel: 'Buka Input Unsafe Action & Condition',
+    },
+    {
+        title: 'Laporan Gangguan',
+        description:
+            'Pencatatan laporan kerusakan / gangguan unit pembangkit (Form LH-05): kronologi kejadian, analisa penyebab, dampak, dan tindak lanjut perbaikan.',
+        icon: FileWarning,
+        url: harLaporanGangguan.index().url,
+        buttonLabel: 'Buka Input Laporan Gangguan',
     },
 ];
 
@@ -84,6 +110,7 @@ export default function HarInputIndex() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {INPUT_MENUS.map((item) => {
                         const Icon = item.icon;
+
                         return (
                             <div
                                 key={item.title}

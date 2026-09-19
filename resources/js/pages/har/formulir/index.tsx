@@ -12,6 +12,7 @@ import {
     Timer,
     Waves,
     Wrench,
+    Zap,
 } from 'lucide-react';
 import {
     OPERASI_MONTHS,
@@ -71,12 +72,14 @@ const FORMULIR_LIST: FormulirCard[] = [
         description: 'Pemeriksaan torsi kekencangan baut counter weight dan penguncian poros engkol.',
         icon: Wrench,
         target: '/har/formulir/baut-counter-weight',
+        active: true,
     },
     {
         title: 'Formulir Pemeriksaan Axial Conrod & Baut Conrod',
         description: 'Pemeriksaan clearance axial connecting rod, kondisi bearing, dan torsi pengencangan baut conrod.',
         icon: Disc,
         target: '/har/formulir/axial-conrod',
+        active: true,
     },
     {
         title: 'Formulir Pengukuran Backlash Gear Camshaft',
@@ -99,22 +102,39 @@ const FORMULIR_LIST: FormulirCard[] = [
         active: true,
     },
     {
+        title: 'Formulir Pengukuran Tekanan Pengabutan Injektor',
+        description: 'Pengukuran tekanan bukaan pengabutan injektor (nozzle injection pressure) sebelum dan sesudah kalibrasi.',
+        icon: Fuel,
+        target: '/har/formulir/tekanan-pengabutan-injektor',
+        active: true,
+    },
+    {
+        title: 'Data Pengukuran Arus Kerja Elektro Motor',
+        description: 'Pencatatan hasil pengukuran arus kerja elektro motor auxiliary mesin per fasa (R, S, T).',
+        icon: Zap,
+        target: '/har/formulir/arus-motor',
+        active: true,
+    },
+    {
         title: 'Formulir Pengukuran Tekanan Vibrasi',
         description: 'Pengukuran tingkat getaran (vibration level) pada bearing mesin, generator, turbocharger, dan auxiliary.',
         icon: Activity,
         target: '/har/formulir/tekanan-vibrasi',
+        active: true,
     },
     {
         title: 'Formulir Pengukuran Kualitas Pelumas',
         description: 'Pencatatan hasil uji laboratorium parameter oli pelumas (viskositas, TBN, water content, kontaminasi).',
         icon: Fuel,
         target: '/har/formulir/kualitas-pelumas',
+        active: true,
     },
     {
         title: 'Formulir Pengukuran Tegangan Baterai',
         description: 'Pemeriksaan tegangan sel, berat jenis elektrolit, dan kesiapan baterai starting dan kontrol DC.',
         icon: BatteryCharging,
         target: '/har/formulir/tegangan-baterai',
+        active: true,
     },
 ];
 

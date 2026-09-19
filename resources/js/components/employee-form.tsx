@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
 import { Form, Link } from '@inertiajs/react';
 import { FileSignature, Image as ImageIcon, PenTool, Trash2, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { FormField } from '@/components/form-field';
 import { SignaturePad } from '@/components/signature-pad';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ type Props = {
     options: {
         units: IdName[];
         service_units?: IdName[];
+        users?: IdName[];
     };
     submitLabel: string;
 };
@@ -50,6 +51,7 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
         if (file) {
             setPreviewUrl(URL.createObjectURL(file));
             setSignatureBase64('');
@@ -61,6 +63,7 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
         setPreviewUrl(null);
         setRemoveSignature(true);
         setSignatureBase64('');
+
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -74,12 +77,15 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                     ...data,
                     unit_id: data.unit_id === NO_SELECTION ? '' : data.unit_id,
                     service_unit_id: data.service_unit_id === NO_SELECTION ? '' : data.service_unit_id,
+                    user_id: data.user_id === NO_SELECTION ? '' : data.user_id,
                     remove_signature: removeSignature ? '1' : '0',
                     signature_base64: signatureBase64 || '',
                 };
+
                 if (res.signature instanceof File && res.signature.size === 0) {
                     delete res.signature;
                 }
+
                 return res;
             }}
             encType="multipart/form-data"
@@ -189,7 +195,7 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                             <FormField
                                 label="Jabatan"
                                 htmlFor="position"
-                                hint="Contoh: Operator, Site Leader"
+                                hint="Penanda tangan laporan harus persis: Manager UL, Team Leader Pemeliharaan, Koordinator Pemeliharaan, Project Leader, Office Pemeliharaan/Operasi/K3/PDM/Logistik, PIC PDM (1 pegawai aktif per unit)."
                                 error={errors.position}
                             >
                                 <Input
@@ -198,6 +204,38 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                                     defaultValue={employee?.position ?? ''}
                                     autoComplete="off"
                                 />
+                            </FormField>
+
+                            <FormField
+                                label="Akun Pengguna"
+                                hint="Akun login pegawai ini — hanya akun ini yang dapat menyetujui / menandatangani laporan atas jabatannya."
+                                error={errors.user_id}
+                            >
+                                <Select
+                                    name="user_id"
+                                    defaultValue={
+                                        employee?.user_id
+                                            ? String(employee.user_id)
+                                            : NO_SELECTION
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Pilih akun pengguna" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={NO_SELECTION}>
+                                            Tidak ditautkan
+                                        </SelectItem>
+                                        {(options.users ?? []).map((user) => (
+                                            <SelectItem
+                                                key={user.id}
+                                                value={String(user.id)}
+                                            >
+                                                {user.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </FormField>
 
                             <FormField

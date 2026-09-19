@@ -70,6 +70,18 @@ class K3FoundationTest extends TestCase
             ->get(route('k3.input.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('k3/input/index'));
+
+        $this->actingAs($user)
+            ->get(route('k3.formulir.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('k3/formulir/index')
+                ->has('filters.unit_id')
+                ->has('filters.month')
+                ->has('filters.year')
+                ->has('options.units')
+                ->has('options.years')
+            );
     }
 
     public function test_unauthorized_user_cannot_access_k3_jadwal_or_input_hub(): void
@@ -83,6 +95,10 @@ class K3FoundationTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('k3.input.index'))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->get(route('k3.formulir.index'))
             ->assertForbidden();
     }
 }

@@ -1,11 +1,12 @@
 import { Head, router } from '@inertiajs/react';
-import { FilePenLine } from 'lucide-react';
+import { Building2, FilePenLine } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/operasi/laporan';
@@ -130,6 +131,39 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                 </div>
                             );
                         })}
+
+                        {/* Laporan Pengusahaan Pembangkit */}
+                        <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
+                            <div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <h2 className="text-base font-semibold text-foreground">
+                                        Laporan Pengusahaan Pembangkit
+                                    </h2>
+                                    <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                                        Sementara Disusun
+                                    </Badge>
+                                </div>
+                                <p className="mt-1 text-[13px] text-muted-foreground">
+                                    Laporan kinerja pengusahaan dan evaluasi menyeluruh operasional unit pembangkit.
+                                </p>
+                            </div>
+                            <div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outline"
+                                        disabled
+                                        className="gap-2 cursor-not-allowed opacity-75"
+                                        title="Tombol sementara dinonaktifkan (laporan sedang disiapkan)"
+                                    >
+                                        <Building2 className="size-4" />
+                                        Laporan Pengusahaan Pembangkit
+                                    </Button>
+                                </div>
+                                <p className="mt-1 text-[11px] text-muted-foreground italic">
+                                    * Fitur laporan sedang disiapkan
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

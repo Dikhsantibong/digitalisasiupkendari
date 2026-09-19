@@ -90,6 +90,18 @@ enum PermissionName: string
     case K3MasterViewAny = 'k3.master.view_any';
     case K3MasterManage = 'k3.master.manage';
 
+    case LogistikInputView = 'logistik.input.view';
+    case LogistikInputWrite = 'logistik.input.write';
+    case LogistikLaporanView = 'logistik.laporan.view';
+    case LogistikMasterViewAny = 'logistik.master.view_any';
+    case LogistikMasterManage = 'logistik.master.manage';
+
+    case PdmInputView = 'pdm.input.view';
+    case PdmInputWrite = 'pdm.input.write';
+    case PdmLaporanView = 'pdm.laporan.view';
+    case PdmMasterViewAny = 'pdm.master.view_any';
+    case PdmMasterManage = 'pdm.master.manage';
+
     case ProjectViewAny = 'project.view_any';
     case ProjectView = 'project.view';
     case ProjectCreate = 'project.create';
@@ -182,6 +194,18 @@ enum PermissionName: string
             self::K3MonitoringView,
             self::K3MasterViewAny,
             self::K3MasterManage => PermissionGroup::K3,
+
+            self::LogistikInputView,
+            self::LogistikInputWrite,
+            self::LogistikLaporanView,
+            self::LogistikMasterViewAny,
+            self::LogistikMasterManage => PermissionGroup::Logistik,
+
+            self::PdmInputView,
+            self::PdmInputWrite,
+            self::PdmLaporanView,
+            self::PdmMasterViewAny,
+            self::PdmMasterManage => PermissionGroup::Pdm,
 
             self::ProjectViewAny,
             self::ProjectView,
@@ -280,6 +304,18 @@ enum PermissionName: string
             self::K3MonitoringView => 'Melihat monitoring status K3 (sertifikat/APAR)',
             self::K3MasterViewAny => 'Melihat master data K3 & keamanan',
             self::K3MasterManage => 'Mengelola master data K3 & keamanan',
+
+            self::LogistikInputView => 'Melihat input logistik & gudang',
+            self::LogistikInputWrite => 'Mengisi input logistik & gudang (patrol check, inventaris, stok, permit to work)',
+            self::LogistikLaporanView => 'Melihat & mencetak laporan logistik & gudang',
+            self::LogistikMasterViewAny => 'Melihat master data logistik & gudang',
+            self::LogistikMasterManage => 'Mengelola master data logistik & gudang',
+
+            self::PdmInputView => 'Melihat input PdM & maturity level',
+            self::PdmInputWrite => 'Mengisi input PdM & maturity level (kesiapan APD, patrol check, checklist, log sheet)',
+            self::PdmLaporanView => 'Melihat & mencetak laporan PdM & maturity level',
+            self::PdmMasterViewAny => 'Melihat master data PdM & maturity level',
+            self::PdmMasterManage => 'Mengelola master data PdM & maturity level',
 
             self::ProjectViewAny => 'Melihat daftar project',
             self::ProjectView => 'Melihat detail project',

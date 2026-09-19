@@ -58,11 +58,18 @@ import harInput from '@/routes/har/input';
 import harJadwal from '@/routes/har/jadwal';
 import harLaporan from '@/routes/har/laporan';
 import harMaster from '@/routes/har/master';
+import k3Formulir from '@/routes/k3/formulir';
 import k3Input from '@/routes/k3/input';
 import k3Jadwal from '@/routes/k3/jadwal';
 import k3Laporan from '@/routes/k3/laporan';
 import k3Master from '@/routes/k3/master';
 import k3Monitoring from '@/routes/k3/monitoring';
+import logistikInput from '@/routes/logistik/input';
+import logistikJadwal from '@/routes/logistik/jadwal';
+import logistikLaporan from '@/routes/logistik/laporan';
+import pdmInput from '@/routes/pdm/input';
+import pdmJadwal from '@/routes/pdm/jadwal';
+import pdmLaporan from '@/routes/pdm/laporan';
 import beritaAcara from '@/routes/operasi/berita-acara';
 import documentTemplate from '@/routes/operasi/document-template';
 import operasiInput from '@/routes/operasi/input';
@@ -207,9 +214,54 @@ export function AppSidebar() {
                     href: k3Input.index(),
                     icon: SquarePen,
                 },
+                can('k3.input.view') && {
+                    title: 'Formulir',
+                    href: k3Formulir.index(),
+                    icon: ClipboardCheck,
+                },
                 can('k3.laporan.view') && {
                     title: 'Laporan K3 Lingkungan Pembangkit',
                     href: k3Laporan.index(),
+                    icon: FileBarChart,
+                },
+            ].filter(Boolean) as NavGroup['items'],
+        },
+        {
+            label: 'Logistik & Gudang',
+            items: [
+                can('logistik.input.view') && {
+                    title: 'Jadwal',
+                    href: logistikJadwal.index(),
+                    icon: CalendarRange,
+                },
+                can('logistik.input.view') && {
+                    title: 'Input',
+                    href: logistikInput.index(),
+                    icon: SquarePen,
+                },
+                can('logistik.laporan.view') && {
+                    title: 'Laporan Logistik & Gudang',
+                    href: logistikLaporan.index(),
+                    icon: FileBarChart,
+                },
+            ].filter(Boolean) as NavGroup['items'],
+        },
+        {
+            label: 'PdM & Maturity Level',
+            items: [
+                can('pdm.input.view') && {
+                    title: 'Jadwal',
+                    href: pdmJadwal.index(),
+                    icon: CalendarRange,
+                },
+                can('pdm.input.view') && {
+                    title: 'Input',
+                    href: pdmInput.index(),
+                    icon: SquarePen,
+                },
+                can('pdm.laporan.view') && {
+                    title: 'Laporan PdM & Maturity Level',
+                    href: pdmLaporan.index(),
                     icon: FileBarChart,
                 },
             ].filter(Boolean) as NavGroup['items'],

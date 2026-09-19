@@ -3,10 +3,17 @@
 namespace Tests\Feature\Har;
 
 use App\Enums\RoleName;
+use App\Models\Employee;
 use App\Models\HarDocumentRecord;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
+use Database\Seeders\HarMasterSeeder;
+use Database\Seeders\HarSeeder;
+use Database\Seeders\MachineSeeder;
+use Database\Seeders\OrganizationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
 
@@ -45,47 +52,85 @@ class DocumentTest extends TestCase
 
         $record = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('month', 9)->firstOrFail();
         $this->assertStringNotContainsString('Isi lama', (string) $record->content_html);
-        $this->assertStringContainsString('Executive Summary', (string) $record->content_html);
-        $this->assertStringContainsString('MAINTENANCE SUMMARY', (string) $record->content_html);
-        $this->assertStringContainsString('FMKD-314-10.3.3-A9', (string) $record->content_html);
-        $this->assertStringContainsString('Rekapitulasi WO Terbit dan Complete', (string) $record->content_html);
-        $this->assertStringContainsString('Rekapitulasi Status WO', (string) $record->content_html);
-        $this->assertStringContainsString('Penyelesaian Work Order Task', (string) $record->content_html);
-        $this->assertStringContainsString('Maintenance Mix Bulan ini', (string) $record->content_html);
-        $this->assertStringContainsString('FMKD-314-10.3.3-A11', (string) $record->content_html);
-        $this->assertStringContainsString('Rekap Task WO', (string) $record->content_html);
-        $this->assertStringContainsString('Jumlah Task Preventive', (string) $record->content_html);
-        $this->assertStringContainsString('Har Listrik', (string) $record->content_html);
-        $this->assertStringContainsString('Har Mekanik 1', (string) $record->content_html);
-        $this->assertStringContainsString('FMKD-314-10.3.3-A12', (string) $record->content_html);
-        $this->assertStringContainsString('WO PREVENTIVE MAINTANANCE', (string) $record->content_html);
-        $this->assertStringContainsString('WORK GROUP', (string) $record->content_html);
-        $this->assertStringContainsString('FMKD-314-10.3.3-A13', (string) $record->content_html);
-        $this->assertStringContainsString('WO PREDICTIVE MAINTANANCE', (string) $record->content_html);
-        $this->assertStringContainsString('WO PdM YANG TERBIT BULAN INI', (string) $record->content_html);
-        $this->assertStringContainsString('Waiting Plant Condition', (string) $record->content_html);
-        $this->assertStringContainsString('FMKD-314-10.3.3-A14', (string) $record->content_html);
-        $this->assertStringContainsString('WO CORRECTIVE MAINTANANCE', (string) $record->content_html);
-        $this->assertStringContainsString('Tidak ada data Work Order CM pada periode ini.', (string) $record->content_html);
         $this->assertStringContainsString('har-cover', (string) $record->content_html);
-        $this->assertStringContainsString('Lampiran', (string) $record->content_html);
+        $this->assertStringContainsString('LAPORAN PEMELIHARAAN', (string) $record->content_html);
+        $this->assertStringContainsString('LEMBAR PENGESAHAN', (string) $record->content_html);
+        $this->assertStringContainsString('JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE &amp; 6 SITE -KIT', (string) $record->content_html);
+        // No hardcoded signer names: an unfilled jabatan prints a blank line.
+        $this->assertStringNotContainsString('MUH. ISYAK', (string) $record->content_html);
+        $this->assertStringNotContainsString('AMIRULLAH', (string) $record->content_html);
+        $this->assertStringNotContainsString('ZULKIFLIN', (string) $record->content_html);
+        $this->assertStringContainsString('id="ttd-pengesahan"', (string) $record->content_html);
+        $this->assertStringContainsString('RESUME STATISTIK PEMELIHARAAN PEMBANGKIT', (string) $record->content_html);
+        $this->assertStringNotContainsString('HERWIN SYAHPUTRA', (string) $record->content_html);
+        $this->assertStringContainsString('Project Leader', (string) $record->content_html);
+        $this->assertStringContainsString('Koordinator Pemeliharaan', (string) $record->content_html);
+        $this->assertStringContainsString('Daftar Isi', (string) $record->content_html);
+        $this->assertStringContainsString('JADWAL KEGIATAN PEMELIHARAAN', (string) $record->content_html);
+        $this->assertStringContainsString('JADWAL PEMELIHARAAN RUTIN P0 - P5', (string) $record->content_html);
+        $this->assertStringContainsString('JADWAL PIKET ONCALL PEMELIHARAAN PEMBANGKIT', (string) $record->content_html);
+        $this->assertStringContainsString('JADWAL PIKET PATROL CHECK HARIAN', (string) $record->content_html);
+        $this->assertStringContainsString('JADWAL MEETING PEMELIHARAAN PEMBANGKIT', (string) $record->content_html);
+        $this->assertStringContainsString('JADWAL PEMBUATAN IK PEMELIHARAAN PEMBANGKIT', (string) $record->content_html);
+
+        // Regenerate Pengusahaan Report
+        $this->actingAs($user)
+            ->post(route('har.laporan.pengusahaan.regenerate'), ['unit_id' => $unit->id, 'month' => 9, 'year' => 2026])
+            ->assertRedirect();
+
+        $pengRecord = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('type', 'pengusahaan')->where('month', 9)->firstOrFail();
+        $this->assertStringContainsString('LAPORAN PENGUSAHAAN', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Executive Summary', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('MAINTENANCE SUMMARY', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A9', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Rekapitulasi WO Terbit dan Complete', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Rekapitulasi Status WO', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Penyelesaian Work Order Task', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Maintenance Mix Bulan ini', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A11', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Rekap Task WO', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Jumlah Task Preventive', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Har Listrik', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Har Mekanik 1', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A12', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('WO PREVENTIVE MAINTANANCE', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('WORK GROUP', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A13', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('WO PREDICTIVE MAINTANANCE', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('WO PdM YANG TERBIT BULAN INI', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Waiting Plant Condition', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('FMKD-314-10.3.3-A14', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('WO CORRECTIVE MAINTANANCE', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Checklist Prelube Test', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Checklist Hydrotest', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Checklist Timing Injection Pump', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pengukuran Defleksi Crankshaft', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pemeriksaan Kondisi Kekencangan Baut Counter Weight', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pengukuran Clearance Valve', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pengukuran Tekanan Pembakaran', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pengukuran Tekanan Pengabutan Injektor', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Data Pengukuran Arus Kerja Elektro Motor', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pengukuran Tekanan Vibrasi', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pengukuran Kualitas Pelumas', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Formulir Pengukuran Tegangan Baterai', (string) $pengRecord->content_html);
+        $this->assertStringContainsString('Lampiran Foto Kegiatan', (string) $pengRecord->content_html);
     }
 
     public function test_document_renders_real_maintenance_work_orders_when_present(): void
     {
-        $this->seed(\Database\Seeders\OrganizationSeeder::class);
-        $this->seed(\Database\Seeders\MachineSeeder::class);
-        $this->seed(\Database\Seeders\HarMasterSeeder::class);
-        $this->seed(\Database\Seeders\HarSeeder::class);
+        $this->seed(OrganizationSeeder::class);
+        $this->seed(MachineSeeder::class);
+        $this->seed(HarMasterSeeder::class);
+        $this->seed(HarSeeder::class);
 
         $unit = Unit::query()->where('code', 'PLTD-WUAWUA')->firstOrFail();
         $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
 
         $this->actingAs($user)
-            ->post(route('har.laporan.document.regenerate'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026])
+            ->post(route('har.laporan.pengusahaan.regenerate'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026])
             ->assertRedirect();
 
-        $record = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('month', 8)->where('year', 2026)->firstOrFail();
+        $record = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('type', 'pengusahaan')->where('month', 8)->where('year', 2026)->firstOrFail();
         $html = (string) $record->content_html;
 
         // PM Work Orders
@@ -210,5 +255,100 @@ class DocumentTest extends TestCase
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
             ->get(route('har.laporan.document.edit', ['unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026]))
             ->assertForbidden();
+    }
+
+    public function test_document_renders_the_unit_signers_by_jabatan_without_signatures_before_final(): void
+    {
+        Storage::fake('public');
+        $serviceUnit = ServiceUnit::factory()->create(['name' => 'UL PLTD Poasia']);
+        $unit = Unit::factory()->create(['service_unit_id' => $serviceUnit->id, 'name' => 'PLTD Poasia']);
+        $signature = UploadedFile::fake()->image('ttd.png')->store('signatures', 'public');
+
+        $signers = [
+            'Team Leader Pemeliharaan' => 'Ahmad TL Har',
+            'Koordinator Pemeliharaan' => 'Budi Koordinator Har',
+            'Project Leader' => 'Dedi Project Leader',
+            'Office Pemeliharaan' => 'Eka Office Har',
+        ];
+        foreach ($signers as $position => $name) {
+            Employee::factory()->create(['unit_id' => $unit->id, 'service_unit_id' => null, 'name' => $name, 'position' => $position, 'signature_path' => $signature, 'is_active' => true]);
+        }
+        Employee::factory()->create(['unit_id' => null, 'service_unit_id' => $serviceUnit->id, 'name' => 'Cahyo Manager UL', 'position' => 'Manager UL', 'signature_path' => $signature, 'is_active' => true]);
+        // A look-alike jabatan in the unit is not a signer.
+        Employee::factory()->create(['unit_id' => $unit->id, 'name' => 'Staf Bukan Penanda Tangan', 'position' => 'Staf Pemeliharaan', 'is_active' => true]);
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+            ->post(route('har.laporan.document.regenerate'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026])
+            ->assertRedirect();
+
+        $html = (string) HarDocumentRecord::query()->where('unit_id', $unit->id)->where('month', 8)->firstOrFail()->content_html;
+
+        // Lembar Pengesahan: Mengetahui Manager UL · Menyetujui TL Pemeliharaan · Memeriksa Koordinator Pemeliharaan
+        $pengesahan = $this->block($html, 'ttd-pengesahan');
+        $this->assertMatchesRegularExpression('/MENGETAHUI.*Manager UL.*CAHYO MANAGER UL.*MENYETUJUI.*Team Leader Pemeliharaan.*AHMAD TL HAR.*MEMERIKSA.*Koordinator Pemeliharaan.*BUDI KOORDINATOR HAR/is', $pengesahan);
+
+        // Tanda tangan laporan (Resume Statistik): Project Leader + Office Pemeliharaan
+        $laporan = $this->block($html, 'ttd-laporan');
+        $this->assertStringContainsString('DEDI PROJECT LEADER', $laporan);
+        $this->assertStringContainsString('EKA OFFICE HAR', $laporan);
+        $this->assertStringContainsString('RESUME STATISTIK PEMELIHARAAN PEMBANGKIT', $html);
+
+        $this->assertStringNotContainsString('STAF BUKAN PENANDA TANGAN', $pengesahan.$laporan);
+        // Signatures are printed only once the report is FINAL.
+        $this->assertStringNotContainsString('data:image/png;base64,', $pengesahan.$laporan);
+    }
+
+    private function block(string $html, string $id): string
+    {
+        $this->assertSame(1, preg_match('/<table\b[^>]*id="'.$id.'".*?<\/table>/s', $html, $match), $id);
+
+        return $match[0];
+    }
+
+    public function test_tl_pemeliharaan_sees_the_laporan_pengusahaan_document(): void
+    {
+        $unit = Unit::factory()->create();
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+            ->get(route('har.laporan.pengusahaan.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('har/laporan/pengusahaan')
+                ->where('document_number', 'FMKD-314-10.3.3')
+                ->where('format', 'html')
+                ->where('has_saved', false)
+                ->where('can_write', true)
+                ->has('content')
+                ->has('grid'),
+            );
+    }
+
+    public function test_tl_pemeliharaan_can_save_laporan_pengusahaan(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+
+        $this->actingAs($user)->post(route('har.laporan.pengusahaan.store'), [
+            'unit_id' => $unit->id,
+            'month' => 8,
+            'year' => 2026,
+            'format' => 'html',
+            'content_html' => '<p>Pengusahaan diedit</p>',
+        ])->assertRedirect();
+
+        $record = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('type', 'pengusahaan')->firstOrFail();
+        $this->assertSame('html', $record->format);
+        $this->assertStringContainsString('Pengusahaan diedit', (string) $record->content_html);
+    }
+
+    public function test_laporan_pengusahaan_exports_to_pdf(): void
+    {
+        $unit = Unit::factory()->create();
+
+        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+            ->get(route('har.laporan.pengusahaan.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
     }
 }

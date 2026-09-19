@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { FileText, Trash2, Upload } from 'lucide-react';
 import { useRef } from 'react';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
+import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,11 @@ export default function K3Attachments({ filters, attachments, options, can_write
                 <PageHeader
                     title="Lampiran K3"
                     description="Unggah dokumen/foto pendukung per periode (JPG/PNG/PDF, maks 10MB). Tersimpan di storage, bukan blob."
+                    actions={
+                        <div className="flex flex-wrap gap-2">
+                            <K3InputExportButtons input="attachments" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }} />
+                        </div>
+                    }
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">

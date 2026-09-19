@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/react';
 import { ArrowLeft, Download, FileSpreadsheet, FileText, Printer, RotateCcw, Save } from 'lucide-react';
 import { useState } from 'react';
+import { ReportWorkflowPanel } from '@/components/document/report-workflow-panel';
+import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
 import { PageHeader } from '@/components/page-header';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { SpreadsheetEditor } from '@/components/spreadsheet-editor';
@@ -36,6 +38,8 @@ export type DocumentEditorProps = {
     saveExtra: Record<string, string | number>;
     /** Optional: POST endpoint that rebuilds the document from the latest data/template. */
     regenerateUrl?: string;
+    /** Optional: the verification & pengesahan workflow of a Laporan Pembangkit (target = saveExtra). */
+    workflow?: ReportWorkflowState;
 };
 
 /** Scoped styling for the letterhead banner shown above the spreadsheet editor. */
@@ -76,6 +80,7 @@ export function DocumentEditor({
     saveUrl,
     saveExtra,
     regenerateUrl,
+    workflow,
 }: DocumentEditorProps) {
     const [mode, setMode] = useState<ViewMode>(format);
     const [html, setHtml] = useState(content);
@@ -194,6 +199,8 @@ export function DocumentEditor({
                     </div>
                 }
             />
+
+            {workflow && <ReportWorkflowPanel workflow={workflow} target={saveExtra} />}
 
             <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card p-3 text-[13px]">
                 <div className="flex overflow-hidden rounded-md border border-border">

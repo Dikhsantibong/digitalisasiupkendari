@@ -82,6 +82,9 @@ export type EmployeeRow = {
     name: string;
     nip: string | null;
     position: string | null;
+    division?: string | null;
+    user_id?: number | null;
+    user?: string | null;
     is_active: boolean;
     unit_id: number | null;
     unit: string | null;

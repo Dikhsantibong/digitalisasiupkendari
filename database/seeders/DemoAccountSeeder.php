@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Enums\EmployeePosition;
 use App\Enums\RoleName;
+use App\Models\Employee;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
@@ -20,6 +22,13 @@ use Illuminate\Support\Str;
  *  - Site Leader    : one per unit
  *  - Project Leader : one per unit (senior operator: scheduling + reports)
  *  - Operator       : four per unit (shift A–D)
+ *  - Report signers : Koordinator Pemeliharaan, Office (Pemeliharaan, Operasi,
+ *                     K3, Logistik) and PIC PDM, one per unit, with the TL
+ *                     role of their divisi
+ *
+ * Each account that holds a report-signer jabatan is linked to that
+ * employee (employees.user_id, seeded by {@see EmployeeSeeder}), so it can
+ * sign the Laporan Pembangkit of its unit.
  *
  * Idempotent: re-running updates the same accounts (keyed by e-mail) and
  * re-applies the role assignment. Every account uses the password "password".
@@ -33,6 +42,21 @@ class DemoAccountSeeder extends Seeder
 
     private const DOMAIN = 'upkendari.co.id';
 
+    /**
+     * Demo accounts of the report-signer jabatan without one yet: e-mail
+     * prefix => [jabatan, role of the divisi].
+     *
+     * @var array<string, array{0: EmployeePosition, 1: RoleName}>
+     */
+    private const SIGNER_ACCOUNTS = [
+        'koordinator-har' => [EmployeePosition::KoordinatorPemeliharaan, RoleName::TeamLeaderPemeliharaan],
+        'office-har' => [EmployeePosition::OfficePemeliharaan, RoleName::TeamLeaderPemeliharaan],
+        'office-operasi' => [EmployeePosition::OfficeOperasi, RoleName::TeamLeaderOperasi],
+        'office-k3' => [EmployeePosition::OfficeK3, RoleName::TeamLeaderK3],
+        'office-logistik' => [EmployeePosition::OfficeLogistik, RoleName::TeamLeaderLogistik],
+        'pic-pdm' => [EmployeePosition::PicPdm, RoleName::TeamLeaderPdm],
+    ];
+
     public function run(): void
     {
         foreach (ServiceUnit::query()->orderBy('id')->get() as $serviceUnit) {
@@ -43,6 +67,7 @@ class DemoAccountSeeder extends Seeder
                 'Manajer Unit Layanan',
                 RoleName::ManagerUl,
                 $serviceUnit,
+                EmployeePosition::ManagerUl,
             );
         }
 
@@ -50,11 +75,15 @@ class DemoAccountSeeder extends Seeder
             $slug = $this->slug($unit->code ?? $unit->name ?? (string) $unit->id);
             $name = $unit->name ?? $slug;
 
-            $this->account("tl-operasi.{$slug}@".self::DOMAIN, "TL Operasi {$name}", 'Team Leader Operasi', RoleName::TeamLeaderOperasi, $unit);
-            $this->account("tl-har.{$slug}@".self::DOMAIN, "TL Pemeliharaan {$name}", 'Team Leader Pemeliharaan', RoleName::TeamLeaderPemeliharaan, $unit);
-            $this->account("tl-k3.{$slug}@".self::DOMAIN, "TL K3 & Keamanan {$name}", 'Team Leader K3 & Keamanan', RoleName::TeamLeaderK3, $unit);
+            $this->account("tl-operasi.{$slug}@".self::DOMAIN, "TL Operasi {$name}", 'Team Leader Operasi', RoleName::TeamLeaderOperasi, $unit, EmployeePosition::TeamLeaderOperasi);
+            $this->account("tl-har.{$slug}@".self::DOMAIN, "TL Pemeliharaan {$name}", 'Team Leader Pemeliharaan', RoleName::TeamLeaderPemeliharaan, $unit, EmployeePosition::TeamLeaderPemeliharaan);
+            $this->account("tl-k3.{$slug}@".self::DOMAIN, "TL K3 & Keamanan {$name}", 'Team Leader K3 & Keamanan', RoleName::TeamLeaderK3, $unit, EmployeePosition::TeamLeaderK3);
             $this->account("site-leader.{$slug}@".self::DOMAIN, "Site Leader {$name}", 'Site Leader', RoleName::SiteLeader, $unit);
-            $this->account("project-leader.{$slug}@".self::DOMAIN, "Project Leader {$name}", 'Project Leader Operasi', RoleName::ProjectLeaderOperasi, $unit);
+            $this->account("project-leader.{$slug}@".self::DOMAIN, "Project Leader {$name}", 'Project Leader Operasi', RoleName::ProjectLeaderOperasi, $unit, EmployeePosition::ProjectLeader);
+
+            foreach (self::SIGNER_ACCOUNTS as $prefix => [$position, $role]) {
+                $this->account("{$prefix}.{$slug}@".self::DOMAIN, "{$position->value} {$name}", $position->value, $role, $unit, $position);
+            }
 
             for ($n = 1; $n <= 4; $n++) {
                 $this->account("operator{$n}.{$slug}@".self::DOMAIN, "Operator {$n} {$name}", 'Operator (Shift '.chr(64 + $n).')', RoleName::Operator, $unit);
@@ -64,7 +93,7 @@ class DemoAccountSeeder extends Seeder
         $this->command?->info('Akun demo dibuat/diperbarui. Kata sandi semua akun: "'.self::PASSWORD.'".');
     }
 
-    private function account(string $email, string $name, string $position, RoleName $role, ServiceUnit|Unit $scope): void
+    private function account(string $email, string $name, string $position, RoleName $role, ServiceUnit|Unit $scope, ?EmployeePosition $employeePosition = null): void
     {
         $user = User::query()->firstOrNew(['email' => $email]);
         $user->fill([
@@ -80,6 +109,27 @@ class DemoAccountSeeder extends Seeder
         $user->save();
 
         $user->assignRole($role, $scope);
+
+        if ($employeePosition !== null) {
+            $this->linkEmployee($user, $employeePosition, $scope);
+        }
+    }
+
+    /**
+     * Link the account to the active holder of the jabatan in its unit
+     * (service unit for the Manager UL), unless either is already linked.
+     */
+    private function linkEmployee(User $user, EmployeePosition $position, ServiceUnit|Unit $scope): void
+    {
+        $key = $scope instanceof ServiceUnit
+            ? $position->singletonKey(null, $scope->id)
+            : $position->singletonKey($scope->id, $scope->service_unit_id);
+
+        if ($key === null || Employee::query()->where('user_id', $user->id)->exists()) {
+            return;
+        }
+
+        Employee::query()->where('singleton_key', $key)->whereNull('user_id')->update(['user_id' => $user->id]);
     }
 
     private function slug(string $value): string

@@ -67,11 +67,20 @@ class DocumentGridBuilder
             $push([$this->c('   '.$item['tangki']), $this->c($fmt($item['liter']).' Liter', false, 'r')]);
         }
         $push([$this->c('E. Jumlah Persediaan menurut Fisik', true), $this->c($fmt($data['fisik_total']).' Liter', true, 'r')]);
-        $push([$this->c('F. Selisih Administrasi vs Fisik (E-D)', true), $this->c($fmt($data['selisih']).' Liter', true, 'r')]);
-        $mergeFull($push([$this->c('Catatan: * Selisih disebabkan karena: ......................................')]));
-        $push([$this->c(''), $this->c($data['print_place_date'], false, 'c')]);
-        $push([$this->c('Menyetujui, Manajer', false, 'c'), $this->c('Membuat, TL. Operasi', false, 'c')]);
-        $push([$this->c($data['signers']['manajer'] ?? '(………………)', true, 'c'), $this->c($data['signers']['tl_operasi'] ?? '(………………)', true, 'c')]);
+        $catatanText = 'Catatan: * Selisih disebabkan karena: '.(! empty($data['catatan']) ? $data['catatan'] : '......................................');
+        $mergeFull($push([$this->c($catatanText)]));
+        $push([$this->c('', false, 'c', true), $this->c($data['print_place_date'], false, 'c', true)]);
+        $push([
+            $this->c('Menyetujui, '.($data['signers']['manajer_title'] ?? 'Manajer'), false, 'c', true),
+            $this->c('Membuat, '.($data['signers']['tl_title'] ?? 'TL. Operasi'), false, 'c', true),
+        ]);
+        $push([$this->c('', false, 'c', true, 22), $this->c('', false, 'c', true, 22)]);
+        $push([$this->c('', false, 'c', true, 22), $this->c('', false, 'c', true, 22)]);
+        $push([$this->c('', false, 'c', true, 22), $this->c('', false, 'c', true, 22)]);
+        $push([
+            $this->c($data['signers']['manajer'] ?? '(………………)', true, 'c', true),
+            $this->c($data['signers']['tl_operasi'] ?? '(………………)', true, 'c', true),
+        ]);
 
         return [
             'name' => $data['document']['title'],
@@ -137,6 +146,22 @@ class DocumentGridBuilder
             $this->c($fmt($totals['selisih']), true, 'r'),
         ]);
         $mergeFull($push([$this->c('Catatan: * Selisih disebabkan karena: ......................................')]));
+        $push([$this->c(''), $this->c(''), $this->c(''), $this->c(''), $this->c(''), $this->c(''), $this->c($data['print_place_date'], false, 'c', true), $this->c(''), $this->c('')]);
+        $push([
+            $this->c('Menyetujui, '.($data['signers']['manajer_title'] ?? 'Manajer'), false, 'c', true),
+            $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true),
+            $this->c('Membuat, '.($data['signers']['tl_title'] ?? 'TL. Operasi'), false, 'c', true),
+            $this->c('', false, 'c', true), $this->c('', false, 'c', true),
+        ]);
+        for ($s = 0; $s < 3; $s++) {
+            $push(array_fill(0, $cols, $this->c('', false, 'c', true, 22)));
+        }
+        $push([
+            $this->c($data['signers']['manajer'] ?? '(………………)', true, 'c', true),
+            $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true),
+            $this->c($data['signers']['tl_operasi'] ?? '(………………)', true, 'c', true),
+            $this->c('', false, 'c', true), $this->c('', false, 'c', true),
+        ]);
 
         return [
             'name' => 'BA Opname Pelumas',
@@ -172,7 +197,7 @@ class DocumentGridBuilder
         $merges[] = [0, 0, 0, $cols - 1];
         $push([$this->c(($data['unit']['service_unit'] ?? 'UNIT LAYANAN'), true, 'c')]);
         $merges[] = [1, 0, 1, $cols - 1];
-        $push([$this->c('LAPORAN OPERASI BULANAN — '.($data['engine']['name'] ?? '').' · '.$data['period']['label'], true, 'c')]);
+        $push([$this->c('LAPORAN OPERASI PEMBANGKIT — '.($data['engine']['name'] ?? '').' · '.$data['period']['label'], true, 'c')]);
         $push(array_map(fn (string $h): array => $this->c($h, true, 'c'), $headers));
 
         $fmt = fn ($v): string => $v === null ? '' : number_format((float) $v, 2, ',', '.');
@@ -273,8 +298,12 @@ class DocumentGridBuilder
                     default => 'left',
                 };
                 $weight = ($cell['b'] ?? false) ? 'font-weight:bold;' : '';
-                $style = "border:1px solid #000; padding:2px 4px; text-align:{$align}; {$weight}";
-                $html .= '<td'.$attrs.' style="'.$style.'">'.e((string) ($cell['t'] ?? '')).'</td>';
+                $border = ($cell['noborder'] ?? false) ? 'border:none;' : 'border:1px solid #000;';
+                $height = isset($cell['height']) ? 'height:'.$cell['height'].'px;' : '';
+                $style = "{$border} padding:2px 4px; text-align:{$align}; {$weight} {$height}";
+                $text = (string) ($cell['t'] ?? '');
+                $content = $text !== '' ? e($text) : '&nbsp;';
+                $html .= '<td'.$attrs.' style="'.$style.'">'.$content.'</td>';
             }
             $html .= '</tr>';
         }
@@ -296,9 +325,9 @@ class DocumentGridBuilder
     }
 
     /**
-     * @return array{t: string, b?: bool, a?: string}
+     * @return array{t: string, b?: bool, a?: string, noborder?: bool, height?: int}
      */
-    private function c(string $text, bool $bold = false, string $align = 'l'): array
+    private function c(string $text, bool $bold = false, string $align = 'l', bool $noborder = false, ?int $height = null): array
     {
         $cell = ['t' => $text];
         if ($bold) {
@@ -306,6 +335,12 @@ class DocumentGridBuilder
         }
         if ($align !== 'l') {
             $cell['a'] = $align;
+        }
+        if ($noborder) {
+            $cell['noborder'] = true;
+        }
+        if ($height !== null) {
+            $cell['height'] = $height;
         }
 
         return $cell;

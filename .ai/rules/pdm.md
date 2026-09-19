@@ -1,0 +1,15 @@
+---
+paths:
+  - 'app/Http/Controllers/Pdm/**'
+---
+
+# Pdm
+
+## Modul PdM & MATURITY LEVEL — pola & RBAC
+Modul baru PdM & Maturity Level (predictive maintenance) mengikuti pola HAR. RBAC: PermissionGroup::Pdm, permission `pdm.{input.view,input.write,laporan.view,master.view_any,master.manage}`, role `tl_pdm` (TeamLeaderPdm, scope Unit) + Manager UL dapat `pdm.laporan.view`. Registry: `work_modules` seed `pdm` (deskripsi WAJIB <=255 char, kolom string). Routes di `routes/pdm.php` (prefix/name `pdm.`) — saat ini hanya hub `jadwal.index`, `input.index`, `laporan.index`; sub-halaman menyusul. Controller di `app/Http/Controllers/Pdm/`, gate tiap aksi dengan hasPermissionTo(PermissionName::Pdm*) + canAccessUnit. Halaman React `resources/js/pages/pdm/{jadwal,input,laporan}`. Transaksi wajib ber-unit_id (trait BelongsToUnit). Setelah tambah route jalankan `php artisan wayfinder:generate --with-form`. Selalu update `modul-pdm-maturity-level.md` di root setiap modul berubah. Menu: 10 jadwal (harian, piket on-call, patrol-check, 5S5R, meeting PdM KIT, pembuatan IK, pemeriksaan blackstart, commissioning test mesin, commissioning test peralatan non mesin, rencana operasi ROT/ROB/ROM) + 4 input (kesiapan APD, patrol check PdM, checklist patrol check, log sheet PdM).
+
+## Input PdM: index/store/pdf + Excel, spesifikasi form di Support
+Setiap input PdM (`pdm.input.{nama}.index|store|pdf`) memakai trait `Concerns\HandlesPdmInput` (izin pdm.input.*, unit/periode, opsi filter), PDF via `RendersReportPdf::streamReportPdf(..., orientation)` dari `resources/views/pdm/input/{nama}-pdf.blade.php` (kop & gaya di `pdm/input/partials`), Excel dibuat di browser (`resources/js/lib/pdm-input-excel.ts`). Kolom/daftar default form di `App\Support\Pdm*Form` — satu sumber untuk halaman, PDF, Excel. Header/catatan per periode pakai `pdm_jadwal_meta` (type = nama input). Form berbagian dinamis (Monitoring Sample) simpan baris di tabel item dengan `section` + JSON `data`. Kartu hub aktif bila diberi `href` di `pdm/input/index.tsx`.
+
+## PdM input: tanpa tanda tangan, dropdown komponen React, form generik
+Keputusan user (2026-09-19): inputan PdM TIDAK memuat tanda tangan (tanpa pilih pegawai, nama/jabatan penanda tangan, gambar TTD, tempat/tanggal TTD) di halaman, PDF, maupun Excel — menyusul bersama fitur verifikasi. Lembar Pengesahan Laporan PdM tetap ada (nama dari pegawai sesuai jabatan, tanpa TTD, tanpa form edit). Dropdown di halaman input wajib komponen React: `OperasiSelect` (filter) / `PdmCellSelect` (resources/js/components/pdm/cell-select.tsx, sel tabel) — jangan `<select>` HTML. Form baru sederhana: tambah subclass `App\Support\PdmForms\PdmForm` + daftarkan di `PdmForms::ALL` + blade `pdm/input/{key}-pdf` (FormInputController generik). Tiap jadwal/input sediakan `public function pdfView(...): array{view, data}` dan daftarkan di `PdmDocumentBuilder::sources()` agar tabelnya masuk Laporan PdM (dokumen editor seperti K3, tabel disisipkan dari view PDF-nya dengan CSS scoped — selalu tampil, tanpa garis merah). Ubah layout laporan → naikkan `Pdm\DocumentController::BODY_VERSION`.

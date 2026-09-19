@@ -3,13 +3,11 @@ import {
     Activity,
     CalendarClock,
     FileText,
-    PackageCheck,
     PhoneCall,
     ShieldCheck,
     Sliders,
     Sparkles,
     Wrench,
-    ZapOff,
 } from 'lucide-react';
 import {
     OPERASI_MONTHS,
@@ -72,22 +70,10 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/har/jadwal/meeting-pemeliharaan',
     },
     {
-        title: 'Jadwal Inventarisasi Tools & Material Pemeliharaan',
-        description: 'Pemeriksaan rutin kelayakan special tools, alat ukur/kalibrasi, serta stok consumable material.',
-        icon: PackageCheck,
-        target: '/har/jadwal/inventarisasi-tools',
-    },
-    {
         title: 'Jadwal Pembuatan IK Pemeliharaan',
         description: 'Penyusunan, review, standardisasi, dan pemutakhiran Instruksi Kerja (IK) teknis pemeliharaan.',
         icon: FileText,
         target: '/har/jadwal/pembuatan-ik',
-    },
-    {
-        title: 'Jadwal Pemeriksaan Instalasi Blackstart',
-        description: 'Jadwal pengujian berkala dan inspeksi kesiapan teknis instalasi sistem darurat Blackstart Diesel.',
-        icon: ZapOff,
-        target: '/har/jadwal/blackstart',
     },
     {
         title: 'Jadwal Individual Test Peralatan Non Mesin dan Instalasi',
@@ -139,19 +125,62 @@ export default function HarJadwalIndex({ filters, options }: Props) {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {JADWAL_LIST.map((item) => {
                         const Icon = item.icon;
+                        const isAvailable =
+                            item.target === '/har/jadwal/harian' ||
+                            item.target === '/har/jadwal/p0-p5' ||
+                            item.target === '/har/jadwal/patrol-check' ||
+                            item.target === '/har/jadwal/meeting-pemeliharaan' ||
+                            item.target === '/har/jadwal/piket-on-call' ||
+                            item.target === '/har/jadwal/pembuatan-ik';
+                        const buttonLabel =
+                            item.target === '/har/jadwal/harian'
+                                ? 'Buka Jadwal Harian'
+                                : item.target === '/har/jadwal/p0-p5'
+                                  ? 'Buka Jadwal P0 - P5'
+                                  : item.target === '/har/jadwal/patrol-check'
+                                    ? 'Buka Jadwal Patrol Check'
+                                    : item.target === '/har/jadwal/meeting-pemeliharaan'
+                                      ? 'Buka Jadwal Meeting'
+                                      : item.target === '/har/jadwal/piket-on-call'
+                                        ? 'Buka Jadwal Piket On Call'
+                                        : item.target === '/har/jadwal/pembuatan-ik'
+                                          ? 'Buka Jadwal Pembuatan IK'
+                                          : item.title;
                         return (
                             <div
                                 key={item.title}
-                                className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4 transition-all hover:border-primary/50"
+                                className={`flex flex-col justify-between gap-4 rounded-md border bg-card p-4 transition-all ${
+                                    isAvailable
+                                        ? 'border-primary/40 shadow-xs hover:border-primary'
+                                        : 'border-border hover:border-primary/30'
+                                }`}
                             >
                                 <div>
                                     <div className="mb-2 flex items-center justify-between gap-2">
-                                        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                        <div
+                                            className={`flex size-9 items-center justify-center rounded-lg ${
+                                                isAvailable
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'bg-primary/10 text-primary'
+                                            }`}
+                                        >
                                             <Icon className="size-5" />
                                         </div>
-                                        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                                            Sementara Disusun
-                                        </Badge>
+                                        {isAvailable ? (
+                                            <Badge
+                                                variant="outline"
+                                                className="border-emerald-500/30 bg-emerald-500/10 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"
+                                            >
+                                                Tersedia
+                                            </Badge>
+                                        ) : (
+                                            <Badge
+                                                variant="outline"
+                                                className="text-[11px] font-normal text-muted-foreground"
+                                            >
+                                                Sementara Disusun
+                                            </Badge>
+                                        )}
                                     </div>
                                     <h2 className="text-base font-semibold text-foreground">
                                         {item.title}
@@ -162,18 +191,36 @@ export default function HarJadwalIndex({ filters, options }: Props) {
                                 </div>
 
                                 <div className="space-y-1.5 pt-2">
-                                    <Button
-                                        disabled
-                                        variant="outline"
-                                        className="w-full cursor-not-allowed justify-center gap-2 opacity-75"
-                                        title="Tombol sementara dinonaktifkan (tabel sedang disusun)"
-                                    >
-                                        <Icon className="size-4" />
-                                        Input Jadwal
-                                    </Button>
-                                    <p className="text-center text-[11px] text-muted-foreground italic">
-                                        * Tombol belum difungsikan (tabel sedang disusun)
-                                    </p>
+                                    {isAvailable ? (
+                                        <Button
+                                            className="w-full justify-center gap-2"
+                                            onClick={() =>
+                                                router.get(item.target, {
+                                                    unit_id: filters.unit_id,
+                                                    month: filters.month,
+                                                    year: filters.year,
+                                                })
+                                            }
+                                        >
+                                            <Icon className="size-4" />
+                                            {buttonLabel}
+                                        </Button>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                disabled
+                                                variant="outline"
+                                                className="w-full cursor-not-allowed justify-center gap-2 opacity-75"
+                                                title="Tombol sementara dinonaktifkan (tabel sedang disusun)"
+                                            >
+                                                <Icon className="size-4" />
+                                                Input Jadwal
+                                            </Button>
+                                            <p className="text-center text-[11px] text-muted-foreground italic">
+                                                * Tombol belum difungsikan (tabel sedang disusun)
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         );

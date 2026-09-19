@@ -318,16 +318,15 @@ class K3MasterDataSeeder extends Seeder
             }
         }
 
-        // Equipment certificates are Poasia's own physical assets (different per
-        // unit), so they stay on Poasia; other units register their own.
-        if ($poasia !== null) {
+        // Seed equipment certificates for all units.
+        foreach (Unit::query()->get() as $unit) {
             foreach (self::CERTIFICATES as $cert) {
                 EquipmentCertificate::query()->updateOrCreate(
-                    ['unit_id' => $poasia->id, 'jenis' => $cert['jenis']],
+                    ['unit_id' => $unit->id, 'jenis' => $cert['jenis']],
                     [
                         'equipment_category_id' => $equipmentCatIds[$cert['category']] ?? null,
                         'kapasitas' => $cert['kapasitas'],
-                        'lokasi' => $cert['lokasi'],
+                        'lokasi' => $unit->code === self::UNIT_CODE ? $cert['lokasi'] : $unit->name,
                     ],
                 );
             }

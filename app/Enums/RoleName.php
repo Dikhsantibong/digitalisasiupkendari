@@ -15,6 +15,8 @@ enum RoleName: string
     case TeamLeaderOperasi = 'tl_operasi';
     case TeamLeaderPemeliharaan = 'tl_pemeliharaan';
     case TeamLeaderK3 = 'tl_k3';
+    case TeamLeaderLogistik = 'tl_logistik';
+    case TeamLeaderPdm = 'tl_pdm';
     case SiteLeader = 'site_leader';
     case ProjectLeaderOperasi = 'project_leader_operasi';
     case Operator = 'operator';
@@ -27,6 +29,8 @@ enum RoleName: string
             self::TeamLeaderOperasi => 'TL Operasi',
             self::TeamLeaderPemeliharaan => 'TL Pemeliharaan',
             self::TeamLeaderK3 => 'TL K3 & Keamanan',
+            self::TeamLeaderLogistik => 'TL Logistik & Gudang',
+            self::TeamLeaderPdm => 'TL PdM & Maturity Level',
             self::SiteLeader => 'Site Leader',
             self::ProjectLeaderOperasi => 'Project Leader Operasi',
             self::Operator => 'Operator',
@@ -41,6 +45,8 @@ enum RoleName: string
             self::TeamLeaderOperasi => 'Mengelola kegiatan operasi pada unit pembangkit yang ditugaskan.',
             self::TeamLeaderPemeliharaan => 'Mengelola kegiatan pemeliharaan pada unit pembangkit yang ditugaskan.',
             self::TeamLeaderK3 => 'Mengelola kegiatan K3 & keamanan pada unit pembangkit yang ditugaskan.',
+            self::TeamLeaderLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan.',
+            self::TeamLeaderPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan.',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
             self::ProjectLeaderOperasi => 'Operator senior yang menjadwalkan shift regu, mengelola absensi & laporan pada unit pembangkit yang ditugaskan.',
             self::Operator => 'Mencatat data operasi harian pada unit pembangkit yang ditugaskan.',
@@ -55,6 +61,8 @@ enum RoleName: string
             self::TeamLeaderOperasi,
             self::TeamLeaderPemeliharaan,
             self::TeamLeaderK3,
+            self::TeamLeaderLogistik,
+            self::TeamLeaderPdm,
             self::SiteLeader,
             self::ProjectLeaderOperasi,
             self::Operator => RoleScope::Unit,
@@ -111,6 +119,10 @@ enum RoleName: string
                 // Manager oversees K3 & security reporting across their UL (read-only).
                 PermissionName::K3LaporanView,
                 PermissionName::K3MonitoringView,
+                // Manager oversees logistik & gudang reporting across their UL (read-only).
+                PermissionName::LogistikLaporanView,
+                // Manager oversees PdM & maturity level reporting across their UL (read-only).
+                PermissionName::PdmLaporanView,
                 // Manager oversees the Operator module (read-only): field
                 // logsheets and the shift schedule / attendance.
                 PermissionName::OperatorLogsheetView,
@@ -154,6 +166,26 @@ enum RoleName: string
                 PermissionName::K3MonitoringView,
                 PermissionName::K3MasterViewAny,
                 PermissionName::K3MasterManage,
+            ],
+
+            self::TeamLeaderLogistik => [
+                ...$this->teamLeaderBasePermissions(),
+                // The logistik & gudang module belongs to TL Logistik & Gudang.
+                PermissionName::LogistikInputView,
+                PermissionName::LogistikInputWrite,
+                PermissionName::LogistikLaporanView,
+                PermissionName::LogistikMasterViewAny,
+                PermissionName::LogistikMasterManage,
+            ],
+
+            self::TeamLeaderPdm => [
+                ...$this->teamLeaderBasePermissions(),
+                // The PdM & maturity level module belongs to TL PdM.
+                PermissionName::PdmInputView,
+                PermissionName::PdmInputWrite,
+                PermissionName::PdmLaporanView,
+                PermissionName::PdmMasterViewAny,
+                PermissionName::PdmMasterManage,
             ],
 
             self::SiteLeader => [

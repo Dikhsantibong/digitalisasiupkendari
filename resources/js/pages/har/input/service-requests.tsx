@@ -1,8 +1,8 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import DataGrid, { textEditor   } from 'react-data-grid';
-import type {Column, ColumnOrColumnGroup} from 'react-data-grid';
+import { ClipboardList, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import DataGrid, { textEditor } from 'react-data-grid';
+import type { Column, ColumnOrColumnGroup, RenderEditCellProps } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import {
     OPERASI_MONTHS,
@@ -10,10 +10,30 @@ import {
 } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import serviceRequest from '@/routes/har/input/service-request';
 import type { IdName } from '@/types';
+import { toast } from 'sonner';
 
 type Code = { code: string; name: string };
 
@@ -40,23 +60,67 @@ type Props = {
     can_write: boolean;
 };
 
-const blankRow = (key: number): GridRow => ({
-    _key: key,
-    sr_number: '',
-    description: null,
-    category_code: null,
-    status: 'open',
-    engine_name: null,
-});
+const NONE_VALUE = '__none__';
 
 const hydrate = (rows: RowData[]): GridRow[] =>
-    rows.length ? rows.map((row, index) => ({ ...row, _key: index })) : [blankRow(0)];
+    rows.map((row, index) => ({ ...row, _key: index }));
+
+/**
+ * A multi-line editor for the description column when pasting or editing directly.
+ */
+function MultilineEditor({
+    row,
+    column,
+    onRowChange,
+    onClose,
+}: RenderEditCellProps<GridRow>) {
+    const value = (row[column.key] as string | null) ?? '';
+
+    return (
+        <textarea
+            className="rdg-textarea-editor"
+            autoFocus
+            rows={4}
+            value={value}
+            onChange={(event) =>
+                onRowChange({ ...row, [column.key]: event.target.value })
+            }
+            onBlur={() => onClose(true)}
+            onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                    if (event.ctrlKey || event.metaKey) {
+                        onClose(true);
+                        return;
+                    }
+                    event.stopPropagation();
+                }
+            }}
+        />
+    );
+}
 
 export default function ServiceRequestInput({ filters, rows: initialRows, options, can_write }: Props) {
     const [rows, setRows] = useState<GridRow[]>(() => hydrate(initialRows));
     const [nextKey, setNextKey] = useState(Math.max(initialRows.length, 1));
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editingRowKey, setEditingRowKey] = useState<number | null>(null);
+    const [formData, setFormData] = useState({
+        sr_number: '',
+        description: '',
+        category_code: '',
+        status: 'open',
+        engine_name: '',
+    });
+
+    const emptyColFilters = {
+        category_code: 'all',
+        status: 'all',
+    };
+    const [colFilters, setColFilters] = useState(emptyColFilters);
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -65,86 +129,47 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
         setLastSignature(signature);
         setRows(hydrate(initialRows));
         setNextKey(Math.max(initialRows.length, 1));
+        setColFilters(emptyColFilters);
         setDirty(false);
     }
 
-    const gridHeight = Math.min(Math.max(rows.length, 3) * 35 + 44, 560);
+    const displayRows = useMemo(
+        () =>
+            rows.filter(
+                (row) =>
+                    (colFilters.category_code === 'all' ||
+                        row.category_code === colFilters.category_code) &&
+                    (colFilters.status === 'all' ||
+                        row.status === colFilters.status),
+            ),
+        [rows, colFilters],
+    );
 
-    const visit = (patch: Partial<Props['filters']>) => {
-        router.get(
-            serviceRequest.index().url,
-            { ...filters, ...patch },
-            { preserveState: true, preserveScroll: true, replace: true },
-        );
-    };
+    const hasActiveFilter = Object.values(colFilters).some((v) => v !== 'all');
 
-    const removeRow = (key: number) => {
-        setRows((current) => current.filter((row) => row._key !== key));
-        setDirty(true);
-    };
-
-    const columns = useMemo<readonly ColumnOrColumnGroup<GridRow>[]>(() => {
-        const editable = (key: keyof GridRow, name: string, width = 150): Column<GridRow> => ({
-            key: key as string,
-            name,
-            width,
-            editable: can_write,
-            renderEditCell: textEditor,
-            headerCellClass: 'rdg-sub-header',
-        });
-
-        const cols: Column<GridRow>[] = [
-            editable('sr_number', 'No. SR', 130),
-            {
-                key: 'description',
-                name: 'Deskripsi',
-                minWidth: 240,
-                editable: can_write,
-                renderEditCell: textEditor,
-                headerCellClass: 'rdg-sub-header',
-            },
-            editable('category_code', 'Kategori', 110),
-            editable('status', 'Status', 100),
-            editable('engine_name', 'Mesin', 160),
-        ];
-
-        if (can_write) {
-            cols.push({
-                key: 'actions',
-                name: 'Aksi',
-                width: 64,
-                headerCellClass: 'rdg-sub-header',
-                cellClass: 'text-center',
-                renderCell: ({ row }) => (
-                    <button
-                        type="button"
-                        onClick={() => removeRow(row._key)}
-                        aria-label="Hapus baris"
-                        className="text-destructive"
-                    >
-                        <Trash2 className="mx-auto size-4" />
-                    </button>
-                ),
-            });
+    // Available machine list including any existing custom value in form
+    const machineOptions = useMemo(() => {
+        const list = [...options.machines];
+        if (
+            formData.engine_name &&
+            !list.some((m) => m.name.toLowerCase() === formData.engine_name.toLowerCase())
+        ) {
+            list.unshift({ id: -1, name: formData.engine_name });
         }
+        return list;
+    }, [options.machines, formData.engine_name]);
 
-        return cols;
-    }, [can_write]);
-
-    const { onSelectedCellChange, onPaste } = useExcelPaste<GridRow>({
-        columns,
-        rows,
-        onChange: (next) => {
-            setRows(next);
-            setDirty(true);
-        },
-    });
-
-    const addRow = () => {
-        setRows((current) => [...current, blankRow(nextKey)]);
-        setNextKey((k) => k + 1);
-        setDirty(true);
-    };
+    // Available category list including any custom value in form
+    const categoryOptions = useMemo(() => {
+        const list = [...options.categories];
+        if (
+            formData.category_code &&
+            !list.some((c) => c.code.toLowerCase() === formData.category_code.toLowerCase())
+        ) {
+            list.unshift({ code: formData.category_code, name: formData.category_code });
+        }
+        return list;
+    }, [options.categories, formData.category_code]);
 
     const payload = (row: GridRow): RowData => ({
         sr_number: row.sr_number,
@@ -154,7 +179,7 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
         engine_name: row.engine_name,
     });
 
-    const save = () => {
+    const saveRows = (rowsToSave: GridRow[], successMessage = 'Data berhasil disimpan') => {
         setSaving(true);
         router.post(
             serviceRequest.store().url,
@@ -162,15 +187,281 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                 unit_id: filters.unit_id,
                 month: filters.month,
                 year: filters.year,
-                rows: rows.map(payload),
+                rows: rowsToSave.map(payload),
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    toast.success(successMessage);
+                },
+                onError: () => {
+                    toast.error('Gagal menyimpan ke server');
+                },
                 onFinish: () => setSaving(false),
             },
         );
     };
+
+    const openCreateModal = () => {
+        setEditingRowKey(null);
+        setFormData({
+            sr_number: '',
+            description: '',
+            category_code: options.categories[0]?.code ?? '',
+            status: 'open',
+            engine_name: '',
+        });
+        setModalOpen(true);
+    };
+
+    const openEditModal = (row: GridRow) => {
+        setEditingRowKey(row._key);
+        setFormData({
+            sr_number: row.sr_number ?? '',
+            description: row.description ?? '',
+            category_code: row.category_code ?? '',
+            status: row.status ?? 'open',
+            engine_name: row.engine_name ?? '',
+        });
+        setModalOpen(true);
+    };
+
+    const handleModalSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const srTrimmed = formData.sr_number.trim();
+        if (!srTrimmed) {
+            toast.error('Nomor SR wajib diisi');
+            return;
+        }
+
+        // Check duplicate sr_number (except when editing the same row)
+        const isDuplicate = rows.some(
+            (r) => r.sr_number?.toLowerCase() === srTrimmed.toLowerCase() && r._key !== editingRowKey,
+        );
+        if (isDuplicate) {
+            toast.error(`Nomor SR "${srTrimmed}" sudah ada dalam daftar.`);
+            return;
+        }
+
+        let nextRows: GridRow[];
+        const isEdit = editingRowKey !== null;
+
+        if (isEdit) {
+            nextRows = rows.map((r) =>
+                r._key === editingRowKey
+                    ? {
+                          ...r,
+                          sr_number: srTrimmed,
+                          description: formData.description.trim() || null,
+                          category_code: formData.category_code || null,
+                          status: formData.status || 'open',
+                          engine_name: formData.engine_name || null,
+                      }
+                    : r,
+            );
+        } else {
+            const newRow: GridRow = {
+                _key: nextKey,
+                sr_number: srTrimmed,
+                description: formData.description.trim() || null,
+                category_code: formData.category_code || null,
+                status: formData.status || 'open',
+                engine_name: formData.engine_name || null,
+            };
+            setNextKey((k) => k + 1);
+            nextRows = [...rows, newRow];
+        }
+
+        setRows(nextRows);
+        setModalOpen(false);
+
+        // Auto-save directly to backend
+        saveRows(
+            nextRows,
+            isEdit ? 'Service Request berhasil diperbarui' : 'Service Request berhasil ditambahkan',
+        );
+    };
+
+    const handleDeleteRow = (row: GridRow) => {
+        const label = row.sr_number ? `"${row.sr_number}"` : 'baris ini';
+        if (!window.confirm(`Apakah Anda yakin ingin menghapus Service Request ${label}?`)) {
+            return;
+        }
+
+        const nextRows = rows.filter((r) => r._key !== row._key);
+        setRows(nextRows);
+        saveRows(nextRows, 'Service Request berhasil dihapus');
+    };
+
+    // Grid edits/paste operate on the (possibly filtered) view; merge results
+    // back into the full row set by their stable _key.
+    const mergeBack = useCallback((nextDisplay: GridRow[]) => {
+        setRows((current) => {
+            const patched = new Map(nextDisplay.map((row) => [row._key, row]));
+            return current.map((row) => patched.get(row._key) ?? row);
+        });
+        setDirty(true);
+    }, []);
+
+    const ROW_HEIGHT = 56;
+    const gridHeight = Math.max(Math.min(displayRows.length * ROW_HEIGHT + 44, 680), 450);
+
+    const visit = (patch: Partial<Props['filters']>) => {
+        router.get(
+            serviceRequest.index().url,
+            { ...filters, ...patch },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
+    };
+
+    const columns = useMemo<readonly ColumnOrColumnGroup<GridRow>[]>(() => {
+        const cols: Column<GridRow>[] = [
+            {
+                key: 'sr_number',
+                name: 'No. SR',
+                width: 170,
+                minWidth: 130,
+                resizable: true,
+                editable: can_write,
+                renderEditCell: textEditor,
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) => (
+                    <span className="font-semibold text-foreground">{row.sr_number || '—'}</span>
+                ),
+            },
+            {
+                key: 'description',
+                name: 'Deskripsi',
+                width: 'minmax(280px, 2fr)',
+                minWidth: 220,
+                resizable: true,
+                editable: can_write,
+                renderEditCell: MultilineEditor,
+                headerCellClass: 'rdg-sub-header',
+                cellClass: 'rdg-wrap-cell',
+                renderCell: ({ row }) => (
+                    <div
+                        className="whitespace-pre-wrap break-words py-1 leading-snug text-xs"
+                        title={row.description ?? ''}
+                    >
+                        {row.description || <span className="text-muted-foreground">—</span>}
+                    </div>
+                ),
+            },
+            {
+                key: 'category_code',
+                name: 'Kategori',
+                width: 140,
+                minWidth: 110,
+                resizable: true,
+                editable: can_write,
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) => {
+                    if (!row.category_code) {
+                        return <span className="text-muted-foreground">—</span>;
+                    }
+                    return (
+                        <Badge variant="outline" className="font-medium bg-muted/60 text-xs">
+                            {row.category_code}
+                        </Badge>
+                    );
+                },
+            },
+            {
+                key: 'status',
+                name: 'Status',
+                width: 120,
+                minWidth: 100,
+                resizable: true,
+                editable: can_write,
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) => {
+                    const val = row.status?.toLowerCase();
+                    const isClosed = val === 'close' || val === 'closed';
+                    return (
+                        <span
+                            className={cn(
+                                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border',
+                                isClosed
+                                    ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800',
+                            )}
+                        >
+                            <span
+                                className={cn(
+                                    'mr-1.5 size-1.5 rounded-full',
+                                    isClosed ? 'bg-slate-400' : 'bg-emerald-500',
+                                )}
+                            />
+                            {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1) : 'Open'}
+                        </span>
+                    );
+                },
+            },
+            {
+                key: 'engine_name',
+                name: 'Mesin',
+                width: 'minmax(160px, 1fr)',
+                minWidth: 140,
+                resizable: true,
+                editable: can_write,
+                renderEditCell: textEditor,
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) => (
+                    <span>{row.engine_name || <span className="text-muted-foreground">—</span>}</span>
+                ),
+            },
+        ];
+
+        if (can_write) {
+            cols.push({
+                key: 'actions',
+                name: 'Aksi',
+                width: 86,
+                minWidth: 86,
+                resizable: false,
+                headerCellClass: 'rdg-sub-header text-center',
+                cellClass: 'text-center',
+                renderCell: ({ row }) => (
+                    <div className="flex items-center justify-center gap-1">
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openEditModal(row);
+                            }}
+                            title="Edit Service Request"
+                            aria-label="Edit baris"
+                            className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                        >
+                            <Pencil className="size-4" />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRow(row);
+                            }}
+                            title="Hapus Service Request"
+                            aria-label="Hapus baris"
+                            className="rounded p-1 text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                            <Trash2 className="size-4" />
+                        </button>
+                    </div>
+                ),
+            });
+        }
+
+        return cols;
+    }, [can_write]);
+
+    const { onSelectedCellChange, onPaste } = useExcelPaste<GridRow>({
+        columns,
+        rows: displayRows,
+        onChange: mergeBack,
+    });
 
     return (
         <>
@@ -178,17 +469,25 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title="Service Request"
-                    description="Daftar Service Request per unit & periode. Isi kode kategori & nama mesin; paste dari Excel didukung."
+                    description="Kelola daftar Service Request per unit & periode. Gunakan tombol Create untuk menambah data baru atau klik ikon edit/dobel klik baris untuk mengubah."
                     actions={
                         can_write && (
-                            <div className="flex gap-2">
-                                <Button variant="secondary" onClick={addRow}>
+                            <div className="flex items-center gap-2">
+                                <Button onClick={openCreateModal} className="gap-1.5 shadow-xs">
                                     <Plus className="size-4" />
-                                    Tambah Baris
+                                    Create Service Request
                                 </Button>
-                                <Button onClick={save} disabled={saving}>
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
+                                {dirty && (
+                                    <Button
+                                        onClick={() => saveRows(rows, 'Perubahan berhasil disimpan')}
+                                        disabled={saving}
+                                        variant="secondary"
+                                        className="gap-1.5"
+                                    >
+                                        <Save className="size-4" />
+                                        {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+                                    </Button>
+                                )}
                             </div>
                         )
                     }
@@ -213,42 +512,294 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         onChange={(value) => visit({ year: Number(value) })}
                         options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
                     />
+
+                    <div className="mx-1 hidden h-9 w-px self-center bg-border lg:block" />
+
+                    <OperasiSelect
+                        label="Filter Kategori"
+                        value={colFilters.category_code}
+                        onChange={(value) =>
+                            setColFilters((f) => ({ ...f, category_code: value }))
+                        }
+                        options={[
+                            { value: 'all', label: 'Semua' },
+                            ...options.categories.map((c) => ({ value: c.code, label: c.code })),
+                        ]}
+                    />
+                    <OperasiSelect
+                        label="Filter Status"
+                        value={colFilters.status}
+                        onChange={(value) =>
+                            setColFilters((f) => ({ ...f, status: value }))
+                        }
+                        options={[
+                            { value: 'all', label: 'Semua' },
+                            ...options.statuses,
+                        ]}
+                    />
+
+                    {hasActiveFilter && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="self-end text-xs text-muted-foreground"
+                            onClick={() => setColFilters(emptyColFilters)}
+                        >
+                            Reset Filter ({displayRows.length}/{rows.length})
+                        </Button>
+                    )}
                     {dirty && !saving && (
-                        <span className="text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
+                        <span className="self-end pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
                     )}
                 </div>
 
-                <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
-                    <style>{OPERASI_GRID_STYLES}</style>
-                    <DataGrid
-                        className="rdg-light"
-                        style={{ blockSize: `${gridHeight}px` }}
-                        columns={columns}
-                        rows={rows}
-                        rowKeyGetter={(row) => row._key}
-                        onRowsChange={(next) => {
-                            setRows(next);
-                            setDirty(true);
-                        }}
-                        onSelectedCellChange={onSelectedCellChange}
-                    />
-                </div>
+                {displayRows.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/60 p-12 text-center">
+                        <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+                            <ClipboardList className="size-6" />
+                        </div>
+                        <h3 className="text-base font-semibold text-foreground">
+                            {hasActiveFilter ? 'Tidak Ada Data yang Cocok' : 'Belum Ada Service Request'}
+                        </h3>
+                        <p className="mt-1 text-sm text-muted-foreground max-w-md">
+                            {hasActiveFilter
+                                ? 'Tidak ada Service Request yang sesuai dengan filter kategori atau status yang dipilih.'
+                                : 'Belum ada Service Request yang tercatat untuk unit dan periode ini. Silakan buat Service Request baru.'}
+                        </p>
+                        {can_write && (
+                            <div className="mt-4 flex gap-2">
+                                {hasActiveFilter ? (
+                                    <Button variant="outline" size="sm" onClick={() => setColFilters(emptyColFilters)}>
+                                        Reset Filter
+                                    </Button>
+                                ) : (
+                                    <Button size="sm" onClick={openCreateModal} className="gap-2">
+                                        <Plus className="size-4" />
+                                        Create Service Request
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="operasi-grid w-full overflow-hidden rounded-md border border-border" onPaste={onPaste}>
+                        <style>{OPERASI_GRID_STYLES}</style>
+                        <style>{`
+                            .operasi-grid, .operasi-grid .rdg {
+                                width: 100% !important;
+                            }
+                            .rdg-textarea-editor {
+                                position: absolute;
+                                inset: 0;
+                                z-index: 5;
+                                width: 100%;
+                                min-height: 100%;
+                                height: 6.5rem;
+                                resize: vertical;
+                                padding: 4px 6px;
+                                font: inherit;
+                                line-height: 1.35;
+                                color: inherit;
+                                background: var(--popover, #fff);
+                                border: 2px solid var(--ring, #6366f1);
+                                border-radius: 4px;
+                                box-shadow: 0 6px 18px rgb(0 0 0 / 0.18);
+                                outline: none;
+                            }
+                            .rdg-wrap-cell {
+                                align-content: start;
+                            }
+                        `}</style>
+                        <DataGrid
+                            className="rdg-light w-full"
+                            style={{ blockSize: `${gridHeight}px` }}
+                            rowHeight={ROW_HEIGHT}
+                            columns={columns}
+                            rows={displayRows}
+                            rowKeyGetter={(row) => row._key}
+                            onRowsChange={(next) => mergeBack(next)}
+                            onSelectedCellChange={onSelectedCellChange}
+                            onCellDoubleClick={({ row }) => {
+                                if (can_write) {
+                                    openEditModal(row);
+                                }
+                            }}
+                            defaultColumnOptions={{ resizable: true }}
+                        />
+                    </div>
+                )}
 
                 <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-3 text-[12px] text-muted-foreground">
-                    <p className="font-medium text-foreground">Kode yang valid:</p>
+                    <p className="font-medium text-foreground">Informasi:</p>
                     {options.categories.length > 0 && (
                         <div>
-                            <span className="font-medium">Kategori:</span>{' '}
+                            <span className="font-medium">Kategori tersedia:</span>{' '}
                             {options.categories.map((c) => c.code).join(', ')}
                         </div>
                     )}
                     <div>
                         <span className="font-medium">Status:</span>{' '}
-                        {options.statuses.map((s) => s.value).join(', ')}
+                        {options.statuses.map((s) => s.label).join(', ')}
                     </div>
-                    <p className="pt-1">Kode/mesin yang tak dikenali akan dikosongkan saat simpan.</p>
+                    <p className="pt-1">Tip: Klik dua kali pada baris tabel atau klik ikon pensil untuk mengubah data.</p>
                 </div>
             </div>
+
+            {/* Modal Dialog Form Create / Edit Service Request */}
+            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {editingRowKey !== null ? 'Edit Service Request' : 'Create Service Request'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {editingRowKey !== null
+                                ? 'Perbarui informasi Service Request di bawah ini.'
+                                : 'Isi formulir berikut untuk membuat Service Request baru.'}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleModalSubmit} className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label htmlFor="sr_number">
+                                No. SR <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                id="sr_number"
+                                placeholder="Contoh: SR-2026-001"
+                                value={formData.sr_number}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, sr_number: e.target.value }))
+                                }
+                                required
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="engine_name">Mesin / Peralatan</Label>
+                            {machineOptions.length > 0 ? (
+                                <Select
+                                    value={formData.engine_name || NONE_VALUE}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            engine_name: val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger id="engine_name">
+                                        <SelectValue placeholder="Pilih Mesin (Opsional)" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                            — Tanpa Mesin / Umum —
+                                        </SelectItem>
+                                        {machineOptions.map((m) => (
+                                            <SelectItem key={m.id} value={m.name}>
+                                                {m.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            ) : (
+                                <Input
+                                    id="engine_name"
+                                    placeholder="Nama mesin (opsional)"
+                                    value={formData.engine_name}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({ ...prev, engine_name: e.target.value }))
+                                    }
+                                />
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="category_code">Kategori</Label>
+                                <Select
+                                    value={formData.category_code || NONE_VALUE}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            category_code: val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger id="category_code">
+                                        <SelectValue placeholder="Pilih Kategori" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                            — Tanpa Kategori —
+                                        </SelectItem>
+                                        {categoryOptions.map((cat) => (
+                                            <SelectItem key={cat.code} value={cat.code}>
+                                                {cat.code} {cat.name && cat.name !== cat.code ? `— ${cat.name}` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="status">Status</Label>
+                                <Select
+                                    value={formData.status || 'open'}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            status: val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger id="status">
+                                        <SelectValue placeholder="Pilih Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {options.statuses.map((st) => (
+                                            <SelectItem key={st.value} value={st.value}>
+                                                {st.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="description">Deskripsi Pekerjaan / Kendala</Label>
+                            <textarea
+                                id="description"
+                                rows={3}
+                                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                placeholder="Tuliskan deskripsi kendala, temuan, atau perbaikan..."
+                                value={formData.description}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                                }
+                            />
+                        </div>
+
+                        <DialogFooter className="pt-2 gap-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setModalOpen(false)}
+                            >
+                                Batal
+                            </Button>
+                            <Button type="submit" disabled={saving}>
+                                {saving
+                                    ? 'Menyimpan…'
+                                    : editingRowKey !== null
+                                      ? 'Perbarui'
+                                      : 'Simpan'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

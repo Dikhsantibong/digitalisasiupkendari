@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
+import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
@@ -138,11 +139,14 @@ export default function EmergencyInput({ filters, rows: initialRows, options, ca
                     title="Kesiapan Fasilitas Darurat"
                     description="Ready/Not Ready tiap fasilitas darurat per periode (bulanan atau mingguan). % kesiapan dihitung otomatis dari Ready/Total."
                     actions={
-                        can_write && (
-                            <Button onClick={save} disabled={saving || rows.length === 0}>
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )
+                        <div className="flex flex-wrap gap-2">
+                            <K3InputExportButtons input="emergency" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year, week: filters.week }} />
+                            {can_write && (
+                                    <Button onClick={save} disabled={saving || rows.length === 0}>
+                                        {saving ? 'Menyimpan…' : 'Simpan'}
+                                    </Button>
+                            )}
+                        </div>
                     }
                 />
 

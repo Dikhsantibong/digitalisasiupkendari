@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Fuel, Gauge, Plug, TimerReset, Zap } from 'lucide-react';
+import { AlertOctagon, Droplet, FileCheck, Fuel, Gauge, Package, Plug, TimerReset, Wrench, Zap } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
@@ -7,7 +7,12 @@ import operasiInput from '@/routes/operasi/input';
 import auxiliary from '@/routes/operasi/input/auxiliary';
 import dailyReport from '@/routes/operasi/input/daily-report';
 import feeder from '@/routes/operasi/input/feeder';
+import flmMonitoring from '@/routes/operasi/input/flm-monitoring';
 import fuelReceipt from '@/routes/operasi/input/fuel-receipt';
+import kondisiAbnormal from '@/routes/operasi/input/kondisi-abnormal';
+import materialPeralatan from '@/routes/operasi/input/material-peralatan';
+import permitToWork from '@/routes/operasi/input/permit-to-work';
+import resourcePembangkit from '@/routes/operasi/input/resource-pembangkit';
 import starStop from '@/routes/operasi/input/star-stop';
 
 type InputCard = {
@@ -54,6 +59,41 @@ const INPUT_MENUS: InputCard[] = [
         url: fuelReceipt.index().url,
         buttonLabel: 'Buka Input Penerimaan BBM',
     },
+    {
+        title: 'Kondisi Abnormal & Gangguan',
+        description: 'Pencatatan dan pemantauan kejadian kondisi abnormal serta gangguan mesin pembangkit beserta durasi kejadian.',
+        icon: AlertOctagon,
+        url: kondisiAbnormal.index().url,
+        buttonLabel: 'Buka Input Kondisi Abnormal',
+    },
+    {
+        title: 'Resource Pembangkit',
+        description: 'Pencatatan dan pemantauan harian stok awal, pemakaian, penerimaan, dan stok akhir BBM pembangkit.',
+        icon: Droplet,
+        url: resourcePembangkit.index().url,
+        buttonLabel: 'Buka Input Resource Pembangkit',
+    },
+    {
+        title: 'Material & Peralatan',
+        description: 'Pencatatan inventaris, monitoring stok awal, barang masuk, barang keluar, safety stock, dan reorder point.',
+        icon: Package,
+        url: materialPeralatan.index().url,
+        buttonLabel: 'Buka Input Material & Peralatan',
+    },
+    {
+        title: 'Permit to Work (PTW)',
+        description: 'Pencatatan dan pemantauan status izin kerja (Permit to Work) open dan close untuk pekerjaan pembangkit.',
+        icon: FileCheck,
+        url: permitToWork.index().url,
+        buttonLabel: 'Buka Input Permit to Work',
+    },
+    {
+        title: 'Monitoring FLM',
+        description: 'Pencatatan temuan first line maintenance mesin & peralatan, tindakan awal (bersihkan, lumasi, kencangkan, perbaikan koneksi), kondisi akhir, dan status.',
+        icon: Wrench,
+        url: flmMonitoring.index().url,
+        buttonLabel: 'Buka Input Monitoring FLM',
+    },
 ];
 
 export default function OperasiInputIndex() {
@@ -69,6 +109,7 @@ export default function OperasiInputIndex() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {INPUT_MENUS.map((item) => {
                         const Icon = item.icon;
+
                         return (
                             <div
                                 key={item.title}

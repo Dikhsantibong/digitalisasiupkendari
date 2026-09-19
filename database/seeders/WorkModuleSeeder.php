@@ -42,6 +42,18 @@ class WorkModuleSeeder extends Seeder
             'description' => 'Laporan kinerja K3 & keamanan: inspeksi & inventaris berkala, patroli, sertifikasi peralatan, dan monitoring status.',
             'sort_order' => 4,
         ],
+        [
+            'code' => 'logistik',
+            'name' => 'Logistik & Gudang',
+            'description' => 'Layer logistik & gudang: jadwal kegiatan (harian, pemeliharaan, piket on call, patrol check stok, 5S 5R, meeting, pembuatan IK) serta laporan patrol check, inventaris, stok material/tools, dan permit to work.',
+            'sort_order' => 5,
+        ],
+        [
+            'code' => 'pdm',
+            'name' => 'PdM & Maturity Level',
+            'description' => 'Layer predictive maintenance (PdM) & maturity level: jadwal kegiatan PdM (harian, piket, patrol check, 5S 5R, meeting, IK, blackstart, commissioning test, rencana operasi) serta input kesiapan APD, patrol check, checklist, dan log sheet.',
+            'sort_order' => 6,
+        ],
     ];
 
     public function run(): void

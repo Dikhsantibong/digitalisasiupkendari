@@ -36,6 +36,16 @@ trait EmbedsReportLogo
             );
         }
 
+        $k3Path = public_path('logo/k3.png');
+        if (is_file($k3Path)) {
+            $k3Uri = 'data:image/png;base64,'.base64_encode((string) file_get_contents($k3Path));
+            $html = (string) preg_replace(
+                '#src=(["\'])[^"\']*logo/k3\.png\1#i',
+                'src="'.$k3Uri.'"',
+                $html,
+            );
+        }
+
         return $html;
     }
 }

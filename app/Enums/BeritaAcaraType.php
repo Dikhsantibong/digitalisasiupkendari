@@ -32,6 +32,11 @@ enum BeritaAcaraType: string
         };
     }
 
+    public function title(): string
+    {
+        return $this->documentTitle();
+    }
+
     public function isFuel(): bool
     {
         return $this !== self::Pelumas;

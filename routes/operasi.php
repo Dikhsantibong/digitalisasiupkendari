@@ -2,15 +2,29 @@
 
 use App\Http\Controllers\Operasi\AuxiliaryReadingController;
 use App\Http\Controllers\Operasi\BeritaAcaraController;
+use App\Http\Controllers\Operasi\BlackstartController;
 use App\Http\Controllers\Operasi\DailyReportController;
+use App\Http\Controllers\Operasi\DataTeknisController;
 use App\Http\Controllers\Operasi\DocumentTemplateController;
 use App\Http\Controllers\Operasi\FeederReadingController;
+use App\Http\Controllers\Operasi\FlmController;
+use App\Http\Controllers\Operasi\FlmMonitoringController;
 use App\Http\Controllers\Operasi\FuelReceiptController;
 use App\Http\Controllers\Operasi\InputHubController;
+use App\Http\Controllers\Operasi\InventarisController;
+use App\Http\Controllers\Operasi\JadwalCommissioningTestController;
+use App\Http\Controllers\Operasi\JadwalCommissioningTestPeralatanController;
 use App\Http\Controllers\Operasi\JadwalController;
+use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\LaporanController;
 use App\Http\Controllers\Operasi\LaporanDocumentController;
 use App\Http\Controllers\Operasi\MasterController;
+use App\Http\Controllers\Operasi\MaterialPeralatanController;
+use App\Http\Controllers\Operasi\MeetingShiftController;
+use App\Http\Controllers\Operasi\PembuatanIkController;
+use App\Http\Controllers\Operasi\PermitToWorkController;
+use App\Http\Controllers\Operasi\Program5s5rController;
+use App\Http\Controllers\Operasi\ResourcePembangkitController;
 use App\Http\Controllers\Operasi\StarStopController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +38,33 @@ Route::middleware(['auth', 'verified'])
     ->name('operasi.')
     ->group(function (): void {
         Route::get('jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+        Route::get('jadwal/flm', [FlmController::class, 'index'])->name('jadwal.flm.index');
+        Route::post('jadwal/flm', [FlmController::class, 'store'])->name('jadwal.flm.store');
+        Route::get('jadwal/flm/pdf', [FlmController::class, 'pdf'])->name('jadwal.flm.pdf');
+        Route::get('jadwal/program-5s-5r', [Program5s5rController::class, 'index'])->name('jadwal.program-5s-5r.index');
+        Route::post('jadwal/program-5s-5r', [Program5s5rController::class, 'store'])->name('jadwal.program-5s-5r.store');
+        Route::get('jadwal/program-5s-5r/pdf', [Program5s5rController::class, 'pdf'])->name('jadwal.program-5s-5r.pdf');
+        Route::get('jadwal/meeting-shift', [MeetingShiftController::class, 'index'])->name('jadwal.meeting-shift.index');
+        Route::post('jadwal/meeting-shift', [MeetingShiftController::class, 'store'])->name('jadwal.meeting-shift.store');
+        Route::get('jadwal/meeting-shift/pdf', [MeetingShiftController::class, 'pdf'])->name('jadwal.meeting-shift.pdf');
+        Route::get('jadwal/inventarisasi-tools', [InventarisController::class, 'index'])->name('jadwal.inventarisasi-tools.index');
+        Route::post('jadwal/inventarisasi-tools', [InventarisController::class, 'store'])->name('jadwal.inventarisasi-tools.store');
+        Route::get('jadwal/inventarisasi-tools/pdf', [InventarisController::class, 'pdf'])->name('jadwal.inventarisasi-tools.pdf');
+        Route::get('jadwal/pembuatan-ik', [PembuatanIkController::class, 'index'])->name('jadwal.pembuatan-ik.index');
+        Route::post('jadwal/pembuatan-ik', [PembuatanIkController::class, 'store'])->name('jadwal.pembuatan-ik.store');
+        Route::get('jadwal/pembuatan-ik/pdf', [PembuatanIkController::class, 'pdf'])->name('jadwal.pembuatan-ik.pdf');
+        Route::get('jadwal/pembuatan-data-teknis', [DataTeknisController::class, 'index'])->name('jadwal.pembuatan-data-teknis.index');
+        Route::post('jadwal/pembuatan-data-teknis', [DataTeknisController::class, 'store'])->name('jadwal.pembuatan-data-teknis.store');
+        Route::get('jadwal/pembuatan-data-teknis/pdf', [DataTeknisController::class, 'pdf'])->name('jadwal.pembuatan-data-teknis.pdf');
+        Route::get('jadwal/blackstart', [BlackstartController::class, 'index'])->name('jadwal.blackstart.index');
+        Route::post('jadwal/blackstart', [BlackstartController::class, 'store'])->name('jadwal.blackstart.store');
+        Route::get('jadwal/blackstart/pdf', [BlackstartController::class, 'pdf'])->name('jadwal.blackstart.pdf');
+        Route::get('jadwal/commissioning-test', [JadwalCommissioningTestController::class, 'index'])->name('jadwal.commissioning-test.index');
+        Route::post('jadwal/commissioning-test', [JadwalCommissioningTestController::class, 'store'])->name('jadwal.commissioning-test.store');
+        Route::get('jadwal/commissioning-test/pdf', [JadwalCommissioningTestController::class, 'pdf'])->name('jadwal.commissioning-test.pdf');
+        Route::get('jadwal/commissioning-test-peralatan', [JadwalCommissioningTestPeralatanController::class, 'index'])->name('jadwal.commissioning-test-peralatan.index');
+        Route::post('jadwal/commissioning-test-peralatan', [JadwalCommissioningTestPeralatanController::class, 'store'])->name('jadwal.commissioning-test-peralatan.store');
+        Route::get('jadwal/commissioning-test-peralatan/pdf', [JadwalCommissioningTestPeralatanController::class, 'pdf'])->name('jadwal.commissioning-test-peralatan.pdf');
         Route::get('input', [InputHubController::class, 'index'])->name('input.index');
 
         Route::get('input/laporan-harian', [DailyReportController::class, 'index'])
@@ -55,6 +96,43 @@ Route::middleware(['auth', 'verified'])
         Route::delete('input/penerimaan-bbm/{fuelReceipt}', [FuelReceiptController::class, 'destroy'])
             ->name('input.fuel-receipt.destroy');
 
+        Route::get('input/kondisi-abnormal', [KondisiAbnormalController::class, 'index'])
+            ->name('input.kondisi-abnormal.index');
+        Route::post('input/kondisi-abnormal', [KondisiAbnormalController::class, 'store'])
+            ->name('input.kondisi-abnormal.store');
+        Route::get('input/kondisi-abnormal/pdf', [KondisiAbnormalController::class, 'pdf'])
+            ->name('input.kondisi-abnormal.pdf');
+
+        Route::get('input/material-peralatan', [MaterialPeralatanController::class, 'index'])
+            ->name('input.material-peralatan.index');
+        Route::post('input/material-peralatan', [MaterialPeralatanController::class, 'store'])
+            ->name('input.material-peralatan.store');
+        Route::delete('input/material-peralatan/{materialPeralatan}', [MaterialPeralatanController::class, 'destroy'])
+            ->name('input.material-peralatan.destroy');
+        Route::get('input/material-peralatan/pdf', [MaterialPeralatanController::class, 'pdf'])
+            ->name('input.material-peralatan.pdf');
+
+        Route::get('input/resource-pembangkit', [ResourcePembangkitController::class, 'index'])
+            ->name('input.resource-pembangkit.index');
+        Route::post('input/resource-pembangkit', [ResourcePembangkitController::class, 'store'])
+            ->name('input.resource-pembangkit.store');
+        Route::get('input/resource-pembangkit/pdf', [ResourcePembangkitController::class, 'pdf'])
+            ->name('input.resource-pembangkit.pdf');
+
+        Route::get('input/permit-to-work', [PermitToWorkController::class, 'index'])
+            ->name('input.permit-to-work.index');
+        Route::post('input/permit-to-work', [PermitToWorkController::class, 'store'])
+            ->name('input.permit-to-work.store');
+        Route::get('input/permit-to-work/pdf', [PermitToWorkController::class, 'pdf'])
+            ->name('input.permit-to-work.pdf');
+
+        Route::get('input/monitoring-flm', [FlmMonitoringController::class, 'index'])
+            ->name('input.flm-monitoring.index');
+        Route::post('input/monitoring-flm', [FlmMonitoringController::class, 'store'])
+            ->name('input.flm-monitoring.store');
+        Route::get('input/monitoring-flm/pdf', [FlmMonitoringController::class, 'pdf'])
+            ->name('input.flm-monitoring.pdf');
+
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/{report}/excel', [LaporanController::class, 'spreadsheet'])->name('laporan.spreadsheet');
         Route::get('laporan/{report}/dokumen', [LaporanDocumentController::class, 'edit'])->name('laporan.document.edit');
@@ -66,6 +144,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('berita-acara', [BeritaAcaraController::class, 'index'])->name('berita-acara.index');
         Route::post('berita-acara', [BeritaAcaraController::class, 'store'])->name('berita-acara.store');
         Route::get('berita-acara/{type}', [BeritaAcaraController::class, 'show'])->name('berita-acara.show');
+        Route::get('berita-acara/{type}/preview', [BeritaAcaraController::class, 'preview'])->name('berita-acara.preview');
         Route::get('berita-acara/{type}/pdf', [BeritaAcaraController::class, 'pdf'])->name('berita-acara.pdf');
 
         Route::get('document-template', [DocumentTemplateController::class, 'index'])->name('document-template.index');

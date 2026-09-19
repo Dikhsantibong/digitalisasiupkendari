@@ -23,6 +23,7 @@ export function ConfirmDeleteDialog({
     description,
     confirmLabel = 'Hapus',
     trigger,
+    children,
 }: {
     /** A Wayfinder form definition, e.g. `units.destroy.form(unit.id)`. */
     action: FormAction;
@@ -30,11 +31,12 @@ export function ConfirmDeleteDialog({
     description: string;
     confirmLabel?: string;
     trigger?: ReactNode;
+    children?: ReactNode;
 }) {
     return (
         <Dialog>
             <DialogTrigger asChild>
-                {trigger ?? (
+                {trigger ?? children ?? (
                     <Button
                         variant="ghost"
                         size="sm"

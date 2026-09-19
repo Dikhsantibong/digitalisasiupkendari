@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ActivityEvent;
+use App\Enums\EmployeePosition;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\EmployeeRequest;
 use App\Models\Employee;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -25,7 +28,7 @@ class EmployeeController extends Controller
 
         $employees = Employee::query()
             ->visibleTo($request->user())
-            ->with(['unit:id,name', 'serviceUnit:id,name'])
+            ->with(['unit:id,name', 'serviceUnit:id,name', 'user:id,name,email'])
             ->when($request->string('search')->trim()->value(), function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
                     $query->where('name', 'like', "%{$search}%")
@@ -68,7 +71,7 @@ class EmployeeController extends Controller
             $base64 = (string) $request->input('signature_base64');
             if (preg_match('/^data:image\/(\w+);base64,/', $base64)) {
                 $imageData = base64_decode(substr($base64, strpos($base64, ',') + 1));
-                $filename = 'signatures/' . \Illuminate\Support\Str::random(40) . '.png';
+                $filename = 'signatures/'.Str::random(40).'.png';
                 Storage::disk('public')->put($filename, $imageData);
                 $attributes['signature_path'] = $filename;
             }
@@ -93,7 +96,7 @@ class EmployeeController extends Controller
         $this->authorize('update', $employee);
 
         return Inertia::render('admin/employees/edit', [
-            'employee' => $this->presentEmployee($employee),
+            'employee' => $this->presentEmployee($employee->load('user:id,name,email')),
             'options' => $this->options($request),
         ]);
     }
@@ -121,7 +124,7 @@ class EmployeeController extends Controller
                     Storage::disk('public')->delete($employee->signature_path);
                 }
                 $imageData = base64_decode(substr($base64, strpos($base64, ',') + 1));
-                $filename = 'signatures/' . \Illuminate\Support\Str::random(40) . '.png';
+                $filename = 'signatures/'.Str::random(40).'.png';
                 Storage::disk('public')->put($filename, $imageData);
                 $attributes['signature_path'] = $filename;
             }
@@ -173,6 +176,9 @@ class EmployeeController extends Controller
             'name' => $employee->name,
             'nip' => $employee->nip,
             'position' => $employee->position,
+            'division' => $employee->division,
+            'user_id' => $employee->user_id,
+            'user' => $employee->relationLoaded('user') && $employee->user ? "{$employee->user->name} ({$employee->user->email})" : null,
             'is_active' => $employee->is_active,
             'unit_id' => $employee->unit_id,
             'unit' => $employee->relationLoaded('unit') ? $employee->unit?->name : null,
@@ -206,8 +212,19 @@ class EmployeeController extends Controller
                 ->whereNotNull('position')
                 ->where('position', '!=', '')
                 ->distinct()
-                ->orderBy('position')
                 ->pluck('position')
+                ->merge(array_column(EmployeePosition::cases(), 'value'))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all(),
+            // Login accounts an employee can be linked to (User → Employee), for
+            // verifying & signing the Laporan Pembangkit.
+            'users' => User::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name', 'email'])
+                ->map(fn (User $user): array => ['id' => $user->id, 'name' => "{$user->name} ({$user->email})"])
                 ->all(),
         ];
     }

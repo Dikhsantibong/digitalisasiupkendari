@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
+import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
@@ -205,21 +206,24 @@ export default function AccidentInput({ filters, rows: initialRows, options, can
                     title="Laporan Kecelakaan (PAK/PAHK)"
                     description="Isi kejadian kecelakaan/penyakit akibat kerja per periode. Bila tidak ada kejadian, gunakan tombol Tandai NIHIL."
                     actions={
-                        can_write && (
-                            <div className="flex flex-wrap gap-2">
-                                <Button variant="secondary" onClick={markNihil} disabled={saving}>
-                                    <ShieldCheck className="size-4" />
-                                    Tandai NIHIL
-                                </Button>
-                                <Button variant="secondary" onClick={addRow}>
-                                    <Plus className="size-4" />
-                                    Tambah Baris
-                                </Button>
-                                <Button onClick={() => persist(rows)} disabled={saving}>
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                            </div>
-                        )
+                        <div className="flex flex-wrap gap-2">
+                            <K3InputExportButtons input="accidents" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }} />
+                            {can_write && (
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button variant="secondary" onClick={markNihil} disabled={saving}>
+                                            <ShieldCheck className="size-4" />
+                                            Tandai NIHIL
+                                        </Button>
+                                        <Button variant="secondary" onClick={addRow}>
+                                            <Plus className="size-4" />
+                                            Tambah Baris
+                                        </Button>
+                                        <Button onClick={() => persist(rows)} disabled={saving}>
+                                            {saving ? 'Menyimpan…' : 'Simpan'}
+                                        </Button>
+                                    </div>
+                            )}
+                        </div>
                     }
                 />
 

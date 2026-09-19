@@ -21,9 +21,27 @@ trait RendersReportPdf
     /**
      * @param  array<string, mixed>  $data
      */
-    protected function streamReportPdf(Request $request, string $view, array $data, string $filename): Response
+    protected function streamReportPdf(Request $request, string $view, array $data, string $filename, string $orientation = 'portrait'): Response
     {
-        $pdf = Pdf::loadView($view, $data)->setPaper('a4');
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($this->renderReportPdf($view, $data, $orientation), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * The PDF bytes with the footer & page numbers stamped on every page.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function renderReportPdf(string $view, array $data, string $orientation = 'portrait'): string
+    {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
+
+        $pdf = Pdf::loadView($view, $data)->setPaper('a4', $orientation);
 
         $dompdf = $pdf->getDomPDF();
         $dompdf->render();
@@ -39,11 +57,6 @@ trait RendersReportPdf
         $canvas->page_text(34, $height - 26, self::FOOTER_LABEL, $font, 7, $grey);
         $canvas->page_text($width - 150, $height - 26, 'Halaman {PAGE_NUM} / {PAGE_COUNT}', $font, 8, $grey);
 
-        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
-
-        return response($dompdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
-        ]);
+        return (string) $dompdf->output();
     }
 }

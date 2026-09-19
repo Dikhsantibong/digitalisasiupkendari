@@ -62,16 +62,34 @@
     <tr class="sub"><td class="label">F. Selisih Administrasi vs Fisik (E-D)</td><td class="val">{{ $fmt($data['selisih']) }} Liter</td></tr>
 </table>
 
-<p class="ba-note">Catatan: * Selisih disebabkan karena: ..................................................</p>
+<p class="ba-note">Catatan: * Selisih disebabkan karena: {{ !empty($data['catatan']) ? $data['catatan'] : '..................................................' }}</p>
 
-<table class="ba-sign">
+<table class="ba-sign" style="width: 100%; margin-top: 24px; border-collapse: collapse;">
     <tr><td></td><td>{{ $data['print_place_date'] }}</td></tr>
     <tr>
-        <td>Menyetujui,<br>Manajer</td>
-        <td>Membuat,<br>TL. Operasi</td>
-    </tr>
-    <tr>
-        <td><div class="name">{{ $data['signers']['manajer'] ?? '(………………………)' }}</div></td>
-        <td><div class="name">{{ $data['signers']['tl_operasi'] ?? '(………………………)' }}</div></td>
+        <td style="width: 50%; text-align: center; vertical-align: top; padding-top: 6px;">
+            <div>Menyetujui,</div>
+            <div style="font-weight: bold; margin-top: 2px;">{{ $data['signers']['manajer_title'] ?? 'Manajer' }}</div>
+            <div style="height: 60px; margin: 6px 0; text-align: center;">
+                @if (!empty($data['signers']['manajer_signature']))
+                    <img src="{{ $data['signers']['manajer_signature'] }}" alt="TTD" style="max-height: 56px; max-width: 140px;">
+                @else
+                    <div style="height: 56px;">&nbsp;</div>
+                @endif
+            </div>
+            <div style="font-weight: bold; text-decoration: underline;">{{ $data['signers']['manajer'] ?? '(………………………)' }}</div>
+        </td>
+        <td style="width: 50%; text-align: center; vertical-align: top; padding-top: 6px;">
+            <div>Membuat,</div>
+            <div style="font-weight: bold; margin-top: 2px;">{{ $data['signers']['tl_title'] ?? 'TL. Operasi' }}</div>
+            <div style="height: 60px; margin: 6px 0; text-align: center;">
+                @if (!empty($data['signers']['tl_signature']))
+                    <img src="{{ $data['signers']['tl_signature'] }}" alt="TTD" style="max-height: 56px; max-width: 140px;">
+                @else
+                    <div style="height: 56px;">&nbsp;</div>
+                @endif
+            </div>
+            <div style="font-weight: bold; text-decoration: underline;">{{ $data['signers']['tl_operasi'] ?? '(………………………)' }}</div>
+        </td>
     </tr>
 </table>

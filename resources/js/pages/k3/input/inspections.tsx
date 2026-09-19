@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
+import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
@@ -128,11 +129,14 @@ export default function InspectionInput({ filters, header: initialHeader, rows: 
                     title="Inspeksi Checklist"
                     description="Checklist inspeksi per form (tempat kerja, rambu, fire alarm, dll.). Item diambil dari Master K3; isi kondisi & tindak lanjut."
                     actions={
-                        can_write && (
-                            <Button onClick={save} disabled={saving || filters.form_code === ''}>
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )
+                        <div className="flex flex-wrap gap-2">
+                            <K3InputExportButtons input="inspections" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year, form_code: filters.form_code }} />
+                            {can_write && (
+                                    <Button onClick={save} disabled={saving || filters.form_code === ''}>
+                                        {saving ? 'Menyimpan…' : 'Simpan'}
+                                    </Button>
+                            )}
+                        </div>
                     }
                 />
 

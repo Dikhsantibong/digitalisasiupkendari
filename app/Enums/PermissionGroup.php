@@ -15,6 +15,8 @@ enum PermissionGroup: string
     case Operasi = 'operasi';
     case Pemeliharaan = 'pemeliharaan';
     case K3 = 'k3';
+    case Logistik = 'logistik';
+    case Pdm = 'pdm';
     case Project = 'project';
     case ReportProject = 'report_project';
     case System = 'system';
@@ -30,6 +32,8 @@ enum PermissionGroup: string
             self::Operasi => 'Operasi',
             self::Pemeliharaan => 'Pemeliharaan',
             self::K3 => 'K3 & Keamanan',
+            self::Logistik => 'Logistik & Gudang',
+            self::Pdm => 'PdM & Maturity Level',
             self::Project => 'Project',
             self::ReportProject => 'Laporan Project',
             self::System => 'Sistem',

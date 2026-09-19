@@ -9,10 +9,12 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Har/** | .ai/rules/controllers-har.md |
 | app/Http/Controllers/K3/** | .ai/rules/controllers-k3.md |
 | app/Http/Controllers/Operasi/** | .ai/rules/controllers-operasi.md |
-| app/Http/Controllers/Operator/** | .ai/rules/controllers-operator.md |
-| app/Services/Operator/** | .ai/rules/controllers-operator.md |
+| app/Http/Controllers/Operator/**, app/Services/Operator/** | .ai/rules/controllers-operator.md |
 | app/Services/Har/** | .ai/rules/har.md |
 | resources/js/** | .ai/rules/js.md |
 | app/Services/K3/** | .ai/rules/k3.md |
+| app/Http/Controllers/Logistik/** | .ai/rules/logistik.md |
 | app/Models/** | .ai/rules/models.md |
 | app/Services/Operasi/** | .ai/rules/operasi.md |
+| app/Http/Controllers/Pdm/** | .ai/rules/pdm.md |
+| app/Services/Reports/** | .ai/rules/reports.md |

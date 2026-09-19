@@ -10,8 +10,8 @@ const PRINT_STYLES = `
     .print-area, .print-area * { visibility: visible; }
     .print-area { position: absolute; inset: 0; margin: 0; padding: 16px; }
     .no-print { display: none !important; }
-    /* The cover fills the first printed sheet; the report starts on the next. */
-    .report-cover { page-break-after: always; min-height: 96vh; }
+    /* The cover keeps its A4 proportion; the report starts on the next sheet. */
+    .report-cover { page-break-after: always; }
 }
 `;
 
@@ -99,7 +99,7 @@ export default function MonthlyEngineReport({ report, data }: Props) {
             </div>
 
             <div className="print-area mx-auto max-w-[1100px] bg-white p-6 text-slate-900">
-                <div className="report-cover relative mb-8 min-h-[1100px] overflow-hidden bg-white shadow-xs">
+                <div className="report-cover relative mx-auto mb-8 aspect-[794/1123] w-full max-w-[794px] overflow-hidden bg-white shadow-xs">
                     <svg className="pointer-events-none absolute inset-0 size-full" viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
                         <polygon points="0,0 210,0 0,270" fill="#0b2545" />
                         <polygon points="210,0 248,0 0,320 0,270" fill="#00a3e0" />

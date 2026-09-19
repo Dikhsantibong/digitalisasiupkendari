@@ -10,6 +10,7 @@ type Props = {
     options: {
         units: IdName[];
         service_units?: IdName[];
+        users?: IdName[];
     };
 };
 

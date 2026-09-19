@@ -260,3 +260,26 @@ physical_stock_takes  id, unit_id, report_period_id, item_type (fuel|lubricant),
   (1500 Ton×3, 10 KL×1, 5 KL×2) — konfirmasi persis.
 
 > Seeder per unit — unit lain punya daftar sendiri.
+
+---
+
+## 8. Laporan Operasi Pembangkit & input Monitoring FLM (status implementasi)
+
+- **Laporan** (`Operasi\LaporanDocumentController`, `resources/views/operasi/laporan/document-body.blade.php`,
+  BODY_VERSION 6): I. Sampul · II. Daftar Isi · III. Lembar Pengesahan (Disetujui TL Operasi,
+  Dibuat Koordinator Operasi, Mengetahui Manager — dari `employees` sesuai jabatan, tanda
+  tangan dari `signature_path` bila ada; tanggal = 1 bulan berikutnya) · IV. Resume Statistik
+  Operasi (10 kegiatan + baris rata-rata "I. Operasi Pembangkit", grafik batang & lingkaran 3D
+  PNG dari `App\Services\Reports\Chart3d`) · V. Laporan Operasi (semua landscape) · VI. Lampiran.
+- Poin jadwal/input menyisipkan view PDF-nya sendiri (`pdfView()` di tiap controller →
+  `App\Services\Operasi\OperasiReportTables::TABLES`, CSS scoped lewat `ScopedHtmlFragment`):
+  FLM, Monitoring FLM, 5S5R, Meeting Shift, Inventarisasi, Pembuatan IK, Data Teknis, Blackstart,
+  Performance Test, Commissioning Test, Kondisi Abnormal, Material & Peralatan, PTW, Resource
+  Pembangkit. Poin tanpa input (mis. Pembuatan Patrol Check) tetap garis merah.
+- **Input Monitoring FLM** (`Operasi\FlmMonitoringController`, `operasi.input.flm-monitoring.*`
+  = `/operasi/input/monitoring-flm`, tabel `operasi_flm_monitorings`, halaman
+  `operasi/input/flm-monitoring.tsx`, PDF `operasi/input/flm-monitoring-pdf` landscape, Excel
+  `resources/js/lib/operasi-flm-excel.ts`): mesin/peralatan, tanggal, masalah awal, kondisi awal
+  (bersihkan/lumasi/kencangkan/perbaikan koneksi/lainnya), kondisi akhir, catatan, status Open/Close.
+- Tes: `tests/Feature/Operasi/{LaporanDocumentStructure,FlmMonitoringInput}Test.php`.
+

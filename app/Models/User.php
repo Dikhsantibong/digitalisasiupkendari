@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -37,6 +38,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read Employee|null $employee
  */
 #[Fillable(['name', 'employee_id', 'email', 'position', 'phone', 'password', 'is_active'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
@@ -77,6 +79,18 @@ class User extends Authenticatable implements PasskeyUser
         return $this->belongsToMany(Role::class, 'role_assignments')
             ->withPivot(['service_unit_id', 'unit_id'])
             ->withTimestamps();
+    }
+
+    /**
+     * The employee record (jabatan, unit, divisi) this account belongs to,
+     * linked through employees.user_id. (users.employee_id is only the staff
+     * number shown on the profile, not a relation.)
+     *
+     * @return HasOne<Employee, $this>
+     */
+    public function employee(): HasOne
+    {
+        return $this->hasOne(Employee::class);
     }
 
     /**

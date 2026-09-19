@@ -4,209 +4,82 @@
     $numbers = $data['document']['numbers'] ?? [];
     $num = fn (string $key) => ! empty($numbers[$key]) ? ' <small>('.$numbers[$key].')</small>' : '';
     $rupiah = fn ($v) => 'Rp '.number_format((float) $v, 0, ',', '.');
-    $dayMap = function (array $map): string {
-        $parts = [];
-        foreach ($map as $d => $v) {
-            if ($v !== null && $v !== '') {
-                $parts[] = "{$d}:{$v}";
-            }
-        }
-        return $parts === [] ? '—' : implode(' · ', $parts);
-    };
-
-    $rowsForTypes = function (array $codes) use ($report): array {
-        $wanted = array_map('strtolower', $codes);
-
-        return collect($report['wo_by_type'])
-            ->filter(fn ($g): bool => in_array(strtolower($g['type']), $wanted, true))
-            ->flatMap(fn ($g) => $g['rows'])->values()->all();
-    };
-    $rowsForWaiting = function (array $keys) use ($report): array {
-        return collect($report['wo_waiting'])
-            ->filter(fn ($g): bool => in_array($g['key'], $keys, true))
-            ->flatMap(fn ($g) => $g['rows'])->values()->all();
-    };
-
-    $woPm = $rowsForTypes(['PM']);
-    $woPdm = $rowsForTypes(['PDM', 'PdM']);
-    $woCm = $rowsForTypes(['CM']);
-    $woEnji = $rowsForTypes(['ENJI']);
-    $waitingShutdown = $rowsForWaiting(['shutdown']);
-    $waitingMaterialJasa = $rowsForWaiting(['material', 'jasa']);
-    $waitingCount = collect($report['wo_waiting'])->sum(fn ($g): int => count($g['rows']));
-    $totalTasks = collect($report['activities'])->sum(fn ($a): int => count($a['tasks']));
 
     // Period dates
     $periodMonth = (int) ($report['period']['month'] ?? 1);
     $periodYear = (int) ($report['period']['year'] ?? 2026);
+    $monthName = strtoupper($report['period']['label'] ?? '');
     $periodEndDate = \Illuminate\Support\Carbon::create($periodYear, $periodMonth, 1)->endOfMonth()->format('d/m/Y');
 
-    // All WOs
-    $allWos = collect($report['wo_by_type'])->flatMap(fn ($g) => $g['rows'] ?? []);
-    $totalWoCount = $allWos->count();
-
-    $countType = function (array $codes) use ($allWos): int {
-        $codesUpper = array_map('strtoupper', $codes);
-        return $allWos->filter(fn ($w) => in_array(strtoupper((string) ($w['type'] ?? '')), $codesUpper, true))->count();
-    };
-
-    $countPm = $countType(['PM']);
-    $countPam = $countType(['PAM']);
-    $countPdm = $countType(['PDM', 'PdM']);
-    $countEj = $countType(['EJ', 'ENJI']);
-    $countCm = $countType(['CM']);
-    $countEm = $countType(['EM', 'EMERGENCY']);
-
-    $plannedCount = $countPm + $countPam + $countPdm + $countEj;
-    $unplannedCount = $countCm + $countEm;
-
-    $calcPct = fn (int $count) => $totalWoCount > 0 ? round(($count / $totalWoCount) * 100, 1) : 0.0;
-    $fmtPct = fn (float $pct) => number_format($pct, 1, ',', '.') . '%';
-
-    $pmPct = $calcPct($countPm);
-    $pamPct = $calcPct($countPam);
-    $pdmPct = $calcPct($countPdm);
-    $ejPct = $calcPct($countEj);
-    $plannedPct = $pmPct + $pamPct + $pdmPct + $ejPct;
-
-    $cmPct = $calcPct($countCm);
-    $emPct = $calcPct($countEm);
-    $unplannedPct = $cmPct + $emPct;
-
-    $costTotal = (float) ($report['cost']['effective_total'] ?? 0);
-    $costFormatted = 'Rp' . number_format($costTotal, 0, ',', '.');
-
-    // Top 5 Equipments
-    $equipmentGrouped = $allWos->groupBy(function ($w) {
-        return $w['engine'] ?: ($w['description'] ?: 'Equipment');
-    })->map(function ($rows, $equipment) {
-        $first = $rows->first();
-        return [
-            'equipment' => $equipment,
-            'asset' => $first['wonum'] ?? '—',
-            'frek' => $rows->count(),
-        ];
-    })->sortByDesc('frek')->take(5)->values();
-
-    $top5Equipment = [];
-    for ($i = 0; $i < 5; $i++) {
-        if (isset($equipmentGrouped[$i])) {
-            $top5Equipment[] = $equipmentGrouped[$i];
-        } else {
-            $top5Equipment[] = [
-                'equipment' => '—',
-                'asset' => '—',
-                'frek' => 0,
-            ];
-        }
+    // Unit naming
+    $unitDisplayName = $report['unit']['name'] ?? 'UL PLTD POASIA';
+    $unitHeaderName = strtoupper($unitDisplayName);
+    if (str_contains($unitHeaderName, 'CONTAINER')) {
+        $unitHeaderName = 'PLTD CONTAINER POASIA';
+    } elseif (!str_starts_with($unitHeaderName, 'PLTD') && !str_starts_with($unitHeaderName, 'PLTU') && !str_starts_with($unitHeaderName, 'PLTM')) {
+        $unitHeaderName = 'PLTD ' . $unitHeaderName;
     }
 
-    $woEmergencyCount = $allWos->filter(function ($w) {
-        $type = strtoupper((string) ($w['type'] ?? ''));
-        $desc = strtolower((string) ($w['description'] ?? ''));
-        return in_array($type, ['EM', 'EMERGENCY'], true) || str_contains($desc, 'emergency');
-    })->count();
+    // Lembar Pengesahan & tanda tangan laporan (ReportWorkflowService)
+    $signatureBlocks = $data['document']['signature_blocks'] ?? ['pengesahan' => '', 'laporan' => ''];
 
-    $woUrgentCount = $allWos->filter(function ($w) {
-        $type = strtoupper((string) ($w['type'] ?? ''));
-        $desc = strtolower((string) ($w['description'] ?? ''));
-        return in_array($type, ['URGENT', 'URG'], true) || str_contains($desc, 'urgent');
-    })->count();
+    // Indonesian date for pengesahan
+    $indonesianMonths = [
+        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+    ];
+    $pengesahanDate = 'Kendari, ' . date('d') . ' ' . ($indonesianMonths[$periodMonth] ?? 'Januari') . ' ' . $periodYear;
 
-    $woEmergencyUrgentTotal = $woEmergencyCount + $woUrgentCount;
+    // Resume Statistik
+    $resumeStatistikData = $report['resume_statistik'] ?? [];
+    $resumeRows = $resumeStatistikData['rows'] ?? [];
+    $resumeTotal = $resumeStatistikData['total'] ?? ['target' => 13.67, 'realisasi' => 13.75, 'analisa_kinerja' => 105];
 
-    // Service Request Summary
-    $srTotal = (int) ($report['sr_summary']['total'] ?? 0);
-    $srByCategory = collect($report['sr_summary']['by_category'] ?? []);
+    // Schedules (Jadwal)
+    $jadwal = $report['jadwal'] ?? [];
+    $days = $jadwal['days'] ?? [];
+    $targetWorkingDays = (int) ($jadwal['target_working_days'] ?? 20);
 
-    $srCountFor = function (array $codes) use ($srByCategory): int {
-        $codesUpper = array_map('strtoupper', $codes);
-        return (int) $srByCategory->filter(fn ($item) => in_array(strtoupper((string) ($item['category'] ?? '')), $codesUpper, true))->sum('count');
-    };
+    // 1. Harian
+    $harianRows = $jadwal['harian']['rows'] ?? [];
 
-    $srCmCount = $srCountFor(['CM', 'CORRECTIVE MAINTENANCE (CM)', 'CORECTIVE MAINTENANCE (CM)']);
-    $srFlmCount = $srCountFor(['FLM', 'FIRST LINE MAINTENANCE (FLM)']);
-    $srCancelCount = $srCountFor(['CANCEL', 'DIBATALKAN']);
-    $srPdmCount = $srCountFor(['PDM', 'PREDICTIVE MAINTENANCE (PDM)', 'PREDICTIVE MAINTENANCE']);
+    // 2. P0-P5
+    $p0p5Rows = $jadwal['p0_p5']['rows'] ?? [];
 
-    $srCmPct = $srTotal > 0 ? round(($srCmCount / $srTotal) * 100) : 0;
-    $srFlmPct = $srTotal > 0 ? round(($srFlmCount / $srTotal) * 100) : 0;
-    $srCancelPct = $srTotal > 0 ? round(($srCancelCount / $srTotal) * 100) : 0;
-    $srPdmPct = $srTotal > 0 ? round(($srPdmCount / $srTotal) * 100) : 0;
+    // 3. Piket On Call
+    $piketGroups = $jadwal['piket_on_call']['groups'] ?? [];
 
-    $countWaitingShutdown = count($waitingShutdown ?? []);
-    $countWaitingMaterial = count($waitingMaterialJasa ?? []);
-    $countWoEngineering = count($woEnji ?? []);
+    // 4. Patrol Check
+    $patrolRows = $jadwal['patrol_check']['rows'] ?? [];
+    $patrolTotalRencana = $jadwal['patrol_check']['total_rencana'] ?? 0;
+    $patrolTotalRealisasi = $jadwal['patrol_check']['total_realisasi'] ?? 0;
+    $patrolPerformance = $jadwal['patrol_check']['performance'] ?? 0;
 
-    // SR Terbit per Unit Data
-    $machinesList = $report['machines'] ?? [];
-    if (!empty($machinesList) && !in_array('Common', $machinesList, true)) {
-        $machinesList[] = 'Common';
-    }
+    // 5. Meeting Pemeliharaan
+    $meetingRows = $jadwal['meeting_pemeliharaan']['rows'] ?? [];
 
-    $srByEngineMap = collect($report['sr_summary']['by_engine'] ?? [])->keyBy(fn ($item) => strtoupper($item['engine']));
-
-    $unitSrRows = [];
-    $totalTerbit = 0;
-    $totalCancel = 0;
-    $totalFlm = 0;
-
-    foreach ($machinesList as $mName) {
-        $item = $srByEngineMap->get(strtoupper($mName));
-        $t = (int) ($item['terbit'] ?? 0);
-        $c = (int) ($item['cancel'] ?? 0);
-        $f = (int) ($item['flm'] ?? 0);
-
-        $totalTerbit += $t;
-        $totalCancel += $c;
-        $totalFlm += $f;
-
-        $unitSrRows[] = [
-            'name' => $mName,
-            'terbit' => $t,
-            'cancel' => $c,
-            'flm' => $f,
-            'pct' => 0,
-        ];
-    }
-
-    foreach ($unitSrRows as &$r) {
-        $r['pct'] = $totalTerbit > 0 ? round(($r['terbit'] / $totalTerbit) * 100) : 0;
-    }
-    unset($r);
-
-    // SR Active Status Summary (for Service Request Summary page)
-    $srSummaryOpen = (int) ($report['sr_summary']['open'] ?? 0);
-    $srSummaryClose = (int) ($report['sr_summary']['close'] ?? 0);
-    $srSummaryTotal = $srSummaryOpen + $srSummaryClose;
-    $srSummaryOpenPct = $srSummaryTotal > 0 ? round(($srSummaryOpen / $srSummaryTotal) * 100) : 0;
-    $srSummaryClosePct = $srSummaryTotal > 0 ? (100 - $srSummaryOpenPct) : 0;
-
-    // Top 5 Frequency SR Assets
-    $top5SrAssets = $report['sr_summary']['top_assets'] ?? [];
+    // 6. Pembuatan IK
+    $ikRows = $jadwal['pembuatan_ik']['rows'] ?? [];
+    $ikMonthTotals = $jadwal['pembuatan_ik']['month_totals'] ?? [];
+    $ikGrandTotal = $jadwal['pembuatan_ik']['grand_total'] ?? 0;
+    $ikTotalRencana = $jadwal['pembuatan_ik']['total_rencana'] ?? 0;
+    $ikTotalRealisasi = $jadwal['pembuatan_ik']['total_realisasi'] ?? 0;
+    $ikPerformance = $jadwal['pembuatan_ik']['performance'] ?? 0;
 
     $sections = [
-        'Executive Summary',
-        'Daftar Isi',
-        'Istilah dan Definisi',
-        'Service Request Map',
-        'Service Request Summary',
-        'Maintenance Summary',
-        'Isi Laporan',
-        'Work Order Summary (Fix)',
-        'Akumulasi Biaya Pemeliharaan',
-        'Rekapitulasi Work Order Task',
-        'Work Order PM (Preventive Maintenance)',
-        'Work Order PdM (Predictive Maintenance)',
-        'Work Order CM (Corrective Maintenance)',
-        'Work Order ENJI (Engineering)',
-        'Work Order Waiting Shutdown',
-        'Work Order Waiting Material & Jasa',
-        'Lampiran',
+        ['Lembar Pengesahan', 'sec-2'],
+        ['Resume Statistik Pemeliharaan Pembangkit', 'sec-3'],
+        ['Daftar Isi', 'sec-4'],
+        ['Jadwal Kegiatan Pemeliharaan', 'sec-5'],
+        ['Jadwal Pemeliharaan Rutin P0 - P5', 'sec-6'],
+        ['Jadwal Piket On Call Pemeliharaan', 'sec-7'],
+        ['Jadwal Patrol Cek Pemeliharaan', 'sec-8'],
+        ['Jadwal Meeting Pemeliharaan', 'sec-9'],
+        ['Jadwal Pembuatan IK Pemeliharaan', 'sec-10'],
     ];
 @endphp
-
-{{-- 1. COVER --}}
+{{-- 1. COVER / SAMPUL --}}
 <div class="har-cover" id="sec-1">
     <svg class="har-cover-bg" viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
         <polygon points="0,0 210,0 0,270" fill="#0b2545" />
@@ -219,38 +92,39 @@
     </svg>
 
     <div class="har-cover-content">
-        <div class="har-cover-logos">
-            <table class="har-logos-table">
-                <tr>
-                    <td class="har-logo-cell-left">
-                        <img src="/logo/sidebar-logo.png" class="har-logo-pln" alt="PLN Nusantara Power">
-                    </td>
-                    <td class="har-logo-divider-cell">
-                        <div class="har-logo-vdiv"></div>
-                    </td>
-                    <td class="har-logo-cell-right">
-                        <img src="/logo/mkp.jpg" class="har-logo-mkp" alt="Mitra Karya Prima">
-                    </td>
-                </tr>
-            </table>
-        </div>
+        <table class="har-logos-table">
+            <tr>
+                <td class="har-logo-cell-left">
+                    <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" class="har-logo-pln">
+                </td>
+                <td class="har-logo-divider-cell">
+                    <div class="har-logo-vdiv"></div>
+                </td>
+                <td class="har-logo-cell-right">
+                    <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" class="har-logo-mkp">
+                </td>
+            </tr>
+        </table>
 
         <div class="har-cover-title-wrap">
-            <h1 class="har-cover-main-title">
-                LAPORAN PEMELIHARAAN<br>PEMBANGKIT
-            </h1>
+            <h1 class="har-cover-main-title">LAPORAN PEMELIHARAAN<br>PEMBANGKIT</h1>
             <div class="har-cover-title-line"></div>
         </div>
 
         <div class="har-cover-spec-box">
             <table class="har-spec-table">
                 <tr>
-                    <td class="har-spec-label">NAMA PEMBANGKIT</td>
+                    <td class="har-spec-label">JASA PEKERJAAN</td>
                     <td class="har-spec-colon">:</td>
-                    <td class="har-spec-val">{{ strtoupper($report['unit']['name'] ?? '') }}</td>
+                    <td class="har-spec-val">JASA PENDUKUNG TEKNIS 6 SITE KIT</td>
                 </tr>
                 <tr>
-                    <td class="har-spec-label">PERIODE PELAPORAN</td>
+                    <td class="har-spec-label">LOKASI</td>
+                    <td class="har-spec-colon">:</td>
+                    <td class="har-spec-val">{{ $unitDisplayName }}</td>
+                </tr>
+                <tr>
+                    <td class="har-spec-label">PERIODE</td>
                     <td class="har-spec-colon">:</td>
                     <td class="har-spec-val">BULAN {{ strtoupper($report['period']['label'] ?? '') }}</td>
                 </tr>
@@ -304,1545 +178,762 @@
         </table>
     </div>
 </div>
-
-{{-- 2. EXECUTIVE SUMMARY (Sesuai Format Standar PLN NP) --}}
-<div class="break-before" id="sec-2">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
+{{-- 2. LEMBAR PENGESAHAN --}}
+<div class="break-before har-pengesahan-page" id="sec-2">
+    <table style="width:100%; border-collapse:collapse; border:1.5px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:28px;">
         <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
+            <td rowspan="4" style="width:145px; text-align:center; vertical-align:middle; padding:8px 10px; border-right:1.5px solid #000;">
+                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="max-height:46px; max-width:130px;">
             </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
+            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:10.5pt; border-bottom:1px solid #000; letter-spacing:0.3px; color:#000;">
+                JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE &amp; 6 SITE -KIT
             </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
+            <td rowspan="4" style="width:125px; text-align:center; vertical-align:middle; padding:8px 10px; border-left:1.5px solid #000;">
+                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" style="max-height:44px; max-width:110px;">
             </td>
         </tr>
         <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
+            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:10.5pt; border-bottom:1px solid #000; letter-spacing:0.3px; color:#000;">
+                {{ $unitHeaderName }}
             </td>
         </tr>
         <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:13px; color:#000; border:1px solid #000; padding:8px; vertical-align:middle; letter-spacing:0.5px;">
-                EXECUTIVE SUMMARY
+            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:10.5pt; border-bottom:1px solid #000; letter-spacing:0.3px; color:#000;">
+                LAPORAN PROJECT
             </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['executive'] ?? 'FMKD-314-10.3.3-A7' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
+        </tr>
+        <tr>
+            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:11pt; letter-spacing:0.5px; color:#000;">
+                LEMBAR PENGESAHAN
             </td>
         </tr>
     </table>
 
-    {{-- 1. Realisasi Maintenance Mix Quantity --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        1 . Realisasi Maintenance Mix Quantity pada bulan ini adalah sebagai berikut :
-    </div>
-    <table style="width:70%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
-        <tr>
-            <th style="text-align:left; width:130px; font-weight:normal; padding:1px 4px; border:none;">Maintenance Type</th>
-            <th style="text-align:right; width:70px; font-weight:normal; padding:1px 4px; border:none;">Prosentase</th>
-            <th style="width:110px; text-align:center; padding:1px 4px; border:none;"></th>
-            <th style="width:70px; text-align:right; padding:1px 4px; border:none;"></th>
-        </tr>
-        <tr>
-            <td style="padding:1px 4px; border:none;">PM</td>
-            <td style="text-align:right; padding:1px 4px; border:none;">{{ $fmtPct($pmPct) }}</td>
-            <td rowspan="4" style="text-align:center; vertical-align:middle; padding:1px 4px; border:none;">Planned</td>
-            <td rowspan="4" style="text-align:right; vertical-align:middle; padding:1px 4px; border:none;">{{ $fmtPct($plannedPct) }}</td>
-        </tr>
-        <tr>
-            <td style="padding:1px 4px; border:none;">PAM</td>
-            <td style="text-align:right; padding:1px 4px; border:none;">{{ $fmtPct($pamPct) }}</td>
-        </tr>
-        <tr>
-            <td style="padding:1px 4px; border:none;">PDM</td>
-            <td style="text-align:right; padding:1px 4px; border:none;">{{ $fmtPct($pdmPct) }}</td>
-        </tr>
-        <tr>
-            <td style="padding:1px 4px; border:none;">EJ</td>
-            <td style="text-align:right; padding:1px 4px; border:none;">{{ $fmtPct($ejPct) }}</td>
-        </tr>
-        <tr>
-            <td style="padding:1px 4px; border:none;">CM</td>
-            <td style="text-align:right; padding:1px 4px; border:none;">{{ $fmtPct($cmPct) }}</td>
-            <td rowspan="2" style="text-align:center; vertical-align:middle; padding:1px 4px; border:none;">Unplanned</td>
-            <td rowspan="2" style="text-align:right; vertical-align:middle; padding:1px 4px; border:none;">{{ $fmtPct($unplannedPct) }}</td>
-        </tr>
-        <tr>
-            <td style="padding:1px 4px; border:none;">EM</td>
-            <td style="text-align:right; padding:1px 4px; border:none;">{{ $fmtPct($emPct) }}</td>
-        </tr>
-    </table>
+    <div style="font-size:10.5pt; line-height:1.65; color:#000; font-family:'DejaVu Sans', Arial, sans-serif; margin-top:32px; padding:0 8px;">
+        <div style="font-weight:bold; margin-bottom:14px; color:#000;">
+            JASA PENDUKUNG TEKNIS 6 SITE - {{ $unitHeaderName }}
+        </div>
 
-    {{-- 2. Total Biaya Pemeliharaan --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:2px;">
-        2 . Total biaya pemeliharaan yang dikeluarkan untuk kegiatan pemeliharaan (berdasarkan transaksi pada CMMS) dalam bulan ini sebesar :
-    </div>
-    <div style="margin-left:25px; font-weight:bold; font-size:10.5px; margin-top:2px; margin-bottom:8px;">
-        {{ $costFormatted }}
-    </div>
+        <div style="margin-bottom:16px;">
+            Dengan ini menyatakan bahwa :
+        </div>
 
-    {{-- 3. Top 5 Equipment --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        3 . Peralatan yang memiliki kegagalan fungsi terbesar terjadi pada 5 equipment berikut :
-    </div>
-    <table style="width:85%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
-        <thead>
-            <tr style="background:#dde7f3;">
-                <th style="width:30px; padding:3px; text-align:center; font-weight:bold; border:none;"></th>
-                <th style="padding:3px 6px; text-align:center; font-weight:bold; border:none;">EQUIPMENT</th>
-                <th style="width:170px; padding:3px 6px; text-align:center; font-weight:bold; border:none;">ASSET</th>
-                <th style="width:60px; padding:3px 6px; text-align:center; font-weight:bold; border:none;">FREK</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($top5Equipment as $idx => $eq)
-            <tr>
-                <td style="text-align:center; padding:2px 4px; border:none;">{{ $idx + 1 }}</td>
-                <td style="padding:2px 6px; border:none;">{{ $eq['equipment'] }}</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $eq['asset'] }}</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $eq['frek'] }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+        <div style="font-weight:bold; margin-bottom:18px; color:#000;">
+            1. LAPORAN PEMELIHARAAN PEMBANGKIT
+        </div>
 
-    {{-- 4. WO Emergency & Urgent --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        4 . WO Emergency &amp; Urgent yang terbit pada bulan ini, sebagai berikut :
-    </div>
-    <table style="width:60%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
-        <thead>
-            <tr style="background:#dde7f3;">
-                <th style="text-align:left; padding:3px 6px; font-weight:bold; border:none;">WO Emergency &amp; WO Urgent</th>
-                <th style="width:90px; text-align:center; padding:3px 6px; font-weight:bold; border:none;">Jumlah</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="padding:2px 6px; border:none;">WO Emergency</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $woEmergencyCount }}</td>
-            </tr>
-            <tr>
-                <td style="padding:2px 6px; border:none;">WO Urgent</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $woUrgentCount }}</td>
-            </tr>
-            <tr style="background:#dde7f3; font-weight:bold;">
-                <td style="padding:2px 6px; border:none;">TOTAL</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $woEmergencyUrgentTotal }}</td>
-            </tr>
-        </tbody>
-    </table>
+        <div style="margin-bottom:18px; text-align:justify;">
+            Telah disusun berdasarkan kegiatan Pemeliharaan pembangkit serta administrasi dan dokumentasi pendukung.
+        </div>
 
-    {{-- 5. Fault Reporting (Service Request) --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        5 . Fault Reporting yang terbit pada bulan ini adalah :
-    </div>
-    <table style="width:75%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
-        <thead>
-            <tr style="background:#dde7f3;">
-                <th style="text-align:left; padding:3px 6px; font-weight:bold; border:none;">SERVICE REQUEST</th>
-                <th style="width:90px; text-align:center; padding:3px 6px; font-weight:bold; border:none;">JUMLAH</th>
-                <th style="width:100px; text-align:center; padding:3px 6px; font-weight:bold; border:none;">PERSENTASE</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="padding:2px 6px; border:none;">CORECTIVE MAINTENANCE (CM)</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srCmCount }}</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srCmPct }}%</td>
-            </tr>
-            <tr>
-                <td style="padding:2px 6px; border:none;">FIRST LINE MAINTENANCE (FLM)</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srFlmCount }}</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srFlmPct }}%</td>
-            </tr>
-            <tr>
-                <td style="padding:2px 6px; border:none;">CANCEL</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srCancelCount }}</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srCancelPct }}%</td>
-            </tr>
-            <tr style="background:#dde7f3; font-weight:bold;">
-                <td style="padding:2px 6px; border:none;">TOTAL SERVICE REQUEST</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srTotal }}</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $srTotal > 0 ? '100%' : '0%' }}</td>
-            </tr>
-        </tbody>
-    </table>
+        <div style="margin-bottom:18px; text-align:justify;">
+            Laporan ini telah dilakukan pemeriksaan dan dinyatakan sesuai untuk digunakan sebagai dokumen pelaporan dan evaluasi kegiatan pemeliharaan pembangkit {{ $unitDisplayName }}.
+        </div>
 
-    {{-- 6. Status WO yang perlu ditindaklanjuti --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        6 . Status WO yang perlu ditindaklanjuti bidang terkait.
+        <div style="margin-bottom:28px; text-align:justify;">
+            Demikian lembar pengesahan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.
+        </div>
+
+        <div style="margin-top:35px; margin-bottom:18px; text-align:right; padding-right:15px; font-size:10.5pt;">
+            {{ $pengesahanDate }}
+        </div>
+
+        {!! $signatureBlocks['pengesahan'] !!}
     </div>
-    <table style="width:60%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
-        <thead>
-            <tr style="background:#dde7f3;">
-                <th style="text-align:left; padding:3px 6px; font-weight:bold; border:none;">WORK ORDER</th>
-                <th style="width:90px; text-align:center; padding:3px 6px; font-weight:bold; border:none;">JUMLAH</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="padding:2px 6px; border:none;">WO Waiting Shutdown</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $countWaitingShutdown }}</td>
-            </tr>
-            <tr>
-                <td style="padding:2px 6px; border:none;">WO Waiting Material</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $countWaitingMaterial }}</td>
-            </tr>
-            <tr>
-                <td style="padding:2px 6px; border:none;">WO Engineering</td>
-                <td style="text-align:center; padding:2px 6px; border:none;">{{ $countWoEngineering }}</td>
-            </tr>
-        </tbody>
-    </table>
 </div>
+{{-- 3. RESUME STATISTIK PEMELIHARAAN PEMBANGKIT --}}
+<div class="break-before har-resume-page" id="sec-3">
+    {{-- Header with Logos --}}
+    <table style="width:100%; border-collapse:collapse; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:14px;">
+        <tr>
+            <td style="width:145px; text-align:left; vertical-align:middle;">
+                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="max-height:50px; max-width:140px;">
+            </td>
+            <td style="text-align:center; vertical-align:middle; line-height:1.35;">
+                <div style="font-weight:bold; font-size:10.5pt; color:#000; letter-spacing:0.3px;">
+                    JASA PENDUKUNG TEKNIS - 6 SITE KIT
+                </div>
+                <div style="font-weight:bold; font-size:10.5pt; color:#000; letter-spacing:0.3px;">
+                    PLN NP UP KENDARI - {{ $unitHeaderName }}
+                </div>
+                <div style="font-weight:bold; font-size:10.5pt; color:#000; letter-spacing:0.3px;">
+                    LAPORAN PROJECT
+                </div>
+                <div style="font-weight:bold; font-size:11pt; color:#000; letter-spacing:0.5px;">
+                    RESUME STATISTIK PEMELIHARAAN PEMBANGKIT
+                </div>
+            </td>
+            <td style="width:140px; text-align:right; vertical-align:middle;">
+                <div style="text-align:center; display:inline-block;">
+                    <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" style="max-height:44px; max-width:120px;">
+                    <div style="font-size:7pt; font-weight:bold; letter-spacing:0.8px; color:#555; margin-top:2px;">MITRA KARYA PRIMA</div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
-{{-- 3. DAFTAR ISI --}}
-<div class="har-h2 break-before" id="sec-3">3. Daftar Isi</div>
-@php
-    $toc = array_merge([['Cover', 'sec-1']], collect($sections)->map(fn ($t, $i): array => [$t, 'sec-'.($i + 2)])->all());
-@endphp
-@foreach($toc as $i => [$tocTitle, $anchor])
-    <table class="toc-item"><tr>
-        <td class="n">{{ $i + 1 }}.</td>
-        <td>{{ $tocTitle }}</td>
-        <td class="dots"></td>
-        <td class="pg"><a href="#{{ $anchor }}"></a></td>
-    </tr></table>
-@endforeach
+    <div style="font-family:'DejaVu Sans', Arial, sans-serif; font-size:10pt; font-weight:bold; color:#000; margin-bottom:8px; margin-top:16px;">
+        PRIODE &nbsp;&nbsp;: &nbsp;&nbsp;{{ strtoupper($report['period']['label'] ?? '') }}
+    </div>
 
-{{-- 4. ISTILAH DAN DEFINISI (Sesuai Format Standar PLN NP) --}}
+    {{-- Main Resume Table --}}
+    <table style="width:100%; border-collapse:collapse; border:1.5px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:9pt; color:#000;">
+        <thead>
+            <tr style="background-color:#c6e0b4; text-align:center; font-weight:bold;">
+                <th style="border:1px solid #000; padding:6px 4px; width:45px;">NO</th>
+                <th style="border:1px solid #000; padding:6px 8px; text-align:center;">DISKRIPSI</th>
+                <th style="border:1px solid #000; padding:6px 6px; width:75px;">TARGET</th>
+                <th style="border:1px solid #000; padding:6px 6px; width:85px; line-height:1.1;">REALISAS<br>I</th>
+                <th style="border:1px solid #000; padding:6px 6px; width:90px; line-height:1.1;">ANALISA<br>KINERJA</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($resumeRows as $row)
+                <tr>
+                    <td style="border:1px solid #000; text-align:center; padding:5px 4px;">{{ $row['no'] }}</td>
+                    <td style="border:1px solid #000; text-align:left; padding:5px 8px;">{{ $row['diskripsi'] }}</td>
+                    <td style="border:1px solid #000; text-align:right; padding:5px 12px;">{{ is_float($row['target']) ? number_format($row['target'], 2, '.', '') : $row['target'] }}</td>
+                    <td style="border:1px solid #000; text-align:right; padding:5px 12px;">{{ is_float($row['realisasi']) ? number_format($row['realisasi'], 2, '.', '') : $row['realisasi'] }}</td>
+                    <td style="border:1px solid #000; text-align:right; padding:5px 12px;">{{ $row['analisa_kinerja'] }}%</td>
+                </tr>
+            @endforeach
+            <tr style="background-color:#d9e1f2; font-weight:bold; font-style:italic;">
+                <td colspan="2" style="border:1px solid #000; text-align:right; padding:6px 14px;">TOTAL</td>
+                <td style="border:1px solid #000; text-align:right; padding:6px 12px;">{{ number_format($resumeTotal['target'] ?? 13.67, 2, '.', '') }}</td>
+                <td style="border:1px solid #000; text-align:right; padding:6px 12px;">{{ number_format($resumeTotal['realisasi'] ?? 13.75, 2, '.', '') }}</td>
+                <td style="border:1px solid #000; text-align:right; padding:6px 12px;">{{ $resumeTotal['analisa_kinerja'] ?? 105 }}%</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {{-- Tanda tangan laporan: Project Leader & Office Pemeliharaan --}}
+    <div style="margin-top:60px;">{!! $signatureBlocks['laporan'] !!}</div>
+</div>
+{{-- 4. DAFTAR ISI --}}
 <div class="break-before" id="sec-4">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:12px;">
-        <tr>
-            <td style="width:180px; text-align:left; vertical-align:middle; padding:8px 10px; border-right:1px solid #000;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:36px;">
-            </td>
-            <td style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:14px; color:#000; vertical-align:middle; letter-spacing:1px;">
-                ISTILAH &amp; DEFINISI
-            </td>
-        </tr>
+    <div class="har-h2" style="font-size:13pt; margin-bottom:18px; color:#000;">4. Daftar Isi</div>
+    <table class="har-toc" style="width:100%; border-collapse:collapse;">
+        @foreach($sections as $idx => [$name, $target])
+            <tr style="border-bottom:1px dotted #ccc;">
+                <td class="n" style="width:30px; font-weight:bold; padding:6px 0; font-size:10pt;">{{ $idx + 2 }}.</td>
+                <td style="padding:6px 0; font-size:10pt;"><a href="#{{ $target }}" style="text-decoration:none; color:#000;">{{ $name }}</a></td>
+            </tr>
+        @endforeach
     </table>
-
-    <p style="margin-top:14px; margin-bottom:12px; font-weight:bold; font-size:10px;">
-        Berikut istilah dan definisi yang ada pada laporan pemeliharaan :
-    </p>
-
-    <div style="font-size:9.5px; line-height:1.45; color:#000;">
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">CORRECTIVE MAINTENANCE ( CM )</div>
-            <div>Corrective Maintenance adalah kegiatan pemeliharaan atau perbaikan peralatan yang tidak terjadwal, dilakukan untuk mengembalikan (termasuk memperbaiki dan adjusment) peralatan yang tidak bekerja atau berfungsi sebagaimana mestinya.</div>
-        </div>
-
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">EMERGENCY MAINTENANCE (EM)</div>
-            <div>Suatu pemeliharaan yang harus segera dilakukan untuk mengatasi kerusakan yang menyebabkan gangguan safety , unit derating atau trip.</div>
-        </div>
-
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">PREVENTIVE MAINTENANCE ( PM )</div>
-            <div>Pemeliharaan yang dilakukan atas dasar interval waktu tertentu (hari, minggu, bulan, jam operasi atau kali operasi) atau kriteria tertentu lainnya yang ditetapkan lebih dulu.</div>
-        </div>
-
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">PROACTIVE MAINTENANCE (PaM)</div>
-            <div>Adalah aktivitas pemeliharaan yang langsung memberikan tindakan - tindakan atas kelainan atau penyimpangan kinerja peralatan sebelum ada temuan kerusakan oleh operator.</div>
-        </div>
-
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">PREDICTIVE MAINTENANCE ( PdM )</div>
-            <div>Adalah aktivitas pemeliharaan dengan tujuan mengantisipasi kegagalan suatu peralatan sebelum terjadi kerusakan total. Predictive maintenance menganalisa suatu kondisi peralatan dari trend perilaku peralatan</div>
-        </div>
-
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">SR = SERVICE REQUEST = Laporan Gangguan</div>
-            <div style="padding-left:14px;">
-                <div>Adalah temuan kerusakan peralatan oleh operator untuk dimintakan perbaikan</div>
-                <div><strong>SR Inprogres</strong> = service request yang belum terselesaikan</div>
-                <div><strong>SR closed</strong> = service request yang sudah terselesaikan oleh Bidang Pemeliharaan</div>
-                <div><strong>SR First Line Maintenance</strong> = service request yang langsung ditangani /diselesaikan oleh OPERATOR</div>
-                <div><strong>SR canceled</strong> = service request yang tidak ditindak lanjuti menjadi WORK ORDER</div>
-            </div>
-        </div>
-
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">WT = WORK TASK</div>
-            <div style="padding-left:14px;">
-                <div>Adalah work order yang didelegasikan sesuai PIC pekerjaan (I&amp;C/LISTRIK/MESIN)</div>
-            </div>
-        </div>
-
-        <div style="margin-bottom:8px;">
-            <div style="font-weight:bold;">WO = WORK ORDER</div>
-            <div style="padding-left:14px;">
-                <div>Adalah perintah kerja yang diperlukan guna melaksanakan pekerjaan</div>
-                <div><strong>WO INPROGRESS</strong> Adalah pekerjaan pemeliharaan yang belum terselesaikan</div>
-                <div><strong>WO CLOSED</strong> Adalah pekerjaan yang sudah terselesaikan</div>
-                <div style="margin-top:3px;"><strong>WO WMATL (Waiting For Material)</strong></div>
-                <div>Adalah pekerjaan pemeliharaan yang belum terselesaikan karena menunggu material</div>
-                <div style="margin-top:3px;"><strong>WO WEQSHUT (Waiting For Equipment Shutdown)</strong></div>
-                <div>Adalah pekerjaan pemeliharaan yang belum terselesaikan karena menunggu shutdown equipment</div>
-                <div style="margin-top:3px;"><strong>WO WOUTAGE (Waiting For Outage)</strong></div>
-                <div>Adalah pekerjaan pemeliharaan yang belum terselesaikan karena hanya bisa dikerjakan saat outage</div>
-                <div style="margin-top:3px;"><strong>WO WMATSHUT (Waiting For material and shutdown)</strong></div>
-                <div>Adalah pekerjaan yang belum terselesaikan karena menunggu material dan shutdown equipment / unit</div>
-                <div style="margin-top:3px;"><strong>WO WTOOL (Waiting for tool)</strong></div>
-                <div>Adalah pekerjaan yang belum terselesaikan karena menunggu spesial tool</div>
-                <div style="margin-top:3px;"><strong>WJOBCARD (Waiting for Job Card)</strong></div>
-                <div>Pekerjaan dalam WO tersebut sudah selesai, menunggu pengembalian Job Card dari eksekutor dan atau menunggu prosess administrasi material atau jasa</div>
-            </div>
-        </div>
-    </div>
 </div>
-
-{{-- 5. SERVICE REQUEST MAP (Sesuai Format Standar PLN NP) --}}
+{{-- 5. JADWAL KEGIATAN PEMELIHARAAN (HARIAN) --}}
 <div class="break-before" id="sec-5">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
+    <table class="header-table">
         <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
+            <td class="logo-box">
+                <img src="/logo/sidebar-logo.png" alt="PLN Logo">
             </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
+            <td class="title-box">
+                <h1>JASA PENDUKUNG TEKNIS - 6 SITE</h1>
+                <h2>PLN NP UP KENDARI - {{ $unitHeaderName }}</h2>
+                <h3>LAPORAN PROJECT</h3>
+                <h3>JADWAL KEGIATAN PEMELIHARAAN</h3>
             </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:13px; color:#000; border:1px solid #000; padding:8px; vertical-align:middle; letter-spacing:0.5px;">
-                SERVICE REQUEST MAP
-            </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['sr_map'] ?? 'FMKD-314-10.3.3-A8' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
+            <td class="logo-box">
+                <img src="/logo/mkp.jpg" alt="MKP Logo">
             </td>
         </tr>
     </table>
 
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">SERVICE REQUEST MAP BULAN INI</div>
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-size:9.5px; margin-bottom:8px;">
+    <table class="data-table">
         <thead>
-            <tr style="background:#fff;">
-                <th style="width:35px; border:1px solid #000; padding:3px; text-align:center;">NO</th>
-                <th style="border:1px solid #000; padding:3px 6px; text-align:center;">SERVICE REQUEST</th>
-                <th style="width:110px; border:1px solid #000; padding:3px; text-align:center;">JUMLAH</th>
-                <th style="width:110px; border:1px solid #000; padding:3px; text-align:center;">PERSENTASE</th>
+            <tr>
+                <th rowspan="2" style="width: 24px;">No</th>
+                <th rowspan="2" style="width: 190px;">KEGIATAN</th>
+                <th colspan="{{ count($days) }}">{{ $monthName }}</th>
+                <th rowspan="2" style="width: 38px;">TARGET</th>
+                <th rowspan="2" style="width: 44px;">RENCANA</th>
+                <th rowspan="2" style="width: 46px;">REALISASI</th>
+                <th rowspan="2" style="width: 50px;">ANALISA KINERJA</th>
+                <th rowspan="2" style="width: 120px;">Keterangan</th>
+            </tr>
+            <tr>
+                @foreach($days as $day)
+                    <th class="{{ $day['is_red'] ? 'th-day-red' : '' }}" style="width: 16px; padding: 1.5px 0;">
+                        {{ $day['day'] }}
+                    </th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">1</td>
-                <td style="border:1px solid #000; padding:2px 6px;">CORECTIVE MAINTENANCE (CM)</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srCmCount }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srCmPct }}%</td>
-            </tr>
-            <tr>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">2</td>
-                <td style="border:1px solid #000; padding:2px 6px;">FIRST LINE MAINTENANCE (FLM)</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srFlmCount }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srFlmPct }}%</td>
-            </tr>
-            <tr>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">3</td>
-                <td style="border:1px solid #000; padding:2px 6px;">CANCEL</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srCancelCount }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srCancelPct }}%</td>
-            </tr>
-            <tr>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">4</td>
-                <td style="border:1px solid #000; padding:2px 6px;">PREDICTIVE MAINTENANCE (PDM)</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srPdmCount }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srPdmPct }}%</td>
-            </tr>
-            <tr style="font-weight:bold;">
-                <td colspan="2" style="border:1px solid #000; text-align:center; padding:3px;">TOTAL SERVICE REQUEST</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">{{ $srTotal }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">{{ $srTotal > 0 ? '100%' : '0%' }}</td>
-            </tr>
+            @forelse($harianRows as $row)
+                <tr>
+                    <td>{{ $row['no_urut'] }}</td>
+                    <td class="activity-name">{{ $row['kegiatan'] }}</td>
+                    @foreach($days as $day)
+                        @if($day['is_red'])
+                            <td class="td-red"></td>
+                        @else
+                            @php
+                                $isDone = in_array($day['day'], $row['jadwal'] ?? []);
+                            @endphp
+                            <td style="font-weight: bold;">
+                                {{ $isDone ? '1' : '' }}
+                            </td>
+                        @endif
+                    @endforeach
+                    <td class="stat-cell">{{ $row['target'] }}</td>
+                    <td class="stat-cell">{{ $row['rencana_count'] }}</td>
+                    <td class="stat-cell">{{ $row['realisasi_count'] }}</td>
+                    <td class="stat-cell">{{ $row['performance'] }}%</td>
+                    <td class="keterangan-cell">{{ $row['keterangan'] }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="{{ count($days) + 7 }}" style="padding: 12px; text-align: center; color: #666;">
+                        Belum ada data jadwal harian untuk periode ini.
+                    </td>
+                </tr>
+            @endforelse
         </tbody>
-    </table>
-
-    {{-- Chart 1: SERVICE REQUEST MAP Horizontal Bar Chart --}}
-    @php
-        $maxChart1 = max(14, $srCmCount, $srFlmCount, $srCancelCount, $srPdmCount);
-        $maxChart1 = (int) (ceil($maxChart1 / 2) * 2);
-        if ($maxChart1 < 14) $maxChart1 = 14;
-        $ticksChart1 = range(0, $maxChart1, 2);
-        $srBars = [
-            ['label' => 'PREDICTIVE MAINTENANCE (PDM)', 'val' => $srPdmCount],
-            ['label' => 'CANCEL', 'val' => $srCancelCount],
-            ['label' => 'FIRST LINE MAINTENANCE (FLM)', 'val' => $srFlmCount],
-            ['label' => 'CORECTIVE MAINTENANCE (CM)', 'val' => $srCmCount],
-        ];
-
-        ob_start();
-    @endphp
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 130" width="520" height="130" style="font-family:'DejaVu Sans', Arial, sans-serif;">
-        <rect width="520" height="130" fill="#ffffff" />
-        @foreach($ticksChart1 as $t)
-            @php $tx = 160 + ($t / $maxChart1) * 340; @endphp
-            <line x1="{{ $tx }}" y1="10" x2="{{ $tx }}" y2="105" stroke="#e5e7eb" stroke-width="0.8" />
-            <text x="{{ $tx }}" y="117" text-anchor="middle" font-size="8" fill="#444444">{{ $t }}</text>
-        @endforeach
-        <line x1="160" y1="10" x2="160" y2="105" stroke="#999999" stroke-width="1" />
-        <line x1="160" y1="105" x2="500" y2="105" stroke="#999999" stroke-width="1" />
-        @foreach($srBars as $bIdx => $b)
-            @php
-                $by = 16 + ($bIdx * 23);
-                $bw = $maxChart1 > 0 ? ($b['val'] / $maxChart1) * 340 : 0;
-            @endphp
-            <text x="155" y="{{ $by + 10 }}" text-anchor="end" font-size="8" fill="#000000">{{ $b['label'] }}</text>
-            @if($bw > 0)
-                <rect x="160" y="{{ $by }}" width="{{ $bw }}" height="13" fill="#5b9bd5" />
-                <text x="{{ 160 + $bw + 5 }}" y="{{ $by + 10 }}" font-size="8" font-weight="bold" fill="#333333">{{ $b['val'] }}</text>
-            @endif
-        @endforeach
-    </svg>
-    @php
-        $chart1Img = 'data:image/svg+xml;base64,' . base64_encode(ob_get_clean());
-    @endphp
-    <div style="border:1px solid #ccc; padding:6px 10px; margin-bottom:10px; background:#fff; text-align:center;">
-        <div style="text-align:center; font-weight:bold; font-size:10.5px; margin-bottom:4px;">SERVICE REQUEST MAP</div>
-        <img src="{{ $chart1Img }}" style="width:100%; max-width:520px; height:auto; display:block; margin:0 auto;" alt="Service Request Map" />
-    </div>
-
-    {{-- Title 2: SR TERBIT PER UNIT --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">SR TERBIT PER UNIT</div>
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-size:9px; margin-bottom:8px;">
-        <thead>
-            <tr style="background:#fff;">
-                <th rowspan="2" style="width:35px; border:1px solid #000; text-align:center;">NO</th>
-                <th rowspan="2" style="border:1px solid #000; text-align:center;">GROUP UNIT/ MESIN</th>
-                <th colspan="4" style="border:1px solid #000; text-align:center;">JUMLAH SERVICE REQUEST</th>
-            </tr>
-            <tr style="background:#fff;">
-                <th style="width:80px; border:1px solid #000; text-align:center;">TERBIT</th>
-                <th style="width:90px; border:1px solid #000; text-align:center;">PERSENTASE</th>
-                <th style="width:80px; border:1px solid #000; text-align:center;">CANCEL</th>
-                <th style="width:80px; border:1px solid #000; text-align:center;">FLM</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($unitSrRows as $i => $row)
-            <tr>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $i + 1 }}</td>
-                <td style="border:1px solid #000; padding:2px 6px;">{{ $row['name'] }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $row['terbit'] }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $row['pct'] }}%</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $row['cancel'] }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $row['flm'] }}</td>
-            </tr>
-            @endforeach
-            <tr style="font-weight:bold;">
-                <td colspan="2" style="border:1px solid #000; text-align:center; padding:3px;">TOTAL</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">{{ $totalTerbit }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">{{ $totalTerbit > 0 ? '100%' : '0%' }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">{{ $totalCancel }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">{{ $totalFlm }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    {{-- Two Charts Side-by-Side: Pie Chart and FLM per Unit --}}
-    @php
-        $piePalette = ['#a94442', '#8ea351', '#61558f', '#eb7347', '#3b7ea1', '#e09f3e'];
-        $hasTerbitData = $totalTerbit > 0;
-        $pieSlicesSource = array_filter($unitSrRows, fn ($r) => $r['pct'] > 0);
-
-        // FLM bar chart values
-        $flmRowsReversed = array_reverse($unitSrRows);
-        $flmValues = array_map(fn ($r) => $r['flm'], $unitSrRows);
-        $maxFlmVal = !empty($flmValues) ? max(4, ...$flmValues) : 4;
-        $ticksFlm = range(0, $maxFlmVal, 1);
-        $flmPlotX = 75;
-        $flmPlotW = 175;
-
-        // Chart 2: Pie
-        ob_start();
-    @endphp
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 180" width="280" height="180" style="font-family:'DejaVu Sans', Arial, sans-serif;">
-        <rect width="280" height="180" fill="#ffffff" />
-        @php
-            $cx = 140; $cy = 90; $r = 55;
-            $curAngle = -90;
-            $pIdx = 0;
-        @endphp
-        @foreach($pieSlicesSource as $s)
-            @php
-                $pColor = $piePalette[$pIdx % count($piePalette)];
-                $pIdx++;
-                $aSpan = ($s['pct'] / 100) * 360;
-                $a1 = deg2rad($curAngle);
-                $a2 = deg2rad($curAngle + $aSpan);
-                $x1 = round($cx + $r * cos($a1), 2);
-                $y1 = round($cy + $r * sin($a1), 2);
-                $x2 = round($cx + $r * cos($a2), 2);
-                $y2 = round($cy + $r * sin($a2), 2);
-                $largeArc = ($aSpan > 180) ? 1 : 0;
-                $d = "M $cx $cy L $x1 $y1 A $r $r 0 $largeArc 1 $x2 $y2 Z";
-
-                $midA = deg2rad($curAngle + $aSpan / 2);
-                $lx1 = round($cx + ($r * 0.85) * cos($midA), 2);
-                $ly1 = round($cy + ($r * 0.85) * sin($midA), 2);
-                $lx2 = round($cx + ($r * 1.35) * cos($midA), 2);
-                $ly2 = round($cy + ($r * 1.35) * sin($midA), 2);
-                $anchor = cos($midA) >= 0 ? 'start' : 'end';
-                $tx = cos($midA) >= 0 ? ($lx2 + 2) : ($lx2 - 2);
-
-                $curAngle += $aSpan;
-            @endphp
-            <path d="{{ $d }}" fill="{{ $pColor }}" stroke="#ffffff" stroke-width="1.2" />
-            <line x1="{{ $lx1 }}" y1="{{ $ly1 }}" x2="{{ $lx2 }}" y2="{{ $ly2 }}" stroke="#444444" stroke-width="0.8" />
-            <text x="{{ $tx }}" y="{{ $ly2 }}" font-size="7.5" fill="#000000" text-anchor="{{ $anchor }}">{{ $s['name'] }}</text>
-            <text x="{{ $tx }}" y="{{ $ly2 + 9 }}" font-size="7.5" font-weight="bold" fill="#000000" text-anchor="{{ $anchor }}">{{ $s['pct'] }}%</text>
-        @endforeach
-        @if(!$hasTerbitData)
-            <text x="140" y="90" font-size="9" fill="#888888" text-anchor="middle">Tidak ada data Service Request</text>
-        @endif
-    </svg>
-    @php
-        $chart2Img = 'data:image/svg+xml;base64,' . base64_encode(ob_get_clean());
-
-        // Chart 3: FLM
-        ob_start();
-    @endphp
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 180" width="280" height="180" style="font-family:'DejaVu Sans', Arial, sans-serif;">
-        <rect width="280" height="180" fill="#ffffff" />
-        <text x="140" y="14" text-anchor="middle" font-weight="bold" font-size="9.5" fill="#000000">FLM PER UNIT</text>
-        @foreach($ticksFlm as $t)
-            @php $tx = $flmPlotX + ($t / $maxFlmVal) * $flmPlotW; @endphp
-            <line x1="{{ $tx }}" y1="24" x2="{{ $tx }}" y2="150" stroke="#e5e7eb" stroke-width="0.8" />
-            <text x="{{ $tx }}" y="162" text-anchor="middle" font-size="8" fill="#444444">{{ $t }}</text>
-        @endforeach
-        <line x1="{{ $flmPlotX }}" y1="24" x2="{{ $flmPlotX }}" y2="150" stroke="#999999" stroke-width="1" />
-        <line x1="{{ $flmPlotX }}" y1="150" x2="{{ $flmPlotX + $flmPlotW }}" y2="150" stroke="#999999" stroke-width="1" />
-        @foreach($flmRowsReversed as $rIdx => $fr)
-            @php
-                $ry = 30 + ($rIdx * 20);
-                $rw = $maxFlmVal > 0 ? ($fr['flm'] / $maxFlmVal) * $flmPlotW : 0;
-            @endphp
-            <text x="{{ $flmPlotX - 5 }}" y="{{ $ry + 10 }}" text-anchor="end" font-size="7.5" fill="#000000">{{ $fr['name'] }}</text>
-            @if($rw > 0)
-                <rect x="{{ $flmPlotX }}" y="{{ $ry }}" width="{{ $rw }}" height="13" fill="#5b9bd5" />
-            @endif
-            <text x="{{ $flmPlotX + $rw + 4 }}" y="{{ $ry + 10 }}" font-size="7.5" font-weight="bold" fill="#000000" text-anchor="start">{{ $fr['flm'] }}</text>
-        @endforeach
-    </svg>
-    @php
-        $chart3Img = 'data:image/svg+xml;base64,' . base64_encode(ob_get_clean());
-    @endphp
-    <table style="width:100%; border-collapse:collapse; border:none; margin-top:4px;">
-        <tr>
-            {{-- Left Chart: Donut / Pie Chart --}}
-            <td style="width:50%; border:1px solid #ccc; padding:6px; vertical-align:top; background:#fff; text-align:center;">
-                <img src="{{ $chart2Img }}" style="width:100%; max-width:280px; height:auto; display:block; margin:0 auto;" alt="SR Terbit Per Unit" />
-            </td>
-
-            {{-- Right Chart: FLM PER UNIT Horizontal Bar Chart --}}
-            <td style="width:50%; border:1px solid #ccc; padding:6px; vertical-align:top; background:#fff; text-align:center;">
-                <img src="{{ $chart3Img }}" style="width:100%; max-width:280px; height:auto; display:block; margin:0 auto;" alt="FLM Per Unit" />
-            </td>
-        </tr>
     </table>
 </div>
 
-{{-- 6. SERVICE REQUEST SUMMARY (Sesuai Format Standar PLN NP) --}}
+{{-- 6. JADWAL PEMELIHARAAN RUTIN P0 - P5 --}}
 <div class="break-before" id="sec-6">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
+    <table class="header-table">
         <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
+            <td class="logo-box">
+                <img src="/logo/sidebar-logo.png" alt="PLN Logo">
             </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
+            <td class="title-box">
+                <h1>JASA PENDUKUNG TEKNIS - 6 SITE</h1>
+                <h2>PLN NP UP KENDARI - {{ $unitHeaderName }}</h2>
+                <h3>LAPORAN PROJECT</h3>
+                <h3>JADWAL PEMELIHARAAN RUTIN P0 - P5</h3>
             </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:13px; color:#000; border:1px solid #000; padding:8px; vertical-align:middle; letter-spacing:0.5px;">
-                SERVICE REQUEST SUMMARY
-            </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['sr_summary'] ?? 'FMKD-314-10.3.3-A9' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
+            <td class="logo-box">
+                <img src="/logo/mkp.jpg" alt="MKP Logo">
             </td>
         </tr>
     </table>
 
-    {{-- SR Aktif Per Status Bulan Ini --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">SR AKTIF PER STATUS BULAN INI</div>
-    <table style="width:48%; border-collapse:collapse; border:1px solid #000; font-size:9.5px; margin-bottom:12px;">
+    <table class="legend-table">
+        <tr>
+            <td style="width: 70px; font-weight: bold;">Keterangan :</td>
+            <td style="width: 120px;">P0 = Setiap Hari</td>
+            <td style="width: 130px;">P3 = 500 JAM</td>
+            <td style="width: 22px;"><span class="color-box" style="background-color: #ffff00;"></span></td>
+            <td style="width: 150px;">Greasing Dinamo Stater</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>P1 = 125 JAM</td>
+            <td>P4 = 1.500 JAM</td>
+            <td><span class="color-box" style="background-color: #92d050;"></span></td>
+            <td>Ganti Pelumas+Cleaning Radiator</td>
+            <td></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>P2 = 250 JAM</td>
+            <td>P5 = 3.000 JAM</td>
+            <td></td>
+            <td></td>
+            <td></td>
+        </tr>
+    </table>
+
+    <div class="info-bar">
+        <div><strong>MKP &nbsp;&nbsp;: {{ $unitHeaderName }}</strong></div>
+        <div><strong>BULAN : {{ $monthName }} {{ $periodYear }}</strong></div>
+    </div>
+
+    <table class="data-table">
         <thead>
-            <tr style="background:#fff;">
-                <th style="width:30px; border:1px solid #000; padding:3px; text-align:center;">NO</th>
-                <th style="border:1px solid #000; padding:3px 6px; text-align:left;">SERVICE REQUEST</th>
-                <th style="width:75px; border:1px solid #000; padding:3px; text-align:center;">JUMLAH</th>
-                <th style="width:90px; border:1px solid #000; padding:3px; text-align:center;">PERSENTASE</th>
+            <tr>
+                <th rowspan="2" style="width: 22px;">NO</th>
+                <th rowspan="2" style="width: 125px;">MESIN / TIPE / S.N</th>
+                <th style="width: 38px;">{{ $monthName }}</th>
+                <th colspan="{{ count($days) }}">JENIS HAR</th>
+                <th rowspan="2" style="width: 85px;">JAM OPERASI PEMELIHARAAN</th>
+                <th rowspan="2" style="width: 85px;">KETERANGAN</th>
+            </tr>
+            <tr>
+                <th>{{ $periodYear }}</th>
+                @foreach($days as $d)
+                    <th class="{{ $d['is_red'] ? 'th-red' : '' }}" style="width: 16px;">
+                        {{ $d['day'] }}
+                    </th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">1</td>
-                <td style="border:1px solid #000; padding:2px 6px;">OPEN</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srSummaryOpen }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srSummaryOpenPct }}%</td>
-            </tr>
-            <tr>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">2</td>
-                <td style="border:1px solid #000; padding:2px 6px;">CLOSED</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srSummaryClose }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $srSummaryClosePct }}%</td>
-            </tr>
-            <tr style="font-weight:bold;">
-                <td style="border:1px solid #000; text-align:center; padding:3px;">3</td>
-                <td style="border:1px solid #000; padding:3px 6px;">SR TERBIT BULAN INI</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">{{ $srSummaryTotal }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:3px;">100%</td>
-            </tr>
-        </tbody>
-    </table>
-
-    {{-- Chart 4: SERVICE REQUEST STATUS Horizontal Bar Chart --}}
-    @php
-        $c1Max = max(12, $srSummaryOpen, $srSummaryClose);
-        if ($c1Max % 2 !== 0) $c1Max++;
-        $c1Ticks = range(0, $c1Max, 2);
-        $c1PlotX = 65;
-        $c1PlotW = 445;
-        $c1PlotY = 10;
-        $c1PlotH = 75;
-
-        ob_start();
-    @endphp
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 120" width="540" height="120" style="font-family:'DejaVu Sans', Arial, sans-serif;">
-        <rect width="540" height="120" fill="#ffffff" />
-        @foreach($c1Ticks as $t)
-            @php $tx = $c1PlotX + ($t / $c1Max) * $c1PlotW; @endphp
-            <line x1="{{ $tx }}" y1="{{ $c1PlotY }}" x2="{{ $tx }}" y2="{{ $c1PlotY + $c1PlotH }}" stroke="#e5e7eb" stroke-dasharray="2,2" stroke-width="0.8" />
-            <text x="{{ $tx }}" y="{{ $c1PlotY + $c1PlotH + 14 }}" text-anchor="middle" font-size="8" fill="#555555">{{ $t }}</text>
-        @endforeach
-
-        <line x1="{{ $c1PlotX }}" y1="{{ $c1PlotY }}" x2="{{ $c1PlotX }}" y2="{{ $c1PlotY + $c1PlotH }}" stroke="#bbbbbb" stroke-width="1" />
-        <line x1="{{ $c1PlotX }}" y1="{{ $c1PlotY + $c1PlotH }}" x2="{{ $c1PlotX + $c1PlotW }}" y2="{{ $c1PlotY + $c1PlotH }}" stroke="#bbbbbb" stroke-width="1" />
-
-        {{-- Bar 1: CLOSED (top) --}}
-        @php
-            $wClosed = $c1Max > 0 ? ($srSummaryClose / $c1Max) * $c1PlotW : 0;
-            $yClosed = $c1PlotY + 12;
-        @endphp
-        <text x="{{ $c1PlotX - 8 }}" y="{{ $yClosed + 11 }}" text-anchor="end" font-size="8" fill="#333333">CLOSED</text>
-        @if($wClosed > 0)
-            <rect x="{{ $c1PlotX }}" y="{{ $yClosed }}" width="{{ $wClosed }}" height="16" fill="#62b0f4" />
-            <text x="{{ $c1PlotX + $wClosed + 5 }}" y="{{ $yClosed + 12 }}" font-size="8" font-weight="bold" fill="#333333">{{ $srSummaryClose }}</text>
-        @endif
-
-        {{-- Bar 2: OPEN (bottom) --}}
-        @php
-            $wOpen = $c1Max > 0 ? ($srSummaryOpen / $c1Max) * $c1PlotW : 0;
-            $yOpen = $c1PlotY + 45;
-        @endphp
-        <text x="{{ $c1PlotX - 8 }}" y="{{ $yOpen + 11 }}" text-anchor="end" font-size="8" fill="#333333">OPEN</text>
-        @if($wOpen > 0)
-            <rect x="{{ $c1PlotX }}" y="{{ $yOpen }}" width="{{ $wOpen }}" height="16" fill="#62b0f4" />
-            <text x="{{ $c1PlotX + $wOpen + 5 }}" y="{{ $yOpen + 12 }}" font-size="8" font-weight="bold" fill="#333333">{{ $srSummaryOpen }}</text>
-        @endif
-    </svg>
-    @php
-        $chart4Img = 'data:image/svg+xml;base64,' . base64_encode(ob_get_clean());
-    @endphp
-    <div style="border:1px solid #d0d7de; border-radius:2px; padding:10px 14px; margin-bottom:12px; background:#fff; text-align:center;">
-        <div style="text-align:center; font-family:'Times New Roman', Georgia, serif; font-weight:bold; font-size:12px; color:#555; letter-spacing:0.5px; margin-bottom:8px;">
-            SERVICE REQUEST STATUS
-        </div>
-        <img src="{{ $chart4Img }}" style="width:100%; max-width:540px; height:auto; display:block; margin:0 auto;" alt="Service Request Status" />
-    </div>
-
-    {{-- Chart 5: TOP FIVE FREQUENCY SERVICE REQUEST (SR) UNIT --}}
-    @php
-        $c2BaseY = 90;
-        $colW = 46;
-        $c2Centers = [80, 175, 270, 365, 460];
-
-        ob_start();
-    @endphp
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 180" width="540" height="180" style="font-family:'DejaVu Sans', Arial, sans-serif;">
-        <rect width="540" height="180" fill="#ffffff" />
-        <line x1="30" y1="{{ $c2BaseY }}" x2="510" y2="{{ $c2BaseY }}" stroke="#bbbbbb" stroke-width="1" />
-
-        @if(empty($top5SrAssets))
-            <text x="270" y="55" font-size="9" fill="#888888" text-anchor="middle">Tidak ada data frekuensi Service Request</text>
-        @else
-            @foreach($top5SrAssets as $idx => $assetItem)
+            @forelse($p0p5Rows as $idx => $row)
                 @php
-                    $cx = $c2Centers[$idx] ?? (80 + ($idx * 95));
-                    $freq = (int) ($assetItem['freq'] ?? 0);
-                    $barH = max(14, $freq * 22);
-                    $barY = $c2BaseY - $barH;
-                    $lbl = \Illuminate\Support\Str::limit($assetItem['asset'] ?? '', 18, '...');
+                    $rencanaColors = $row['warna']['rencana'] ?? [];
+                    $realisasiColors = $row['warna']['realisasi'] ?? [];
                 @endphp
-                <line x1="{{ $cx - ($colW / 2) - 10 }}" y1="12" x2="{{ $cx - ($colW / 2) - 10 }}" y2="{{ $c2BaseY }}" stroke="#f0f0f0" stroke-width="0.8" />
-                <line x1="{{ $cx + ($colW / 2) + 10 }}" y1="12" x2="{{ $cx + ($colW / 2) + 10 }}" y2="{{ $c2BaseY }}" stroke="#f0f0f0" stroke-width="0.8" />
 
-                <rect x="{{ $cx - ($colW / 2) }}" y="{{ $barY }}" width="{{ $colW }}" height="{{ $barH }}" fill="#62b0f4" />
-                <text x="{{ $cx }}" y="{{ $barY + ($barH / 2) + 4 }}" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">{{ $freq }}</text>
-                <text x="{{ $cx }}" y="{{ $c2BaseY + 8 }}" fill="#222222" font-size="8" font-weight="bold" text-anchor="end" transform="rotate(-45, {{ $cx }}, {{ $c2BaseY + 8 }})">{{ $lbl }}</text>
-            @endforeach
-        @endif
-    </svg>
-    @php
-        $chart5Img = 'data:image/svg+xml;base64,' . base64_encode(ob_get_clean());
-    @endphp
-    <div style="border:1px solid #d0d7de; border-radius:2px; padding:10px 14px; margin-bottom:12px; background:#fff; text-align:center;">
-        <div style="text-align:center; font-family:'DejaVu Sans', Arial, sans-serif; font-weight:bold; font-size:11.5px; color:#333; letter-spacing:0.5px; margin-bottom:6px;">
-            TOP FIVE FREQUENCY SERVICE REQUEST (SR) UNIT
-        </div>
-        <img src="{{ $chart5Img }}" style="width:100%; max-width:540px; height:auto; display:block; margin:0 auto;" alt="Top Five Frequency Service Request (SR) Unit" />
-    </div>
+                {{-- Row 1: RENC --}}
+                <tr>
+                    <td rowspan="3" style="font-weight: bold;">{{ $idx + 1 }}</td>
+                    <td rowspan="2" class="machine-name-cell">
+                        <div>{{ $row['name'] }}</div>
+                        <div class="machine-sub">{{ $row['type'] }}</div>
+                        @if($row['serial_number'])
+                            <div class="machine-sub">SN. {{ $row['serial_number'] }}</div>
+                        @endif
+                    </td>
+                    <td style="font-weight: bold; background: #f8fafc;">RENC</td>
+                    @foreach($days as $d)
+                        @php
+                            $val = $row['rencana'][$d['day']] ?? '';
+                            $customColor = $rencanaColors[$d['day']] ?? '';
+                            $cellClass = '';
+                            if ($customColor === 'yellow') {
+                                $cellClass = 'cell-yellow';
+                            } elseif ($customColor === 'green') {
+                                $cellClass = 'cell-green';
+                            } elseif ($val) {
+                                $cellClass = 'cell-bold';
+                            }
+                            if (!$cellClass && $d['is_red']) {
+                                $cellClass = 'td-red';
+                            }
+                        @endphp
+                        <td class="{{ $cellClass }}">
+                            {{ $val }}
+                        </td>
+                    @endforeach
+                    <td rowspan="3" style="text-align: left; vertical-align: top; padding: 4px;">{{ $row['operating_hours'] }}</td>
+                    <td rowspan="3" style="text-align: left; vertical-align: top; padding: 4px;">{{ $row['keterangan'] }}</td>
+                </tr>
 
-    {{-- Table: KETERANGAN --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">KETERANGAN</div>
-    <table style="width:100%; border-collapse:collapse; border:none; font-size:9.5px; margin-bottom:10px;">
-        <thead>
-            <tr>
-                <th style="font-weight:bold; text-align:left; border:none; padding:3px 4px; width:220px;">Asset</th>
-                <th style="font-weight:bold; text-align:center; border:none; padding:3px 4px; width:60px;">Freq</th>
-                <th style="font-weight:bold; text-align:left; border:none; padding:3px 4px;">Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($top5SrAssets as $row)
-            <tr>
-                <td style="border:none; padding:3px 4px;">{{ $row['asset'] }}</td>
-                <td style="border:none; padding:3px 4px; text-align:center;">{{ $row['freq'] }}</td>
-                <td style="border:none; padding:3px 4px;">{{ $row['description'] }}</td>
-            </tr>
+                {{-- Row 2: REAL --}}
+                <tr>
+                    <td style="font-weight: bold; background: #f8fafc;">REAL</td>
+                    @foreach($days as $d)
+                        @php
+                            $val = $row['realisasi'][$d['day']] ?? '';
+                            $customColor = $realisasiColors[$d['day']] ?? '';
+                            $cellClass = '';
+                            if ($customColor === 'yellow') {
+                                $cellClass = 'cell-yellow';
+                            } elseif ($customColor === 'green') {
+                                $cellClass = 'cell-green';
+                            } elseif ($val === 'P2') {
+                                $cellClass = 'cell-yellow';
+                            } elseif ($val === 'P3') {
+                                $cellClass = 'cell-green';
+                            } elseif ($val) {
+                                $cellClass = 'cell-yellow';
+                            } elseif ($d['is_red']) {
+                                $cellClass = 'td-red';
+                            }
+                        @endphp
+                        <td class="{{ $cellClass }}">
+                            {{ $val }}
+                        </td>
+                    @endforeach
+                </tr>
+
+                {{-- Row 3: WAKTU & DURASI --}}
+                <tr>
+                    <td style="font-weight: bold; background: #f8fafc;">WAKTU</td>
+                    <td style="font-weight: bold; background: #f8fafc;">DURASI</td>
+                    @foreach($days as $d)
+                        @php
+                            $val = $row['durasi'][$d['day']] ?? '';
+                        @endphp
+                        <td class="{{ $d['is_red'] ? 'td-red' : '' }}">
+                            {{ $val }}
+                        </td>
+                    @endforeach
+                </tr>
             @empty
-            <tr>
-                <td colspan="3" style="border:none; padding:6px 4px; text-align:center; color:#888;">Tidak ada data Service Request pada periode ini.</td>
-            </tr>
+                <tr>
+                    <td colspan="{{ count($days) + 5 }}" style="padding: 15px; text-align: center; color: #64748b;">
+                        Belum ada data mesin aktif pada unit ini.
+                    </td>
+                </tr>
             @endforelse
         </tbody>
     </table>
 </div>
 
-{{-- 7. MAINTENANCE SUMMARY (Sesuai Format Standar PLN NP FMKD-314-10.3.3-A9) --}}
-@php
-    $ms = $report['maintenance_summary'] ?? [];
-    $rekapTC = $ms['rekap_terbit_complete'] ?? [];
-    $rekapStatus = $ms['rekap_status'] ?? [];
-    $tasksData = $ms['tasks'] ?? [];
-    $tasksRows = $tasksData['rows'] ?? [];
-@endphp
+{{-- 7. JADWAL PIKET ON CALL PEMELIHARAAN --}}
 <div class="break-before" id="sec-7">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
+    <table class="header-table">
         <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
+            <td class="logo-box">
+                <img src="/logo/sidebar-logo.png" alt="PLN Logo">
             </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
+            <td class="title-box">
+                <h1>JASA PENDUKUNG TEKNIS 6 SITE UP KENDARI</h1>
+                <h2>JADWAL PIKET ONCALL PEMELIHARAAN PEMBANGKIT BULAN {{ $monthName }} {{ $periodYear }}</h2>
+                <h3>{{ $unitHeaderName }}</h3>
             </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:13px; color:#000; border:1px solid #000; padding:8px; vertical-align:middle; letter-spacing:0.5px;">
-                MAINTENANCE SUMMARY
-            </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['maintenance_summary'] ?? $numbers['wo_summary'] ?? 'FMKD-314-10.3.3-A9' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
+            <td class="logo-box">
+                <img src="/logo/mkp.jpg" alt="MKP Logo">
             </td>
         </tr>
     </table>
 
-    {{-- 1. Rekapitulasi WO Terbit dan Complete --}}
-    <table style="width:100%; border-collapse:collapse; border:none; margin-top:8px; margin-bottom:2px; font-size:9.5px;">
-        <tr>
-            <td style="font-weight:bold; text-align:left; border:none; padding:0;">1 &nbsp;&nbsp; Rekapitulasi WO Terbit dan Complete</td>
-            <td style="text-align:right; border:none; padding:0; color:#444; font-family:monospace; font-size:8.5px;">{{ $rekapTC['url'] ?? '192.168.3.85/wpc-ditgas' }}</td>
-        </tr>
-    </table>
-    <div style="font-size:8.5px; font-style:italic; margin-bottom:3px; color:#333;">WO Terbit &amp; Complete</div>
-
-    <table style="width:100%; border-collapse:collapse; border:1px solid #888; font-size:8px; margin-bottom:4px; text-align:center;">
+    <table class="data-table">
         <thead>
-            <tr style="background:#eaf1f8;">
-                <th rowspan="2" style="border:1px solid #888; padding:3px 2px; width:45px;">BULAN</th>
-                <th rowspan="2" style="border:1px solid #888; padding:3px 2px; width:35px;">TERBIT</th>
-                <th colspan="12" style="border:1px solid #888; padding:2px;">COMPLETE</th>
-                <th rowspan="2" style="border:1px solid #888; padding:3px 2px; width:35px;">OPEN</th>
+            <tr>
+                <th rowspan="2" style="width: 26px;">No.</th>
+                <th rowspan="2" style="width: 140px;">Nama</th>
+                <th rowspan="2" style="width: 95px;">No. Hp</th>
+                <th colspan="{{ count($days) }}">{{ $monthName }} {{ $periodYear }}</th>
+                <th rowspan="2" style="width: 45px;">TARGET</th>
+                <th rowspan="2" style="width: 55px;">REALISASI</th>
+                <th rowspan="2" style="width: 65px;">A. KINERJA</th>
             </tr>
-            <tr style="background:#eaf1f8;">
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">JAN</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">FEB</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">MAR</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">APR</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">MEI</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">JUN</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">JUL</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">AUG</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">SEP</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">OKT</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">NOV</th>
-                <th style="border:1px solid #888; padding:2px 1px; width:26px;">DES</th>
+            <tr>
+                @foreach($days as $day)
+                    <th class="{{ $day['is_red'] ? 'th-day-red' : '' }}" style="width: 17px; padding: 2px 0;">
+                        {{ $day['day'] }}
+                    </th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
-            @foreach($rekapTC['rows'] ?? [] as $r)
+            @forelse($piketGroups as $group)
+                <tr class="category-row">
+                    <td>{{ $group['roman'] }}</td>
+                    <td class="category-name">{{ $group['kategori'] }}</td>
+                    <td></td>
+                    @foreach($days as $day)
+                        <td></td>
+                    @endforeach
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                </tr>
+
+                @foreach($group['personnel'] as $person)
+                    <tr>
+                        <td>{{ $person['no'] }}</td>
+                        <td class="person-name">{{ $person['nama'] }}</td>
+                        <td class="phone-cell">{{ $person['no_hp'] }}</td>
+                        @foreach($days as $day)
+                            @php
+                                $isPiket = in_array($day['day'], $person['piket'] ?? []);
+                            @endphp
+                            @if($isPiket && $day['is_red'])
+                                <td class="cell-piket-red">1</td>
+                            @elseif($isPiket)
+                                <td class="cell-piket-normal">1</td>
+                            @else
+                                <td></td>
+                            @endif
+                        @endforeach
+                        <td class="stat-cell">{{ $person['target'] }}</td>
+                        <td class="stat-cell">{{ $person['realisasi'] }}</td>
+                        <td class="stat-cell">{{ $person['performance'] }}%</td>
+                    </tr>
+                @endforeach
+            @empty
+                <tr>
+                    <td colspan="{{ count($days) + 6 }}" style="padding: 16px; text-align: center; color: #666;">
+                        Belum ada personil yang dijadwalkan untuk periode ini.
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
+{{-- 8. JADWAL PATROL CEK PEMELIHARAAN --}}
+<div class="break-before" id="sec-8">
+    <table class="header-table">
+        <tr>
+            <td class="logo-box">
+                <img src="/logo/sidebar-logo.png" alt="PLN Logo">
+            </td>
+            <td class="title-box">
+                <h1>JASA PENDUKUNG TEKNIS - 6 SITE</h1>
+                <h1>PLN NP UP KENDARI - {{ $unitHeaderName }}</h1>
+                <h2>LAPORAN PROJECT</h2>
+                <h2>JADWAL PIKET PATROL CHECK HARIAN</h2>
+                <h3>PERIODE : {{ $monthName }} {{ $periodYear }}</h3>
+            </td>
+            <td class="logo-box">
+                <img src="/logo/mkp.jpg" alt="MKP Logo">
+            </td>
+        </tr>
+    </table>
+
+    <table class="data-table">
+        <thead>
             <tr>
-                <td style="border:1px solid #888; padding:2px 1px; font-weight:bold; background:#fafafa;">{{ $r['bulan'] }}</td>
-                <td style="border:1px solid #888; padding:2px 1px;">{{ $r['terbit'] }}</td>
+                <th style="width: 140px;" rowspan="1">NAMA</th>
+                <th style="width: 90px;" rowspan="1">RENCANA / REALISASI</th>
+                @foreach($days as $day)
+                    <th class="{{ $day['is_red'] ? 'th-red' : '' }}" style="width: 18px;">
+                        {{ $day['day'] }}
+                    </th>
+                @endforeach
+                <th style="width: 50px;">RENCANA</th>
+                <th style="width: 50px;">REALISASI</th>
+                <th style="width: 50px;">TARGET</th>
+                <th style="width: 60px;">ANALISA KINERJA</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($patrolRows as $index => $row)
+                <tr>
+                    <td rowspan="2" class="operator-name">{{ $row['name'] }}</td>
+                    <td>RENCANA</td>
+                    @foreach($days as $day)
+                        @php
+                            $d = (string) $day['day'];
+                            $valRencana = $row['rencana'][$d] ?? null;
+                            $hasPiket = !empty($valRencana) && (string) $valRencana === '1';
+                        @endphp
+                        @if($day['is_red'])
+                            <td class="td-red"></td>
+                        @elseif($hasPiket)
+                            <td class="cell-piket">1</td>
+                        @else
+                            <td></td>
+                        @endif
+                    @endforeach
+
+                    @if($loop->first)
+                        <td rowspan="{{ count($patrolRows) * 2 }}" class="recap-cell">{{ $patrolTotalRencana }}</td>
+                        <td rowspan="{{ count($patrolRows) * 2 }}" class="recap-cell">{{ $patrolTotalRealisasi }}</td>
+                        <td rowspan="{{ count($patrolRows) * 2 }}" class="recap-cell">{{ $targetWorkingDays }}</td>
+                        <td rowspan="{{ count($patrolRows) * 2 }}" class="recap-cell">{{ $patrolPerformance }}%</td>
+                    @endif
+                </tr>
+
+                <tr>
+                    <td>REALISASI</td>
+                    @foreach($days as $day)
+                        @php
+                            $d = (string) $day['day'];
+                            $valRealisasi = $row['realisasi'][$d] ?? null;
+                            $hasPiket = !empty($valRealisasi) && (string) $valRealisasi === '1';
+                        @endphp
+                        @if($day['is_red'])
+                            <td class="td-red"></td>
+                        @elseif($hasPiket)
+                            <td class="cell-piket">1</td>
+                        @else
+                            <td></td>
+                        @endif
+                    @endforeach
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="{{ 2 + count($days) + 4 }}" style="padding: 12px; text-align: center; font-style: italic;">
+                        Tidak ada data operator untuk unit ini.
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <table class="footer-table">
+        <tr>
+            <td style="width: 90px; font-weight: bold;">Keterangan:</td>
+            <td style="width: 28px;"><div class="color-box" style="background-color: #00b0f0;"></div></td>
+            <td>: Hari Piket</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td><div class="color-box" style="background-color: #dc2626;"></div></td>
+            <td>: Off/Libur</td>
+        </tr>
+        <tr>
+            <td style="font-style: italic; font-weight: bold; padding-top: 8px;">Note:</td>
+            <td colspan="2" style="font-style: italic; padding-top: 8px;">
+                Jika personel berhalangan, harap digantikan dengan personel lain
+            </td>
+        </tr>
+    </table>
+</div>
+
+{{-- 9. JADWAL MEETING PEMELIHARAAN --}}
+<div class="break-before" id="sec-9">
+    <table class="header-table">
+        <tr>
+            <td class="logo-box">
+                <img src="/logo/sidebar-logo.png" alt="PLN Logo">
+            </td>
+            <td class="title-box">
+                <h1>JASA PENDUKUNG TEKNIS 6 SITE UP KENDARI</h1>
+                <h2>{{ $unitHeaderName }}</h2>
+                <h3>JADWAL MEETING PEMELIHARAAN PEMBANGKIT</h3>
+            </td>
+            <td class="logo-box">
+                <img src="/logo/mkp.jpg" alt="MKP Logo">
+            </td>
+        </tr>
+    </table>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 130px;">URAIAN</th>
+                <th style="width: 70px;">{{ $monthName }}</th>
+                @foreach($days as $day)
+                    <th class="{{ $day['is_red'] ? 'text-red' : '' }}" style="width: 16px;">
+                        {{ $day['dow'] }}
+                    </th>
+                @endforeach
+                <th rowspan="2" style="width: 50px;">RENCANA</th>
+                <th rowspan="2" style="width: 45px;">TARGET</th>
+                <th rowspan="2" style="width: 50px;">REALISASI</th>
+                <th rowspan="2" style="width: 60px;">ANALISA KINERJA</th>
+            </tr>
+            <tr>
+                <th>{{ $periodYear }}</th>
+                @foreach($days as $day)
+                    <th class="{{ $day['is_red'] ? 'text-red' : '' }}">
+                        {{ $day['day'] }}
+                    </th>
+                @endforeach
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($meetingRows as $row)
+                <tr>
+                    <td rowspan="2" class="uraian-cell">{{ $row['uraian'] }}</td>
+                    <td class="category-cell">RENCANA</td>
+                    @foreach($days as $day)
+                        @php
+                            $d = (string) $day['day'];
+                            $valRencana = $row['rencana'][$d] ?? 0;
+                        @endphp
+                        <td>{{ $valRencana ?: 0 }}</td>
+                    @endforeach
+                    <td rowspan="2" class="recap-cell">{{ $row['total_rencana'] }}</td>
+                    <td rowspan="2" class="recap-cell">{{ $row['target'] }}</td>
+                    <td rowspan="2" class="recap-cell">{{ $row['total_realisasi'] }}</td>
+                    <td rowspan="2" class="recap-cell">{{ $row['performance'] }}%</td>
+                </tr>
+
+                <tr>
+                    <td class="category-cell">REALISASI</td>
+                    @foreach($days as $day)
+                        @php
+                            $d = (string) $day['day'];
+                            $valRealisasi = $row['realisasi'][$d] ?? 0;
+                        @endphp
+                        <td>{{ $valRealisasi ?: 0 }}</td>
+                    @endforeach
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="{{ 2 + count($days) + 4 }}" style="padding: 12px; text-align: center; font-style: italic;">
+                        Tidak ada data meeting pemeliharaan.
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+</div>
+
+{{-- 10. JADWAL PEMBUATAN IK PEMELIHARAAN --}}
+<div class="break-before" id="sec-10">
+    <table class="header-table">
+        <tr>
+            <td class="logo-box">
+                <img src="/logo/sidebar-logo.png" alt="PLN Logo">
+            </td>
+            <td class="title-box">
+                <div class="title-row">JASA PENDUKUNG TEKNIS 6 SITE - KIT UP KENDARI</div>
+                <div class="title-row">LAPORAN PROJECT {{ $unitHeaderName }}</div>
+                <div class="title-row">JADWAL PEMBUATAN IK PEMELIHARAAN PEMBANGKIT - TAHUN {{ $periodYear }}</div>
+            </td>
+            <td class="logo-box">
+                <img src="/logo/mkp.jpg" alt="MKP Logo">
+            </td>
+        </tr>
+    </table>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th rowspan="2" class="th-orange" style="width: 26px;">NO</th>
+                <th rowspan="2" class="th-orange" style="width: 250px;">INSTRUKSI KERJA</th>
+                <th rowspan="2" class="th-orange" style="width: 140px;">PIC PEMBUAT</th>
+                <th colspan="12" class="th-orange">BULAN</th>
+                <th rowspan="2" class="th-orange" style="width: 45px;">JUMLAH</th>
+            </tr>
+            <tr>
+                <th class="th-orange" style="width: 24px;">JAN</th>
+                <th class="th-orange" style="width: 24px;">FEB</th>
+                <th class="th-orange" style="width: 24px;">MAR</th>
+                <th class="th-orange" style="width: 24px;">APR</th>
+                <th class="th-orange" style="width: 24px;">MAY</th>
+                <th class="th-orange" style="width: 24px;">JUN</th>
+                <th class="th-orange" style="width: 24px;">JUL</th>
+                <th class="th-orange" style="width: 24px;">AUG</th>
+                <th class="th-orange" style="width: 24px;">SEP</th>
+                <th class="th-orange" style="width: 24px;">OCT</th>
+                <th class="th-orange" style="width: 24px;">NOV</th>
+                <th class="th-orange" style="width: 24px;">DEC</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="category-row">
+                <td>A.</td>
+                <td class="category-name" colspan="14">PEMBUATAN INTRUKSI KERJA</td>
+            </tr>
+
+            @foreach($ikRows as $row)
+                <tr>
+                    <td>{{ $row['no_urut'] }}</td>
+                    <td class="ik-title">{{ $row['instruksi_kerja'] }}</td>
+                    <td class="pic-name">{{ $row['pic_pembuat'] }}</td>
+                    @for($m = 1; $m <= 12; $m++)
+                        @php
+                            $inRencana = in_array($m, $row['rencana_bulan'] ?? []);
+                            $inRealisasi = in_array($m, $row['realisasi_bulan'] ?? []);
+                        @endphp
+                        <td class="month-cell">
+                            @if($inRencana && $inRealisasi)
+                                <span class="month-cell-both">R &amp; &#10003;</span>
+                            @elseif($inRencana)
+                                <span class="month-cell-rencana">R</span>
+                            @elseif($inRealisasi)
+                                <span class="month-cell-realisasi">&#10003;</span>
+                            @endif
+                        </td>
+                    @endfor
+                    <td style="font-weight: bold;">{{ $row['jumlah'] }}</td>
+                </tr>
+            @endforeach
+
+            <tr class="total-row">
+                <td colspan="3" style="text-align: center; font-weight: bold; padding: 3px 0;">TOTAL IK</td>
                 @for($m = 1; $m <= 12; $m++)
-                    @php $cVal = $r['complete'][$m] ?? 0; @endphp
-                    <td style="border:1px solid #888; padding:2px 1px; {{ $cVal > 0 ? 'font-weight:bold;' : 'color:#777;' }}">{{ $cVal }}</td>
+                    <td>{{ $ikMonthTotals[$m] ?? 0 }}</td>
                 @endfor
-                <td style="border:1px solid #888; padding:2px 1px; color:#1a56db; font-weight:bold; text-decoration:underline;">{{ $r['open'] }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-    <div style="font-size:8.5px; margin-bottom:8px; font-weight:bold;">Keterangan :</div>
-
-    {{-- 2. Rekapitulasi Status WO --}}
-    <table style="width:100%; border-collapse:collapse; border:none; margin-top:6px; margin-bottom:2px; font-size:9.5px;">
-        <tr>
-            <td style="font-weight:bold; text-align:left; border:none; padding:0;">2 &nbsp;&nbsp; Rekapitulasi Status WO</td>
-            <td style="text-align:right; border:none; padding:0; color:#444; font-family:monospace; font-size:8.5px;">{{ $rekapStatus['url'] ?? '192.168.3.85/wpc-ditgas' }}</td>
-        </tr>
-    </table>
-    <div style="font-size:8.5px; font-style:italic; margin-bottom:3px; color:#333;">WO OPEN &amp; Status</div>
-
-    @php
-        $statusCols = $rekapStatus['columns'] ?? ['CM', 'EM', 'WR', 'RTF', 'PM', 'PDM', 'EJ', 'PAM', 'CP', 'OH', 'ADM', 'OP', 'KOSONG'];
-        $statusRows = $rekapStatus['rows'] ?? [];
-    @endphp
-    <table style="width:100%; border-collapse:collapse; border:1px solid #888; font-size:8px; margin-bottom:10px; text-align:center;">
-        <thead>
-            <tr style="background:#eaf1f8;">
-                <th style="border:1px solid #888; padding:3px 2px; width:55px;">STATUS</th>
-                @foreach($statusCols as $sc)
-                    <th style="border:1px solid #888; padding:3px 1px;">{{ $sc }}</th>
-                @endforeach
-                <th style="border:1px solid #888; padding:3px 2px; width:45px;">TOTAL</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($statusRows as $sr)
-            <tr>
-                <td style="border:1px solid #888; padding:2px; font-weight:bold; text-align:left; padding-left:4px;">{{ $sr['status'] }}</td>
-                @foreach($statusCols as $sc)
-                    @php $val = $sr['values'][$sc] ?? 0; @endphp
-                    <td style="border:1px solid #888; padding:2px 1px; {{ $val > 0 ? 'font-weight:bold;' : 'color:#777;' }}">{{ $val }}</td>
-                @endforeach
-                <td style="border:1px solid #888; padding:2px; color:#1a56db; font-weight:bold; text-decoration:underline;">{{ $sr['total'] }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    {{-- 3. Penyelesaian Work Order Task --}}
-    <div style="font-weight:bold; font-size:9.5px; margin-top:6px; margin-bottom:3px;">
-        3 &nbsp;&nbsp; Penyelesaian Work Order Task
-    </div>
-    <table style="width:100%; border-collapse:collapse; border:1px solid #888; font-size:8px; margin-bottom:12px;">
-        <thead>
-            <tr style="background:#d9e6f2; text-align:center;">
-                <th rowspan="2" style="border:1px solid #888; padding:3px; width:25px;">NO</th>
-                <th rowspan="2" style="border:1px solid #888; padding:3px; width:180px; text-align:center;">MAINTENANCE TYPE</th>
-                <th colspan="2" style="border:1px solid #888; padding:2px;">RENCANA<br><span style="font-size:7.5px; font-weight:normal;">(Schedul Finish)</span></th>
-                <th colspan="3" style="border:1px solid #888; padding:2px;">REALISASI<br><span style="font-size:7.5px; font-weight:normal;">(Actual Close)</span></th>
-                <th colspan="2" style="border:1px solid #888; padding:2px;">BIAYA PEMELIHARAAN (Rp)</th>
-            </tr>
-            <tr style="background:#d9e6f2; text-align:center;">
-                <th style="border:1px solid #888; padding:2px; width:45px;">FREQ</th>
-                <th style="border:1px solid #888; padding:2px; width:50px;">%</th>
-                <th style="border:1px solid #888; padding:2px; width:45px;">FREQ</th>
-                <th style="border:1px solid #888; padding:2px; width:50px;">%</th>
-                <th style="border:1px solid #888; padding:2px; width:80px;">Keterangan</th>
-                <th style="border:1px solid #888; padding:2px; width:80px;">Material</th>
-                <th style="border:1px solid #888; padding:2px; width:80px;">Jasa</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($tasksRows as $tr)
-            <tr>
-                <td style="border:1px solid #888; padding:2px; text-align:center;">{{ $tr['no'] }}</td>
-                <td style="border:1px solid #888; padding:2px 5px; text-align:left;">{{ $tr['name'] }}</td>
-                <td style="border:1px solid #888; padding:2px; text-align:center;">{{ $tr['rencana_freq'] > 0 ? $tr['rencana_freq'] : '' }}</td>
-                <td style="border:1px solid #888; padding:2px; text-align:center;">{{ number_format((float)$tr['rencana_pct'], 1, ',', '.') }}%</td>
-                <td style="border:1px solid #888; padding:2px; text-align:center;">{{ $tr['realisasi_freq'] > 0 ? $tr['realisasi_freq'] : '' }}</td>
-                <td style="border:1px solid #888; padding:2px; text-align:center;">{{ number_format((float)$tr['realisasi_pct'], 1, ',', '.') }}%</td>
-                <td style="border:1px solid #888; padding:2px 4px; text-align:left;">{{ $tr['keterangan'] ?? '' }}</td>
-                <td style="border:1px solid #888; padding:2px 4px; text-align:center;">{{ $tr['material_cost'] > 0 ? $rupiah($tr['material_cost']) : '-' }}</td>
-                <td style="border:1px solid #888; padding:2px 4px; text-align:center;">{{ $tr['service_cost'] > 0 ? $rupiah($tr['service_cost']) : '-' }}</td>
-            </tr>
-            @endforeach
-            <tr style="font-weight:bold; background:#fafafa;">
-                <td colspan="2" style="border:1px solid #888; padding:3px; text-align:center;">TOTAL WO</td>
-                <td style="border:1px solid #888; padding:3px; text-align:center;">{{ $tasksData['total_rencana_freq'] ?? 39 }}</td>
-                <td style="border:1px solid #888; padding:3px; text-align:center;">100%</td>
-                <td style="border:1px solid #888; padding:3px; text-align:center;">{{ $tasksData['total_realisasi_freq'] ?? 32 }}</td>
-                <td style="border:1px solid #888; padding:3px; text-align:center;">100%</td>
-                <td style="border:1px solid #888; padding:3px;"></td>
-                <td style="border:1px solid #888; padding:3px 4px; text-align:center;">
-                    <table style="width:100%; border-collapse:collapse; border:none; font-size:8px;">
-                        <tr><td style="text-align:left; border:none; padding:0;">Rp</td><td style="text-align:right; border:none; padding:0;">{{ ($tasksData['total_material_cost'] ?? 0) > 0 ? number_format((float)$tasksData['total_material_cost'], 0, ',', '.') : '-' }}</td></tr>
-                    </table>
-                </td>
-                <td style="border:1px solid #888; padding:3px 4px; text-align:center;">
-                    <table style="width:100%; border-collapse:collapse; border:none; font-size:8px;">
-                        <tr><td style="text-align:left; border:none; padding:0;">Rp</td><td style="text-align:right; border:none; padding:0;">{{ ($tasksData['total_service_cost'] ?? 0) > 0 ? number_format((float)$tasksData['total_service_cost'], 0, ',', '.') : '-' }}</td></tr>
-                    </table>
-                </td>
-            </tr>
-            <tr style="font-weight:bold; background:#f0f0f0;">
-                <td colspan="7" style="border:1px solid #888; padding:3px 8px; text-align:left;">Jumlah total biaya pemeliharaan</td>
-                <td colspan="2" style="border:1px solid #888; padding:3px 6px;">
-                    <table style="width:100%; border-collapse:collapse; border:none; font-size:8px;">
-                        <tr><td style="text-align:left; border:none; padding:0; font-weight:bold;">Rp</td><td style="text-align:right; border:none; padding:0; font-weight:bold;">{{ ($tasksData['total_cost'] ?? 0) > 0 ? number_format((float)$tasksData['total_cost'], 0, ',', '.') : '-' }}</td></tr>
-                    </table>
-                </td>
+                <td>{{ $ikGrandTotal }}</td>
             </tr>
         </tbody>
     </table>
 
-    {{-- 4. Chart: Maintenance Mix Bulan ini (3D / Perspective Pie Chart SVG) --}}
-    @php
-        $pmPctVal = 93.8;
-        $cmPctVal = 6.2;
-        foreach ($tasksRows as $tr) {
-            if ($tr['name'] === 'Preventive Maintenance') $pmPctVal = (float)$tr['realisasi_pct'];
-            if ($tr['name'] === 'Corrective Maintenance') $cmPctVal = (float)$tr['realisasi_pct'];
-        }
-        if ($pmPctVal + $cmPctVal == 0) { $pmPctVal = 94; $cmPctVal = 6; }
-
-        ob_start();
-    @endphp
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 220" width="520" height="220" style="font-family:'DejaVu Sans', Arial, sans-serif;">
-        <rect width="520" height="220" fill="#ffffff" />
-        {{-- Bottom 3D depth cylinder --}}
-        <path d="M 175 140 A 130 50 0 0 0 435 140 L 435 152 A 130 50 0 0 1 175 152 Z" fill="#1b4169" />
-        
-        {{-- Preventive main ellipse slice (blue) --}}
-        <path d="M 305 140 L 290 90 A 130 50 0 1 0 435 140 Z" fill="#4f81bd" stroke="#ffffff" stroke-width="1.2" />
-        <path d="M 175 140 A 130 50 0 0 0 435 140 L 435 152 A 130 50 0 0 1 175 152 Z" fill="#2d5280" opacity="0.9" />
-
-        {{-- Corrective slice (orange) offset slightly forward --}}
-        <path d="M 305 140 L 290 90 A 130 50 0 0 1 315 90 Z" fill="#f79646" stroke="#ffffff" stroke-width="1.2" />
-        <path d="M 305 140 L 315 90 A 130 50 0 0 1 340 93 Z" fill="#ed7d31" stroke="#ffffff" stroke-width="1.2" />
-        
-        {{-- Leader lines and callout labels --}}
-        {{-- Corrective Maintenance 6% (top) --}}
-        <polyline points="310,95 310,40 300,40" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="235" y="24" width="70" height="26" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="270" y="35" font-size="7.5" font-weight="bold" fill="#333333" text-anchor="middle">Corrective</text>
-        <text x="270" y="45" font-size="7.5" fill="#333333" text-anchor="middle">{{ round($cmPctVal) }}%</text>
-
-        {{-- Emergency Maintenance 0% (top right) --}}
-        <polyline points="350,100 440,55 450,55" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="420" y="38" width="85" height="26" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="462" y="49" font-size="7" fill="#444444" text-anchor="middle">Emergency</text>
-        <text x="462" y="58" font-size="7" fill="#444444" text-anchor="middle">Maintenance 0%</text>
-
-        {{-- Overhaul 0% (right) --}}
-        <polyline points="430,130 460,105 470,105" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="440" y="90" width="60" height="22" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="470" y="101" font-size="7" fill="#444444" text-anchor="middle">Overhaul</text>
-        <text x="470" y="109" font-size="7" fill="#444444" text-anchor="middle">0%</text>
-
-        {{-- Preventive Maintenance 94% (bottom center) --}}
-        <polyline points="330,155 345,190 355,190" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="315" y="180" width="80" height="25" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="355" y="191" font-size="7" font-weight="bold" fill="#333333" text-anchor="middle">Preventive</text>
-        <text x="355" y="200" font-size="7" font-weight="bold" fill="#333333" text-anchor="middle">Maintenance {{ round($pmPctVal) }}%</text>
-
-        {{-- Proactive Maintenance 0% (bottom left) --}}
-        <polyline points="260,148 230,178 220,178" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="180" y="167" width="65" height="22" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="212" y="177" font-size="6.5" fill="#444444" text-anchor="middle">Proactive</text>
-        <text x="212" y="186" font-size="6.5" fill="#444444" text-anchor="middle">Maintenance 0%</text>
-
-        {{-- Predictive Maintenance 0% (left) --}}
-        <polyline points="230,135 190,145 180,145" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="150" y="134" width="58" height="22" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="179" y="144" font-size="6.5" fill="#444444" text-anchor="middle">Predictive</text>
-        <text x="179" y="153" font-size="6.5" fill="#444444" text-anchor="middle">Maintenance 0%</text>
-
-        {{-- Modifikasi 0% (mid left) --}}
-        <polyline points="230,120 175,120 165,120" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="135" y="108" width="50" height="22" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="160" y="119" font-size="6.5" fill="#444444" text-anchor="middle">Modifikasi</text>
-        <text x="160" y="127" font-size="6.5" fill="#444444" text-anchor="middle">0%</text>
-
-        {{-- Run to Failure Maintenance 0% (top left) --}}
-        <polyline points="250,105 180,85 170,85" fill="none" stroke="#666666" stroke-width="0.8" />
-        <rect x="120" y="74" width="70" height="22" fill="#ffffff" stroke="#cccccc" stroke-width="0.7" rx="2" />
-        <text x="155" y="84" font-size="6.5" fill="#444444" text-anchor="middle">Run to Failure</text>
-        <text x="155" y="93" font-size="6.5" fill="#444444" text-anchor="middle">Maintenance 0%</text>
-    </svg>
-    @php
-        $chart6Img = 'data:image/svg+xml;base64,' . base64_encode(ob_get_clean());
-    @endphp
-    <div style="text-align:center; margin-top:10px; font-family:'DejaVu Sans', Arial, sans-serif;">
-        <div style="font-weight:bold; font-size:11px; margin-bottom:6px; color:#111;">
-            Maintenance Mix Bulan ini
-        </div>
-        <img src="{{ $chart6Img }}" style="width:100%; max-width:480px; height:auto; display:block; margin:0 auto;" alt="Maintenance Mix Bulan ini" />
-    </div>
-</div>
-
-{{-- 8. ISI LAPORAN --}}
-<div class="har-h2 break-before" id="sec-8">8. Isi Laporan</div>
-<p class="har-p">
-    Bagian ini memuat rincian pelaksanaan pemeliharaan {{ $report['unit']['name'] }} periode
-    {{ $report['period']['label'] }}, meliputi rencana versus realisasi
-    pemeliharaan dan log kegiatan HARMES.
-</p>
-
-<div class="har-h3">8.1 Rencana vs Realisasi{!! $num('schedules') !!}</div>
-@forelse($report['schedules'] as $scope)
-    <p><strong>{{ $scope['scope'] }}</strong></p>
-    <table class="har-data">
-        <tr><th>Mesin</th><th>Rencana (tgl:kode)</th><th>Realisasi (tgl:kode)</th></tr>
-        @foreach($scope['rows'] as $r)
-            <tr>
-                <td>{{ $r['engine'] }}</td>
-                <td>{{ $dayMap($r['rencana']) }}</td>
-                <td>{{ $dayMap($r['realisasi']) }}</td>
-            </tr>
-        @endforeach
-    </table>
-@empty
-    <p class="har-note">Belum ada jadwal.</p>
-@endforelse
-
-<div class="har-h3">8.2 Log Kegiatan HARMES{!! $num('activities') !!}</div>
-@forelse($report['activities'] as $a)
-    @if($loop->first)
-        <table class="har-data">
-            <tr>
-                <th>Tanggal</th><th>Mesin</th><th>Jenis</th><th>Uraian Kegiatan</th>
-                <th>Material</th><th>Hasil</th><th>No. WO/SR</th>
-            </tr>
-    @endif
-            <tr>
-                <td class="c">{{ $a['date'] ?? '—' }}</td>
-                <td>{{ $a['engine'] ?? '—' }}</td>
-                <td class="c">{{ $a['type'] ?? '—' }}</td>
-                <td>{{ implode('; ', $a['tasks']) ?: ($a['keterangan'] ?? '—') }}</td>
-                <td>{{ collect($a['materials'])->map(fn ($m) => $m['name'].' ('.($m['quantity'] ?? '').($m['unit_of_measure'] ?? '').')')->implode(', ') ?: '—' }}</td>
-                <td class="c">{{ $a['work_result'] ?? '—' }}</td>
-                <td class="c">{{ $a['no_wo'] ?? $a['no_sr'] ?? '—' }}</td>
-            </tr>
-    @if($loop->last)
-        </table>
-    @endif
-@empty
-    <p class="har-note">Belum ada log kegiatan.</p>
-@endforelse
-
-{{-- 9. WORK ORDER SUMMARY (FIX) --}}
-<div class="har-h2 break-before" id="sec-9">9. Work Order Summary (Fix){!! $num('wo_summary') !!}</div>
-<table class="har-data">
-    <tr><th>Total WO</th><th>Complete (Fix)</th><th>Open</th><th>% Complete</th></tr>
-    <tr>
-        <td class="c">{{ $report['wo_summary']['total'] }}</td>
-        <td class="c">{{ $report['wo_summary']['complete'] }}</td>
-        <td class="c">{{ $report['wo_summary']['open'] }}</td>
-        <td class="c">{{ $report['wo_summary']['percent'] }}%</td>
-    </tr>
-</table>
-
-{{-- 10. AKUMULASI BIAYA PEMELIHARAAN --}}
-<div class="har-h2 break-before" id="sec-10">10. Akumulasi Biaya Pemeliharaan{!! $num('cost') !!}</div>
-<table class="har-data">
-    <tr><th>Jasa (WO)</th><th>Material (WO)</th><th>Total Otomatis</th><th>Efektif ({{ $report['cost']['source'] }})</th><th>Akumulasi YTD</th></tr>
-    <tr>
-        <td class="r">{{ $rupiah($report['cost']['auto_service']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['auto_material']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['auto_total']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['effective_total']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['ytd']) }}</td>
-    </tr>
-</table>
-<p class="har-muted">
-    Sumber biaya: {{ $report['cost']['source'] === 'manual' ? 'input manual' : 'akumulasi otomatis dari Work Order' }}.
-    YTD = akumulasi Januari s.d. bulan laporan.
-</p>
-
-{{-- 11. REKAPITULASI WORK ORDER TASK (FMKD-314-10.3.3-A11) --}}
-@php
-    $rekapTask = $report['rekap_task_wo'] ?? [];
-@endphp
-<div class="break-before" id="sec-11">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
-        <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
-            </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
-            </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:11.5px; color:#000; border:1px solid #000; padding:6px; vertical-align:middle; line-height:1.35; letter-spacing:0.3px;">
-                <div>REKAPITULASI</div>
-                <div>WO TASK PREVENTIVE, PROACTIVE, PREDICTIVE,</div>
-                <div>CORRECTIVE, EMERGENCY, ECP</div>
-            </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['rekap_task_wo'] ?? $numbers['wo_by_type'] ?? 'FMKD-314-10.3.3-A11' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    <div style="font-size:9.5px; font-style:italic; margin-top:8px; margin-bottom:4px; color:#222; font-weight:normal;">Rekap Task WO</div>
-
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:8.5px; margin-bottom:8px;">
+    <table class="recap-table" style="width: 480px;">
         <thead>
-            <tr style="background:#fff;">
-                <th rowspan="2" style="width:30px; border:1px solid #000; padding:4px 2px; text-align:center;">NO</th>
-                <th rowspan="2" style="border:1px solid #000; padding:4px 8px; text-align:center;">URAIAN</th>
-                <th colspan="2" style="width:150px; border:1px solid #000; padding:3px 4px; text-align:center;">
-                    <div>RENCANA</div>
-                    <div style="font-size:7px; font-weight:normal;">(Base On Schedule Finsihed)</div>
-                </th>
-                <th colspan="2" style="width:170px; border:1px solid #000; padding:3px 4px; text-align:center;">
-                    <div>REALISASI</div>
-                    <div style="font-size:7px; font-weight:normal;">(Base On Sched Finish Status Comp and Close)</div>
-                </th>
-            </tr>
-            <tr style="background:#fff;">
-                <th style="border:1px solid #000; padding:3px 2px; text-align:center; width:70px;">[Freq]</th>
-                <th style="border:1px solid #000; padding:3px 2px; text-align:center; width:80px;">%</th>
-                <th style="border:1px solid #000; padding:3px 2px; text-align:center; width:80px;">FREKWENSI</th>
-                <th style="border:1px solid #000; padding:3px 2px; text-align:center; width:90px;">% Compliance</th>
+            <tr>
+                <th class="th-orange" style="width: 26px; text-align: center;">A.</th>
+                <th class="th-orange" style="width: 220px; text-align: left; padding-left: 6px;">IK</th>
+                <th class="th-orange" style="width: 70px; text-align: center;">NILAI</th>
+                <th class="th-orange" style="width: 70px; text-align: center;">A.DATA</th>
+                <th class="th-orange" style="width: 90px; text-align: center;">A.KINERJA</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($rekapTask['categories'] ?? [] as $cat)
-                <tr style="background:#595959; color:#fff; font-weight:bold;">
-                    <td style="border:1px solid #000; text-align:center; padding:3px 2px;">{{ $cat['no'] }}</td>
-                    <td style="border:1px solid #000; padding:3px 6px;">{{ $cat['title'] }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:3px 2px;">{{ $cat['rencana_freq'] }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:3px 2px;">{{ $cat['rencana_pct'] > 0 ? number_format($cat['rencana_pct'], 1, ',', '.') . '%' : '0%' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:3px 2px;">{{ $cat['realisasi_freq'] }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:3px 2px;">{{ $cat['realisasi_pct'] > 0 ? number_format($cat['realisasi_pct'], 1, ',', '.') . '%' : '0%' }}</td>
-                </tr>
-                @foreach($cat['disciplines'] ?? [] as $d)
-                    <tr style="background:#fff;">
-                        <td style="border:1px solid #000; text-align:center; padding:2px;"></td>
-                        <td style="border:1px solid #000; padding:2px 6px 2px 14px;">{{ $d['name'] }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $d['rencana_freq'] }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $d['rencana_pct'] > 0 ? number_format($d['rencana_pct'], 1, ',', '.') . '%' : '0%' }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $d['realisasi_freq'] }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $d['realisasi_pct'] > 0 ? number_format($d['realisasi_pct'], 1, ',', '.') . '%' : '0%' }}</td>
-                    </tr>
-                @endforeach
-            @endforeach
-            <tr style="background:#fff; font-weight:bold;">
-                <td colspan="2" style="border:1px solid #000; text-align:center; padding:4px;">TOTAL</td>
-                <td style="border:1px solid #000; text-align:center; padding:4px;">{{ $rekapTask['total_rencana_freq'] ?? 0 }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:4px;">{{ ($rekapTask['total_rencana_pct'] ?? 0) > 0 ? number_format($rekapTask['total_rencana_pct'], 1, ',', '.') . '%' : '0%' }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:4px;">{{ $rekapTask['total_realisasi_freq'] ?? 0 }}</td>
-                <td style="border:1px solid #000; text-align:center; padding:4px;">{{ ($rekapTask['total_realisasi_pct'] ?? 0) > 0 ? number_format($rekapTask['total_realisasi_pct'], 1, ',', '.') . '%' : '0%' }}</td>
+            <tr>
+                <td>1</td>
+                <td style="text-align: left; padding-left: 6px;">PEMBUATAN INTRUKSI KERJA</td>
+                <td>{{ $ikTotalRencana }}</td>
+                <td>{{ $ikTotalRealisasi }}</td>
+                <td style="font-weight: bold;">{{ $ikPerformance }}%</td>
             </tr>
-        </tbody>
-    </table>
-
-    <p class="har-muted" style="margin-top:6px; font-size:8.5px;">
-        Total uraian task (dari log kegiatan HARMES): <strong>{{ $totalTasks }}</strong> item pada
-        {{ count($report['activities']) }} kegiatan.
-    </p>
-</div>
-
-{{-- 12. WO PM (WO PREVENTIVE MAINTANANCE - FMKD-314-10.3.3-A12) --}}
-<div class="break-before" id="sec-12">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
-        <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
-            </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
-            </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:13px; color:#000; border:1px solid #000; padding:8px; vertical-align:middle; letter-spacing:0.5px;">
-                WO PREVENTIVE MAINTANANCE
-            </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['wo_pm'] ?? 'FMKD-314-10.3.3-A12' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:8px; margin-bottom:10px;">
-        <thead>
-            <tr style="background:#fff; font-weight:bold; text-align:center;">
-                <th style="width:30px; border:1px solid #000; padding:4px 2px;">NO</th>
-                <th style="width:65px; border:1px solid #000; padding:4px 2px;">WONUM</th>
-                <th style="border:1px solid #000; padding:4px 6px; text-align:center;">DESCRIPTION</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">REPORT DATE</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">SCHED START</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">SCHED FINISH</th>
-                <th style="width:55px; border:1px solid #000; padding:4px 2px;">STATUS</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">WORK GROUP</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($woPm as $idx => $r)
-                <tr>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $idx + 1 }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px; font-weight:bold;">{{ $r['wonum'] }}</td>
-                    <td style="border:1px solid #000; text-align:left; padding:2px 5px;">{{ $r['description'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['report_date'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_start'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_finish'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['status'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['work_group'] ?? '—' }}</td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="8" style="border:1px solid #000; text-align:center; padding:12px; color:#666; font-style:italic;">
-                        Tidak ada data Work Order PM pada periode ini.
-                    </td>
-                </tr>
-            @endforelse
         </tbody>
     </table>
 </div>
-
-{{-- 13. WO PDM (WO PREDICTIVE MAINTANANCE - FMKD-314-10.3.3-A13) --}}
-<div class="break-before" id="sec-13">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
-        <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
-            </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
-            </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:13px; color:#000; border:1px solid #000; padding:8px; vertical-align:middle; letter-spacing:0.5px;">
-                WO PREDICTIVE MAINTANANCE
-            </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['wo_pdm'] ?? 'FMKD-314-10.3.3-A13' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    <div style="font-weight:bold; font-size:9.5px; margin-top:8px; margin-bottom:4px; color:#000;">WO PdM YANG TERBIT BULAN INI</div>
-
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:8px; margin-bottom:8px;">
-        <thead>
-            <tr style="background:#fff; font-weight:bold; text-align:center;">
-                <th style="width:30px; border:1px solid #000; padding:4px 2px;">NO</th>
-                <th style="width:65px; border:1px solid #000; padding:4px 2px;">WONUM</th>
-                <th style="border:1px solid #000; padding:4px 6px; text-align:center;">DESCRIPTION</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">REPORT DATE</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">SCHED START</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">SCHED FINISH</th>
-                <th style="width:55px; border:1px solid #000; padding:4px 2px;">STATUS</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">WORK GROUP</th>
-            </tr>
-        </thead>
-        <tbody>
-            @if(!empty($woPdm))
-                @foreach($woPdm as $idx => $r)
-                    <tr>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $idx + 1 }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px; font-weight:bold;">{{ $r['wonum'] }}</td>
-                        <td style="border:1px solid #000; text-align:left; padding:2px 5px;">{{ $r['description'] ?? '—' }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['report_date'] ?? '—' }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_start'] ?? '—' }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_finish'] ?? '—' }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['status'] ?? '—' }}</td>
-                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['work_group'] ?? '—' }}</td>
-                    </tr>
-                @endforeach
-            @else
-                @for($i = 1; $i <= 16; $i++)
-                    <tr>
-                        <td style="border:1px solid #000; text-align:center; padding:3px 2px; height:18px;">{{ $i }}</td>
-                        <td style="border:1px solid #000;"></td>
-                        <td style="border:1px solid #000;"></td>
-                        <td style="border:1px solid #000;"></td>
-                        <td style="border:1px solid #000;"></td>
-                        <td style="border:1px solid #000;"></td>
-                        <td style="border:1px solid #000;"></td>
-                        <td style="border:1px solid #000;"></td>
-                    </tr>
-                @endfor
-            @endif
-        </tbody>
-    </table>
-
-    <div style="font-size:8.5px; margin-top:10px; line-height:1.5;">
-        <div style="font-style:italic; font-weight:bold; margin-bottom:2px;">Keterangan:</div>
-        <div style="font-style:italic;"><span style="font-weight:bold;">Inprogres</span> : WO dalam proses pelaksanaan pekerjaan oleh eksekutor</div>
-        <div style="font-style:italic;"><span style="font-weight:bold;">Close</span> : Scope pekerjaan WO sudah diselesaikan, dan proses transaksi kebutuhan material/spare part/tools oleh Warehouse telah selesai</div>
-        <div style="font-style:italic;"><span style="font-weight:bold;">Inplanning</span> : WO dalam proses perencanaan</div>
-        <div style="font-style:italic;"><span style="font-weight:bold;">Proses SCM</span> : WO dalam proses pada stream Supply Chain Management (SCM)</div>
-        <div style="font-style:italic;"><span style="font-weight:bold;">Waiting Plant Condition</span> : WO menunggu kondisi unit atau peralatan</div>
-    </div>
-</div>
-
-{{-- 14. WO CM (WO CORRECTIVE MAINTANANCE - FMKD-314-10.3.3-A14) --}}
-<div class="break-before" id="sec-14">
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:10px;">
-        <tr>
-            <td style="width:170px; text-align:left; vertical-align:middle; padding:6px 8px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="height:34px;">
-            </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px; border:1px solid #000; border-bottom:none;">
-                <div style="font-weight:bold; font-size:12px; letter-spacing:0.5px;">PLN NUSANTARA POWER</div>
-                <div style="font-weight:bold; font-size:11px; margin-top:2px;">UP KENDARI</div>
-            </td>
-            <td style="width:90px; text-align:center; vertical-align:middle; padding:4px 6px; border:1px solid #000; border-bottom:none;">
-                <img src="/logo/k3.png" alt="K3" style="height:42px;">
-            </td>
-        </tr>
-        <tr>
-            <td colspan="3" style="text-align:center; font-weight:bold; font-size:10px; padding:3px 0; border:1px solid #000; letter-spacing:0.5px;">
-                INTEGRATED MANAGEMENT SYSTEM
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2" style="background:#7fa9d8; text-align:center; font-weight:bold; font-size:13px; color:#000; border:1px solid #000; padding:8px; vertical-align:middle; letter-spacing:0.5px;">
-                WO CORRECTIVE MAINTANANCE
-            </td>
-            <td style="padding:0; border:1px solid #000; vertical-align:top; font-size:9px;">
-                <table style="width:100%; border-collapse:collapse; font-size:9px;">
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000; width:55px;">No. Dokumen</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $numbers['wo_cm'] ?? 'FMKD-314-10.3.3-A14' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">Revisi</td>
-                        <td style="padding:2px 4px; border-bottom:1px solid #000;">{{ $data['document']['revision'] ?? '01' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:2px 4px;">Tanggal</td>
-                        <td style="padding:2px 4px;">{{ $periodEndDate }}</td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-
-    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:8px; margin-bottom:8px;">
-        <thead>
-            <tr style="background:#fff; font-weight:bold; text-align:center;">
-                <th style="width:30px; border:1px solid #000; padding:4px 2px;">NO</th>
-                <th style="width:65px; border:1px solid #000; padding:4px 2px;">WONUM</th>
-                <th style="border:1px solid #000; padding:4px 6px; text-align:center;">DESCRIPTION</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">REPORT DATE</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">SCHED START</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">SCHED FINISH</th>
-                <th style="width:55px; border:1px solid #000; padding:4px 2px;">STATUS</th>
-                <th style="width:75px; border:1px solid #000; padding:4px 2px;">WORK GROUP</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($woCm as $idx => $r)
-                <tr>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $idx + 1 }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px; font-weight:bold;">{{ $r['wonum'] }}</td>
-                    <td style="border:1px solid #000; text-align:left; padding:2px 5px;">{{ $r['description'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['report_date'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_start'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_finish'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['status'] ?? '—' }}</td>
-                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['work_group'] ?? '—' }}</td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="8" style="border:1px solid #000; text-align:center; padding:12px; color:#666; font-style:italic;">
-                        Tidak ada data Work Order CM pada periode ini.
-                    </td>
-                </tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    @php
-        $cmNotes = collect($woCm)->filter(fn($r) => !empty($r['waiting']) || (!empty($r['status']) && strtoupper($r['status']) !== 'CLOSE'));
-    @endphp
-    @if($cmNotes->isNotEmpty())
-        <div style="font-size:8.5px; margin-top:8px; line-height:1.5;">
-            @foreach($cmNotes as $n)
-                <div>- {{ $n['wonum'] }} : {{ !empty($n['waiting']) ? $n['waiting'] : ($n['status'] ?? '—') }}</div>
-            @endforeach
-        </div>
-    @endif
-</div>
-
-{{-- 15. WO ENJI (tabel lengkap) --}}
-<div class="har-h2 break-before" id="sec-15">15. Work Order ENJI (Engineering)</div>
-@include('har.laporan.partials.wo-table', ['rows' => $woEnji])
-
-{{-- 16. WO WAITING SHUTDOWN --}}
-<div class="har-h2 break-before" id="sec-16">16. Work Order Waiting Shutdown</div>
-@include('har.laporan.partials.waiting-table', ['rows' => $waitingShutdown])
-
-{{-- 17. WO WAITING MATERIAL & JASA --}}
-<div class="har-h2 break-before" id="sec-17">17. Work Order Waiting Material &amp; Jasa</div>
-@include('har.laporan.partials.waiting-table', ['rows' => $waitingMaterialJasa])
-
-{{-- 18. LAMPIRAN --}}
-<div class="har-h2 break-before" id="sec-18">18. Lampiran</div>
-@forelse($report['attachments'] as $a)
-    <div class="har-fig">
-        <img src="{{ $a['url'] }}" alt="{{ $a['title'] }}">
-        <figcaption>
-            <strong>{{ $a['title'] }}</strong>@if($a['engine']) · {{ $a['engine'] }}@endif @if($a['taken_date']) · {{ $a['taken_date'] }}@endif
-            @if($a['caption'])<br>{{ $a['caption'] }}@endif
-        </figcaption>
-    </div>
-@empty
-    <p class="har-note">Belum ada lampiran foto.</p>
-@endforelse

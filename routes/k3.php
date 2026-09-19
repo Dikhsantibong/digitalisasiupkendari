@@ -1,18 +1,33 @@
 <?php
 
 use App\Http\Controllers\K3\AccidentController;
+use App\Http\Controllers\K3\AirLimbahController;
+use App\Http\Controllers\K3\ApdInventoryController;
 use App\Http\Controllers\K3\AttachmentController;
+use App\Http\Controllers\K3\CctvListController;
 use App\Http\Controllers\K3\CertificateController;
 use App\Http\Controllers\K3\DocumentController;
+use App\Http\Controllers\K3\EmergencyFacilityCheckController;
 use App\Http\Controllers\K3\EmergencyFacilityController;
+use App\Http\Controllers\K3\FireAlarmInspectionController;
 use App\Http\Controllers\K3\FireExtinguisherCheckController;
+use App\Http\Controllers\K3\FormulirController;
+use App\Http\Controllers\K3\HydrantInspectionController;
+use App\Http\Controllers\K3\InputExportController;
 use App\Http\Controllers\K3\InputHubController;
 use App\Http\Controllers\K3\InspectionController;
+use App\Http\Controllers\K3\InstruksiKerjaController;
 use App\Http\Controllers\K3\JadwalController;
+use App\Http\Controllers\K3\JadwalOnCallController;
+use App\Http\Controllers\K3\KegiatanRutinController;
 use App\Http\Controllers\K3\LaporanController;
+use App\Http\Controllers\K3\LaporanPengusahaanController;
 use App\Http\Controllers\K3\MasterController;
 use App\Http\Controllers\K3\MonitoringController;
+use App\Http\Controllers\K3\PatrolCheckController;
 use App\Http\Controllers\K3\PatrolController;
+use App\Http\Controllers\K3\PekerjaanRutinController;
+use App\Http\Controllers\K3\RambuInspectionController;
 use App\Http\Controllers\K3\TimeFrameController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,7 +41,25 @@ Route::middleware(['auth', 'verified'])
     ->name('k3.')
     ->group(function (): void {
         Route::get('jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+        Route::get('jadwal/kegiatan-rutin', [KegiatanRutinController::class, 'index'])->name('jadwal.kegiatan-rutin.index');
+        Route::post('jadwal/kegiatan-rutin', [KegiatanRutinController::class, 'store'])->name('jadwal.kegiatan-rutin.store');
+        Route::get('jadwal/kegiatan-rutin/pdf', [KegiatanRutinController::class, 'pdf'])->name('jadwal.kegiatan-rutin.pdf');
+        Route::get('jadwal/instruksi-kerja', [InstruksiKerjaController::class, 'index'])->name('jadwal.instruksi-kerja.index');
+        Route::post('jadwal/instruksi-kerja', [InstruksiKerjaController::class, 'store'])->name('jadwal.instruksi-kerja.store');
+        Route::get('jadwal/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('jadwal.instruksi-kerja.pdf');
+        Route::get('jadwal/patrol-check', [PatrolCheckController::class, 'index'])->name('jadwal.patrol-check.index');
+        Route::post('jadwal/patrol-check', [PatrolCheckController::class, 'store'])->name('jadwal.patrol-check.store');
+        Route::get('jadwal/patrol-check/pdf', [PatrolCheckController::class, 'pdf'])->name('jadwal.patrol-check.pdf');
+        Route::get('jadwal/pekerjaan-rutin', [PekerjaanRutinController::class, 'index'])->name('jadwal.pekerjaan-rutin.index');
+        Route::post('jadwal/pekerjaan-rutin', [PekerjaanRutinController::class, 'store'])->name('jadwal.pekerjaan-rutin.store');
+        Route::get('jadwal/pekerjaan-rutin/pdf', [PekerjaanRutinController::class, 'pdf'])->name('jadwal.pekerjaan-rutin.pdf');
+        Route::get('jadwal/on-call', [JadwalOnCallController::class, 'index'])->name('jadwal.on-call.index');
+        Route::post('jadwal/on-call', [JadwalOnCallController::class, 'store'])->name('jadwal.on-call.store');
+        Route::get('jadwal/on-call/pdf', [JadwalOnCallController::class, 'pdf'])->name('jadwal.on-call.pdf');
         Route::get('input', [InputHubController::class, 'index'])->name('input.index');
+        Route::get('input/export/{input}/pdf', [InputExportController::class, 'pdf'])->name('input.export.pdf');
+        Route::get('input/export/{input}/data', [InputExportController::class, 'data'])->name('input.export.data');
+        Route::get('formulir', [FormulirController::class, 'index'])->name('formulir.index');
 
         Route::get('input/time-frame', [TimeFrameController::class, 'index'])->name('input.time-frame.index');
         Route::post('input/time-frame', [TimeFrameController::class, 'store'])->name('input.time-frame.store');
@@ -46,6 +79,28 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/patrol', [PatrolController::class, 'index'])->name('input.patrol.index');
         Route::post('input/patrol', [PatrolController::class, 'store'])->name('input.patrol.store');
 
+        Route::get('input/hydrant', [HydrantInspectionController::class, 'index'])->name('input.hydrant.index');
+        Route::post('input/hydrant', [HydrantInspectionController::class, 'store'])->name('input.hydrant.store');
+
+        Route::get('input/cctv', [CctvListController::class, 'index'])->name('input.cctv.index');
+        Route::post('input/cctv', [CctvListController::class, 'store'])->name('input.cctv.store');
+
+        Route::get('input/fire-alarm', [FireAlarmInspectionController::class, 'index'])->name('input.fire-alarm.index');
+        Route::post('input/fire-alarm', [FireAlarmInspectionController::class, 'store'])->name('input.fire-alarm.store');
+
+        Route::get('input/rambu', [RambuInspectionController::class, 'index'])->name('input.rambu.index');
+        Route::post('input/rambu', [RambuInspectionController::class, 'store'])->name('input.rambu.store');
+
+        Route::get('input/emergency-facility', [EmergencyFacilityCheckController::class, 'index'])->name('input.emergency-facility.index');
+        Route::post('input/emergency-facility', [EmergencyFacilityCheckController::class, 'store'])->name('input.emergency-facility.store');
+
+        Route::get('input/apd-inventory', [ApdInventoryController::class, 'index'])->name('input.apd-inventory.index');
+        Route::post('input/apd-inventory', [ApdInventoryController::class, 'store'])->name('input.apd-inventory.store');
+
+        Route::get('input/air-limbah', [AirLimbahController::class, 'index'])->name('input.air-limbah.index');
+        Route::post('input/air-limbah', [AirLimbahController::class, 'store'])->name('input.air-limbah.store');
+        Route::get('input/air-limbah/pdf', [AirLimbahController::class, 'pdf'])->name('input.air-limbah.pdf');
+
         Route::get('input/certificate', [CertificateController::class, 'index'])->name('input.certificate.index');
         Route::post('input/certificate', [CertificateController::class, 'store'])->name('input.certificate.store');
 
@@ -60,6 +115,10 @@ Route::middleware(['auth', 'verified'])
         Route::post('laporan/dokumen', [DocumentController::class, 'store'])->name('laporan.document.store');
         Route::post('laporan/dokumen/muat-ulang', [DocumentController::class, 'regenerate'])->name('laporan.document.regenerate');
         Route::get('laporan/dokumen/pdf', [DocumentController::class, 'pdf'])->name('laporan.document.pdf');
+        Route::get('laporan/pengusahaan', [LaporanPengusahaanController::class, 'edit'])->name('laporan.pengusahaan.edit');
+        Route::post('laporan/pengusahaan', [LaporanPengusahaanController::class, 'store'])->name('laporan.pengusahaan.store');
+        Route::post('laporan/pengusahaan/muat-ulang', [LaporanPengusahaanController::class, 'regenerate'])->name('laporan.pengusahaan.regenerate');
+        Route::get('laporan/pengusahaan/pdf', [LaporanPengusahaanController::class, 'pdf'])->name('laporan.pengusahaan.pdf');
 
         Route::get('master/{resource}', [MasterController::class, 'index'])->name('master.index');
         Route::post('master/{resource}', [MasterController::class, 'store'])->name('master.store');

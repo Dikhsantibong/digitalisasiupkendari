@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Enums\ReportModule;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
@@ -12,8 +14,11 @@ use App\Models\OperasiReportDocument;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Services\Operasi\DocumentGridBuilder;
+use App\Services\Operasi\OperasiReportSections;
+use App\Services\Operasi\OperasiReportTables;
 use App\Services\Operasi\Reports\OperasiReport;
 use App\Services\Operasi\Reports\ReportRegistry;
+use App\Services\Reports\OrientationPdfMerger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -29,6 +34,7 @@ use Inertia\Response;
 class LaporanDocumentController extends Controller
 {
     use EmbedsReportLogo;
+    use InteractsWithReportWorkflow;
     use RendersReportPdf;
 
     /**
@@ -36,20 +42,33 @@ class LaporanDocumentController extends Controller
      * documents saved against an older layout re-render from the new template.
      * v2 = full framework (cover, exec summary, daftar isi, istilah) + one
      * section per page; v3 = corporate polish (footer + page numbers, ToC
-     * leaders, landscape wide tables); v4 = redesigned corporate cover matching MKP+PLN branding.
+     * leaders, landscape wide tables); v4 = redesigned corporate cover matching MKP+PLN branding;
+     * v5 = Daftar Isi I–V structure, one `.op-section` per point (tables landscape,
+     *      sampul/daftar isi/resume/lampiran portrait), red line when a point has
+     *      no data, Daftar Isi page numbers filled at export, cover unnumbered;
+     * v6 = Lembar Pengesahan, Resume Statistik with 3D charts, and every jadwal /
+     *      input point embedding its own PDF view (OperasiReportTables);
+     * v7 = Lembar Pengesahan & tanda tangan laporan from the report workflow.
      */
-    private const BODY_VERSION = 4;
+    private const BODY_VERSION = 7;
+
+    private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN OPERASI PEMBANGKIT';
 
     public function __construct(
         private readonly ReportRegistry $registry,
         private readonly DocumentGridBuilder $gridBuilder,
+        private readonly OperasiReportSections $sections,
+        private readonly OperasiReportTables $tables,
         private readonly ActivityLogger $activityLogger,
     ) {}
+
+    /** @var array<string, array<string, mixed>> OperasiReportTables payload per unit & period, built once per request */
+    private array $builtTables = [];
 
     public function edit(Request $request, string $report): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiLaporanView), 403);
+        $this->authorizeReportView($request, ReportModule::Operasi, PermissionName::OperasiLaporanView);
 
         [$definition, $unit, $engine, $month, $year] = $this->resolveTarget($request, $report);
 
@@ -60,6 +79,8 @@ class LaporanDocumentController extends Controller
         $grid = $record?->content_grid ?? $this->gridBuilder->forMonthlyReport($data);
         $letterhead = $this->letterhead($definition, $data);
 
+        $workflow = $this->reportWorkflows()->present($user, ReportModule::Operasi, $unit, $month, $year);
+
         return Inertia::render('operasi/laporan/document', [
             'report' => ['code' => $definition->code(), 'title' => $definition->title()],
             'filters' => [
@@ -69,8 +90,10 @@ class LaporanDocumentController extends Controller
                 'year' => $year,
             ],
             'document_number' => $documentNumber,
-            'content' => $record?->content_html ?? $this->bodyHtml($definition, $data, $documentNumber),
-            'content_styles' => view('operasi.laporan.styles')->render(),
+            'content' => $record?->content_html !== null
+                ? $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year)
+                : $this->bodyHtml($definition, $data, $documentNumber, $unit, $month, $year),
+            'content_styles' => $this->styles($unit, $month, $year, $data),
             'letterhead' => $letterhead,
             'grid' => $grid,
             'format' => $record?->format ?? 'html',
@@ -82,36 +105,53 @@ class LaporanDocumentController extends Controller
                 'month' => $month,
                 'year' => $year,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiLaporanView),
+            'can_write' => $user->hasPermissionTo(PermissionName::OperasiLaporanView) && $workflow['editable'],
+            'workflow' => $workflow,
         ]);
     }
 
-    public function pdf(Request $request, string $report)
+    public function pdf(Request $request, string $report, OrientationPdfMerger $merger)
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiLaporanView), 403);
+        $this->authorizeReportView($request, ReportModule::Operasi, PermissionName::OperasiLaporanView);
 
         [$definition, $unit, $engine, $month, $year] = $this->resolveTarget($request, $report);
 
         $data = $definition->build($unit, $month, $year, $engine);
         $record = $this->currentRecord($definition, $unit->id, $engine?->id, $month, $year);
 
+        $filename = "Laporan-{$definition->code()}-{$unit->id}-{$month}-{$year}.pdf";
+
         if ($record !== null && $record->format === 'grid' && ! empty($record->content_grid)) {
             // Excel mode: the letterhead (logo + kop) is added here — a
             // spreadsheet cannot hold it — above the edited grid body.
-            $content = $this->letterhead($definition, $data).$this->gridBuilder->gridToHtml($record->content_grid);
-        } else {
-            // Text mode: the body already contains the cover + letterhead inline.
-            $content = $record?->content_html
-                ?? $this->bodyHtml($definition, $data, $this->documentNumber($unit, $month, $year));
+            return $this->streamReportPdf(
+                $request,
+                'operasi.laporan.pdf-shell',
+                ['content' => $this->embedAssets($this->letterhead($definition, $data).$this->gridBuilder->gridToHtml($record->content_grid))],
+                $filename,
+            );
         }
 
-        return $this->streamReportPdf(
-            $request,
-            'operasi.laporan.pdf-shell',
-            ['content' => $this->embedAssets($content)],
-            "Laporan-{$definition->code()}-{$unit->id}-{$month}-{$year}.pdf",
+        // Text mode: every Daftar Isi point prints in its own orientation and the
+        // portrait & landscape pages are merged into one PDF.
+        $content = $record?->content_html !== null
+            ? $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year)
+            : $this->bodyHtml($definition, $data, $this->documentNumber($unit, $month, $year), $unit, $month, $year);
+
+        $pdf = $merger->renderSections(
+            $this->styles($unit, $month, $year, $data),
+            $this->embedAssets($content),
+            'op-section',
+            'op-landscape',
+            self::FOOTER,
+            unnumberedPages: 1,
         );
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename="'.$filename.'"',
+        ]);
     }
 
     public function store(Request $request, string $report): RedirectResponse
@@ -120,6 +160,7 @@ class LaporanDocumentController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiLaporanView), 403);
 
         [$definition, $unit, $engine, $month, $year] = $this->resolveTarget($request, $report);
+        $this->ensureReportEditable(ReportModule::Operasi, $unit, $month, $year);
 
         $validated = $request->validate([
             'format' => ['required', Rule::in(['html', 'grid'])],
@@ -174,6 +215,7 @@ class LaporanDocumentController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiLaporanView), 403);
 
         [$definition, $unit, $engine, $month, $year] = $this->resolveTarget($request, $report);
+        $this->ensureReportEditable(ReportModule::Operasi, $unit, $month, $year);
 
         $data = $definition->build($unit, $month, $year, $engine);
         $grid = $this->gridBuilder->forMonthlyReport($data);
@@ -191,7 +233,7 @@ class LaporanDocumentController extends Controller
         $record->document_number = $this->documentNumber($unit, $month, $year);
         $record->format = 'html';
         $record->content_version = self::BODY_VERSION;
-        $record->content_html = $this->bodyHtml($definition, $data, $this->documentNumber($unit, $month, $year));
+        $record->content_html = $this->bodyHtml($definition, $data, $this->documentNumber($unit, $month, $year), $unit, $month, $year);
         $record->content_grid = $grid;
         $record->snapshot = $data;
         $record->save();
@@ -261,18 +303,47 @@ class LaporanDocumentController extends Controller
     }
 
     /**
-     * The full report body (cover, executive summary, daftar isi, istilah, and
-     * the operasi content sections) — the default text-mode content and PDF.
+     * The full report body in Daftar Isi order (sampul, daftar isi, resume
+     * statistik, every Laporan Operasi point, lampiran) — the default
+     * text-mode content and PDF.
      *
      * @param  array<string, mixed>  $data
      */
-    private function bodyHtml(OperasiReport $definition, array $data, string $documentNumber): string
+    private function bodyHtml(OperasiReport $definition, array $data, string $documentNumber, Unit $unit, int $month, int $year): string
     {
         return view('operasi.laporan.document-body', [
             'report' => $data,
+            'sections' => $this->sections->build($unit, $month, $year, $data),
+            'tables' => $this->tables($unit, $month, $year, $data),
+            'pengesahan' => $this->tables->pengesahan($unit, $month, $year),
             'documentNumber' => $documentNumber,
             'reportTitle' => $definition->title(),
         ])->render();
+    }
+
+    /**
+     * The embedded jadwal / input tables and the resume statistik.
+     *
+     * @param  array<string, mixed>  $data  the MonthlyEngineReport payload
+     * @return array<string, mixed>
+     */
+    private function tables(Unit $unit, int $month, int $year, array $data): array
+    {
+        $engineDaysFilled = collect($data['rows'] ?? [])
+            ->filter(fn (array $row): bool => ($row['kwh_produksi_stand_akhir'] ?? null) !== null)
+            ->count();
+
+        return $this->builtTables["{$unit->id}-{$month}-{$year}"] ??= $this->tables->build($unit, $month, $year, $engineDaysFilled);
+    }
+
+    /**
+     * The report styles plus the scoped styles of every embedded table.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function styles(Unit $unit, int $month, int $year, array $data): string
+    {
+        return view('operasi.laporan.styles')->render()."\n".$this->tables($unit, $month, $year, $data)['styles'];
     }
 
     /**

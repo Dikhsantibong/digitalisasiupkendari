@@ -43,6 +43,19 @@ type WaitingRow = {
 type Data = {
     unit: { name: string; service_unit: string | null };
     period: { label: string };
+    signatories?: {
+        tl_har?: { name: string; position: string; signature: string | null };
+        staff_har?: { name: string; position: string; signature: string | null };
+        koordinator?: { name: string; position: string; signature: string | null };
+        koordinator_har?: { name: string; position: string; signature: string | null };
+        manager_ul?: { name: string; position: string; signature: string | null };
+        manager?: { name: string; position: string; signature: string | null };
+        project_leader?: { name: string; position: string; signature: string | null };
+    };
+    resume_statistik?: {
+        rows: { no: number; diskripsi: string; target: number; realisasi: number; analisa_kinerja: number }[];
+        total: { target: number; realisasi: number; analisa_kinerja: number };
+    };
     sr_summary: {
         total: number;
         open: number;
@@ -154,6 +167,8 @@ const rupiah = (v: number) => `Rp ${formatNumber(String(v))}`;
 
 /** The ordered section list — drives the numbering and the table of contents. */
 const SECTIONS = [
+    'Lembar Pengesahan',
+    'Resume Statistik Pemeliharaan Pembangkit',
     'Executive Summary',
     'Daftar Isi',
     'Istilah dan Definisi',
@@ -490,8 +505,253 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </div>
                         </div>
 
-                        {/* 2. EXECUTIVE SUMMARY */}
-                        <SectionTitle n={2} title="Executive Summary" id="sec-exec" />
+                        {/* 2. LEMBAR PENGESAHAN */}
+                        <div className="page-break mb-8 flex min-h-[1050px] flex-col justify-between rounded-lg border border-slate-200 bg-white p-10 text-slate-900 shadow-sm" id="sec-pengesahan">
+                            <div>
+                                {/* Kop Table */}
+                                <table className="w-full border-collapse border border-black text-center">
+                                    <tbody>
+                                        <tr>
+                                            <td rowSpan={4} className="w-36 border border-black p-2 text-center align-middle">
+                                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="mx-auto max-h-12 object-contain" />
+                                            </td>
+                                            <td className="border border-black p-1.5 text-xs font-bold uppercase tracking-wider text-black">
+                                                JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE &amp; 6 SITE -KIT
+                                            </td>
+                                            <td rowSpan={4} className="w-32 border border-black p-2 text-center align-middle">
+                                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="mx-auto max-h-11 object-contain" />
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-black p-1.5 text-xs font-bold uppercase tracking-wider text-black">
+                                                {data.unit.name.toUpperCase().includes('POASIA') && !data.unit.name.toUpperCase().includes('SITE')
+                                                    ? `${data.unit.name.toUpperCase()} 6 SITE`
+                                                    : data.unit.name.toUpperCase()}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-black p-1.5 text-xs font-bold uppercase tracking-wider text-black">
+                                                LAPORAN PROJECT
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-black p-1.5 text-xs font-bold uppercase tracking-wider text-black">
+                                                LEMBAR PENGESAHAN
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* Statement Body */}
+                                <div className="mt-8 px-2 text-sm leading-relaxed text-black">
+                                    <div className="mb-4 font-bold">
+                                        JASA PENDUKUNG TEKNIS 6 SITE - {data.unit.name.toUpperCase().includes('POASIA') && !data.unit.name.toUpperCase().includes('SITE') ? `${data.unit.name.toUpperCase()} 6 SITE` : data.unit.name.toUpperCase()}
+                                    </div>
+                                    <div className="mb-4">
+                                        Dengan ini menyatakan bahwa :
+                                    </div>
+                                    <div className="mb-4 font-bold">
+                                        1. LAPORAN PEMELIHARAAN PEMBANGKIT
+                                    </div>
+                                    <p className="mb-4 text-justify">
+                                        Telah disusun berdasarkan kegiatan Pemeliharaan pembangkit serta administrasi dan dokumentasi pendukung.
+                                    </p>
+                                    <p className="mb-4 text-justify">
+                                        Laporan ini telah dilakukan pemeriksaan dan dinyatakan sesuai untuk digunakan sebagai dokumen pelaporan dan evaluasi kegiatan pemeliharaan pembangkit {data.unit.name}.
+                                    </p>
+                                    <p className="mb-6 text-justify">
+                                        Demikian lembar pengesahan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.
+                                    </p>
+
+                                    <div className="mt-8 mb-4 pr-4 text-right">
+                                        Kendari, 1 {data.period.label}
+                                    </div>
+
+                                    {/* Signatures */}
+                                    <div className="mt-8 flex justify-between px-2">
+                                        <div className="w-1/2 text-left">
+                                            <div>Disetujui,</div>
+                                            <div
+                                                className="font-bold"
+                                                dangerouslySetInnerHTML={{
+                                                    __html:
+                                                        data.signatories?.tl_har?.position ??
+                                                        (data.unit.service_unit
+                                                            ? `TL HAR ${data.unit.service_unit.toUpperCase().replace(/\s+/g, '')}`
+                                                            : 'TL HAR ULPLTD POASIA'),
+                                                }}
+                                            />
+                                            <div className="flex h-16 items-center">
+                                                {data.signatories?.tl_har?.signature ? (
+                                                    <img
+                                                        src={data.signatories.tl_har.signature}
+                                                        alt="Ttd TL Har"
+                                                        className="max-h-16 max-w-[140px] object-contain"
+                                                    />
+                                                ) : null}
+                                            </div>
+                                            <div className="font-bold">{data.signatories?.tl_har?.name ?? 'MUH. ISYAK'}</div>
+                                        </div>
+                                        <div className="w-1/2 text-center">
+                                            <div>Dibuat,</div>
+                                            <div
+                                                className="font-bold"
+                                                dangerouslySetInnerHTML={{
+                                                    __html:
+                                                        data.signatories?.staff_har?.position ??
+                                                        data.signatories?.koordinator?.position ??
+                                                        (data.unit.name.toLowerCase().includes('container')
+                                                            ? 'Koordinator Pemeliharaan<br />Containerized Poasia'
+                                                            : `Koordinator Pemeliharaan<br />${data.unit.name}`),
+                                                }}
+                                            />
+                                            <div className="flex h-16 items-center justify-center">
+                                                {(data.signatories?.staff_har?.signature ?? data.signatories?.koordinator?.signature) ? (
+                                                    <img
+                                                        src={(data.signatories?.staff_har?.signature ?? data.signatories?.koordinator?.signature)!}
+                                                        alt="Ttd Staf Pemeliharaan"
+                                                        className="mx-auto max-h-16 max-w-[140px] object-contain"
+                                                    />
+                                                ) : null}
+                                            </div>
+                                            <div className="font-bold">
+                                                {data.signatories?.staff_har?.name ?? data.signatories?.koordinator?.name ?? 'AMIRULLAH'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-6 text-center">
+                                        <div>Mengetahui,</div>
+                                        <div
+                                            className="font-bold"
+                                            dangerouslySetInnerHTML={{
+                                                __html:
+                                                    data.signatories?.manager_ul?.position ??
+                                                    data.signatories?.manager?.position ??
+                                                    (data.unit.service_unit
+                                                        ? `Manager ${data.unit.service_unit.toUpperCase()}`
+                                                        : 'Manager ULPLTD POASIA'),
+                                            }}
+                                        />
+                                        <div className="flex h-16 items-center justify-center">
+                                            {(data.signatories?.manager_ul?.signature ?? data.signatories?.manager?.signature) ? (
+                                                <img
+                                                    src={(data.signatories?.manager_ul?.signature ?? data.signatories?.manager?.signature)!}
+                                                    alt="Ttd Manager UL"
+                                                    className="mx-auto max-h-16 max-w-[140px] object-contain"
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <div className="font-bold">
+                                            {data.signatories?.manager_ul?.name ?? data.signatories?.manager?.name ?? 'ZULKIFLIN'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. RESUME STATISTIK PEMELIHARAAN PEMBANGKIT */}
+                        <div className="page-break mb-8 flex min-h-[1050px] flex-col justify-between rounded-lg border border-slate-200 bg-white p-10 text-slate-900 shadow-sm" id="sec-resume-statistik">
+                            <div>
+                                {/* Header with Logos */}
+                                <div className="flex items-center justify-between border-b pb-4">
+                                    <div className="w-36">
+                                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" />
+                                    </div>
+                                    <div className="flex-1 text-center leading-tight">
+                                        <div className="text-xs font-bold tracking-wider text-black">JASA PENDUKUNG TEKNIS - 6 SITE KIT</div>
+                                        <div className="text-xs font-bold tracking-wider text-black">
+                                            PLN NP UP KENDARI - {data.unit.name.toUpperCase().includes('POASIA') && !data.unit.name.toUpperCase().includes('SITE') ? `${data.unit.name.toUpperCase()} 6 SITE` : data.unit.name.toUpperCase()}
+                                        </div>
+                                        <div className="text-xs font-bold tracking-wider text-black">LAPORAN PROJECT</div>
+                                        <div className="mt-1 text-sm font-bold tracking-wide text-black">RESUME STATISTIK PEMELIHARAAN PEMBANGKIT</div>
+                                    </div>
+                                    <div className="w-36 text-right">
+                                        <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="ml-auto max-h-10 object-contain" />
+                                        <div className="text-[9px] font-bold tracking-widest text-slate-500">MITRA KARYA PRIMA</div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 mb-2 text-xs font-bold uppercase text-black">
+                                    PRIODE &nbsp;&nbsp;: &nbsp;&nbsp;{data.period.label}
+                                </div>
+
+                                {/* Table */}
+                                <table className="w-full border-collapse border border-black text-xs text-black">
+                                    <thead>
+                                        <tr className="bg-[#c6e0b4] text-center font-bold">
+                                            <th className="w-12 border border-black p-1.5">NO</th>
+                                            <th className="border border-black p-1.5 text-center">DISKRIPSI</th>
+                                            <th className="w-20 border border-black p-1.5">TARGET</th>
+                                            <th className="w-20 border border-black p-1.5 leading-tight">REALISAS<br />I</th>
+                                            <th className="w-24 border border-black p-1.5 leading-tight">ANALISA<br />KINERJA</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(data.resume_statistik?.rows ?? [
+                                            { no: 1, diskripsi: 'Jadwal Kegiatran Pemeliharaan', target: 20, realisasi: 20, analisa_kinerja: 100 },
+                                            { no: 2, diskripsi: 'Realisasi Pemeliharaan Rutin P0-P5', target: 11, realisasi: 15, analisa_kinerja: 136 },
+                                            { no: 3, diskripsi: 'Jadwal Piket OnCall', target: 7, realisasi: 7.75, analisa_kinerja: 111 },
+                                            { no: 4, diskripsi: 'Jadwal Patrol Cek Pemeliharaan', target: 19, realisasi: 19, analisa_kinerja: 100 },
+                                            { no: 5, diskripsi: 'Jadwal Meeting Pemeliharaan', target: 1, realisasi: 1, analisa_kinerja: 100 },
+                                            { no: 6, diskripsi: 'Jadwal Pembuatan IK Pemeliharaan Kit', target: 2, realisasi: 2, analisa_kinerja: 100 },
+                                            { no: 7, diskripsi: 'Jadwal Pemeriksaan Instalasi Black Start', target: 8, realisasi: 8, analisa_kinerja: 100 },
+                                            { no: 8, diskripsi: 'Ratio Work Order (Closed Work Order/Total Work Order)', target: 36, realisasi: 36, analisa_kinerja: 100 },
+                                            { no: 9, diskripsi: 'Laporan Input Data Aplikasi Online Pemeliharaan', target: 19, realisasi: 19, analisa_kinerja: 100 },
+                                        ]).map((row) => (
+                                            <tr key={row.no}>
+                                                <td className="border border-black p-1.5 text-center">{row.no}</td>
+                                                <td className="border border-black p-1.5 text-left">{row.diskripsi}</td>
+                                                <td className="border border-black p-1.5 text-right">{row.target}</td>
+                                                <td className="border border-black p-1.5 text-right">{row.realisasi}</td>
+                                                <td className="border border-black p-1.5 text-right">{row.analisa_kinerja}%</td>
+                                            </tr>
+                                        ))}
+                                        <tr className="bg-[#d9e1f2] font-bold italic">
+                                            <td colSpan={2} className="border border-black p-1.5 text-right">TOTAL</td>
+                                            <td className="border border-black p-1.5 text-right">{data.resume_statistik?.total?.target ?? 13.67}</td>
+                                            <td className="border border-black p-1.5 text-right">{data.resume_statistik?.total?.realisasi ?? 13.75}</td>
+                                            <td className="border border-black p-1.5 text-right">{data.resume_statistik?.total?.analisa_kinerja ?? 105}%</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                {/* Signatures (Project Leader & Koordinator Pemeliharaan) */}
+                                <div className="mt-16 flex justify-between px-6 text-center text-sm text-black">
+                                    <div className="w-1/2">
+                                        <div>Mengetahui</div>
+                                        <div className="font-bold">{data.signatories?.project_leader?.position ?? 'Project Leader'}</div>
+                                        <div className="flex h-20 items-center justify-center">
+                                            {data.signatories?.project_leader?.signature ? (
+                                                <img
+                                                    src={data.signatories.project_leader.signature}
+                                                    alt="Ttd Project Leader"
+                                                    className="max-h-20 max-w-[150px] object-contain"
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <div className="font-bold">{data.signatories?.project_leader?.name ?? 'HERWIN SYAHPUTRA'}</div>
+                                    </div>
+                                    <div className="w-1/2">
+                                        <div>Dibuat;</div>
+                                        <div className="font-bold">{data.signatories?.koordinator_har?.position ?? 'Koordinator Pemeliharaan'}</div>
+                                        <div className="flex h-20 items-center justify-center">
+                                            {(data.signatories?.koordinator_har?.signature ?? data.signatories?.staff_har?.signature) ? (
+                                                <img
+                                                    src={(data.signatories?.koordinator_har?.signature ?? data.signatories?.staff_har?.signature)!}
+                                                    alt="Ttd Koordinator Pemeliharaan"
+                                                    className="mx-auto max-h-20 max-w-[150px] object-contain"
+                                                />
+                                            ) : null}
+                                        </div>
+                                        <div className="font-bold">{data.signatories?.koordinator_har?.name ?? data.signatories?.staff_har?.name ?? 'AMIRULLAH'}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4. EXECUTIVE SUMMARY */}
+                        <SectionTitle n={4} title="Executive Summary" id="sec-exec" />
                         <p className="mb-3 text-justify leading-relaxed">
                             Laporan ini merangkum kinerja pemeliharaan {data.unit.name} pada periode{' '}
                             <span className="font-semibold">{data.period.label}</span>. Sepanjang periode tercatat{' '}
@@ -514,8 +774,8 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        {/* 3. DAFTAR ISI */}
-                        <SectionTitle n={3} title="Daftar Isi" id="sec-toc" />
+                        {/* 5. DAFTAR ISI */}
+                        <SectionTitle n={5} title="Daftar Isi" id="sec-toc" />
                         <table className="mb-4 w-full border-collapse text-[12px]">
                             <tbody>
                                 <tr>
@@ -531,8 +791,8 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        {/* 4. ISTILAH DAN DEFINISI */}
-                        <SectionTitle n={4} title="Istilah dan Definisi" id="sec-glossary" />
+                        {/* 6. ISTILAH DAN DEFINISI */}
+                        <SectionTitle n={6} title="Istilah dan Definisi" id="sec-glossary" />
                         <table className="mb-4 w-full border-collapse text-[11px]">
                             <thead>
                                 <tr className="bg-slate-100">
@@ -550,7 +810,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        {/* 5. SERVICE REQUEST MAP */}
+                        {/* 7. SERVICE REQUEST MAP */}
                         <div className="break-before" id="sec-sr-map">
                             <SectionKop title="SERVICE REQUEST MAP" docNumber="FMKD-314-10.3.3-A8" date={data.period.label} />
 
@@ -841,12 +1101,12 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </table>
                         </div>
 
-                        {/* 7. MAINTENANCE SUMMARY */}
+                        {/* 9. MAINTENANCE SUMMARY */}
                         {data.maintenance_summary && (
                             <>
-                                <SectionTitle n={7} title="Maintenance Summary" id="sec-maintenance-summary" breakBefore />
+                                <SectionTitle n={9} title="Maintenance Summary" id="sec-maintenance-summary" breakBefore />
 
-                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">7.1 Rekapitulasi WO Terbit dan Complete</h3>
+                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">9.1 Rekapitulasi WO Terbit dan Complete</h3>
                                 <table className="mb-4 w-full border-collapse text-[10px] text-center">
                                     <thead>
                                         <tr className="bg-slate-100">
@@ -883,7 +1143,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                     </tbody>
                                 </table>
 
-                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">7.2 Rekapitulasi Status WO</h3>
+                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">9.2 Rekapitulasi Status WO</h3>
                                 <table className="mb-4 w-full border-collapse text-[10px] text-center">
                                     <thead>
                                         <tr className="bg-slate-100">
@@ -909,7 +1169,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                     </tbody>
                                 </table>
 
-                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">7.3 Penyelesaian Work Order Task</h3>
+                                <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">9.3 Penyelesaian Work Order Task</h3>
                                 <table className="mb-4 w-full border-collapse text-[10px]">
                                     <thead>
                                         <tr className="bg-slate-100 text-center">
@@ -946,14 +1206,14 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </>
                         )}
 
-                        {/* 8. ISI LAPORAN */}
-                        <SectionTitle n={8} title="Isi Laporan" id="sec-body" breakBefore />
+                        {/* 10. ISI LAPORAN */}
+                        <SectionTitle n={10} title="Isi Laporan" id="sec-body" breakBefore />
                         <p className="mb-3 text-justify leading-relaxed">
                             Bagian ini memuat rincian pelaksanaan pemeliharaan {data.unit.name} periode {data.period.label},
                             meliputi ringkasan Service Request, rencana versus realisasi pemeliharaan, dan log kegiatan HARMES.
                         </p>
 
-                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">8.1 Ringkasan Service Request</h3>
+                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">10.1 Ringkasan Service Request</h3>
                         <table className="mb-4 w-full border-collapse text-[11px]">
                             <tbody>
                                 <tr>
@@ -968,7 +1228,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">8.2 Rencana vs Realisasi</h3>
+                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">10.2 Rencana vs Realisasi</h3>
                         {data.schedules.length === 0 ? (
                             <p className="mb-4 text-slate-500">Belum ada jadwal.</p>
                         ) : (
@@ -997,7 +1257,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             ))
                         )}
 
-                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">8.3 Log Kegiatan HARMES</h3>
+                        <h3 className="mb-1 mt-3 text-[13px] font-semibold text-slate-800">10.3 Log Kegiatan HARMES</h3>
                         {data.activities.length === 0 ? (
                             <p className="mb-4 text-slate-500">Belum ada log kegiatan.</p>
                         ) : (
@@ -1045,8 +1305,8 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </table>
                         )}
 
-                        {/* 9. WORK ORDER SUMMARY (FIX) */}
-                        <SectionTitle n={9} title="Work Order Summary (Fix)" id="sec-wo-summary" breakBefore />
+                        {/* 11. WORK ORDER SUMMARY (FIX) */}
+                        <SectionTitle n={11} title="Work Order Summary (Fix)" id="sec-wo-summary" breakBefore />
                         <table className="mb-4 w-full border-collapse text-[11px]">
                             <tbody>
                                 <tr>
@@ -1058,8 +1318,8 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        {/* 10. AKUMULASI BIAYA PEMELIHARAAN */}
-                        <SectionTitle n={10} title="Akumulasi Biaya Pemeliharaan" id="sec-cost" />
+                        {/* 12. AKUMULASI BIAYA PEMELIHARAAN */}
+                        <SectionTitle n={12} title="Akumulasi Biaya Pemeliharaan" id="sec-cost" />
                         <table className="mb-2 w-full border-collapse text-[11px]">
                             <tbody>
                                 <tr>
@@ -1076,7 +1336,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             akumulasi Januari s.d. bulan laporan.
                         </p>
 
-                        {/* 11. REKAPITULASI WORK ORDER TASK */}
+                        {/* 13. REKAPITULASI WORK ORDER TASK */}
                         <div className="break-before" id="sec-recap">
                             {/* Kop Standard PLN NP */}
                             <div className="mb-3 border border-slate-900 font-sans text-xs">
@@ -1205,7 +1465,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </p>
                         </div>
 
-                        {/* 12. WO PM (WO PREVENTIVE MAINTANANCE - FMKD-314-10.3.3-A12) */}
+                        {/* 14. WO PM (WO PREVENTIVE MAINTANANCE - FMKD-314-10.3.3-A12) */}
                         <div className="break-before" id="sec-wo-pm">
                             {/* Kop Standard PLN NP */}
                             <div className="mb-3 border border-slate-900 font-sans text-xs">
@@ -1283,7 +1543,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </table>
                         </div>
 
-                        {/* 13. WO PDM (WO PREDICTIVE MAINTANANCE - FMKD-314-10.3.3-A13) */}
+                        {/* 15. WO PDM (WO PREDICTIVE MAINTANANCE - FMKD-314-10.3.3-A13) */}
                         <div className="break-before" id="sec-wo-pdm">
                             {/* Kop Standard PLN NP */}
                             <div className="mb-3 border border-slate-900 font-sans text-xs">
@@ -1379,7 +1639,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </div>
                         </div>
 
-                        {/* 14. WO CM (WO CORRECTIVE MAINTANANCE - FMKD-314-10.3.3-A14) */}
+                        {/* 16. WO CM (WO CORRECTIVE MAINTANANCE - FMKD-314-10.3.3-A14) */}
                         <div className="break-before" id="sec-wo-cm">
                             {/* Kop Standard PLN NP */}
                             <div className="mb-3 border border-slate-900 font-sans text-xs">
@@ -1467,20 +1727,20 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             )}
                         </div>
 
-                        {/* 15. WO ENJI */}
-                        <SectionTitle n={15} title="Work Order ENJI (Engineering)" id="sec-wo-enji" />
+                        {/* 17. WO ENJI */}
+                        <SectionTitle n={17} title="Work Order ENJI (Engineering)" id="sec-wo-enji" />
                         <WoTable rows={woEnji} />
 
-                        {/* 16. WO WAITING SHUTDOWN */}
-                        <SectionTitle n={16} title="Work Order Waiting Shutdown" id="sec-wait-sd" breakBefore />
+                        {/* 18. WO WAITING SHUTDOWN */}
+                        <SectionTitle n={18} title="Work Order Waiting Shutdown" id="sec-wait-sd" breakBefore />
                         <WaitingTable rows={waitingShutdown} />
 
-                        {/* 17. WO WAITING MATERIAL & JASA */}
-                        <SectionTitle n={17} title="Work Order Waiting Material & Jasa" id="sec-wait-mj" />
+                        {/* 19. WO WAITING MATERIAL & JASA */}
+                        <SectionTitle n={19} title="Work Order Waiting Material & Jasa" id="sec-wait-mj" />
                         <WaitingTable rows={waitingMaterialJasa} />
 
-                        {/* 18. LAMPIRAN */}
-                        <SectionTitle n={18} title="Lampiran" id="sec-attachments" breakBefore />
+                        {/* 20. LAMPIRAN */}
+                        <SectionTitle n={20} title="Lampiran" id="sec-attachments" breakBefore />
                         {data.attachments.length === 0 ? (
                             <p className="text-slate-500">Belum ada lampiran foto.</p>
                         ) : (

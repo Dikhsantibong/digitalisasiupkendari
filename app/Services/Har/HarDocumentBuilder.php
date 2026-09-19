@@ -2,7 +2,9 @@
 
 namespace App\Services\Har;
 
+use App\Enums\ReportModule;
 use App\Models\Unit;
+use App\Services\Reports\ReportWorkflowService;
 use Illuminate\Support\Facades\View;
 
 /**
@@ -13,7 +15,10 @@ use Illuminate\Support\Facades\View;
  */
 class HarDocumentBuilder
 {
-    public function __construct(private readonly HarReportBuilder $reports) {}
+    public function __construct(
+        private readonly HarReportBuilder $reports,
+        private readonly ReportWorkflowService $workflows,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -22,6 +27,7 @@ class HarDocumentBuilder
     {
         $report = $this->reports->monthly($unit, $month, $year);
         $numbers = (array) config('har.document.numbers', []);
+        $signatories = $report['signatories'] ?? $this->reports->resolveSignatories($unit);
 
         return [
             'document' => [
@@ -29,6 +35,8 @@ class HarDocumentBuilder
                 'title' => (string) config('har.document.title', 'LAPORAN PEMELIHARAAN (HAR)'),
                 'revision' => (string) config('har.document.revision', '00'),
                 'numbers' => $numbers,
+                'signatories' => $signatories,
+                'signature_blocks' => $this->workflows->signatureBlocks(ReportModule::Har, $unit, $month, $year),
             ],
             'report' => $report,
         ];
@@ -43,6 +51,11 @@ class HarDocumentBuilder
     public function bodyHtml(array $data): string
     {
         return View::make('har.laporan.document-body', ['data' => $data])->render();
+    }
+
+    public function pengusahaanBodyHtml(array $data): string
+    {
+        return View::make('har.laporan.pengusahaan-body', ['data' => $data])->render();
     }
 
     /**

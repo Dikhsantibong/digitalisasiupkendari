@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { DocumentEditor } from '@/components/document/document-editor';
 import type { DocumentEditorMode } from '@/components/document/document-editor';
+import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
 import type { DocumentGrid } from '@/lib/spreadsheet';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/operasi/laporan';
@@ -18,6 +19,7 @@ type Props = {
     has_saved: boolean;
     pdf_url: string;
     can_write: boolean;
+    workflow: ReportWorkflowState;
 };
 
 export default function OperasiLaporanDocument({
@@ -32,6 +34,7 @@ export default function OperasiLaporanDocument({
     has_saved,
     pdf_url,
     can_write,
+    workflow,
 }: Props) {
     return (
         <>
@@ -65,6 +68,7 @@ export default function OperasiLaporanDocument({
                     month: filters.month,
                     year: filters.year,
                 }}
+                workflow={workflow}
             />
         </>
     );

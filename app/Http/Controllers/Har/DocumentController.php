@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Enums\ReportModule;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Models\HarDocumentRecord;
@@ -29,6 +31,7 @@ use Inertia\Response;
 class DocumentController extends Controller
 {
     use EmbedsReportLogo;
+    use InteractsWithReportWorkflow;
     use RendersReportPdf;
 
     /**
@@ -44,9 +47,12 @@ class DocumentController extends Controller
      * v11 = WO Corrective Maintenance ISO FMKD-314-10.3.3-A14 added;
      * v12 = Removed hardcoded fallback dummy data across all report sections and seeded authentic maintenance data;
      * v13 = Converted Service Request Map and Summary charts to base64 SVG images for Dompdf & TinyMCE compatibility;
-     * v14 = Redesigned corporate cover with dual logos (PLN NP + MKP) and title Laporan Pemeliharaan Pembangkit.
+     * v14 = Redesigned corporate cover with dual logos (PLN NP + MKP) and title Laporan Pemeliharaan Pembangkit;
+     * v17 = Added Resume Statistik Pemeliharaan Pembangkit page after Lembar Pengesahan with Project Leader & Koordinator Pemeliharaan signatories;
+     * v18 = Restructured into separate Laporan Pemeliharaan (with complete schedules) and restored clean corporate polygon cover;
+     * v19 = Lembar Pengesahan & tanda tangan laporan from the report workflow (ReportWorkflowService).
      */
-    private const BODY_VERSION = 14;
+    private const BODY_VERSION = 19;
 
     public function __construct(
         private readonly HarDocumentBuilder $builder,
@@ -58,7 +64,7 @@ class DocumentController extends Controller
     public function edit(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        $this->authorizeReportView($request, ReportModule::Har, PermissionName::HarLaporanView);
 
         $unit = $this->resolveUnit($request);
         $now = now();
@@ -70,10 +76,14 @@ class DocumentController extends Controller
         $data = $this->builder->build($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
+        $workflow = $this->reportWorkflows()->present($user, ReportModule::Har, $unit, $month, $year);
+
         return Inertia::render('har/laporan/document', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'document_number' => $data['document']['number'],
-            'content' => $record?->content_html ?? $this->builder->bodyHtml($data),
+            'content' => $record?->content_html !== null
+                ? $this->withCurrentSignatures($record->content_html, ReportModule::Har, $unit, $month, $year)
+                : $this->builder->bodyHtml($data),
             'content_styles' => $this->builder->contentStyles(),
             'letterhead' => $this->builder->letterhead($data),
             'grid' => $record?->content_grid ?? $this->gridBuilder->build($data),
@@ -82,14 +92,15 @@ class DocumentController extends Controller
             'pdf_url' => route('har.laporan.document.pdf', [
                 'unit_id' => $unit->id, 'month' => $month, 'year' => $year,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite) && $workflow['editable'],
+            'workflow' => $workflow,
         ]);
     }
 
     public function pdf(Request $request)
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        $this->authorizeReportView($request, ReportModule::Har, PermissionName::HarLaporanView);
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
@@ -103,7 +114,9 @@ class DocumentController extends Controller
             $content = $this->builder->letterhead($data).$this->grids->gridToHtml($record->content_grid);
         } else {
             // Text mode: the body already contains the letterhead inline.
-            $content = $record?->content_html ?? $this->builder->bodyHtml($data);
+            $content = $record?->content_html !== null
+                ? $this->withCurrentSignatures($record->content_html, ReportModule::Har, $unit, $month, $year)
+                : $this->builder->bodyHtml($data);
         }
 
         return $this->streamReportPdf(
@@ -133,6 +146,7 @@ class DocumentController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $this->ensureReportEditable(ReportModule::Har, $unit, $month, $year);
 
         $data = $this->builder->build($unit, $month, $year);
         $period = ReportPeriod::query()
@@ -181,6 +195,7 @@ class DocumentController extends Controller
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
+        $this->ensureReportEditable(ReportModule::Har, $unit, $month, $year);
 
         $data = $this->builder->build($unit, $month, $year);
         $period = ReportPeriod::query()

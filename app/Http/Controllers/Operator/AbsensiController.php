@@ -17,6 +17,7 @@ use App\Services\Operator\AttendanceCalculator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -143,9 +144,7 @@ class AbsensiController extends Controller
                 'hitung_hadir' => $c->hitung_hadir,
             ])->all(),
             'totals' => $recap['totals'],
-            'patterns' => ShiftPattern::query()->where('unit_id', $unit->id)->where('is_active', true)
-                ->get(['regu', 'sequence'])
-                ->map(fn (ShiftPattern $p): array => ['regu' => $p->regu, 'sequence' => $p->sequence])->all(),
+            'patterns' => $this->resolveShiftPatterns($unit),
             'can_write' => $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite),
         ]);
     }
@@ -228,9 +227,7 @@ class AbsensiController extends Controller
         $validated = $request->validate(['start_day' => ['nullable', 'integer', 'min:1', 'max:31']]);
         $startDay = (int) ($validated['start_day'] ?? 1);
 
-        $patterns = ShiftPattern::query()->where('unit_id', $unit->id)->where('is_active', true)->get()
-            ->mapWithKeys(fn (ShiftPattern $p): array => [$p->regu => $p->codes()]);
-        abort_if($patterns->isEmpty(), 422, 'Belum ada pola shift untuk unit ini.');
+        $patterns = $this->resolveShiftPatternsMap($unit);
 
         $codes = AttendanceCode::query()->where('is_active', true)->pluck('id', 'code');
         $employees = Employee::query()->where('unit_id', $unit->id)->where('is_active', true)
@@ -303,5 +300,51 @@ class AbsensiController extends Controller
     private function dayInitial(Carbon $date): string
     {
         return ['M', 'S', 'S', 'R', 'K', 'J', 'S'][$date->dayOfWeek];
+    }
+
+    /**
+     * @return array<int, array{regu: string, sequence: string}>
+     */
+    private function resolveShiftPatterns(Unit $unit): array
+    {
+        $patterns = ShiftPattern::query()->where('unit_id', $unit->id)->where('is_active', true)
+            ->get(['regu', 'sequence'])
+            ->map(fn (ShiftPattern $p): array => ['regu' => $p->regu, 'sequence' => $p->sequence]);
+
+        if ($patterns->isEmpty()) {
+            $baseCycle = ['OFF', 'OFF', 'S', 'S', 'P', 'P', 'M', 'M'];
+            $defaultPhases = ['A' => 0, 'B' => 2, 'C' => 4, 'D' => 6];
+            $patterns = collect($defaultPhases)->map(function (int $offset, string $regu) use ($baseCycle): array {
+                $count = count($baseCycle);
+                $rotated = array_merge(array_slice($baseCycle, $offset % $count), array_slice($baseCycle, 0, $offset % $count));
+
+                return ['regu' => $regu, 'sequence' => implode(',', $rotated)];
+            })->values();
+        }
+
+        return $patterns->all();
+    }
+
+    /**
+     * @return Collection<string, list<string>>
+     */
+    private function resolveShiftPatternsMap(Unit $unit): Collection
+    {
+        $patterns = ShiftPattern::query()->where('unit_id', $unit->id)->where('is_active', true)->get()
+            ->mapWithKeys(fn (ShiftPattern $p): array => [$p->regu => $p->codes()]);
+
+        if ($patterns->isEmpty()) {
+            $baseCycle = ['OFF', 'OFF', 'S', 'S', 'P', 'P', 'M', 'M'];
+            $defaultPhases = ['A' => 0, 'B' => 2, 'C' => 4, 'D' => 6];
+
+            return collect($defaultPhases)->mapWithKeys(function (int $offset, string $regu) use ($baseCycle): array {
+                $count = count($baseCycle);
+                $rotated = array_merge(array_slice($baseCycle, $offset % $count), array_slice($baseCycle, 0, $offset % $count));
+
+                return [$regu => $rotated];
+            });
+        }
+
+        return $patterns;
     }
 }

@@ -15,3 +15,6 @@ Operasi: `LaporanDocumentController` edit/store/pdf (route `operasi.laporan.docu
 
 ## Gotcha kolom bertipe date (SQLite)
 Kolom `date` (cast 'date') tersimpan '00:00:00' di SQLite in-memory (test) → JANGAN query `where('some_date',$str)`; pakai `whereDate('some_date',$str)`. Untuk assertDatabaseHas tanggal, query model lalu bandingkan `->toDateString()`.
+
+## Laporan Operasi: tabel jadwal/input disisipkan dari pdfView, bukan dibangun ulang
+Laporan Operasi Pembangkit (BODY_VERSION 6): I Sampul, II Daftar Isi, III Lembar Pengesahan (TL Operasi / Koordinator Operasi / Manager dari `Employee` by position, tanda tangan dari `signature_path` bila ada), IV Resume Statistik (+ grafik batang & lingkaran 3D PNG via `App\Services\Reports\Chart3d`), V poin laporan (landscape), VI Lampiran. Setiap controller jadwal/input Operasi punya `pdfView(Unit, month, year)`; `App\Services\Operasi\OperasiReportTables::TABLES` menyisipkan view PDF itu (CSS scoped) ke laporan sehingga tabel selalu lengkap — tambah jadwal/input baru ke TABLES + section di document-body, jangan buat query tabel sendiri di `OperasiReportSections` (itu hanya untuk poin tanpa view: shift operator, data teknis bulan ini, patrol check, unsafe HAR, laporan 5S5R, input data aplikasi). Resume dihitung dari data pdfView yang sama.

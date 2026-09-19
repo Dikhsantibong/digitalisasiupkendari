@@ -3,16 +3,28 @@
 namespace Tests\Feature\K3;
 
 use App\Enums\RoleName;
+use App\Models\K3ActivityPlan;
+use App\Models\K3ActivityType;
 use App\Models\K3DocumentRecord;
+use App\Models\K3HydrantInspection;
+use App\Models\K3PatrolCheckJadwal;
+use App\Models\K3RambuInspection;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
+use App\Services\K3\K3DocumentBuilder;
+use App\Services\K3\K3InputTables;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\PdfParser\StreamReader;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
 
 class LaporanDocumentTest extends TestCase
 {
     use InteractsWithAccessControl, RefreshDatabase;
+
+    /** Formulir points (see k3/formulir) print portrait; every other table is landscape. */
+    private const FORMULIR_SECTIONS = ['sec-5-13', 'sec-5-14', 'sec-5-18', 'sec-5-20', 'sec-5-23'];
 
     protected function setUp(): void
     {
@@ -99,5 +111,173 @@ class LaporanDocumentTest extends TestCase
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
             ->get(route('k3.laporan.document.edit', ['unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026]))
             ->assertForbidden();
+    }
+
+    public function test_the_document_follows_the_daftar_isi_order(): void
+    {
+        $html = $this->bodyHtml(Unit::factory()->create());
+
+        $ids = ['sec-1', 'sec-2', 'sec-3', 'sec-4'];
+        for ($point = 1; $point <= 31; $point++) {
+            $ids[] = 'sec-5-'.$point;
+        }
+        array_push($ids, 'sec-6', 'sec-7');
+
+        $positions = array_map(fn (string $id): int|false => strpos($html, 'id="'.$id.'"'), $ids);
+
+        $this->assertNotContains(false, $positions);
+        $sorted = $positions;
+        sort($sorted);
+        $this->assertSame($sorted, $positions);
+    }
+
+    public function test_formulir_points_are_portrait_and_other_tables_landscape(): void
+    {
+        $html = $this->bodyHtml(Unit::factory()->create());
+
+        for ($point = 1; $point <= 31; $point++) {
+            $id = 'sec-5-'.$point;
+            $expected = in_array($id, self::FORMULIR_SECTIONS, true)
+                ? '<div class="k3-section" id="'.$id.'">'
+                : '<div class="k3-section k3-landscape" id="'.$id.'">';
+
+            $this->assertStringContainsString($expected, $html, $id);
+        }
+    }
+
+    public function test_a_point_without_data_shows_a_red_line_instead_of_a_table(): void
+    {
+        $section = $this->section($this->bodyHtml(Unit::factory()->create()), 'sec-5-1');
+
+        $this->assertStringContainsString('k3-red-line', $section);
+        $this->assertStringNotContainsString('wide-table', $section);
+    }
+
+    public function test_a_point_with_data_shows_its_table(): void
+    {
+        $unit = Unit::factory()->create();
+        K3ActivityPlan::query()->create([
+            'unit_id' => $unit->id, 'year' => 2026, 'month' => 8,
+            'k3_activity_type_id' => K3ActivityType::factory()->create()->id,
+            'pic' => 'Budi', 'plan_days' => ['3' => '1', '10' => '1'], 'real_days' => ['3' => '1'],
+        ]);
+
+        $section = $this->section($this->bodyHtml($unit), 'sec-5-1');
+
+        $this->assertStringNotContainsString('k3-red-line', $section);
+        $this->assertStringContainsString('<table class="k3x-table k3x-dense">', $section);
+        $this->assertStringContainsString('Budi', $section);
+
+        // Same rows as the Time Frame export: R on days 3 & 10, Rl on day 3.
+        $table = app(K3InputTables::class)->tables('time-frame', $unit, 8, 2026)[0];
+        [$planned, $realised] = array_map(fn (array $row): array => $row['cells'], $table['rows']);
+        $this->assertSame('R', $planned[3 + 3]);
+        $this->assertSame('R', $planned[3 + 10]);
+        $this->assertSame('Rl', $realised[3 + 3]);
+        $this->assertSame('', $realised[3 + 10]);
+    }
+
+    public function test_points_derived_from_inputs_are_filled(): void
+    {
+        $unit = Unit::factory()->create();
+        $period = ['unit_id' => $unit->id, 'year' => 2026, 'month' => 8];
+        K3ActivityPlan::query()->create($period + [
+            'k3_activity_type_id' => K3ActivityType::factory()->create(['name' => 'Inspeksi APAR'])->id,
+            'pic' => 'K3L', 'plan_days' => ['3' => '1', '10' => '1'], 'real_days' => ['3' => '1'],
+        ]);
+        K3HydrantInspection::query()->create($period + ['lokasi' => 'Hydrant Pilar A', 'hose' => 'Baik', 'nozzle' => 'Baik', 'box' => 'Baik', 'tekanan' => '7']);
+        K3HydrantInspection::query()->create($period + ['lokasi' => 'Hydrant Box B', 'hose' => 'Bocor', 'nozzle' => 'Baik', 'box' => 'Baik', 'tekanan' => '5']);
+        K3PatrolCheckJadwal::query()->create($period + ['no_urut' => 1, 'uraian' => 'Patrol area mesin', 'bobot_sla' => 5, 'rencana' => [1, 2, 3, 4], 'realisasi' => [1, 2, 3]]);
+        K3RambuInspection::query()->create($period + ['rambu' => 'Wajib APD', 'lokasi' => 'Gerbang', 'kondisi' => 'Baik']);
+
+        $html = $this->bodyHtml($unit);
+
+        // 27. Program Kerja K3 from the Time Frame: 1 of 2 realised.
+        $programKerja = $this->section($html, 'sec-5-27');
+        $this->assertStringNotContainsString('k3-red-line', $programKerja);
+        $this->assertStringContainsString('Inspeksi APAR', $programKerja);
+        $this->assertStringContainsString('50%', $programKerja);
+
+        // 25./26. Hydrant monitoring & monthly recap classify each point.
+        $this->assertStringContainsString('Perlu Perbaikan', $this->section($html, 'sec-5-25'));
+        $recap = $this->section($html, 'sec-5-26');
+        $this->assertStringNotContainsString('k3-red-line', $recap);
+        $this->assertStringContainsString('Persentase kondisi baik', $recap);
+
+        // 6. & 30. Patrol check jadwal: daily matrix and 75% kinerja.
+        $this->assertStringContainsString('Patrol area mesin', $this->section($html, 'sec-5-6'));
+        $this->assertStringContainsString('75%', $this->section($html, 'sec-5-30'));
+
+        // 11. Rambu uses the same table as the rambu export.
+        $rambu = $this->section($html, 'sec-5-11');
+        $this->assertStringContainsString('Wajib APD', $rambu);
+        $this->assertStringNotContainsString('k3-red-line', $rambu);
+
+        // Points without any input nor related jadwal stay red.
+        $this->assertStringContainsString('k3-red-line', $this->section($html, 'sec-5-7'));
+    }
+
+    public function test_points_without_their_own_input_are_filled_from_the_jadwal(): void
+    {
+        $html = $this->bodyHtml(Unit::factory()->create());
+
+        // Nothing saved: the jadwal defaults (as their pages show them) fill the formulir points.
+        $oilTrap = $this->section($html, 'sec-5-13');
+        $this->assertStringNotContainsString('k3-red-line', $oilTrap);
+        $this->assertStringContainsString('CEK DAN BERSIHKAN OIL TRAP', $oilTrap);
+        $this->assertStringContainsString('Jadwal Patrol Check', $oilTrap);
+
+        $this->assertStringContainsString('Daily Meeting / Safety Briefing', $this->section($html, 'sec-5-5'));
+        $this->assertStringContainsString('Pemeriksaan APD Personil', $this->section($html, 'sec-5-16'));
+        $this->assertStringContainsString('Laporan checklist patrol chek K3L KIT', $this->section($html, 'sec-5-23'));
+
+        // Hydrant without inspections falls back to the related jadwal rows, with a note.
+        $hydrant = $this->section($html, 'sec-5-8');
+        $this->assertStringContainsString('ditampilkan kegiatan terkait dari Jadwal K3', $hydrant);
+        $this->assertStringContainsString('PILAR DAN PANEL PENYIMPANAN SELANG HIDRANT', $hydrant);
+
+        // APD inventory shows the default list the page pre-fills.
+        $this->assertStringContainsString('Helm safety putih', $this->section($html, 'sec-5-22'));
+    }
+
+    public function test_the_pdf_merges_portrait_and_landscape_pages_in_daftar_isi_order(): void
+    {
+        $unit = Unit::factory()->create();
+
+        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+            ->get(route('k3.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
+
+        $response->assertOk();
+
+        $reader = new Fpdi;
+        $count = $reader->setSourceFile(StreamReader::createByString((string) $response->getContent()));
+        $orientations = '';
+        for ($page = 1; $page <= $count; $page++) {
+            $orientations .= $reader->getTemplateSize($reader->importPage($page))['orientation'];
+        }
+
+        // I–IV portrait; V. points 1–12 L, 13–14 P, 15–17 L, 18 P, 19 L, 20 P, 21–22 L, 23 P, 24–31 L; VI L; VII P
+        // (a long table may span several pages of its own orientation).
+        $this->assertStringStartsWith('PPPP', $orientations);
+        $this->assertSame('PLPLPLPLPLP', preg_replace('/(.)\1+/', '$1', $orientations));
+    }
+
+    private function bodyHtml(Unit $unit): string
+    {
+        $builder = app(K3DocumentBuilder::class);
+
+        return $builder->bodyHtml($builder->build($unit, 8, 2026));
+    }
+
+    /**
+     * The markup of one report section, up to the next one.
+     */
+    private function section(string $html, string $id): string
+    {
+        $start = strpos($html, 'id="'.$id.'"');
+        $this->assertNotFalse($start, $id);
+        $end = strpos($html, 'class="k3-section', $start);
+
+        return substr($html, $start, $end === false ? null : $end - $start);
     }
 }

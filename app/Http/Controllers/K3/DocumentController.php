@@ -4,7 +4,9 @@ namespace App\Http\Controllers\K3;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Enums\ReportModule;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Models\K3DocumentRecord;
@@ -13,11 +15,13 @@ use App\Services\ActivityLogger;
 use App\Services\K3\K3DocumentBuilder;
 use App\Services\K3\K3DocumentGridBuilder;
 use App\Services\Operasi\DocumentGridBuilder;
+use App\Services\Reports\OrientationPdfMerger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
 
 /**
  * The editable K3 monthly-report document. Generated with its figures and ISO
@@ -28,6 +32,7 @@ use Inertia\Response;
 class DocumentController extends Controller
 {
     use EmbedsReportLogo;
+    use InteractsWithReportWorkflow;
     use RendersReportPdf;
 
     /**
@@ -35,9 +40,24 @@ class DocumentController extends Controller
      * documents saved against an older layout re-render from the new template.
      * v3 = full framework (cover, exec summary, daftar isi, istilah) + one
      * section per page; v4 = corporate polish (footer + page numbers, ToC leaders);
-     * v5 = redesigned corporate cover with dual logos (PLN NP + MKP) and title Laporan K3 Lingkungan Pembangkit.
+     * v5 = redesigned corporate cover with dual logos (PLN NP + MKP) and title Laporan K3 Lingkungan Pembangkit;
+     * v6 = restructured to match official standard (Kop 3 kolom, Daftar Isi I-VII, Lembar Pengesahan, Resume Statistik, 31 bab + red lines);
+     * v7 = multi-orientation merging via PDFium, kop on every page with PLN and K3 logos, individual pagination per point;
+     * v8 = integrated Jadwal Pekerjaan Rutin K3L & Lingkungan 11 KIT table in Landscape mode;
+     * v9 = integrated Logbook Pemantauan Pemanfaatan Air Limbah in Landscape mode;
+     * v10 = one `.k3-section` per Daftar Isi point (formulir portrait, other tables
+     *       landscape), red line when a point has no data, Daftar Isi page numbers
+     *       filled at export, cover unnumbered;
+     * v11 = input-backed points reuse the K3 input export tables (K3InputTables),
+     *       more points filled (patrol check matrix, program kerja, hydrant recap, kecelakaan);
+     * v12 = tables mirror the input/jadwal pages (defaults included) and the formulir
+     *       points are filled from the jadwal rows that record that work;
+     * v13 = always render full table layout for Daftar Monitoring Sertifikasi Peralatan (poin 19)
+     *       with standard equipment baseline and K3 logo on Kop header.
      */
-    private const BODY_VERSION = 5;
+    private const BODY_VERSION = 14;
+
+    private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN K3 LINGKUNGAN PEMBANGKIT';
 
     public function __construct(
         private readonly K3DocumentBuilder $builder,
@@ -46,10 +66,10 @@ class DocumentController extends Controller
         private readonly ActivityLogger $activityLogger,
     ) {}
 
-    public function edit(Request $request): Response
+    public function edit(Request $request): InertiaResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::K3LaporanView), 403);
+        $this->authorizeReportView($request, ReportModule::K3, PermissionName::K3InputView, PermissionName::K3LaporanView);
 
         $unit = $this->resolveUnit($request);
         $now = now();
@@ -61,43 +81,57 @@ class DocumentController extends Controller
         $data = $this->builder->build($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
+        $workflow = $this->reportWorkflows()->present($user, ReportModule::K3, $unit, $month, $year);
+
         return Inertia::render('k3/laporan/document', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'document_number' => $data['document']['number'],
-            'content' => $record?->content_html ?? $this->builder->bodyHtml($data),
+            'content' => $record?->content_html !== null
+                ? $this->withCurrentSignatures($record->content_html, ReportModule::K3, $unit, $month, $year)
+                : $this->builder->bodyHtml($data),
             'content_styles' => $this->builder->contentStyles(),
             'letterhead' => $this->builder->letterhead($data),
             'grid' => $record?->content_grid ?? $this->gridBuilder->build($data),
             'format' => $record?->format ?? 'html',
             'has_saved' => $record !== null,
             'pdf_url' => route('k3.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => $month, 'year' => $year]),
-            'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite),
+            'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite) && $workflow['editable'],
+            'workflow' => $workflow,
         ]);
     }
 
-    public function pdf(Request $request)
+    public function pdf(Request $request, OrientationPdfMerger $merger): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::K3LaporanView), 403);
+        $this->authorizeReportView($request, ReportModule::K3, PermissionName::K3LaporanView);
 
         $unit = $this->resolveUnit($request);
-        [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
+        $now = now();
+        [$month, $year] = [
+            (int) ($request->integer('month') ?: $now->month),
+            (int) ($request->integer('year') ?: $now->year),
+        ];
 
         $data = $this->builder->build($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
+        $styles = $this->builder->contentStyles();
 
         if ($record !== null && $record->format === 'grid' && ! empty($record->content_grid)) {
-            $content = $this->builder->letterhead($data).$this->grids->gridToHtml($record->content_grid);
+            $body = $this->embedAssets($this->builder->letterhead($data).$this->grids->gridToHtml($record->content_grid));
+            $pdf = $merger->render($styles, $body, [['show' => '', 'orientation' => 'landscape']], [], self::FOOTER);
         } else {
-            $content = $record?->content_html ?? $this->builder->bodyHtml($data);
+            $body = $this->embedAssets($record?->content_html !== null
+                ? $this->withCurrentSignatures($record->content_html, ReportModule::K3, $unit, $month, $year)
+                : $this->builder->bodyHtml($data));
+            $pdf = $merger->renderSections($styles, $body, 'k3-section', 'k3-landscape', self::FOOTER, unnumberedPages: 1);
         }
 
-        return $this->streamReportPdf(
-            $request,
-            'k3.laporan.pdf-shell',
-            ['content' => $this->embedAssets($content)],
-            "Laporan-K3-{$unit->id}-{$month}-{$year}.pdf",
-        );
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => $disposition.'; filename="Laporan-K3-'.$unit->id.'-'.$month.'-'.$year.'.pdf"',
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -119,6 +153,7 @@ class DocumentController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $this->ensureReportEditable(ReportModule::K3, $unit, $month, $year);
         $data = $this->builder->build($unit, $month, $year);
 
         $record = K3DocumentRecord::query()->firstOrNew([
@@ -163,6 +198,7 @@ class DocumentController extends Controller
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
+        $this->ensureReportEditable(ReportModule::K3, $unit, $month, $year);
 
         $data = $this->builder->build($unit, $month, $year);
 
