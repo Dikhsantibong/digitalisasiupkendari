@@ -2,6 +2,8 @@
 
 namespace App\Services\K3;
 
+use App\Support\K3FormulirRegistry;
+
 /**
  * Turns the computed K3 monthly report into a spreadsheet grid (cells + merges +
  * column widths) for the Excel edit mode. The letterhead (logo + kop) is added
@@ -104,9 +106,50 @@ class K3DocumentGridBuilder
             }
         }
 
+        // 7. Formulir K3 tersimpan (menu Formulir K3 & Keamanan).
+        $sheets = $report['formulir_sheets'] ?? ['metode_pengujian' => null, 'sheets' => []];
+        $number = 7;
+        if ($sheets['metode_pengujian'] !== null) {
+            $push([$this->c('')]);
+            $title("{$number}. Formulir Metode Pengujian Peralatan", null);
+            $number++;
+            $push(array_map(fn (string $label): array => $this->c($label, true, 'c'), [
+                'No', 'Nama Peralatan', 'No. Pengesahan', 'Kategori Alat', 'Uji Visual', 'Uji Fungsi', 'Uji Beban',
+                'Uji Hydro', 'NDT', 'Uji Ultrasonic Thickness', 'Uji Ketahanan', 'Sertifikasi Terakhir', 'Sertifikasi Ulang', 'Keterangan',
+            ]));
+            foreach ($sheets['metode_pengujian']['rows'] as $row) {
+                $push(array_map(fn (mixed $value): array => $this->c((string) $value), array_values($row)));
+            }
+        }
+        foreach ($sheets['sheets'] as $sheet) {
+            $push([$this->c('')]);
+            $title("{$number}. {$sheet['form']['title']}", null);
+            $number++;
+            foreach ($sheet['entries'] as $entry) {
+                if (count($sheet['entries']) > 1 || $sheet['form']['period'] === 'weekly') {
+                    $push([$this->c($entry['period_label'], true)]);
+                }
+                foreach ($sheet['form']['sections'] as $section) {
+                    if ($section['label'] !== null) {
+                        $push([$this->c(trim(($section['letter'] ? $section['letter'].'. ' : '').$section['label']), true)]);
+                    }
+                    $push([$this->c('No', true, 'c'), ...array_map(fn (array $column): array => $this->c($column['label'], true, 'c'), $section['columns'])]);
+                    foreach ($entry['sections'][$section['key']] ?? [] as $index => $row) {
+                        $push([
+                            $this->c((string) ($index + 1), false, 'c'),
+                            ...array_map(fn (array $column): array => $this->c(K3FormulirRegistry::displayValue($column, $row[$column['key']] ?? '')), $section['columns']),
+                        ]);
+                    }
+                }
+                if ($sheet['form']['notes_label'] !== null && trim($entry['catatan']) !== '') {
+                    $push([$this->c($sheet['form']['notes_label'].': '.$entry['catatan'])]);
+                }
+            }
+        }
+
         return [
             'name' => 'Laporan K3',
-            'cols' => self::COLS,
+            'cols' => max(self::COLS, ...array_map('count', $rows)),
             'col_widths' => [220, 120, 100, 100, 100, 100],
             'merges' => $merges,
             'rows' => $rows,

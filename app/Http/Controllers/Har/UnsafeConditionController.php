@@ -74,7 +74,7 @@ class UnsafeConditionController extends Controller
         $openCount = $records->filter(fn (HarUnsafeCondition $r) => strtolower($r->keterangan) === 'open')->count();
         $closeCount = $records->filter(fn (HarUnsafeCondition $r) => strtolower($r->keterangan) === 'close')->count();
 
-        return Inertia::render('har/input/unsafe-conditions', [
+        return Inertia::render('har/input/unsafe-condition/index', [
             'filters' => [
                 'unit_id' => $unit->id,
                 'month' => $month,

@@ -21,14 +21,14 @@
 |---|---|
 | RBAC (PermissionGroup, PermissionName, RoleName) | ✅ Selesai |
 | Registry modul (`work_modules` seed `pdm`) | ✅ Selesai |
-| Routes (`routes/pdm.php`) + include di `web.php` | ✅ Hub + jadwal (harian, patrol check, 5S5R, meeting) + 9 input + laporan (dokumen editor) |
+| Routes (`routes/pdm.php`) + include di `web.php` | ✅ Hub + jadwal (harian, patrol check, 5S5R, meeting) + 11 input + laporan (dokumen editor) |
 | Controller hub (`JadwalController`, `InputHubController`, `LaporanController`) | ✅ Selesai |
 | Sidebar nav "PdM & Maturity Level" (Jadwal + Input + Laporan) | ✅ Selesai |
 | Halaman menu Jadwal (`pdm/jadwal/index.tsx`) | ✅ Tombol (isi menyusul) |
 | Halaman menu Input (`pdm/input/index.tsx`) | ✅ 9 kartu aktif (lihat 2.2), sisanya menyusul |
 | Halaman Laporan (`pdm/laporan/index.tsx`) | ✅ Laporan PdM & Maturity Level Pembangkit (dokumen editor + pratinjau PDF, pola K3) |
 | Sub-halaman Jadwal (10 jenis) | ⏳ Belum (menyusul) |
-| Sub-halaman Input | ✅ 9 input (lihat 2.2) — ⏳ patrol check, checklist patrol check, log sheet |
+| Sub-halaman Input | ✅ 11 input (lihat 2.2) — ⏳ log sheet |
 | Master data & maturity level assessment | ⏳ Belum dirancang |
 | Migration & Model transaksi | ✅ Jadwal + `pdm_kesiapan_apds`, `pdm_sample_monitorings` (+`_items`), `pdm_permit_to_works`, `pdm_form_documents` (+`pdm_form_items`), `pdm_realisasi_prediktifs`, `pdm_document_records` |
 
@@ -85,8 +85,8 @@ Filter unit/bulan/tahun + kartu berikut (target route final di kolom kanan):
 | 7 | Laporan Pengukuran Vibrasi Mesin & Generator (per mesin) | `/pdm/input/forms/vibrasi` | ✅ |
 | 8 | Form Kontrol Material, Peralatan & Tools PdM | `/pdm/input/forms/kontrol-material` | ✅ |
 | 9 | Realisasi Pemeliharaan Prediktif Bulanan | `/pdm/input/realisasi-prediktif` (`pdm.input.realisasi-prediktif.*`) | ✅ |
-| 10 | Patrol Check Predictive Maintenance (PdM) | `/pdm/input/patrol-check` | ⏳ |
-| 11 | Laporan Checklist Patrol Check PdM | `/pdm/input/checklist-patrol-check` | ⏳ |
+| 10 | Patrol Check Predictive Maintenance (PdM) | `/pdm/input/forms/patrol-check-pdm` | ✅ |
+| 11 | Laporan Checklist Patrol Check PdM | `/pdm/input/forms/checklist-patrol-check` | ✅ |
 | 12 | Log Sheet Predictive Maintenance | `/pdm/input/log-sheet` | ⏳ |
 
 > **Tanda tangan belum dipakai di inputan** (tidak ada pilihan pegawai/nama
@@ -110,15 +110,27 @@ plus unduhan Excel dari halaman (ExcelJS, `resources/js/lib/pdm-input-excel.ts`)
 - **Permit to Work** — `Pdm\PermitToWorkController`, model `PdmPermitToWork`
   (uraian, tanggal, status open/close; min. 30 baris bernomor, total Open/Close).
   PDF A4 portrait sesuai form: `resources/views/pdm/input/permit-to-work-pdf.blade.php`.
-- **Form generik (5S5R, Air Pendingin, Pelumas, Vibrasi, Kontrol Material)** —
+- **Form generik (5S5R, Air Pendingin, Pelumas, Vibrasi, Kontrol Material, Patrol Check PdM, Checklist Patrol Check)** —
   satu `Pdm\FormInputController` (`pdm.input.forms.index|store|pdf`, parameter
   `{form}`), definisi per form di `App\Support\PdmForms\*Form` (registry
   `PdmForms::ALL`: kop, field header/footer, section + kolom + baris default,
   total, ringkasan akumulatif, orientasi, per-mesin). Data di `pdm_form_documents`
   (`subject` = id mesin untuk form per-mesin, `header` JSON, foto di disk public
   `pdm/{form}/{unit}/`) + `pdm_form_items` (section + JSON `data`), service
-  `App\Services\Pdm\PdmFormDocuments`. Halaman `pdm/input/forms/show.tsx`,
+  `App\Services\Pdm\PdmFormDocuments`. Halaman per form di folder sendiri
+  `resources/js/pages/pdm/input/{form}/index.tsx` (tipis: merender komponen
+  bersama `components/pdm/form-input-page.tsx` + breadcrumb `pdmFormBreadcrumbs`);
+  URL & route tetap `pdm.input.forms.*` (`/pdm/input/forms/{form}`),
   PDF `resources/views/pdm/input/{form}-pdf.blade.php` (layout `layouts/form`).
+  Tipe kolom `check` (kotak centang, nilai `1`) + `exclusive` (satu centang per
+  baris dalam grupnya, dipaksa juga di server) dipakai Patrol Check PdM untuk
+  Ya / Tidak / N/A; PDF mencetak ✓ / ☐, Excel ✓. Patrol Check PdM: A. Identitas
+  Patrol (unit, hari/tanggal, waktu, tim, pelaksana), B. 28 item checklist default
+  (area/objek, item, standar), rekap Ya/Tidak/N/A & % sesuai, PDF A4 portrait.
+  Checklist Patrol Check PdM: identitas, area A–E (turbin, generator, pelumasan,
+  pendingin, monitoring PdM) bernomor lanjut 1..n (`continuousNumbering()`),
+  status OK/NOK/N/A, temuan, tindak lanjut, kolom eviden + foto eviden (footer),
+  ringkasan hasil patroli (total, OK, NOK, N/A, belum diisi, realisasi %). Tanpa TTD.
 - **Realisasi Pemeliharaan Prediktif Bulanan** — `Pdm\RealisasiPrediktifController`,
   model `PdmRealisasiPrediktif` (uraian, mesin, hari `rencana`/`realisasi` JSON,
   durasi); target/realisasi/kinerja dihitung; Sabtu/Minggu/libur merah. Header
@@ -147,6 +159,14 @@ jadi **selalu tercetak lengkap** (data tersimpan atau isian bawaan halaman — t
 ada garis merah). Satu `.pdm-section` per tabel (`.pdm-landscape` untuk landscape),
 PDF via `OrientationPdfMerger::renderSections`. Mode Excel dari
 `App\Services\Reports\FragmentGridBuilder` (tabel HTML → grid). Tes: `tests/Feature/Pdm/LaporanPdmTest.php`.
+
+Urutan Input di laporan = urutan menu Input PdM (Patrol Check PdM & Checklist
+Patrol Check sesudah Realisasi Prediktif — `PdmDocumentBuilder::FORMS_AFTER_REALISASI`).
+Halaman `pdm/laporan/index.tsx` menampilkan panel **Isi Laporan** dari
+`PdmDocumentBuilder::contents()` (judul, orientasi, status Tersimpan / Isian bawaan
+per tabel, tanpa merender tabel). Logo: setiap halaman laporan & setiap tabel yang
+disisipkan memakai `public/logo/sidebar-logo.png` (kiri) dan `public/logo/mkp.jpg`
+(kanan) — controller jadwal/input mengambilnya lewat `App\Support\JadwalPdf::logos()`.
 
 ---
 

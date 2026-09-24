@@ -10,14 +10,15 @@ namespace App\Support\LogistikForms;
  * the Excel export and the Laporan Logistik — add a form by adding a
  * subclass to {@see LogistikForms::ALL}.
  *
- * Column: key, label, type (text|textarea|number|select|image|computed),
+ * Column: key, label, type (text|textarea|number|select|date|check|image|computed),
  * options (select), group (header spanning adjacent columns), width (px),
- * align (l|c|r), default (value of a new row), computed:
+ * align (l|c|r), default (value of a new row), exclusive (check columns of one
+ * group allow one tick per row, stored as 1, e.g. Open / Close), computed:
  * - ['formula' => 'a + b - c * d'] — + - * / over column keys and numbers;
  * - ['count_filled' => [[keys], …]] — groups with at least one value above 0;
  * - ['percent' => [numerator key, denominator key]].
  *
- * @phpstan-type Column array{key: string, label: string, type: string, options?: list<string>, group?: string, width?: int, align?: string, default?: string|int|float, computed?: array<string, mixed>}
+ * @phpstan-type Column array{key: string, label: string, type: string, options?: list<string>, group?: string, width?: int, align?: string, default?: string|int|float, exclusive?: string, computed?: array<string, mixed>}
  * @phpstan-type Section array{key: string, title: string|null, rows: list<array<string, string|int|float|null>>, blank_rows: int, totals: list<string>}
  */
 abstract class LogistikForm
@@ -44,6 +45,15 @@ abstract class LogistikForm
     public function orientation(): string
     {
         return 'landscape';
+    }
+
+    /**
+     * Tighter PDF cells (small padding & font) for very wide forms, e.g. one
+     * column pair per day of the month, so the table fits the A4 page.
+     */
+    public function compact(): bool
+    {
+        return false;
     }
 
     /** Minimum PDF row height (px); taller for forms holding photos. */

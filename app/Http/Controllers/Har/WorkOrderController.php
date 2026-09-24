@@ -55,7 +55,7 @@ class WorkOrderController extends Controller
             ->orderBy('report_date')
             ->get();
 
-        return Inertia::render('har/input/work-orders', [
+        return Inertia::render('har/input/work-order/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'rows' => $orders->map(fn (WorkOrder $wo): array => [
                 'wonum' => $wo->wonum,

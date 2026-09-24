@@ -17,8 +17,14 @@
     $hasGroups = collect($columns)->contains(fn (array $c): bool => isset($c['group']));
     $align = fn (array $c): string => ['c' => 'center', 'r' => 'right'][$c['align'] ?? 'l'] ?? 'left';
     $format = function (array $column, mixed $value): string {
+        if ($column['type'] === 'check') {
+            return (string) $value === '1' ? '✓' : '';
+        }
         if ($value === null || $value === '') {
             return '';
+        }
+        if ($column['type'] === 'date' && preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $value) === 1) {
+            return \Illuminate\Support\Carbon::parse((string) $value)->format('d/m/Y');
         }
         if ($column['key'] === 'harga_satuan' && is_numeric($value)) {
             return number_format((float) $value, 0, ',', '.');
@@ -58,6 +64,9 @@
         table.grid th, table.grid td { border: 1px solid #000; padding: 2px 3px; vertical-align: middle; }
         table.grid th { background: #5bc8f5; font-weight: bold; text-align: center; }
         table.grid td { height: {{ $form->rowHeight() }}px; }
+        @if($form->compact())
+            table.grid th, table.grid td { padding: 1px 0; font-size: 5.5px; }
+        @endif
         tr.section td { background: #ffff00; font-weight: bold; }
         tr.total td { font-weight: bold; }
         td.strong { font-weight: bold; }

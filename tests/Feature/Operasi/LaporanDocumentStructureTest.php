@@ -90,7 +90,7 @@ class LaporanDocumentStructureTest extends TestCase
     {
         [$unit, $engine] = $this->unitWithEngine();
         $unit->update(['service_unit_id' => ServiceUnit::factory()->create()->id]);
-        Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Adi Yusuf Sanjani N', 'position' => 'Team Leader Pemeliharaan']);
+        Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Adi Yusuf Sanjani N', 'position' => 'Team Leader Operasi']);
         Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Eric Agus Hasti Pradana', 'position' => 'Koordinator Operasi']);
         Employee::factory()->create(['unit_id' => null, 'service_unit_id' => $unit->service_unit_id, 'is_active' => true, 'name' => 'Zulkiflin', 'position' => 'Manager UL']);
         Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Fajar Project Leader', 'position' => 'Project Leader']);

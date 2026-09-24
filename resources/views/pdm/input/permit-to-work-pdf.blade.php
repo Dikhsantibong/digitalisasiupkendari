@@ -22,15 +22,7 @@
     </style>
 </head>
 <body>
-    @include('pdm.input.partials.kop', [
-        'theme' => 'plain',
-        'lines' => [
-            'JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE & 6 SITE - KIT',
-            'PLN NP UP KENDARI '.strtoupper($unit->name),
-            'LAPORAN PERMIT TO WORK PEMBANGKIT',
-            'BAGIAN PdM PEMBANGKIT',
-        ],
-    ])
+    @include('pdm.input.partials.kop', \App\Support\PdmInputKop::for('permit-to-work', $unit->name))
 
     <div class="bar bar-orange">LAPORAN PTW PEMBANGKIT — {{ strtoupper($periodLabel) }}</div>
     <table class="grid th-orange">

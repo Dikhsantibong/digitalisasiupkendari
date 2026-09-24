@@ -51,7 +51,7 @@ class ServiceRequestController extends Controller
             ->orderBy('sr_number')
             ->get();
 
-        return Inertia::render('har/input/service-requests', [
+        return Inertia::render('har/input/service-request/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'rows' => $requests->map(fn (ServiceRequest $sr): array => [
                 'sr_number' => $sr->sr_number,

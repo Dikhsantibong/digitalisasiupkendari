@@ -36,18 +36,11 @@ class LaporanController extends Controller
 
         $unit = $units->firstWhere('id', (int) $request->integer('unit_id')) ?? $units->first();
 
-        $machines = Machine::query()
-            ->where('unit_id', $unit->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
         $now = Carbon::now();
 
         return Inertia::render('operasi/laporan/index', [
             'filters' => [
                 'unit_id' => $unit->id,
-                'engine_id' => (int) $request->integer('engine_id') ?: $machines->first()?->id,
                 'month' => (int) ($request->integer('month') ?: $now->month),
                 'year' => (int) ($request->integer('year') ?: $now->year),
             ],
@@ -62,7 +55,6 @@ class LaporanController extends Controller
                 ->all(),
             'options' => [
                 'units' => $units->all(),
-                'machines' => $machines->all(),
                 'years' => range($now->year - 3, $now->year + 1),
             ],
         ]);
@@ -80,10 +72,10 @@ class LaporanController extends Controller
         abort_unless($user->canAccessUnit($unit), 403);
 
         $engine = null;
-        if ($definition->requiresEngine()) {
+        if ($definition->requiresEngine() || ($request->filled('engine_id') && $request->integer('engine_id') > 0)) {
             $engine = Machine::query()
                 ->where('unit_id', $unit->id)
-                ->findOrFail($request->integer('engine_id'));
+                ->find($request->integer('engine_id'));
         }
 
         $month = (int) $request->integer('month');
@@ -108,14 +100,17 @@ class LaporanController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiLaporanView), 403);
 
         $definition = $this->registry->find($report);
-        abort_if($definition === null || ! $definition->requiresEngine(), 404);
+        abort_if($definition === null, 404);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
 
-        $engine = Machine::query()
-            ->where('unit_id', $unit->id)
-            ->findOrFail($request->integer('engine_id'));
+        $engine = null;
+        if ($definition->requiresEngine() || ($request->filled('engine_id') && $request->integer('engine_id') > 0)) {
+            $engine = Machine::query()
+                ->where('unit_id', $unit->id)
+                ->find($request->integer('engine_id'));
+        }
 
         $month = (int) $request->integer('month');
         $year = (int) $request->integer('year');
@@ -124,12 +119,12 @@ class LaporanController extends Controller
 
         return Inertia::render('operasi/laporan/spreadsheet', [
             'report' => ['code' => $definition->code(), 'title' => $definition->title()],
-            'filters' => ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'month' => $month, 'year' => $year],
+            'filters' => ['unit_id' => $unit->id, 'engine_id' => $engine?->id, 'month' => $month, 'year' => $year],
             'grid' => $this->gridBuilder->forMonthlyReport($data),
             'print_url' => route('operasi.laporan.show', [
                 'report' => $definition->code(),
                 'unit_id' => $unit->id,
-                'engine_id' => $engine->id,
+                'engine_id' => $engine?->id,
                 'month' => $month,
                 'year' => $year,
             ]),

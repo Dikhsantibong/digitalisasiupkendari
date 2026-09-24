@@ -2,6 +2,8 @@
 
 namespace App\Services\Har;
 
+use App\Services\Reports\FragmentGridBuilder;
+
 /**
  * Turns the computed HAR monthly report into a spreadsheet grid (cells + merges
  * + column widths) for the Excel edit mode. The letterhead (logo + kop) is added
@@ -15,6 +17,8 @@ namespace App\Services\Har;
 class HarDocumentGridBuilder
 {
     private const COLS = 8;
+
+    public function __construct(private readonly FragmentGridBuilder $fragments) {}
 
     /**
      * @param  array<string, mixed>  $data  the HarDocumentBuilder payload
@@ -268,12 +272,45 @@ class HarDocumentGridBuilder
             }
         }
 
-        return [
+        $grid = [
             'name' => 'Laporan HAR',
             'cols' => self::COLS,
             'col_widths' => [90, 220, 90, 90, 90, 90, 80, 80],
             'merges' => $merges,
             'rows' => $rows,
+        ];
+
+        return ($data['parts'] ?? []) === [] ? $grid : $this->withParts($grid, $data);
+    }
+
+    /**
+     * Appends the embedded jadwal/formulir/input tables (see
+     * HarDocumentBuilder::sources()) below the report body, cell by cell.
+     *
+     * @param  array<string, mixed>  $grid
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withParts(array $grid, array $data): array
+    {
+        $parts = $this->fragments->build([
+            'document' => ['title' => 'LAMPIRAN JADWAL, FORMULIR & INPUT PEMELIHARAAN'],
+            'report' => ['unit' => ['name' => $data['report']['unit']['name']], 'period' => ['label' => $data['report']['period']['label']]],
+            'parts' => $data['parts'],
+        ]);
+
+        $offset = count($grid['rows']) + 1;
+        $cols = max($grid['cols'], $parts['cols']);
+
+        return [
+            ...$grid,
+            'cols' => $cols,
+            'col_widths' => array_map(fn (int $i): int => $grid['col_widths'][$i] ?? 70, range(0, $cols - 1)),
+            'merges' => [
+                ...$grid['merges'],
+                ...array_map(fn (array $m): array => [$m[0] + $offset, $m[1], $m[2] + $offset, $m[3]], $parts['merges']),
+            ],
+            'rows' => [...$grid['rows'], [$this->c('')], ...$parts['rows']],
         ];
     }
 

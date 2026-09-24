@@ -12,6 +12,7 @@ use App\Http\Controllers\K3\EmergencyFacilityController;
 use App\Http\Controllers\K3\FireAlarmInspectionController;
 use App\Http\Controllers\K3\FireExtinguisherCheckController;
 use App\Http\Controllers\K3\FormulirController;
+use App\Http\Controllers\K3\FormulirRecordController;
 use App\Http\Controllers\K3\HydrantInspectionController;
 use App\Http\Controllers\K3\InputExportController;
 use App\Http\Controllers\K3\InputHubController;
@@ -20,15 +21,19 @@ use App\Http\Controllers\K3\InstruksiKerjaController;
 use App\Http\Controllers\K3\JadwalController;
 use App\Http\Controllers\K3\JadwalOnCallController;
 use App\Http\Controllers\K3\KegiatanRutinController;
+use App\Http\Controllers\K3\KesiapanApdController;
+use App\Http\Controllers\K3\KondisiK3Controller;
 use App\Http\Controllers\K3\LaporanController;
 use App\Http\Controllers\K3\LaporanPengusahaanController;
 use App\Http\Controllers\K3\MasterController;
+use App\Http\Controllers\K3\MetodePengujianPeralatanController;
 use App\Http\Controllers\K3\MonitoringController;
 use App\Http\Controllers\K3\PatrolCheckController;
 use App\Http\Controllers\K3\PatrolController;
 use App\Http\Controllers\K3\PekerjaanRutinController;
 use App\Http\Controllers\K3\RambuInspectionController;
 use App\Http\Controllers\K3\TimeFrameController;
+use App\Support\K3FormulirRegistry;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -60,6 +65,12 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/export/{input}/pdf', [InputExportController::class, 'pdf'])->name('input.export.pdf');
         Route::get('input/export/{input}/data', [InputExportController::class, 'data'])->name('input.export.data');
         Route::get('formulir', [FormulirController::class, 'index'])->name('formulir.index');
+        Route::get('formulir/metode-pengujian', [MetodePengujianPeralatanController::class, 'index'])->name('formulir.metode-pengujian.index');
+        Route::post('formulir/metode-pengujian', [MetodePengujianPeralatanController::class, 'store'])->name('formulir.metode-pengujian.store');
+        Route::get('formulir/metode-pengujian/pdf', [MetodePengujianPeralatanController::class, 'pdf'])->name('formulir.metode-pengujian.pdf');
+        Route::get('formulir/{form}', [FormulirRecordController::class, 'index'])->whereIn('form', K3FormulirRegistry::keys())->name('formulir.record.index');
+        Route::post('formulir/{form}', [FormulirRecordController::class, 'store'])->whereIn('form', K3FormulirRegistry::keys())->name('formulir.record.store');
+        Route::get('formulir/{form}/pdf', [FormulirRecordController::class, 'pdf'])->whereIn('form', K3FormulirRegistry::keys())->name('formulir.record.pdf');
 
         Route::get('input/time-frame', [TimeFrameController::class, 'index'])->name('input.time-frame.index');
         Route::post('input/time-frame', [TimeFrameController::class, 'store'])->name('input.time-frame.store');
@@ -93,6 +104,13 @@ Route::middleware(['auth', 'verified'])
 
         Route::get('input/emergency-facility', [EmergencyFacilityCheckController::class, 'index'])->name('input.emergency-facility.index');
         Route::post('input/emergency-facility', [EmergencyFacilityCheckController::class, 'store'])->name('input.emergency-facility.store');
+
+        Route::get('input/kesiapan-apd', [KesiapanApdController::class, 'index'])->name('input.kesiapan-apd.index');
+        Route::post('input/kesiapan-apd', [KesiapanApdController::class, 'store'])->name('input.kesiapan-apd.store');
+
+        Route::get('input/kondisi-k3', [KondisiK3Controller::class, 'index'])->name('input.kondisi-k3.index');
+        Route::post('input/kondisi-k3', [KondisiK3Controller::class, 'store'])->name('input.kondisi-k3.store');
+        Route::post('input/kondisi-k3/upload', [KondisiK3Controller::class, 'upload'])->name('input.kondisi-k3.upload');
 
         Route::get('input/apd-inventory', [ApdInventoryController::class, 'index'])->name('input.apd-inventory.index');
         Route::post('input/apd-inventory', [ApdInventoryController::class, 'store'])->name('input.apd-inventory.store');

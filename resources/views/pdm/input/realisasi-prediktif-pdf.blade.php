@@ -26,10 +26,7 @@
     </style>
 </head>
 <body>
-    @include('pdm.input.partials.kop', [
-        'theme' => 'plain',
-        'lines' => ['JASA PENDUKUNG TEKNIS 11 SITE', 'PLN NP UP KENDARI '.strtoupper($unit->name), 'BAGIAN PdM PEMBANGKIT', 'REALISASI PEMELIHARAAN PREDIKTIF BULANAN'],
-    ])
+    @include('pdm.input.partials.kop', \App\Support\PdmInputKop::for('realisasi-prediktif', $unit->name))
 
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 4px;">
         <tr>

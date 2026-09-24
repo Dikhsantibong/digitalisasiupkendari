@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
+import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,8 @@ type Target = { jenis: string; target: number | null; keterangan: string };
 
 type Props = {
     unit: IdName;
+    /** Kop dokumen, sama dengan kop PDF (App\Support\PdmInputKop). */
+    kop_lines: string[];
     filters: PdmInputFilters;
     options: { units: IdName[]; years: number[]; jenis_sample: string[] };
     sections: SampleSection[];
@@ -43,7 +46,7 @@ const cellInput = 'h-7 rounded-none border-0 bg-transparent px-1 text-xs shadow-
 
 const blank = (section: SampleSection): RowData => Object.fromEntries(section.columns.map((c) => [c.key, null]));
 
-export default function PdmSampleMonitoringInput({ unit, filters, options, sections, document, has_saved, can_write }: Props) {
+export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, options, sections, document, has_saved, can_write }: Props) {
     const [header, setHeader] = useState({ lokasi: document.lokasi, pic_monitoring: document.pic_monitoring, catatan: document.catatan });
     const [targets, setTargets] = useState<Target[]>(document.targets);
     const [rows, setRows] = useState<Record<string, RowData[]>>(document.rows);
@@ -205,6 +208,8 @@ export default function PdmSampleMonitoringInput({ unit, filters, options, secti
                 />
 
                 <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+
+                <PdmDocumentHeader lines={kop_lines} period={periodLabel} />
 
                 <div className="grid gap-3 rounded-md border border-border bg-card p-3 md:grid-cols-2">
                     <div className="flex flex-col gap-1.5">

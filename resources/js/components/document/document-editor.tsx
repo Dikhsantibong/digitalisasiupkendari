@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ReportWorkflowPanel } from '@/components/document/report-workflow-panel';
 import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
 import { PageHeader } from '@/components/page-header';
+import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { SpreadsheetEditor } from '@/components/spreadsheet-editor';
 import { StatusBadge } from '@/components/status-badge';
@@ -262,7 +263,7 @@ export function DocumentEditor({
             )}
 
             {mode === 'pdf' ? (
-                <iframe
+                <PdfPreviewFrame
                     key={previewKey}
                     title="Pratinjau PDF"
                     src={`${pdfUrl}${pdfUrl.includes('?') ? '&' : '?'}v=${previewKey}`}

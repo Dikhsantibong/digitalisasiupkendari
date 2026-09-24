@@ -12,6 +12,7 @@ use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
+use App\Support\PdmInputKop;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -40,6 +41,7 @@ class PermitToWorkController extends Controller
 
         return Inertia::render('pdm/input/permit-to-work/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
+            'kop_lines' => PdmInputKop::lines('permit-to-work', $unit->name),
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'options' => $this->pdmFilterOptions($units),
             'rows' => $rows,

@@ -4,6 +4,7 @@ import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,8 @@ type Row = {
 
 type Props = {
     unit: IdName;
+    /** Kop dokumen, sama dengan kop PDF (App\Support\PdmInputKop). */
+    kop_lines: string[];
     filters: PdmInputFilters;
     options: { units: IdName[]; years: number[] };
     days: Day[];
@@ -43,7 +46,7 @@ const cellInput = 'h-7 rounded-none border-0 bg-transparent px-1 text-xs shadow-
 
 const kinerja = (row: Row) => (row.rencana.length > 0 ? `${Math.round((row.realisasi.length / row.rencana.length) * 100)}%` : '-');
 
-export default function PdmRealisasiPrediktifInput({ unit, filters, options, days, rows: initialRows, meta: initialMeta, has_saved, can_write }: Props) {
+export default function PdmRealisasiPrediktifInput({ unit, kop_lines, filters, options, days, rows: initialRows, meta: initialMeta, has_saved, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(initialRows);
     const [meta, setMeta] = useState(initialMeta);
     const [dirty, setDirty] = useState(false);
@@ -154,6 +157,8 @@ export default function PdmRealisasiPrediktifInput({ unit, filters, options, day
                 />
 
                 <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+
+                <PdmDocumentHeader lines={kop_lines} period={periodLabel} />
 
                 {!has_saved && <p className="text-[13px] text-muted-foreground">Belum ada data tersimpan untuk periode ini — kegiatan standar sudah disiapkan.</p>}
 

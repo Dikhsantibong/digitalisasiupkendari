@@ -45,6 +45,11 @@ class PdmDocumentBuilder
 {
     public const TITLE = 'LAPORAN PREDICTIVE DAN MATURITY LEVEL PEMBANGKIT';
 
+    /**
+     * Generic forms listed after Realisasi Pemeliharaan Prediktif in the Input menu.
+     */
+    private const FORMS_AFTER_REALISASI = ['patrol-check-pdm', 'checklist-patrol-check'];
+
     public function __construct(
         private readonly ScopedHtmlFragment $fragments,
         private readonly ReportWorkflowService $workflows,
@@ -89,6 +94,20 @@ class PdmDocumentBuilder
             'parts' => $parts,
             'styles' => implode("\n", $styles),
         ];
+    }
+
+    /**
+     * The report's tables in Daftar Isi order with whether their data is saved
+     * for the period — without rendering them (menu Laporan overview).
+     *
+     * @return list<array{group: string, key: string, title: string, orientation: string, saved: bool}>
+     */
+    public function contents(Unit $unit, int $month, int $year): array
+    {
+        return array_map(
+            fn (array $source): array => array_diff_key($source, ['view' => true]),
+            $this->sources($unit, $month, $year),
+        );
     }
 
     /**
@@ -155,6 +174,7 @@ class PdmDocumentBuilder
         ];
 
         $forms = app(FormInputController::class);
+        $formSources = [];
         foreach (PdmForms::all() as $form) {
             $documents = PdmFormDocument::query()->where('unit_id', $unit->id)->where('form', $form->key())
                 ->where('year', $year)->where('month', $month)->orderBy('subject')->get(['subject']);
@@ -167,7 +187,7 @@ class PdmDocumentBuilder
             }
 
             foreach ($machines as $machine) {
-                $sources[] = [
+                $formSources[$form->key()][] = [
                     'group' => 'input',
                     'key' => $form->key().($machine ? '-'.$machine->id : ''),
                     'title' => $form->title().($form->perMachine() && $machine ? ' — '.$machine->name : ''),
@@ -178,8 +198,16 @@ class PdmDocumentBuilder
             }
         }
 
-        $sources[] = ['group' => 'input', 'key' => 'realisasi-prediktif', 'title' => 'Realisasi Pemeliharaan Prediktif Bulanan', 'orientation' => 'landscape', 'saved' => $saved(PdmRealisasiPrediktif::class), 'view' => $view(RealisasiPrediktifController::class)];
+        // Same order as the Input PdM menu: Realisasi Prediktif sits between
+        // the other generic forms and the patrol check forms.
+        $afterRealisasi = array_intersect_key($formSources, array_flip(self::FORMS_AFTER_REALISASI));
+        $beforeRealisasi = array_diff_key($formSources, $afterRealisasi);
 
-        return $sources;
+        return [
+            ...$sources,
+            ...array_merge(...array_values($beforeRealisasi ?: [[]])),
+            ['group' => 'input', 'key' => 'realisasi-prediktif', 'title' => 'Realisasi Pemeliharaan Prediktif Bulanan', 'orientation' => 'landscape', 'saved' => $saved(PdmRealisasiPrediktif::class), 'view' => $view(RealisasiPrediktifController::class)],
+            ...array_merge(...array_values($afterRealisasi ?: [[]])),
+        ];
     }
 }

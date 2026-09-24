@@ -9,11 +9,13 @@ use App\Models\HarLaporanGangguan;
 use App\Models\Machine;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -53,7 +55,7 @@ class LaporanGangguanController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        return Inertia::render('har/input/laporan-gangguan', [
+        return Inertia::render('har/formulir/laporan-gangguan/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,
@@ -199,24 +201,39 @@ class LaporanGangguanController extends Controller
         abort_unless($user->canAccessUnit($laporanGangguan->unit_id), 403);
 
         $unit = $laporanGangguan->unit()->with('serviceUnit')->firstOrFail();
+        [$view, $data] = $this->pdfView($unit, $laporanGangguan);
+        $pdf = Pdf::loadView($view, $data)->setPaper('a4', 'portrait');
 
-        $logoLeftPath = public_path('logo/sidebar-logo.png');
-        $logoRightPath = public_path('logo/mkp.jpg');
-        $logoLeft = file_exists($logoLeftPath) ? 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoLeftPath)) : null;
-        $logoRight = file_exists($logoRightPath) ? 'data:image/jpeg;base64,'.base64_encode((string) file_get_contents($logoRightPath)) : null;
+        $safeUnitName = str_replace(' ', '_', $unit->name);
 
-        $pdf = Pdf::loadView('har.input.laporan-gangguan-pdf', [
+        return $pdf->download("Laporan_Gangguan_{$safeUnitName}_{$laporanGangguan->id}.pdf");
+    }
+
+    /**
+     * PDF view & data of one LH-05 report (a blank form when unsaved) — reused by the Laporan Pemeliharaan.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    public function pdfView(Unit $unit, HarLaporanGangguan $laporanGangguan): array
+    {
+        return ['har.formulir.laporan-gangguan-pdf', [
             'unit' => $unit,
             'report' => $laporanGangguan,
             'tanggalLaporan' => $laporanGangguan->tanggal_laporan
                 ? $laporanGangguan->tanggal_laporan->locale('id')->isoFormat('D MMMM Y')
                 : '',
-            'logoLeft' => $logoLeft,
-            'logoRight' => $logoRight,
-        ])->setPaper('a4', 'portrait');
+            ...JadwalPdf::logos(),
+        ]];
+    }
 
-        $safeUnitName = str_replace(' ', '_', $unit->name);
-
-        return $pdf->download("Laporan_Gangguan_{$safeUnitName}_{$laporanGangguan->id}.pdf");
+    /**
+     * The unit's LH-05 reports dated in the given month.
+     *
+     * @return Collection<int, HarLaporanGangguan>
+     */
+    public function reports(Unit $unit, int $month, int $year): Collection
+    {
+        return HarLaporanGangguan::query()->where('unit_id', $unit->id)->where('year', $year)
+            ->whereMonth('tanggal_laporan', $month)->orderBy('tanggal_laporan')->orderBy('id')->get();
     }
 }

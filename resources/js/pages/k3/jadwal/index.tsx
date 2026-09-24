@@ -1,16 +1,12 @@
 import { Head, router } from '@inertiajs/react';
 import {
-    AlertTriangle,
     CalendarClock,
     CalendarDays,
     FileText,
-    HardHat,
     Leaf,
-    PackageCheck,
     PhoneCall,
     ShieldCheck,
     Users,
-    Wrench,
 } from 'lucide-react';
 import {
     OPERASI_MONTHS,
@@ -52,18 +48,6 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/k3/jadwal/on-call',
     },
     {
-        title: 'Absensi',
-        description: 'Pencatatan dan pemantauan kehadiran serta kesiapan personil tim K3 & Keamanan.',
-        icon: Users,
-        target: '/k3/jadwal/absensi',
-    },
-    {
-        title: 'Kesiapan APD',
-        description: 'Pemeriksaan rutin kelengkapan, kelaikan, dan distribusi Alat Pelindung Diri (APD) bagi pekerja.',
-        icon: HardHat,
-        target: '/k3/jadwal/kesiapan-apd',
-    },
-    {
         title: 'Jadwal Kegiatan Rutin Harian, Mingguan & Bulanan K3L KIT',
         description: 'Agenda berkala pelaksanaan program keselamatan kerja dan lindungan lingkungan di unit pembangkit.',
         icon: CalendarDays,
@@ -92,24 +76,6 @@ const JADWAL_LIST: JadwalCard[] = [
         description: 'Penyusunan, sosialisasi, standardisasi, dan peninjauan Instruksi Kerja (IK) prosedur K3L.',
         icon: FileText,
         target: '/k3/jadwal/instruksi-kerja',
-    },
-    {
-        title: 'Kesiapan Material & Peralatan',
-        description: 'Inventarisasi dan inspeksi kesiapan perlengkapan darurat, APAR/APAB, eye wash, dan logistik K3.',
-        icon: PackageCheck,
-        target: '/k3/jadwal/kesiapan-material',
-    },
-    {
-        title: 'Realisasi Kegiatan Pemeliharaan',
-        description: 'Monitoring dan evaluasi penerapan aspek safety pada realisasi pekerjaan pemeliharaan unit.',
-        icon: Wrench,
-        target: '/k3/jadwal/realisasi-pemeliharaan',
-    },
-    {
-        title: 'Kondisi K3 (Unsafe Action & Unsafe Condition)',
-        description: 'Identifikasi, pelaporan, dan tindak lanjut temuan tindakan tidak aman dan kondisi berbahaya.',
-        icon: AlertTriangle,
-        target: '/k3/jadwal/kondisi-k3',
     },
 ];
 

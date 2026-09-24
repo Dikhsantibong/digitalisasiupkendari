@@ -86,16 +86,18 @@ const JADWAL_LIST: JadwalCard[] = [
         sheetKey: 'ik',
     },
     {
-        title: 'Jadwal Kegiatan Pemeliharaan Logistik & Gudang',
+        title: 'Jadwal Pemeliharaan Logistik dan Gudang',
         description:
-            'Perencanaan jadwal pemeliharaan sarana, rak, dan fasilitas penyimpanan material serta tools di gudang.',
+            'Rencana & realisasi pemeliharaan sarana, rak, dan fasilitas penyimpanan gudang per tanggal, dengan target, realisasi, dan kinerja.',
         icon: Wrench,
+        sheetKey: 'pemeliharaan',
     },
     {
-        title: 'Jadwal Piket Patrol Check Stock Material & Tools',
+        title: 'Jadwal Piket Patrol Check Logistik & Gudang',
         description:
-            'Jadwal patroli pengecekan berkala kondisi, kelengkapan, dan kesesuaian stok material serta tools gudang.',
+            'Rencana & realisasi piket patrol check stok material & tools gudang (Senin & Jumat), dengan target, realisasi, dan kinerja.',
         icon: ShieldCheck,
+        sheetKey: 'piket-patrol-check',
     },
 ];
 

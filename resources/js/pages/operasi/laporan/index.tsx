@@ -22,7 +22,6 @@ type ReportDef = {
 
 type Filters = {
     unit_id: number;
-    engine_id: number | null;
     month: number;
     year: number;
 };
@@ -30,7 +29,7 @@ type Filters = {
 type Props = {
     filters: Filters;
     reports: ReportDef[];
-    options: { units: IdName[]; machines: IdName[]; years: number[] };
+    options: { units: IdName[]; machines?: IdName[]; years: number[] };
 };
 
 export default function LaporanIndex({ filters, reports, options }: Props) {
@@ -44,7 +43,6 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
 
     const reportQuery = () => ({
         unit_id: filters.unit_id,
-        engine_id: filters.engine_id ?? undefined,
         month: filters.month,
         year: filters.year,
     });
@@ -59,7 +57,7 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title="Laporan Operasi Pembangkit"
-                    description="Pilih unit, mesin, dan periode, lalu satu klik untuk melihat & mencetak."
+                    description="Pilih unit dan periode, lalu satu klik untuk melihat & mencetak."
                 />
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
@@ -67,15 +65,9 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) =>
-                            visit({ unit_id: Number(value), engine_id: null })
+                            visit({ unit_id: Number(value) })
                         }
                         options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                    />
-                    <OperasiSelect
-                        label="Mesin"
-                        value={filters.engine_id ? String(filters.engine_id) : ''}
-                        onChange={(value) => visit({ engine_id: Number(value) })}
-                        options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))}
                     />
                     <OperasiSelect
                         label="Bulan"
@@ -95,42 +87,31 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                     <EmptyState title="Belum ada laporan" description="Belum ada laporan terdaftar." />
                 ) : (
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                        {reports.map((report) => {
-                            const needsEngine =
-                                report.requires_engine && !filters.engine_id;
-
-                            return (
-                                <div
-                                    key={report.code}
-                                    className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4"
-                                >
-                                    <div>
-                                        <h2 className="text-base font-semibold text-foreground">
-                                            {report.title}
-                                        </h2>
-                                        <p className="mt-1 text-[13px] text-muted-foreground">
-                                            {report.description}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <div className="flex flex-wrap gap-2">
-                                            <Button
-                                                onClick={() => openDocument(report)}
-                                                disabled={needsEngine}
-                                            >
-                                                <FilePenLine className="size-4" />
-                                                Buka Dokumen (Lihat, Edit &amp; Cetak)
-                                            </Button>
-                                        </div>
-                                        {needsEngine && (
-                                            <p className="mt-1 text-[12px] text-amber-600">
-                                                Pilih mesin dulu.
-                                            </p>
-                                        )}
+                        {reports.map((report) => (
+                            <div
+                                key={report.code}
+                                className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4"
+                            >
+                                <div>
+                                    <h2 className="text-base font-semibold text-foreground">
+                                        {report.title}
+                                    </h2>
+                                    <p className="mt-1 text-[13px] text-muted-foreground">
+                                        {report.description}
+                                    </p>
+                                </div>
+                                <div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            onClick={() => openDocument(report)}
+                                        >
+                                            <FilePenLine className="size-4" />
+                                            Buka Dokumen (Lihat, Edit &amp; Cetak)
+                                        </Button>
                                     </div>
                                 </div>
-                            );
-                        })}
+                            </div>
+                        ))}
 
                         {/* Laporan Pengusahaan Pembangkit */}
                         <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">

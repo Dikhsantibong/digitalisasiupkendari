@@ -39,8 +39,10 @@ class DocumentController extends Controller
      * documents saved against an older layout re-render from the new template.
      * v1 = Sampul, Daftar Isi, Lembar Pengesahan, then every jadwal & input
      *      table embedded from its own PDF view.
+     * v3 = adds the Patrol Check Predictive Maintenance (PdM) and Checklist
+     *      Patrol Check PdM input forms.
      */
-    private const BODY_VERSION = 2;
+    private const BODY_VERSION = 3;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PdM & MATURITY LEVEL PEMBANGKIT';
 

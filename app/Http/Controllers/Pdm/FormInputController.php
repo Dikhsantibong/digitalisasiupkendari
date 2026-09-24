@@ -24,9 +24,12 @@ use Inertia\Response;
 
 /**
  * One controller for every generic PdM input form ({@see PdmForms}): Checklist
- * 5S5R, Kualitas Air Pendingin, Kualitas Pelumas, Vibrasi and Kontrol
- * Material. Per-machine forms keep one document per machine (`machine_id`).
- * The PDF is resources/views/pdm/input/{form}-pdf.blade.php.
+ * 5S5R, Kualitas Air Pendingin, Kualitas Pelumas, Vibrasi, Kontrol Material,
+ * Patrol Check PdM and Checklist Patrol Check. Per-machine forms
+ * keep one document per machine (`machine_id`). Each form has its own page
+ * resources/js/pages/pdm/input/{form}/index.tsx (rendering the shared
+ * components/pdm/form-input-page.tsx) and its PDF
+ * resources/views/pdm/input/{form}-pdf.blade.php.
  */
 class FormInputController extends Controller
 {
@@ -44,7 +47,7 @@ class FormInputController extends Controller
         [$units, $unit, $month, $year] = $this->pdmReadTarget($request);
         [$machines, $machine] = $this->machine($definition, $unit, $request);
 
-        return Inertia::render('pdm/input/forms/show', [
+        return Inertia::render("pdm/input/{$definition->key()}/index", [
             'form' => $definition->toArray(),
             'kop_lines' => $definition->kopLines($unit->name),
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
@@ -84,11 +87,13 @@ class FormInputController extends Controller
                     'number' => ['nullable', 'numeric'],
                     'date' => ['nullable', 'date'],
                     'select' => ['nullable', 'string', 'max:255'],
+                    'check' => ['nullable', 'in:0,1'],
                     default => ['nullable', 'string', 'max:1000'],
                 };
             }
         }
         $validated = $request->validate($rules);
+        $validated['rows'] = $this->keepOneTickPerGroup($definition, (array) ($validated['rows'] ?? []));
 
         $uploads = [];
         foreach ((array) $request->file('uploads', []) as $field => $files) {
@@ -152,6 +157,40 @@ class FormInputController extends Controller
             'document' => $this->documents->load($definition, $unit, $month, $year, $this->subject($machine), $machine, embedImages: true),
             ...JadwalPdf::logos(),
         ]];
+    }
+
+    /**
+     * `check` columns sharing an `exclusive` group (Ya / Tidak / N/A) keep only
+     * the first tick of a row; unticked boxes are stored as empty.
+     *
+     * @param  array<string, mixed>  $rows
+     * @return array<string, mixed>
+     */
+    private function keepOneTickPerGroup(PdmForm $definition, array $rows): array
+    {
+        foreach ($definition->sections() as $section) {
+            $checks = array_values(array_filter($section['columns'], fn (array $c): bool => ($c['type'] ?? 'text') === 'check'));
+            if ($checks === [] || ! isset($rows[$section['key']]) || ! is_array($rows[$section['key']])) {
+                continue;
+            }
+
+            foreach ($rows[$section['key']] as $index => $row) {
+                $taken = [];
+                foreach ($checks as $column) {
+                    $ticked = ($row[$column['key']] ?? null) === '1';
+                    $group = $column['exclusive'] ?? null;
+                    if ($ticked && $group !== null && isset($taken[$group])) {
+                        $ticked = false;
+                    }
+                    if ($ticked && $group !== null) {
+                        $taken[$group] = true;
+                    }
+                    $rows[$section['key']][$index][$column['key']] = $ticked ? '1' : null;
+                }
+            }
+        }
+
+        return $rows;
     }
 
     private function definition(string $form): PdmForm

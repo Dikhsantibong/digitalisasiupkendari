@@ -70,8 +70,9 @@ const INPUT_MENUS: InputCard[] = [
     {
         title: 'Laporan Inventaris Lainnya Logistik & Gudang',
         description:
-            'Pencatatan inventaris aset dan perlengkapan gudang lainnya di luar material dan tools utama.',
+            'Pemeriksaan harian inventaris lainnya (meja, kursi, komputer, HT, lemari, rak): N/T per tanggal, target, realisasi, dan kinerja.',
         icon: Boxes,
+        href: formRoutes.index('inventaris-lainnya').url,
     },
     {
         title: 'Laporan Peralatan, Material dan Tools Logistik & Gudang',
@@ -104,8 +105,9 @@ const INPUT_MENUS: InputCard[] = [
     {
         title: 'Laporan Permit To Work Pembangkit',
         description:
-            'Pencatatan dan pengelolaan izin kerja (Permit To Work) untuk pelaksanaan pekerjaan di area pembangkit.',
+            'Pencatatan izin kerja (Permit To Work) di area pembangkit: uraian, tanggal, status Open/Close, dan total per status.',
         icon: FileSignature,
+        href: formRoutes.index('permit-to-work').url,
     },
 ];
 

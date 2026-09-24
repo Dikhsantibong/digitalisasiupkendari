@@ -109,23 +109,18 @@ const INPUT_MENUS: InputCard[] = [
     {
         title: 'Patrol Check Predictive Maintenance (PdM)',
         description:
-            'Pencatatan hasil patroli pengukuran parameter predictive (HARMES & HARLIS) mesin pembangkit secara berkala.',
+            'Checklist patrol mesin, generator, sistem bantu, panel & K3 dengan standar/kriteria, hasil Ya/Tidak/N/A, temuan, dan rekap kesesuaian.',
         category: 'Patrol Check',
         icon: ShieldCheck,
+        href: pdmForms.index('patrol-check-pdm').url,
     },
     {
         title: 'Laporan Checklist Patrol Check PdM',
         description:
-            'Rekapitulasi checklist pelaksanaan patrol check PdM sebagai bukti kelengkapan item pemeriksaan per unit pembangkit.',
+            'Checklist patrol per area (turbin, generator, pelumasan, pendingin, monitoring PdM) dengan status OK/NOK/N/A, temuan, tindak lanjut, eviden foto, dan ringkasan hasil.',
         category: 'Pelaporan PdM',
         icon: ClipboardCheck,
-    },
-    {
-        title: 'Log Sheet Predictive Maintenance',
-        description:
-            'Pencatatan log sheet harian aktivitas pemeliharaan prediktif beserta catatan analisa dan tindakan teknis di lapangan.',
-        category: 'Log Sheet',
-        icon: NotebookPen,
+        href: pdmForms.index('checklist-patrol-check').url,
     },
 ];
 

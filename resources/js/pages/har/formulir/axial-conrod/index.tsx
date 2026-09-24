@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -1384,7 +1385,7 @@ export default function HarAxialConrodIndex({
                                     </div>
 
                                     <div className="w-full rounded-lg border border-border overflow-hidden bg-muted/20 shadow-inner">
-                                        <iframe
+                                        <PdfPreviewFrame
                                             key={previewKey}
                                             src={previewPdfUrl}
                                             className="w-full h-[850px] border-0"

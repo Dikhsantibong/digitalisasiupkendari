@@ -293,6 +293,8 @@ export type PdmFormColumn = {
     unit?: string;
     width?: number;
     align?: string;
+    /** `check` columns sharing this group allow one tick per row (e.g. Ya / Tidak / N/A). */
+    exclusive?: string;
 };
 export type PdmFormField = { key: string; label: string; type?: string; position?: string; group?: string };
 export type PdmFormSection = {
@@ -311,6 +313,8 @@ export type PdmFormDefinition = {
     description: string;
     orientation: 'portrait' | 'landscape';
     per_machine: boolean;
+    /** Rows are numbered 1..n across all sections. */
+    continuous_numbering?: boolean;
     header_color: 'orange' | 'navy' | 'cyan';
     fields: PdmFormField[];
     sections: PdmFormSection[];
@@ -328,6 +332,17 @@ export const columnTotal = (rows: Record<string, string | null>[], key: string):
     }, 0);
 
     return String(Math.round(sum * 100) / 100);
+};
+
+/** Row number offset of a section: rows of the sections before it when numbering runs across sections. */
+export const sectionNumberOffset = (form: PdmFormDefinition, rows: Record<string, unknown[]>, sectionKey: string): number => {
+    if (!form.continuous_numbering) {
+        return 0;
+    }
+
+    const index = form.sections.findIndex((s) => s.key === sectionKey);
+
+    return form.sections.slice(0, Math.max(index, 0)).reduce((sum, s) => sum + (rows[s.key]?.length ?? 0), 0);
 };
 
 export async function downloadPdmFormWorkbook(
@@ -437,12 +452,13 @@ export async function downloadPdmFormWorkbook(
         r = top + headRows;
 
         const list = rows[section.key] ?? [];
+        const offset = sectionNumberOffset(form, rows, section.key);
         list.forEach((row, index) => {
-            put(worksheet, r, 1, index + 1, CELL);
+            put(worksheet, r, 1, offset + index + 1, CELL);
             section.columns.forEach((column, i) => {
-                const raw = row[column.key] ?? '';
+                const raw = column.type === 'check' ? (row[column.key] === '1' ? '✓' : '') : (row[column.key] ?? '');
                 const numeric = column.type === 'number' && raw !== '' && Number.isFinite(Number(raw));
-                const centered = column.align === 'c' || ['number', 'date', 'time', 'select', 'readonly'].includes(column.type ?? '');
+                const centered = column.align === 'c' || ['number', 'date', 'time', 'select', 'readonly', 'check'].includes(column.type ?? '');
                 put(worksheet, r, i + 2, numeric ? Number(raw) : raw, centered ? CELL : CELL_LEFT);
             });
             r++;

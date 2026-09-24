@@ -35,6 +35,14 @@ class LogistikJadwal
             'menu' => 'jadwal',
             'description' => 'Kegiatan rutin harian, mingguan, bulanan dan non rutin logistik & gudang per tanggal, dengan target, rencana, realisasi dan kinerja.',
         ],
+        'pemeliharaan' => [
+            'title' => 'Jadwal Pemeliharaan Logistik dan Gudang',
+            'kop' => 'JADWAL PEMELIHARAAN LOGISTIK DAN GUDANG',
+            'layout' => 'pelaksana',
+            'row_label' => 'PELAKSANA',
+            'menu' => 'jadwal',
+            'description' => 'Rencana & realisasi pemeliharaan sarana, rak, dan fasilitas penyimpanan gudang per tanggal (standar: setiap Senin).',
+        ],
         'shift' => [
             'title' => 'Jadwal Shift Operator Logistik & Gudang',
             'kop' => 'LAPORAN JADWAL SHIFT OPERATOR',
@@ -50,6 +58,14 @@ class LogistikJadwal
             'row_label' => 'PELAKSANA',
             'menu' => 'jadwal',
             'description' => 'Rencana & realisasi piket patrol check / on call personil logistik & gudang per tanggal.',
+        ],
+        'piket-patrol-check' => [
+            'title' => 'Jadwal Piket Patrol Check Logistik & Gudang',
+            'kop' => 'JADWAL PIKET PATROL CHECK LOGISTIK & GUDANG',
+            'layout' => 'pelaksana',
+            'row_label' => 'PELAKSANA',
+            'menu' => 'jadwal',
+            'description' => 'Rencana & realisasi piket patrol check stok material & tools gudang (standar: Senin & Jumat, digeser ke hari kerja berikutnya bila libur).',
         ],
         '5s5r' => [
             'title' => 'Jadwal Pelaksanaan 5S5R Logistik & Gudang',
@@ -294,6 +310,33 @@ class LogistikJadwal
     }
 
     /**
+     * The columns falling on the given days of the week; one that is a
+     * holiday / red day moves to the next working day (e.g. Senin 17 Agustus → Selasa 18).
+     *
+     * @param  list<array{col: int, dow: string, is_red: bool}>  $columns
+     * @param  list<string>  $dows
+     * @return list<array{col: int, dow: string, is_red: bool}>
+     */
+    private static function onOrNextWorkday(array $columns, array $dows): array
+    {
+        $picked = [];
+        foreach ($columns as $index => $column) {
+            if (! in_array($column['dow'], $dows, true)) {
+                continue;
+            }
+
+            for ($next = $index; isset($columns[$next]); $next++) {
+                if (! $columns[$next]['is_red']) {
+                    $picked[$columns[$next]['col']] = $columns[$next];
+                    break;
+                }
+            }
+        }
+
+        return array_values($picked);
+    }
+
+    /**
      * The rows a sheet starts with before anything is saved.
      *
      * @param  list<array{col: int, dow: string, is_red: bool}>  $columns
@@ -329,6 +372,8 @@ class LogistikJadwal
                 ...array_fill(0, 4, $row('non-rutin', '')),
             ],
             'shift' => [$row(null, $officerName, collect($columns)->mapWithKeys(fn (array $c): array => [(string) $c['col'] => $c['is_red'] ? 'OF' : 'P'])->all(), 'OFFICER LOGISTIK')],
+            'pemeliharaan' => [$row(null, self::PELAKSANA, $mark($on('SN')))],
+            'piket-patrol-check' => [$row(null, self::PELAKSANA, $mark(self::onOrNextWorkday($columns, ['SN', 'JM'])))],
             'piket' => [$row(null, self::PELAKSANA, $mark(array_filter($columns, fn (array $c): bool => $c['is_red'])))],
             '5s5r' => [$row(null, self::PELAKSANA, $mark($on('SN', 'RB', 'JM')))],
             'meeting' => [$row(null, self::PELAKSANA, $mark($work))],

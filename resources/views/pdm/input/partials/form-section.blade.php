@@ -12,11 +12,24 @@
     $hasGroups = collect($columns)->contains(fn (array $c): bool => isset($c['group']));
     $hasUnits = collect($columns)->contains(fn (array $c): bool => isset($c['unit']));
     $rows = $document['rows'][$section['key']] ?? [];
+    // Rows of the previous sections, when the form numbers 1..n across sections.
+    $numberOffset = 0;
+    if ($form->continuousNumbering()) {
+        foreach ($form->sections() as $previous) {
+            if ($previous['key'] === $section['key']) {
+                break;
+            }
+            $numberOffset += count($document['rows'][$previous['key']] ?? []);
+        }
+    }
     $totals = $document['totals'][$section['key']] ?? [];
     $align = fn (array $c): string => match ($c['align'] ?? (in_array($c['type'] ?? 'text', ['number', 'date', 'time'], true) ? 'c' : 'l')) {
         'c' => 'c', 'r' => 'r', default => '',
     };
     $format = function (array $c, ?string $v): string {
+        if (($c['type'] ?? '') === 'check') {
+            return $v === '1' ? '✓' : '☐';
+        }
         if ($v !== null && ($c['type'] ?? '') === 'date') {
             try {
                 return \Illuminate\Support\Carbon::parse($v)->format('d/m/Y');
@@ -79,7 +92,7 @@
     <tbody>
         @foreach($rows as $row)
             <tr>
-                <td class="c">{{ $loop->iteration }}</td>
+                <td class="c">{{ $numberOffset + $loop->iteration }}</td>
                 @foreach($columns as $c)
                     <td class="{{ $align($c) }}">{{ $format($c, $row[$c['key']] ?? null) }}</td>
                 @endforeach

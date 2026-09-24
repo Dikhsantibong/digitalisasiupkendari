@@ -35,6 +35,10 @@ body { font-size: 11px; color: #000; }
 .har-p { text-align: justify; line-height: 1.5; margin: 4px 0; }
 .har-muted { color: #555; font-size: 10px; }
 .break-before { page-break-before: always; }
+/* Sections are split into pages by OrientationPdfMerger::renderSections, which
+   already breaks between them — the cover must not add a break of its own. */
+.har-section.har-cover { page-break-after: auto; }
+.har-toc-group td { background: #f8fafc; }
 /* Corporate cover — redesigned matching PLN + MKP branding */
 .har-cover {
     page-break-after: always;
@@ -163,7 +167,8 @@ body { font-size: 11px; color: #000; }
 }
 /* Give each subsequent "page" a clear gap so sections don't butt together on
    screen (page-break rules are inert in the editor). */
-.mce-content-body .break-before {
+.mce-content-body .break-before,
+.mce-content-body .har-section + .har-section {
     margin-top: 24px;
     padding-top: 8px;
     border-top: 1px dashed #cbd5e1;

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -1534,7 +1535,7 @@ export default function VibrationIndex({
                                 </div>
 
                                 <div className="w-full bg-zinc-100 dark:bg-zinc-900 p-2">
-                                    <iframe
+                                    <PdfPreviewFrame
                                         key={previewKey}
                                         src={previewPdfUrl}
                                         className="w-full rounded border border-border bg-white shadow-inner"

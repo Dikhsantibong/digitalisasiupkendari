@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -166,7 +167,7 @@ export default function BeritaAcaraPreviewPage({
                 {/* Main PDF Preview Container */}
                 <Card className="flex-1 overflow-hidden border border-border p-0 shadow-xs">
                     <CardContent className="h-full p-0">
-                        <iframe
+                        <PdfPreviewFrame
                             title={`Pratinjau PDF - ${type.label}`}
                             src={iframeSrc}
                             className="h-[calc(100vh-230px)] min-h-[720px] w-full border-0 bg-white"

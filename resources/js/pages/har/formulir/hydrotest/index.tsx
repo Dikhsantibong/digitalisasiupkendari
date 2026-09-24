@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -1309,7 +1310,7 @@ export default function HydrotestPage({
                                             Segarkan Pratinjau
                                         </Button>
                                     </div>
-                                    <iframe
+                                    <PdfPreviewFrame
                                         key={`${previewKey}-${cylindersCount}`}
                                         title="Pratinjau PDF Hydrotest"
                                         src={previewPdfUrl}

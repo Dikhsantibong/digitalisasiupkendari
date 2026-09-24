@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
+import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ type Meta = {
 
 type Props = {
     unit: IdName;
+    /** Kop dokumen, sama dengan kop PDF (App\Support\PdmInputKop). */
+    kop_lines: string[];
     filters: PdmInputFilters;
     options: { units: IdName[]; years: number[]; answers: Record<AnswerKey, string[]> };
     rows: Row[];
@@ -74,7 +77,7 @@ const blankRow = (kelompok: string): Row => ({
 
 const cellInput = 'h-7 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
 
-export default function PdmKesiapanApdInput({ unit, filters, options, rows: initialRows, meta: initialMeta, has_saved, can_write }: Props) {
+export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options, rows: initialRows, meta: initialMeta, has_saved, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(initialRows);
     const [meta, setMeta] = useState<Meta>(initialMeta);
     const [dirty, setDirty] = useState(false);
@@ -199,6 +202,8 @@ export default function PdmKesiapanApdInput({ unit, filters, options, rows: init
                 />
 
                 <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+
+                <PdmDocumentHeader lines={kop_lines} period={periodLabel} />
 
                 {!has_saved && (
                     <p className="text-[13px] text-muted-foreground">

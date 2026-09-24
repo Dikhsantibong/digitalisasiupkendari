@@ -40,10 +40,64 @@ class DashboardTest extends TestCase
                 ->where('scope.operasi', true)
                 ->where('scope.har', true)
                 ->where('scope.k3', true)
+                ->where('scope.logistik', true)
+                ->where('scope.pdm', true)
                 ->where('scope.units', true)
-                ->has('operasi')
-                ->has('har')
-                ->has('k3.s_curve'),
+                ->where('isDummy', true)
+                ->has('operasi.kpis', 5)
+                ->has('har.backlog')
+                ->has('k3.s_curve.points')
+                ->has('logistik.tanks')
+                ->has('pdm.vibration.series', 3)
+                ->has('moduleHealth', 5),
+            );
+    }
+
+    public function test_tl_operasi_dashboard_shows_only_operasi_module(): void
+    {
+        $this->seedAccessControl();
+        $unit = Unit::factory()->create(['name' => 'PLTD Uji']);
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('scope.operasi', true)
+                ->where('scope.har', false)
+                ->where('scope.k3', false)
+                ->where('scope.logistik', false)
+                ->where('scope.pdm', false)
+                ->has('operasi.daily.series', 2)
+                // Per-unit rows are labelled with the units the viewer can see.
+                ->where('operasi.units.0.unit', 'PLTD Uji')
+                ->where('har', null)
+                ->where('k3', null)
+                ->where('logistik', null)
+                ->where('pdm', null)
+                ->has('moduleHealth', 1),
+            );
+    }
+
+    public function test_tl_logistik_and_tl_pdm_dashboards_are_scoped_to_their_module(): void
+    {
+        $this->seedAccessControl();
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, Unit::factory()->create()))
+            ->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('scope.logistik', true)
+                ->has('logistik.critical')
+                ->where('operasi', null)
+                ->where('pdm', null),
+            );
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, Unit::factory()->create()))
+            ->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page
+                ->where('scope.pdm', true)
+                ->has('pdm.assets')
+                ->where('logistik', null)
+                ->where('har', null),
             );
     }
 

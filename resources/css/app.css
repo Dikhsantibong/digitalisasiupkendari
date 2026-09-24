@@ -67,6 +67,18 @@
     --color-warning-foreground: var(--warning-foreground);
     --color-info: var(--info);
     --color-info-foreground: var(--info-foreground);
+
+    /* Indeterminate progress bar for PDF previews (components/pdf-preview-frame.tsx). */
+    --animate-pdf-progress: pdf-progress 1.4s ease-in-out infinite;
+
+    @keyframes pdf-progress {
+        0% {
+            transform: translateX(-100%);
+        }
+        100% {
+            transform: translateX(350%);
+        }
+    }
 }
 
 /*

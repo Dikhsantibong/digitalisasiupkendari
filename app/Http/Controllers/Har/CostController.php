@@ -45,7 +45,7 @@ class CostController extends Controller
 
         $effective = $this->effectiveCost($unit->id, $month, $year);
 
-        return Inertia::render('har/input/costs', [
+        return Inertia::render('har/input/cost/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'auto' => $auto,
             'manual' => [

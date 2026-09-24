@@ -40,7 +40,7 @@ class WorkOrderInputTest extends TestCase
             ->get(route('har.input.work-order.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('har/input/work-orders')
+                ->component('har/input/work-order/index')
                 ->where('filters.unit_id', $unit->id)
                 ->has('options.maintenance_types')
                 ->has('options.statuses'),

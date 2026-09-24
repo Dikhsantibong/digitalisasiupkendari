@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import {
+    AlertTriangle,
     CalendarRange,
     ClipboardCheck,
     ClipboardList,
@@ -7,16 +8,21 @@ import {
     Image,
     NotebookPen,
     ShieldAlert,
+    ShieldCheck,
+    Sparkles,
     Wallet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import harInput from '@/routes/har/input';
+import harAbnormalGangguan from '@/routes/har/input/abnormal-gangguan';
 import harActivity from '@/routes/har/input/activity';
 import harAttachment from '@/routes/har/input/attachment';
 import harCost from '@/routes/har/input/cost';
 import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
+import harInputLembar from '@/routes/har/input/lembar';
+import harProgram5s5r from '@/routes/har/input/program-5s5r';
 import harSchedule from '@/routes/har/input/schedule';
 import harServiceRequest from '@/routes/har/input/service-request';
 import harUnsafeCondition from '@/routes/har/input/unsafe-condition';
@@ -88,12 +94,36 @@ const INPUT_MENUS: InputCard[] = [
         buttonLabel: 'Buka Input Unsafe Action & Condition',
     },
     {
-        title: 'Laporan Gangguan',
+        title: 'Rekap Laporan Gangguan',
         description:
-            'Pencatatan laporan kerusakan / gangguan unit pembangkit (Form LH-05): kronologi kejadian, analisa penyebab, dampak, dan tindak lanjut perbaikan.',
+            'Rekap gangguan pembangkit per bulan: tindakan, material rusak, durasi pemeliharaan, komponen & sistem terganggu, kWh loss, tindak lanjut, pencegahan, dan status Open/Close.',
         icon: FileWarning,
         url: harLaporanGangguan.index().url,
-        buttonLabel: 'Buka Input Laporan Gangguan',
+        buttonLabel: 'Buka Rekap Laporan Gangguan',
+    },
+    {
+        title: 'Laporan Kondisi Abnormal dan Gangguan Pembangkit',
+        description:
+            'Kondisi abnormal & gangguan per kejadian: uraian, jenis (mesin/electrical/sipil), tanggal, status abnormal/gangguan dengan durasi (jam), dan total.',
+        icon: AlertTriangle,
+        url: harAbnormalGangguan.index().url,
+        buttonLabel: 'Buka Laporan Abnormal & Gangguan',
+    },
+    {
+        title: 'Jadwal Program 5S 5R Pemeliharaan',
+        description:
+            'Pelaksanaan Ringkas, Rapi, Resik, Rawat, Rajin per minggu: kondisi awal/akhir, tindakan, progres, jumlah, keterangan, dan foto eviden.',
+        icon: Sparkles,
+        url: harProgram5s5r.index().url,
+        buttonLabel: 'Buka Input Program 5S 5R',
+    },
+    {
+        title: 'Laporan Patrol Check Pemeliharaan',
+        description:
+            'Patrol check harian per mesin: peralatan sistem pelumasan, bahan bakar, pendingin, udara & gas buang, dan kelistrikan — N normal / T tidak normal per tanggal.',
+        icon: ShieldCheck,
+        url: harInputLembar.index('patrol-check-pemeliharaan').url,
+        buttonLabel: 'Buka Input Patrol Check',
     },
 ];
 

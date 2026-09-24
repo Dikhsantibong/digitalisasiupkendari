@@ -10,9 +10,11 @@ class LogistikForms
     /** @var list<class-string<LogistikForm>> */
     public const ALL = [
         PendukungForm::class,
+        InventarisLainnyaForm::class,
         PeralatanForm::class,
         KondisiStokForm::class,
         UnsafeForm::class,
+        PermitToWorkForm::class,
     ];
 
     /**

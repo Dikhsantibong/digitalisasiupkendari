@@ -19,15 +19,7 @@
     <style>@page { size: A4 landscape; margin: 10mm 10mm 16mm 10mm; }</style>
 </head>
 <body>
-    @include('pdm.input.partials.kop', [
-        'theme' => 'cyan',
-        'lines' => [
-            'JASA PENDUKUNG TEKNIS 11 SITE',
-            'PLN NP UP KENDARI '.strtoupper($unit->name),
-            'KESIAPAN APD',
-            'BAGIAN PdM PEMBANGKIT',
-        ],
-    ])
+    @include('pdm.input.partials.kop', \App\Support\PdmInputKop::for('kesiapan-apd', $unit->name))
     <div class="muted" style="margin-bottom: 4px;">Periode: {{ $periodLabel }}</div>
 
     <table class="grid th-cyan">

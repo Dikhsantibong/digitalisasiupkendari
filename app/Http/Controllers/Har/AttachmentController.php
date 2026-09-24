@@ -50,7 +50,7 @@ class AttachmentController extends Controller
             ->orderBy('sort_order')->orderByDesc('id')
             ->get();
 
-        return Inertia::render('har/input/attachments', [
+        return Inertia::render('har/input/attachment/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'attachments' => $attachments->map(fn (MaintenanceAttachment $a): array => [
                 'id' => $a->id,

@@ -43,13 +43,6 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/pdm/jadwal/harian',
     },
     {
-        title: 'Jadwal Piket On Call',
-        description:
-            'Penetapan personil PdM siaga (On Call) untuk penanganan pengukuran dan analisa kondisi mesin.',
-        icon: PhoneCall,
-        target: '/pdm/jadwal/piket-on-call',
-    },
-    {
         title: 'Jadwal Piket Patrol Check PdM KIT',
         description:
             'Jadwal piket patroli pemeriksaan pemantauan parameter predictive (HARMES & HARLIS) pembangkit.',
@@ -70,41 +63,7 @@ const JADWAL_LIST: JadwalCard[] = [
         icon: CalendarClock,
         target: '/pdm/jadwal/meeting',
     },
-    {
-        title: 'Jadwal Pembuatan IK',
-        description:
-            'Penyusunan, review, standardisasi, dan pemutakhiran Instruksi Kerja (IK) predictive maintenance.',
-        icon: FileText,
-        target: '/pdm/jadwal/pembuatan-ik',
-    },
-    {
-        title: 'Jadwal Pemeriksaan Instalasi Blackstart',
-        description:
-            'Jadwal pengujian berkala dan inspeksi kesiapan teknis instalasi sistem darurat Blackstart Diesel.',
-        icon: ZapOff,
-        target: '/pdm/jadwal/blackstart',
-    },
-    {
-        title: 'Jadwal Commissioning Test Mesin',
-        description:
-            'Jadwal dan checklist pengujian kesiapan, persiapan, dan paralel generator commissioning test mesin.',
-        icon: CheckCircle2,
-        target: '/pdm/jadwal/commissioning-test-mesin',
-    },
-    {
-        title: 'Jadwal Commissioning Test Peralatan Non Mesin',
-        description:
-            'Jadwal pengujian commissioning peralatan non mesin: proteksi, transformator, motor bantu, dan panel.',
-        icon: Cpu,
-        target: '/pdm/jadwal/commissioning-test-non-mesin',
-    },
-    {
-        title: 'Jadwal Rencana Operasi (ROT, ROB, ROM)',
-        description:
-            'Penyusunan Rencana Operasi Tahunan (ROT), Bulanan (ROB), dan Mingguan (ROM) unit pembangkit.',
-        icon: ClipboardList,
-        target: '/pdm/jadwal/rencana-operasi',
-    },
+
 ];
 
 export default function PdmJadwalIndex({ filters, options }: Props) {

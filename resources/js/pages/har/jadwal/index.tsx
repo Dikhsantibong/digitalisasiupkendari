@@ -1,6 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import {
     Activity,
+    BatteryCharging,
+    Boxes,
     CalendarClock,
     FileText,
     PhoneCall,
@@ -18,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/har/jadwal';
+import lembar from '@/routes/har/jadwal/lembar';
 import type { IdName } from '@/types';
 
 type Props = {
@@ -30,6 +33,8 @@ type JadwalCard = {
     description: string;
     icon: typeof Activity;
     target: string;
+    /** Lembar matriks HAR (App\Support\HarLembar) served by /har/jadwal/lembar/{key}. */
+    lembarKey?: string;
 };
 
 const JADWAL_LIST: JadwalCard[] = [
@@ -58,12 +63,6 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/har/jadwal/patrol-check',
     },
     {
-        title: 'Jadwal Program 5S 5R',
-        description: 'Jadwal pelaksanaan budaya kerja Ringkas, Rapi, Resik, Rawat, Rajin di workshop dan area HAR.',
-        icon: Sparkles,
-        target: '/har/jadwal/program-5s-5r',
-    },
-    {
         title: 'Jadwal Meeting Pemeliharaan',
         description: 'Jadwal rapat koordinasi berkala, evaluasi pekerjaan pemeliharaan, dan tindak lanjut kendala teknis.',
         icon: CalendarClock,
@@ -80,6 +79,20 @@ const JADWAL_LIST: JadwalCard[] = [
         description: 'Pengujian mandiri peralatan proteksi, transformator, motor bantu listrik, dan panel instalasi.',
         icon: Sliders,
         target: '/har/jadwal/individual-test',
+    },
+    {
+        title: 'Jadwal Inventarisasi Tools & Material',
+        description: 'Inventarisasi tools & material per minggu (1 baik, 2 tidak baik, 3 rusak) dengan merek, penerimaan, satuan, jumlah, dan keterangan.',
+        icon: Boxes,
+        target: lembar.index('inventarisasi-tools').url,
+        lembarKey: 'inventarisasi-tools',
+    },
+    {
+        title: 'Jadwal Pemeriksaan Instalasi Blackstart',
+        description: 'Rencana & realisasi pemeriksaan instalasi blackstart per minggu Januari–Desember, PIC pembuat, jumlah, dan kinerja bulanan.',
+        icon: BatteryCharging,
+        target: lembar.index('pemeriksaan-blackstart').url,
+        lembarKey: 'pemeriksaan-blackstart',
     },
 ];
 
@@ -126,6 +139,7 @@ export default function HarJadwalIndex({ filters, options }: Props) {
                     {JADWAL_LIST.map((item) => {
                         const Icon = item.icon;
                         const isAvailable =
+                            item.lembarKey !== undefined ||
                             item.target === '/har/jadwal/harian' ||
                             item.target === '/har/jadwal/p0-p5' ||
                             item.target === '/har/jadwal/patrol-check' ||
@@ -145,7 +159,10 @@ export default function HarJadwalIndex({ filters, options }: Props) {
                                         ? 'Buka Jadwal Piket On Call'
                                         : item.target === '/har/jadwal/pembuatan-ik'
                                           ? 'Buka Jadwal Pembuatan IK'
-                                          : item.title;
+                                          : item.lembarKey !== undefined
+                                            ? 'Buka Jadwal'
+                                            : item.title;
+
                         return (
                             <div
                                 key={item.title}

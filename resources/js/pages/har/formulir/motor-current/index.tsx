@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
+import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -1299,8 +1300,9 @@ export default function MotorCurrentIndex({
                                         className="w-full rounded-lg border border-border overflow-hidden bg-white shadow-sm"
                                         style={{ height: '850px', minHeight: '850px' }}
                                     >
-                                        <iframe
+                                        <PdfPreviewFrame
                                             key={previewKey}
+                                            className="w-full"
                                             src={`${previewPdfUrl}#toolbar=0&navpanes=0`}
                                             style={{ width: '100%', height: '100%', minHeight: '850px', border: 'none' }}
                                             title="PDF Preview"

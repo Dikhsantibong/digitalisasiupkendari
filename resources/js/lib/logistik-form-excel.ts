@@ -12,7 +12,9 @@ import type { StyleSpec } from '@/lib/jadwal-excel';
 export type FormColumn = {
     key: string;
     label: string;
-    type: 'text' | 'textarea' | 'number' | 'select' | 'image' | 'computed';
+    type: 'text' | 'textarea' | 'number' | 'select' | 'date' | 'check' | 'image' | 'computed';
+    /** `check` columns sharing this group allow one tick per row (e.g. Open / Close). */
+    exclusive?: string;
     options?: string[];
     group?: string;
     width?: number;
@@ -56,6 +58,25 @@ const evaluate = (formula: string, data: Record<string, FormValue>): number => {
     }
 
     return terms.reduce((sum, term, i) => sum + term * signs[i], 0);
+};
+
+/** A cell as printed in the Excel export (photos noted, ticks as ✓, dates as dd/mm/yyyy). */
+export const excelCellValue = (column: FormColumn, value: FormValue): FormValue => {
+    if (column.type === 'image') {
+        return value ? 'Foto terlampir (PDF)' : '';
+    }
+
+    if (column.type === 'check') {
+        return String(value) === '1' ? '✓' : '';
+    }
+
+    if (column.type === 'date' && typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split('-');
+
+        return `${day}/${month}/${year}`;
+    }
+
+    return value;
 };
 
 /** The row data with its computed columns filled in. */
@@ -176,7 +197,7 @@ export async function downloadLogistikFormWorkbook(form: FormDefinition, unitNam
         sectionRows.forEach((data, index) => {
             put(worksheet, r, 1, index + 1, { ...CELL, align: 'center' });
             columns.forEach((column, i) => {
-                const value = column.type === 'image' ? (data[column.key] ? 'Foto terlampir (PDF)' : '') : data[column.key];
+                const value = excelCellValue(column, data[column.key]);
                 put(worksheet, r, i + 2, value, { ...CELL, align: ALIGN[column.align ?? 'l'] });
             });
             r++;

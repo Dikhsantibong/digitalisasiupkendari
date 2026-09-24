@@ -128,6 +128,97 @@ class LaporanPdmTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_the_laporan_page_lists_the_report_contents_with_their_saved_state(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $this->actingAs($user)->post(route('pdm.input.forms.store', ['form' => 'checklist-patrol-check']), [
+            'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
+            'rows' => ['turbin' => [['item' => 'Bearing Turbin', 'status' => 'OK']]],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('pdm.laporan.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('contents', function ($contents): bool {
+                    $keys = collect($contents)->pluck('key')->all();
+                    $saved = collect($contents)->pluck('saved', 'key');
+                    $realisasi = array_search('realisasi-prediktif', $keys, true);
+
+                    // Same order as the Input PdM menu: both patrol check forms follow Realisasi Prediktif.
+                    return array_slice($keys, $realisasi, 3) === ['realisasi-prediktif', 'patrol-check-pdm', 'checklist-patrol-check']
+                        && $saved['checklist-patrol-check'] === true
+                        && $saved['patrol-check-pdm'] === false
+                        && collect($contents)->every(fn (array $item): bool => ! array_key_exists('view', $item));
+                }),
+            );
+    }
+
+    public function test_the_patrol_check_forms_reach_the_document(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
+        $this->actingAs($user)->post(route('pdm.input.forms.store', ['form' => 'patrol-check-pdm']), $period + [
+            'rows' => ['checklist' => [['area' => 'Generator', 'item' => 'Getaran bearing uji', 'tidak' => '1', 'temuan' => 'Getaran DE tinggi']]],
+        ]);
+        $this->actingAs($user)->post(route('pdm.input.forms.store', ['form' => 'checklist-patrol-check']), $period + [
+            'rows' => ['pendingin' => [['item' => 'Oil Cooler uji', 'status' => 'NOK', 'tindakan' => 'Ganti gasket cooler']]],
+        ]);
+
+        $props = [];
+        $this->actingAs($user)
+            ->get(route('pdm.laporan.document.edit', $period))
+            ->assertInertia(function ($page) use (&$props): void {
+                $props = $page->toArray()['props'];
+            });
+        $content = $props['content'];
+
+        $positions = array_map(fn (string $key): int|false => strpos($content, 'id="part-'.$key.'"'), ['realisasi-prediktif', 'patrol-check-pdm', 'checklist-patrol-check']);
+        $this->assertNotContains(false, $positions);
+        $this->assertSame(array_values(collect($positions)->sort()->all()), $positions, 'Patrol check forms follow Realisasi Prediktif');
+
+        $this->assertStringContainsString('PATROL CHECK PREDICTIVE MAINTENANCE (PdM)', $content);
+        $this->assertStringContainsString('Getaran DE tinggi', $content);
+        $this->assertStringContainsString('Rekap Hasil Patrol', $content);
+        $this->assertStringContainsString('Ganti gasket cooler', $content);
+        $this->assertStringContainsString('RINGKASAN HASIL PATROLI', $content);
+        // Daftar Isi lists both forms; the checklist section prints its own kop.
+        $this->assertStringContainsString('- Patrol Check Predictive Maintenance (PdM)', $content);
+        $this->assertStringContainsString('- Laporan Checklist Patrol Check PdM', $content);
+        $this->assertStringContainsString('DOKUMEN/LAPORAN CHECKLIST PATROL CHECK PdM', $content);
+        $this->assertStringContainsString('Ganti gasket cooler', (string) json_encode($props['grid']['rows']));
+    }
+
+    public function test_every_report_section_carries_the_pln_logo_left_and_the_mkp_logo_right(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        Machine::factory()->forUnit($unit)->create();
+
+        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+            ->get(route('pdm.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
+
+        $content = '';
+        $response->assertInertia(function ($page) use (&$content): void {
+            $content = $page->toArray()['props']['content'];
+        });
+
+        $sections = preg_split('/(?=<div class="pdm-section)/', $content, -1, PREG_SPLIT_NO_EMPTY);
+        $sections = array_values(array_filter($sections, fn (string $section): bool => str_starts_with($section, '<div class="pdm-section')));
+        $this->assertGreaterThan(15, count($sections));
+
+        foreach ($sections as $section) {
+            preg_match('/id="([^"]+)"/', $section, $id);
+            $pln = strpos($section, '/logo/sidebar-logo.png');
+            $mkp = strpos($section, '/logo/mkp.jpg');
+
+            $this->assertNotFalse($pln, "PLN logo missing in {$id[1]}");
+            $this->assertNotFalse($mkp, "MKP logo missing in {$id[1]}");
+            $this->assertLessThan($mkp, $pln, "PLN logo must be left of MKP in {$id[1]}");
+        }
+    }
+
     public function test_a_role_without_pdm_laporan_is_forbidden(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);

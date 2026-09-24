@@ -39,8 +39,10 @@ class DocumentController extends Controller
      * documents saved against an older layout re-render from the new template.
      * v1 = Sampul, Lembar Pengesahan, Daftar Isi, then every jadwal & input
      *      table embedded from its own PDF view.
+     * v3 = adds the Laporan Permit To Work Pembangkit input form and the Jadwal
+     *      Pemeliharaan & Jadwal Piket Patrol Check sheets.
      */
-    private const BODY_VERSION = 2;
+    private const BODY_VERSION = 3;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN LOGISTIK & GUDANG PEMBANGKIT';
 

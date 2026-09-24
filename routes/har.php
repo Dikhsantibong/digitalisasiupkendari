@@ -9,6 +9,7 @@ use App\Http\Controllers\Har\CombustionPressureController;
 use App\Http\Controllers\Har\CostController;
 use App\Http\Controllers\Har\CounterWeightController;
 use App\Http\Controllers\Har\CrankshaftDeflectionController;
+use App\Http\Controllers\Har\DailyMeetingController;
 use App\Http\Controllers\Har\DocumentController;
 use App\Http\Controllers\Har\FormulirController;
 use App\Http\Controllers\Har\HydrotestController;
@@ -24,16 +25,22 @@ use App\Http\Controllers\Har\JadwalPiketOnCallController;
 use App\Http\Controllers\Har\LaporanController;
 use App\Http\Controllers\Har\LaporanGangguanController;
 use App\Http\Controllers\Har\LaporanPengusahaanController;
+use App\Http\Controllers\Har\LembarController;
+use App\Http\Controllers\Har\LogbookMutasiController;
 use App\Http\Controllers\Har\LubeQualityController;
 use App\Http\Controllers\Har\MasterController;
 use App\Http\Controllers\Har\MotorCurrentController;
 use App\Http\Controllers\Har\PrelubeTestController;
+use App\Http\Controllers\Har\Program5s5rController;
 use App\Http\Controllers\Har\ScheduleController;
 use App\Http\Controllers\Har\ServiceRequestController;
+use App\Http\Controllers\Har\TabelController;
 use App\Http\Controllers\Har\TimingInjectionPumpController;
 use App\Http\Controllers\Har\UnsafeConditionController;
 use App\Http\Controllers\Har\VibrationController;
 use App\Http\Controllers\Har\WorkOrderController;
+use App\Support\HarLembar\HarLembars;
+use App\Support\HarTabel\HarTabels;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -64,8 +71,23 @@ Route::middleware(['auth', 'verified'])
         Route::get('jadwal/pembuatan-ik', [JadwalPembuatanIkController::class, 'index'])->name('jadwal.pembuatan-ik.index');
         Route::post('jadwal/pembuatan-ik', [JadwalPembuatanIkController::class, 'store'])->name('jadwal.pembuatan-ik.store');
         Route::get('jadwal/pembuatan-ik/pdf', [JadwalPembuatanIkController::class, 'pdf'])->name('jadwal.pembuatan-ik.pdf');
+        Route::get('jadwal/lembar/{lembar}', [LembarController::class, 'index'])->name('jadwal.lembar.index')->whereIn('lembar', HarLembars::keysFor('jadwal'));
+        Route::post('jadwal/lembar/{lembar}', [LembarController::class, 'store'])->name('jadwal.lembar.store')->whereIn('lembar', HarLembars::keysFor('jadwal'));
+        Route::get('jadwal/lembar/{lembar}/pdf', [LembarController::class, 'pdf'])->name('jadwal.lembar.pdf')->whereIn('lembar', HarLembars::keysFor('jadwal'));
         Route::get('input', [InputHubController::class, 'index'])->name('input.index');
         Route::get('formulir', [FormulirController::class, 'index'])->name('formulir.index');
+        Route::get('formulir/daily-meeting', [DailyMeetingController::class, 'index'])->name('formulir.daily-meeting.index');
+        Route::post('formulir/daily-meeting', [DailyMeetingController::class, 'store'])->name('formulir.daily-meeting.store');
+        Route::delete('formulir/daily-meeting/{dailyMeeting}', [DailyMeetingController::class, 'destroy'])->name('formulir.daily-meeting.destroy');
+        Route::get('formulir/daily-meeting/{dailyMeeting}/pdf', [DailyMeetingController::class, 'pdf'])->name('formulir.daily-meeting.pdf');
+        Route::get('formulir/logbook-mutasi', [LogbookMutasiController::class, 'index'])->name('formulir.logbook-mutasi.index');
+        Route::post('formulir/logbook-mutasi', [LogbookMutasiController::class, 'store'])->name('formulir.logbook-mutasi.store');
+        Route::delete('formulir/logbook-mutasi/{logbookMutasi}', [LogbookMutasiController::class, 'destroy'])->name('formulir.logbook-mutasi.destroy');
+        Route::get('formulir/logbook-mutasi/{logbookMutasi}/pdf', [LogbookMutasiController::class, 'pdf'])->name('formulir.logbook-mutasi.pdf');
+        Route::get('formulir/laporan-gangguan', [LaporanGangguanController::class, 'index'])->name('formulir.laporan-gangguan.index');
+        Route::post('formulir/laporan-gangguan', [LaporanGangguanController::class, 'store'])->name('formulir.laporan-gangguan.store');
+        Route::delete('formulir/laporan-gangguan/{laporanGangguan}', [LaporanGangguanController::class, 'destroy'])->name('formulir.laporan-gangguan.destroy');
+        Route::get('formulir/laporan-gangguan/{laporanGangguan}/pdf', [LaporanGangguanController::class, 'pdf'])->name('formulir.laporan-gangguan.pdf');
         Route::get('formulir/prelube-test', [PrelubeTestController::class, 'index'])->name('formulir.prelube-test.index');
         Route::post('formulir/prelube-test', [PrelubeTestController::class, 'store'])->name('formulir.prelube-test.store');
         Route::get('formulir/prelube-test/pdf', [PrelubeTestController::class, 'pdf'])->name('formulir.prelube-test.pdf');
@@ -161,10 +183,20 @@ Route::middleware(['auth', 'verified'])
         Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])->name('input.unsafe-condition.destroy');
         Route::get('input/unsafe-condition/pdf', [UnsafeConditionController::class, 'pdf'])->name('input.unsafe-condition.pdf');
 
-        Route::get('input/laporan-gangguan', [LaporanGangguanController::class, 'index'])->name('input.laporan-gangguan.index');
-        Route::post('input/laporan-gangguan', [LaporanGangguanController::class, 'store'])->name('input.laporan-gangguan.store');
-        Route::delete('input/laporan-gangguan/{laporanGangguan}', [LaporanGangguanController::class, 'destroy'])->name('input.laporan-gangguan.destroy');
-        Route::get('input/laporan-gangguan/{laporanGangguan}/pdf', [LaporanGangguanController::class, 'pdf'])->name('input.laporan-gangguan.pdf');
+        // Tabel input bebas (App\Support\HarTabel): Rekap Laporan Gangguan & Laporan Kondisi Abnormal dan Gangguan.
+        foreach (HarTabels::all() as $tabel) {
+            Route::get("input/{$tabel->key()}", [TabelController::class, 'index'])->name("input.{$tabel->key()}.index")->defaults('tabel', $tabel->key());
+            Route::post("input/{$tabel->key()}", [TabelController::class, 'store'])->name("input.{$tabel->key()}.store")->defaults('tabel', $tabel->key());
+            Route::get("input/{$tabel->key()}/pdf", [TabelController::class, 'pdf'])->name("input.{$tabel->key()}.pdf")->defaults('tabel', $tabel->key());
+        }
+
+        Route::get('input/program-5s5r', [Program5s5rController::class, 'index'])->name('input.program-5s5r.index');
+        Route::post('input/program-5s5r', [Program5s5rController::class, 'store'])->name('input.program-5s5r.store');
+        Route::get('input/program-5s5r/pdf', [Program5s5rController::class, 'pdf'])->name('input.program-5s5r.pdf');
+
+        Route::get('input/lembar/{lembar}', [LembarController::class, 'index'])->name('input.lembar.index')->whereIn('lembar', HarLembars::keysFor('input'));
+        Route::post('input/lembar/{lembar}', [LembarController::class, 'store'])->name('input.lembar.store')->whereIn('lembar', HarLembars::keysFor('input'));
+        Route::get('input/lembar/{lembar}/pdf', [LembarController::class, 'pdf'])->name('input.lembar.pdf')->whereIn('lembar', HarLembars::keysFor('input'));
 
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/bulanan', [LaporanController::class, 'monthly'])->name('laporan.monthly');

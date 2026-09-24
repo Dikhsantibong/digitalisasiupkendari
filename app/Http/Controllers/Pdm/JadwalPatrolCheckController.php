@@ -11,6 +11,7 @@ use App\Models\PdmJadwalMeta;
 use App\Models\PdmJadwalPatrolCheck;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -453,15 +454,7 @@ class JadwalPatrolCheckController extends Controller
         $signatureDisetujui = $this->resolveSignatureBase64($meta?->disetujui_employee_id);
         $signatureDibuat = $this->resolveSignatureBase64($meta?->dibuat_employee_id);
 
-        $logoPlnPath = public_path('images/logos/pln-logo.png');
-        $logoMkpPath = public_path('images/logos/mkp-logo.png');
-
-        $logoLeft = is_file($logoPlnPath)
-            ? 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoPlnPath))
-            : null;
-        $logoRight = is_file($logoMkpPath)
-            ? 'data:image/png;base64,'.base64_encode((string) file_get_contents($logoMkpPath))
-            : null;
+        ['logoLeft' => $logoLeft, 'logoRight' => $logoRight] = JadwalPdf::logos();
 
         $monthName = Carbon::create($year, $month, 1)->locale('id')->isoFormat('MMMM');
 

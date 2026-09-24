@@ -6,12 +6,16 @@ use App\Enums\RoleName;
 use App\Models\K3ActivityPlan;
 use App\Models\K3ActivityType;
 use App\Models\K3DocumentRecord;
+use App\Models\K3FormulirRecord;
 use App\Models\K3HydrantInspection;
+use App\Models\K3MetodePengujianPeralatan;
+use App\Models\K3MetodePengujianPeralatanMeta;
 use App\Models\K3PatrolCheckJadwal;
 use App\Models\K3RambuInspection;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Services\K3\K3DocumentBuilder;
+use App\Services\K3\K3DocumentGridBuilder;
 use App\Services\K3\K3InputTables;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use setasign\Fpdi\Fpdi;
@@ -238,6 +242,70 @@ class LaporanDocumentTest extends TestCase
 
         // APD inventory shows the default list the page pre-fills.
         $this->assertStringContainsString('Helm safety putih', $this->section($html, 'sec-5-22'));
+    }
+
+    public function test_saved_formulir_fill_their_report_points(): void
+    {
+        $unit = Unit::factory()->create();
+        $period = ['unit_id' => $unit->id, 'year' => 2026, 'month' => 8];
+        $sheet = fn (string $form, array $sections, int $week = 0, ?string $catatan = null): K3FormulirRecord => K3FormulirRecord::factory()->create(
+            $period + ['form' => $form, 'week' => $week, 'data' => ['sections' => $sections, 'header' => []], 'catatan' => $catatan],
+        );
+        $sheet('pemeliharaan-oil-trap', ['sarana' => [['item' => 'Kolam Uji Oil Trap', 'tanggal_inspeksi' => '2026-08-31', 'kondisi' => 'Baik']]]);
+        $sheet('pemeliharaan-tps-lb3', ['sarana' => [['item' => 'Atap Gedung TPS Uji', 'kondisi' => 'Rusak', 'rencana_perbaikan' => 'Ganti seng']]]);
+        $sheet('sarana-prasarana', ['administrasi' => [['item' => 'Kartu Tanda Anggota Uji', 'satuan' => 'Lembar', 'ada' => '5']]]);
+        $sheet('kontrol-mingguan', ['kontrol_apd' => [['item' => 'Helm Minggu Satu']]], 1, 'Catatan minggu pertama');
+        $sheet('kontrol-mingguan', ['kontrol_apd' => [['item' => 'Helm Minggu Dua']]], 2);
+        K3MetodePengujianPeralatan::query()->create($period + ['no_urut' => '1', 'nama_peralatan' => 'Bejana Tekan Uji', 'uji_hydro' => 'Memenuhi']);
+        K3MetodePengujianPeralatanMeta::query()->create($period + ['catatan' => 'Rekomendasi uji ulang']);
+
+        $builder = app(K3DocumentBuilder::class);
+        $data = $builder->build($unit, 8, 2026);
+        $html = $builder->bodyHtml($data);
+
+        $oilTrap = $this->section($html, 'sec-5-13');
+        $this->assertStringContainsString('Kolam Uji Oil Trap', $oilTrap);
+        $this->assertStringContainsString('31 Agustus 2026', $oilTrap);
+        $this->assertStringNotContainsString('CEK DAN BERSIHKAN OIL TRAP', $oilTrap);
+
+        $tps = $this->section($html, 'sec-5-14');
+        $this->assertStringContainsString('Atap Gedung TPS Uji', $tps);
+        $this->assertStringContainsString('Ganti seng', $tps);
+
+        $metode = $this->section($html, 'sec-5-18');
+        $this->assertStringContainsString('Bejana Tekan Uji', $metode);
+        $this->assertStringContainsString('Rekomendasi uji ulang', $metode);
+        $this->assertStringContainsString('<div class="k3-section k3-landscape" id="sec-5-18">', $html);
+
+        $sarpras = $this->section($html, 'sec-5-20');
+        $this->assertStringContainsString('Kartu Tanda Anggota Uji', $sarpras);
+        $this->assertStringContainsString('ADMINISTRASI', $sarpras);
+
+        $mingguan = $this->section($html, 'sec-5-23');
+        $this->assertStringContainsString('Minggu ke-1 Agustus 2026', $mingguan);
+        $this->assertStringContainsString('Helm Minggu Dua', $mingguan);
+        $this->assertStringContainsString('Catatan minggu pertama', $mingguan);
+        $this->assertStringContainsString('<div class="k3-section k3-landscape" id="sec-5-23">', $html);
+
+        // The Excel (grid) mode carries the same formulir rows.
+        $cells = collect(app(K3DocumentGridBuilder::class)->build($data)['rows'])->flatten(1)->pluck('t')->implode('|');
+        foreach (['Kolam Uji Oil Trap', 'Atap Gedung TPS Uji', 'Bejana Tekan Uji', 'Kartu Tanda Anggota Uji', 'Helm Minggu Dua'] as $text) {
+            $this->assertStringContainsString($text, $cells);
+        }
+    }
+
+    public function test_formulir_of_another_period_do_not_leak_into_the_report(): void
+    {
+        $unit = Unit::factory()->create();
+        K3FormulirRecord::factory()->create([
+            'unit_id' => $unit->id, 'year' => 2026, 'month' => 7, 'form' => 'pemeliharaan-oil-trap',
+            'data' => ['sections' => ['sarana' => [['item' => 'Kolam Bulan Juli']]], 'header' => []],
+        ]);
+
+        $oilTrap = $this->section($this->bodyHtml($unit), 'sec-5-13');
+
+        $this->assertStringNotContainsString('Kolam Bulan Juli', $oilTrap);
+        $this->assertStringContainsString('CEK DAN BERSIHKAN OIL TRAP', $oilTrap);
     }
 
     public function test_the_pdf_merges_portrait_and_landscape_pages_in_daftar_isi_order(): void

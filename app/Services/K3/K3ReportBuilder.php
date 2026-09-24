@@ -25,9 +25,12 @@ use App\Models\K3Attachment;
 use App\Models\K3CctvList;
 use App\Models\K3EmergencyFacilityCheck;
 use App\Models\K3FireAlarmInspection;
+use App\Models\K3FormulirRecord;
 use App\Models\K3HydrantInspection;
 use App\Models\K3InstruksiKerja;
 use App\Models\K3KegiatanRutin;
+use App\Models\K3MetodePengujianPeralatan;
+use App\Models\K3MetodePengujianPeralatanMeta;
 use App\Models\K3PatrolCheckJadwal;
 use App\Models\K3PekerjaanRutin;
 use App\Models\K3RambuInspection;
@@ -36,6 +39,7 @@ use App\Models\SecurityPatrol;
 use App\Models\Unit;
 use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
+use App\Support\K3FormulirRegistry;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -100,6 +104,63 @@ class K3ReportBuilder
             'program_kerja' => $this->programKerja($unit->id, $month, $year),
             'hydrant_recap' => $this->hydrantRecap($unit->id, $month, $year),
             'formulir' => $this->formulirPoints($unit->id, $month, $year),
+            'formulir_sheets' => $this->formulirSheets($unit->id, $month, $year),
+        ];
+    }
+
+    /**
+     * Isi Formulir K3 yang benar-benar disimpan untuk periode ini (halaman
+     * k3/formulir/*): Metode Pengujian dari tabelnya sendiri, formulir
+     * berbasis lembar dari k3_formulir_records (Kontrol Mingguan: satu per minggu).
+     * Kosong bila belum disimpan — poin laporan lalu memakai baris jadwal.
+     *
+     * @return array{metode_pengujian: array{rows: list<array<string, mixed>>, catatan: string}|null, sheets: array<string, array{form: array<string, mixed>, entries: list<array{period_label: string, sections: array<string, list<array<string, string>>>, header: array<string, string>, catatan: string}>}>}
+     */
+    private function formulirSheets(int $unitId, int $month, int $year): array
+    {
+        $metodeRows = K3MetodePengujianPeralatan::query()
+            ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
+            ->orderBy('sort_order')->orderBy('id')
+            ->get()
+            ->map(fn (K3MetodePengujianPeralatan $r, int $idx): array => [
+                'no_urut' => $r->no_urut ?? (string) ($idx + 1),
+                ...$r->only([
+                    'nama_peralatan', 'no_pengesahan', 'nama_kategori_alat', 'uji_visual', 'uji_fungsi', 'uji_beban',
+                    'uji_hydro', 'ndt', 'uji_ultrasonic_thickness', 'uji_ketahanan', 'sertifikasi_terakhir',
+                    'sertifikasi_ulang', 'keterangan',
+                ]),
+            ])
+            ->all();
+
+        $records = K3FormulirRecord::query()
+            ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
+            ->whereIn('form', K3FormulirRegistry::keys())
+            ->orderBy('week')
+            ->get()
+            ->groupBy('form');
+
+        $sheets = [];
+        foreach ($records as $key => $formRecords) {
+            $form = K3FormulirRegistry::get((string) $key);
+            $sheets[$key] = [
+                'form' => $form,
+                'entries' => $formRecords->map(fn (K3FormulirRecord $record): array => [
+                    'period_label' => K3FormulirRegistry::periodLabel($record->month, $record->year, $record->week),
+                    'sections' => K3FormulirRegistry::sanitizeSections($form, $record->data['sections'] ?? []),
+                    'header' => array_map('strval', (array) ($record->data['header'] ?? [])),
+                    'catatan' => (string) $record->catatan,
+                ])->values()->all(),
+            ];
+        }
+
+        return [
+            'metode_pengujian' => $metodeRows === [] ? null : [
+                'rows' => $metodeRows,
+                'catatan' => (string) K3MetodePengujianPeralatanMeta::query()
+                    ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
+                    ->value('catatan'),
+            ],
+            'sheets' => $sheets,
         ];
     }
 

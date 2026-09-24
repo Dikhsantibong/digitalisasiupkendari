@@ -45,7 +45,8 @@ class FormController extends Controller
         $definition = $this->definition($form);
         [$units, $unit, $month, $year] = $this->logistikReadTarget($request);
 
-        return Inertia::render('logistik/input/form', [
+        // Each form has its own page: resources/js/pages/logistik/input/{form}/index.tsx.
+        return Inertia::render("logistik/input/{$definition->key()}/index", [
             'form' => $definition->toArray(),
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
@@ -73,6 +74,8 @@ class FormController extends Controller
                 'number' => ['nullable', 'numeric', 'between:-999999999,999999999'],
                 'textarea' => ['nullable', 'string', 'max:2000'],
                 'select' => ['nullable', Rule::in($column['options'] ?? [])],
+                'date' => ['nullable', 'date_format:Y-m-d'],
+                'check' => ['nullable', 'in:0,1'],
                 'computed' => ['nullable'],
                 default => ['nullable', 'string', 'max:255'],
             };
@@ -219,6 +222,7 @@ class FormController extends Controller
         $folder = "logistik/form/{$definition->key()}/{$unit->id}";
         $clean = [];
         $filled = false;
+        $ticked = [];
 
         foreach ($definition->columns() as $column) {
             $key = $column['key'];
@@ -232,6 +236,14 @@ class FormController extends Controller
                 $value = isset($files[$key]) && $files[$key] instanceof UploadedFile
                     ? $files[$key]->store($folder, 'public')
                     : (is_string($value) && str_starts_with($value, $folder.'/') ? $value : null);
+                $filled = $filled || $value !== null;
+            } elseif ($column['type'] === 'check') {
+                // One tick per `exclusive` group (e.g. Open / Close): the first one wins.
+                $group = $column['exclusive'] ?? null;
+                $value = (string) $value === '1' && ($group === null || ! isset($ticked[$group])) ? 1 : null;
+                if ($value !== null && $group !== null) {
+                    $ticked[$group] = true;
+                }
                 $filled = $filled || $value !== null;
             } elseif ($column['type'] === 'number') {
                 $value = is_numeric($value) ? $value + 0 : null;

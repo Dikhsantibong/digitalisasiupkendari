@@ -7,7 +7,6 @@ use App\Enums\PermissionName;
 use App\Enums\ReportModule;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
 use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
-use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Models\HarDocumentRecord;
 use App\Models\ReportPeriod;
@@ -16,8 +15,10 @@ use App\Services\ActivityLogger;
 use App\Services\Har\HarDocumentBuilder;
 use App\Services\Har\HarDocumentGridBuilder;
 use App\Services\Operasi\DocumentGridBuilder;
+use App\Services\Reports\OrientationPdfMerger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -32,7 +33,6 @@ class DocumentController extends Controller
 {
     use EmbedsReportLogo;
     use InteractsWithReportWorkflow;
-    use RendersReportPdf;
 
     /**
      * The current report-body template version. Bump this whenever the report
@@ -50,9 +50,14 @@ class DocumentController extends Controller
      * v14 = Redesigned corporate cover with dual logos (PLN NP + MKP) and title Laporan Pemeliharaan Pembangkit;
      * v17 = Added Resume Statistik Pemeliharaan Pembangkit page after Lembar Pengesahan with Project Leader & Koordinator Pemeliharaan signatories;
      * v18 = Restructured into separate Laporan Pemeliharaan (with complete schedules) and restored clean corporate polygon cover;
-     * v19 = Lembar Pengesahan & tanda tangan laporan from the report workflow (ReportWorkflowService).
+     * v19 = Lembar Pengesahan & tanda tangan laporan from the report workflow (ReportWorkflowService);
+     * v20 = portrait/landscape sections merged (OrientationPdfMerger) + embedded jadwal lembar,
+     * formulir (Daily Meeting, Logbook Mutasi, LH-05) & input tables (Rekap/Abnormal Gangguan,
+     * Patrol Check, 5S5R), Daftar Isi page numbers.
      */
-    private const BODY_VERSION = 19;
+    private const BODY_VERSION = 20;
+
+    private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PEMELIHARAAN PEMBANGKIT';
 
     public function __construct(
         private readonly HarDocumentBuilder $builder,
@@ -84,7 +89,7 @@ class DocumentController extends Controller
             'content' => $record?->content_html !== null
                 ? $this->withCurrentSignatures($record->content_html, ReportModule::Har, $unit, $month, $year)
                 : $this->builder->bodyHtml($data),
-            'content_styles' => $this->builder->contentStyles(),
+            'content_styles' => $this->builder->contentStyles($data),
             'letterhead' => $this->builder->letterhead($data),
             'grid' => $record?->content_grid ?? $this->gridBuilder->build($data),
             'format' => $record?->format ?? 'html',
@@ -97,7 +102,7 @@ class DocumentController extends Controller
         ]);
     }
 
-    public function pdf(Request $request)
+    public function pdf(Request $request, OrientationPdfMerger $merger): HttpResponse
     {
         $user = $request->user();
         $this->authorizeReportView($request, ReportModule::Har, PermissionName::HarLaporanView);
@@ -108,23 +113,29 @@ class DocumentController extends Controller
         $data = $this->builder->build($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
+        $styles = $this->builder->contentStyles($data);
+
         if ($record !== null && $record->format === 'grid' && ! empty($record->content_grid)) {
             // Excel mode: the letterhead (logo + kop) is added here — a
             // spreadsheet cannot hold it — above the edited grid body.
-            $content = $this->builder->letterhead($data).$this->grids->gridToHtml($record->content_grid);
+            $body = $this->embedAssets($this->builder->letterhead($data).$this->grids->gridToHtml($record->content_grid));
+            $pdf = $merger->render($styles, $body, [['show' => '', 'orientation' => 'landscape']], [], self::FOOTER);
         } else {
-            // Text mode: the body already contains the letterhead inline.
-            $content = $record?->content_html !== null
+            // Text mode: the body already contains the letterhead inline; each
+            // `.har-section` prints on its own orientation (jadwal & input
+            // tables landscape) and the parts are merged into one PDF.
+            $body = $this->embedAssets($record?->content_html !== null
                 ? $this->withCurrentSignatures($record->content_html, ReportModule::Har, $unit, $month, $year)
-                : $this->builder->bodyHtml($data);
+                : $this->builder->bodyHtml($data));
+            $pdf = $merger->renderSections($styles, $body, 'har-section', 'har-landscape', self::FOOTER, unnumberedPages: 1);
         }
 
-        return $this->streamReportPdf(
-            $request,
-            'har.laporan.pdf-shell',
-            ['content' => $this->embedAssets($content)],
-            "Laporan-HAR-{$unit->id}-{$month}-{$year}.pdf",
-        );
+        $filename = "Laporan-HAR-{$unit->id}-{$month}-{$year}.pdf";
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename="'.$filename.'"',
+        ]);
     }
 
     public function store(Request $request): RedirectResponse

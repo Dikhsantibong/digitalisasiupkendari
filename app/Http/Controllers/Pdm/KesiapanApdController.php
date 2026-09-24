@@ -13,6 +13,7 @@ use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
+use App\Support\PdmInputKop;
 use App\Support\PdmKesiapanApdForm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,7 @@ class KesiapanApdController extends Controller
 
         return Inertia::render('pdm/input/kesiapan-apd/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
+            'kop_lines' => PdmInputKop::lines('kesiapan-apd', $unit->name),
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'options' => $this->pdmFilterOptions($units) + [
                 'answers' => PdmKesiapanApdForm::OPTIONS,

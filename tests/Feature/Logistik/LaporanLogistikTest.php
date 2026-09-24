@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\LogistikDocumentRecord;
 use App\Models\LogistikRekomendasi;
 use App\Models\Unit;
+use App\Support\LogistikForms\InventarisLainnyaForm;
 use App\Support\LogistikForms\LogistikForms;
 use App\Support\LogistikJadwal;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,6 +78,78 @@ class LaporanLogistikTest extends TestCase
                 })
                 ->has('grid.rows'),
             );
+    }
+
+    public function test_data_saved_in_the_new_jadwal_and_input_pages_reaches_the_document(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
+
+        // Jadwal Pemeliharaan & Jadwal Piket Patrol Check (sheets).
+        $this->actingAs($user)->post(route('logistik.jadwal.sheet.store', ['jadwal' => 'pemeliharaan']), $period + [
+            'rows' => [['nama' => 'PELAKSANA PEMELIHARAAN UJI', 'days' => ['3' => 'D', '10' => 'D'], 'target' => 5]],
+        ])->assertSessionHasNoErrors();
+        $this->actingAs($user)->post(route('logistik.jadwal.sheet.store', ['jadwal' => 'piket-patrol-check']), $period + [
+            'rows' => [['nama' => 'PELAKSANA PIKET UJI', 'days' => ['7' => 'D'], 'target' => 5]],
+        ])->assertSessionHasNoErrors();
+
+        // Laporan Inventaris Lainnya & Laporan Permit To Work (forms).
+        $this->actingAs($user)->post(route('logistik.input.form.store', ['form' => 'inventaris-lainnya']), $period + ['rows' => [
+            ['section' => 'inventaris', 'data' => ['uraian' => 'PRINTER GUDANG UJI', 'merek' => 'Epson', 'jumlah' => 2, 'satuan' => 'Unit', 'target' => 4, 'd1_n' => 1, 'd2_t' => 1]],
+        ]])->assertSessionHasNoErrors();
+        $this->actingAs($user)->post(route('logistik.input.form.store', ['form' => 'permit-to-work']), $period + ['rows' => [
+            ['section' => 'ptw', 'data' => ['uraian' => 'PTW PENGELASAN TANGKI UJI', 'tanggal' => '2026-08-12', 'open' => 1]],
+        ]])->assertSessionHasNoErrors();
+
+        $props = [];
+        $this->actingAs($user)
+            ->get(route('logistik.laporan.document.edit', $period))
+            ->assertOk()
+            ->assertInertia(function ($page) use (&$props): void {
+                $props = $page->toArray()['props'];
+            });
+        $content = $props['content'];
+        $section = function (string $id) use ($content): string {
+            $start = strpos($content, 'id="'.$id.'"');
+            $this->assertNotFalse($start, $id);
+            $end = strpos($content, 'class="lg-section', $start + 1);
+
+            return substr($content, $start, $end === false ? null : $end - $start);
+        };
+
+        $pemeliharaan = $section('part-pemeliharaan');
+        $this->assertStringContainsString('JADWAL PEMELIHARAAN LOGISTIK DAN GUDANG', $pemeliharaan);
+        $this->assertStringContainsString('PELAKSANA PEMELIHARAAN UJI', $pemeliharaan);
+
+        $piket = $section('part-piket-patrol-check');
+        $this->assertStringContainsString('JADWAL PIKET PATROL CHECK LOGISTIK &amp; GUDANG', $piket);
+        $this->assertStringContainsString('PELAKSANA PIKET UJI', $piket);
+
+        $inventaris = $section('part-form-inventaris-lainnya');
+        $this->assertStringContainsString('LAPORAN INVENTARIS LAINNYA LOGISTIK &amp; GUDANG', $inventaris);
+        $this->assertStringContainsString('PRINTER GUDANG UJI', $inventaris);
+        $this->assertStringContainsString('Epson', $inventaris);
+        $this->assertStringContainsString('✓', $inventaris);
+        $this->assertStringContainsString('50%', $inventaris);
+
+        $ptw = $section('part-form-permit-to-work');
+        $this->assertStringContainsString('LAPORAN PERMIT TO WORK PEMBANGKIT', $ptw);
+        $this->assertStringContainsString('PTW PENGELASAN TANGKI UJI', $ptw);
+        $this->assertStringContainsString('12/08/2026', $ptw);
+
+        // Saved data replaces the page's default rows — nothing from the template is mixed in.
+        $this->assertStringNotContainsString('OFFICER LOGISTIK &amp; GUDANG', $pemeliharaan);
+        $this->assertStringNotContainsString('OFFICER LOGISTIK &amp; GUDANG', $piket);
+        foreach (InventarisLainnyaForm::URAIAN as $default) {
+            $this->assertDoesNotMatchRegularExpression('/>\s*'.preg_quote($default, '/').'\s*</', $inventaris, $default);
+        }
+
+        // The Excel (grid) mode carries the same saved data.
+        $grid = (string) json_encode($props['grid']['rows'], JSON_UNESCAPED_UNICODE);
+        foreach (['PELAKSANA PEMELIHARAAN UJI', 'PELAKSANA PIKET UJI', 'PRINTER GUDANG UJI', 'PTW PENGELASAN TANGKI UJI'] as $text) {
+            $this->assertStringContainsString($text, $grid);
+        }
     }
 
     public function test_the_edited_document_is_saved_and_can_be_regenerated(): void

@@ -264,8 +264,8 @@ class LaporanDocumentController extends Controller
         abort_unless($request->user()->canAccessUnit($unit), 403);
 
         $engine = null;
-        if ($definition->requiresEngine()) {
-            $engine = Machine::query()->where('unit_id', $unit->id)->findOrFail($request->integer('engine_id'));
+        if ($definition->requiresEngine() || ($request->filled('engine_id') && $request->integer('engine_id') > 0)) {
+            $engine = Machine::query()->where('unit_id', $unit->id)->find($request->integer('engine_id'));
         }
 
         $month = (int) $request->integer('month');

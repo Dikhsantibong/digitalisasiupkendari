@@ -62,7 +62,7 @@ class ScheduleController extends Controller
             return $row;
         })->all();
 
-        return Inertia::render('har/input/schedules', [
+        return Inertia::render('har/input/schedule/index', [
             'filters' => [
                 'unit_id' => $unit->id, 'month' => $month, 'year' => $year,
                 'scope' => $scope->value, 'plan_type' => $planType->value,

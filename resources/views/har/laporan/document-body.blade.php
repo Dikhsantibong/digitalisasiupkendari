@@ -78,9 +78,18 @@
         ['Jadwal Meeting Pemeliharaan', 'sec-9'],
         ['Jadwal Pembuatan IK Pemeliharaan', 'sec-10'],
     ];
+
+    // Jadwal lembar, formulir & input pemeliharaan embedded from their own PDF
+    // views (HarDocumentBuilder::sources()), in Daftar Isi order.
+    $parts = $data['parts'] ?? [];
+    $partGroups = [
+        'jadwal' => null,
+        'formulir' => 'FORMULIR PEMELIHARAAN PEMBANGKIT',
+        'input' => 'LAPORAN INPUT PEMELIHARAAN PEMBANGKIT',
+    ];
 @endphp
 {{-- 1. COVER / SAMPUL --}}
-<div class="har-cover" id="sec-1">
+<div class="har-cover har-section" id="sec-1">
     <svg class="har-cover-bg" viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
         <polygon points="0,0 210,0 0,270" fill="#0b2545" />
         <polygon points="210,0 248,0 0,320 0,270" fill="#00a3e0" />
@@ -179,7 +188,7 @@
     </div>
 </div>
 {{-- 2. LEMBAR PENGESAHAN --}}
-<div class="break-before har-pengesahan-page" id="sec-2">
+<div class="har-section har-pengesahan-page" id="sec-2">
     <table style="width:100%; border-collapse:collapse; border:1.5px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:28px;">
         <tr>
             <td rowspan="4" style="width:145px; text-align:center; vertical-align:middle; padding:8px 10px; border-right:1.5px solid #000;">
@@ -242,7 +251,7 @@
     </div>
 </div>
 {{-- 3. RESUME STATISTIK PEMELIHARAAN PEMBANGKIT --}}
-<div class="break-before har-resume-page" id="sec-3">
+<div class="har-section har-resume-page" id="sec-3">
     {{-- Header with Logos --}}
     <table style="width:100%; border-collapse:collapse; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:14px;">
         <tr>
@@ -310,19 +319,37 @@
     <div style="margin-top:60px;">{!! $signatureBlocks['laporan'] !!}</div>
 </div>
 {{-- 4. DAFTAR ISI --}}
-<div class="break-before" id="sec-4">
+<div class="har-section" id="sec-4">
     <div class="har-h2" style="font-size:13pt; margin-bottom:18px; color:#000;">4. Daftar Isi</div>
     <table class="har-toc" style="width:100%; border-collapse:collapse;">
-        @foreach($sections as $idx => [$name, $target])
+        @php $tocNo = 1; @endphp
+        @foreach($sections as [$name, $target])
             <tr style="border-bottom:1px dotted #ccc;">
-                <td class="n" style="width:30px; font-weight:bold; padding:6px 0; font-size:10pt;">{{ $idx + 2 }}.</td>
-                <td style="padding:6px 0; font-size:10pt;"><a href="#{{ $target }}" style="text-decoration:none; color:#000;">{{ $name }}</a></td>
+                <td class="n" style="width:30px; font-weight:bold; padding:6px 0; font-size:10pt;">{{ ++$tocNo }}.</td>
+                <td style="padding:6px 0; font-size:10pt;">{{ $name }}</td>
+                <td class="pg" style="width:50px; text-align:right; padding:6px 0; font-size:10pt;"><a href="#{{ $target }}" style="text-decoration:none; color:#000;">…</a></td>
             </tr>
+        @endforeach
+        @foreach($partGroups as $group => $heading)
+            @if($heading !== null && collect($parts)->contains('group', $group))
+                <tr class="har-toc-group">
+                    <td colspan="3" style="padding:8px 0 4px; font-size:10pt; font-weight:bold;">{{ $heading }}</td>
+                </tr>
+            @endif
+            @foreach($parts as $part)
+                @if($part['group'] === $group)
+                    <tr style="border-bottom:1px dotted #ccc;">
+                        <td class="n" style="width:30px; font-weight:bold; padding:6px 0; font-size:10pt;">{{ ++$tocNo }}.</td>
+                        <td style="padding:6px 0; font-size:10pt;">{{ $part['title'] }}</td>
+                        <td class="pg" style="width:50px; text-align:right; padding:6px 0; font-size:10pt;"><a href="#part-{{ $part['key'] }}" style="text-decoration:none; color:#000;">…</a></td>
+                    </tr>
+                @endif
+            @endforeach
         @endforeach
     </table>
 </div>
 {{-- 5. JADWAL KEGIATAN PEMELIHARAAN (HARIAN) --}}
-<div class="break-before" id="sec-5">
+<div class="har-section har-landscape" id="sec-5">
     <table class="header-table">
         <tr>
             <td class="logo-box">
@@ -395,7 +422,7 @@
 </div>
 
 {{-- 6. JADWAL PEMELIHARAAN RUTIN P0 - P5 --}}
-<div class="break-before" id="sec-6">
+<div class="har-section har-landscape" id="sec-6">
     <table class="header-table">
         <tr>
             <td class="logo-box">
@@ -559,7 +586,7 @@
 </div>
 
 {{-- 7. JADWAL PIKET ON CALL PEMELIHARAAN --}}
-<div class="break-before" id="sec-7">
+<div class="har-section har-landscape" id="sec-7">
     <table class="header-table">
         <tr>
             <td class="logo-box">
@@ -643,7 +670,7 @@
 </div>
 
 {{-- 8. JADWAL PATROL CEK PEMELIHARAAN --}}
-<div class="break-before" id="sec-8">
+<div class="har-section har-landscape" id="sec-8">
     <table class="header-table">
         <tr>
             <td class="logo-box">
@@ -754,7 +781,7 @@
 </div>
 
 {{-- 9. JADWAL MEETING PEMELIHARAAN --}}
-<div class="break-before" id="sec-9">
+<div class="har-section har-landscape" id="sec-9">
     <table class="header-table">
         <tr>
             <td class="logo-box">
@@ -835,7 +862,7 @@
 </div>
 
 {{-- 10. JADWAL PEMBUATAN IK PEMELIHARAAN --}}
-<div class="break-before" id="sec-10">
+<div class="har-section har-landscape" id="sec-10">
     <table class="header-table">
         <tr>
             <td class="logo-box">
@@ -937,3 +964,12 @@
         </tbody>
     </table>
 </div>
+
+{{-- JADWAL LEMBAR, FORMULIR & INPUT PEMELIHARAAN (one section per table, own orientation) --}}
+@foreach($parts as $part)
+<div class="har-section {{ $part['orientation'] === 'landscape' ? 'har-landscape' : '' }}" id="part-{{ $part['key'] }}">
+    <div class="{{ $part['scope'] }}">
+        {!! $part['body'] !!}
+    </div>
+</div>
+@endforeach

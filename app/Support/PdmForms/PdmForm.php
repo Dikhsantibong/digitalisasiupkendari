@@ -13,12 +13,13 @@ use App\Models\Unit;
  * (resources/views/pdm/input/{key}-pdf.blade.php), the Excel export and the
  * Laporan PdM — add a form by adding a subclass to {@see PdmForms::ALL}.
  *
- * Column: key, label, type (text|number|date|time|select|readonly), options,
- * group (label spanning adjacent columns), unit (sub-header), width, align.
+ * Column: key, label, type (text|number|date|time|select|readonly|check), options,
+ * group (label spanning adjacent columns), unit (sub-header), width, align,
+ * exclusive (check columns of one group allow one tick per row, e.g. Ya/Tidak/N/A).
  * Field: key, label, type (text|date|time|number|textarea|images), position
  * (header|footer), group (heading printed above the field block).
  *
- * @phpstan-type Column array{key: string, label: string, type?: string, options?: list<string>, group?: string, unit?: string, width?: int, align?: string}
+ * @phpstan-type Column array{key: string, label: string, type?: string, options?: list<string>, group?: string, unit?: string, width?: int, align?: string, exclusive?: string}
  * @phpstan-type Field array{key: string, label: string, type?: string, position?: string, group?: string}
  * @phpstan-type Section array{key: string, title: string, note?: string, columns: list<Column>, rows?: list<array<string, string|null>>, blank_rows?: int, fixed?: bool, totals?: list<string>}
  */
@@ -55,6 +56,12 @@ abstract class PdmForm
     public function orientation(): string
     {
         return 'landscape';
+    }
+
+    /** Number rows 1..n across all sections instead of restarting per section. */
+    public function continuousNumbering(): bool
+    {
+        return false;
     }
 
     /** One document per machine (vibrasi, pelumas) instead of per unit. */
@@ -120,6 +127,7 @@ abstract class PdmForm
             'description' => $this->description(),
             'orientation' => $this->orientation(),
             'per_machine' => $this->perMachine(),
+            'continuous_numbering' => $this->continuousNumbering(),
             'header_color' => $this->headerColor(),
             'fields' => $this->fields(),
             'sections' => $this->sections(),

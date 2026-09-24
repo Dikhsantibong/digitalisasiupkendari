@@ -15,6 +15,8 @@ final class PdmForms
         PelumasForm::class,
         VibrasiForm::class,
         KontrolMaterialForm::class,
+        PatrolCheckPdmForm::class,
+        ChecklistPatrolCheckPdmForm::class,
     ];
 
     /**

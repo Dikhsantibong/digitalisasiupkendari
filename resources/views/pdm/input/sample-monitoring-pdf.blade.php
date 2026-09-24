@@ -18,15 +18,7 @@
             return $value;
         }
     };
-    $kop = [
-        'theme' => 'navy',
-        'lines' => [
-            'JASA PENDUKUNG TEKNIS 6 - 11 SITE',
-            'PLN NP UP KENDARI '.strtoupper($unit->name),
-            'FORM MONITORING PEMERIKSAAN & PENGIRIMAN SAMPLE PDM',
-            'BAGIAN PdM PEMBANGKIT',
-        ],
-    ];
+    $kop = \App\Support\PdmInputKop::for('sample-monitoring', $unit->name);
 @endphp
 <!DOCTYPE html>
 <html lang="id">

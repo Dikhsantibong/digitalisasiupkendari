@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import {
+    AlertTriangle,
     BellRing,
     CalendarRange,
     Cctv,
@@ -10,12 +11,15 @@ import {
     Gauge,
     HardHat,
     Image,
+    PackageCheck,
     ScrollText,
     ShieldCheck,
     SignpostBig,
     Siren,
+    Wrench,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
@@ -31,6 +35,8 @@ import k3EmergencyFacility from '@/routes/k3/input/emergency-facility';
 import k3FireAlarm from '@/routes/k3/input/fire-alarm';
 import k3Hydrant from '@/routes/k3/input/hydrant';
 import k3Inspection from '@/routes/k3/input/inspection';
+import k3KesiapanApd from '@/routes/k3/input/kesiapan-apd';
+import k3KondisiK3 from '@/routes/k3/input/kondisi-k3';
 import k3Patrol from '@/routes/k3/input/patrol';
 import k3Rambu from '@/routes/k3/input/rambu';
 import k3TimeFrame from '@/routes/k3/input/time-frame';
@@ -42,6 +48,7 @@ type InputCard = {
     icon: typeof ClipboardList;
     url: string;
     buttonLabel: string;
+    isAvailable?: boolean;
 };
 
 const INPUT_MENUS: InputCard[] = [
@@ -116,6 +123,13 @@ const INPUT_MENUS: InputCard[] = [
         buttonLabel: 'Buka Emergency Facility',
     },
     {
+        title: 'Kesiapan APD',
+        description: 'Pemeriksaan rutin kelayakan APD, peralatan kerja, SOP/IK, kesiapan P3K, area kerja, dan cara kerja ergonomi (Form Inspeksi K3).',
+        icon: HardHat,
+        url: k3KesiapanApd.index().url,
+        buttonLabel: 'Buka Kesiapan APD',
+    },
+    {
         title: 'Daftar Inventaris APD',
         description: 'Inventaris Alat Pelindung Diri per kelompok & subkategori: jumlah, satuan, lokasi penyimpanan, dan foto.',
         icon: HardHat,
@@ -164,6 +178,13 @@ const INPUT_MENUS: InputCard[] = [
         url: k3Monitoring.index().url,
         buttonLabel: 'Buka Monitoring K3',
     },
+    {
+        title: 'Kondisi K3 (Unsafe Action & Unsafe Condition)',
+        description: 'Identifikasi, pelaporan, dan tindak lanjut temuan tindakan tidak aman dan kondisi berbahaya.',
+        icon: AlertTriangle,
+        url: k3KondisiK3.index().url,
+        buttonLabel: 'Buka Kondisi K3',
+    },
 ];
 
 export default function K3InputIndex() {
@@ -179,14 +200,24 @@ export default function K3InputIndex() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {INPUT_MENUS.map((item) => {
                         const Icon = item.icon;
+                        const isAvailable = item.isAvailable ?? true;
                         return (
                             <div
                                 key={item.title}
-                                className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-5 transition-all hover:border-primary/50"
+                                className={`flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-5 transition-all ${
+                                    isAvailable ? 'hover:border-primary/50' : 'hover:border-primary/30'
+                                }`}
                             >
                                 <div>
-                                    <div className="mb-3 flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                                        <Icon className="size-5" />
+                                    <div className="mb-3 flex items-center justify-between gap-2">
+                                        <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                            <Icon className="size-5" />
+                                        </div>
+                                        {!isAvailable && (
+                                            <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                                                Sementara Disusun
+                                            </Badge>
+                                        )}
                                     </div>
                                     <h2 className="text-base font-semibold text-foreground">
                                         {item.title}
@@ -196,14 +227,31 @@ export default function K3InputIndex() {
                                     </p>
                                 </div>
 
-                                <div className="pt-2">
-                                    <Button
-                                        className="w-full justify-center gap-2"
-                                        onClick={() => router.get(item.url)}
-                                    >
-                                        <Icon className="size-4" />
-                                        {item.buttonLabel}
-                                    </Button>
+                                <div className="space-y-1.5 pt-2">
+                                    {isAvailable ? (
+                                        <Button
+                                            className="w-full justify-center gap-2"
+                                            onClick={() => router.get(item.url)}
+                                        >
+                                            <Icon className="size-4" />
+                                            {item.buttonLabel}
+                                        </Button>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                disabled
+                                                variant="outline"
+                                                className="w-full cursor-not-allowed justify-center gap-2 opacity-75"
+                                                title="Tombol sementara dinonaktifkan (tabel sedang disusun)"
+                                            >
+                                                <Icon className="size-4" />
+                                                {item.buttonLabel}
+                                            </Button>
+                                            <p className="text-center text-[11px] text-muted-foreground italic">
+                                                * Tombol belum difungsikan (tabel sedang disusun)
+                                            </p>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         );

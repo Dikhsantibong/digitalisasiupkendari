@@ -52,7 +52,7 @@ class ActivityController extends Controller
             ->orderByDesc('activity_date')
             ->get();
 
-        return Inertia::render('har/input/activities', [
+        return Inertia::render('har/input/activity/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'activities' => $activities->map(fn (MaintenanceActivity $a): array => [
                 'id' => $a->id,

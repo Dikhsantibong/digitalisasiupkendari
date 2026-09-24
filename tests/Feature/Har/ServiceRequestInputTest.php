@@ -39,7 +39,7 @@ class ServiceRequestInputTest extends TestCase
             ->get(route('har.input.service-request.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('har/input/service-requests')
+                ->component('har/input/service-request/index')
                 ->has('options.categories')
                 ->has('options.statuses'),
             );

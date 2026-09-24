@@ -3,6 +3,7 @@
 namespace Tests\Feature\Logistik;
 
 use App\Enums\RoleName;
+use App\Models\Holiday;
 use App\Models\LogistikJadwalRow;
 use App\Models\Unit;
 use App\Support\LogistikJadwal;
@@ -43,7 +44,8 @@ class JadwalSheetTest extends TestCase
                 ->get($this->routeFor($sheet, 'index', $period))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('logistik/jadwal/sheet')
+                    // Each sheet has its own page folder under its menu (jadwal / input).
+                    ->component('logistik/'.LogistikJadwal::sheet($sheet)['menu']."/{$sheet}/index")
                     ->where('sheet.key', $sheet)
                     ->where('has_saved', false)
                     ->where('rows', fn ($rows): bool => count($rows) > 0),
@@ -90,6 +92,101 @@ class JadwalSheetTest extends TestCase
                 ->where('has_saved', true)
                 ->where('rows.0.summary', ['rencana' => 2, 'realisasi' => 1, 'target' => 4, 'kinerja' => '25%']),
             );
+    }
+
+    public function test_the_pemeliharaan_schedule_plans_every_monday_for_the_officer(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+            ->get($this->routeFor('pemeliharaan', 'index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('logistik/jadwal/pemeliharaan/index')
+                ->where('sheet.kop', 'JADWAL PEMELIHARAAN LOGISTIK DAN GUDANG')
+                ->where('sheet.layout', 'pelaksana')
+                ->where('has_saved', false)
+                ->has('rows', 1)
+                ->where('rows.0.nama', 'OFFICER LOGISTIK & GUDANG')
+                // August 2026: Mondays are the 3rd, 10th, 17th, 24th and 31st.
+                ->where('rows.0.days', ['3' => 'R', '10' => 'R', '17' => 'R', '24' => 'R', '31' => 'R']),
+            );
+    }
+
+    public function test_the_pemeliharaan_realisasi_gives_the_kinerja_and_reaches_the_laporan(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
+        $mondays = ['3' => 'D', '10' => 'D', '17' => 'D', '24' => 'D', '31' => 'D'];
+
+        $this->actingAs($user)
+            ->post($this->routeFor('pemeliharaan', 'store'), $period + ['rows' => [
+                ['nama' => 'OFFICER LOGISTIK & GUDANG', 'days' => $mondays, 'target' => 5],
+            ]])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($user)
+            ->get($this->routeFor('pemeliharaan', 'index', $period))
+            ->assertInertia(fn ($page) => $page
+                ->where('has_saved', true)
+                ->where('rows.0.summary.rencana', 5)
+                ->where('rows.0.summary.realisasi', 5)
+                ->where('rows.0.summary.kinerja', '100%'),
+            );
+
+        $pdf = $this->actingAs($user)->get($this->routeFor('pemeliharaan', 'pdf', $period));
+        $pdf->assertOk()->assertHeader('content-type', 'application/pdf');
+
+        $this->actingAs($user)
+            ->get(route('logistik.laporan.document.edit', $period))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'id="part-pemeliharaan"')
+                && str_contains($content, 'JADWAL PEMELIHARAAN LOGISTIK DAN GUDANG')));
+    }
+
+    public function test_the_piket_patrol_check_plans_monday_and_friday_moving_holidays_to_the_next_workday(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        Holiday::factory()->create(['year' => 2026, 'date' => '2026-08-17', 'day_name' => 'Monday', 'description' => 'Hari Kemerdekaan RI']);
+
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+            ->get($this->routeFor('piket-patrol-check', 'index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('logistik/jadwal/piket-patrol-check/index')
+                ->where('sheet.kop', 'JADWAL PIKET PATROL CHECK LOGISTIK & GUDANG')
+                ->where('rows.0.nama', 'OFFICER LOGISTIK & GUDANG')
+                // Senin 17 Agustus (libur) moves to Selasa 18.
+                ->where('rows.0.days', collect([3, 7, 10, 14, 18, 21, 24, 28, 31])->mapWithKeys(fn (int $day): array => [(string) $day => 'R'])->all()),
+            );
+    }
+
+    public function test_the_piket_patrol_check_kinerja_can_exceed_the_target(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
+        $days = collect([3, 7, 10, 14, 18, 21, 24, 28, 31])->mapWithKeys(fn (int $day): array => [(string) $day => 'D'])->all();
+
+        $this->actingAs($user)
+            ->post($this->routeFor('piket-patrol-check', 'store'), $period + ['rows' => [['nama' => 'OFFICER LOGISTIK & GUDANG', 'days' => $days, 'target' => 5]]])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($user)
+            ->get($this->routeFor('piket-patrol-check', 'index', $period))
+            ->assertInertia(fn ($page) => $page
+                ->where('rows.0.summary.rencana', 9)
+                ->where('rows.0.summary.target', 5)
+                ->where('rows.0.summary.realisasi', 9)
+                ->where('rows.0.summary.kinerja', '180%'),
+            );
+
+        // The existing On Call piket sheet keeps its own weekend / holiday plan.
+        $this->assertSame('pelaksana', LogistikJadwal::sheet('piket')['layout']);
+        $this->assertStringContainsString('(On Call)', LogistikJadwal::sheet('piket')['title']);
     }
 
     public function test_an_unknown_code_is_rejected(): void

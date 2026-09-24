@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,8 @@ type Row = { id: number | null; no_urut: number; uraian: string; tanggal: string
 
 type Props = {
     unit: IdName;
+    /** Kop dokumen, sama dengan kop PDF (App\Support\PdmInputKop). */
+    kop_lines: string[];
     filters: PdmInputFilters;
     options: { units: IdName[]; years: number[] };
     rows: Row[];
@@ -30,7 +33,7 @@ const cellInput = 'h-7 rounded-none border-0 bg-transparent px-1 text-xs shadow-
 /** A row counts as a permit once it has an uraian or a date. */
 const isFilled = (row: Row) => row.uraian.trim() !== '' || !!row.tanggal;
 
-export default function PdmPermitToWorkInput({ unit, filters, options, rows: initialRows, has_saved, can_write }: Props) {
+export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options, rows: initialRows, has_saved, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -114,6 +117,8 @@ export default function PdmPermitToWorkInput({ unit, filters, options, rows: ini
                 />
 
                 <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+
+                <PdmDocumentHeader lines={kop_lines} period={periodLabel} />
 
                 {!has_saved && <p className="text-[13px] text-muted-foreground">Belum ada PTW tersimpan untuk periode ini. Baris tanpa uraian &amp; tanggal tidak ikut disimpan.</p>}
 

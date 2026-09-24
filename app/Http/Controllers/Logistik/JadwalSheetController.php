@@ -47,7 +47,10 @@ class JadwalSheetController extends Controller
         $this->ensureSheet($jadwal);
         [$units, $unit, $month, $year] = $this->logistikReadTarget($request);
 
-        return Inertia::render('logistik/jadwal/sheet', [
+        // Each sheet has its own page: resources/js/pages/logistik/{jadwal|input}/{sheet}/index.tsx.
+        $menu = LogistikJadwal::sheet($jadwal)['menu'];
+
+        return Inertia::render("logistik/{$menu}/{$jadwal}/index", [
             'sheet' => ['key' => $jadwal, ...LogistikJadwal::sheet($jadwal), 'yearly' => LogistikJadwal::yearly($jadwal), 'evidence' => LogistikJadwal::hasEvidence($jadwal) ? LogistikJadwal::EVIDENCE_PER_ROW : 0],
             'sections' => LogistikJadwal::sections($jadwal),
             'codes' => LogistikJadwal::codes($jadwal),

@@ -23,8 +23,8 @@
 | Routes (`routes/logistik.php`) + include di `web.php` | ✅ Hub + 7 jadwal + 9 input + laporan dokumen |
 | Controller hub (`JadwalController`, `InputHubController`, `LaporanController`) | ✅ Selesai |
 | Sidebar nav "Logistik & Gudang" (Jadwal + Input + Laporan) | ✅ Selesai |
-| Halaman menu Jadwal (`logistik/jadwal/index.tsx`) | ✅ 7 kartu aktif, 2 menyusul |
-| Halaman menu Input (`logistik/input/index.tsx`) | ✅ 9 kartu aktif, 2 menyusul (Inventaris Lainnya, PTW) |
+| Halaman menu Jadwal (`logistik/jadwal/index.tsx`) | ✅ 9 kartu aktif (semua) |
+| Halaman menu Input (`logistik/input/index.tsx`) | ✅ 11 kartu aktif (semua) |
 | Halaman Laporan (`logistik/laporan/index.tsx`) | ✅ Laporan Logistik & Gudang (dokumen editor + pratinjau PDF, pola K3/PdM) |
 | Master data logistik | ⏳ Belum dirancang |
 | Migration & Model transaksi | ✅ `logistik_rekomendasis`, `logistik_jadwal_rows`, `logistik_form_rows`, `logistik_document_records` |
@@ -63,7 +63,8 @@ placeholder, rekap & cetak menyusul).
 
 Mesin sheet (`App\Support\LogistikJadwal`, `Logistik\JadwalSheetController`,
 route `logistik.jadwal.sheet.index|store|pdf` = `/logistik/jadwal/{jadwal}`,
-halaman `logistik/jadwal/sheet.tsx`, PDF `resources/views/logistik/jadwal/{layout}-pdf`,
+halaman per sheet `logistik/{jadwal|input}/{sheet}/index.tsx` (tipis, merender
+`components/logistik/jadwal-sheet-page.tsx`), PDF `resources/views/logistik/jadwal/{layout}-pdf`,
 Excel `resources/js/lib/logistik-jadwal-excel.ts`, tabel `logistik_jadwal_rows`
 — `days` JSON = kolom → kode):
 
@@ -71,13 +72,14 @@ Excel `resources/js/lib/logistik-jadwal-excel.ts`, tabel `logistik_jadwal_rows`
 |---|---|---|
 | `kegiatan` | Jadwal Kegiatan Logistik & Gudang (I Mesin, II Mingguan, III Bulanan, IV Non Rutin) | kegiatan (R rencana / D realisasi per tanggal) |
 | `shift` | Jadwal Shift Operator (P/OF/S/I/C/M + rekap absensi & % kehadiran) | shift |
+| `pemeliharaan` | Jadwal Pemeliharaan Logistik dan Gudang (bawaan: rencana tiap Senin) | pelaksana |
 | `piket` | Jadwal Piket Patrol Check (On Call) | pelaksana (baris Rencana/Realisasi) |
+| `piket-patrol-check` | Jadwal Piket Patrol Check Logistik & Gudang (stok material & tools; bawaan Senin & Jumat, hari libur digeser ke hari kerja berikutnya) | pelaksana |
 | `5s5r` | Jadwal Pelaksanaan 5S5R | pelaksana |
 | `meeting` | Jadwal Meeting | pelaksana |
 | `inventarisasi` | Jadwal Inventarisasi Tools & Material Bagian Lainnya | pelaksana |
 | `ik` | Jadwal Pembuatan IK (tahunan, kolom JAN–DEC, disimpan `month = 0`) | ik |
 
-Menyusul: Jadwal Kegiatan Pemeliharaan, Jadwal Piket Patrol Check Stock.
 
 ### 2.2 Menu INPUT — `logistik/input/index.tsx`
 
@@ -92,13 +94,17 @@ Menyusul: Jadwal Kegiatan Pemeliharaan, Jadwal Piket Patrol Check Stock.
 | Laporan Peralatan, Material dan Tools | form `peralatan` (4 pelaksanaan × baik/rusak/hilang, rekap) |
 | Laporan Kondisi Stok Tools dan Material | form `kondisi-stok` (stok akhir & ROP dihitung) |
 | Laporan Unsafe Action & Unsafe Condition | form `unsafe` (foto sebelum/sesudah, jumlah temuan) |
+| Laporan Inventaris Lainnya | form `inventaris-lainnya` (N/T per tanggal 1–31, target, realisasi = tanggal diperiksa, kinerja; PDF mode ringkas) |
+| Laporan Permit To Work Pembangkit | form `permit-to-work` (uraian, tanggal, status OPEN/CLOSE satu centang, TOTAL; portrait) |
 
 Mesin form tabel: definisi `App\Support\LogistikForms\*Form` (registry
-`LogistikForms::ALL`; kolom text/textarea/number/select/image/computed, section
+`LogistikForms::ALL`; kolom text/textarea/number/select/date/check/image/computed —
+`check` + `exclusive` = satu centang per baris per grup, `compact()` = sel PDF
+ringkas untuk form sangat lebar; section
 + baris bawaan + baris kosong, total, ringkasan, catatan), `Logistik\FormController`,
-halaman `logistik/input/form.tsx`, PDF `logistik/input/form-pdf.blade.php`, Excel
+halaman per form `logistik/input/{form}/index.tsx` (tipis, merender
+`components/logistik/form-input-page.tsx`), PDF `logistik/input/form-pdf.blade.php`, Excel
 `resources/js/lib/logistik-form-excel.ts`, tabel `logistik_form_rows` (`data` JSON).
-Menyusul: Laporan Inventaris Lainnya, Laporan Permit To Work.
 
 ### 2.3 Menu LAPORAN — `logistik/laporan/index.tsx`
 

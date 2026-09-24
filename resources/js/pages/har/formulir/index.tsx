@@ -1,7 +1,9 @@
 import { Head, router } from '@inertiajs/react';
 import {
     Activity,
+    AlertOctagon,
     BatteryCharging,
+    BookOpen,
     Cog,
     Disc,
     Droplet,
@@ -10,6 +12,7 @@ import {
     Ruler,
     Sliders,
     Timer,
+    Users,
     Waves,
     Wrench,
     Zap,
@@ -136,6 +139,27 @@ const FORMULIR_LIST: FormulirCard[] = [
         target: '/har/formulir/tegangan-baterai',
         active: true,
     },
+    {
+        title: 'Formulir Laporan Gangguan (LH-05)',
+        description: 'Laporan kerusakan unit pembangkit: data mesin, tanggal & peralatan rusak, gejala, urutan kejadian, analisa penyebab, akibat, tindak lanjut, dan eviden.',
+        icon: AlertOctagon,
+        target: formulir.laporanGangguan.index().url,
+        active: true,
+    },
+    {
+        title: 'Formulir Daily Meeting',
+        description: 'Daftar hadir meeting pemeliharaan (acara, hari/tanggal, waktu, tempat, peserta) dengan foto eviden di lembar kedua PDF.',
+        icon: Users,
+        target: formulir.dailyMeeting.index().url,
+        active: true,
+    },
+    {
+        title: 'Form Logbook Mutasi Harian',
+        description: 'Logbook harian tim pemeliharaan: absensi, kesiapan APD, job harian rutin & non rutin, serta kondisi K3 (unsafe action & condition).',
+        icon: BookOpen,
+        target: formulir.logbookMutasi.index().url,
+        active: true,
+    },
 ];
 
 export default function HarFormulirIndex({ filters, options }: Props) {
@@ -180,6 +204,7 @@ export default function HarFormulirIndex({ filters, options }: Props) {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {FORMULIR_LIST.map((item) => {
                         const Icon = item.icon;
+
                         return (
                             <div
                                 key={item.title}
