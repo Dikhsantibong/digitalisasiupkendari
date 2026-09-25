@@ -92,6 +92,8 @@ export type EmployeeRow = {
     service_unit?: string | null;
     signature_url?: string | null;
     has_signature?: boolean;
+    regu?: string | null;
+    is_shift_leader?: boolean;
 };
 
 export type RoleRow = {

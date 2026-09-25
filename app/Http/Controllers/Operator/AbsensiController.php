@@ -3,42 +3,48 @@
 namespace App\Http\Controllers\Operator;
 
 use App\Enums\ActivityEvent;
+use App\Enums\AttendanceCodeType;
 use App\Enums\PermissionName;
 use App\Enums\ScheduleGroupType;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceCode;
 use App\Models\Employee;
 use App\Models\Holiday;
-use App\Models\ShiftPattern;
 use App\Models\Unit;
 use App\Models\WorkSchedule;
 use App\Services\ActivityLogger;
 use App\Services\Operator\AttendanceCalculator;
+use App\Services\Operator\AttendanceRoster;
+use App\Support\Indonesian;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Absensi & Jadwal Kerja Shift — part of the standalone OPERATOR module (not
- * OPERASI). One monthly sheet per unit per employee group (shift / non-shift):
- * rows are employees from the existing Pegawai master, columns are the days of
- * the month, each cell an attendance code. Recap & attendance % are derived by
- * {@see AttendanceCalculator}. Cells are always hand-editable; "Generate pola"
- * only pre-fills from the per-regu {@see ShiftPattern} as a starting point.
+ * Absensi & Jadwal Kerja — part of the standalone OPERATOR module (not
+ * OPERASI). One monthly sheet per unit showing both rosters from
+ * {@see AttendanceRoster}: Kerja Shift (operators by regu) on top, Non Shift
+ * (Project Leader & Koordinator) below. Rows are employees, columns the days of
+ * the month, each cell an attendance code. Cells are stored per roster in the
+ * matching {@see WorkSchedule} (group_type shift / non_shift) so the absensi
+ * report keeps reading one group at a time. The recap (counts & % hadir) is
+ * computed live on the page from the codes' `hitung_hadir` flag, matching
+ * {@see AttendanceCalculator}.
  *
  * Guarded by operator.absensi.view (read) / .write (edit) plus a unit-scope
  * check. The project leader (a senior operator) and TL Operasi hold write.
  */
 class AbsensiController extends Controller
 {
+    private const DAY_NAMES = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
     public function __construct(
         private readonly ActivityLogger $activityLogger,
-        private readonly AttendanceCalculator $calculator,
+        private readonly AttendanceRoster $roster,
     ) {}
 
     public function index(Request $request): Response
@@ -51,116 +57,90 @@ class AbsensiController extends Controller
 
         $unit = $units->firstWhere('id', (int) $request->integer('unit_id')) ?? $units->first();
 
-        $groupType = ScheduleGroupType::tryFrom((string) $request->query('group_type')) ?? ScheduleGroupType::Shift;
         $now = Carbon::now();
         $year = (int) ($request->integer('year') ?: $now->year);
-        $month = (int) ($request->integer('month') ?: $now->month);
-        $month = max(1, min(12, $month));
+        $month = max(1, min(12, (int) ($request->integer('month') ?: $now->month)));
 
-        $codes = AttendanceCode::query()->where('is_active', true)
-            ->orderBy('sort_order')->orderBy('id')->get();
+        $codes = AttendanceCode::query()->where('is_active', true)->orderBy('sort_order')->orderBy('id')->get();
+        $codeById = $codes->keyBy('id');
 
-        $employees = Employee::query()
-            ->where('unit_id', $unit->id)->where('is_active', true)
-            ->when(
-                $groupType === ScheduleGroupType::Shift,
-                fn ($q) => $q->whereNotNull('regu'),
-                fn ($q) => $q->whereNull('regu'),
-            )
-            ->orderByRaw('regu is null, regu')->orderBy('name')
-            ->get(['id', 'name', 'nip', 'position', 'regu']);
+        $entries = WorkSchedule::query()->with('entries')
+            ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
+            ->get()->flatMap->entries;
 
-        $schedule = WorkSchedule::query()
-            ->with('entries')
-            ->where('unit_id', $unit->id)->where('year', $year)
-            ->where('month', $month)->where('group_type', $groupType->value)
-            ->first();
-
-        $entries = $schedule?->entries ?? collect();
-
-        // cells[employeeId][day] = code string
         $cells = [];
         foreach ($entries as $entry) {
-            if ($entry->attendance_code_id === null) {
-                continue;
-            }
-            $code = $codes->firstWhere('id', $entry->attendance_code_id)?->code;
+            $code = $codeById->get($entry->attendance_code_id)?->code;
             if ($code !== null) {
                 $cells[$entry->employee_id][(int) $entry->work_date->day] = $code;
             }
         }
 
-        $recap = $this->calculator->summarise($entries, $codes->keyBy('id'));
+        $holidays = Holiday::query()->whereYear('date', $year)->whereMonth('date', $month)->get(['date', 'description']);
 
-        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
-        $holidayDates = Holiday::query()->whereYear('date', $year)->whereMonth('date', $month)
-            ->get(['date', 'description']);
+        $days = collect(range(1, Carbon::create($year, $month, 1)->daysInMonth))
+            ->map(function (int $day) use ($year, $month, $holidays): array {
+                $date = Carbon::create($year, $month, $day);
+                $holiday = $holidays->first(fn (Holiday $h): bool => $h->date->day === $day);
 
-        $days = collect(range(1, $daysInMonth))->map(function (int $day) use ($year, $month, $holidayDates): array {
-            $date = Carbon::create($year, $month, $day);
-            $holiday = $holidayDates->first(fn ($h): bool => $h->date->day === $day);
+                return [
+                    'day' => $day,
+                    'name' => self::DAY_NAMES[$date->dayOfWeek],
+                    'is_weekend' => $date->isWeekend(),
+                    'is_holiday' => $holiday !== null,
+                    'holiday' => $holiday?->description,
+                ];
+            })->all();
 
-            return [
-                'day' => $day,
-                'dow' => $this->dayInitial($date),
-                'is_weekend' => $date->isSunday(),
-                'is_holiday' => $holiday !== null,
-                'holiday' => $holiday?->description,
-            ];
-        })->all();
-
-        return Inertia::render('operator/absensi', [
-            'filters' => [
-                'unit_id' => $unit->id,
-                'year' => $year,
-                'month' => $month,
-                'group_type' => $groupType->value,
-            ],
-            'options' => [
-                'units' => $units->all(),
-                'years' => range($now->year - 1, $now->year + 1),
-                'group_types' => array_map(
-                    fn (ScheduleGroupType $t): array => ['value' => $t->value, 'label' => $t->label()],
-                    ScheduleGroupType::cases(),
-                ),
-            ],
-            'days' => $days,
-            'employees' => $employees->map(fn (Employee $e): array => [
+        $section = fn (ScheduleGroupType $group): array => [
+            'key' => $group->value,
+            'label' => $group === ScheduleGroupType::Shift ? 'Kerja Shift' : 'Non Shift',
+            'employees' => $this->roster->employees($unit, $group)->map(fn (Employee $e): array => [
                 'id' => $e->id,
                 'name' => $e->name,
                 'nip' => $e->nip,
                 'position' => $e->position,
                 'regu' => $e->regu,
+                'is_shift_leader' => $e->is_shift_leader,
                 'cells' => $cells[$e->id] ?? (object) [],
-                'recap' => $recap['per_employee'][$e->id]['counts'] ?? (object) [],
-                'present' => $recap['per_employee'][$e->id]['present'] ?? 0,
-                'scheduled' => $recap['per_employee'][$e->id]['scheduled'] ?? 0,
-                'percent' => $recap['per_employee'][$e->id]['percent'] ?? null,
             ])->all(),
+        ];
+
+        return Inertia::render('operator/absensi', [
+            'filters' => ['unit_id' => $unit->id, 'year' => $year, 'month' => $month],
+            'period_label' => Indonesian::monthName($month).' '.$year,
+            'options' => [
+                'units' => $units->all(),
+                'years' => range($now->year - 1, $now->year + 1),
+            ],
+            'days' => $days,
+            'sections' => [$section(ScheduleGroupType::Shift), $section(ScheduleGroupType::NonShift)],
             'codes' => $codes->map(fn (AttendanceCode $c): array => [
                 'code' => $c->code,
                 'label' => $c->label,
                 'type' => $c->type->value,
                 'hitung_hadir' => $c->hitung_hadir,
+                'jam_mulai' => $c->jam_mulai,
+                'jam_selesai' => $c->jam_selesai,
             ])->all(),
-            'totals' => $recap['totals'],
-            'patterns' => $this->resolveShiftPatterns($unit),
+            'patterns' => $this->roster->shiftSequences($unit)
+                ->map(fn (array $codes, string $regu): array => ['regu' => $regu, 'sequence' => implode(', ', $codes)])
+                ->values()->all(),
             'can_write' => $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite),
         ]);
     }
 
     /**
-     * Bulk upsert the month's cells for the unit/group. Each posted cell is an
-     * {employee_id, day, code} triple; a null/unknown code clears that cell.
+     * Bulk upsert the month's cells. Each posted cell is an {employee_id, day,
+     * code} triple routed to the employee's roster; a blank/unknown code clears
+     * the cell and employees outside both rosters are ignored.
      */
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user->hasPermissionTo(PermissionName::OperatorAbsensiWrite), 403);
 
-        [$unit, $groupType, $year, $month] = $this->resolveTarget($request);
-
-        $codes = AttendanceCode::query()->where('is_active', true)->pluck('id', 'code');
+        [$unit, $year, $month] = $this->resolveTarget($request);
 
         $validated = $request->validate([
             'cells' => ['array'],
@@ -169,182 +149,213 @@ class AbsensiController extends Controller
             'cells.*.code' => ['nullable', 'string'],
         ]);
 
-        $employeeIds = Employee::query()->where('unit_id', $unit->id)->pluck('regu', 'id');
+        $codes = AttendanceCode::query()->where('is_active', true)->pluck('id', 'code');
+        $groups = $this->rosterGroups($unit);
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
 
-        DB::transaction(function () use ($unit, $groupType, $year, $month, $validated, $codes, $employeeIds, $daysInMonth, $user): WorkSchedule {
-            $schedule = WorkSchedule::query()->firstOrNew([
-                'unit_id' => $unit->id,
-                'year' => $year,
-                'month' => $month,
-                'group_type' => $groupType->value,
-            ]);
-            $schedule->input_by = $user->id;
-            $schedule->save();
+        DB::transaction(function () use ($unit, $year, $month, $validated, $codes, $groups, $daysInMonth, $user): void {
+            $rows = [];
 
             foreach ($validated['cells'] ?? [] as $cell) {
-                if (! $employeeIds->has($cell['employee_id']) || $cell['day'] > $daysInMonth) {
+                $member = $groups->get($cell['employee_id']);
+                if ($member === null || $cell['day'] > $daysInMonth) {
                     continue;
                 }
 
-                $codeId = $cell['code'] !== null && $cell['code'] !== ''
-                    ? ($codes[$cell['code']] ?? null)
-                    : null;
-
-                $workDate = Carbon::create($year, $month, $cell['day'])->toDateString();
-
-                $schedule->entries()->updateOrCreate(
-                    ['employee_id' => $cell['employee_id'], 'work_date' => $workDate],
-                    ['attendance_code_id' => $codeId, 'regu' => $employeeIds->get($cell['employee_id'])],
-                );
+                $code = (string) ($cell['code'] ?? '');
+                $rows[$member['group']->value][] = [
+                    'employee_id' => $cell['employee_id'],
+                    'day' => $cell['day'],
+                    'attendance_code_id' => $code === '' ? null : ($codes[$code] ?? null),
+                    'regu' => $member['regu'],
+                ];
             }
 
-            return $schedule;
+            foreach ($rows as $group => $groupRows) {
+                $this->putEntries($this->schedule($unit, $year, $month, ScheduleGroupType::from($group), $user->id), $year, $month, $groupRows);
+            }
         });
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan jadwal {$groupType->label()} {$unit->name} {$month}/{$year}",
+            "Menyimpan absensi {$unit->name} {$month}/{$year}",
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Absensi disimpan.']);
 
         return back();
     }
 
     /**
-     * Pre-fill the month from the per-regu shift patterns, starting on the given
-     * day. Existing cells are overwritten for shift employees; everything stays
-     * editable afterwards. Only meaningful for the shift group.
+     * Fill the whole month from the patterns: operators follow their regu
+     * rotation (continuing from last month where possible), Non Shift staff get
+     * office hours. Absence codes already entered (Cuti, Sakit, Izin, Alpha) are
+     * kept; everything stays editable afterwards.
      */
     public function generate(Request $request): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user->hasPermissionTo(PermissionName::OperatorAbsensiWrite), 403);
 
-        [$unit, $groupType, $year, $month] = $this->resolveTarget($request);
-        $validated = $request->validate(['start_day' => ['nullable', 'integer', 'min:1', 'max:31']]);
-        $startDay = (int) ($validated['start_day'] ?? 1);
+        [$unit, $year, $month] = $this->resolveTarget($request);
 
-        $patterns = $this->resolveShiftPatternsMap($unit);
+        $codes = AttendanceCode::query()->where('is_active', true)->get(['id', 'code', 'type']);
+        $codeIds = $codes->pluck('id', 'code');
+        $absenceIds = $codes->where('type', AttendanceCodeType::Absence)->pluck('id')->all();
 
-        $codes = AttendanceCode::query()->where('is_active', true)->pluck('id', 'code');
-        $employees = Employee::query()->where('unit_id', $unit->id)->where('is_active', true)
-            ->whereNotNull('regu')->get(['id', 'regu']);
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+        $sequences = $this->roster->shiftSequences($unit);
+        $tails = $this->previousMonthTails($unit, $year, $month, $codes->pluck('code', 'id'));
+        $holidayDays = Holiday::query()->whereYear('date', $year)->whereMonth('date', $month)->get(['date'])
+            ->map(fn (Holiday $h): int => $h->date->day)->all();
+        $officeHours = $this->roster->planNonShift($year, $month, $holidayDays);
 
-        DB::transaction(function () use ($unit, $groupType, $year, $month, $startDay, $patterns, $codes, $employees, $daysInMonth, $user): void {
-            $schedule = WorkSchedule::query()->firstOrNew([
-                'unit_id' => $unit->id,
-                'year' => $year,
-                'month' => $month,
-                'group_type' => $groupType->value,
-            ]);
-            $schedule->input_by = $user->id;
-            $schedule->generated_at = now();
-            $schedule->save();
+        DB::transaction(function () use ($unit, $year, $month, $user, $codeIds, $absenceIds, $daysInMonth, $sequences, $tails, $officeHours): void {
+            foreach (ScheduleGroupType::cases() as $group) {
+                $schedule = $this->schedule($unit, $year, $month, $group, $user->id);
+                $schedule->generated_at = now();
+                $schedule->save();
 
-            foreach ($employees as $employee) {
-                $sequence = $patterns->get($employee->regu);
-                if (empty($sequence)) {
-                    continue;
+                $kept = $schedule->entries()->whereIn('attendance_code_id', $absenceIds)->get()
+                    ->map(fn ($entry): string => $entry->employee_id.':'.$entry->work_date->day)->flip();
+                $rows = [];
+
+                foreach ($this->roster->employees($unit, $group) as $employee) {
+                    $plan = $group === ScheduleGroupType::Shift
+                        ? ($sequences->has($employee->regu) ? $this->roster->planShift($sequences->get($employee->regu), $tails[$employee->id] ?? [], $daysInMonth) : [])
+                        : $officeHours;
+
+                    foreach ($plan as $index => $code) {
+                        $day = $index + 1;
+                        if ($kept->has($employee->id.':'.$day)) {
+                            continue;
+                        }
+
+                        $rows[] = ['employee_id' => $employee->id, 'day' => $day, 'attendance_code_id' => $codeIds[$code] ?? null, 'regu' => $employee->regu];
+                    }
                 }
 
-                for ($day = $startDay; $day <= $daysInMonth; $day++) {
-                    $code = $sequence[($day - $startDay) % count($sequence)];
-                    $workDate = Carbon::create($year, $month, $day)->toDateString();
-
-                    $schedule->entries()->updateOrCreate(
-                        ['employee_id' => $employee->id, 'work_date' => $workDate],
-                        ['attendance_code_id' => $codes[$code] ?? null, 'regu' => $employee->regu],
-                    );
-                }
+                $this->putEntries($schedule, $year, $month, $rows);
             }
         });
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Generate pola shift {$unit->name} {$month}/{$year}",
+            "Isi otomatis absensi {$unit->name} {$month}/{$year}",
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Pola shift dibuat. Semua sel tetap bisa diedit.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal terisi otomatis. Cuti/Sakit/Izin/Alpha tetap dipertahankan.']);
 
         return back();
     }
 
     /**
-     * @return array{0: Unit, 1: ScheduleGroupType, 2: int, 3: int}
+     * @return array{0: Unit, 1: int, 2: int}
      */
     private function resolveTarget(Request $request): array
     {
-        $unit = Unit::query()->findOrFail($request->integer('unit_id'));
-        abort_unless($request->user()->canAccessUnit($unit), 403);
-
         $request->validate([
             'unit_id' => ['required', 'integer'],
             'year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'month' => ['required', 'integer', 'min:1', 'max:12'],
-            'group_type' => ['required', Rule::in(array_column(ScheduleGroupType::cases(), 'value'))],
         ]);
 
-        return [
-            $unit,
-            ScheduleGroupType::from($request->string('group_type')->value()),
-            (int) $request->integer('year'),
-            (int) $request->integer('month'),
-        ];
+        $unit = Unit::query()->findOrFail($request->integer('unit_id'));
+        abort_unless($request->user()->canAccessUnit($unit), 403);
+
+        return [$unit, (int) $request->integer('year'), (int) $request->integer('month')];
     }
 
-    private function dayInitial(Carbon $date): string
+    private function schedule(Unit $unit, int $year, int $month, ScheduleGroupType $group, int $userId): WorkSchedule
     {
-        return ['M', 'S', 'S', 'R', 'K', 'J', 'S'][$date->dayOfWeek];
-    }
+        $schedule = WorkSchedule::query()->firstOrNew([
+            'unit_id' => $unit->id,
+            'year' => $year,
+            'month' => $month,
+            'group_type' => $group->value,
+        ]);
+        $schedule->input_by = $userId;
+        $schedule->save();
 
-    /**
-     * @return array<int, array{regu: string, sequence: string}>
-     */
-    private function resolveShiftPatterns(Unit $unit): array
-    {
-        $patterns = ShiftPattern::query()->where('unit_id', $unit->id)->where('is_active', true)
-            ->get(['regu', 'sequence'])
-            ->map(fn (ShiftPattern $p): array => ['regu' => $p->regu, 'sequence' => $p->sequence]);
-
-        if ($patterns->isEmpty()) {
-            $baseCycle = ['OFF', 'OFF', 'S', 'S', 'P', 'P', 'M', 'M'];
-            $defaultPhases = ['A' => 0, 'B' => 2, 'C' => 4, 'D' => 6];
-            $patterns = collect($defaultPhases)->map(function (int $offset, string $regu) use ($baseCycle): array {
-                $count = count($baseCycle);
-                $rotated = array_merge(array_slice($baseCycle, $offset % $count), array_slice($baseCycle, 0, $offset % $count));
-
-                return ['regu' => $regu, 'sequence' => implode(',', $rotated)];
-            })->values();
-        }
-
-        return $patterns->all();
+        return $schedule;
     }
 
     /**
-     * @return Collection<string, list<string>>
+     * Update or create the schedule's cells. Existing entries are matched in PHP
+     * by employee + day: `work_date` is a date column, and an equality match on
+     * it misses under SQLite (stored with a time), which would duplicate rows.
+     *
+     * @param  list<array{employee_id: int, day: int, attendance_code_id: int|null, regu: string|null}>  $rows
      */
-    private function resolveShiftPatternsMap(Unit $unit): Collection
+    private function putEntries(WorkSchedule $schedule, int $year, int $month, array $rows): void
     {
-        $patterns = ShiftPattern::query()->where('unit_id', $unit->id)->where('is_active', true)->get()
-            ->mapWithKeys(fn (ShiftPattern $p): array => [$p->regu => $p->codes()]);
+        $existing = $schedule->entries()->get()->keyBy(fn ($entry): string => $entry->employee_id.':'.$entry->work_date->day);
 
-        if ($patterns->isEmpty()) {
-            $baseCycle = ['OFF', 'OFF', 'S', 'S', 'P', 'P', 'M', 'M'];
-            $defaultPhases = ['A' => 0, 'B' => 2, 'C' => 4, 'D' => 6];
+        foreach ($rows as $row) {
+            $attributes = ['attendance_code_id' => $row['attendance_code_id'], 'regu' => $row['regu']];
+            $entry = $existing->get($row['employee_id'].':'.$row['day']);
 
-            return collect($defaultPhases)->mapWithKeys(function (int $offset, string $regu) use ($baseCycle): array {
-                $count = count($baseCycle);
-                $rotated = array_merge(array_slice($baseCycle, $offset % $count), array_slice($baseCycle, 0, $offset % $count));
+            if ($entry !== null) {
+                $entry->update($attributes);
 
-                return [$regu => $rotated];
-            });
+                continue;
+            }
+
+            $schedule->entries()->create([
+                'employee_id' => $row['employee_id'],
+                'work_date' => Carbon::create($year, $month, $row['day'])->toDateString(),
+                ...$attributes,
+            ]);
+        }
+    }
+
+    /**
+     * Roster membership keyed by employee id.
+     *
+     * @return Collection<int, array{group: ScheduleGroupType, regu: string|null}>
+     */
+    private function rosterGroups(Unit $unit): Collection
+    {
+        $groups = collect();
+
+        foreach (ScheduleGroupType::cases() as $group) {
+            foreach ($this->roster->employees($unit, $group) as $employee) {
+                $groups->put($employee->id, ['group' => $group, 'regu' => $employee->regu]);
+            }
         }
 
-        return $patterns;
+        return $groups;
+    }
+
+    /**
+     * The last two codes each shift employee worked in the previous month.
+     *
+     * @param  Collection<int, string>  $codeById
+     * @return array<int, list<string>>
+     */
+    private function previousMonthTails(Unit $unit, int $year, int $month, Collection $codeById): array
+    {
+        $previous = Carbon::create($year, $month, 1)->subMonth();
+
+        $schedule = WorkSchedule::query()
+            ->where('unit_id', $unit->id)->where('year', $previous->year)->where('month', $previous->month)
+            ->where('group_type', ScheduleGroupType::Shift->value)->first();
+
+        if ($schedule === null) {
+            return [];
+        }
+
+        $tails = [];
+        $fromDay = $previous->daysInMonth - 1;
+
+        foreach ($schedule->entries()->whereNotNull('attendance_code_id')->orderBy('work_date')->get() as $entry) {
+            if ($entry->work_date->day >= $fromDay && $codeById->has($entry->attendance_code_id)) {
+                $tails[$entry->employee_id][] = $codeById->get($entry->attendance_code_id);
+            }
+        }
+
+        return array_filter($tails, fn (array $tail): bool => count($tail) === 2);
     }
 }

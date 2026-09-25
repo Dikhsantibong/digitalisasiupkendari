@@ -75,6 +75,7 @@ enum PermissionName: string
     case OperatorLogsheetWrite = 'operator.logsheet.write';
     case OperatorAbsensiView = 'operator.absensi.view';
     case OperatorAbsensiWrite = 'operator.absensi.write';
+    case OperatorPresensi = 'operator.presensi';
 
     case HarInputView = 'har.input.view';
     case HarInputWrite = 'har.input.write';
@@ -179,7 +180,8 @@ enum PermissionName: string
             self::OperatorLogsheetView,
             self::OperatorLogsheetWrite,
             self::OperatorAbsensiView,
-            self::OperatorAbsensiWrite => PermissionGroup::Operator,
+            self::OperatorAbsensiWrite,
+            self::OperatorPresensi => PermissionGroup::Operator,
 
             self::HarInputView,
             self::HarInputWrite,
@@ -290,6 +292,7 @@ enum PermissionName: string
             self::OperatorLogsheetWrite => 'Mengisi logsheet operator',
             self::OperatorAbsensiView => 'Melihat jadwal & absensi shift',
             self::OperatorAbsensiWrite => 'Menjadwalkan & mengisi absensi shift',
+            self::OperatorPresensi => 'Absen masuk & pulang dalam radius kantor',
 
             self::HarInputView => 'Melihat input pemeliharaan',
             self::HarInputWrite => 'Mengisi input pemeliharaan (WO/SR, log kegiatan, biaya, foto)',

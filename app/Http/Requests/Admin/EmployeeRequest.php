@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Employee;
+use App\Services\Operator\AttendanceRoster;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Arr;
@@ -35,6 +36,8 @@ class EmployeeRequest extends FormRequest
             'position' => ['nullable', 'string', 'max:120'],
             'user_id' => ['nullable', 'integer', 'exists:users,id', Rule::unique('employees', 'user_id')->ignore($id)],
             'is_active' => ['required', 'boolean'],
+            'regu' => ['nullable', Rule::in(AttendanceRoster::REGU)],
+            'is_shift_leader' => ['nullable', 'boolean'],
             'signature' => ['nullable', 'file', 'image', 'mimes:png,jpg,jpeg,svg,webp', 'max:2048'],
             'signature_base64' => ['nullable', 'string'],
             'remove_signature' => ['nullable', 'boolean'],
@@ -43,13 +46,14 @@ class EmployeeRequest extends FormRequest
 
     /**
      * A report-signer jabatan (Project Leader, Office, Koordinator, PIC PDM,
-     * TL, Manager UL) may have only one active holder per unit.
+     * TL, Manager UL) may have only one active holder per unit, and a regu has
+     * at most one active Leader Shift per unit.
      *
      * @return array<int, \Closure(Validator): void>
      */
     public function after(): array
     {
-        return [function (Validator $validator): void {
+        return [$this->validateShiftLeader(...), function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
                 return;
             }
@@ -80,7 +84,40 @@ class EmployeeRequest extends FormRequest
      */
     public function validatedAttributes(): array
     {
-        return Arr::except($this->validated(), ['signature', 'signature_base64', 'remove_signature']);
+        $attributes = Arr::except($this->validated(), ['signature', 'signature_base64', 'remove_signature']);
+        $attributes['regu'] = $attributes['regu'] ?? null;
+        // Only a regu member can lead it.
+        $attributes['is_shift_leader'] = $attributes['regu'] !== null && (bool) ($attributes['is_shift_leader'] ?? false);
+
+        return $attributes;
+    }
+
+    private function validateShiftLeader(Validator $validator): void
+    {
+        if ($validator->errors()->isNotEmpty() || ! $this->boolean('is_shift_leader')) {
+            return;
+        }
+
+        if (! $this->filled('regu') || ! $this->filled('unit_id')) {
+            $validator->errors()->add('is_shift_leader', 'Leader Shift harus punya unit pembangkit dan regu.');
+
+            return;
+        }
+
+        if (! $this->boolean('is_active')) {
+            return;
+        }
+
+        $employee = $this->route('employee');
+        $leader = Employee::query()
+            ->where('unit_id', $this->integer('unit_id'))->where('regu', $this->input('regu'))
+            ->where('is_active', true)->where('is_shift_leader', true)
+            ->when($employee instanceof Employee, fn ($query) => $query->whereKeyNot($employee->getKey()))
+            ->first();
+
+        if ($leader !== null) {
+            $validator->errors()->add('is_shift_leader', "Regu {$this->input('regu')} di unit ini sudah punya Leader Shift: {$leader->name}.");
+        }
     }
 
     /**
@@ -96,6 +133,8 @@ class EmployeeRequest extends FormRequest
             'position' => 'jabatan',
             'user_id' => 'akun pengguna',
             'is_active' => 'status aktif',
+            'regu' => 'regu',
+            'is_shift_leader' => 'leader shift',
             'signature' => 'tanda tangan',
         ];
     }

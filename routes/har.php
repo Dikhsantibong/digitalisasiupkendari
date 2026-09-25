@@ -30,6 +30,7 @@ use App\Http\Controllers\Har\LogbookMutasiController;
 use App\Http\Controllers\Har\LubeQualityController;
 use App\Http\Controllers\Har\MasterController;
 use App\Http\Controllers\Har\MotorCurrentController;
+use App\Http\Controllers\Har\PatrolCheckParameterController;
 use App\Http\Controllers\Har\PrelubeTestController;
 use App\Http\Controllers\Har\Program5s5rController;
 use App\Http\Controllers\Har\ScheduleController;
@@ -193,6 +194,9 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/program-5s5r', [Program5s5rController::class, 'index'])->name('input.program-5s5r.index');
         Route::post('input/program-5s5r', [Program5s5rController::class, 'store'])->name('input.program-5s5r.store');
         Route::get('input/program-5s5r/pdf', [Program5s5rController::class, 'pdf'])->name('input.program-5s5r.pdf');
+        Route::get('input/patrol-check-parameter', [PatrolCheckParameterController::class, 'index'])->name('input.patrol-check-parameter.index');
+        Route::post('input/patrol-check-parameter', [PatrolCheckParameterController::class, 'store'])->name('input.patrol-check-parameter.store');
+        Route::get('input/patrol-check-parameter/pdf', [PatrolCheckParameterController::class, 'pdf'])->name('input.patrol-check-parameter.pdf');
 
         Route::get('input/lembar/{lembar}', [LembarController::class, 'index'])->name('input.lembar.index')->whereIn('lembar', HarLembars::keysFor('input'));
         Route::post('input/lembar/{lembar}', [LembarController::class, 'store'])->name('input.lembar.store')->whereIn('lembar', HarLembars::keysFor('input'));

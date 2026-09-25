@@ -7,6 +7,7 @@ use App\Http\Controllers\Har\DailyMeetingController;
 use App\Http\Controllers\Har\LaporanGangguanController;
 use App\Http\Controllers\Har\LembarController;
 use App\Http\Controllers\Har\LogbookMutasiController;
+use App\Http\Controllers\Har\PatrolCheckParameterController;
 use App\Http\Controllers\Har\Program5s5rController;
 use App\Http\Controllers\Har\TabelController;
 use App\Models\HarLaporanGangguan;
@@ -19,6 +20,7 @@ use App\Services\Reports\ReportWorkflowService;
 use App\Services\Reports\ScopedHtmlFragment;
 use App\Support\HarLembar\HarLembar;
 use App\Support\HarLembar\HarLembars;
+use App\Support\HarPatrolCheckParameter;
 use App\Support\HarTabel\HarTabels;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
@@ -31,7 +33,8 @@ use Illuminate\Support\Str;
  *
  * After the built-in jadwal sections, every HAR jadwal lembar, formulir
  * (Daily Meeting, Logbook Mutasi Harian, Laporan Gangguan LH-05) and input
- * table (Rekap Laporan Gangguan, Abnormal & Gangguan, Patrol Check, 5S5R) is
+ * table (Rekap Laporan Gangguan, Abnormal & Gangguan, Patrol Check, Patrol
+ * Check Parameter Mesin, 5S5R) is
  * embedded from its own PDF view as a scoped fragment ("parts"), so the report
  * carries exactly the saved data in the same layout as the standalone PDF.
  */
@@ -200,6 +203,22 @@ class HarDocumentBuilder
             if ($lembar->menu() === 'input') {
                 array_push($sources, ...$this->lembarSources($lembar, 'input', $unit, $month, $year));
             }
+        }
+
+        // Patrol Check Parameter Mesin: one sheet per machine with readings
+        // (the first machine's blank sheet before anything is saved).
+        $parameters = app(PatrolCheckParameterController::class);
+        $withReadings = $parameters->machinesWithReadings($unit, $month, $year);
+        $parameterMachines = $withReadings->isNotEmpty() ? $withReadings->all() : [Machine::query()->where('unit_id', $unit->id)->orderBy('name')->first()];
+        foreach ($parameterMachines as $machine) {
+            $sources[] = [
+                'group' => 'input',
+                'key' => 'patrol-check-parameter'.($machine ? '-'.$machine->id : ''),
+                'title' => HarPatrolCheckParameter::TITLE.($machine ? ' — '.$machine->name : ''),
+                'orientation' => 'landscape',
+                'saved' => $withReadings->isNotEmpty(),
+                'view' => fn (): array => $parameters->pdfView($unit, $month, $year, $machine),
+            ];
         }
 
         $sources[] = [

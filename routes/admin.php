@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\AttendanceLocationController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\MachineController;
 use App\Http\Controllers\Admin\RoleAssignmentController;
@@ -37,4 +38,7 @@ Route::middleware(['auth', 'verified'])
         Route::resource('roles', RoleController::class)->except(['show']);
 
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+
+        Route::get('lokasi-absensi', [AttendanceLocationController::class, 'index'])->name('attendance-locations.index');
+        Route::put('lokasi-absensi/{unit}', [AttendanceLocationController::class, 'update'])->name('attendance-locations.update');
     });

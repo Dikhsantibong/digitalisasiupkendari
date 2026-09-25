@@ -180,6 +180,8 @@ class EmployeeController extends Controller
             'user_id' => $employee->user_id,
             'user' => $employee->relationLoaded('user') && $employee->user ? "{$employee->user->name} ({$employee->user->email})" : null,
             'is_active' => $employee->is_active,
+            'regu' => $employee->regu,
+            'is_shift_leader' => $employee->is_shift_leader,
             'unit_id' => $employee->unit_id,
             'unit' => $employee->relationLoaded('unit') ? $employee->unit?->name : null,
             'service_unit_id' => $employee->service_unit_id,

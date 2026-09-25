@@ -1,5 +1,11 @@
 import { Form, Link } from '@inertiajs/react';
-import { FileSignature, Image as ImageIcon, PenTool, Trash2, Upload } from 'lucide-react';
+import {
+    FileSignature,
+    Image as ImageIcon,
+    PenTool,
+    Trash2,
+    Upload,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { FormField } from '@/components/form-field';
 import { SignaturePad } from '@/components/signature-pad';
@@ -30,9 +36,21 @@ type Props = {
 
 const NO_SELECTION = 'none';
 
-export function EmployeeForm({ action, employee, options, submitLabel }: Props) {
-    const [previewUrl, setPreviewUrl] = useState<string | null>(employee?.signature_url ?? null);
-    const [signatureMode, setSignatureMode] = useState<'canvas' | 'upload'>('canvas');
+/** Mirrors AttendanceRoster::REGU. */
+const REGU = ['A', 'B', 'C', 'D'];
+
+export function EmployeeForm({
+    action,
+    employee,
+    options,
+    submitLabel,
+}: Props) {
+    const [previewUrl, setPreviewUrl] = useState<string | null>(
+        employee?.signature_url ?? null,
+    );
+    const [signatureMode, setSignatureMode] = useState<'canvas' | 'upload'>(
+        'canvas',
+    );
     const [signatureBase64, setSignatureBase64] = useState<string>('');
     const [removeSignature, setRemoveSignature] = useState(false);
 
@@ -76,8 +94,12 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                 const res: Record<string, any> = {
                     ...data,
                     unit_id: data.unit_id === NO_SELECTION ? '' : data.unit_id,
-                    service_unit_id: data.service_unit_id === NO_SELECTION ? '' : data.service_unit_id,
+                    service_unit_id:
+                        data.service_unit_id === NO_SELECTION
+                            ? ''
+                            : data.service_unit_id,
                     user_id: data.user_id === NO_SELECTION ? '' : data.user_id,
+                    regu: data.regu === NO_SELECTION ? '' : data.regu,
                     remove_signature: removeSignature ? '1' : '0',
                     signature_base64: signatureBase64 || '',
                 };
@@ -180,14 +202,16 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                                         <SelectItem value={NO_SELECTION}>
                                             Tanpa unit layanan
                                         </SelectItem>
-                                        {(options.service_units ?? []).map((su) => (
-                                            <SelectItem
-                                                key={su.id}
-                                                value={String(su.id)}
-                                            >
-                                                {su.name}
-                                            </SelectItem>
-                                        ))}
+                                        {(options.service_units ?? []).map(
+                                            (su) => (
+                                                <SelectItem
+                                                    key={su.id}
+                                                    value={String(su.id)}
+                                                >
+                                                    {su.name}
+                                                </SelectItem>
+                                            ),
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </FormField>
@@ -204,6 +228,57 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                                     defaultValue={employee?.position ?? ''}
                                     autoComplete="off"
                                 />
+                            </FormField>
+
+                            <FormField
+                                label="Regu Shift"
+                                hint="Isi untuk operator shift (Regu A–D). Kosongkan untuk pegawai non-shift."
+                                error={errors.regu}
+                            >
+                                <Select
+                                    name="regu"
+                                    defaultValue={
+                                        employee?.regu ?? NO_SELECTION
+                                    }
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Pilih regu" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={NO_SELECTION}>
+                                            Bukan pegawai shift
+                                        </SelectItem>
+                                        {REGU.map((regu) => (
+                                            <SelectItem key={regu} value={regu}>
+                                                Regu {regu}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormField>
+
+                            <FormField
+                                label="Leader Shift"
+                                hint="Satu regu hanya punya 1 Leader Shift; anggota lainnya operator biasa."
+                                error={errors.is_shift_leader}
+                            >
+                                <label className="flex h-9 items-center gap-2 rounded-md border border-border bg-secondary px-3">
+                                    <input
+                                        type="hidden"
+                                        name="is_shift_leader"
+                                        value="0"
+                                    />
+                                    <Checkbox
+                                        name="is_shift_leader"
+                                        value="1"
+                                        defaultChecked={
+                                            employee?.is_shift_leader ?? false
+                                        }
+                                    />
+                                    <span className="text-[13px]">
+                                        Jadikan Leader Shift regu ini
+                                    </span>
+                                </label>
                             </FormField>
 
                             <FormField
@@ -272,7 +347,11 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                                 </h2>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Digunakan untuk pengesahan dokumen laporan (khususnya untuk <strong>Manager UL</strong>, <strong>TL Operasi</strong>, <strong>TL K3</strong>, dan <strong>TL Pemeliharaan</strong>).
+                                Digunakan untuk pengesahan dokumen laporan
+                                (khususnya untuk <strong>Manager UL</strong>,{' '}
+                                <strong>TL Operasi</strong>,{' '}
+                                <strong>TL K3</strong>, dan{' '}
+                                <strong>TL Pemeliharaan</strong>).
                             </p>
                         </div>
 
@@ -280,9 +359,13 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                         <div className="flex items-center gap-2 border-b border-border pb-3">
                             <Button
                                 type="button"
-                                variant={signatureMode === 'canvas' ? 'default' : 'outline'}
+                                variant={
+                                    signatureMode === 'canvas'
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 size="sm"
-                                className="h-8 text-xs gap-1.5"
+                                className="h-8 gap-1.5 text-xs"
                                 onClick={() => setSignatureMode('canvas')}
                             >
                                 <PenTool className="size-3.5" />
@@ -290,9 +373,13 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                             </Button>
                             <Button
                                 type="button"
-                                variant={signatureMode === 'upload' ? 'default' : 'outline'}
+                                variant={
+                                    signatureMode === 'upload'
+                                        ? 'default'
+                                        : 'outline'
+                                }
                                 size="sm"
-                                className="h-8 text-xs gap-1.5"
+                                className="h-8 gap-1.5 text-xs"
                                 onClick={() => setSignatureMode('upload')}
                             >
                                 <Upload className="size-3.5" />
@@ -302,9 +389,11 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
 
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
                             {/* Signature Drawing / Upload Area */}
-                            <div className="flex-1 min-w-0">
+                            <div className="min-w-0 flex-1">
                                 {signatureMode === 'canvas' ? (
-                                    <SignaturePad onChange={handleCanvasChange} />
+                                    <SignaturePad
+                                        onChange={handleCanvasChange}
+                                    />
                                 ) : (
                                     <div className="flex flex-col gap-3">
                                         <FormField
@@ -320,7 +409,7 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                                                 type="file"
                                                 accept="image/png,image/jpeg,image/webp,image/svg+xml"
                                                 onChange={handleFileChange}
-                                                className="block w-full text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                                                className="block w-full cursor-pointer text-xs text-slate-500 file:mr-3 file:rounded-md file:border-0 file:bg-primary/10 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-primary hover:file:bg-primary/20"
                                             />
                                         </FormField>
                                     </div>
@@ -328,12 +417,12 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                             </div>
 
                             {/* Preview Area */}
-                            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/20 p-3 w-full lg:w-64 shrink-0 min-h-[170px]">
+                            <div className="flex min-h-[170px] w-full shrink-0 flex-col items-center justify-center rounded-lg border-2 border-dashed border-border bg-muted/20 p-3 lg:w-64">
                                 <div className="mb-2 text-xs font-medium text-foreground">
                                     Hasil Tanda Tangan:
                                 </div>
                                 {previewUrl ? (
-                                    <div className="flex flex-col items-center gap-2 w-full">
+                                    <div className="flex w-full flex-col items-center gap-2">
                                         <div className="flex h-24 w-full max-w-[220px] items-center justify-center rounded border bg-white p-2 shadow-xs">
                                             <img
                                                 src={previewUrl}
@@ -348,7 +437,7 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            className="mt-1 h-7 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive gap-1"
+                                            className="mt-1 h-7 gap-1 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                                             onClick={handleRemoveSignature}
                                         >
                                             <Trash2 className="size-3" />
@@ -356,9 +445,11 @@ export function EmployeeForm({ action, employee, options, submitLabel }: Props) 
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col items-center gap-1.5 text-center text-muted-foreground py-6">
+                                    <div className="flex flex-col items-center gap-1.5 py-6 text-center text-muted-foreground">
                                         <ImageIcon className="size-8 stroke-[1.5]" />
-                                        <span className="text-xs">Belum ada tanda tangan</span>
+                                        <span className="text-xs">
+                                            Belum ada tanda tangan
+                                        </span>
                                     </div>
                                 )}
                             </div>

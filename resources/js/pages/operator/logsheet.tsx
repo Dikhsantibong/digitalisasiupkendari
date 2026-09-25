@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Pencil, Plus, Send } from 'lucide-react';
+import { CheckCircle2, Circle, Pencil, Plus, Send } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -23,6 +23,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import logsheet from '@/routes/operator/logsheet';
 import type { IdName } from '@/types';
@@ -56,6 +58,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     const [slot, setSlot] = useState<string>(slots[0] ?? '');
     const [form, setForm] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
 
     const groups = useMemo<Group[]>(() => {
         const out: Group[] = [];
@@ -147,6 +150,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     };
 
     const noEngine = filters.engine_id === null;
+    const filledCount = (row: Row) => parameters.filter((p) => toStr(row.values[`p_${p.id}`]) !== '').length;
 
     return (
         <>
@@ -156,7 +160,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     title="Logsheet Operator"
                     description="Pembacaan parameter mesin per jam. Satu lembar per mesin per hari. Klik Isi Data untuk menambah/mengubah data pada jam tertentu."
                     actions={
-                        can_write && !noEngine ? (
+                        compact && can_write && !noEngine ? undefined : can_write && !noEngine ? (
                             <div className="flex flex-wrap gap-2">
                                 <Button onClick={() => openFor()}>
                                     <Plus className="size-4" />
@@ -173,27 +177,29 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     }
                 />
 
-                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
+                <div className={cn('rounded-md border border-border bg-card p-3', compact ? 'grid grid-cols-2 gap-3' : 'flex flex-wrap items-end gap-3')}>
                     <OperasiSelect
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value), engine_id: null })}
                         options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        className={compact ? 'w-full' : undefined}
                     />
                     <OperasiSelect
                         label="Mesin"
                         value={filters.engine_id ? String(filters.engine_id) : ''}
                         onChange={(value) => visit({ engine_id: Number(value) })}
                         options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))}
+                        className={compact ? 'w-full' : undefined}
                     />
                     <label className="flex flex-col gap-1 text-[13px]">
                         <span className="text-muted-foreground">Hari/Tanggal</span>
-                        <Input type="date" value={filters.log_date} onChange={(e) => visit({ log_date: e.target.value })} className="w-40" />
+                        <Input type="date" value={filters.log_date} onChange={(e) => visit({ log_date: e.target.value })} className={compact ? 'w-full' : 'w-40'} />
                     </label>
                     <label className="flex flex-col gap-1 text-[13px]">
                         <span className="text-muted-foreground">Shift</span>
                         <Select value={shift} onValueChange={setShift} disabled={!can_write}>
-                            <SelectTrigger className="w-28">
+                            <SelectTrigger className={compact ? 'w-full' : 'w-28'}>
                                 <SelectValue placeholder="Pilih" />
                             </SelectTrigger>
                             <SelectContent>
@@ -208,7 +214,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 </div>
 
                 {!noEngine && stats.length > 0 && (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className={compact ? 'grid grid-cols-2 gap-3' : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4'}>
                         {stats.map((stat) => (
                             <SummaryCard key={stat.label} label={stat.label} value={stat.value} unit={stat.unit} hint={stat.hint} />
                         ))}
@@ -218,6 +224,36 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 {noEngine ? (
                     <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
                         Unit ini belum punya mesin aktif.
+                    </div>
+                ) : compact ? (
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">Jam Pembacaan</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            {rows.map((row) => {
+                                const filled = filledCount(row);
+
+                                return (
+                                    <button
+                                        key={row.time_slot}
+                                        type="button"
+                                        disabled={!can_write}
+                                        onClick={() => openFor(row)}
+                                        className={cn(
+                                            'flex items-center gap-2.5 rounded-xl border bg-card p-3 text-left transition active:scale-[0.98] disabled:active:scale-100',
+                                            row.filled ? 'border-emerald-500/40' : 'border-border',
+                                        )}
+                                    >
+                                        {row.filled ? <CheckCircle2 className="size-5 shrink-0 text-emerald-500" /> : <Circle className="size-5 shrink-0 text-muted-foreground/50" />}
+                                        <span className="min-w-0">
+                                            <span className="block text-[15px] font-semibold text-foreground tabular-nums">{row.time_slot}</span>
+                                            <span className="block text-[11px] text-muted-foreground">
+                                                {filled}/{parameters.length} parameter
+                                            </span>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 ) : (
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
@@ -271,7 +307,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     </div>
                 )}
 
-                {!noEngine && bearingParam && (
+                {!noEngine && !compact && bearingParam && (
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
                         <div className="border-b border-border bg-muted/40 px-3 py-2 text-[13px] font-semibold text-foreground">
                             BEARING GENERATOR TEMPERATUR{bearingParam.unit_of_measure ? ` (${bearingParam.unit_of_measure})` : ''}
@@ -300,6 +336,19 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 )}
             </div>
 
+            {compact && can_write && !noEngine && (
+                <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+                    <Button size="lg" onClick={() => openFor()}>
+                        <Plus className="size-4" />
+                        Isi Data
+                    </Button>
+                    <Button size="lg" variant="secondary" onClick={submitSheet}>
+                        <Send className="size-4" />
+                        Kirim
+                    </Button>
+                </div>
+            )}
+
             {can_write && (
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
@@ -308,7 +357,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                             <label className="flex flex-col gap-1 text-[13px]">
                                 <span className="text-muted-foreground">Jam</span>
                                 <Select value={slot} onValueChange={selectSlot}>
-                                    <SelectTrigger className="w-40">
+                                    <SelectTrigger className={compact ? 'w-full' : 'w-40'}>
                                         <SelectValue placeholder="Pilih jam" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -346,7 +395,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                 ))}
                             </div>
 
-                            <div className="flex justify-end gap-2">
+                            <div className={cn('flex justify-end gap-2', compact && 'sticky -bottom-6 -mx-6 border-t border-border bg-background px-6 py-3 [&>button]:flex-1')}>
                                 <Button variant="secondary" type="button" onClick={() => setOpen(false)}>
                                     Batal
                                 </Button>

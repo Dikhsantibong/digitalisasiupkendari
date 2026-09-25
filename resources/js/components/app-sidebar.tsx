@@ -4,6 +4,7 @@ import {
     CalendarRange,
     ClipboardCheck,
     ClipboardList,
+    Fingerprint,
     Cog,
     Database,
     Factory,
@@ -17,6 +18,7 @@ import {
     History,
     Image,
     LayoutGrid,
+    MapPin,
     NotebookPen,
     Plug,
     ScrollText,
@@ -47,6 +49,7 @@ import {
 import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import activityLogs from '@/routes/admin/activity-logs';
+import attendanceLocations from '@/routes/admin/attendance-locations';
 import employees from '@/routes/admin/employees';
 import machines from '@/routes/admin/machines';
 import roles from '@/routes/admin/roles';
@@ -67,9 +70,6 @@ import k3Monitoring from '@/routes/k3/monitoring';
 import logistikInput from '@/routes/logistik/input';
 import logistikJadwal from '@/routes/logistik/jadwal';
 import logistikLaporan from '@/routes/logistik/laporan';
-import pdmInput from '@/routes/pdm/input';
-import pdmJadwal from '@/routes/pdm/jadwal';
-import pdmLaporan from '@/routes/pdm/laporan';
 import beritaAcara from '@/routes/operasi/berita-acara';
 import documentTemplate from '@/routes/operasi/document-template';
 import operasiInput from '@/routes/operasi/input';
@@ -77,8 +77,11 @@ import operasiJadwal from '@/routes/operasi/jadwal';
 import laporan from '@/routes/operasi/laporan';
 import master from '@/routes/operasi/master';
 import absensi from '@/routes/operator/absensi';
-import operatorLaporan from '@/routes/operator/laporan';
 import logsheet from '@/routes/operator/logsheet';
+import presensi from '@/routes/operator/presensi';
+import pdmInput from '@/routes/pdm/input';
+import pdmJadwal from '@/routes/pdm/jadwal';
+import pdmLaporan from '@/routes/pdm/laporan';
 import type { NavGroup } from '@/types';
 
 export function AppSidebar() {
@@ -134,20 +137,20 @@ export function AppSidebar() {
         {
             label: 'Operator',
             items: [
+                can('operator.presensi') && {
+                    title: 'Absensi',
+                    href: presensi.index(),
+                    icon: Fingerprint,
+                },
                 can('operator.logsheet.view') && {
                     title: 'Logsheet Operator',
                     href: logsheet.index(),
                     icon: NotebookPen,
                 },
                 can('operator.absensi.view') && {
-                    title: 'Absensi & Jadwal',
+                    title: 'Jadwal Shift',
                     href: absensi.index(),
                     icon: CalendarRange,
-                },
-                can('operator.logsheet.view') && {
-                    title: 'Laporan Operator',
-                    href: operatorLaporan.index(),
-                    icon: FileBarChart,
                 },
             ].filter(Boolean) as NavGroup['items'],
         },
@@ -283,6 +286,11 @@ export function AppSidebar() {
                     title: 'Log Aktivitas',
                     href: activityLogs.index(),
                     icon: History,
+                },
+                can('setting.manage') && {
+                    title: 'Lokasi Absensi',
+                    href: attendanceLocations.index(),
+                    icon: MapPin,
                 },
             ].filter(Boolean) as NavGroup['items'],
         },

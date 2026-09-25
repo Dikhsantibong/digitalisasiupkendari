@@ -10,6 +10,8 @@ use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
 
@@ -108,6 +110,64 @@ class EmployeeManagementTest extends TestCase
         ]);
     }
 
+    public function test_an_operator_is_placed_in_a_regu_as_its_leader_shift(): void
+    {
+        $unit = Unit::factory()->create();
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->post(route('admin.employees.store'), [
+                'unit_id' => $unit->id,
+                'name' => 'Sarono',
+                'nip' => '7026007',
+                'position' => 'Operator',
+                'regu' => 'A',
+                'is_shift_leader' => '1',
+                'is_active' => '1',
+            ])
+            ->assertRedirect(route('admin.employees.index'));
+
+        $employee = Employee::query()->where('nip', '7026007')->firstOrFail();
+        $this->assertSame('A', $employee->regu);
+        $this->assertTrue($employee->is_shift_leader);
+    }
+
+    public function test_a_regu_has_only_one_active_leader_shift_per_unit(): void
+    {
+        $unit = Unit::factory()->create();
+        $leader = Employee::factory()->forUnit($unit)->create(['regu' => 'A', 'is_shift_leader' => true, 'is_active' => true]);
+        $admin = $this->userWithRole(RoleName::SuperAdmin);
+        $payload = ['unit_id' => $unit->id, 'name' => 'Rian', 'position' => 'Operator', 'is_shift_leader' => '1', 'is_active' => '1'];
+
+        $this->actingAs($admin)->post(route('admin.employees.store'), [...$payload, 'nip' => '1', 'regu' => 'A'])
+            ->assertSessionHasErrors('is_shift_leader');
+
+        // Another regu, or the same regu in another unit, may have its own leader.
+        $this->actingAs($admin)->post(route('admin.employees.store'), [...$payload, 'nip' => '2', 'regu' => 'B'])
+            ->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post(route('admin.employees.store'), [...$payload, 'nip' => '3', 'regu' => 'A', 'unit_id' => Unit::factory()->create()->id])
+            ->assertSessionHasNoErrors();
+
+        // The current leader can still be edited.
+        $this->actingAs($admin)->put(route('admin.employees.update', $leader), [
+            'unit_id' => $unit->id, 'name' => $leader->name, 'nip' => $leader->nip, 'position' => 'Operator',
+            'regu' => 'A', 'is_shift_leader' => '1', 'is_active' => '1',
+        ])->assertSessionHasNoErrors();
+    }
+
+    public function test_leader_shift_needs_a_regu_and_non_shift_staff_are_never_leaders(): void
+    {
+        $unit = Unit::factory()->create();
+        $admin = $this->userWithRole(RoleName::SuperAdmin);
+
+        $this->actingAs($admin)->post(route('admin.employees.store'), [
+            'unit_id' => $unit->id, 'name' => 'Tanpa Regu', 'nip' => '10', 'is_shift_leader' => '1', 'is_active' => '1',
+        ])->assertSessionHasErrors('is_shift_leader');
+
+        $this->actingAs($admin)->post(route('admin.employees.store'), [
+            'unit_id' => $unit->id, 'name' => 'Staf', 'nip' => '11', 'regu' => 'X', 'is_active' => '1',
+        ])->assertSessionHasErrors('regu');
+    }
+
     public function test_creating_an_employee_requires_a_name(): void
     {
         $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
@@ -148,9 +208,9 @@ class EmployeeManagementTest extends TestCase
 
     public function test_super_admin_can_create_an_employee_with_signature(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
         $unit = Unit::factory()->create();
-        $signature = \Illuminate\Http\UploadedFile::fake()->image('ttd.png', 200, 80);
+        $signature = UploadedFile::fake()->image('ttd.png', 200, 80);
 
         $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
             ->post(route('admin.employees.store'), [
@@ -165,14 +225,14 @@ class EmployeeManagementTest extends TestCase
 
         $employee = Employee::query()->where('nip', '999888777')->firstOrFail();
         $this->assertNotNull($employee->signature_path);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->signature_path);
+        Storage::disk('public')->assertExists($employee->signature_path);
     }
 
     public function test_super_admin_can_create_an_employee_with_canvas_base64_signature(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
         $unit = Unit::factory()->create();
-        $fakeBase64 = 'data:image/png;base64,' . base64_encode('fake-canvas-png-bytes');
+        $fakeBase64 = 'data:image/png;base64,'.base64_encode('fake-canvas-png-bytes');
 
         $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
             ->post(route('admin.employees.store'), [
@@ -187,22 +247,22 @@ class EmployeeManagementTest extends TestCase
 
         $employee = Employee::query()->where('nip', '999888666')->firstOrFail();
         $this->assertNotNull($employee->signature_path);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->signature_path);
-        $this->assertSame('fake-canvas-png-bytes', \Illuminate\Support\Facades\Storage::disk('public')->get($employee->signature_path));
+        Storage::disk('public')->assertExists($employee->signature_path);
+        $this->assertSame('fake-canvas-png-bytes', Storage::disk('public')->get($employee->signature_path));
     }
 
     public function test_super_admin_can_update_employee_signature(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
         $oldPath = 'signatures/old_ttd.png';
-        \Illuminate\Support\Facades\Storage::disk('public')->put($oldPath, 'old content');
+        Storage::disk('public')->put($oldPath, 'old content');
 
         $employee = Employee::factory()->create([
             'position' => 'Team Leader Operasi',
             'signature_path' => $oldPath,
         ]);
 
-        $newSignature = \Illuminate\Http\UploadedFile::fake()->image('new_ttd.png', 200, 80);
+        $newSignature = UploadedFile::fake()->image('new_ttd.png', 200, 80);
 
         $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
             ->put(route('admin.employees.update', $employee), [
@@ -215,15 +275,15 @@ class EmployeeManagementTest extends TestCase
 
         $employee->refresh();
         $this->assertNotSame($oldPath, $employee->signature_path);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($oldPath);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertExists($employee->signature_path);
+        Storage::disk('public')->assertMissing($oldPath);
+        Storage::disk('public')->assertExists($employee->signature_path);
     }
 
     public function test_super_admin_can_remove_employee_signature(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
         $path = 'signatures/test_ttd.png';
-        \Illuminate\Support\Facades\Storage::disk('public')->put($path, 'signature content');
+        Storage::disk('public')->put($path, 'signature content');
 
         $employee = Employee::factory()->create([
             'position' => 'Team Leader K3 & Keamanan',
@@ -241,14 +301,14 @@ class EmployeeManagementTest extends TestCase
 
         $employee->refresh();
         $this->assertNull($employee->signature_path);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($path);
+        Storage::disk('public')->assertMissing($path);
     }
 
     public function test_super_admin_can_delete_an_employee(): void
     {
-        \Illuminate\Support\Facades\Storage::fake('public');
+        Storage::fake('public');
         $path = 'signatures/deleted_employee_ttd.png';
-        \Illuminate\Support\Facades\Storage::disk('public')->put($path, 'signature content');
+        Storage::disk('public')->put($path, 'signature content');
 
         $employee = Employee::factory()->create([
             'signature_path' => $path,
@@ -259,7 +319,7 @@ class EmployeeManagementTest extends TestCase
             ->assertRedirect(route('admin.employees.index'));
 
         $this->assertDatabaseMissing('employees', ['id' => $employee->id]);
-        \Illuminate\Support\Facades\Storage::disk('public')->assertMissing($path);
+        Storage::disk('public')->assertMissing($path);
         $this->assertSame(
             1,
             ActivityLog::query()->where('event', ActivityEvent::Deleted->value)->count(),

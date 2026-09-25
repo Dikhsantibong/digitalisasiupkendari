@@ -24,6 +24,9 @@ use Illuminate\Support\Carbon;
  * @property UnitType $type
  * @property string|null $installed_capacity_mw
  * @property string|null $location
+ * @property string|null $latitude
+ * @property string|null $longitude
+ * @property int $attendance_radius_m
  * @property UnitStatus $status
  * @property bool $is_active
  * @property Carbon|null $created_at
@@ -38,6 +41,9 @@ use Illuminate\Support\Carbon;
     'type',
     'installed_capacity_mw',
     'location',
+    'latitude',
+    'longitude',
+    'attendance_radius_m',
     'status',
     'is_active',
 ])]
@@ -55,7 +61,14 @@ class Unit extends Model
             'type' => UnitType::class,
             'status' => UnitStatus::class,
             'is_active' => 'boolean',
+            'attendance_radius_m' => 'integer',
         ];
+    }
+
+    /** Whether Super Admin has pinned the office coordinates used for absen masuk/pulang. */
+    public function hasAttendanceLocation(): bool
+    {
+        return $this->latitude !== null && $this->longitude !== null;
     }
 
     /**

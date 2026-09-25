@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
  * @property string|null $singleton_key
  * @property string|null $signature_path
  * @property string|null $regu
+ * @property bool $is_shift_leader
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -43,6 +44,7 @@ use Illuminate\Support\Facades\Storage;
     'division',
     'signature_path',
     'regu',
+    'is_shift_leader',
     'is_active',
 ])]
 class Employee extends Model
@@ -97,6 +99,7 @@ class Employee extends Model
     {
         return [
             'is_active' => 'boolean',
+            'is_shift_leader' => 'boolean',
         ];
     }
 

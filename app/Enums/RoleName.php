@@ -229,6 +229,7 @@ enum RoleName: string
                 ...$this->operatorBasePermissions(),
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorAbsensiWrite,
+                PermissionName::OperatorPresensi,
                 PermissionName::OperasiLaporanView,
             ],
 
@@ -236,6 +237,7 @@ enum RoleName: string
                 ...$this->operatorBasePermissions(),
                 // The operator sees the shift schedule they belong to (read-only).
                 PermissionName::OperatorAbsensiView,
+                PermissionName::OperatorPresensi,
             ],
         };
     }

@@ -5,6 +5,7 @@ import {
     ClipboardCheck,
     ClipboardList,
     FileWarning,
+    Gauge,
     Image,
     NotebookPen,
     ShieldAlert,
@@ -22,6 +23,7 @@ import harAttachment from '@/routes/har/input/attachment';
 import harCost from '@/routes/har/input/cost';
 import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
 import harInputLembar from '@/routes/har/input/lembar';
+import harPatrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import harProgram5s5r from '@/routes/har/input/program-5s5r';
 import harSchedule from '@/routes/har/input/schedule';
 import harServiceRequest from '@/routes/har/input/service-request';
@@ -124,6 +126,14 @@ const INPUT_MENUS: InputCard[] = [
         icon: ShieldCheck,
         url: harInputLembar.index('patrol-check-pemeliharaan').url,
         buttonLabel: 'Buka Input Patrol Check',
+    },
+    {
+        title: 'Patrol Check Parameter Mesin',
+        description:
+            'Pembacaan harian per mesin: PIC, jam, load, temperatur & tekanan engine, temperatur/arus/tegangan generator, cos phi, kVAR, trafo, dan tegangan baterai.',
+        icon: Gauge,
+        url: harPatrolCheckParameter.index().url,
+        buttonLabel: 'Buka Input Parameter Mesin',
     },
 ];
 

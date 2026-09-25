@@ -53,9 +53,10 @@ class DocumentController extends Controller
      * v19 = Lembar Pengesahan & tanda tangan laporan from the report workflow (ReportWorkflowService);
      * v20 = portrait/landscape sections merged (OrientationPdfMerger) + embedded jadwal lembar,
      * formulir (Daily Meeting, Logbook Mutasi, LH-05) & input tables (Rekap/Abnormal Gangguan,
-     * Patrol Check, 5S5R), Daftar Isi page numbers.
+     * Patrol Check, 5S5R), Daftar Isi page numbers;
+     * v21 = Patrol Check Parameter Mesin (per mesin) added after the Patrol Check.
      */
-    private const BODY_VERSION = 20;
+    private const BODY_VERSION = 21;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PEMELIHARAAN PEMBANGKIT';
 

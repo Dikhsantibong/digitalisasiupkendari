@@ -215,7 +215,7 @@ abstract class HarLembar
      *
      * @return list<GridColumn>
      */
-    protected static function days(int $month, int $year): array
+    public static function days(int $month, int $year): array
     {
         $holidays = Holiday::query()->whereYear('date', $year)->whereMonth('date', $month)->get(['date'])
             ->map(fn (Holiday $holiday): int => Carbon::parse($holiday->date)->day)->all();
