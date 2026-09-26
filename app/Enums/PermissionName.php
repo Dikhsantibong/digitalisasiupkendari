@@ -69,6 +69,11 @@ enum PermissionName: string
     case OperasiMasterViewAny = 'operasi.master.view_any';
     case OperasiMasterManage = 'operasi.master.manage';
 
+    // Akses 2 — Pengusahaan (Team Leader & Staf): the Pengusahaan menus and
+    // the Laporan Pengusahaan Pembangkit of the module.
+    case OperasiPengusahaanView = 'operasi.pengusahaan.view';
+    case OperasiPengusahaanWrite = 'operasi.pengusahaan.write';
+
     // Operasi input pages opened to shift operators, one per page (see operasiLapangan()).
     case OperasiLapanganDailyReport = 'operasi.lapangan.daily_report';
     case OperasiLapanganStarStop = 'operasi.lapangan.star_stop';
@@ -100,11 +105,13 @@ enum PermissionName: string
     case HarMasterViewAny = 'har.master.view_any';
     case HarMasterManage = 'har.master.manage';
 
+    case HarPengusahaanView = 'har.pengusahaan.view';
+    case HarPengusahaanWrite = 'har.pengusahaan.write';
+
     // Pemeliharaan input & formulir pages opened to Harmes / Harlist, one per page (see harLapangan()).
     case HarLapanganWorkOrder = 'har.lapangan.work_order';
     case HarLapanganServiceRequest = 'har.lapangan.service_request';
     case HarLapanganActivity = 'har.lapangan.activity';
-    case HarLapanganCost = 'har.lapangan.cost';
     case HarLapanganSchedule = 'har.lapangan.schedule';
     case HarLapanganAttachment = 'har.lapangan.attachment';
     case HarLapanganUnsafeCondition = 'har.lapangan.unsafe_condition';
@@ -136,6 +143,9 @@ enum PermissionName: string
     case K3MonitoringView = 'k3.monitoring.view';
     case K3MasterViewAny = 'k3.master.view_any';
     case K3MasterManage = 'k3.master.manage';
+
+    case K3PengusahaanView = 'k3.pengusahaan.view';
+    case K3PengusahaanWrite = 'k3.pengusahaan.write';
 
     case LogistikInputView = 'logistik.input.view';
     case LogistikInputWrite = 'logistik.input.write';
@@ -223,6 +233,9 @@ enum PermissionName: string
             self::OperasiMasterViewAny,
             self::OperasiMasterManage => PermissionGroup::Operasi,
 
+            self::OperasiPengusahaanView,
+            self::OperasiPengusahaanWrite => PermissionGroup::OperasiPengusahaan,
+
             self::OperasiLapanganDailyReport,
             self::OperasiLapanganStarStop,
             self::OperasiLapanganFeeder,
@@ -251,10 +264,12 @@ enum PermissionName: string
             self::HarMasterViewAny,
             self::HarMasterManage => PermissionGroup::Pemeliharaan,
 
+            self::HarPengusahaanView,
+            self::HarPengusahaanWrite => PermissionGroup::PemeliharaanPengusahaan,
+
             self::HarLapanganWorkOrder,
             self::HarLapanganServiceRequest,
             self::HarLapanganActivity,
-            self::HarLapanganCost,
             self::HarLapanganSchedule,
             self::HarLapanganAttachment,
             self::HarLapanganUnsafeCondition,
@@ -286,6 +301,9 @@ enum PermissionName: string
             self::K3MonitoringView,
             self::K3MasterViewAny,
             self::K3MasterManage => PermissionGroup::K3,
+
+            self::K3PengusahaanView,
+            self::K3PengusahaanWrite => PermissionGroup::K3Pengusahaan,
 
             self::LogistikInputView,
             self::LogistikInputWrite,
@@ -378,6 +396,8 @@ enum PermissionName: string
             self::OperasiBeritaAcaraCreate => 'Membuat berita acara operasi',
             self::OperasiMasterViewAny => 'Melihat master data operasi',
             self::OperasiMasterManage => 'Mengelola master data operasi',
+            self::OperasiPengusahaanView => 'Membuka menu & Laporan Pengusahaan operasi',
+            self::OperasiPengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan operasi',
             self::OperasiLapanganDailyReport => 'Input lapangan: Input Harian',
             self::OperasiLapanganStarStop => 'Input lapangan: Star-Stop Mesin',
             self::OperasiLapanganFeeder => 'Input lapangan: Feeder',
@@ -404,10 +424,11 @@ enum PermissionName: string
             self::HarExecutiveView => 'Melihat executive summary pemeliharaan',
             self::HarMasterViewAny => 'Melihat master data pemeliharaan',
             self::HarMasterManage => 'Mengelola master data pemeliharaan',
+            self::HarPengusahaanView => 'Membuka menu & Laporan Pengusahaan pemeliharaan',
+            self::HarPengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan pemeliharaan',
             self::HarLapanganWorkOrder => 'Input lapangan: Work Order',
             self::HarLapanganServiceRequest => 'Input lapangan: Service Request',
             self::HarLapanganActivity => 'Input lapangan: Log Kegiatan',
-            self::HarLapanganCost => 'Input lapangan: Biaya',
             self::HarLapanganSchedule => 'Input lapangan: Rencana vs Realisasi',
             self::HarLapanganAttachment => 'Input lapangan: Lampiran Foto',
             self::HarLapanganUnsafeCondition => 'Input lapangan: Unsafe Action & Unsafe Condition',
@@ -439,6 +460,8 @@ enum PermissionName: string
             self::K3MonitoringView => 'Melihat monitoring status K3 (sertifikat/APAR)',
             self::K3MasterViewAny => 'Melihat master data K3 & keamanan',
             self::K3MasterManage => 'Mengelola master data K3 & keamanan',
+            self::K3PengusahaanView => 'Membuka menu & Laporan Pengusahaan K3 & keamanan',
+            self::K3PengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan K3 & keamanan',
 
             self::LogistikInputView => 'Melihat input logistik & gudang',
             self::LogistikInputWrite => 'Mengisi input logistik & gudang (patrol check, inventaris, stok, permit to work)',

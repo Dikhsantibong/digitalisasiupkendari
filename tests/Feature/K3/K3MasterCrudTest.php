@@ -40,7 +40,7 @@ class K3MasterCrudTest extends TestCase
     {
         K3ActivityType::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create()))
             ->get(route('k3.master.index', 'activity-types'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -54,7 +54,7 @@ class K3MasterCrudTest extends TestCase
 
     public function test_a_global_master_can_be_created_and_deleted(): void
     {
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create());
+        $user = $this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create());
 
         $this->actingAs($user)
             ->post(route('k3.master.store', 'activity-types'), [
@@ -78,7 +78,7 @@ class K3MasterCrudTest extends TestCase
     public function test_a_unit_scoped_master_is_created_for_the_selected_unit(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)
             ->post(route('k3.master.store', 'patrol-locations'), [
@@ -99,7 +99,7 @@ class K3MasterCrudTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.master.store', 'patrol-locations'), [
                 'unit_id' => $foreignUnit->id,
                 'code' => 'POA9',
@@ -114,7 +114,7 @@ class K3MasterCrudTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $category = ApdCategory::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         // A valid global category is accepted.
         $this->actingAs($user)
@@ -139,14 +139,14 @@ class K3MasterCrudTest extends TestCase
 
     public function test_creating_a_master_validates_required_fields(): void
     {
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create()))
             ->post(route('k3.master.store', 'activity-types'), ['is_active' => '1'])
             ->assertSessionHasErrors(['code', 'name']);
     }
 
     public function test_an_unknown_resource_is_not_found(): void
     {
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create()))
             ->get(route('k3.master.index', 'tidak-ada'))
             ->assertNotFound();
     }

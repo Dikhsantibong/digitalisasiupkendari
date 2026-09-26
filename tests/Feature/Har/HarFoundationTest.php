@@ -29,7 +29,7 @@ class HarFoundationTest extends TestCase
 
     public function test_tl_pemeliharaan_holds_the_har_permissions_but_not_operasi(): void
     {
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, Unit::factory()->create());
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, Unit::factory()->create());
 
         $this->assertTrue($user->hasPermissionTo(PermissionName::HarInputWrite));
         $this->assertTrue($user->hasPermissionTo(PermissionName::HarLaporanView));
@@ -83,7 +83,7 @@ class HarFoundationTest extends TestCase
     public function test_authorized_user_can_access_har_jadwal_and_input_hub(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)
             ->get(route('har.jadwal.index'))
@@ -104,7 +104,7 @@ class HarFoundationTest extends TestCase
     public function test_unauthorized_user_cannot_access_har_jadwal_or_input_hub(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->get(route('har.jadwal.index'))

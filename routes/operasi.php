@@ -31,6 +31,7 @@ use App\Http\Controllers\Operasi\Program5s5rInputController;
 use App\Http\Controllers\Operasi\ResourcePembangkitController;
 use App\Http\Controllers\Operasi\StarStopController;
 use App\Http\Controllers\Operasi\UnsafeConditionController;
+use App\Http\Controllers\PengusahaanController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -173,6 +174,9 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/program-5s5r/pdf', [Program5s5rInputController::class, 'pdf'])
             ->name('input.program-5s5r.pdf');
 
+        // Akses 2 — Pengusahaan (TL & Staf): hub per menu section.
+        Route::get('pengusahaan/{section}', [PengusahaanController::class, 'index'])->name('pengusahaan.index')
+            ->defaults('module', 'operasi')->whereIn('section', array_keys(PengusahaanController::SECTIONS));
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/{report}/excel', [LaporanController::class, 'spreadsheet'])->name('laporan.spreadsheet');
         Route::get('laporan/{report}/dokumen', [LaporanDocumentController::class, 'edit'])->name('laporan.document.edit');

@@ -141,7 +141,7 @@ class BeritaAcaraTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.berita-acara.pdf', [
                 'type' => BeritaAcaraType::Hsd->value,
                 'unit_id' => $unit->id,
@@ -156,7 +156,7 @@ class BeritaAcaraTest extends TestCase
     public function test_saving_a_berita_acara_stores_the_edited_html(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.berita-acara.store'), [
@@ -180,7 +180,7 @@ class BeritaAcaraTest extends TestCase
     public function test_saving_twice_updates_the_same_record(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
         $payload = [
             'unit_id' => $unit->id,
             'type' => BeritaAcaraType::Hsd->value,
@@ -200,7 +200,7 @@ class BeritaAcaraTest extends TestCase
     public function test_saving_in_excel_mode_stores_the_grid(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.berita-acara.store'), [
@@ -226,7 +226,7 @@ class BeritaAcaraTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.berita-acara.store'), [
                 'unit_id' => $unit->id,
                 'type' => BeritaAcaraType::Hsd->value,
@@ -240,7 +240,7 @@ class BeritaAcaraTest extends TestCase
     public function test_pdf_renders_from_the_saved_grid_in_excel_mode(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)->post(route('operasi.berita-acara.store'), [
             'unit_id' => $unit->id,
@@ -269,7 +269,7 @@ class BeritaAcaraTest extends TestCase
     public function test_reopening_a_saved_document_loads_the_edited_html(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)->post(route('operasi.berita-acara.store'), [
             'unit_id' => $unit->id,
@@ -301,7 +301,7 @@ class BeritaAcaraTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
             ->post(route('operasi.berita-acara.store'), [
                 'unit_id' => $foreignUnit->id,
                 'type' => BeritaAcaraType::Hsd->value,

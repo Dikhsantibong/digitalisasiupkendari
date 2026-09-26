@@ -33,7 +33,7 @@ class AparCheckInputTest extends TestCase
         $unit = Unit::factory()->create();
         FireExtinguisher::factory()->forUnit($unit)->count(3)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.apar-check.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -46,7 +46,7 @@ class AparCheckInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $ext = FireExtinguisher::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.apar-check.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
@@ -75,7 +75,7 @@ class AparCheckInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.apar-check.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'rows' => [],
             ])

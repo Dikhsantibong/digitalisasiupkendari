@@ -76,6 +76,7 @@ body { font-size: 11px; color: #000; }
 .har-logo-cell-right { vertical-align: middle; text-align: left; padding-left: 18px; }
 .har-logo-pln { height: 50px; }
 .har-logo-mkp { height: 45px; }
+.har-logo-k3 { height: 48px; }
 
 .har-cover-title-wrap {
     margin-top: 28mm;

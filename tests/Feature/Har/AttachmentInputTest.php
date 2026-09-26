@@ -33,7 +33,7 @@ class AttachmentInputTest extends TestCase
     public function test_uploading_a_photo_stores_the_file_and_record(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.attachment.store'), [
             'unit_id' => $unit->id,
@@ -53,7 +53,7 @@ class AttachmentInputTest extends TestCase
     public function test_the_photo_is_required_and_must_be_an_image(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.attachment.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'title' => 'X',
@@ -68,7 +68,7 @@ class AttachmentInputTest extends TestCase
     public function test_an_attachment_can_be_deleted_with_its_file(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.attachment.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'title' => 'X',
@@ -89,7 +89,7 @@ class AttachmentInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $ownUnit))
             ->post(route('har.input.attachment.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'title' => 'X',
                 'photo' => UploadedFile::fake()->image('foto.jpg'),

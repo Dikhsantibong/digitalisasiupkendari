@@ -33,7 +33,7 @@ class AttachmentInputTest extends TestCase
     public function test_uploading_stores_the_file_and_row(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.attachment.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
@@ -49,7 +49,7 @@ class AttachmentInputTest extends TestCase
     public function test_a_pdf_document_is_accepted(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.attachment.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
@@ -62,7 +62,7 @@ class AttachmentInputTest extends TestCase
     public function test_deleting_removes_the_file(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.attachment.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
@@ -83,7 +83,7 @@ class AttachmentInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.attachment.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026,
                 'title' => 'X', 'file' => UploadedFile::fake()->image('x.png'),

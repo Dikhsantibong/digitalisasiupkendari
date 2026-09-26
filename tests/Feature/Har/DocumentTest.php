@@ -38,7 +38,7 @@ class DocumentTest extends TestCase
     public function test_regenerate_rebuilds_a_stale_saved_document_from_the_template(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         // A document saved with an old, hand-edited body (no cover, no sections).
         HarDocumentRecord::query()->create([
@@ -73,8 +73,8 @@ class DocumentTest extends TestCase
         $this->assertStringContainsString('JADWAL MEETING PEMELIHARAAN PEMBANGKIT', (string) $record->content_html);
         $this->assertStringContainsString('JADWAL PEMBUATAN IK PEMELIHARAAN PEMBANGKIT', (string) $record->content_html);
 
-        // Regenerate Pengusahaan Report
-        $this->actingAs($user)
+        // Regenerate Pengusahaan Report — Akses 2, held by TL Pemeliharaan.
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
             ->post(route('har.laporan.pengusahaan.regenerate'), ['unit_id' => $unit->id, 'month' => 9, 'year' => 2026])
             ->assertRedirect();
 
@@ -163,7 +163,7 @@ class DocumentTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -180,7 +180,7 @@ class DocumentTest extends TestCase
     public function test_tl_pemeliharaan_can_save_the_document(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.laporan.document.store'), [
             'unit_id' => $unit->id,
@@ -199,7 +199,7 @@ class DocumentTest extends TestCase
     public function test_a_saved_document_is_reloaded_on_next_open(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         // Save through the endpoint so the document is stamped with the current
         // template version (a document saved against the current layout reloads).
@@ -240,7 +240,7 @@ class DocumentTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk();
@@ -252,7 +252,7 @@ class DocumentTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $ownUnit))
             ->get(route('har.laporan.document.edit', ['unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026]))
             ->assertForbidden();
     }
@@ -277,7 +277,7 @@ class DocumentTest extends TestCase
         // A look-alike jabatan in the unit is not a signer.
         Employee::factory()->create(['unit_id' => $unit->id, 'name' => 'Staf Bukan Penanda Tangan', 'position' => 'Staf Pemeliharaan', 'is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->post(route('har.laporan.document.regenerate'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026])
             ->assertRedirect();
 
@@ -318,7 +318,10 @@ class DocumentTest extends TestCase
                 ->where('format', 'html')
                 ->where('has_saved', false)
                 ->where('can_write', true)
-                ->has('content')
+                ->where('content', fn (string $html) => str_contains($html, 'har-logos-table')
+                    && str_contains($html, '/logo/sidebar-logo.png')
+                    && str_contains($html, '/logo/k3.png')
+                )
                 ->has('grid'),
             );
     }

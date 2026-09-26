@@ -35,7 +35,7 @@ class ServiceRequestInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.input.service-request.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -49,7 +49,7 @@ class ServiceRequestInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['name' => 'MAK #2']);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.service-request.store'), [
             'unit_id' => $unit->id,
@@ -73,7 +73,7 @@ class ServiceRequestInputTest extends TestCase
     public function test_an_invalid_status_defaults_to_open(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.service-request.store'), [
             'unit_id' => $unit->id,
@@ -90,7 +90,7 @@ class ServiceRequestInputTest extends TestCase
     public function test_rows_removed_from_the_grid_are_deleted(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $payload = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)->post(route('har.input.service-request.store'), [
@@ -109,7 +109,7 @@ class ServiceRequestInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $ownUnit))
             ->post(route('har.input.service-request.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [['sr_number' => 'SRZ']],

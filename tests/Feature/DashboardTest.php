@@ -58,7 +58,7 @@ class DashboardTest extends TestCase
         $this->seedAccessControl();
         $unit = Unit::factory()->create(['name' => 'PLTD Uji']);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -124,7 +124,7 @@ class DashboardTest extends TestCase
     {
         $this->seedAccessControl();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create()))
             ->get(route('dashboard'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page

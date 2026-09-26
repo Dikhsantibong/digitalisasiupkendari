@@ -48,7 +48,7 @@ class ChecklistCommissioningMesinTest extends TestCase
         $unit1 = Unit::factory()->create(['name' => 'Unit 1', 'is_active' => true]);
         $unit2 = Unit::factory()->create(['name' => 'Unit 2', 'is_active' => true]);
 
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit1);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit1);
 
         // Accessing unit1 succeeds
         $response = $this->actingAs($user)->get(route('operasi.input.checklist-commissioning-mesin.index', [

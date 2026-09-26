@@ -65,15 +65,17 @@ class WorkOrderController extends Controller
                 'description' => $wo->description,
                 'type_code' => $wo->maintenanceType?->code,
                 'engine_name' => $wo->engine?->name,
+                'assetnum' => $wo->assetnum,
                 'work_group_code' => $wo->workGroup?->code,
+                'owner_group' => $wo->owner_group,
                 'status_code' => $wo->status?->code,
                 'cycle_code' => $wo->cycle?->code,
                 'report_date' => $wo->report_date?->format('Y-m-d'),
                 'sched_start' => $wo->sched_start?->format('Y-m-d'),
                 'sched_finish' => $wo->sched_finish?->format('Y-m-d'),
                 'waiting_reason' => $wo->waiting_reason?->value,
-                'service_cost' => $wo->service_cost,
-                'material_cost' => $wo->material_cost,
+                'priority_text' => $wo->priority_text,
+                'materials' => $wo->materials ?? [],
             ])->all(),
             'options' => [
                 'units' => $units->all(),
@@ -112,8 +114,13 @@ class WorkOrderController extends Controller
             'rows.*.sched_start' => ['nullable', 'date'],
             'rows.*.sched_finish' => ['nullable', 'date'],
             'rows.*.waiting_reason' => ['nullable', 'string'],
-            'rows.*.service_cost' => ['nullable', 'numeric'],
-            'rows.*.material_cost' => ['nullable', 'numeric'],
+            'rows.*.assetnum' => ['nullable', 'string', 'max:100'],
+            'rows.*.owner_group' => ['nullable', 'string', 'max:50'],
+            'rows.*.priority_text' => ['nullable', 'string', 'max:100'],
+            'rows.*.materials' => ['nullable', 'array', 'max:50'],
+            'rows.*.materials.*.description' => ['nullable', 'string', 'max:255'],
+            'rows.*.materials.*.stockcode' => ['nullable', 'string', 'max:100'],
+            'rows.*.materials.*.amount' => ['nullable', 'string', 'max:50'],
         ]);
 
         $month = (int) $validated['month'];
@@ -153,15 +160,17 @@ class WorkOrderController extends Controller
                         'description' => $row['description'] ?? null,
                         'maintenance_type_id' => $types[$row['type_code'] ?? ''] ?? null,
                         'engine_id' => $machines[$row['engine_name'] ?? ''] ?? null,
+                        'assetnum' => $this->text($row['assetnum'] ?? null),
                         'work_group_id' => $groups[$row['work_group_code'] ?? ''] ?? null,
+                        'owner_group' => $this->text($row['owner_group'] ?? null),
                         'wo_status_id' => $statuses[$row['status_code'] ?? ''] ?? null,
                         'cycle_id' => $cycles[$row['cycle_code'] ?? ''] ?? null,
                         'report_date' => $row['report_date'] ?? null,
                         'sched_start' => $row['sched_start'] ?? null,
                         'sched_finish' => $row['sched_finish'] ?? null,
                         'waiting_reason' => $reason,
-                        'service_cost' => $row['service_cost'] ?? null,
-                        'material_cost' => $row['material_cost'] ?? null,
+                        'priority_text' => $this->text($row['priority_text'] ?? null),
+                        'materials' => $this->materials($row['materials'] ?? []),
                         'source' => WorkOrderSource::Manual,
                         'input_by' => $user->id,
                     ],
@@ -186,5 +195,32 @@ class WorkOrderController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Work Order disimpan.']);
 
         return back();
+    }
+
+    /**
+     * Material/jasa lines of a waiting WO; blank lines dropped, null when none.
+     *
+     * @param  array<int, array<string, mixed>>|null  $lines
+     * @return list<array{description: string|null, stockcode: string|null, amount: string|null}>|null
+     */
+    private function materials(?array $lines): ?array
+    {
+        $clean = collect($lines ?? [])
+            ->map(fn (array $line): array => [
+                'description' => $this->text($line['description'] ?? null),
+                'stockcode' => $this->text($line['stockcode'] ?? null),
+                'amount' => $this->text($line['amount'] ?? null),
+            ])
+            ->filter(fn (array $line): bool => array_filter($line) !== [])
+            ->values()->all();
+
+        return $clean === [] ? null : $clean;
+    }
+
+    private function text(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 }

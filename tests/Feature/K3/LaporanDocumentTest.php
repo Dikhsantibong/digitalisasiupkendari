@@ -48,7 +48,7 @@ class LaporanDocumentTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -65,7 +65,7 @@ class LaporanDocumentTest extends TestCase
     public function test_tl_can_save_the_document(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.laporan.document.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
@@ -100,7 +100,7 @@ class LaporanDocumentTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk();
@@ -112,7 +112,7 @@ class LaporanDocumentTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->get(route('k3.laporan.document.edit', ['unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026]))
             ->assertForbidden();
     }
@@ -312,7 +312,7 @@ class LaporanDocumentTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk();

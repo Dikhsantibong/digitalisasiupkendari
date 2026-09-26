@@ -38,7 +38,7 @@ class OperasiProgram5s5rInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.input.program-5s5r.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -61,7 +61,7 @@ class OperasiProgram5s5rInputTest extends TestCase
     public function test_only_filled_rows_are_saved_and_shown_over_the_template(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -100,7 +100,7 @@ class OperasiProgram5s5rInputTest extends TestCase
     {
         Storage::fake('public');
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -139,7 +139,7 @@ class OperasiProgram5s5rInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.input.program-5s5r.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [
                 $this->row(1, 'ringkas', ['progres' => '90%', 'kondisi_awal' => 'Mantap']),
                 $this->row(6, 'rapi'),
@@ -152,7 +152,7 @@ class OperasiProgram5s5rInputTest extends TestCase
     {
         Storage::fake('public');
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Containerized Poasia']);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)->post(route('operasi.input.program-5s5r.store'), $period + [
@@ -181,7 +181,7 @@ class OperasiProgram5s5rInputTest extends TestCase
         $unit1 = Unit::factory()->create(['name' => 'Unit 1', 'is_active' => true]);
         $unit2 = Unit::factory()->create(['name' => 'Unit 2', 'is_active' => true]);
 
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit1);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit1);
 
         $this->actingAs($user)
             ->get(route('operasi.input.program-5s5r.index', ['unit_id' => $unit1->id]))

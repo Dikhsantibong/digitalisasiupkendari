@@ -53,6 +53,9 @@ class HarMasterSeeder extends Seeder
             ['code' => 'INPRG', 'name' => 'In Progress', 'is_closed' => false],
             ['code' => 'WPTW', 'name' => 'Waiting Permit to Work', 'is_closed' => false],
             ['code' => 'CLOSE', 'name' => 'Closed', 'is_closed' => true],
+            ['code' => 'WMATL', 'name' => 'Waiting Material', 'is_closed' => false],
+            ['code' => 'WENG', 'name' => 'Waiting Engineering', 'is_closed' => false],
+            ['code' => 'WSCH', 'name' => 'Waiting Schedule / Shutdown', 'is_closed' => false],
         ];
         foreach ($statuses as $i => $status) {
             WoStatus::query()->updateOrCreate(
@@ -64,6 +67,8 @@ class HarMasterSeeder extends Seeder
         $groups = [
             ['code' => 'MECHD', 'name' => 'Mekanik'],
             ['code' => 'ELECD', 'name' => 'Listrik'],
+            ['code' => 'INSTD', 'name' => 'Kontrol & Instrumen'],
+            ['code' => 'CIVD', 'name' => 'Sipil'],
         ];
         foreach ($groups as $i => $group) {
             WorkGroup::query()->updateOrCreate(

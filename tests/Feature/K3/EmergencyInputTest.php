@@ -37,7 +37,7 @@ class EmergencyInputTest extends TestCase
             'emergency_equipment_id' => $equipment->id, 'jml_total' => 4, 'jml_ready' => 3, 'jml_not_ready' => 1,
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.emergency.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -52,7 +52,7 @@ class EmergencyInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $equipment = EmergencyEquipment::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
         $base = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['equipment_id' => $equipment->id, 'jml_total' => 2, 'jml_ready' => 2, 'jml_not_ready' => 0]]];
 
         $this->actingAs($user)->post(route('k3.input.emergency.store'), [...$base, 'week' => 'bulanan'])->assertRedirect();
@@ -68,7 +68,7 @@ class EmergencyInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.emergency.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'week' => 'bulanan', 'rows' => [],
             ])

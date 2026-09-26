@@ -86,16 +86,11 @@ type Data = {
                 realisasi_freq: number;
                 realisasi_pct: number;
                 keterangan: string;
-                material_cost: number;
-                service_cost: number;
             }[];
             total_rencana_freq: number;
             total_rencana_pct: number;
             total_realisasi_freq: number;
             total_realisasi_pct: number;
-            total_material_cost: number;
-            total_service_cost: number;
-            total_cost: number;
             mix: { label: string; pct: number; freq: number; color: string }[];
         };
     };
@@ -123,14 +118,6 @@ type Data = {
     };
     wo_by_type: { type: string; rows: WoRow[] }[];
     wo_waiting: { key: string; reason: string; rows: WaitingRow[] }[];
-    cost: {
-        auto_service: number;
-        auto_material: number;
-        auto_total: number;
-        effective_total: number;
-        source: string;
-        ytd: number;
-    };
     schedules: {
         scope: string;
         rows: { engine: string; rencana: Record<string, string>; realisasi: Record<string, string> }[];
@@ -177,7 +164,6 @@ const SECTIONS = [
     'Maintenance Summary',
     'Isi Laporan',
     'Work Order Summary (Fix)',
-    'Akumulasi Biaya Pemeliharaan',
     'Rekapitulasi Work Order Task',
     'Work Order PM (Preventive Maintenance)',
     'Work Order PdM (Predictive Maintenance)',
@@ -758,9 +744,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             <span className="font-semibold">{data.wo_summary.total}</span> Work Order dengan tingkat penyelesaian{' '}
                             <span className="font-semibold">{data.wo_summary.percent}%</span> ({data.wo_summary.complete} selesai,{' '}
                             {data.wo_summary.open} berjalan), serta {data.sr_summary.total} Service Request ({data.sr_summary.open} open).
-                            Terdapat {waitingCount} Work Order berstatus menunggu. Total biaya pemeliharaan efektif periode ini{' '}
-                            <span className="font-semibold">{rupiah(data.cost.effective_total)}</span> (akumulasi tahun berjalan{' '}
-                            {rupiah(data.cost.ytd)}).
+                            Terdapat {waitingCount} Work Order berstatus menunggu.
                         </p>
                         <table className="mb-2 w-full border-collapse text-[11px]">
                             <tbody>
@@ -769,7 +753,6 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                     <Stat label="% Complete" value={`${data.wo_summary.percent}%`} />
                                     <Stat label="Total SR" value={String(data.sr_summary.total)} />
                                     <Stat label="WO Waiting" value={String(waitingCount)} />
-                                    <Stat label="Biaya Efektif" value={rupiah(data.cost.effective_total)} />
                                 </tr>
                             </tbody>
                         </table>
@@ -1177,15 +1160,12 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                             <th className="border px-2 py-1 text-left" rowSpan={2}>MAINTENANCE TYPE</th>
                                             <th className="border px-1 py-1" colSpan={2}>RENCANA</th>
                                             <th className="border px-1 py-1" colSpan={2}>REALISASI</th>
-                                            <th className="border px-1 py-1" colSpan={2}>BIAYA PEMELIHARAAN</th>
                                         </tr>
                                         <tr className="bg-slate-100 text-center">
                                             <th className="border px-1 py-1">FREQ</th>
                                             <th className="border px-1 py-1">%</th>
                                             <th className="border px-1 py-1">FREQ</th>
                                             <th className="border px-1 py-1">%</th>
-                                            <th className="border px-1 py-1">Material</th>
-                                            <th className="border px-1 py-1">Jasa</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1197,8 +1177,6 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                                 <td className="border px-1 py-1 text-center">{tr.rencana_pct}%</td>
                                                 <td className="border px-1 py-1 text-center">{tr.realisasi_freq || ''}</td>
                                                 <td className="border px-1 py-1 text-center">{tr.realisasi_pct}%</td>
-                                                <td className="border px-1 py-1 text-right">{tr.material_cost > 0 ? rupiah(tr.material_cost) : '-'}</td>
-                                                <td className="border px-1 py-1 text-right">{tr.service_cost > 0 ? rupiah(tr.service_cost) : '-'}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -1318,25 +1296,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                             </tbody>
                         </table>
 
-                        {/* 12. AKUMULASI BIAYA PEMELIHARAAN */}
-                        <SectionTitle n={12} title="Akumulasi Biaya Pemeliharaan" id="sec-cost" />
-                        <table className="mb-2 w-full border-collapse text-[11px]">
-                            <tbody>
-                                <tr>
-                                    <Stat label="Jasa (WO)" value={rupiah(data.cost.auto_service)} />
-                                    <Stat label="Material (WO)" value={rupiah(data.cost.auto_material)} />
-                                    <Stat label="Total Otomatis" value={rupiah(data.cost.auto_total)} />
-                                    <Stat label={`Efektif (${data.cost.source})`} value={rupiah(data.cost.effective_total)} />
-                                    <Stat label="Akumulasi YTD" value={rupiah(data.cost.ytd)} />
-                                </tr>
-                            </tbody>
-                        </table>
-                        <p className="mb-4 text-[10px] text-slate-500">
-                            Sumber biaya: {data.cost.source === 'manual' ? 'input manual' : 'akumulasi otomatis dari Work Order'}. YTD =
-                            akumulasi Januari s.d. bulan laporan.
-                        </p>
-
-                        {/* 13. REKAPITULASI WORK ORDER TASK */}
+                        {/* 12. REKAPITULASI WORK ORDER TASK */}
                         <div className="break-before" id="sec-recap">
                             {/* Kop Standard PLN NP */}
                             <div className="mb-3 border border-slate-900 font-sans text-xs">
@@ -1728,19 +1688,19 @@ export default function MonthlyReport({ data }: { data: Data }) {
                         </div>
 
                         {/* 17. WO ENJI */}
-                        <SectionTitle n={17} title="Work Order ENJI (Engineering)" id="sec-wo-enji" />
+                        <SectionTitle n={16} title="Work Order ENJI (Engineering)" id="sec-wo-enji" />
                         <WoTable rows={woEnji} />
 
                         {/* 18. WO WAITING SHUTDOWN */}
-                        <SectionTitle n={18} title="Work Order Waiting Shutdown" id="sec-wait-sd" breakBefore />
+                        <SectionTitle n={17} title="Work Order Waiting Shutdown" id="sec-wait-sd" breakBefore />
                         <WaitingTable rows={waitingShutdown} />
 
                         {/* 19. WO WAITING MATERIAL & JASA */}
-                        <SectionTitle n={19} title="Work Order Waiting Material & Jasa" id="sec-wait-mj" />
+                        <SectionTitle n={18} title="Work Order Waiting Material & Jasa" id="sec-wait-mj" />
                         <WaitingTable rows={waitingMaterialJasa} />
 
                         {/* 20. LAMPIRAN */}
-                        <SectionTitle n={20} title="Lampiran" id="sec-attachments" breakBefore />
+                        <SectionTitle n={19} title="Lampiran" id="sec-attachments" breakBefore />
                         {data.attachments.length === 0 ? (
                             <p className="text-slate-500">Belum ada lampiran foto.</p>
                         ) : (

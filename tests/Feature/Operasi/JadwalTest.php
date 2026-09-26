@@ -23,7 +23,7 @@ class JadwalTest extends TestCase
     public function test_authorized_user_can_view_jadwal_page(): void
     {
         $unit = Unit::factory()->create(['name' => 'PLTD Poasia']);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $response = $this->actingAs($user)->get(route('operasi.jadwal.index'));
 
@@ -38,7 +38,7 @@ class JadwalTest extends TestCase
     public function test_unauthorized_user_cannot_view_jadwal_page(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $response = $this->actingAs($user)->get(route('operasi.jadwal.index'));
 
@@ -48,7 +48,7 @@ class JadwalTest extends TestCase
     public function test_authorized_user_can_view_input_hub_page(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $response = $this->actingAs($user)->get(route('operasi.input.index'));
 

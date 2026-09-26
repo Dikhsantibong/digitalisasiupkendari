@@ -42,7 +42,7 @@ class HarMasterCrudTest extends TestCase
     {
         MaintenanceType::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, Unit::factory()->create()))
             ->get(route('har.master.index', 'maintenance-types'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -56,7 +56,7 @@ class HarMasterCrudTest extends TestCase
 
     public function test_a_global_master_can_be_created_and_deleted(): void
     {
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, Unit::factory()->create());
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, Unit::factory()->create());
 
         $this->actingAs($user)
             ->post(route('har.master.store', 'wo-statuses'), [
@@ -80,14 +80,14 @@ class HarMasterCrudTest extends TestCase
 
     public function test_creating_a_master_validates_required_fields(): void
     {
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, Unit::factory()->create()))
             ->post(route('har.master.store', 'maintenance-types'), ['is_active' => '1'])
             ->assertSessionHasErrors(['code', 'name']);
     }
 
     public function test_an_unknown_resource_is_not_found(): void
     {
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, Unit::factory()->create()))
             ->get(route('har.master.index', 'tidak-ada'))
             ->assertNotFound();
     }

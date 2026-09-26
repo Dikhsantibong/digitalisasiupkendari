@@ -27,7 +27,7 @@ class StarStopInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('operasi.input.star-stop.index'))
             ->assertForbidden();
     }
@@ -38,7 +38,7 @@ class StarStopInputTest extends TestCase
         $engine = Machine::factory()->forUnit($unit)->create();
         UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.input.star-stop.index', [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine->id,
@@ -59,7 +59,7 @@ class StarStopInputTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create();
         $status = UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.input.star-stop.store'), [
@@ -86,7 +86,7 @@ class StarStopInputTest extends TestCase
         $engine = Machine::factory()->forUnit($unit)->create();
         $status = UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.input.star-stop.store'), [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine->id,
@@ -105,7 +105,7 @@ class StarStopInputTest extends TestCase
         $foreignEngine = Machine::factory()->forUnit($foreignUnit)->create();
         $status = UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
             ->post(route('operasi.input.star-stop.store'), [
                 'unit_id' => $foreignUnit->id,
                 'engine_id' => $foreignEngine->id,
@@ -130,7 +130,7 @@ class StarStopInputTest extends TestCase
             'status_code_id' => $status->id,
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->delete(route('operasi.input.star-stop.destroy', $log))
             ->assertRedirect();
 

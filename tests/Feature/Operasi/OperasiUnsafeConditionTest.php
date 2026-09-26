@@ -171,7 +171,7 @@ class OperasiUnsafeConditionTest extends TestCase
         $unit1 = Unit::factory()->create(['name' => 'Unit 1', 'is_active' => true]);
         $unit2 = Unit::factory()->create(['name' => 'Unit 2', 'is_active' => true]);
 
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit1);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit1);
 
         $responseAllowed = $this->actingAs($user)->get(route('operasi.input.unsafe-condition.index', [
             'unit_id' => $unit1->id,

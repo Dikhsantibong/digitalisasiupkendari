@@ -42,7 +42,7 @@ class LembarTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         Machine::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         foreach (HarLembars::all() as $lembar) {
@@ -68,7 +68,7 @@ class LembarTest extends TestCase
     public function test_a_lembar_is_only_served_under_its_own_menu(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->get("/har/input/lembar/inventarisasi-tools?unit_id={$unit->id}")->assertNotFound();
         $this->actingAs($user)->get("/har/jadwal/lembar/patrol-check-pemeliharaan?unit_id={$unit->id}")->assertNotFound();
@@ -77,7 +77,7 @@ class LembarTest extends TestCase
     public function test_inventarisasi_starts_from_the_tool_list_without_results_and_saves_codes(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -115,7 +115,7 @@ class LembarTest extends TestCase
     public function test_blackstart_is_yearly_with_rencana_realisasi_and_the_monthly_kinerja(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $weeks = fn (int $month): array => collect(range(1, 4))->mapWithKeys(fn (int $w): array => ["m{$month}w{$w}" => '1'])->all();
 
         $this->actingAs($user)
@@ -160,7 +160,7 @@ class LembarTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         [$first, $second] = Machine::factory()->forUnit($unit)->count(2)->create();
         Holiday::factory()->create(['year' => 2026, 'date' => '2026-08-17', 'day_name' => 'Monday', 'description' => 'Hari Kemerdekaan RI']);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -211,7 +211,7 @@ class LembarTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         $otherMachine = Machine::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)
             ->post($this->route('patrol-check-pemeliharaan', 'store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => []])

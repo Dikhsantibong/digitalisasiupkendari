@@ -41,7 +41,7 @@ class ActivityInputTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create();
         $type = MaintenanceType::query()->firstOrFail();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.activity.store'), [
             ...$this->basePayload($unit),
@@ -66,7 +66,7 @@ class ActivityInputTest extends TestCase
     public function test_updating_replaces_the_task_and_material_lines(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.activity.store'), [
             ...$this->basePayload($unit),
@@ -95,7 +95,7 @@ class ActivityInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->post(route('har.input.activity.store'), [...$this->basePayload($unit), 'tasks' => []])
             ->assertSessionHasErrors('activity_date');
     }
@@ -105,7 +105,7 @@ class ActivityInputTest extends TestCase
         $unit = Unit::factory()->create();
         $foreignEngine = Machine::factory()->forUnit(Unit::factory()->create())->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->post(route('har.input.activity.store'), [
                 ...$this->basePayload($unit),
                 'activity_date' => '2026-08-12',
@@ -117,7 +117,7 @@ class ActivityInputTest extends TestCase
     public function test_an_activity_can_be_deleted_with_its_lines(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.activity.store'), [
             ...$this->basePayload($unit),
@@ -140,7 +140,7 @@ class ActivityInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $ownUnit))
             ->post(route('har.input.activity.store'), [
                 ...$this->basePayload($foreignUnit),
                 'activity_date' => '2026-08-12',

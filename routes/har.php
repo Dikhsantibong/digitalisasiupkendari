@@ -6,7 +6,6 @@ use App\Http\Controllers\Har\AxialConrodController;
 use App\Http\Controllers\Har\BatteryVoltageController;
 use App\Http\Controllers\Har\ClearanceValveController;
 use App\Http\Controllers\Har\CombustionPressureController;
-use App\Http\Controllers\Har\CostController;
 use App\Http\Controllers\Har\CounterWeightController;
 use App\Http\Controllers\Har\CrankshaftDeflectionController;
 use App\Http\Controllers\Har\DailyMeetingController;
@@ -40,6 +39,7 @@ use App\Http\Controllers\Har\TimingInjectionPumpController;
 use App\Http\Controllers\Har\UnsafeConditionController;
 use App\Http\Controllers\Har\VibrationController;
 use App\Http\Controllers\Har\WorkOrderController;
+use App\Http\Controllers\PengusahaanController;
 use App\Support\HarLembar\HarLembars;
 use App\Support\HarTabel\HarTabels;
 use Illuminate\Support\Facades\Route;
@@ -168,9 +168,6 @@ Route::middleware(['auth', 'verified'])
         Route::put('input/activity/{activity}', [ActivityController::class, 'update'])->name('input.activity.update');
         Route::delete('input/activity/{activity}', [ActivityController::class, 'destroy'])->name('input.activity.destroy');
 
-        Route::get('input/cost', [CostController::class, 'index'])->name('input.cost.index');
-        Route::post('input/cost', [CostController::class, 'store'])->name('input.cost.store');
-
         Route::get('input/attachment', [AttachmentController::class, 'index'])->name('input.attachment.index');
         Route::post('input/attachment', [AttachmentController::class, 'store'])->name('input.attachment.store');
         Route::delete('input/attachment/{attachment}', [AttachmentController::class, 'destroy'])->name('input.attachment.destroy');
@@ -202,6 +199,9 @@ Route::middleware(['auth', 'verified'])
         Route::post('input/lembar/{lembar}', [LembarController::class, 'store'])->name('input.lembar.store')->whereIn('lembar', HarLembars::keysFor('input'));
         Route::get('input/lembar/{lembar}/pdf', [LembarController::class, 'pdf'])->name('input.lembar.pdf')->whereIn('lembar', HarLembars::keysFor('input'));
 
+        // Akses 2 — Pengusahaan (TL & Staf): hub per menu section.
+        Route::get('pengusahaan/{section}', [PengusahaanController::class, 'index'])->name('pengusahaan.index')
+            ->defaults('module', 'har')->whereIn('section', array_keys(PengusahaanController::SECTIONS));
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/bulanan', [LaporanController::class, 'monthly'])->name('laporan.monthly');
 

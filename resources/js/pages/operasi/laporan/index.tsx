@@ -8,6 +8,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/operasi/laporan';
 import document from '@/routes/operasi/laporan/document';
@@ -33,6 +34,7 @@ type Props = {
 };
 
 export default function LaporanIndex({ filters, reports, options }: Props) {
+    const { can } = usePermissions();
     const visit = (patch: Partial<Filters>) => {
         router.get(
             laporan.index().url,
@@ -87,7 +89,7 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                     <EmptyState title="Belum ada laporan" description="Belum ada laporan terdaftar." />
                 ) : (
                     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-                        {reports.map((report) => (
+                        {can('operasi.laporan.view') && reports.map((report) => (
                             <div
                                 key={report.code}
                                 className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4"
@@ -114,37 +116,39 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                         ))}
 
                         {/* Laporan Pengusahaan Pembangkit */}
-                        <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-                            <div>
-                                <div className="flex items-center justify-between gap-2">
-                                    <h2 className="text-base font-semibold text-foreground">
-                                        Laporan Pengusahaan Pembangkit
-                                    </h2>
-                                    <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                                        Sementara Disusun
-                                    </Badge>
+                        {can('operasi.pengusahaan.view') && (
+                            <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
+                                <div>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <h2 className="text-base font-semibold text-foreground">
+                                            Laporan Pengusahaan Pembangkit
+                                        </h2>
+                                        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                                            Sementara Disusun
+                                        </Badge>
+                                    </div>
+                                    <p className="mt-1 text-[13px] text-muted-foreground">
+                                        Laporan kinerja pengusahaan dan evaluasi menyeluruh operasional unit pembangkit.
+                                    </p>
                                 </div>
-                                <p className="mt-1 text-[13px] text-muted-foreground">
-                                    Laporan kinerja pengusahaan dan evaluasi menyeluruh operasional unit pembangkit.
-                                </p>
-                            </div>
-                            <div>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        variant="outline"
-                                        disabled
-                                        className="gap-2 cursor-not-allowed opacity-75"
-                                        title="Tombol sementara dinonaktifkan (laporan sedang disiapkan)"
-                                    >
-                                        <Building2 className="size-4" />
-                                        Laporan Pengusahaan Pembangkit
-                                    </Button>
+                                <div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            variant="outline"
+                                            disabled
+                                            className="gap-2 cursor-not-allowed opacity-75"
+                                            title="Tombol sementara dinonaktifkan (laporan sedang disiapkan)"
+                                        >
+                                            <Building2 className="size-4" />
+                                            Laporan Pengusahaan Pembangkit
+                                        </Button>
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-muted-foreground italic">
+                                        * Fitur laporan sedang disiapkan
+                                    </p>
                                 </div>
-                                <p className="mt-1 text-[11px] text-muted-foreground italic">
-                                    * Fitur laporan sedang disiapkan
-                                </p>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
             </div>

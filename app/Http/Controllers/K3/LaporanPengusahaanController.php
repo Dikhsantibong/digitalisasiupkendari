@@ -38,7 +38,7 @@ class LaporanPengusahaanController extends Controller
     public function edit(Request $request): InertiaResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::K3LaporanView), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::K3PengusahaanView), 403);
 
         $unit = $this->resolveUnit($request);
         $now = now();
@@ -62,14 +62,14 @@ class LaporanPengusahaanController extends Controller
             'pdf_url' => route('k3.laporan.pengusahaan.pdf', [
                 'unit_id' => $unit->id, 'month' => $month, 'year' => $year,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite),
+            'can_write' => $user->hasPermissionTo(PermissionName::K3PengusahaanWrite),
         ]);
     }
 
     public function pdf(Request $request, OrientationPdfMerger $merger): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::K3LaporanView), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::K3PengusahaanView), 403);
 
         $unit = $this->resolveUnit($request);
         $now = now();
@@ -105,7 +105,7 @@ class LaporanPengusahaanController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::K3InputWrite), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::K3PengusahaanWrite), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -157,7 +157,7 @@ class LaporanPengusahaanController extends Controller
     public function regenerate(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::K3InputWrite), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::K3PengusahaanWrite), 403);
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];

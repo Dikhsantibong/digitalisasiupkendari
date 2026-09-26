@@ -22,17 +22,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $description
  * @property int|null $maintenance_type_id
  * @property int|null $engine_id
+ * @property string|null $assetnum
  * @property int|null $work_group_id
+ * @property string|null $owner_group
  * @property int|null $wo_status_id
  * @property int|null $cycle_id
  * @property WoWaitingReason|null $waiting_reason
+ * @property string|null $priority_text
+ * @property list<array{description: string|null, stockcode: string|null, amount: string|null}>|null $materials
  * @property WorkOrderSource $source
  */
 #[Fillable([
     'unit_id', 'report_period_id', 'wonum', 'description', 'maintenance_type_id',
-    'engine_id', 'work_group_id', 'wo_status_id', 'cycle_id', 'report_date',
-    'sched_start', 'sched_finish', 'actual_finish', 'waiting_reason',
-    'service_cost', 'material_cost', 'source', 'input_by',
+    'engine_id', 'assetnum', 'work_group_id', 'owner_group', 'wo_status_id', 'cycle_id', 'report_date',
+    'sched_start', 'sched_finish', 'actual_finish', 'waiting_reason', 'priority_text', 'materials',
+    'source', 'input_by',
 ])]
 class WorkOrder extends Model
 {
@@ -50,6 +54,7 @@ class WorkOrder extends Model
             'sched_finish' => 'datetime',
             'actual_finish' => 'datetime',
             'waiting_reason' => WoWaitingReason::class,
+            'materials' => 'array',
             'source' => WorkOrderSource::class,
         ];
     }

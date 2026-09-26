@@ -46,7 +46,6 @@ class HarDocumentGridBuilder
             $label = $number ? "{$text}  ({$number})" : $text;
             $full($push([$this->c($label, true, 'l')]));
         };
-        $rupiah = fn ($v): string => 'Rp '.number_format((float) $v, 0, ',', '.');
 
         // Header band.
         $full($push([$this->c((string) ($report['unit']['service_unit'] ?? 'UNIT LAYANAN'), true, 'c')]));
@@ -122,8 +121,6 @@ class HarDocumentGridBuilder
                 $this->c('RENCANA %', true, 'c'),
                 $this->c('REALISASI FREQ', true, 'c'),
                 $this->c('REALISASI %', true, 'c'),
-                $this->c('BIAYA MATERIAL', true, 'r'),
-                $this->c('BIAYA JASA', true, 'r'),
             ]);
             foreach ($ms['tasks']['rows'] ?? [] as $tr) {
                 $push([
@@ -133,8 +130,6 @@ class HarDocumentGridBuilder
                     $this->c($tr['rencana_pct'].'%', false, 'c'),
                     $this->c((string) $tr['realisasi_freq'], false, 'c'),
                     $this->c($tr['realisasi_pct'].'%', false, 'c'),
-                    $this->c($tr['material_cost'] > 0 ? $rupiah($tr['material_cost']) : '—', false, 'r'),
-                    $this->c($tr['service_cost'] > 0 ? $rupiah($tr['service_cost']) : '—', false, 'r'),
                 ]);
             }
             $push([$this->c('')]);
@@ -238,14 +233,8 @@ class HarDocumentGridBuilder
         }
         $push([$this->c('')]);
 
-        // 5. Akumulasi biaya.
-        $title('5. Akumulasi Biaya Pemeliharaan', $numbers['cost'] ?? null);
-        $push([$this->c('Jasa (WO)', true), $this->c($rupiah($report['cost']['auto_service']), false, 'r'), $this->c('Material (WO)', true), $this->c($rupiah($report['cost']['auto_material']), false, 'r')]);
-        $push([$this->c('Efektif ('.$report['cost']['source'].')', true), $this->c($rupiah($report['cost']['effective_total']), false, 'r'), $this->c('Akumulasi YTD', true), $this->c($rupiah($report['cost']['ytd']), false, 'r')]);
-        $push([$this->c('')]);
-
-        // 6. Rencana vs Realisasi.
-        $title('6. Rencana vs Realisasi', $numbers['schedules'] ?? null);
+        // 5. Rencana vs Realisasi.
+        $title('5. Rencana vs Realisasi', $numbers['schedules'] ?? null);
         foreach ($report['schedules'] as $scope) {
             $push([$this->c($scope['scope'], true)]);
             $push([$this->c('Mesin', true, 'c'), $this->c('Rencana (tgl:kode)', true, 'c'), $this->c('Realisasi (tgl:kode)', true, 'c')]);
@@ -255,8 +244,8 @@ class HarDocumentGridBuilder
         }
         $push([$this->c('')]);
 
-        // 7. Log kegiatan HARMES.
-        $title('7. Log Kegiatan HARMES', $numbers['activities'] ?? null);
+        // 6. Log kegiatan HARMES.
+        $title('6. Log Kegiatan HARMES', $numbers['activities'] ?? null);
         if ($report['activities'] !== []) {
             $push([$this->c('Tanggal', true, 'c'), $this->c('Mesin', true, 'c'), $this->c('Jenis', true, 'c'), $this->c('Uraian', true, 'c'), $this->c('Material', true, 'c'), $this->c('Hasil', true, 'c'), $this->c('No. WO/SR', true, 'c')]);
             foreach ($report['activities'] as $a) {

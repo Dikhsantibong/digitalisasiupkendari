@@ -19,7 +19,6 @@ import {
     Sparkles,
     Timer,
     Vibrate,
-    Wallet,
     Waves,
     Wrench,
     Zap,
@@ -44,7 +43,6 @@ import vibration from '@/routes/har/formulir/vibration';
 import abnormalGangguan from '@/routes/har/input/abnormal-gangguan';
 import activity from '@/routes/har/input/activity';
 import attachment from '@/routes/har/input/attachment';
-import cost from '@/routes/har/input/cost';
 import rekapGangguan from '@/routes/har/input/laporan-gangguan';
 import harLembar from '@/routes/har/input/lembar';
 import patrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
@@ -95,16 +93,6 @@ const INPUT: Entry[] = [
         'bg-teal-500/10 text-teal-600 dark:text-teal-400',
         activity.index().url,
         'har/input/activity/index',
-    ],
-    [
-        'cost',
-        'Biaya',
-        'Biaya',
-        'Biaya jasa & material pemeliharaan',
-        Wallet,
-        'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-        cost.index().url,
-        'har/input/cost/index',
     ],
     [
         'schedule',

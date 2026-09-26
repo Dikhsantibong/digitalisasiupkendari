@@ -34,7 +34,7 @@ class LaporanPemeliharaanPartsTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         $machine = Machine::factory()->create(['unit_id' => $unit->id, 'name' => 'Mesin Uji #3']);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)->post(route('har.formulir.logbook-mutasi.store'), [
@@ -103,7 +103,7 @@ class LaporanPemeliharaanPartsTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');

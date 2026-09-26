@@ -63,15 +63,15 @@ class ReportWorkflowTest extends TestCase
             [EmployeePosition::TeamLeaderPemeliharaan, RoleName::TeamLeaderPemeliharaan, 'Budi TL Har'],
             [EmployeePosition::TeamLeaderOperasi, RoleName::TeamLeaderOperasi, 'Rudi TL Operasi'],
             [EmployeePosition::TeamLeaderK3, RoleName::TeamLeaderK3, 'Sari TL K3'],
-            [EmployeePosition::KoordinatorPemeliharaan, RoleName::TeamLeaderPemeliharaan, 'Amir Koordinator Har'],
-            [EmployeePosition::KoordinatorOperasi, RoleName::TeamLeaderOperasi, 'Ahmad Koordinator Operasi'],
-            [EmployeePosition::KoordinatorK3, RoleName::TeamLeaderK3, 'Kiki Koordinator K3'],
+            [EmployeePosition::KoordinatorPemeliharaan, RoleName::KoordinatorPemeliharaan, 'Amir Koordinator Har'],
+            [EmployeePosition::KoordinatorOperasi, RoleName::KoordinatorOperasi, 'Ahmad Koordinator Operasi'],
+            [EmployeePosition::KoordinatorK3, RoleName::KoordinatorK3, 'Kiki Koordinator K3'],
             [EmployeePosition::KoordinatorLogistik, RoleName::TeamLeaderLogistik, 'Lina Koordinator Logistik'],
             [EmployeePosition::KoordinatorPdm, RoleName::TeamLeaderPdm, 'Dian Koordinator PDM'],
             [EmployeePosition::ProjectLeader, RoleName::ProjectLeaderOperasi, 'Herwin Project Leader'],
-            [EmployeePosition::OfficePemeliharaan, RoleName::TeamLeaderPemeliharaan, 'Olla Office Har'],
-            [EmployeePosition::OfficeOperasi, RoleName::TeamLeaderOperasi, 'Oki Office Operasi'],
-            [EmployeePosition::OfficeK3, RoleName::TeamLeaderK3, 'Opi Office K3'],
+            [EmployeePosition::OfficePemeliharaan, RoleName::KoordinatorPemeliharaan, 'Olla Office Har'],
+            [EmployeePosition::OfficeOperasi, RoleName::KoordinatorOperasi, 'Oki Office Operasi'],
+            [EmployeePosition::OfficeK3, RoleName::KoordinatorK3, 'Opi Office K3'],
             [EmployeePosition::OfficeLogistik, RoleName::TeamLeaderLogistik, 'Ola Office Logistik'],
             [EmployeePosition::PicPdm, RoleName::TeamLeaderPdm, 'Pia PIC PDM'],
         ] as [$position, $role, $name]) {
@@ -79,9 +79,9 @@ class ReportWorkflowTest extends TestCase
         }
 
         $this->makers = [
-            'har' => $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit),
-            'operasi' => $this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit),
-            'k3' => $this->userWithRole(RoleName::TeamLeaderK3, $this->unit),
+            'har' => $this->userWithRole(RoleName::KoordinatorPemeliharaan, $this->unit),
+            'operasi' => $this->userWithRole(RoleName::KoordinatorOperasi, $this->unit),
+            'k3' => $this->userWithRole(RoleName::KoordinatorK3, $this->unit),
             'logistik' => $this->userWithRole(RoleName::TeamLeaderLogistik, $this->unit),
             'pdm' => $this->userWithRole(RoleName::TeamLeaderPdm, $this->unit),
         ];
@@ -189,12 +189,12 @@ class ReportWorkflowTest extends TestCase
     public function test_a_koordinator_of_another_unit_or_an_unlinked_account_cannot_verify(): void
     {
         $otherUnit = Unit::factory()->forServiceUnit($this->unit->serviceUnit)->create();
-        $otherKoordinator = $this->signer(EmployeePosition::KoordinatorPemeliharaan, RoleName::TeamLeaderPemeliharaan, $otherUnit, 'Koordinator Unit Lain');
+        $otherKoordinator = $this->signer(EmployeePosition::KoordinatorPemeliharaan, RoleName::KoordinatorPemeliharaan, $otherUnit, 'Koordinator Unit Lain');
         $this->submit('har');
 
         $this->actingAs($otherKoordinator)->post(route('report-workflow.verify', 'har'), $this->target())->assertForbidden();
         $this->actingAs($this->userWithRole(RoleName::SiteLeader, $this->unit))->post(route('report-workflow.verify', 'har'), $this->target())->assertForbidden();
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit))->post(route('report-workflow.verify', 'har'), $this->target())->assertForbidden();
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $this->unit))->post(route('report-workflow.verify', 'har'), $this->target())->assertForbidden();
 
         $this->assertSame(ReportStatus::Diajukan, $this->workflow('har')->status);
     }
@@ -373,13 +373,14 @@ class ReportWorkflowTest extends TestCase
 
     public function test_a_signer_without_the_module_permission_may_open_the_report_they_sign(): void
     {
-        $projectLeader = $this->signers[EmployeePosition::ProjectLeader->value];
+        // TL Pemeliharaan approves (menyetujui) the PdM report without holding pdm.laporan.view.
+        $teamLeader = $this->signers[EmployeePosition::TeamLeaderPemeliharaan->value];
 
-        $this->actingAs($projectLeader)->get(route('har.laporan.document.edit', $this->target()))->assertForbidden();
+        $this->actingAs($teamLeader)->get(route('pdm.laporan.document.edit', $this->target()))->assertForbidden();
 
-        $this->submit('har');
+        $this->submit('pdm');
 
-        $this->actingAs($projectLeader)->get(route('har.laporan.document.edit', $this->target()))->assertOk();
+        $this->actingAs($teamLeader)->get(route('pdm.laporan.document.edit', $this->target()))->assertOk();
     }
 
     // Satu pemegang jabatan per unit

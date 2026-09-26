@@ -25,7 +25,7 @@ class K3FoundationTest extends TestCase
 
     public function test_tl_k3_holds_the_k3_permissions_but_not_operasi_or_har(): void
     {
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create());
+        $user = $this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create());
 
         $this->assertTrue($user->hasPermissionTo(PermissionName::K3InputWrite));
         $this->assertTrue($user->hasPermissionTo(PermissionName::K3LaporanView));
@@ -59,7 +59,7 @@ class K3FoundationTest extends TestCase
     public function test_authorized_user_can_access_k3_jadwal_and_input_hub(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)
             ->get(route('k3.jadwal.index'))
@@ -87,7 +87,7 @@ class K3FoundationTest extends TestCase
     public function test_unauthorized_user_cannot_access_k3_jadwal_or_input_hub(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->get(route('k3.jadwal.index'))

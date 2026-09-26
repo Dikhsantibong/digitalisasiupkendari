@@ -37,7 +37,7 @@ class AttendanceLocationTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        foreach ([RoleName::TeamLeaderOperasi, RoleName::ProjectLeaderOperasi, RoleName::Operator] as $role) {
+        foreach ([RoleName::KoordinatorOperasi, RoleName::ProjectLeaderOperasi, RoleName::Operator] as $role) {
             $user = $this->userWithRole($role, $unit);
 
             $this->actingAs($user)->get(route('admin.attendance-locations.index'))->assertForbidden();

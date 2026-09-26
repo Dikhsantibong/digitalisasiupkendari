@@ -49,6 +49,8 @@ import {
 import { usePermissions } from '@/hooks/use-permissions';
 import { FIELD_MENUS } from '@/layouts/mobile/modules';
 import { MOBILE_MENU_GROUPS } from '@/layouts/mobile/types';
+import { PENGUSAHAAN_MODULES, PENGUSAHAAN_SECTIONS } from '@/lib/pengusahaan-menus';
+import type { PengusahaanModuleKey } from '@/lib/pengusahaan-menus';
 import { dashboard } from '@/routes';
 import activityLogs from '@/routes/admin/activity-logs';
 import attendanceLocations from '@/routes/admin/attendance-locations';
@@ -88,6 +90,26 @@ import type { NavGroup } from '@/types';
 
 export function AppSidebar() {
     const { can } = usePermissions();
+
+    // Akses 2 — Pengusahaan (TL & Staf) menus of a module, listed inside the
+    // module's own group before its Laporan (registry: lib/pengusahaan-menus.ts,
+    // shown to holders of `*.pengusahaan.view`). Someone holding Akses 1 too
+    // sees them suffixed "Pengusahaan" so the two Input menus stay apart.
+    const pengusahaanItems = (key: PengusahaanModuleKey, akses1Permission: string): NavGroup['items'] => {
+        const module = PENGUSAHAAN_MODULES.find((item) => item.key === key)!;
+
+        if (!can(module.permission)) {
+            return [];
+        }
+
+        const suffix = can(akses1Permission) ? ' Pengusahaan' : '';
+
+        return PENGUSAHAAN_SECTIONS.map((section) => ({
+            title: section.title + suffix,
+            href: module.hub(section.key),
+            icon: section.icon,
+        }));
+    };
 
     const groups: NavGroup[] = [
         {
@@ -186,8 +208,9 @@ export function AppSidebar() {
                     href: beritaAcara.index(),
                     icon: FileSignature,
                 },
-                can('operasi.laporan.view') && {
-                    title: 'Laporan Operasi Pembangkit',
+                ...pengusahaanItems('operasi', 'operasi.input.view'),
+                can(['operasi.laporan.view', 'operasi.pengusahaan.view']) && {
+                    title: 'Laporan',
                     href: laporan.index(),
                     icon: FileBarChart,
                 },
@@ -211,8 +234,9 @@ export function AppSidebar() {
                     href: harFormulir.index(),
                     icon: ClipboardCheck,
                 },
-                can('har.laporan.view') && {
-                    title: 'Laporan Pemeliharaan Pembangkit',
+                ...pengusahaanItems('har', 'har.input.view'),
+                can(['har.laporan.view', 'har.pengusahaan.view']) && {
+                    title: 'Laporan',
                     href: harLaporan.index(),
                     icon: FileBarChart,
                 },
@@ -236,8 +260,9 @@ export function AppSidebar() {
                     href: k3Formulir.index(),
                     icon: ClipboardCheck,
                 },
-                can('k3.laporan.view') && {
-                    title: 'Laporan K3 Lingkungan Pembangkit',
+                ...pengusahaanItems('k3', 'k3.input.view'),
+                can(['k3.laporan.view', 'k3.pengusahaan.view']) && {
+                    title: 'Laporan',
                     href: k3Laporan.index(),
                     icon: FileBarChart,
                 },
@@ -257,7 +282,7 @@ export function AppSidebar() {
                     icon: SquarePen,
                 },
                 can('logistik.laporan.view') && {
-                    title: 'Laporan Logistik & Gudang',
+                    title: 'Laporan',
                     href: logistikLaporan.index(),
                     icon: FileBarChart,
                 },
@@ -277,7 +302,7 @@ export function AppSidebar() {
                     icon: SquarePen,
                 },
                 can('pdm.laporan.view') && {
-                    title: 'Laporan PdM & Maturity Level',
+                    title: 'Laporan',
                     href: pdmLaporan.index(),
                     icon: FileBarChart,
                 },

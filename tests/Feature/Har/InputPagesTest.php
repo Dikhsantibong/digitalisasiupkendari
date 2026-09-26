@@ -35,7 +35,6 @@ class InputPagesTest extends TestCase
             'work order' => ['har.input.work-order.index', [], 'har/input/work-order/index'],
             'service request' => ['har.input.service-request.index', [], 'har/input/service-request/index'],
             'log kegiatan' => ['har.input.activity.index', [], 'har/input/activity/index'],
-            'biaya' => ['har.input.cost.index', [], 'har/input/cost/index'],
             'rencana vs realisasi' => ['har.input.schedule.index', [], 'har/input/schedule/index'],
             'lampiran foto' => ['har.input.attachment.index', [], 'har/input/attachment/index'],
             'unsafe condition' => ['har.input.unsafe-condition.index', [], 'har/input/unsafe-condition/index'],
@@ -55,7 +54,7 @@ class InputPagesTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         Machine::factory()->forUnit($unit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route($route, [...$parameters, 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component($component));
@@ -65,7 +64,7 @@ class InputPagesTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.input.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('har/input/index'));

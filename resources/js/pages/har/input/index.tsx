@@ -11,7 +11,6 @@ import {
     ShieldAlert,
     ShieldCheck,
     Sparkles,
-    Wallet,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -20,7 +19,6 @@ import harInput from '@/routes/har/input';
 import harAbnormalGangguan from '@/routes/har/input/abnormal-gangguan';
 import harActivity from '@/routes/har/input/activity';
 import harAttachment from '@/routes/har/input/attachment';
-import harCost from '@/routes/har/input/cost';
 import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
 import harInputLembar from '@/routes/har/input/lembar';
 import harPatrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
@@ -62,14 +60,6 @@ const INPUT_MENUS: InputCard[] = [
         icon: NotebookPen,
         url: harActivity.index().url,
         buttonLabel: 'Buka Input Log Kegiatan',
-    },
-    {
-        title: 'Biaya',
-        description:
-            'Pencatatan realisasi biaya pemeliharaan, pembelian spare part, dan jasa pemeliharaan.',
-        icon: Wallet,
-        url: harCost.index().url,
-        buttonLabel: 'Buka Input Biaya',
     },
     {
         title: 'Rencana vs Realisasi',

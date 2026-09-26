@@ -28,7 +28,7 @@ class TabelTest extends TestCase
     public function test_every_tabel_opens_empty_and_prints_a_landscape_pdf(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         foreach (HarTabels::all() as $tabel) {
@@ -54,7 +54,7 @@ class TabelTest extends TestCase
     public function test_rekap_gangguan_saves_rows_and_sums_durasi_kwh_and_status(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 1, 'year' => 2026];
 
         $this->actingAs($user)
@@ -90,7 +90,7 @@ class TabelTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->post(route('har.input.laporan-gangguan.store'), ['unit_id' => $unit->id, 'month' => 1, 'year' => 2026, 'rows' => [
                 ['tanggal_kejadian' => '08-01-2026', 'sistem' => 'Sistem Roket', 'status' => 'Selesai', 'durasi' => 'lama'],
             ]])
@@ -100,7 +100,7 @@ class TabelTest extends TestCase
     public function test_abnormal_gangguan_keeps_one_status_per_row_and_totals_like_the_sheet(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -129,7 +129,7 @@ class TabelTest extends TestCase
     public function test_months_are_kept_apart(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.abnormal-gangguan.store'), ['unit_id' => $unit->id, 'month' => 7, 'year' => 2026, 'rows' => [['uraian' => 'Juli', 'abnormal' => 1]]]);
         $this->actingAs($user)->post(route('har.input.abnormal-gangguan.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['uraian' => 'Agustus', 'gangguan' => 1]]]);

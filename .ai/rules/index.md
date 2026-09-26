@@ -10,6 +10,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/K3/** | .ai/rules/controllers-k3.md |
 | app/Http/Controllers/Operasi/** | .ai/rules/controllers-operasi.md |
 | app/Http/Controllers/Operator/**, app/Services/Operator/** | .ai/rules/controllers-operator.md |
+| app/Enums/** | .ai/rules/enums.md |
 | app/Services/Har/** | .ai/rules/har.md |
 | resources/js/** | .ai/rules/js.md |
 | app/Services/K3/** | .ai/rules/k3.md |

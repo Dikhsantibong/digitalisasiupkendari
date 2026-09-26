@@ -35,7 +35,7 @@ class DocumentTemplateTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.document-template.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -50,7 +50,7 @@ class DocumentTemplateTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->put(route('operasi.document-template.update', BeritaAcaraType::Hsd->value), [
                 'document_number' => '100/GLOBAL',
                 'title' => 'BA HSD',
@@ -70,7 +70,7 @@ class DocumentTemplateTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->put(route('operasi.document-template.update', BeritaAcaraType::Hsd->value), [
                 'unit_id' => $unit->id,
                 'document_number' => '777/UNIT',
@@ -93,7 +93,7 @@ class DocumentTemplateTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->put(route('operasi.document-template.update', 'tidak-ada'), [
                 'document_number' => 'X',
                 'title' => 'X',
@@ -107,7 +107,7 @@ class DocumentTemplateTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
             ->put(route('operasi.document-template.update', BeritaAcaraType::Hsd->value), [
                 'unit_id' => $foreignUnit->id,
                 'document_number' => '999',

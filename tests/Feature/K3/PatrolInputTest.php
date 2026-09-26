@@ -33,7 +33,7 @@ class PatrolInputTest extends TestCase
         $unit = Unit::factory()->create();
         PatrolLocation::factory()->forUnit($unit)->count(2)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.patrol.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -47,7 +47,7 @@ class PatrolInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $location = PatrolLocation::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.patrol.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
@@ -69,7 +69,7 @@ class PatrolInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.patrol.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'rows' => [],
             ])

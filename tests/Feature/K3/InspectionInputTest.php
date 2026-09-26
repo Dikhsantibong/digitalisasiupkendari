@@ -33,7 +33,7 @@ class InspectionInputTest extends TestCase
         $unit = Unit::factory()->create();
         InspectionChecklist::factory()->forUnit($unit)->count(3)->create(['form_code' => 'tempat-kerja']);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.inspection.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'form_code' => 'tempat-kerja']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -47,7 +47,7 @@ class InspectionInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         InspectionChecklist::factory()->forUnit($unit)->create(['form_code' => 'tempat-kerja', 'item_text' => 'APAR tersedia']);
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.inspection.store'), [
             'unit_id' => $unit->id, 'year' => 2026, 'month' => 8, 'form_code' => 'tempat-kerja',
@@ -80,7 +80,7 @@ class InspectionInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.inspection.store'), [
                 'unit_id' => $foreignUnit->id, 'year' => 2026, 'month' => 8, 'form_code' => 'tempat-kerja', 'rows' => [],
             ])

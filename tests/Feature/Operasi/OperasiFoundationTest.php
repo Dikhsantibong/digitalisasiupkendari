@@ -24,7 +24,7 @@ class OperasiFoundationTest extends TestCase
 
     public function test_tl_operasi_holds_every_operasi_permission(): void
     {
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, Unit::factory()->create());
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, Unit::factory()->create());
 
         $this->assertTrue($user->hasPermissionTo(PermissionName::OperasiInputWrite));
         $this->assertTrue($user->hasPermissionTo(PermissionName::OperasiLaporanView));
@@ -34,7 +34,7 @@ class OperasiFoundationTest extends TestCase
 
     public function test_tl_pemeliharaan_holds_no_operasi_permission(): void
     {
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, Unit::factory()->create());
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, Unit::factory()->create());
 
         $this->assertFalse($user->hasPermissionTo(PermissionName::OperasiInputWrite));
         $this->assertFalse($user->hasPermissionTo(PermissionName::OperasiBeritaAcaraCreate));
@@ -55,7 +55,7 @@ class OperasiFoundationTest extends TestCase
         Feeder::factory()->count(2)->forUnit($ownUnit)->create();
         Feeder::factory()->count(3)->forUnit($otherUnit)->create();
 
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit);
 
         $visible = Feeder::query()->visibleTo($user)->get();
 

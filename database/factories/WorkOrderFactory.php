@@ -23,8 +23,6 @@ class WorkOrderFactory extends Factory
             'description' => fake()->sentence(),
             'source' => WorkOrderSource::Manual,
             'report_date' => fake()->dateTimeBetween('-1 month', 'now'),
-            'service_cost' => fake()->randomFloat(2, 0, 5_000_000),
-            'material_cost' => fake()->randomFloat(2, 0, 5_000_000),
         ];
     }
 

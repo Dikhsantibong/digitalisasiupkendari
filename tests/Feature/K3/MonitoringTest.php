@@ -49,7 +49,7 @@ class MonitoringTest extends TestCase
         EquipmentCertificate::factory()->forUnit($unit)->dueSoon()->create();
         EquipmentCertificate::factory()->forUnit($unit)->create(); // aktif (retest a year out)
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -64,7 +64,7 @@ class MonitoringTest extends TestCase
         $unit = Unit::factory()->create();
         AccidentReport::factory()->forUnit($unit)->create(['year' => 2026, 'month' => 8, 'is_nihil' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('data.summary.accident_nihil', true));

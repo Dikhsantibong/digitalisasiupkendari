@@ -34,7 +34,7 @@ class DailyMeetingTest extends TestCase
         HarDailyMeeting::factory()->create(['unit_id' => $unit->id, 'tanggal' => '2026-08-31', 'month' => 8, 'year' => 2026]);
         HarDailyMeeting::factory()->create(['unit_id' => $unit->id, 'tanggal' => '2026-07-15', 'month' => 7, 'year' => 2026]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.formulir.daily-meeting.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -50,7 +50,7 @@ class DailyMeetingTest extends TestCase
     {
         Storage::fake('public');
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)
             ->post(route('har.formulir.daily-meeting.store'), [
@@ -103,7 +103,7 @@ class DailyMeetingTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Containerized Poasia 6 Site']);
         Employee::factory()->forUnit($unit)->create(['name' => 'Herwin Syahputra', 'position' => EmployeePosition::ProjectLeader->value]);
         Employee::factory()->forUnit($unit)->create(['name' => 'Amirullah', 'position' => EmployeePosition::KoordinatorPemeliharaan->value]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.formulir.daily-meeting.store'), [
             'unit_id' => $unit->id, 'tanggal' => '2026-08-31', 'acara' => 'Meeting HAR', 'waktu' => '16.00', 'tempat' => 'Containerized Poasia',
@@ -134,7 +134,7 @@ class DailyMeetingTest extends TestCase
     public function test_photos_are_capped_and_required_fields_checked(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)
             ->post(route('har.formulir.daily-meeting.store'), [
@@ -158,7 +158,7 @@ class DailyMeetingTest extends TestCase
         $other = Unit::factory()->create(['is_active' => true]);
         $meeting = HarDailyMeeting::factory()->create(['unit_id' => $unit->id, 'eviden' => ['har-daily-meeting/1/foto.jpg']]);
         $foreign = HarDailyMeeting::factory()->create(['unit_id' => $other->id]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->delete(route('har.formulir.daily-meeting.destroy', $foreign))->assertForbidden();
         $this->actingAs($user)->delete(route('har.formulir.daily-meeting.destroy', $meeting))->assertRedirect();

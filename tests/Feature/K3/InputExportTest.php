@@ -28,7 +28,7 @@ class InputExportTest extends TestCase
     public function test_every_input_exports_a_landscape_pdf(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         foreach (array_keys(K3InputTables::INPUTS) as $input) {
             $url = route('k3.input.export.pdf', ['input' => $input, 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]);
@@ -52,7 +52,7 @@ class InputExportTest extends TestCase
             'rambu' => 'Rambu Wajib APD', 'lokasi' => 'Gerbang', 'kondisi' => 'Baik', 'keterangan' => 'Terpasang',
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->getJson(route('k3.input.export.data', ['input' => 'rambu', 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertJsonPath('tables.0.has_data', true)
@@ -64,7 +64,7 @@ class InputExportTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->getJson(route('k3.input.export.data', ['input' => 'rambu', 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertJsonPath('tables.0.has_data', false)
@@ -75,7 +75,7 @@ class InputExportTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->getJson(route('k3.input.export.data', ['input' => 'apd-inventory', 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertJsonPath('tables.0.has_data', true)
@@ -96,7 +96,7 @@ class InputExportTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.export.pdf', ['input' => 'air-limbah', 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertRedirect(route('k3.input.air-limbah.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
     }
@@ -109,7 +109,7 @@ class InputExportTest extends TestCase
             'nama' => 'Safety Helmet', 'jumlah' => 12, 'satuan' => 'Pcs',
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->getJson(route('k3.input.export.data', ['input' => 'apd-inventory', 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertJsonPath('tables.0.rows.0.kind', 'group')
@@ -122,7 +122,7 @@ class InputExportTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.export.pdf', ['input' => 'tidak-ada', 'unit_id' => $unit->id]))
             ->assertNotFound();
     }
@@ -132,7 +132,7 @@ class InputExportTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->getJson(route('k3.input.export.data', ['input' => 'rambu', 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026]))
             ->assertForbidden();
     }

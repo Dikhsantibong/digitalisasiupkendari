@@ -33,6 +33,7 @@ use App\Http\Controllers\K3\PatrolController;
 use App\Http\Controllers\K3\PekerjaanRutinController;
 use App\Http\Controllers\K3\RambuInspectionController;
 use App\Http\Controllers\K3\TimeFrameController;
+use App\Http\Controllers\PengusahaanController;
 use App\Support\K3FormulirRegistry;
 use Illuminate\Support\Facades\Route;
 
@@ -128,6 +129,9 @@ Route::middleware(['auth', 'verified'])
 
         Route::get('monitoring', [MonitoringController::class, 'index'])->name('monitoring.index');
 
+        // Akses 2 — Pengusahaan (TL & Staf): hub per menu section.
+        Route::get('pengusahaan/{section}', [PengusahaanController::class, 'index'])->name('pengusahaan.index')
+            ->defaults('module', 'k3')->whereIn('section', array_keys(PengusahaanController::SECTIONS));
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/dokumen', [DocumentController::class, 'edit'])->name('laporan.document.edit');
         Route::post('laporan/dokumen', [DocumentController::class, 'store'])->name('laporan.document.store');

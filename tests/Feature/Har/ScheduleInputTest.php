@@ -35,7 +35,7 @@ class ScheduleInputTest extends TestCase
         $unit = Unit::factory()->create();
         Machine::factory()->forUnit($unit)->count(2)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.input.schedule.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -51,7 +51,7 @@ class ScheduleInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.schedule.store'), [
             'unit_id' => $unit->id,
@@ -76,7 +76,7 @@ class ScheduleInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $base = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['engine_id' => $engine->id, 'days' => ['1' => 'X']]]];
 
         $this->actingAs($user)->post(route('har.input.schedule.store'), [...$base, 'scope' => 'har', 'plan_type' => 'rencana'])->assertRedirect();
@@ -90,7 +90,7 @@ class ScheduleInputTest extends TestCase
         $unit = Unit::factory()->create();
         $foreignEngine = Machine::factory()->forUnit(Unit::factory()->create())->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->post(route('har.input.schedule.store'), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'scope' => 'har', 'plan_type' => 'rencana',
                 'rows' => [['engine_id' => $foreignEngine->id, 'days' => ['1' => 'P1']]],
@@ -103,7 +103,7 @@ class ScheduleInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $ownUnit))
             ->post(route('har.input.schedule.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'scope' => 'har', 'plan_type' => 'rencana', 'rows' => [],
             ])

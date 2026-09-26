@@ -19,7 +19,9 @@ class LaporanController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::K3LaporanView), 403);
+        // One Laporan page for both accesses: the Laporan Pembangkit (Akses 1)
+        // and the Laporan Pengusahaan (Akses 2), each card behind its permission.
+        abort_unless($user->hasPermissionTo(PermissionName::K3LaporanView) || $user->hasPermissionTo(PermissionName::K3PengusahaanView), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');

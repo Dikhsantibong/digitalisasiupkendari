@@ -39,7 +39,7 @@ class FormulirRecordTest extends TestCase
     public function test_page_shows_default_template_and_document_props(string $form, string $section, int $defaultRows): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $response = $this->actingAs($user)->get(route('k3.formulir.record.index', [
             'form' => $form,
@@ -66,7 +66,7 @@ class FormulirRecordTest extends TestCase
     public function test_form_can_be_saved_and_reloaded(string $form, string $section): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $response = $this->actingAs($user)->post(route('k3.formulir.record.store', ['form' => $form]), [
             'unit_id' => $unit->id,
@@ -112,7 +112,7 @@ class FormulirRecordTest extends TestCase
     public function test_pdf_is_rendered(string $form): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $response = $this->actingAs($user)->get(route('k3.formulir.record.pdf', [
             'form' => $form,
@@ -130,7 +130,7 @@ class FormulirRecordTest extends TestCase
     public function test_maintenance_form_uses_project_signers_and_period_title(): void
     {
         $unit = Unit::factory()->create(['name' => 'PLTD Containerized Poasia 6 Site']);
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->get(route('k3.formulir.record.index', [
             'form' => 'pemeliharaan-tps-lb3',
@@ -152,7 +152,7 @@ class FormulirRecordTest extends TestCase
     public function test_html_mode_content_is_used_for_pdf_and_editor(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.formulir.record.store', ['form' => 'pemeliharaan-oil-trap']), [
             'unit_id' => $unit->id,
@@ -178,7 +178,7 @@ class FormulirRecordTest extends TestCase
     public function test_weekly_form_defaults_to_a_week_and_keeps_header_fields(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.formulir.record.store', ['form' => 'kontrol-mingguan']), [
             'unit_id' => $unit->id,
@@ -209,7 +209,7 @@ class FormulirRecordTest extends TestCase
     public function test_unknown_form_returns_not_found(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->get('/k3/formulir/tidak-ada')->assertNotFound();
     }

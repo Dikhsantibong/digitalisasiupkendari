@@ -49,7 +49,7 @@ class LogbookMutasiTest extends TestCase
         Employee::factory()->forUnit($unit)->create(['name' => 'Operator Satu', 'division' => 'operasi', 'is_active' => true]);
         HarLogbookMutasi::query()->create([...$this->payload($unit, '2026-07-10'), 'year' => 2026, 'month' => 7]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.formulir.logbook-mutasi.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -66,7 +66,7 @@ class LogbookMutasiTest extends TestCase
     public function test_a_logbook_is_saved_once_per_date_and_blank_rows_are_dropped(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.formulir.logbook-mutasi.store'), $this->payload($unit))
             ->assertRedirect(route('har.formulir.logbook-mutasi.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'tanggal' => '2026-08-31']))
@@ -92,7 +92,7 @@ class LogbookMutasiTest extends TestCase
     public function test_the_pdf_prints_every_section(): void
     {
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Containerized Poasia 6 Site']);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $this->actingAs($user)->post(route('har.formulir.logbook-mutasi.store'), $this->payload($unit))->assertSessionHasNoErrors();
         $logbook = HarLogbookMutasi::query()->sole();
 
@@ -111,7 +111,7 @@ class LogbookMutasiTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         $other = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.formulir.logbook-mutasi.store'), ['unit_id' => $unit->id, 'tanggal' => '31-08-2026'])
             ->assertSessionHasErrors(['tanggal', 'absensi', 'apd', 'rutin']);

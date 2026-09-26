@@ -32,6 +32,20 @@ enum ReportModule: string
     }
 
     /**
+     * Akses 2 — Pengusahaan: the permission that opens the module's
+     * Pengusahaan menus (TL & Staf); null for a module without one yet.
+     */
+    public function pengusahaanPermission(): ?PermissionName
+    {
+        return match ($this) {
+            self::Operasi => PermissionName::OperasiPengusahaanView,
+            self::Har => PermissionName::HarPengusahaanView,
+            self::K3 => PermissionName::K3PengusahaanView,
+            self::Logistik, self::Pdm => null,
+        };
+    }
+
+    /**
      * The divisi (work_modules.code) the report belongs to.
      */
     public function division(): string

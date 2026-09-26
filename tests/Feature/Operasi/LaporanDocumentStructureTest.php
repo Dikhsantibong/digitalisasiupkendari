@@ -191,7 +191,7 @@ class LaporanDocumentStructureTest extends TestCase
     {
         [$unit, $engine] = $this->unitWithEngine();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.document.pdf', [
                 'report' => self::REPORT, 'unit_id' => $unit->id, 'engine_id' => $engine->id,
                 'month' => 8, 'year' => 2026,
@@ -224,7 +224,7 @@ class LaporanDocumentStructureTest extends TestCase
     {
         $content = '';
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.document.edit', [
                 'report' => self::REPORT, 'unit_id' => $unit->id, 'engine_id' => $engine->id,
                 'month' => 8, 'year' => 2026,

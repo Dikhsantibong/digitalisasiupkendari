@@ -23,7 +23,7 @@ class K3KondisiK3Test extends TestCase
     public function test_authorized_user_can_view_kondisi_k3_page(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $response = $this->actingAs($user)->get(route('k3.input.kondisi-k3.index', [
             'unit_id' => $unit->id,
@@ -45,7 +45,7 @@ class K3KondisiK3Test extends TestCase
     public function test_authorized_user_can_save_kondisi_k3_data(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $payload = [
             'unit_id' => $unit->id,
@@ -124,7 +124,7 @@ class K3KondisiK3Test extends TestCase
     {
         Storage::fake('public');
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $file = UploadedFile::fake()->image('eviden_temuan.jpg', 600, 400);
 

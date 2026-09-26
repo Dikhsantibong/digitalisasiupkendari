@@ -4,6 +4,10 @@ namespace App\Enums;
 
 /**
  * Groups permissions for presentation in the access management screens.
+ *
+ * Operasi, Pemeliharaan and K3 have two accesses: Akses 1 — Laporan Project
+ * (Project Leader & Koordinator: jadwal, input, formulir, Laporan Pembangkit)
+ * and Akses 2 — Pengusahaan (Team Leader & Staf: menu & Laporan Pengusahaan).
  */
 enum PermissionGroup: string
 {
@@ -13,10 +17,13 @@ enum PermissionGroup: string
     case ReportUnit = 'report_unit';
     case Operator = 'operator';
     case Operasi = 'operasi';
+    case OperasiPengusahaan = 'operasi_pengusahaan';
     case OperasiLapangan = 'operasi_lapangan';
     case Pemeliharaan = 'pemeliharaan';
+    case PemeliharaanPengusahaan = 'pemeliharaan_pengusahaan';
     case PemeliharaanLapangan = 'pemeliharaan_lapangan';
     case K3 = 'k3';
+    case K3Pengusahaan = 'k3_pengusahaan';
     case Logistik = 'logistik';
     case Pdm = 'pdm';
     case Project = 'project';
@@ -31,11 +38,14 @@ enum PermissionGroup: string
             self::Monitoring => 'Monitoring',
             self::ReportUnit => 'Laporan Unit',
             self::Operator => 'Operator',
-            self::Operasi => 'Operasi',
+            self::Operasi => 'Operasi — Akses 1 Laporan Project',
+            self::OperasiPengusahaan => 'Operasi — Akses 2 Pengusahaan',
             self::OperasiLapangan => 'Operasi — Input Lapangan',
-            self::Pemeliharaan => 'Pemeliharaan',
+            self::Pemeliharaan => 'Pemeliharaan — Akses 1 Laporan Project',
+            self::PemeliharaanPengusahaan => 'Pemeliharaan — Akses 2 Pengusahaan',
             self::PemeliharaanLapangan => 'Pemeliharaan — Input Lapangan',
-            self::K3 => 'K3 & Keamanan',
+            self::K3 => 'K3 & Keamanan — Akses 1 Laporan Project',
+            self::K3Pengusahaan => 'K3 & Keamanan — Akses 2 Pengusahaan',
             self::Logistik => 'Logistik & Gudang',
             self::Pdm => 'PdM & Maturity Level',
             self::Project => 'Project',

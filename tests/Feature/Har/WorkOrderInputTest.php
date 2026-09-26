@@ -36,7 +36,7 @@ class WorkOrderInputTest extends TestCase
         $unit = Unit::factory()->create();
         Machine::factory()->forUnit($unit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.input.work-order.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -51,7 +51,7 @@ class WorkOrderInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['name' => 'MAK #1']);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)
             ->post(route('har.input.work-order.store'), [
@@ -68,8 +68,6 @@ class WorkOrderInputTest extends TestCase
                     'cycle_code' => 'P1',
                     'report_date' => '2026-08-05',
                     'waiting_reason' => 'material',
-                    'service_cost' => '1000',
-                    'material_cost' => '2000',
                 ]],
             ])
             ->assertRedirect();
@@ -81,14 +79,13 @@ class WorkOrderInputTest extends TestCase
         $this->assertSame('CLOSE', $wo->status->code);
         $this->assertTrue($wo->status->is_closed);
         $this->assertSame(WoWaitingReason::Material, $wo->waiting_reason);
-        $this->assertEquals(1000, (float) $wo->service_cost);
         $this->assertDatabaseHas('report_periods', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]);
     }
 
     public function test_an_unknown_code_is_stored_as_null(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)->post(route('har.input.work-order.store'), [
             'unit_id' => $unit->id,
@@ -105,7 +102,7 @@ class WorkOrderInputTest extends TestCase
     public function test_rows_removed_from_the_grid_are_deleted(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $payload = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)->post(route('har.input.work-order.store'), [
@@ -129,7 +126,7 @@ class WorkOrderInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $ownUnit))
             ->post(route('har.input.work-order.store'), [
                 'unit_id' => $foreignUnit->id,
                 'month' => 8,

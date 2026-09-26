@@ -5,6 +5,13 @@ namespace App\Enums;
 /**
  * The system roles seeded with the application.
  *
+ * Operasi, Pemeliharaan and K3 are run through two accesses
+ * ({@see PermissionGroup}): Akses 1 — Laporan Project (Project Leader &
+ * Koordinator: jadwal, input, formulir and the Laporan Pembangkit) and
+ * Akses 2 — Pengusahaan (Team Leader & Staf: the Pengusahaan menus and the
+ * Laporan Pengusahaan). The defaults below are only a starting point; a Super
+ * Admin adjusts every role per menu in Role & Akses.
+ *
  * Additional roles may be created at runtime by a Super Admin; only the roles
  * listed here are guaranteed to exist and are protected from deletion.
  */
@@ -19,6 +26,12 @@ enum RoleName: string
     case TeamLeaderPdm = 'tl_pdm';
     case SiteLeader = 'site_leader';
     case ProjectLeaderOperasi = 'project_leader_operasi';
+    case KoordinatorOperasi = 'koordinator_operasi';
+    case KoordinatorPemeliharaan = 'koordinator_pemeliharaan';
+    case KoordinatorK3 = 'koordinator_k3';
+    case StafOperasi = 'staf_operasi';
+    case StafPemeliharaan = 'staf_pemeliharaan';
+    case StafK3 = 'staf_k3';
     case Operator = 'operator';
     case Harmes = 'harmes';
     case Harlist = 'harlist';
@@ -35,6 +48,12 @@ enum RoleName: string
             self::TeamLeaderPdm => 'TL PdM & Maturity Level',
             self::SiteLeader => 'Site Leader',
             self::ProjectLeaderOperasi => 'Project Leader Operasi',
+            self::KoordinatorOperasi => 'Koordinator Operasi',
+            self::KoordinatorPemeliharaan => 'Koordinator Pemeliharaan',
+            self::KoordinatorK3 => 'Koordinator K3 & Keamanan',
+            self::StafOperasi => 'Staf Operasi',
+            self::StafPemeliharaan => 'Staf Pemeliharaan',
+            self::StafK3 => 'Staf K3 & Keamanan',
             self::Operator => 'Operator',
             self::Harmes => 'Harmes (Pemeliharaan Mesin)',
             self::Harlist => 'Harlist (Pemeliharaan Listrik)',
@@ -46,13 +65,19 @@ enum RoleName: string
         return match ($this) {
             self::SuperAdmin => 'Kontrol penuh atas sistem: manajemen akses, pemantauan aktivitas, dan seluruh unit.',
             self::ManagerUl => 'Memimpin satu unit layanan dan memantau seluruh unit pembangkit di bawahnya.',
-            self::TeamLeaderOperasi => 'Mengelola kegiatan operasi pada unit pembangkit yang ditugaskan.',
-            self::TeamLeaderPemeliharaan => 'Mengelola kegiatan pemeliharaan pada unit pembangkit yang ditugaskan.',
-            self::TeamLeaderK3 => 'Mengelola kegiatan K3 & keamanan pada unit pembangkit yang ditugaskan.',
+            self::TeamLeaderOperasi => 'Akses 2 — Pengusahaan operasi (menu & Laporan Pengusahaan), serta menyetujui Laporan Operasi Pembangkit pada unit yang ditugaskan.',
+            self::TeamLeaderPemeliharaan => 'Akses 2 — Pengusahaan pemeliharaan (menu & Laporan Pengusahaan), serta menyetujui Laporan Pemeliharaan Pembangkit pada unit yang ditugaskan.',
+            self::TeamLeaderK3 => 'Akses 2 — Pengusahaan K3 & keamanan (menu & Laporan Pengusahaan), serta menyetujui Laporan K3 Pembangkit pada unit yang ditugaskan.',
             self::TeamLeaderLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan.',
             self::TeamLeaderPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan.',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
-            self::ProjectLeaderOperasi => 'Operator senior yang menjadwalkan shift regu, mengelola absensi & laporan pada unit pembangkit yang ditugaskan.',
+            self::ProjectLeaderOperasi => 'Project Leader: Akses 1 — melihat seluruh Laporan Project (Operasi, Pemeliharaan, K3, Logistik, PdM), serta menjadwalkan shift regu & mengelola absensi pada unit pembangkit yang ditugaskan.',
+            self::KoordinatorOperasi => 'Akses 1 — Laporan Project operasi (Koordinator & Office): jadwal, input, berita acara, master dan Laporan Operasi Pembangkit, serta mengawasi logsheet & jadwal shift operator.',
+            self::KoordinatorPemeliharaan => 'Akses 1 — Laporan Project pemeliharaan (Koordinator & Office): jadwal, input, formulir, master dan Laporan Pemeliharaan Pembangkit.',
+            self::KoordinatorK3 => 'Akses 1 — Laporan Project K3 & keamanan (Koordinator & Office): jadwal, input, formulir, monitoring, master dan Laporan K3 Pembangkit.',
+            self::StafOperasi => 'Akses 2 — Pengusahaan operasi: menu & Laporan Pengusahaan operasi pada unit yang ditugaskan.',
+            self::StafPemeliharaan => 'Akses 2 — Pengusahaan pemeliharaan: menu & Laporan Pengusahaan pemeliharaan pada unit yang ditugaskan.',
+            self::StafK3 => 'Akses 2 — Pengusahaan K3 & keamanan: menu & Laporan Pengusahaan K3 pada unit yang ditugaskan.',
             self::Operator => 'Operator shift (termasuk Leader Shift) divisi Operasi di bawah Koordinator Operasi: mencatat logsheet harian dan absen pada unit pembangkit yang ditugaskan.',
             self::Harmes => 'Teknisi pemeliharaan mesin divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
             self::Harlist => 'Teknisi pemeliharaan listrik divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
@@ -71,6 +96,12 @@ enum RoleName: string
             self::TeamLeaderPdm,
             self::SiteLeader,
             self::ProjectLeaderOperasi,
+            self::KoordinatorOperasi,
+            self::KoordinatorPemeliharaan,
+            self::KoordinatorK3,
+            self::StafOperasi,
+            self::StafPemeliharaan,
+            self::StafK3,
             self::Operator,
             self::Harmes,
             self::Harlist => RoleScope::Unit,
@@ -124,9 +155,12 @@ enum RoleName: string
                 // Manager oversees maintenance reporting across their UL (read-only).
                 PermissionName::HarLaporanView,
                 PermissionName::HarExecutiveView,
+                PermissionName::HarPengusahaanView,
                 // Manager oversees K3 & security reporting across their UL (read-only).
                 PermissionName::K3LaporanView,
                 PermissionName::K3MonitoringView,
+                PermissionName::K3PengusahaanView,
+                PermissionName::OperasiPengusahaanView,
                 // Manager oversees logistik & gudang reporting across their UL (read-only).
                 PermissionName::LogistikLaporanView,
                 // Manager oversees PdM & maturity level reporting across their UL (read-only).
@@ -137,9 +171,10 @@ enum RoleName: string
                 PermissionName::OperatorAbsensiView,
             ],
 
-            self::TeamLeaderPemeliharaan => [
+            // Akses 1 — Laporan Project: the Koordinator (and Office) of the
+            // divisi prepare the Laporan Pembangkit.
+            self::KoordinatorPemeliharaan => [
                 ...$this->teamLeaderBasePermissions(),
-                // The pemeliharaan (HAR) module belongs to TL Pemeliharaan.
                 PermissionName::HarInputView,
                 PermissionName::HarInputWrite,
                 PermissionName::HarLaporanView,
@@ -148,9 +183,8 @@ enum RoleName: string
                 PermissionName::HarMasterManage,
             ],
 
-            self::TeamLeaderOperasi => [
+            self::KoordinatorOperasi => [
                 ...$this->teamLeaderBasePermissions(),
-                // The operasi module belongs exclusively to TL Operasi.
                 PermissionName::OperasiInputView,
                 PermissionName::OperasiInputWrite,
                 PermissionName::OperasiLaporanView,
@@ -158,22 +192,69 @@ enum RoleName: string
                 PermissionName::OperasiBeritaAcaraCreate,
                 PermissionName::OperasiMasterViewAny,
                 PermissionName::OperasiMasterManage,
-                // TL Operasi also oversees the Operator module: verifies field
-                // logsheets and manages the shift schedule & attendance.
+                // The operators work under the Koordinator Operasi: field
+                // logsheets and the shift schedule & attendance.
                 PermissionName::OperatorLogsheetView,
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorAbsensiWrite,
             ],
 
-            self::TeamLeaderK3 => [
+            self::KoordinatorK3 => [
                 ...$this->teamLeaderBasePermissions(),
-                // The K3 & security module belongs to TL K3 & Keamanan.
                 PermissionName::K3InputView,
                 PermissionName::K3InputWrite,
                 PermissionName::K3LaporanView,
                 PermissionName::K3MonitoringView,
                 PermissionName::K3MasterViewAny,
                 PermissionName::K3MasterManage,
+            ],
+
+            // Akses 2 — Pengusahaan. The Team Leader keeps read access to the
+            // Laporan Pembangkit only because it approves (menyetujui) it in the
+            // report workflow.
+            self::TeamLeaderPemeliharaan => [
+                ...$this->teamLeaderBasePermissions(),
+                PermissionName::HarPengusahaanView,
+                PermissionName::HarPengusahaanWrite,
+                PermissionName::HarLaporanView,
+                PermissionName::HarExecutiveView,
+            ],
+
+            self::TeamLeaderOperasi => [
+                ...$this->teamLeaderBasePermissions(),
+                PermissionName::OperasiPengusahaanView,
+                PermissionName::OperasiPengusahaanWrite,
+                PermissionName::OperasiLaporanView,
+                // TL Operasi still verifies the operators' logsheets and sees
+                // the shift schedule.
+                PermissionName::OperatorLogsheetView,
+                PermissionName::OperatorAbsensiView,
+            ],
+
+            self::TeamLeaderK3 => [
+                ...$this->teamLeaderBasePermissions(),
+                PermissionName::K3PengusahaanView,
+                PermissionName::K3PengusahaanWrite,
+                PermissionName::K3LaporanView,
+                PermissionName::K3MonitoringView,
+            ],
+
+            self::StafPemeliharaan => [
+                ...$this->stafBasePermissions(),
+                PermissionName::HarPengusahaanView,
+                PermissionName::HarPengusahaanWrite,
+            ],
+
+            self::StafOperasi => [
+                ...$this->stafBasePermissions(),
+                PermissionName::OperasiPengusahaanView,
+                PermissionName::OperasiPengusahaanWrite,
+            ],
+
+            self::StafK3 => [
+                ...$this->stafBasePermissions(),
+                PermissionName::K3PengusahaanView,
+                PermissionName::K3PengusahaanWrite,
             ],
 
             self::TeamLeaderLogistik => [
@@ -240,6 +321,14 @@ enum RoleName: string
                 PermissionName::OperatorPresensi,
                 PermissionName::OperasiLaporanView,
                 ...PermissionName::operasiLapangan(),
+                // Akses 1 — the Project Leader reads (and signs "Mengetahui")
+                // every Laporan Project.
+                PermissionName::HarLaporanView,
+                PermissionName::HarExecutiveView,
+                PermissionName::K3LaporanView,
+                PermissionName::K3MonitoringView,
+                PermissionName::LogistikLaporanView,
+                PermissionName::PdmLaporanView,
             ],
 
             self::Operator => [
@@ -294,6 +383,23 @@ enum RoleName: string
             // The operator fills the hourly logsheet (Operator module).
             PermissionName::OperatorLogsheetWrite,
             PermissionName::OperatorLogsheetView,
+        ];
+    }
+
+    /**
+     * The read-only basics of a Staf (Akses 2 — Pengusahaan) account.
+     *
+     * @return list<PermissionName>
+     */
+    private function stafBasePermissions(): array
+    {
+        return [
+            PermissionName::UnitViewAny,
+            PermissionName::UnitView,
+            PermissionName::MachineViewAny,
+            PermissionName::MachineView,
+            PermissionName::EmployeeViewAny,
+            PermissionName::EmployeeView,
         ];
     }
 

@@ -43,7 +43,7 @@ class PatrolCheckParameterTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         [$first, $second] = Machine::factory()->count(2)->sequence(['name' => 'A Mesin'], ['name' => 'B Mesin'])->create(['unit_id' => $unit->id]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 9, 'year' => 2026];
 
         $this->actingAs($user)->get(route('har.input.patrol-check-parameter.index', $period))
@@ -79,7 +79,7 @@ class PatrolCheckParameterTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         $machine = Machine::factory()->create(['unit_id' => $unit->id]);
         $foreign = Machine::factory()->create(['unit_id' => Unit::factory()->create()->id]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 9, 'year' => 2026];
 
         $this->actingAs($user)->post(route('har.input.patrol-check-parameter.store'), $period + [
@@ -98,7 +98,7 @@ class PatrolCheckParameterTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Containerized Poasia']);
         $machine = Machine::factory()->create(['unit_id' => $unit->id, 'name' => 'Cummins #7']);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
         $this->actingAs($user)->post(route('har.input.patrol-check-parameter.store'), [
             'unit_id' => $unit->id, 'month' => 9, 'year' => 2026, 'machine_id' => $machine->id,
             'readings' => ['7' => ['pic' => 'Pembaca Parameter Uji', 'kvar' => '120']],

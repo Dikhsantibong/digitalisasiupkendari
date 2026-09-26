@@ -27,7 +27,7 @@ class FlmMonitoringInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.input.flm-monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -43,7 +43,7 @@ class FlmMonitoringInputTest extends TestCase
     public function test_findings_are_saved_renumbered_and_blank_rows_skipped(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.input.flm-monitoring.store'), [
@@ -70,7 +70,7 @@ class FlmMonitoringInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.input.flm-monitoring.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['mesin' => 'Pompa', 'kondisi_awal' => ['dicat'], 'status' => 'open']]])
             ->assertSessionHasErrors('rows.0.kondisi_awal.0');
     }
@@ -80,7 +80,7 @@ class FlmMonitoringInputTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         OperasiFlmMonitoring::factory()->create(['unit_id' => $unit->id]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.input.flm-monitoring.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
@@ -93,7 +93,7 @@ class FlmMonitoringInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->post(route('operasi.input.flm-monitoring.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => []])
             ->assertForbidden();
     }

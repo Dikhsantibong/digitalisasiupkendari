@@ -33,7 +33,7 @@ class TimeFrameInputTest extends TestCase
         $unit = Unit::factory()->create();
         K3ActivityType::factory()->count(2)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.time-frame.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -48,7 +48,7 @@ class TimeFrameInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $type = K3ActivityType::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.time-frame.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'plan_type' => 'rencana',
@@ -70,7 +70,7 @@ class TimeFrameInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $type = K3ActivityType::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
         $base = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['activity_type_id' => $type->id, 'days' => ['1' => 'X']]]];
 
         $this->actingAs($user)->post(route('k3.input.time-frame.store'), [...$base, 'plan_type' => 'rencana'])->assertRedirect();
@@ -87,7 +87,7 @@ class TimeFrameInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.time-frame.store'), [
                 'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'plan_type' => 'rencana', 'rows' => [],
             ])

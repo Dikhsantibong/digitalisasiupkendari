@@ -21,7 +21,7 @@ class K3KesiapanApdTest extends TestCase
     public function test_authorized_user_can_view_kesiapan_apd_page(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $response = $this->actingAs($user)->get(route('k3.input.kesiapan-apd.index', [
             'unit_id' => $unit->id,
@@ -44,7 +44,7 @@ class K3KesiapanApdTest extends TestCase
     public function test_authorized_user_can_save_kesiapan_apd_data(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $payload = [
             'unit_id' => $unit->id,

@@ -47,19 +47,20 @@ class DemoAccountSeeder extends Seeder
 
     /**
      * Demo accounts of the report-signer jabatan without one yet: e-mail
-     * prefix => [jabatan, role of the divisi].
+     * prefix => [jabatan, role of the divisi]. Koordinator & Office of
+     * Operasi, Pemeliharaan and K3 prepare the Laporan Project (Akses 1).
      *
      * @var array<string, array{0: EmployeePosition, 1: RoleName}>
      */
     private const SIGNER_ACCOUNTS = [
-        'koordinator-har' => [EmployeePosition::KoordinatorPemeliharaan, RoleName::TeamLeaderPemeliharaan],
-        'koordinator-operasi' => [EmployeePosition::KoordinatorOperasi, RoleName::TeamLeaderOperasi],
-        'koordinator-k3' => [EmployeePosition::KoordinatorK3, RoleName::TeamLeaderK3],
+        'koordinator-har' => [EmployeePosition::KoordinatorPemeliharaan, RoleName::KoordinatorPemeliharaan],
+        'koordinator-operasi' => [EmployeePosition::KoordinatorOperasi, RoleName::KoordinatorOperasi],
+        'koordinator-k3' => [EmployeePosition::KoordinatorK3, RoleName::KoordinatorK3],
         'koordinator-logistik' => [EmployeePosition::KoordinatorLogistik, RoleName::TeamLeaderLogistik],
         'koordinator-pdm' => [EmployeePosition::KoordinatorPdm, RoleName::TeamLeaderPdm],
-        'office-har' => [EmployeePosition::OfficePemeliharaan, RoleName::TeamLeaderPemeliharaan],
-        'office-operasi' => [EmployeePosition::OfficeOperasi, RoleName::TeamLeaderOperasi],
-        'office-k3' => [EmployeePosition::OfficeK3, RoleName::TeamLeaderK3],
+        'office-har' => [EmployeePosition::OfficePemeliharaan, RoleName::KoordinatorPemeliharaan],
+        'office-operasi' => [EmployeePosition::OfficeOperasi, RoleName::KoordinatorOperasi],
+        'office-k3' => [EmployeePosition::OfficeK3, RoleName::KoordinatorK3],
         'office-logistik' => [EmployeePosition::OfficeLogistik, RoleName::TeamLeaderLogistik],
         'pic-pdm' => [EmployeePosition::PicPdm, RoleName::TeamLeaderPdm],
     ];

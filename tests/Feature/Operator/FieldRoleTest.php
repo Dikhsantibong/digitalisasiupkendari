@@ -133,7 +133,7 @@ class FieldRoleTest extends TestCase
         $this->assertSame(1, HarTabelRow::query()->where('unit_id', $unit->id)->where('tabel', 'abnormal-gangguan')->count());
 
         // The TL Pemeliharaan sees the same row on the HAR page.
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.input.abnormal-gangguan.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertInertia(fn ($page) => $page->has('rows', 1)->where('rows.0.uraian', 'Bocor BBM pada transfer pump'));
     }
@@ -170,9 +170,14 @@ class FieldRoleTest extends TestCase
                 $this->actingAs($user)->get(route("operasi.input.{$page}.index", $query))->assertOk();
             }
 
-            // The TL's hub stays closed, and the HAR pages belong to Harmes / Harlist.
+            // The Koordinator's hub stays closed, and the HAR pages belong to Harmes / Harlist
+            // (the Project Leader, reading every Laporan Project, only sees them read-only).
             $this->actingAs($user)->get(route('operasi.input.index'))->assertForbidden();
-            $this->actingAs($user)->get(route('har.input.abnormal-gangguan.index', $query))->assertForbidden();
+            if ($role === RoleName::Operator) {
+                $this->actingAs($user)->get(route('har.input.abnormal-gangguan.index', $query))->assertForbidden();
+            } else {
+                $this->actingAs($user)->get(route('har.input.abnormal-gangguan.index', $query))->assertInertia(fn ($page) => $page->where('can_write', false));
+            }
         }
 
         $harmes = $this->userWithRole(RoleName::Harmes, $unit);
@@ -192,7 +197,7 @@ class FieldRoleTest extends TestCase
         $this->assertSame(1, OperasiFlmMonitoring::query()->where('unit_id', $unit->id)->count());
 
         // The TL Operasi sees the same entry.
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.input.flm-monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertInertia(fn ($page) => $page->component('operasi/input/flm-monitoring/index')->where('rows.0.mesin', 'Fuel Transfer Pump'));
     }
@@ -200,7 +205,7 @@ class FieldRoleTest extends TestCase
     public function test_each_input_page_has_its_own_permission_in_role_and_akses(): void
     {
         $this->assertCount(14, PermissionName::operasiLapangan());
-        $this->assertCount(28, PermissionName::harLapangan());
+        $this->assertCount(27, PermissionName::harLapangan());
 
         $operator = Role::query()->where('name', RoleName::Operator->value)->sole()->permissions()->pluck('name');
         $harmes = Role::query()->where('name', RoleName::Harmes->value)->sole()->permissions()->pluck('name');

@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { ClipboardList, Pencil, Plus, Save, Trash2 } from 'lucide-react';
+import { ClipboardList, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type {
@@ -44,26 +44,63 @@ import type { IdName } from '@/types';
 
 type Code = { code: string; name: string };
 
+/** One material / jasa line of a waiting WO (WO Waiting Material dan Jasa, A17). */
+type Material = { description: string | null; stockcode: string | null; amount: string | null };
+
 type RowData = {
     wonum: string | null;
     description: string | null;
     type_code: string | null;
     engine_name: string | null;
+    assetnum: string | null;
     work_group_code: string | null;
+    owner_group: string | null;
     status_code: string | null;
     cycle_code: string | null;
     report_date: string | null;
     sched_start: string | null;
     sched_finish: string | null;
     waiting_reason: string | null;
-    service_cost: string | null;
-    material_cost: string | null;
+    priority_text: string | null;
+    materials: Material[];
 };
 
 type GridRow = RowData & {
     _key: number;
-    [key: string]: number | string | null;
+    [key: string]: number | string | null | Material[];
 };
+
+type GroupKey = 'all' | 'PM' | 'PDM' | 'CM' | 'ENJI' | 'shutdown' | 'material';
+
+/**
+ * WO groups of the Laporan Pengusahaan: by jenis (PM/PdM/CM/ENJI) or by
+ * waiting reason. One WO can sit in two groups (e.g. a CM waiting material),
+ * so they are views over the same list, not separate inputs.
+ */
+const WO_GROUPS: { key: GroupKey; label: string; doc: string | null }[] = [
+    { key: 'all', label: 'Semua WO', doc: null },
+    { key: 'PM', label: 'Preventive (PM)', doc: 'A12' },
+    { key: 'PDM', label: 'Predictive (PdM)', doc: 'A13' },
+    { key: 'CM', label: 'Corrective (CM)', doc: 'A14' },
+    { key: 'ENJI', label: 'Rekomendasi Enjiniring', doc: 'A15' },
+    { key: 'shutdown', label: 'Waiting Shutdown', doc: 'A16' },
+    { key: 'material', label: 'Waiting Material & Jasa', doc: 'A17' },
+];
+
+const inGroup = (row: RowData, group: GroupKey): boolean => {
+    switch (group) {
+        case 'all':
+            return true;
+        case 'shutdown':
+            return row.waiting_reason === 'shutdown';
+        case 'material':
+            return row.waiting_reason === 'material' || row.waiting_reason === 'jasa';
+        default:
+            return (row.type_code ?? '').toUpperCase() === group;
+    }
+};
+
+const blankMaterial = (): Material => ({ description: null, stockcode: null, amount: null });
 
 type Props = {
     filters: { unit_id: number; month: number; year: number };
@@ -84,21 +121,7 @@ type Props = {
 const NONE_VALUE = '__none__';
 
 const hydrate = (rows: RowData[]): GridRow[] =>
-    rows.map((row, index) => ({ ...row, _key: index }));
-
-const formatCost = (val: string | null) => {
-    if (!val) {
-        return '—';
-    }
-
-    const num = Number(val);
-
-    if (isNaN(num)) {
-        return val;
-    }
-
-    return num.toLocaleString('id-ID');
-};
+    rows.map((row, index) => ({ ...row, materials: row.materials ?? [], _key: index }));
 
 /**
  * A multi-line editor for the description column when editing directly in grid.
@@ -156,16 +179,19 @@ export default function WorkOrderInput({
         description: '',
         type_code: '',
         engine_name: '',
+        assetnum: '',
         work_group_code: '',
+        owner_group: '',
         status_code: '',
         cycle_code: '',
         report_date: '',
         sched_start: '',
         sched_finish: '',
         waiting_reason: '',
-        service_cost: '',
-        material_cost: '',
+        priority_text: '',
     });
+    const [formMaterials, setFormMaterials] = useState<Material[]>([]);
+    const [group, setGroup] = useState<GroupKey>('all');
 
     const emptyColFilters = {
         type_code: 'all',
@@ -191,6 +217,7 @@ export default function WorkOrderInput({
         () =>
             rows.filter(
                 (row) =>
+                    inGroup(row, group) &&
                     (colFilters.type_code === 'all' ||
                         row.type_code === colFilters.type_code) &&
                     (colFilters.work_group_code === 'all' ||
@@ -202,8 +229,9 @@ export default function WorkOrderInput({
                     (colFilters.waiting_reason === 'all' ||
                         row.waiting_reason === colFilters.waiting_reason),
             ),
-        [rows, colFilters],
+        [rows, colFilters, group],
     );
+    const showMaterials = formData.waiting_reason === 'material' || formData.waiting_reason === 'jasa';
 
     const hasActiveFilter = Object.values(colFilters).some((v) => v !== 'all');
 
@@ -326,15 +354,17 @@ export default function WorkOrderInput({
         description: row.description,
         type_code: row.type_code,
         engine_name: row.engine_name,
+        assetnum: row.assetnum,
         work_group_code: row.work_group_code,
+        owner_group: row.owner_group,
         status_code: row.status_code,
         cycle_code: row.cycle_code,
         report_date: row.report_date,
         sched_start: row.sched_start,
         sched_finish: row.sched_finish,
         waiting_reason: row.waiting_reason,
-        service_cost: row.service_cost,
-        material_cost: row.material_cost,
+        priority_text: row.priority_text,
+        materials: row.materials ?? [],
     });
 
     const saveRows = (
@@ -365,22 +395,27 @@ export default function WorkOrderInput({
     };
 
     const openCreateModal = () => {
+        const typeFromGroup = options.maintenance_types.find((t) => t.code.toUpperCase() === group)?.code;
+        const waitingFromGroup = group === 'shutdown' || group === 'material' ? group : '';
+
         setEditingRowKey(null);
         setFormData({
             wonum: '',
             description: '',
-            type_code: options.maintenance_types[0]?.code ?? '',
+            type_code: typeFromGroup ?? options.maintenance_types[0]?.code ?? '',
             engine_name: '',
+            assetnum: '',
             work_group_code: options.work_groups[0]?.code ?? '',
+            owner_group: '',
             status_code: options.statuses[0]?.code ?? '',
             cycle_code: options.cycles[0]?.code ?? '',
             report_date: '',
             sched_start: '',
             sched_finish: '',
-            waiting_reason: '',
-            service_cost: '',
-            material_cost: '',
+            waiting_reason: waitingFromGroup,
+            priority_text: '',
         });
+        setFormMaterials(waitingFromGroup === 'material' ? [blankMaterial()] : []);
         setModalOpen(true);
     };
 
@@ -391,22 +426,18 @@ export default function WorkOrderInput({
             description: row.description ?? '',
             type_code: row.type_code ?? '',
             engine_name: row.engine_name ?? '',
+            assetnum: row.assetnum ?? '',
             work_group_code: row.work_group_code ?? '',
+            owner_group: row.owner_group ?? '',
             status_code: row.status_code ?? '',
             cycle_code: row.cycle_code ?? '',
             report_date: row.report_date ?? '',
             sched_start: row.sched_start ?? '',
             sched_finish: row.sched_finish ?? '',
             waiting_reason: row.waiting_reason ?? '',
-            service_cost:
-                row.service_cost !== null && row.service_cost !== undefined
-                    ? String(row.service_cost)
-                    : '',
-            material_cost:
-                row.material_cost !== null && row.material_cost !== undefined
-                    ? String(row.material_cost)
-                    : '',
+            priority_text: row.priority_text ?? '',
         });
+        setFormMaterials(row.materials ?? []);
         setModalOpen(true);
     };
 
@@ -434,6 +465,14 @@ export default function WorkOrderInput({
 
         let nextRows: GridRow[];
         const isEdit = editingRowKey !== null;
+        const extra = {
+            assetnum: formData.assetnum.trim() || null,
+            owner_group: formData.owner_group.trim() || null,
+            priority_text: formData.priority_text.trim() || null,
+            materials: showMaterials
+                ? formMaterials.filter((m) => [m.description, m.stockcode, m.amount].some((v) => (v ?? '').trim() !== ''))
+                : [],
+        };
 
         if (isEdit) {
             nextRows = rows.map((r) =>
@@ -451,14 +490,7 @@ export default function WorkOrderInput({
                           sched_start: formData.sched_start || null,
                           sched_finish: formData.sched_finish || null,
                           waiting_reason: formData.waiting_reason || null,
-                          service_cost:
-                              formData.service_cost !== ''
-                                  ? formData.service_cost
-                                  : null,
-                          material_cost:
-                              formData.material_cost !== ''
-                                  ? formData.material_cost
-                                  : null,
+                          ...extra,
                       }
                     : r,
             );
@@ -476,12 +508,7 @@ export default function WorkOrderInput({
                 sched_start: formData.sched_start || null,
                 sched_finish: formData.sched_finish || null,
                 waiting_reason: formData.waiting_reason || null,
-                service_cost:
-                    formData.service_cost !== '' ? formData.service_cost : null,
-                material_cost:
-                    formData.material_cost !== ''
-                        ? formData.material_cost
-                        : null,
+                ...extra,
             };
             setNextKey((k) => k + 1);
             nextRows = [...rows, newRow];
@@ -616,6 +643,17 @@ export default function WorkOrderInput({
                 ),
             },
             {
+                key: 'assetnum',
+                name: 'Assetnum',
+                width: 150,
+                minWidth: 110,
+                resizable: true,
+                editable: can_write,
+                renderEditCell: textEditor,
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) => <span className="text-xs">{row.assetnum || '—'}</span>,
+            },
+            {
                 key: 'work_group_code',
                 name: 'Work Group',
                 width: 130,
@@ -634,6 +672,17 @@ export default function WorkOrderInput({
                     ) : (
                         <span className="text-muted-foreground">—</span>
                     ),
+            },
+            {
+                key: 'owner_group',
+                name: 'Owner Group',
+                width: 110,
+                minWidth: 90,
+                resizable: true,
+                editable: can_write,
+                renderEditCell: textEditor,
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) => <span className="text-xs">{row.owner_group || '—'}</span>,
             },
             {
                 key: 'status_code',
@@ -748,32 +797,32 @@ export default function WorkOrderInput({
                 ),
             },
             {
-                key: 'service_cost',
-                name: 'Biaya Jasa',
+                key: 'priority_text',
+                name: 'WO Prior Text',
                 width: 120,
                 minWidth: 100,
                 resizable: true,
                 editable: can_write,
                 renderEditCell: textEditor,
-                headerCellClass: 'rdg-sub-header text-right',
-                cellClass: 'text-right',
-                renderCell: ({ row }) => (
-                    <span>{formatCost(row.service_cost)}</span>
-                ),
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) => <span className="text-xs">{row.priority_text || '—'}</span>,
             },
             {
-                key: 'material_cost',
-                name: 'Biaya Material',
-                width: 120,
-                minWidth: 100,
+                key: 'materials',
+                name: 'Material/Jasa',
+                width: 130,
+                minWidth: 110,
                 resizable: true,
-                editable: can_write,
-                renderEditCell: textEditor,
-                headerCellClass: 'rdg-sub-header text-right',
-                cellClass: 'text-right',
-                renderCell: ({ row }) => (
-                    <span>{formatCost(row.material_cost)}</span>
-                ),
+                editable: false,
+                headerCellClass: 'rdg-sub-header',
+                renderCell: ({ row }) =>
+                    row.materials.length > 0 ? (
+                        <span className="text-xs" title={row.materials.map((m) => [m.description, m.stockcode, m.amount].filter(Boolean).join(' · ')).join('\n')}>
+                            {row.materials.length} item
+                        </span>
+                    ) : (
+                        <span className="text-muted-foreground">—</span>
+                    ),
             },
         ];
 
@@ -873,6 +922,31 @@ export default function WorkOrderInput({
                         )
                     }
                 />
+
+                <div className="flex flex-wrap gap-2" role="tablist" aria-label="Kelompok Work Order">
+                    {WO_GROUPS.map((item) => {
+                        const count = rows.filter((row) => inGroup(row, item.key)).length;
+                        const active = group === item.key;
+
+                        return (
+                            <button
+                                key={item.key}
+                                type="button"
+                                role="tab"
+                                aria-selected={active}
+                                onClick={() => setGroup(item.key)}
+                                className={cn(
+                                    'flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
+                                    active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/50',
+                                )}
+                            >
+                                {item.label}
+                                {item.doc && <span className={cn('text-[10px]', active ? 'text-primary-foreground/80' : 'text-muted-foreground')}>{item.doc}</span>}
+                                <span className={cn('rounded-full px-1.5 text-[10px]', active ? 'bg-primary-foreground/20' : 'bg-muted')}>{count}</span>
+                            </button>
+                        );
+                    })}
+                </div>
 
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
                     <OperasiSelect
@@ -1049,6 +1123,7 @@ export default function WorkOrderInput({
                             meta: [
                                 ['Uraian', row.description],
                                 ['Mesin', row.engine_name],
+                                ['Assetnum', row.assetnum],
                                 ['Jenis', row.type_code],
                                 ['Work group', row.work_group_code],
                                 ['Tanggal', row.report_date],
@@ -1470,7 +1545,7 @@ export default function WorkOrderInput({
                             </div>
                         </div>
 
-                        {/* Baris 5: Waiting Reason, Biaya Jasa, Biaya Material */}
+                        {/* Baris 5: Waiting Reason */}
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="space-y-1.5">
                                 <Label htmlFor="waiting_reason">
@@ -1510,46 +1585,73 @@ export default function WorkOrderInput({
                                 </Select>
                             </div>
 
-                            <div className="space-y-1.5">
-                                <Label htmlFor="service_cost">
-                                    Biaya Jasa (Rp)
-                                </Label>
-                                <Input
-                                    id="service_cost"
-                                    type="number"
-                                    step="any"
-                                    min="0"
-                                    placeholder="0"
-                                    value={formData.service_cost}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            service_cost: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
-
-                            <div className="space-y-1.5">
-                                <Label htmlFor="material_cost">
-                                    Biaya Material (Rp)
-                                </Label>
-                                <Input
-                                    id="material_cost"
-                                    type="number"
-                                    step="any"
-                                    min="0"
-                                    placeholder="0"
-                                    value={formData.material_cost}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            material_cost: e.target.value,
-                                        }))
-                                    }
-                                />
-                            </div>
                         </div>
+
+                        {/* Baris 6: data Maximo untuk lembar WO Waiting (A16/A17) */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                            {(
+                                [
+                                    ['assetnum', 'Assetnum', 'Contoh: WUAWTD002MJA10AV001'],
+                                    ['owner_group', 'Owner Group', 'Contoh: MECHD (kosong = Work Group)'],
+                                    ['priority_text', 'WO Prior Text', 'Contoh: Urgent'],
+                                ] as const
+                            ).map(([key, label, placeholder]) => (
+                                <div key={key} className="space-y-1.5">
+                                    <Label htmlFor={key}>{label}</Label>
+                                    <Input
+                                        id={key}
+                                        placeholder={placeholder}
+                                        value={formData[key]}
+                                        onChange={(e) => setFormData((prev) => ({ ...prev, [key]: e.target.value }))}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        {showMaterials && (
+                            <div className="space-y-2 rounded-md border border-border p-3">
+                                <div className="flex items-center justify-between">
+                                    <Label>Rincian Material / Jasa yang ditunggu</Label>
+                                    <Button type="button" variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => setFormMaterials((list) => [...list, blankMaterial()])}>
+                                        <Plus className="size-3.5" />
+                                        Tambah Item
+                                    </Button>
+                                </div>
+                                {formMaterials.length === 0 && <p className="text-xs text-muted-foreground">Belum ada item — WO tetap tampil satu baris di laporan.</p>}
+                                {formMaterials.map((material, index) => (
+                                    <div key={index} className="grid grid-cols-[1fr_1fr_90px_auto] items-center gap-2">
+                                        {(
+                                            [
+                                                ['description', 'Deskripsi (mis. Piston Ring 1)'],
+                                                ['stockcode', 'No Stockcode / Part'],
+                                                ['amount', 'Jumlah'],
+                                            ] as const
+                                        ).map(([key, placeholder]) => (
+                                            <Input
+                                                key={key}
+                                                placeholder={placeholder}
+                                                aria-label={`${placeholder} item ${index + 1}`}
+                                                value={material[key] ?? ''}
+                                                onChange={(e) =>
+                                                    setFormMaterials((list) => list.map((m, i) => (i === index ? { ...m, [key]: e.target.value } : m)))
+                                                }
+                                            />
+                                        ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormMaterials((list) => list.filter((_, i) => i !== index))}
+                                            className="rounded p-1 text-muted-foreground hover:text-destructive"
+                                            aria-label={`Hapus item ${index + 1}`}
+                                        >
+                                            <X className="size-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                                <p className="text-[11px] text-muted-foreground">
+                                    Tiap item jadi satu baris di tabel WO Waiting Material dan Jasa (A17), dikelompokkan per Bidang dari Work Group (MECHD Mekanik, ELECD Listrik, INSTD Kontrol &amp; Instrumen, CIVD Sipil).
+                                </p>
+                            </div>
+                        )}
 
                         <DialogFooter className="gap-2 pt-2 sm:gap-0">
                             <Button

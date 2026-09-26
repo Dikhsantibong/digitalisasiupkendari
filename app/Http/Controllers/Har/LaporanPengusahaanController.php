@@ -25,7 +25,7 @@ class LaporanPengusahaanController extends Controller
     use EmbedsReportLogo;
     use RendersReportPdf;
 
-    private const BODY_VERSION = 4;
+    private const BODY_VERSION = 7;
 
     public function __construct(
         private readonly HarDocumentBuilder $builder,
@@ -37,7 +37,7 @@ class LaporanPengusahaanController extends Controller
     public function edit(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::HarPengusahaanView), 403);
 
         $unit = $this->resolveUnit($request);
         $now = now();
@@ -61,14 +61,14 @@ class LaporanPengusahaanController extends Controller
             'pdf_url' => route('har.laporan.pengusahaan.pdf', [
                 'unit_id' => $unit->id, 'month' => $month, 'year' => $year,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $user->hasPermissionTo(PermissionName::HarPengusahaanWrite),
         ]);
     }
 
     public function pdf(Request $request)
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::HarPengusahaanView), 403);
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
@@ -93,7 +93,7 @@ class LaporanPengusahaanController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::HarPengusahaanWrite), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -148,7 +148,7 @@ class LaporanPengusahaanController extends Controller
     public function regenerate(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($user->hasPermissionTo(PermissionName::HarPengusahaanWrite), 403);
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];

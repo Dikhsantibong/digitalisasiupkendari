@@ -96,7 +96,7 @@ class PresensiTest extends TestCase
 
     public function test_a_role_without_presensi_permission_is_forbidden(): void
     {
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create()))
             ->get(route('operator.presensi.index'))
             ->assertForbidden();
     }

@@ -35,7 +35,7 @@ class MasterCrudTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.master.index', 'tidak-ada'))
             ->assertNotFound();
     }
@@ -45,7 +45,7 @@ class MasterCrudTest extends TestCase
         $unit = Unit::factory()->create();
         Feeder::factory()->forUnit($unit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.master.index', ['resource' => 'feeders', 'unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -61,7 +61,7 @@ class MasterCrudTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.master.store', 'feeders'), [
                 'unit_id' => $unit->id,
                 'name' => 'Feeder Baru',
@@ -81,7 +81,7 @@ class MasterCrudTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.master.store', 'feeders'), [
                 'unit_id' => $unit->id,
                 'is_active' => '1',
@@ -93,7 +93,7 @@ class MasterCrudTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.master.store', 'fuel-tanks'), [
                 'unit_id' => $unit->id,
                 'name' => 'Tangki X',
@@ -107,7 +107,7 @@ class MasterCrudTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.master.store', 'status-codes'), [
                 'code' => 'DL',
                 'label' => 'Derating Line',
@@ -127,7 +127,7 @@ class MasterCrudTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $feeder = Feeder::factory()->forUnit($unit)->create(['name' => 'Lama']);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->put(route('operasi.master.update', ['resource' => 'feeders', 'id' => $feeder->id]), [
@@ -151,7 +151,7 @@ class MasterCrudTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
             ->post(route('operasi.master.store', 'feeders'), [
                 'unit_id' => $foreignUnit->id,
                 'name' => 'Selundupan',

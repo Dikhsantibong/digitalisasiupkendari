@@ -60,12 +60,6 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/k3/jadwal/pekerjaan-rutin',
     },
     {
-        title: 'Jadwal Daily Meeting Bersama Mekanik & Operasi',
-        description: 'Briefing koordinasi harian keselamatan kerja (safety talk) bersama tim pemeliharaan dan operasi.',
-        icon: CalendarClock,
-        target: '/k3/jadwal/daily-meeting',
-    },
-    {
         title: 'Jadwal Patrol Check Harian K3L & Lingkungan',
         description: 'Inspeksi patroli harian keliling area pembangkit untuk deteksi dini bahaya dan pemantauan lingkungan.',
         icon: ShieldCheck,

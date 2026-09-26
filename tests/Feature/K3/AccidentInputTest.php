@@ -31,7 +31,7 @@ class AccidentInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.accident.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('k3/input/accidents')->where('can_write', true));
@@ -41,7 +41,7 @@ class AccidentInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         AccidentReport::factory()->forUnit($unit)->create(['year' => 2026, 'month' => 8]);
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.accident.store'), [
             'unit_id' => $unit->id, 'year' => 2026, 'month' => 8,
@@ -59,7 +59,7 @@ class AccidentInputTest extends TestCase
     public function test_a_nihil_month_is_stored(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.accident.store'), [
             'unit_id' => $unit->id, 'year' => 2026, 'month' => 8,
@@ -75,7 +75,7 @@ class AccidentInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->post(route('k3.input.accident.store'), [
                 'unit_id' => $unit->id, 'year' => 2026, 'month' => 8,
                 'rows' => [['category' => 'tidak-ada']],
@@ -88,7 +88,7 @@ class AccidentInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.accident.store'), [
                 'unit_id' => $foreignUnit->id, 'year' => 2026, 'month' => 8, 'rows' => [],
             ])

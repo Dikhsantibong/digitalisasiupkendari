@@ -29,7 +29,7 @@ class InputTabsTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('operasi.input.feeder.index'))
             ->assertForbidden();
     }
@@ -38,7 +38,7 @@ class InputTabsTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $feeder = Feeder::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.input.feeder.store'), [
@@ -63,7 +63,7 @@ class InputTabsTest extends TestCase
         $foreignUnit = Unit::factory()->create();
         $foreignFeeder = Feeder::factory()->forUnit($foreignUnit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
             ->post(route('operasi.input.feeder.store'), [
                 'unit_id' => $foreignUnit->id,
                 'month' => 8,
@@ -79,7 +79,7 @@ class InputTabsTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $source = AuxiliarySource::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.input.auxiliary.store'), [
@@ -102,7 +102,7 @@ class InputTabsTest extends TestCase
     public function test_a_fuel_receipt_can_be_registered_and_deleted(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.input.fuel-receipt.store'), [
@@ -129,7 +129,7 @@ class InputTabsTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operasi.input.fuel-receipt.store'), [
                 'unit_id' => $unit->id,
                 'report_date' => '2026-08-04',

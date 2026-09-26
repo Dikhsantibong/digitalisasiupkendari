@@ -54,6 +54,7 @@ class HarSeeder extends Seeder
                     return $eng->id;
                 }
             }
+
             return null;
         };
 
@@ -105,8 +106,6 @@ class HarSeeder extends Seeder
                     'sched_start' => $w['date'],
                     'sched_finish' => $w['date'],
                     'actual_finish' => $w['date'],
-                    'service_cost' => 0,
-                    'material_cost' => 0,
                     'source' => 'manual',
                 ],
             );
@@ -141,8 +140,6 @@ class HarSeeder extends Seeder
                     'sched_start' => $w['start'],
                     'sched_finish' => $w['finish'],
                     'actual_finish' => $w['status'] === 'CLOSE' ? $w['finish'] : null,
-                    'service_cost' => 0,
-                    'material_cost' => 0,
                     'source' => 'manual',
                 ],
             );
@@ -170,8 +167,6 @@ class HarSeeder extends Seeder
                     'report_date' => $w['date'],
                     'sched_start' => $w['date'],
                     'sched_finish' => '2026-08-31',
-                    'service_cost' => 0,
-                    'material_cost' => 0,
                     'source' => 'manual',
                 ],
             );

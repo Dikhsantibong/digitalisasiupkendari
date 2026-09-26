@@ -28,7 +28,7 @@ class FormulirLaporanGangguanTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.formulir.laporan-gangguan.index', ['unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('har/formulir/laporan-gangguan/index'));
@@ -37,7 +37,7 @@ class FormulirLaporanGangguanTest extends TestCase
     public function test_a_report_is_saved_printed_and_deleted(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
         $this->actingAs($user)
             ->post(route('har.formulir.laporan-gangguan.store'), [
@@ -71,7 +71,7 @@ class FormulirLaporanGangguanTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.input.laporan-gangguan.index', ['unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('har/input/laporan-gangguan/index')->where('tabel.key', 'laporan-gangguan'));

@@ -33,6 +33,32 @@
     $woEnji = $rowsForTypes(['ENJI']);
     $waitingShutdown = $rowsForWaiting(['shutdown']);
     $waitingMaterialJasa = $rowsForWaiting(['material', 'jasa']);
+
+    // WO Waiting Shutdown (A16): one block per machine (blank block when none waits).
+    $shutdownBlocks = collect($report['machines'] ?? [])
+        ->mapWithKeys(fn (string $name): array => [$name => []])
+        ->all();
+    foreach ($waitingShutdown as $r) {
+        $shutdownBlocks[$r['engine'] ?? 'Umum'][] = $r;
+    }
+    if ($shutdownBlocks === []) {
+        $shutdownBlocks = ['' => []];
+    }
+
+    // WO Waiting Material dan Jasa (A17): per bidang, one line per material/jasa item.
+    $bidangSheets = [
+        'mekanik' => ['label' => 'Mekanik', 'last' => 'NO STOCKCODE/ NO PART'],
+        'listrik' => ['label' => 'Listrik', 'last' => 'Amount'],
+        'kontrol' => ['label' => 'Kontrol dan Instrumen', 'last' => 'NO STOCKCODE/ AMOUNT'],
+        'sipil' => ['label' => 'Sipil', 'last' => 'NO STOCKCODE/ AMOUNT'],
+    ];
+    $materialLines = collect($waitingMaterialJasa)->flatMap(function (array $r): array {
+        $materials = $r['materials'] ?? [];
+
+        return $materials === []
+            ? [[...$r, 'item' => null, 'code' => null]]
+            : array_map(fn (array $m): array => [...$r, 'item' => $m['description'] ?? null, 'code' => $m['stockcode'] ?? null, 'amount' => $m['amount'] ?? null], $materials);
+    });
     $waitingCount = collect($report['wo_waiting'])->sum(fn ($g): int => count($g['rows']));
     $totalTasks = collect($report['activities'])->sum(fn ($a): int => count($a['tasks']));
 
@@ -72,9 +98,6 @@
     $cmPct = $calcPct($countCm);
     $emPct = $calcPct($countEm);
     $unplannedPct = $cmPct + $emPct;
-
-    $costTotal = (float) ($report['cost']['effective_total'] ?? 0);
-    $costFormatted = 'Rp' . number_format($costTotal, 0, ',', '.');
 
     // Top 5 Equipments
     $equipmentGrouped = $allWos->groupBy(function ($w) {
@@ -239,14 +262,13 @@
         'Maintenance Summary',
         'Isi Laporan',
         'Work Order Summary (Fix)',
-        'Akumulasi Biaya Pemeliharaan',
         'Rekapitulasi Work Order Task',
         'Work Order PM (Preventive Maintenance)',
         'Work Order PdM (Predictive Maintenance)',
         'Work Order CM (Corrective Maintenance)',
-        'Work Order ENJI (Engineering)',
-        'Work Order Waiting Shutdown',
-        'Work Order Waiting Material & Jasa',
+        'WO Rekomendasi Enjiniring',
+        'WO Waiting Shutdown',
+        'WO Waiting Material dan Jasa',
         'Formulir Checklist Prelube Test',
         'Formulir Checklist Hydrotest',
         'Formulir Checklist Timing Injection Pump',
@@ -277,13 +299,16 @@
     </svg>
 
     <div class="har-cover-content">
-        <table style="width: 100%; border-collapse: collapse; border: none; margin-bottom: 20px;">
+        <table class="har-logos-table">
             <tr>
-                <td style="text-align: left; vertical-align: middle; border: none; padding: 0;">
-                    <img src="/logo/sidebar-logo.png" class="har-logo-pln" alt="PLN Nusantara Power" style="height: 52px;">
+                <td class="har-logo-cell-left">
+                    <img src="/logo/sidebar-logo.png" class="har-logo-pln" alt="PLN Nusantara Power">
                 </td>
-                <td style="text-align: right; vertical-align: middle; border: none; padding: 0;">
-                    <img src="/logo/k3.png" alt="K3" style="height: 52px;">
+                <td class="har-logo-divider-cell">
+                    <div class="har-logo-vdiv"></div>
+                </td>
+                <td class="har-logo-cell-right">
+                    <img src="/logo/k3.png" class="har-logo-k3" alt="K3">
                 </td>
             </tr>
         </table>
@@ -546,17 +571,9 @@
         </tr>
     </table>
 
-    {{-- 2. Total Biaya Pemeliharaan --}}
-    <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:2px;">
-        2 . Total biaya pemeliharaan yang dikeluarkan untuk kegiatan pemeliharaan (berdasarkan transaksi pada CMMS) dalam bulan ini sebesar :
-    </div>
-    <div style="margin-left:25px; font-weight:bold; font-size:10.5px; margin-top:2px; margin-bottom:8px;">
-        {{ $costFormatted }}
-    </div>
-
-    {{-- 3. Top 5 Equipment --}}
+    {{-- 2. Top 5 Equipment --}}
     <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        3 . Peralatan yang memiliki kegagalan fungsi terbesar terjadi pada 5 equipment berikut :
+        2 . Peralatan yang memiliki kegagalan fungsi terbesar terjadi pada 5 equipment berikut :
     </div>
     <table style="width:85%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
         <thead>
@@ -581,7 +598,7 @@
 
     {{-- 3. WO Emergency & Urgent --}}
     <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        4 . WO Emergency &amp; Urgent yang terbit pada bulan ini, sebagai berikut :
+        3 . WO Emergency &amp; Urgent yang terbit pada bulan ini, sebagai berikut :
     </div>
     <table style="width:60%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
         <thead>
@@ -608,7 +625,7 @@
 
     {{-- 4. Fault Reporting (Service Request) --}}
     <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        5 . Fault Reporting yang terbit pada bulan ini adalah :
+        4 . Fault Reporting yang terbit pada bulan ini adalah :
     </div>
     <table style="width:75%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
         <thead>
@@ -644,7 +661,7 @@
 
     {{-- 5. Status WO yang perlu ditindaklanjuti --}}
     <div style="font-weight:bold; font-size:10px; margin-top:8px; margin-bottom:4px;">
-        6 . Status WO yang perlu ditindaklanjuti bidang terkait.
+        5 . Status WO yang perlu ditindaklanjuti bidang terkait.
     </div>
     <table style="width:60%; border-collapse:collapse; margin-left:15px; font-size:9.5px; border:none; margin-bottom:10px;">
         <thead>
@@ -673,7 +690,9 @@
 {{-- 4. DAFTAR ISI --}}
 <div class="har-h2 break-before" id="sec-4">4. Daftar Isi</div>
 @php
-    $toc = array_merge([['Cover', 'sec-1']], collect($sections)->map(fn ($t, $i): array => [$t, 'sec-'.($i + 2)])->all());
+    // Section ids are fixed (sec-11 was the removed Akumulasi Biaya), so map titles to ids explicitly.
+    $sectionIds = [...array_map(fn (int $n): string => 'sec-'.$n, [...range(2, 10), ...range(12, 18)])];
+    $toc = array_merge([['Cover', 'sec-1']], collect($sections)->map(fn ($t, $i): array => [$t, $sectionIds[$i] ?? 'sec-'.($i + 3)])->all());
 @endphp
 @foreach($toc as $i => [$tocTitle, $anchor])
     <table class="toc-item"><tr>
@@ -1386,7 +1405,6 @@
                 <th rowspan="2" style="border:1px solid #888; padding:3px; width:180px; text-align:center;">MAINTENANCE TYPE</th>
                 <th colspan="2" style="border:1px solid #888; padding:2px;">RENCANA<br><span style="font-size:7.5px; font-weight:normal;">(Schedul Finish)</span></th>
                 <th colspan="3" style="border:1px solid #888; padding:2px;">REALISASI<br><span style="font-size:7.5px; font-weight:normal;">(Actual Close)</span></th>
-                <th colspan="2" style="border:1px solid #888; padding:2px;">BIAYA PEMELIHARAAN (Rp)</th>
             </tr>
             <tr style="background:#d9e6f2; text-align:center;">
                 <th style="border:1px solid #888; padding:2px; width:45px;">FREQ</th>
@@ -1394,8 +1412,6 @@
                 <th style="border:1px solid #888; padding:2px; width:45px;">FREQ</th>
                 <th style="border:1px solid #888; padding:2px; width:50px;">%</th>
                 <th style="border:1px solid #888; padding:2px; width:80px;">Keterangan</th>
-                <th style="border:1px solid #888; padding:2px; width:80px;">Material</th>
-                <th style="border:1px solid #888; padding:2px; width:80px;">Jasa</th>
             </tr>
         </thead>
         <tbody>
@@ -1408,8 +1424,6 @@
                 <td style="border:1px solid #888; padding:2px; text-align:center;">{{ $tr['realisasi_freq'] > 0 ? $tr['realisasi_freq'] : '' }}</td>
                 <td style="border:1px solid #888; padding:2px; text-align:center;">{{ number_format((float)$tr['realisasi_pct'], 1, ',', '.') }}%</td>
                 <td style="border:1px solid #888; padding:2px 4px; text-align:left;">{{ $tr['keterangan'] ?? '' }}</td>
-                <td style="border:1px solid #888; padding:2px 4px; text-align:center;">{{ $tr['material_cost'] > 0 ? $rupiah($tr['material_cost']) : '-' }}</td>
-                <td style="border:1px solid #888; padding:2px 4px; text-align:center;">{{ $tr['service_cost'] > 0 ? $rupiah($tr['service_cost']) : '-' }}</td>
             </tr>
             @endforeach
             <tr style="font-weight:bold; background:#fafafa;">
@@ -1419,24 +1433,6 @@
                 <td style="border:1px solid #888; padding:3px; text-align:center;">{{ $tasksData['total_realisasi_freq'] ?? 32 }}</td>
                 <td style="border:1px solid #888; padding:3px; text-align:center;">100%</td>
                 <td style="border:1px solid #888; padding:3px;"></td>
-                <td style="border:1px solid #888; padding:3px 4px; text-align:center;">
-                    <table style="width:100%; border-collapse:collapse; border:none; font-size:8px;">
-                        <tr><td style="text-align:left; border:none; padding:0;">Rp</td><td style="text-align:right; border:none; padding:0;">{{ ($tasksData['total_material_cost'] ?? 0) > 0 ? number_format((float)$tasksData['total_material_cost'], 0, ',', '.') : '-' }}</td></tr>
-                    </table>
-                </td>
-                <td style="border:1px solid #888; padding:3px 4px; text-align:center;">
-                    <table style="width:100%; border-collapse:collapse; border:none; font-size:8px;">
-                        <tr><td style="text-align:left; border:none; padding:0;">Rp</td><td style="text-align:right; border:none; padding:0;">{{ ($tasksData['total_service_cost'] ?? 0) > 0 ? number_format((float)$tasksData['total_service_cost'], 0, ',', '.') : '-' }}</td></tr>
-                    </table>
-                </td>
-            </tr>
-            <tr style="font-weight:bold; background:#f0f0f0;">
-                <td colspan="7" style="border:1px solid #888; padding:3px 8px; text-align:left;">Jumlah total biaya pemeliharaan</td>
-                <td colspan="2" style="border:1px solid #888; padding:3px 6px;">
-                    <table style="width:100%; border-collapse:collapse; border:none; font-size:8px;">
-                        <tr><td style="text-align:left; border:none; padding:0; font-weight:bold;">Rp</td><td style="text-align:right; border:none; padding:0; font-weight:bold;">{{ ($tasksData['total_cost'] ?? 0) > 0 ? number_format((float)$tasksData['total_cost'], 0, ',', '.') : '-' }}</td></tr>
-                    </table>
-                </td>
             </tr>
         </tbody>
     </table>
@@ -1588,24 +1584,7 @@
     </tr>
 </table>
 
-{{-- 11. AKUMULASI BIAYA PEMELIHARAAN --}}
-<div class="har-h2 break-before" id="sec-11">11. Akumulasi Biaya Pemeliharaan{!! $num('cost') !!}</div>
-<table class="har-data">
-    <tr><th>Jasa (WO)</th><th>Material (WO)</th><th>Total Otomatis</th><th>Efektif ({{ $report['cost']['source'] }})</th><th>Akumulasi YTD</th></tr>
-    <tr>
-        <td class="r">{{ $rupiah($report['cost']['auto_service']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['auto_material']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['auto_total']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['effective_total']) }}</td>
-        <td class="r">{{ $rupiah($report['cost']['ytd']) }}</td>
-    </tr>
-</table>
-<p class="har-muted">
-    Sumber biaya: {{ $report['cost']['source'] === 'manual' ? 'input manual' : 'akumulasi otomatis dari Work Order' }}.
-    YTD = akumulasi Januari s.d. bulan laporan.
-</p>
-
-{{-- 12. REKAPITULASI WORK ORDER TASK (FMKD-314-10.3.3-A11) --}}
+{{-- 11. REKAPITULASI WORK ORDER TASK (FMKD-314-10.3.3-A11) --}}
 @php
     $rekapTask = $report['rekap_task_wo'] ?? [];
 @endphp
@@ -1981,17 +1960,140 @@
     @endif
 </div>
 
-{{-- 16. WO ENJI (tabel lengkap) --}}
-<div class="har-h2 break-before" id="sec-16">15. Work Order ENJI (Engineering)</div>
-@include('har.laporan.partials.wo-table', ['rows' => $woEnji])
+{{-- 16. WO REKOMENDASI ENJINIRING (FMKD-314-10.3.3-A15) --}}
+<div class="break-before" id="sec-16">
+    @include('har.laporan.partials.wo-kop', ['title' => 'WO REKOMENDASI ENJINIRING', 'number' => $numbers['wo_enji'] ?? 'FMKD-314-10.3.3-A15', 'revision' => $data['document']['revision'] ?? '01', 'date' => $periodEndDate])
 
-{{-- 17. WO WAITING SHUTDOWN --}}
-<div class="har-h2 break-before" id="sec-17">16. Work Order Waiting Shutdown</div>
-@include('har.laporan.partials.waiting-table', ['rows' => $waitingShutdown])
+    <div style="font-weight:bold; font-size:9.5px; margin-top:8px; margin-bottom:4px; color:#000;">WO REKOMENDASI ENJINIRING YANG TERBIT BULAN INI</div>
 
-{{-- 18. WO WAITING MATERIAL & JASA --}}
-<div class="har-h2 break-before" id="sec-18">17. Work Order Waiting Material &amp; Jasa</div>
-@include('har.laporan.partials.waiting-table', ['rows' => $waitingMaterialJasa])
+    <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:8px; margin-bottom:8px;">
+        <thead>
+            <tr style="font-weight:bold; text-align:center;">
+                <th style="width:30px; border:1px solid #000; padding:4px 2px;">NO</th>
+                <th style="width:65px; border:1px solid #000; padding:4px 2px;">WONUM</th>
+                <th style="border:1px solid #000; padding:4px 6px;">DESCRIPTION</th>
+                <th style="width:70px; border:1px solid #000; padding:4px 2px;">REPORT DATE</th>
+                <th style="width:65px; border:1px solid #000; padding:4px 2px;">SCHED START</th>
+                <th style="width:65px; border:1px solid #000; padding:4px 2px;">SCHED FINISH</th>
+                <th style="width:55px; border:1px solid #000; padding:4px 2px;">STATUS</th>
+                <th style="width:65px; border:1px solid #000; padding:4px 2px;">WORK GROUP</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(range(0, max(8, count($woEnji)) - 1) as $idx)
+                @php $r = $woEnji[$idx] ?? null; @endphp
+                <tr>
+                    <td style="border:1px solid #000; text-align:center; padding:2px; height:14px;">{{ $idx + 1 }}</td>
+                    <td style="border:1px solid #000; text-align:center; padding:2px; font-weight:bold;">{{ $r['wonum'] ?? '' }}</td>
+                    <td style="border:1px solid #000; text-align:left; padding:2px 5px;">{{ $r['description'] ?? '' }}</td>
+                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['report_date'] ?? '' }}</td>
+                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_start'] ?? '' }}</td>
+                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['sched_finish'] ?? '' }}</td>
+                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['status'] ?? '' }}</td>
+                    <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['work_group'] ?? '' }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+    @include('har.laporan.partials.wo-keterangan')
+</div>
+
+{{-- 17. WO WAITING SHUTDOWN (FMKD-314-10.3.3-A16) — one block per machine --}}
+<div class="break-before" id="sec-17">
+    @include('har.laporan.partials.wo-kop', ['title' => 'WO WAITING SHUTDOWN', 'number' => $numbers['wo_waiting_shutdown'] ?? 'FMKD-314-10.3.3-A16', 'revision' => $data['document']['revision'] ?? '01', 'date' => $periodEndDate])
+
+    @foreach($shutdownBlocks as $machineName => $blockRows)
+        @if($machineName !== '')
+            <div style="font-weight:bold; font-size:8.5px; margin:8px 0 2px;">MESIN: {{ strtoupper($machineName) }}</div>
+        @endif
+        <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:7.5px; margin-bottom:8px;">
+            <thead>
+                <tr style="font-weight:bold; text-align:center;">
+                    <th style="width:24px; border:1px solid #000; padding:3px 2px;">NO</th>
+                    <th style="width:55px; border:1px solid #000; padding:3px 2px;">WONUM</th>
+                    <th style="border:1px solid #000; padding:3px 4px;">DESCRIPTION</th>
+                    <th style="width:58px; border:1px solid #000; padding:3px 2px;">REPORT DATE</th>
+                    <th style="width:70px; border:1px solid #000; padding:3px 2px;">ASSETNUM</th>
+                    <th style="width:52px; border:1px solid #000; padding:3px 2px;">OWNER GROUP</th>
+                    <th style="width:44px; border:1px solid #000; padding:3px 2px;">STATUS</th>
+                    <th style="width:40px; border:1px solid #000; padding:3px 2px;">WORK TYPE</th>
+                    <th style="width:62px; border:1px solid #000; padding:3px 2px;">WOPRIOR TEXT</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(range(0, max(2, count($blockRows)) - 1) as $idx)
+                    @php $r = $blockRows[$idx] ?? null; @endphp
+                    <tr>
+                        <td style="border:1px solid #000; text-align:center; padding:2px; height:12px;">{{ $r ? $idx + 1 : '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px; font-weight:bold;">{{ $r['wonum'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:left; padding:2px 4px;">{{ $r['description'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['report_date'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['assetnum'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['owner_group'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['status'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['work_type'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['priority_text'] ?? '' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endforeach
+
+    @include('har.laporan.partials.wo-keterangan')
+</div>
+
+{{-- 18. WO WAITING MATERIAL DAN JASA (FMKD-314-10.3.3-A17) — per bidang, satu baris per item material/jasa --}}
+<div class="break-before" id="sec-18">
+    @include('har.laporan.partials.wo-kop', ['title' => 'WO WAITING MATERIAL DAN JASA', 'number' => $numbers['wo_waiting_material'] ?? 'FMKD-314-10.3.3-A17', 'revision' => $data['document']['revision'] ?? '01', 'date' => $periodEndDate])
+
+    @foreach($bidangSheets as $bidangKey => $bidang)
+        @php $lines = $materialLines->where('bidang', $bidangKey)->values(); @endphp
+        <div style="font-weight:bold; font-size:8.5px; margin:8px 0 3px;">WO yang masih menunggu kebutuhan material dan jasa yang disechedulekan Bidang {{ $bidang['label'] }}</div>
+        <table style="width:100%; border-collapse:collapse; border:1px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; font-size:7px; margin-bottom:6px;">
+            <thead>
+                <tr style="font-weight:bold; text-align:center;">
+                    <th style="width:20px; border:1px solid #000; padding:3px 1px;">NO</th>
+                    <th style="width:44px; border:1px solid #000; padding:3px 1px;">WONUM</th>
+                    <th style="border:1px solid #000; padding:3px 3px;">DESCRIPTION</th>
+                    <th style="width:78px; border:1px solid #000; padding:3px 1px;">ASSETNUM</th>
+                    <th style="width:36px; border:1px solid #000; padding:3px 1px;">STATUS</th>
+                    <th style="width:36px; border:1px solid #000; padding:3px 1px;">WORKTYPE</th>
+                    <th style="width:44px; border:1px solid #000; padding:3px 1px;">PERSON GROUP</th>
+                    <th style="width:44px; border:1px solid #000; padding:3px 1px;">OWNER GROUP</th>
+                    <th style="width:64px; border:1px solid #000; padding:3px 1px;">DESCRIPTION</th>
+                    <th style="width:48px; border:1px solid #000; padding:3px 1px;">{{ $bidang['last'] }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach(range(0, max(2, $lines->count()) - 1) as $idx)
+                    @php
+                        $r = $lines[$idx] ?? null;
+                        $last = match ($bidangKey) {
+                            'mekanik' => $r['code'] ?? '',
+                            'listrik' => $r['amount'] ?? '',
+                            default => collect([$r['code'] ?? null, $r['amount'] ?? null])->filter()->implode(' / '),
+                        };
+                    @endphp
+                    <tr>
+                        <td style="border:1px solid #000; text-align:center; padding:2px; height:11px;">{{ $idx + 1 }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['wonum'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:left; padding:2px 3px;">{{ $r['description'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['assetnum'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['status'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['work_type'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['work_group'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['owner_group'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $r['item'] ?? '' }}</td>
+                        <td style="border:1px solid #000; text-align:center; padding:2px;">{{ $last }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endforeach
+
+    @include('har.laporan.partials.wo-keterangan')
+</div>
 
 {{-- 18. FORMULIR PEMELIHARAAN (13 FORMULIR PER MESIN) --}}
 @php

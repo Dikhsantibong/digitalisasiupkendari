@@ -25,7 +25,7 @@ class MetodePengujianPeralatanTest extends TestCase
     public function test_authorized_user_can_view_metode_pengujian_page(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $response = $this->actingAs($user)->get(route('k3.formulir.metode-pengujian.index', [
             'unit_id' => $unit->id,
@@ -48,7 +48,7 @@ class MetodePengujianPeralatanTest extends TestCase
     public function test_authorized_user_can_save_metode_pengujian_data(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $payload = [
             'unit_id' => $unit->id,
@@ -145,7 +145,7 @@ class MetodePengujianPeralatanTest extends TestCase
     public function test_page_includes_document_settings_with_default_signers(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
         $teamLeader = Employee::factory()->forUnit($unit)->create([
             'name' => 'Budi TL K3',
             'position' => EmployeePosition::TeamLeaderK3->value,
@@ -175,7 +175,7 @@ class MetodePengujianPeralatanTest extends TestCase
     public function test_saving_document_settings_persists_meta_and_html_mode(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.formulir.metode-pengujian.store'), [
             'unit_id' => $unit->id,
@@ -217,7 +217,7 @@ class MetodePengujianPeralatanTest extends TestCase
     public function test_switching_back_to_form_mode_clears_edited_html(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
         $payload = [
             'unit_id' => $unit->id,
             'month' => 9,
@@ -236,7 +236,7 @@ class MetodePengujianPeralatanTest extends TestCase
     public function test_invalid_document_settings_are_rejected(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.formulir.metode-pengujian.store'), [
             'unit_id' => $unit->id,
@@ -252,7 +252,7 @@ class MetodePengujianPeralatanTest extends TestCase
     public function test_pdf_is_rendered_inline_and_as_download(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
         $params = ['unit_id' => $unit->id, 'month' => 9, 'year' => 2026, 'page_margin_top' => 20];
 
         $inline = $this->actingAs($user)->get(route('k3.formulir.metode-pengujian.pdf', $params));

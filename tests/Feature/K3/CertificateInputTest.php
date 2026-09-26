@@ -33,7 +33,7 @@ class CertificateInputTest extends TestCase
         $unit = Unit::factory()->create();
         EquipmentCertificate::factory()->forUnit($unit)->count(2)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.certificate.index', ['unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -47,7 +47,7 @@ class CertificateInputTest extends TestCase
         $unit = Unit::factory()->create();
         $category = EquipmentCategory::factory()->create(['code' => 'CRANE']);
         EquipmentCertificate::factory()->forUnit($unit)->create(['jenis' => 'Lama']);
-        $user = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.certificate.store'), [
             'unit_id' => $unit->id,
@@ -73,7 +73,7 @@ class CertificateInputTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.certificate.store'), ['unit_id' => $foreignUnit->id, 'rows' => []])
             ->assertForbidden();
     }

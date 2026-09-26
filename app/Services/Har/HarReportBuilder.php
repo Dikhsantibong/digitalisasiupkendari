@@ -30,7 +30,6 @@ use App\Models\Holiday;
 use App\Models\Machine;
 use App\Models\MaintenanceActivity;
 use App\Models\MaintenanceAttachment;
-use App\Models\MaintenanceCost;
 use App\Models\MaintenanceSchedule;
 use App\Models\ReportPeriod;
 use App\Models\ServiceRequest;
@@ -72,7 +71,6 @@ class HarReportBuilder
             'rekap_task_wo' => $this->rekapTaskWo($workOrders),
             'wo_by_type' => $this->woByType($workOrders),
             'wo_waiting' => $this->woWaiting($workOrders),
-            'cost' => $this->cost($unit->id, $month, $year),
             'schedules' => $this->schedules($unit->id, $month, $year),
             'activities' => $this->activities($unit->id, $month, $year),
             'attachments' => $this->attachments($unit->id, $month, $year),
@@ -157,15 +155,16 @@ class HarReportBuilder
                     'description' => $wo->description,
                     'type' => $wo->maintenanceType?->code,
                     'engine' => $wo->engine?->name,
+                    'assetnum' => $wo->assetnum,
                     'work_group' => $wo->workGroup?->code,
+                    'owner_group' => $wo->owner_group,
                     'status' => $wo->status?->code,
                     'cycle' => $wo->cycle?->code,
                     'report_date' => $wo->report_date?->format('Y-m-d'),
                     'sched_start' => $wo->sched_start?->format('Y-m-d'),
                     'sched_finish' => $wo->sched_finish?->format('Y-m-d'),
                     'waiting' => $wo->waiting_reason?->label(),
-                    'service_cost' => (float) $wo->service_cost,
-                    'material_cost' => (float) $wo->material_cost,
+                    'priority_text' => $wo->priority_text,
                 ])->values()->all(),
             ])->values()->all();
     }
@@ -188,8 +187,32 @@ class HarReportBuilder
                     'engine' => $wo->engine?->name,
                     'report_date' => $wo->report_date?->format('Y-m-d'),
                     'work_group' => $wo->workGroup?->code,
+                    'assetnum' => $wo->assetnum,
+                    'owner_group' => $wo->owner_group ?: $wo->workGroup?->code,
+                    'work_type' => $wo->maintenanceType?->code,
+                    'priority_text' => $wo->priority_text,
+                    'bidang' => $this->bidang($wo),
+                    'materials' => $wo->materials ?? [],
                 ])->values()->all(),
             ])->values()->all();
+    }
+
+    /**
+     * The bidang (discipline) of a waiting WO for the WO Waiting Material &
+     * Jasa sheet, from its work group (person group) code or name.
+     *
+     * @return 'mekanik'|'listrik'|'kontrol'|'sipil'
+     */
+    private function bidang(WorkOrder $wo): string
+    {
+        $group = strtoupper(($wo->workGroup?->code ?? '').' '.($wo->workGroup?->name ?? ''));
+
+        return match (true) {
+            str_contains($group, 'ELEC') || str_contains($group, 'LISTRIK') => 'listrik',
+            str_contains($group, 'INST') || str_contains($group, 'I&C') || str_contains($group, 'KONTROL') => 'kontrol',
+            str_contains($group, 'CIV') || str_contains($group, 'SIPIL') => 'sipil',
+            default => 'mekanik',
+        };
     }
 
     /**
@@ -302,65 +325,6 @@ class HarReportBuilder
     {
         return ReportPeriod::query()
             ->where('unit_id', $unitId)->where('month', $month)->where('year', $year)->value('id');
-    }
-
-    /**
-     * @return array{auto_service: float, auto_material: float, auto_total: float, effective_total: float, source: string, ytd: float}
-     */
-    private function cost(int $unitId, int $month, int $year): array
-    {
-        [$service, $material] = $this->autoCost($unitId, $month, $year);
-        $manual = MaintenanceCost::query()
-            ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)->first();
-
-        $useManual = $manual !== null && $manual->use_manual;
-        $effective = $useManual
-            ? (float) ($manual->service_cost ?? 0) + (float) ($manual->material_cost ?? 0)
-            : $service + $material;
-
-        return [
-            'auto_service' => $service,
-            'auto_material' => $material,
-            'auto_total' => $service + $material,
-            'effective_total' => round($effective, 2),
-            'source' => $useManual ? 'manual' : 'auto',
-            'ytd' => $this->yearToDate($unitId, $month, $year),
-        ];
-    }
-
-    /**
-     * @return array{0: float, 1: float}
-     */
-    private function autoCost(int $unitId, int $month, int $year): array
-    {
-        $periodId = ReportPeriod::query()
-            ->where('unit_id', $unitId)->where('month', $month)->where('year', $year)->value('id');
-
-        if ($periodId === null) {
-            return [0.0, 0.0];
-        }
-
-        $query = WorkOrder::query()->where('unit_id', $unitId)->where('report_period_id', $periodId);
-
-        return [(float) (clone $query)->sum('service_cost'), (float) (clone $query)->sum('material_cost')];
-    }
-
-    private function yearToDate(int $unitId, int $month, int $year): float
-    {
-        $total = 0.0;
-        for ($m = 1; $m <= $month; $m++) {
-            $manual = MaintenanceCost::query()
-                ->where('unit_id', $unitId)->where('year', $year)->where('month', $m)->first();
-
-            if ($manual !== null && $manual->use_manual) {
-                $total += (float) ($manual->service_cost ?? 0) + (float) ($manual->material_cost ?? 0);
-            } else {
-                [$s, $mat] = $this->autoCost($unitId, $m, $year);
-                $total += $s + $mat;
-            }
-        }
-
-        return round($total, 2);
     }
 
     /**
@@ -521,8 +485,6 @@ class HarReportBuilder
         $totalRealisasi = $closedWos->count();
 
         $rows = [];
-        $totalMat = 0.0;
-        $totalSvc = 0.0;
 
         foreach ($definitions as $no => $d) {
             $codesUpper = array_map('strtoupper', $d['codes']);
@@ -535,12 +497,6 @@ class HarReportBuilder
             $aFreq = $closedForType->count();
             $aPct = $totalRealisasi > 0 ? round(($aFreq / $totalRealisasi) * 100, 1) : 0.0;
 
-            $matCost = (float) $closedForType->sum('material_cost');
-            $svcCost = (float) $closedForType->sum('service_cost');
-
-            $totalMat += $matCost;
-            $totalSvc += $svcCost;
-
             $rows[] = [
                 'no' => $no,
                 'name' => $d['name'],
@@ -550,8 +506,6 @@ class HarReportBuilder
                 'realisasi_freq' => $aFreq,
                 'realisasi_pct' => $aPct,
                 'keterangan' => '',
-                'material_cost' => $matCost,
-                'service_cost' => $svcCost,
             ];
         }
 
@@ -572,9 +526,6 @@ class HarReportBuilder
             'total_rencana_pct' => $totalRencana > 0 ? 100.0 : 0.0,
             'total_realisasi_freq' => $totalRealisasi,
             'total_realisasi_pct' => $totalRealisasi > 0 ? 100.0 : 0.0,
-            'total_material_cost' => $totalMat,
-            'total_service_cost' => $totalSvc,
-            'total_cost' => $totalMat + $totalSvc,
             'mix' => $mix,
         ];
     }

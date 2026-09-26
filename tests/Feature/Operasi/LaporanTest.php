@@ -40,7 +40,7 @@ class LaporanTest extends TestCase
         $unit = Unit::factory()->create();
         Machine::factory()->forUnit($unit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.index', ['unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -61,7 +61,7 @@ class LaporanTest extends TestCase
             'kwh_produksi_stand_akhir' => 100,
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.show', [
                 'report' => self::REPORT,
                 'unit_id' => $unit->id,
@@ -85,7 +85,7 @@ class LaporanTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.spreadsheet', [
                 'report' => self::REPORT,
                 'unit_id' => $unit->id,
@@ -107,7 +107,7 @@ class LaporanTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.document.edit', [
                 'report' => self::REPORT,
                 'unit_id' => $unit->id,
@@ -132,7 +132,7 @@ class LaporanTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
-        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
 
         $this->actingAs($user)
             ->post(route('operasi.laporan.document.store', ['report' => self::REPORT]), [
@@ -165,7 +165,7 @@ class LaporanTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.document.pdf', [
                 'report' => self::REPORT, 'unit_id' => $unit->id, 'engine_id' => $engine->id,
                 'month' => 8, 'year' => 2026,
@@ -180,7 +180,7 @@ class LaporanTest extends TestCase
         $foreignUnit = Unit::factory()->create();
         $foreignEngine = Machine::factory()->forUnit($foreignUnit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
             ->get(route('operasi.laporan.document.edit', [
                 'report' => self::REPORT, 'unit_id' => $foreignUnit->id, 'engine_id' => $foreignEngine->id,
                 'month' => 8, 'year' => 2026,
@@ -192,7 +192,7 @@ class LaporanTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operasi.laporan.show', [
                 'report' => 'tidak-ada',
                 'unit_id' => $unit->id,
@@ -206,7 +206,7 @@ class LaporanTest extends TestCase
         $foreignUnit = Unit::factory()->create();
         $foreignEngine = Machine::factory()->forUnit($foreignUnit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
             ->get(route('operasi.laporan.show', [
                 'report' => self::REPORT,
                 'unit_id' => $foreignUnit->id,

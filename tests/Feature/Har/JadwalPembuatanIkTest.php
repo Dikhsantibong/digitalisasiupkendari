@@ -45,7 +45,7 @@ class JadwalPembuatanIkTest extends TestCase
         $unit1 = Unit::factory()->create(['name' => 'Unit 1', 'is_active' => true]);
         $unit2 = Unit::factory()->create(['name' => 'Unit 2', 'is_active' => true]);
 
-        $user = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit1);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit1);
 
         // Accessing unit1 succeeds
         $response = $this->actingAs($user)->get(route('har.jadwal.pembuatan-ik.index', [

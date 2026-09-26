@@ -37,7 +37,7 @@ class UnitScopingTest extends TestCase
         $this->poasia = Unit::query()->where('code', 'PLTD-POASIA')->firstOrFail();
 
         $this->tlBauBau = User::factory()->create();
-        $this->tlBauBau->assignRole(RoleName::TeamLeaderOperasi, $this->bauBau);
+        $this->tlBauBau->assignRole(RoleName::KoordinatorOperasi, $this->bauBau);
         $this->tlBauBau = $this->tlBauBau->fresh();
     }
 

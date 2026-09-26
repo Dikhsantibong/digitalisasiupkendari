@@ -43,11 +43,11 @@ class LaporanTest extends TestCase
 
         WorkOrder::factory()->forUnit($unit)->create([
             'report_period_id' => $period->id, 'maintenance_type_id' => $pm, 'wo_status_id' => $close,
-            'service_cost' => 100, 'material_cost' => 200, 'waiting_reason' => null,
+            'waiting_reason' => null,
         ]);
         WorkOrder::factory()->forUnit($unit)->create([
             'report_period_id' => $period->id, 'maintenance_type_id' => $pm, 'wo_status_id' => $appr,
-            'service_cost' => null, 'material_cost' => null, 'waiting_reason' => 'material',
+            'waiting_reason' => 'material',
         ]);
         ServiceRequest::factory()->forUnit($unit)->create(['report_period_id' => $period->id]);
     }
@@ -63,7 +63,7 @@ class LaporanTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.laporan.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -76,7 +76,7 @@ class LaporanTest extends TestCase
         $unit = Unit::factory()->create();
         $this->seedReportData($unit);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.laporan.monthly', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -85,7 +85,7 @@ class LaporanTest extends TestCase
                 ->where('data.wo_summary.complete', 1)
                 ->where('data.wo_summary.percent', 50)
                 ->where('data.sr_summary.total', 1)
-                ->where('data.cost.auto_total', 300)
+                ->missing('data.cost')
                 ->has('data.wo_by_type', 1)
                 ->has('data.wo_waiting', 1)
                 ->has('data.rekap_task_wo.categories', 6)
@@ -124,7 +124,7 @@ class LaporanTest extends TestCase
             'title' => 'Foto pekerjaan', 'photo_path' => 'har-attachments/foto.jpg', 'caption' => 'Sesudah',
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.laporan.monthly', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -144,7 +144,7 @@ class LaporanTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $ownUnit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $ownUnit))
             ->get(route('har.laporan.monthly', ['unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026]))
             ->assertForbidden();
     }

@@ -61,7 +61,7 @@ class AbsensiTest extends TestCase
 
     public function test_a_role_without_absensi_permission_is_forbidden(): void
     {
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create()))
             ->get(route('operator.absensi.index'))
             ->assertForbidden();
     }

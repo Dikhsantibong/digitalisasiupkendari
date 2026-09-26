@@ -165,12 +165,12 @@ class LogsheetTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = $this->engineForUnit($unit);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('can_write', false));
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
             ->post(route('operator.logsheet.store'), [
                 'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10', 'time_slot' => '01:00', 'values' => [],
             ])
