@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarTabelRow;
 use App\Models\Unit;
@@ -31,13 +32,15 @@ use Inertia\Response;
  */
 class TabelController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request, string $tabel): Response
     {
         $definition = $this->definition($tabel);
         $user = $request->user();
-        $this->authorizeView($user);
+        $this->authorizeView($user, $definition);
         [$units, $unit, $month, $year] = $this->target($request);
         $rows = $this->rows($definition, $unit, $month, $year);
 
@@ -58,7 +61,7 @@ class TabelController extends Controller
                 'pdf' => route("har.input.{$definition->key()}.pdf"),
             ],
             'has_saved' => $rows !== [],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, $definition->fieldPermission()),
         ]);
     }
 
@@ -66,7 +69,7 @@ class TabelController extends Controller
     {
         $definition = $this->definition($tabel);
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, $definition->fieldPermission()), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -107,7 +110,7 @@ class TabelController extends Controller
     public function pdf(Request $request, string $tabel): HttpResponse
     {
         $definition = $this->definition($tabel);
-        $this->authorizeView($request->user());
+        $this->authorizeView($request->user(), $definition);
         [, $unit, $month, $year] = $this->target($request);
         [$view, $data] = $this->pdfView($definition, $unit, $month, $year);
 
@@ -144,9 +147,9 @@ class TabelController extends Controller
         return HarTabels::find($key) ?? abort(404);
     }
 
-    private function authorizeView(User $user): void
+    private function authorizeView(User $user, HarTabel $definition): void
     {
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless(($this->allowsFieldInput($user, PermissionName::HarInputView, $definition->fieldPermission()) || $user->hasPermissionTo(PermissionName::HarLaporanView)), 403);
     }
 
     /**

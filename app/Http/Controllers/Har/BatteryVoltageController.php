@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarBatteryVoltage;
 use App\Models\Machine;
@@ -20,6 +21,8 @@ use Inertia\Response as InertiaResponse;
 
 class BatteryVoltageController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly HarBatteryVoltagePdfBuilder $pdfBuilder,
         private readonly ActivityLogger $activityLogger,
@@ -29,7 +32,7 @@ class BatteryVoltageController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganBatteryVoltage) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -137,14 +140,14 @@ class BatteryVoltageController extends Controller
             ]),
             'sample_scan_cells_24v' => HarBatteryVoltagePdfBuilder::sampleScanCells24v(),
             'sample_scan_cells_110v' => HarBatteryVoltagePdfBuilder::sampleScanCells110v(),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganBatteryVoltage),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganBatteryVoltage), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -225,7 +228,7 @@ class BatteryVoltageController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganBatteryVoltage) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -310,7 +313,7 @@ class BatteryVoltageController extends Controller
     public function destroy(Request $request, HarBatteryVoltage $record): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganBatteryVoltage), 403);
         abort_unless($user->canAccessUnit($record->unit_id), 403);
 
         $unitName = $record->unit?->name;

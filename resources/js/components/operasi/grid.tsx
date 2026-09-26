@@ -1,8 +1,10 @@
-import { useMemo, useRef   } from 'react';
-import type {ClipboardEvent, Key} from 'react';
+import { useMemo, useRef } from 'react';
+import type { ClipboardEvent, Key } from 'react';
 import DataGrid from 'react-data-grid';
 import type { ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
+import { MobileGridForm } from '@/components/mobile/grid-form';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 
 /** Excel-like styling shared by every operasi date-row grid. */
 export const OPERASI_GRID_STYLES = `
@@ -154,7 +156,8 @@ export function useExcelPaste<R extends Record<string, unknown>>({
 
 /**
  * A themed wrapper around react-data-grid used by the operasi input tabs, so
- * every date-row grid renders identically. Excel paste is wired in.
+ * every date-row grid renders identically. Excel paste is wired in. On a phone
+ * it renders {@link MobileGridForm} (a per-date form) instead of the grid.
  */
 export function OperasiGrid<R extends Record<string, unknown>>({
     columns,
@@ -174,6 +177,19 @@ export function OperasiGrid<R extends Record<string, unknown>>({
         rows,
         onChange: onRowsChange,
     });
+    const compact = useCompactLayout();
+
+    // Phone: the same rows as a per-date form instead of the grid.
+    if (compact) {
+        return (
+            <MobileGridForm
+                columns={columns}
+                rows={rows}
+                onRowsChange={onRowsChange}
+                rowKey={rowKey}
+            />
+        );
+    }
 
     return (
         <div

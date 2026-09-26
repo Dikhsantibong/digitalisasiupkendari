@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\MaintenanceAttachment;
@@ -25,12 +26,14 @@ use Inertia\Response;
  */
 class AttachmentController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganAttachment), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -67,14 +70,14 @@ class AttachmentController extends Controller
                 'machines' => Machine::query()->where('unit_id', $unit->id)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'work_orders' => $period === null ? [] : WorkOrder::query()->where('unit_id', $unit->id)->where('report_period_id', $period->id)->orderBy('wonum')->get(['id', 'wonum']),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganAttachment),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganAttachment), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -129,7 +132,7 @@ class AttachmentController extends Controller
     public function destroy(Request $request, MaintenanceAttachment $attachment): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganAttachment), 403);
         abort_unless($user->canAccessUnit($attachment->unit_id), 403);
 
         Storage::disk('public')->delete($attachment->photo_path);

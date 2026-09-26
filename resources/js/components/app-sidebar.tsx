@@ -47,6 +47,8 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { usePermissions } from '@/hooks/use-permissions';
+import { FIELD_MENUS } from '@/layouts/mobile/modules';
+import { MOBILE_MENU_GROUPS } from '@/layouts/mobile/types';
 import { dashboard } from '@/routes';
 import activityLogs from '@/routes/admin/activity-logs';
 import attendanceLocations from '@/routes/admin/attendance-locations';
@@ -154,6 +156,18 @@ export function AppSidebar() {
                 },
             ].filter(Boolean) as NavGroup['items'],
         },
+        // Module pages opened to field staff (operators: Input Operasi,
+        // Harmes / Harlist: Input & Formulir Pemeliharaan), one group per
+        // section; roles with the full module input already reach them under
+        // their own module.
+        ...MOBILE_MENU_GROUPS.filter((section) => section.key !== 'umum').map((section) => ({
+            label: section.label,
+            items: FIELD_MENUS.filter((menu) => menu.group === section.key && can(menu.permission) && !can(menu.coveredBy ?? '')).map((menu) => ({
+                title: menu.title,
+                href: menu.href,
+                icon: menu.icon,
+            })),
+        })),
         {
             label: 'Operasi',
             items: [

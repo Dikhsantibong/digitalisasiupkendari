@@ -29,7 +29,7 @@ class InputTabsTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
             ->get(route('operasi.input.feeder.index'))
             ->assertForbidden();
     }

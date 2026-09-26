@@ -3,6 +3,7 @@
 use App\Http\Controllers\Operasi\AuxiliaryReadingController;
 use App\Http\Controllers\Operasi\BeritaAcaraController;
 use App\Http\Controllers\Operasi\BlackstartController;
+use App\Http\Controllers\Operasi\ChecklistCommissioningMesinController;
 use App\Http\Controllers\Operasi\DailyReportController;
 use App\Http\Controllers\Operasi\DataTeknisController;
 use App\Http\Controllers\Operasi\DocumentTemplateController;
@@ -15,17 +16,21 @@ use App\Http\Controllers\Operasi\InventarisController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestPeralatanController;
 use App\Http\Controllers\Operasi\JadwalController;
+use App\Http\Controllers\Operasi\JadwalPerformanceTestController;
 use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\LaporanController;
 use App\Http\Controllers\Operasi\LaporanDocumentController;
 use App\Http\Controllers\Operasi\MasterController;
 use App\Http\Controllers\Operasi\MaterialPeralatanController;
 use App\Http\Controllers\Operasi\MeetingShiftController;
+use App\Http\Controllers\Operasi\PatrolCheckMesinController;
 use App\Http\Controllers\Operasi\PembuatanIkController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
+use App\Http\Controllers\Operasi\Program5s5rInputController;
 use App\Http\Controllers\Operasi\ResourcePembangkitController;
 use App\Http\Controllers\Operasi\StarStopController;
+use App\Http\Controllers\Operasi\UnsafeConditionController;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -65,6 +70,9 @@ Route::middleware(['auth', 'verified'])
         Route::get('jadwal/commissioning-test-peralatan', [JadwalCommissioningTestPeralatanController::class, 'index'])->name('jadwal.commissioning-test-peralatan.index');
         Route::post('jadwal/commissioning-test-peralatan', [JadwalCommissioningTestPeralatanController::class, 'store'])->name('jadwal.commissioning-test-peralatan.store');
         Route::get('jadwal/commissioning-test-peralatan/pdf', [JadwalCommissioningTestPeralatanController::class, 'pdf'])->name('jadwal.commissioning-test-peralatan.pdf');
+        Route::get('jadwal/performance-test', [JadwalPerformanceTestController::class, 'index'])->name('jadwal.performance-test.index');
+        Route::post('jadwal/performance-test', [JadwalPerformanceTestController::class, 'store'])->name('jadwal.performance-test.store');
+        Route::get('jadwal/performance-test/pdf', [JadwalPerformanceTestController::class, 'pdf'])->name('jadwal.performance-test.pdf');
         Route::get('input', [InputHubController::class, 'index'])->name('input.index');
 
         Route::get('input/laporan-harian', [DailyReportController::class, 'index'])
@@ -132,6 +140,38 @@ Route::middleware(['auth', 'verified'])
             ->name('input.flm-monitoring.store');
         Route::get('input/monitoring-flm/pdf', [FlmMonitoringController::class, 'pdf'])
             ->name('input.flm-monitoring.pdf');
+
+        Route::get('input/patrol-check-mesin', [PatrolCheckMesinController::class, 'index'])
+            ->name('input.patrol-check-mesin.index');
+        Route::post('input/patrol-check-mesin', [PatrolCheckMesinController::class, 'store'])
+            ->name('input.patrol-check-mesin.store');
+        Route::get('input/patrol-check-mesin/pdf', [PatrolCheckMesinController::class, 'pdf'])
+            ->name('input.patrol-check-mesin.pdf');
+
+        Route::get('input/checklist-commissioning-mesin', [ChecklistCommissioningMesinController::class, 'index'])
+            ->name('input.checklist-commissioning-mesin.index');
+        Route::post('input/checklist-commissioning-mesin', [ChecklistCommissioningMesinController::class, 'store'])
+            ->name('input.checklist-commissioning-mesin.store');
+        Route::get('input/checklist-commissioning-mesin/pdf', [ChecklistCommissioningMesinController::class, 'pdf'])
+            ->name('input.checklist-commissioning-mesin.pdf');
+
+        Route::get('input/unsafe-condition', [UnsafeConditionController::class, 'index'])
+            ->name('input.unsafe-condition.index');
+        Route::post('input/unsafe-condition', [UnsafeConditionController::class, 'store'])
+            ->name('input.unsafe-condition.store');
+        Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])
+            ->name('input.unsafe-condition.update');
+        Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])
+            ->name('input.unsafe-condition.destroy');
+        Route::get('input/unsafe-condition/pdf', [UnsafeConditionController::class, 'pdf'])
+            ->name('input.unsafe-condition.pdf');
+
+        Route::get('input/program-5s5r', [Program5s5rInputController::class, 'index'])
+            ->name('input.program-5s5r.index');
+        Route::post('input/program-5s5r', [Program5s5rInputController::class, 'store'])
+            ->name('input.program-5s5r.store');
+        Route::get('input/program-5s5r/pdf', [Program5s5rInputController::class, 'pdf'])
+            ->name('input.program-5s5r.pdf');
 
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
         Route::get('laporan/{report}/excel', [LaporanController::class, 'spreadsheet'])->name('laporan.spreadsheet');

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operasi\StarStopStoreRequest;
 use App\Models\EngineStatusLog;
@@ -25,6 +26,8 @@ use Inertia\Response;
  */
 class StarStopController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly ActivityLogger $activityLogger,
         private readonly OperasiCalculator $calculator,
@@ -33,7 +36,7 @@ class StarStopController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganStarStop), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -60,7 +63,7 @@ class StarStopController extends Controller
             ->orderBy('start_datetime')
             ->get();
 
-        return Inertia::render('operasi/input/star-stop', [
+        return Inertia::render('operasi/input/star-stop/index', [
             'filters' => [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine?->id,
@@ -93,14 +96,14 @@ class StarStopController extends Controller
                     ->all(),
                 'years' => range($year - 2, $year + 1),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganStarStop),
         ]);
     }
 
     public function store(StarStopStoreRequest $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganStarStop), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -145,7 +148,7 @@ class StarStopController extends Controller
     public function destroy(Request $request, EngineStatusLog $engineStatusLog): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganStarStop), 403);
         abort_unless($user->canAccessUnit($engineStatusLog->unit_id), 403);
 
         $engineStatusLog->delete();

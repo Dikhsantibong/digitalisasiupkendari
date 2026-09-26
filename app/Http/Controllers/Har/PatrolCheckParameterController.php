@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarPatrolCheckReading;
 use App\Models\Machine;
@@ -32,6 +33,8 @@ use Inertia\Response;
  */
 class PatrolCheckParameterController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
@@ -55,14 +58,14 @@ class PatrolCheckParameterController extends Controller
             ],
             'readings' => (object) $readings,
             'has_saved' => $readings !== [],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganPatrolCheckParameter),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganPatrolCheckParameter), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -189,7 +192,7 @@ class PatrolCheckParameterController extends Controller
 
     private function authorizeView(User $user): void
     {
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless(($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganPatrolCheckParameter) || $user->hasPermissionTo(PermissionName::HarLaporanView)), 403);
     }
 
     /**

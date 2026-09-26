@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\MaintenanceCost;
 use App\Models\ReportPeriod;
@@ -24,12 +25,14 @@ use Inertia\Response;
  */
 class CostController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganCost), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -57,14 +60,14 @@ class CostController extends Controller
             'effective' => $effective,
             'ytd' => $this->yearToDate($unit->id, $month, $year),
             'options' => ['units' => $units->all(), 'years' => range($year - 3, $year + 1)],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganCost),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganCost), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);

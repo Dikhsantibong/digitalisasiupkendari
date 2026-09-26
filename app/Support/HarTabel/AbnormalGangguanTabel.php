@@ -2,6 +2,7 @@
 
 namespace App\Support\HarTabel;
 
+use App\Enums\PermissionName;
 use App\Support\Indonesian;
 
 /**
@@ -18,6 +19,11 @@ class AbnormalGangguanTabel extends HarTabel
     public function key(): string
     {
         return 'abnormal-gangguan';
+    }
+
+    public function fieldPermission(): ?PermissionName
+    {
+        return PermissionName::HarLapanganAbnormalGangguan;
     }
 
     public function title(): string

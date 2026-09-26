@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarLembarMeta;
 use App\Models\HarLembarRow;
@@ -33,13 +34,15 @@ use Inertia\Response;
  */
 class LembarController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request, string $lembar): Response
     {
         $definition = $this->definition($lembar);
         $user = $request->user();
-        $this->authorizeView($user);
+        $this->authorizeView($user, $definition);
         [$units, $unit, $month, $year] = $this->target($request);
         [$machines, $machine] = $this->machine($definition, $unit, $request);
 
@@ -60,7 +63,7 @@ class LembarController extends Controller
             'catatan' => (string) $this->meta($definition, $unit, $month, $year, $machine)?->catatan,
             'summary' => $saved->isNotEmpty() ? $definition->summary($this->present($saved), $month, $year) : null,
             'has_saved' => $saved->isNotEmpty(),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, $definition->fieldPermission()),
         ]);
     }
 
@@ -68,7 +71,7 @@ class LembarController extends Controller
     {
         $definition = $this->definition($lembar);
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, $definition->fieldPermission()), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -125,7 +128,7 @@ class LembarController extends Controller
     public function pdf(Request $request, string $lembar): HttpResponse
     {
         $definition = $this->definition($lembar);
-        $this->authorizeView($request->user());
+        $this->authorizeView($request->user(), $definition);
         [, $unit, $month, $year] = $this->target($request);
         [, $machine] = $this->machine($definition, $unit, $request);
         [$view, $data] = $this->pdfView($definition, $unit, $month, $year, $machine);
@@ -165,9 +168,9 @@ class LembarController extends Controller
         return HarLembars::find($key) ?? abort(404);
     }
 
-    private function authorizeView(User $user): void
+    private function authorizeView(User $user, HarLembar $definition): void
     {
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless(($this->allowsFieldInput($user, PermissionName::HarInputView, $definition->fieldPermission()) || $user->hasPermissionTo(PermissionName::HarLaporanView)), 403);
     }
 
     /**

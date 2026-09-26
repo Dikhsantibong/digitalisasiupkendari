@@ -7,6 +7,8 @@ use App\Enums\RoleName;
 use App\Models\LogsheetParameter;
 use App\Models\Machine;
 use App\Models\OperatorLogsheet;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\Unit;
 use Database\Seeders\LogsheetParameterSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,12 +39,19 @@ class LogsheetTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_the_operator_cannot_reach_tl_operasi_input(): void
+    public function test_the_operators_access_to_operasi_input_follows_its_page_permission(): void
     {
-        // The operator only fills logsheets — no daily-report menu.
-        $this->actingAs($this->userWithRole(RoleName::Operator, Unit::factory()->create()))
-            ->get(route('operasi.input.daily-report.index'))
-            ->assertForbidden();
+        $user = $this->userWithRole(RoleName::Operator, Unit::factory()->create());
+
+        $this->actingAs($user)->get(route('operasi.input.daily-report.index'))->assertOk();
+
+        // Withdrawn in Role & Akses: the page closes again.
+        Role::query()->where('name', RoleName::Operator->value)->sole()
+            ->permissions()->detach(Permission::query()->where('name', 'operasi.lapangan.daily_report')->value('id'));
+        $user->forgetAccessCache();
+
+        $this->actingAs($user->fresh())->get(route('operasi.input.daily-report.index'))->assertForbidden();
+        $this->actingAs($user->fresh())->get(route('operasi.input.star-stop.index'))->assertOk();
     }
 
     public function test_the_operator_sees_the_logsheet_grid(): void

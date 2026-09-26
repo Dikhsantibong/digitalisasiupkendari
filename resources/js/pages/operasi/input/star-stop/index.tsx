@@ -3,6 +3,7 @@ import StarStopController from '@/actions/App/Http/Controllers/Operasi/StarStopC
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { FormField } from '@/components/form-field';
+import { MobileRecordList } from '@/components/mobile/record-list';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -26,6 +27,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import starStop from '@/routes/operasi/input/star-stop';
 import type { IdName, Tone } from '@/types';
@@ -111,6 +113,7 @@ export default function StarStopInput({
     options,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
             starStop.index().url,
@@ -200,6 +203,35 @@ export default function StarStopInput({
                                     title="Belum ada entri"
                                     description="Tambahkan entri start/stop untuk mesin ini pada periode terpilih."
                                 />
+                            ) : compact ? (
+                                <div className="bg-muted/30 p-2">
+                                    <MobileRecordList
+                                        records={logs.map((log) => ({
+                                            key: log.id,
+                                            title: log.report_date,
+                                            badge: (
+                                                <StatusBadge tone={CATEGORY_TONE[log.category ?? ''] ?? 'neutral'}>
+                                                    {log.status_code}
+                                                    {log.category ? ` · ${CATEGORY_LABEL[log.category] ?? log.category}` : ''}
+                                                </StatusBadge>
+                                            ),
+                                            meta: [
+                                                ['Start', log.start_datetime],
+                                                ['Stop', log.stop_datetime],
+                                                ['Durasi', duration(log.duration_minutes)],
+                                                ['Operator', log.operator_name],
+                                                ['Keterangan', log.keterangan],
+                                            ],
+                                            actions: can_write ? (
+                                                <ConfirmDeleteDialog
+                                                    action={StarStopController.destroy.form(log.id)}
+                                                    title="Hapus entri?"
+                                                    description="Entri Star-Stop ini akan dihapus permanen."
+                                                />
+                                            ) : undefined,
+                                        }))}
+                                    />
+                                </div>
                             ) : (
                                 <Table>
                                     <TableHeader>

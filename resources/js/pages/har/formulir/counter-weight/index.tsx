@@ -17,6 +17,7 @@ import {
     Wrench,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -39,8 +40,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import counterWeightRoutes from '@/routes/har/formulir/counter-weight';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import harFormulir from '@/routes/har/formulir';
+import counterWeightRoutes from '@/routes/har/formulir/counter-weight';
 import type { IdName } from '@/types';
 
 type CounterWeightMeasurement = {
@@ -143,6 +146,8 @@ export default function CounterWeightIndex({
     pdf_url,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     const [viewTab, setViewTab] = useState<'form' | 'html' | 'pdf'>(
         record?.format === 'html' ? 'html' : 'form'
     );
@@ -198,6 +203,7 @@ export default function CounterWeightIndex({
     );
     const [measurements, setMeasurements] = useState<CounterWeightMeasurement[]>(() => {
         const initial = form_data.measurements || [];
+
         if (initial.length === 0) {
             return Array.from({ length: 8 }, (_, i) => ({
                 cylinder: i + 1,
@@ -205,6 +211,7 @@ export default function CounterWeightIndex({
                 notes: '',
             }));
         }
+
         return initial;
     });
 
@@ -269,8 +276,10 @@ export default function CounterWeightIndex({
         setCylindersCount(safeCount);
         setMeasurements((prev) => {
             const next: CounterWeightMeasurement[] = [];
+
             for (let i = 1; i <= safeCount; i++) {
                 const existing = prev.find((p) => p.cylinder === i);
+
                 if (existing) {
                     next.push(existing);
                 } else {
@@ -281,6 +290,7 @@ export default function CounterWeightIndex({
                     });
                 }
             }
+
             return next;
         });
         setPreviewKey((k) => k + 1);
@@ -345,11 +355,22 @@ export default function CounterWeightIndex({
     // When machine changes in selector
     const handleMachineChange = (newMachineId: string) => {
         const m = machines.find((mach) => String(mach.id) === newMachineId);
+
         if (m) {
             setMachineId(m.id);
-            if (m.type) setModelType(m.type);
-            if (m.serial_number) setSerialNumber(m.serial_number);
-            if (m.capacity_kw) setInstalledPower(m.capacity_kw);
+
+            if (m.type) {
+setModelType(m.type);
+}
+
+            if (m.serial_number) {
+setSerialNumber(m.serial_number);
+}
+
+            if (m.capacity_kw) {
+setInstalledPower(m.capacity_kw);
+}
+
             setMachineNumber(
                 m.name.replace(/MIRRLEES\s*#/i, '').replace(/MESIN\s*#/i, '').replace(/UNIT\s*#/i, '').trim()
             );
@@ -383,6 +404,7 @@ export default function CounterWeightIndex({
     const handleManagerUlChange = (empId: string) => {
         setManagerUlId(empId);
         const emp = manager_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setManagerUlName(emp.name);
             setManagerUlTitle(
@@ -395,6 +417,7 @@ export default function CounterWeightIndex({
     const handleTlHarChange = (empId: string) => {
         setTlHarId(empId);
         const emp = tl_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setTlHarName(emp.name);
             setTlHarTitle(emp.position || 'Team Leader Pemeliharaan');
@@ -405,6 +428,7 @@ export default function CounterWeightIndex({
     const handleStaffHarChange = (empId: string) => {
         setStaffHarId(empId);
         const emp = staff_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setStaffHarName(emp.name);
             setStaffHarTitle(emp.position || 'Staff Pemeliharaan');
@@ -521,6 +545,7 @@ export default function CounterWeightIndex({
             preserveScroll: true,
             onSuccess: () => {
                 setPreviewKey((k) => k + 1);
+
                 if (onSuccessCallback) {
                     onSuccessCallback();
                 }
@@ -571,14 +596,16 @@ export default function CounterWeightIndex({
                     description="Pemeriksaan torsi kekencangan baut counter weight tiap silinder, atur penandatangan & margin layout, dan cetak PDF resmi."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setShowHistory(true)}
@@ -1182,6 +1209,20 @@ export default function CounterWeightIndex({
                                     </div>
 
                                     {/* Table Measurements */}
+                                    {compact ? (
+<MobileRowEditor
+    rows={measurements}
+    canWrite
+    rowKey={(row) => row.cylinder}
+    title={(row) => `Silinder ${row.cylinder} · baut 1 & 2`}
+    subtitle={(row) => (row.condition === 'baik' ? 'Baik' : 'Tidak baik')}
+    onChange={(index, key, value) => updateCylinderField(measurements[index].cylinder, key as 'condition' | 'notes', value)}
+    fields={[
+        { key: 'condition', label: 'Kondisi kekencangan', type: 'select', options: ['baik', 'tidak_baik'], optionLabels: { baik: '1. Baik', tidak_baik: '2. Tidak baik' }, optionTone: (option) => (option === 'tidak_baik' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white'), parse: (value) => (value === '' ? 'baik' : value) },
+        { key: 'notes', label: 'Keterangan', placeholder: 'Catatan baut silinder…' },
+    ]}
+/>
+                                    ) : (
                                     <div className="overflow-x-auto rounded-md border border-border">
                                         <table className="w-full border-collapse text-xs min-w-[700px]">
                                             <thead>
@@ -1266,6 +1307,7 @@ export default function CounterWeightIndex({
                                             </tbody>
                                         </table>
                                     </div>
+                                    )}
 
                                     {/* Standar & Catatan Box */}
                                     <div className="grid gap-3 md:grid-cols-2">
@@ -1374,12 +1416,14 @@ export default function CounterWeightIndex({
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                    >
-                                        Batal
-                                    </Button>
+                                    {can('har.input.view') && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                        >
+                                            Batal
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="outline"
                                         onClick={handleOpenPreview}

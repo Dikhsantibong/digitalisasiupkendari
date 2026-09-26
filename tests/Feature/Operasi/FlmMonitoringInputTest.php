@@ -31,7 +31,7 @@ class FlmMonitoringInputTest extends TestCase
             ->get(route('operasi.input.flm-monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operasi/input/flm-monitoring')
+                ->component('operasi/input/flm-monitoring/index')
                 ->has('rows', FlmMonitoringController::MIN_ROWS)
                 ->where('rows.9.no_urut', 10)
                 ->where('options.kondisi_awal', OperasiFlmMonitoring::KONDISI_AWAL)
@@ -93,7 +93,7 @@ class FlmMonitoringInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
             ->post(route('operasi.input.flm-monitoring.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => []])
             ->assertForbidden();
     }

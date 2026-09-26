@@ -14,6 +14,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/** | .ai/rules/js.md |
 | app/Services/K3/** | .ai/rules/k3.md |
 | app/Http/Controllers/Logistik/** | .ai/rules/logistik.md |
+| resources/js/layouts/mobile/** | .ai/rules/mobile.md |
 | app/Models/** | .ai/rules/models.md |
 | app/Services/Operasi/** | .ai/rules/operasi.md |
 | app/Http/Controllers/Pdm/** | .ai/rules/pdm.md |

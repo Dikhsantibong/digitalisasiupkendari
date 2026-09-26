@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Har;
 use App\Enums\ActivityEvent;
 use App\Enums\EmployeePosition;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarDailyMeeting;
 use App\Models\Unit;
@@ -32,6 +33,8 @@ use Inertia\Response;
  */
 class DailyMeetingController extends Controller
 {
+    use AuthorizesFieldInput;
+
     /** Baris daftar hadir minimal pada lembar resmi. */
     public const MIN_ROWS = 15;
 
@@ -69,14 +72,14 @@ class DailyMeetingController extends Controller
             ])->values()->all(),
             'meeting' => $selected ? $this->present($selected) : null,
             'signers' => $this->signers($unit),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganDailyMeeting),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganDailyMeeting), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -143,7 +146,7 @@ class DailyMeetingController extends Controller
     public function destroy(Request $request, HarDailyMeeting $dailyMeeting): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganDailyMeeting), 403);
         abort_unless($user->canAccessUnit($dailyMeeting->unit_id), 403);
 
         foreach ($dailyMeeting->eviden as $path) {
@@ -235,7 +238,7 @@ class DailyMeetingController extends Controller
 
     private function authorizeView(User $user): void
     {
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganDailyMeeting) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
     }
 
     /**

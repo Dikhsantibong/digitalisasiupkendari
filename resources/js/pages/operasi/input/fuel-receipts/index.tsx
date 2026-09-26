@@ -3,6 +3,7 @@ import FuelReceiptController from '@/actions/App/Http/Controllers/Operasi/FuelRe
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { FormField } from '@/components/form-field';
+import { MobileRecordList } from '@/components/mobile/record-list';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -26,6 +27,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { formatNumber } from '@/lib/format';
 import { dashboard } from '@/routes';
 import fuelReceipt from '@/routes/operasi/input/fuel-receipt';
@@ -58,6 +60,7 @@ export default function FuelReceipts({
     options,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
             fuelReceipt.index().url,
@@ -124,6 +127,29 @@ export default function FuelReceipts({
                             title="Belum ada penerimaan"
                             description="Tambahkan penerimaan BBM untuk periode terpilih."
                         />
+                    ) : compact ? (
+                        <div className="bg-muted/30 p-2">
+                            <MobileRecordList
+                                records={receipts.map((receipt) => ({
+                                    key: receipt.id,
+                                    title: receipt.report_date,
+                                    badge: <StatusBadge tone={receipt.fuel_type === 'hsd' ? 'info' : 'warning'}>{receipt.fuel_type_label}</StatusBadge>,
+                                    meta: [
+                                        ['Volume (L)', formatNumber(receipt.volume_liter)],
+                                        ['Harga/L', formatNumber(receipt.price_per_liter)],
+                                        ['Pemasok', receipt.supplier],
+                                        ['No. DO', receipt.do_number],
+                                    ],
+                                    actions: can_write ? (
+                                        <ConfirmDeleteDialog
+                                            action={FuelReceiptController.destroy.form(receipt.id)}
+                                            title="Hapus penerimaan?"
+                                            description="Data penerimaan BBM ini akan dihapus permanen."
+                                        />
+                                    ) : undefined,
+                                }))}
+                            />
+                        </div>
                     ) : (
                         <Table>
                             <TableHeader>

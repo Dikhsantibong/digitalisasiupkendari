@@ -2,6 +2,8 @@
 
 namespace App\Support\HarTabel;
 
+use App\Enums\PermissionName;
+
 /**
  * Rekap Laporan Gangguan (Input Pemeliharaan): per gangguan tanggal kejadian,
  * unit, merk/type, daya, tindakan, material rusak, tanggal operasi, durasi
@@ -27,6 +29,11 @@ class RekapGangguanTabel extends HarTabel
     public function key(): string
     {
         return 'laporan-gangguan';
+    }
+
+    public function fieldPermission(): ?PermissionName
+    {
+        return PermissionName::HarLapanganRekapGangguan;
     }
 
     public function title(): string

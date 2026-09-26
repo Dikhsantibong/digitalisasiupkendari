@@ -21,6 +21,7 @@ import {
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -43,8 +44,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import axialConrodRoutes from '@/routes/har/formulir/axial-conrod';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import harFormulir from '@/routes/har/formulir';
+import axialConrodRoutes from '@/routes/har/formulir/axial-conrod';
 import type { IdName } from '@/types';
 
 type AxialConrodMeasurement = {
@@ -149,6 +152,8 @@ export default function HarAxialConrodIndex({
     pdf_url,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     // Mode tab: form | html | pdf
     const [viewTab, setViewTab] = useState<'form' | 'html' | 'pdf'>(
         record?.format === 'html' ? 'html' : 'form'
@@ -179,7 +184,9 @@ export default function HarAxialConrodIndex({
         if (form_data.measurements && form_data.measurements.length > 0) {
             return form_data.measurements;
         }
+
         const initial: AxialConrodMeasurement[] = [];
+
         for (let i = 1; i <= (form_data.cylinders_count || 8); i++) {
             initial.push({
                 cylinder: i,
@@ -188,6 +195,7 @@ export default function HarAxialConrodIndex({
                 notes: '',
             });
         }
+
         return initial;
     });
 
@@ -229,6 +237,7 @@ export default function HarAxialConrodIndex({
         setCylindersCount(nextCount);
         setMeasurements((prev) => {
             const next = [...prev];
+
             if (nextCount > prev.length) {
                 for (let i = prev.length + 1; i <= nextCount; i++) {
                     next.push({
@@ -241,6 +250,7 @@ export default function HarAxialConrodIndex({
             } else {
                 return next.slice(0, nextCount);
             }
+
             return next;
         });
     };
@@ -253,6 +263,7 @@ export default function HarAxialConrodIndex({
         setMeasurements((prev) => {
             const next = [...prev];
             next[index] = { ...next[index], [field]: value };
+
             return next;
         });
     };
@@ -285,6 +296,7 @@ export default function HarAxialConrodIndex({
 
         setCylindersCount(8);
         const scanRows: AxialConrodMeasurement[] = [];
+
         for (let i = 1; i <= 8; i++) {
             scanRows.push({
                 cylinder: i,
@@ -293,6 +305,7 @@ export default function HarAxialConrodIndex({
                 notes: '',
             });
         }
+
         setMeasurements(scanRows);
 
         setManagerUlName('SURYADI PRATAMA');
@@ -307,9 +320,13 @@ export default function HarAxialConrodIndex({
     useEffect(() => {
         if (managerUlId) {
             const emp = manager_options.find((e) => String(e.id) === managerUlId);
+
             if (emp) {
                 setManagerUlName(emp.name);
-                if (emp.position) setManagerUlTitle(emp.position);
+
+                if (emp.position) {
+setManagerUlTitle(emp.position);
+}
             }
         }
     }, [managerUlId, manager_options]);
@@ -317,9 +334,13 @@ export default function HarAxialConrodIndex({
     useEffect(() => {
         if (tlHarId) {
             const emp = tl_options.find((e) => String(e.id) === tlHarId);
+
             if (emp) {
                 setTlHarName(emp.name);
-                if (emp.position) setTlHarTitle(emp.position);
+
+                if (emp.position) {
+setTlHarTitle(emp.position);
+}
             }
         }
     }, [tlHarId, tl_options]);
@@ -327,9 +348,13 @@ export default function HarAxialConrodIndex({
     useEffect(() => {
         if (staffHarId) {
             const emp = staff_options.find((e) => String(e.id) === staffHarId);
+
             if (emp) {
                 setStaffHarName(emp.name);
-                if (emp.position) setStaffHarTitle(emp.position);
+
+                if (emp.position) {
+setStaffHarTitle(emp.position);
+}
             }
         }
     }, [staffHarId, staff_options]);
@@ -353,15 +378,24 @@ export default function HarAxialConrodIndex({
         url.searchParams.set('notes', notes);
         url.searchParams.set('measurements', JSON.stringify(measurements));
 
-        if (managerUlId) url.searchParams.set('manager_ul_id', managerUlId);
+        if (managerUlId) {
+url.searchParams.set('manager_ul_id', managerUlId);
+}
+
         url.searchParams.set('manager_ul_name', managerUlName);
         url.searchParams.set('manager_ul_title', managerUlTitle);
 
-        if (tlHarId) url.searchParams.set('tl_har_id', tlHarId);
+        if (tlHarId) {
+url.searchParams.set('tl_har_id', tlHarId);
+}
+
         url.searchParams.set('tl_har_name', tlHarName);
         url.searchParams.set('tl_har_title', tlHarTitle);
 
-        if (staffHarId) url.searchParams.set('staff_har_id', staffHarId);
+        if (staffHarId) {
+url.searchParams.set('staff_har_id', staffHarId);
+}
+
         url.searchParams.set('staff_har_name', staffHarName);
         url.searchParams.set('staff_har_title', staffHarTitle);
 
@@ -410,6 +444,7 @@ export default function HarAxialConrodIndex({
     const handleSave = () => {
         if (!selected_machine_id) {
             alert('Silakan pilih mesin terlebih dahulu.');
+
             return;
         }
 
@@ -516,14 +551,16 @@ export default function HarAxialConrodIndex({
                     description="Pemeriksaan clearance axial connecting rod dan torsi pengencangan baut conrod pada tiap silinder mesin."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setHistoryOpen(true)}
@@ -981,8 +1018,8 @@ export default function HarAxialConrodIndex({
                         <div className="rounded-lg border border-border bg-card shadow-sm">
                             {/* Card Header with View Mode Tabs & Action Buttons */}
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 bg-muted/10">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1">
+                                <div className="flex max-w-full flex-wrap items-center gap-2">
+                                    <div className="flex max-w-full flex-wrap items-center rounded-lg border border-border bg-muted/40 p-1">
                                         <Button
                                             type="button"
                                             size="sm"
@@ -1126,6 +1163,21 @@ export default function HarAxialConrodIndex({
                                             </div>
                                         </div>
 
+                                        {compact ? (
+<MobileRowEditor
+    rows={measurements}
+    canWrite
+    rowKey={(row) => row.cylinder}
+    title={(row) => `Silinder ${row.cylinder}`}
+    subtitle={(row) => `Axial ${row.axial_check === 'baik' ? 'baik' : 'tidak baik'} · Baut ${row.bolt_tightening === 'baik' ? 'baik' : 'tidak baik'}`}
+    onChange={(index, key, value) => handleMeasurementChange(index, key, value)}
+    fields={[
+        { key: 'axial_check', label: 'Pemeriksaan axial conrod', type: 'select', options: ['baik', 'tidak_baik'], optionLabels: { baik: '✓ Baik', tidak_baik: '✕ Tidak baik' }, optionTone: (option) => (option === 'tidak_baik' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white'), parse: (value) => (value === '' ? 'baik' : value) },
+        { key: 'bolt_tightening', label: 'Kekencangan baut conrod', type: 'select', options: ['baik', 'tidak_baik'], optionLabels: { baik: '✓ Baik', tidak_baik: '✕ Tidak baik' }, optionTone: (option) => (option === 'tidak_baik' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white'), parse: (value) => (value === '' ? 'baik' : value) },
+        { key: 'notes', label: 'Keterangan', placeholder: 'Catatan silinder (opsional)' },
+    ]}
+/>
+                                        ) : (
                                         <div className="overflow-x-auto border border-border rounded-lg bg-background">
                                             <table className="w-full text-xs border-collapse">
                                                 <thead>
@@ -1239,6 +1291,7 @@ export default function HarAxialConrodIndex({
                                                 </tbody>
                                             </table>
                                         </div>
+                                        )}
                                     </div>
 
                                     {/* SECTION 2: STANDAR YANG DIIZINKAN & CATATAN */}
@@ -1363,8 +1416,8 @@ export default function HarAxialConrodIndex({
                             {/* TAB 3: PRATINJAU DOKUMEN PDF */}
                             {viewTab === 'pdf' && (
                                 <div className="p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <Badge variant="outline" className="text-xs">
                                                 A4 Portrait • Standar UPDK Kendari
                                             </Badge>

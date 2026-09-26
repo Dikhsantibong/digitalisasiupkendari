@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarVibration;
 use App\Models\Machine;
@@ -20,6 +21,8 @@ use Inertia\Response as InertiaResponse;
 
 class VibrationController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly HarVibrationPdfBuilder $pdfBuilder,
         private readonly ActivityLogger $activityLogger,
@@ -29,7 +32,7 @@ class VibrationController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganVibration) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -137,14 +140,14 @@ class VibrationController extends Controller
             ]),
             'sample_scan_measurements' => HarVibration::sampleScanMeasurements(),
             'default_measurements' => HarVibration::defaultMeasurements(),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganVibration),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganVibration), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -229,7 +232,7 @@ class VibrationController extends Controller
     public function reset(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganVibration), 403);
 
         $unitId = $request->integer('unit_id');
         $machineId = $request->integer('machine_id');
@@ -267,7 +270,7 @@ class VibrationController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganVibration) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -359,7 +362,7 @@ class VibrationController extends Controller
     public function destroy(Request $request, HarVibration $record): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganVibration), 403);
         abort_unless($user->canAccessUnit($record->unit_id), 403);
 
         $unitName = $record->unit?->name;

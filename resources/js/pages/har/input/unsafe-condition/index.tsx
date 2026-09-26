@@ -5,25 +5,26 @@ import {
     Clock,
     Download,
     Eye,
+    FileSpreadsheet,
     Pencil,
     Plus,
+    Printer,
     ShieldAlert,
     Trash2,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { downloadUnsafeConditionWorkbook } from '@/lib/unsafe-condition-excel';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { FormField } from '@/components/form-field';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -49,6 +50,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import harInput from '@/routes/har/input';
 import unsafeConditionRoutes from '@/routes/har/input/unsafe-condition';
@@ -104,7 +106,16 @@ export default function UnsafeConditionsInput({
 }: Props) {
     const [openModal, setOpenModal] = useState(false);
     const [editing, setEditing] = useState<UnsafeConditionRow | null>(null);
-    const [previewImage, setPreviewImage] = useState<{ title: string; url: string } | null>(null);
+    const [previewImage, setPreviewImage] = useState<{
+        title: string;
+        url: string;
+    } | null>(null);
+    const [exportingExcel, setExportingExcel] = useState(false);
+    const compact = useCompactLayout();
+
+    const currentUnit = options.units.find((u) => u.id === filters.unit_id);
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -135,6 +146,23 @@ export default function UnsafeConditionsInput({
         window.open(url, '_blank');
     };
 
+    const handleExcel = async () => {
+        try {
+            setExportingExcel(true);
+            const unitTitle = currentUnit?.name || 'UP_KENDARI';
+            const filename = `Laporan_Unsafe_Action_Condition_${unitTitle.replace(/\s+/g, '_')}_${filters.month}_${filters.year}.xlsx`;
+            await downloadUnsafeConditionWorkbook(
+                unitTitle,
+                `${monthName} ${filters.year}`,
+                rows,
+                summary,
+                filename,
+            );
+        } finally {
+            setExportingExcel(false);
+        }
+    };
+
     return (
         <>
             <Head title="Input Unsafe Action & Unsafe Condition" />
@@ -144,12 +172,29 @@ export default function UnsafeConditionsInput({
                     description="Identifikasi, pelaporan, dan evaluasi tindak lanjut temuan tindakan tidak aman (unsafe action) serta kondisi berbahaya (unsafe condition)."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button variant="outline" onClick={handlePdf}>
+                            <Button
+                                variant="outline"
+                                onClick={() => window.print()}
+                                className="gap-1.5"
+                            >
+                                <Printer className="size-4" />
+                                Cetak
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleExcel}
+                                disabled={exportingExcel}
+                                className="gap-1.5 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                            >
+                                <FileSpreadsheet className="size-4" />
+                                {exportingExcel ? 'Mengunduh...' : 'Unduh Excel'}
+                            </Button>
+                            <Button variant="outline" onClick={handlePdf} className="gap-1.5">
                                 <Download className="size-4" />
                                 Cetak PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={handleCreate}>
+                                <Button onClick={handleCreate} className="gap-1.5">
                                     <Plus className="size-4" />
                                     Tambah Temuan
                                 </Button>
@@ -164,19 +209,28 @@ export default function UnsafeConditionsInput({
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                 </Card>
 
@@ -184,38 +238,54 @@ export default function UnsafeConditionsInput({
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <Card className="gap-0 p-4 py-4 shadow-xs">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-muted-foreground">Total Temuan</span>
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Total Temuan
+                            </span>
                             <ShieldAlert className="size-4 text-primary" />
                         </div>
-                        <div className="mt-2 text-2xl font-bold text-foreground">{summary.total}</div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Periode terpilih</p>
+                        <div className="mt-2 text-2xl font-bold text-foreground">
+                            {summary.total}
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                            Periode terpilih
+                        </p>
                     </Card>
 
                     <Card className="gap-0 p-4 py-4 shadow-xs">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-muted-foreground">Unsafe Action</span>
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Unsafe Action
+                            </span>
                             <AlertTriangle className="size-4 text-amber-500" />
                         </div>
                         <div className="mt-2 text-2xl font-bold text-amber-600 dark:text-amber-400">
                             {summary.unsafe_action_count}
                         </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Tindakan tidak aman</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                            Tindakan tidak aman
+                        </p>
                     </Card>
 
                     <Card className="gap-0 p-4 py-4 shadow-xs">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-muted-foreground">Unsafe Condition</span>
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Unsafe Condition
+                            </span>
                             <AlertTriangle className="size-4 text-rose-500" />
                         </div>
                         <div className="mt-2 text-2xl font-bold text-rose-600 dark:text-rose-400">
                             {summary.unsafe_condition_count}
                         </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Kondisi berbahaya</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                            Kondisi berbahaya
+                        </p>
                     </Card>
 
                     <Card className="gap-0 p-4 py-4 shadow-xs">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-muted-foreground">Status Temuan</span>
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Status Temuan
+                            </span>
                             <div className="flex items-center gap-1">
                                 <CheckCircle2 className="size-3.5 text-emerald-500" />
                                 <Clock className="size-3.5 text-amber-500" />
@@ -225,14 +295,22 @@ export default function UnsafeConditionsInput({
                             <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
                                 {summary.close_count}
                             </span>
-                            <span className="text-xs text-muted-foreground">Close</span>
-                            <span className="text-sm font-semibold text-muted-foreground">/</span>
+                            <span className="text-xs text-muted-foreground">
+                                Close
+                            </span>
+                            <span className="text-sm font-semibold text-muted-foreground">
+                                /
+                            </span>
                             <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
                                 {summary.open_count}
                             </span>
-                            <span className="text-xs text-muted-foreground">Open</span>
+                            <span className="text-xs text-muted-foreground">
+                                Open
+                            </span>
                         </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">Penyelesaian temuan</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                            Penyelesaian temuan
+                        </p>
                     </Card>
                 </div>
 
@@ -243,27 +321,241 @@ export default function UnsafeConditionsInput({
                             title="Belum ada data temuan"
                             description="Tambahkan temuan unsafe action atau unsafe condition untuk unit dan periode ini."
                         />
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-primary/5 hover:bg-primary/5">
-                                        <TableHead className="w-12 text-center font-bold">NO</TableHead>
-                                        <TableHead className="w-32 text-center font-bold">PERIODE</TableHead>
-                                        <TableHead className="w-40 text-center font-bold">KATEGORI</TableHead>
-                                        <TableHead className="min-w-[200px] font-bold">TEMUAN</TableHead>
-                                        <TableHead className="w-28 text-center font-bold">KONDISI</TableHead>
-                                        <TableHead className="min-w-[180px] font-bold">TINDAK LANJUT</TableHead>
-                                        <TableHead className="min-w-[180px] font-bold">REKOMENDASI</TableHead>
-                                        <TableHead className="w-36 text-center font-bold">LOKASI</TableHead>
-                                        <TableHead className="w-24 text-center font-bold">STATUS</TableHead>
-                                        <TableHead className="w-24 text-center font-bold">SEBELUM</TableHead>
-                                        <TableHead className="w-24 text-center font-bold">SESUDAH</TableHead>
-                                        {can_write && (
-                                            <TableHead className="w-24 text-center font-bold">AKSI</TableHead>
+                    ) : compact ? (
+                        <ul className="divide-y divide-border">
+                            {rows.map((row, index) => (
+                                <li
+                                    key={row.id}
+                                    className="flex flex-col gap-2 p-3"
+                                >
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="text-[12px] font-semibold text-muted-foreground">
+                                            #{index + 1}
+                                        </span>
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                row.kategori === 'UNSAFE ACTION'
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                                    : 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                                            }
+                                        >
+                                            {row.kategori}
+                                        </Badge>
+                                        <Badge
+                                            variant="outline"
+                                            className={
+                                                row.keterangan === 'close'
+                                                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 uppercase dark:text-emerald-400'
+                                                    : 'border-amber-500/30 bg-amber-500/10 text-amber-600 uppercase dark:text-amber-400'
+                                            }
+                                        >
+                                            {row.keterangan}
+                                        </Badge>
+                                        <span className="ml-auto text-[11px] text-muted-foreground">
+                                            {row.periode}
+                                        </span>
+                                    </div>
+                                    <p className="text-[14px] font-medium text-foreground">
+                                        {row.temuan}
+                                    </p>
+                                    <p className="text-[12px] text-muted-foreground">
+                                        {row.lokasi || '-'}
+                                        {row.tindak_lanjut
+                                            ? ` · Tindak lanjut: ${row.tindak_lanjut}`
+                                            : ''}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        {[
+                                            {
+                                                label: 'Sebelum',
+                                                url: row.foto_sebelum_url,
+                                            },
+                                            {
+                                                label: 'Sesudah',
+                                                url: row.foto_sesudah_url,
+                                            },
+                                        ].map((photo) =>
+                                            photo.url ? (
+                                                <button
+                                                    key={photo.label}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setPreviewImage({
+                                                            title: `Eviden ${photo.label} - ${row.temuan}`,
+                                                            url: photo.url!,
+                                                        })
+                                                    }
+                                                    className="flex flex-col items-center gap-0.5 text-[10px] text-muted-foreground"
+                                                >
+                                                    <img
+                                                        src={photo.url}
+                                                        alt={photo.label}
+                                                        className="size-14 rounded-lg border border-border object-cover"
+                                                    />
+                                                    {photo.label}
+                                                </button>
+                                            ) : null,
                                         )}
-                                    </TableRow>
-                                </TableHeader>
+                                        {can_write && (
+                                            <div className="ml-auto flex items-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() =>
+                                                        handleEdit(row)
+                                                    }
+                                                >
+                                                    <Pencil className="size-3.5" />
+                                                    Ubah
+                                                </Button>
+                                                <ConfirmDeleteDialog
+                                                    title="Hapus Temuan"
+                                                    description={`Apakah Anda yakin ingin menghapus temuan "${row.temuan}"? Tindakan ini tidak dapat dibatalkan.`}
+                                                    action={{
+                                                        action: unsafeConditionRoutes.destroy(
+                                                            row.id,
+                                                        ).url,
+                                                        method: 'delete',
+                                                    }}
+                                                >
+                                                    <Button
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="size-8 text-destructive"
+                                                        title="Hapus Temuan"
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </ConfirmDeleteDialog>
+                                            </div>
+                                        )}
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <div className="overflow-hidden p-4">
+                            {/* Official Kop Header matching media_1790360647015.png */}
+                            <div className="mb-4 overflow-hidden rounded border-2 border-black dark:border-white">
+                                <table className="w-full border-collapse">
+                                    <tbody>
+                                        <tr>
+                                            <td className="w-40 border-r border-black p-3 text-center align-middle dark:border-white">
+                                                <img
+                                                    src="/logo/sidebar-logo.png"
+                                                    alt="PLN Nusantara Power"
+                                                    className="mx-auto max-h-12 max-w-[140px] object-contain"
+                                                />
+                                            </td>
+                                            <td className="p-3 text-center align-middle">
+                                                <div className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                                    JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE -KIT
+                                                </div>
+                                                <div className="mt-1 text-sm font-bold uppercase tracking-wide text-foreground">
+                                                    LAPORAN PROJECT {currentUnit?.name || 'UP KENDARI'}
+                                                </div>
+                                                <div className="mt-1 text-sm font-extrabold uppercase tracking-wide text-primary">
+                                                    LAPORAN UNSAFE ACTION DAN UNSAFE CONDITION
+                                                </div>
+                                                <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                                                    Periode: {monthName} {filters.year}
+                                                </div>
+                                            </td>
+                                            <td className="w-40 border-l border-black p-3 text-center align-middle dark:border-white">
+                                                <img
+                                                    src="/logo/mkp.jpg"
+                                                    alt="Mitra Karya Prima"
+                                                    className="mx-auto max-h-12 max-w-[140px] object-contain"
+                                                />
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <Table className="border-collapse border-2 border-black text-xs dark:border-white">
+                                    <TableHeader>
+                                        <TableRow className="border-b border-black bg-[#ed7d31] hover:bg-[#ed7d31] dark:border-white dark:bg-[#ea7315]">
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="w-12 border-r border-black text-center font-bold text-black"
+                                            >
+                                                NO
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="w-32 border-r border-black text-center font-bold text-black"
+                                            >
+                                                PERIODE
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="w-36 border-r border-black text-center font-bold text-black"
+                                            >
+                                                KATEGORI
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="min-w-[200px] border-r border-black text-center font-bold text-black"
+                                            >
+                                                TEMUAN
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="w-28 border-r border-black text-center font-bold text-black"
+                                            >
+                                                KONDISI
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="min-w-[180px] border-r border-black text-center font-bold text-black"
+                                            >
+                                                TINDAK LANJUT
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="min-w-[180px] border-r border-black text-center font-bold text-black"
+                                            >
+                                                REKOMENDASI
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="w-36 border-r border-black text-center font-bold text-black"
+                                            >
+                                                LOKASI
+                                            </TableHead>
+                                            <TableHead
+                                                rowSpan={2}
+                                                className="w-24 border-r border-black text-center font-bold text-black"
+                                            >
+                                                KETERANGAN
+                                            </TableHead>
+                                            <TableHead
+                                                colSpan={2}
+                                                className="border-r border-black text-center font-bold text-black"
+                                            >
+                                                EVIDEN
+                                            </TableHead>
+                                            {can_write && (
+                                                <TableHead
+                                                    rowSpan={2}
+                                                    className="w-24 text-center font-bold text-black no-print"
+                                                >
+                                                    AKSI
+                                                </TableHead>
+                                            )}
+                                        </TableRow>
+                                        <TableRow className="border-b-2 border-black bg-[#ed7d31] hover:bg-[#ed7d31] dark:border-white dark:bg-[#ea7315]">
+                                            <TableHead className="w-28 border-r border-black text-center font-bold text-black">
+                                                SEBELUM
+                                            </TableHead>
+                                            <TableHead className="w-28 border-r border-black text-center font-bold text-black">
+                                                SESUDAH
+                                            </TableHead>
+                                        </TableRow>
+                                    </TableHeader>
                                 <TableBody>
                                     {rows.map((row, index) => (
                                         <TableRow key={row.id}>
@@ -275,9 +567,15 @@ export default function UnsafeConditionsInput({
                                             </TableCell>
                                             <TableCell className="text-center">
                                                 <Badge
-                                                    variant={row.kategori === 'UNSAFE ACTION' ? 'outline' : 'secondary'}
+                                                    variant={
+                                                        row.kategori ===
+                                                        'UNSAFE ACTION'
+                                                            ? 'outline'
+                                                            : 'secondary'
+                                                    }
                                                     className={
-                                                        row.kategori === 'UNSAFE ACTION'
+                                                        row.kategori ===
+                                                        'UNSAFE ACTION'
                                                             ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
                                                             : 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400'
                                                     }
@@ -304,7 +602,8 @@ export default function UnsafeConditionsInput({
                                                 <Badge
                                                     variant="outline"
                                                     className={
-                                                        row.keterangan === 'close'
+                                                        row.keterangan ===
+                                                        'close'
                                                             ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 uppercase dark:text-emerald-400'
                                                             : 'border-amber-500/30 bg-amber-500/10 text-amber-600 uppercase dark:text-amber-400'
                                                     }
@@ -325,7 +624,9 @@ export default function UnsafeConditionsInput({
                                                         className="group relative inline-block overflow-hidden rounded border border-border transition-all hover:ring-2 hover:ring-primary/40"
                                                     >
                                                         <img
-                                                            src={row.foto_sebelum_url}
+                                                            src={
+                                                                row.foto_sebelum_url
+                                                            }
                                                             alt="Sebelum"
                                                             className="size-12 object-cover transition-transform group-hover:scale-105"
                                                         />
@@ -334,7 +635,9 @@ export default function UnsafeConditionsInput({
                                                         </div>
                                                     </button>
                                                 ) : (
-                                                    <span className="text-xs text-muted-foreground">-</span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        -
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-center">
@@ -350,7 +653,9 @@ export default function UnsafeConditionsInput({
                                                         className="group relative inline-block overflow-hidden rounded border border-border transition-all hover:ring-2 hover:ring-primary/40"
                                                     >
                                                         <img
-                                                            src={row.foto_sesudah_url}
+                                                            src={
+                                                                row.foto_sesudah_url
+                                                            }
                                                             alt="Sesudah"
                                                             className="size-12 object-cover transition-transform group-hover:scale-105"
                                                         />
@@ -359,7 +664,9 @@ export default function UnsafeConditionsInput({
                                                         </div>
                                                     </button>
                                                 ) : (
-                                                    <span className="text-xs text-muted-foreground">-</span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        -
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             {can_write && (
@@ -369,7 +676,9 @@ export default function UnsafeConditionsInput({
                                                             size="icon"
                                                             variant="ghost"
                                                             className="size-7"
-                                                            onClick={() => handleEdit(row)}
+                                                            onClick={() =>
+                                                                handleEdit(row)
+                                                            }
                                                             title="Edit Temuan"
                                                         >
                                                             <Pencil className="size-3.5" />
@@ -378,7 +687,9 @@ export default function UnsafeConditionsInput({
                                                             title="Hapus Temuan"
                                                             description={`Apakah Anda yakin ingin menghapus temuan "${row.temuan}"? Tindakan ini tidak dapat dibatalkan.`}
                                                             action={{
-                                                                action: unsafeConditionRoutes.destroy(row.id).url,
+                                                                action: unsafeConditionRoutes.destroy(
+                                                                    row.id,
+                                                                ).url,
                                                                 method: 'delete',
                                                             }}
                                                         >
@@ -399,58 +710,65 @@ export default function UnsafeConditionsInput({
                                 </TableBody>
                             </Table>
                         </div>
+                    </div>
                     )}
                 </Card>
 
-                {/* Bottom Summary Table matching Excel template */}
-                <Card className="w-full max-w-sm gap-3 p-4 py-4 shadow-xs">
-                    <CardHeader className="p-0">
-                        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                            Rekapitulasi Temuan Kondisi
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-hidden rounded-md border border-border">
-                            <Table className="text-xs">
-                                <TableHeader className="bg-primary/10">
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead className="w-10 border-r border-border p-2 text-center text-xs font-semibold text-foreground">
-                                            NO
-                                        </TableHead>
-                                        <TableHead className="border-r border-border p-2 text-left text-xs font-semibold text-foreground">
-                                            TEMUAN KONDISI
-                                        </TableHead>
-                                        <TableHead className="w-16 p-2 text-center text-xs font-semibold text-foreground">
-                                            JUMLAH
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    <TableRow>
-                                        <TableCell className="border-r border-border p-2 text-center">1</TableCell>
-                                        <TableCell className="border-r border-border p-2 font-medium">UNSAFE ACTION</TableCell>
-                                        <TableCell className="p-2 text-center font-bold text-amber-600 dark:text-amber-400">
-                                            {summary.unsafe_action_count}
-                                        </TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell className="border-r border-border p-2 text-center">2</TableCell>
-                                        <TableCell className="border-r border-border p-2 font-medium">UNSAFE CONDITION</TableCell>
-                                        <TableCell className="p-2 text-center font-bold text-rose-600 dark:text-rose-400">
-                                            {summary.unsafe_condition_count}
-                                        </TableCell>
-                                    </TableRow>
-                                    <TableRow className="bg-muted/50 font-bold hover:bg-muted/50">
-                                        <TableCell colSpan={2} className="border-r border-border p-2 text-right">
-                                            TOTAL:
-                                        </TableCell>
-                                        <TableCell className="p-2 text-center text-foreground">{summary.total}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Bottom Summary Table matching Excel template and media_1790360647015.png */}
+                {!compact && (
+                    <div className="w-full max-w-sm">
+                        <Table className="border-collapse border-2 border-black text-xs dark:border-white">
+                            <TableHeader>
+                                <TableRow className="border-b border-black bg-[#ed7d31] hover:bg-[#ed7d31] dark:border-white dark:bg-[#ea7315]">
+                                    <TableHead className="w-10 border-r border-black p-2 text-center font-bold text-black">
+                                        NO
+                                    </TableHead>
+                                    <TableHead className="border-r border-black p-2 text-left font-bold text-black">
+                                        TEMUAN KONDISI
+                                    </TableHead>
+                                    <TableHead className="w-20 p-2 text-center font-bold text-black">
+                                        JUMLAH
+                                    </TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                <TableRow className="border-b border-black dark:border-border">
+                                    <TableCell className="border-r border-black p-2 text-center dark:border-border">
+                                        1
+                                    </TableCell>
+                                    <TableCell className="border-r border-black p-2 font-medium dark:border-border">
+                                        UNSAFE ACTION
+                                    </TableCell>
+                                    <TableCell className="p-2 text-center font-bold text-amber-600 dark:text-amber-400">
+                                        {summary.unsafe_action_count}
+                                    </TableCell>
+                                </TableRow>
+                                <TableRow className="border-b border-black dark:border-border">
+                                    <TableCell className="border-r border-black p-2 text-center dark:border-border">
+                                        2
+                                    </TableCell>
+                                    <TableCell className="border-r border-black p-2 font-medium dark:border-border">
+                                        UNSAFE CONDITION
+                                    </TableCell>
+                                    <TableCell className="p-2 text-center font-bold text-rose-600 dark:text-rose-400">
+                                        {summary.unsafe_condition_count}
+                                    </TableCell>
+                                </TableRow>
+                                <TableRow className="bg-muted/50 font-bold hover:bg-muted/50">
+                                    <TableCell
+                                        colSpan={2}
+                                        className="border-r border-black p-2 text-right dark:border-border"
+                                    >
+                                        TOTAL TEMUAN:
+                                    </TableCell>
+                                    <TableCell className="p-2 text-center font-extrabold text-foreground">
+                                        {summary.total}
+                                    </TableCell>
+                                </TableRow>
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
             </div>
 
             {/* Modal Dialog Form Create / Edit */}
@@ -465,10 +783,15 @@ export default function UnsafeConditionsInput({
 
             {/* Photo Preview Dialog */}
             {previewImage && (
-                <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+                <Dialog
+                    open={!!previewImage}
+                    onOpenChange={() => setPreviewImage(null)}
+                >
                     <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                            <DialogTitle className="text-base">{previewImage.title}</DialogTitle>
+                            <DialogTitle className="text-base">
+                                {previewImage.title}
+                            </DialogTitle>
                         </DialogHeader>
                         <div className="flex items-center justify-center p-2">
                             <img
@@ -542,13 +865,17 @@ function UnsafeConditionDialog({
         }
 
         if (editing) {
-            router.post(unsafeConditionRoutes.update(editing.id).url, formData, {
-                forceFormData: true,
-                preserveScroll: true,
-                onSuccess: () => onOpenChange(false),
-                onError: (errs) => setErrors(errs),
-                onFinish: () => setSaving(false),
-            });
+            router.post(
+                unsafeConditionRoutes.update(editing.id).url,
+                formData,
+                {
+                    forceFormData: true,
+                    preserveScroll: true,
+                    onSuccess: () => onOpenChange(false),
+                    onError: (errs) => setErrors(errs),
+                    onFinish: () => setSaving(false),
+                },
+            );
         } else {
             router.post(unsafeConditionRoutes.store().url, formData, {
                 forceFormData: true,
@@ -562,17 +889,26 @@ function UnsafeConditionDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>
-                        {editing ? 'Ubah Temuan Unsafe Action / Condition' : 'Tambah Temuan Unsafe Action / Condition'}
+                        {editing
+                            ? 'Ubah Temuan Unsafe Action / Condition'
+                            : 'Tambah Temuan Unsafe Action / Condition'}
                     </DialogTitle>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-4 py-2">
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField label="Periode" error={errors.periode} required>
-                            <Select value={form.periode} onValueChange={(val) => set('periode', val)}>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <FormField
+                            label="Periode"
+                            error={errors.periode}
+                            required
+                        >
+                            <Select
+                                value={form.periode}
+                                onValueChange={(val) => set('periode', val)}
+                            >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Pilih Periode" />
                                 </SelectTrigger>
@@ -586,20 +922,35 @@ function UnsafeConditionDialog({
                             </Select>
                         </FormField>
 
-                        <FormField label="Kategori" error={errors.kategori} required>
-                            <Select value={form.kategori} onValueChange={(val) => set('kategori', val)}>
+                        <FormField
+                            label="Kategori"
+                            error={errors.kategori}
+                            required
+                        >
+                            <Select
+                                value={form.kategori}
+                                onValueChange={(val) => set('kategori', val)}
+                            >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Pilih Kategori" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="UNSAFE CONDITION">UNSAFE CONDITION</SelectItem>
-                                    <SelectItem value="UNSAFE ACTION">UNSAFE ACTION</SelectItem>
+                                    <SelectItem value="UNSAFE CONDITION">
+                                        UNSAFE CONDITION
+                                    </SelectItem>
+                                    <SelectItem value="UNSAFE ACTION">
+                                        UNSAFE ACTION
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </FormField>
                     </div>
 
-                    <FormField label="Uraian Temuan" error={errors.temuan} required>
+                    <FormField
+                        label="Uraian Temuan"
+                        error={errors.temuan}
+                        required
+                    >
                         <Textarea
                             value={form.temuan}
                             onChange={(e) => set('temuan', e.target.value)}
@@ -609,7 +960,7 @@ function UnsafeConditionDialog({
                         />
                     </FormField>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <FormField label="Kondisi" error={errors.kondisi}>
                             <Input
                                 value={form.kondisi}
@@ -627,10 +978,15 @@ function UnsafeConditionDialog({
                         </FormField>
                     </div>
 
-                    <FormField label="Tindak Lanjut" error={errors.tindak_lanjut}>
+                    <FormField
+                        label="Tindak Lanjut"
+                        error={errors.tindak_lanjut}
+                    >
                         <Textarea
                             value={form.tindak_lanjut}
-                            onChange={(e) => set('tindak_lanjut', e.target.value)}
+                            onChange={(e) =>
+                                set('tindak_lanjut', e.target.value)
+                            }
                             placeholder="Contoh: Dilakukan perbaikan dan penambalan sementara..."
                             className="min-h-[50px]"
                         />
@@ -645,19 +1001,30 @@ function UnsafeConditionDialog({
                         />
                     </FormField>
 
-                    <FormField label="Keterangan / Status" error={errors.keterangan} required>
-                        <Select value={form.keterangan} onValueChange={(val) => set('keterangan', val)}>
+                    <FormField
+                        label="Keterangan / Status"
+                        error={errors.keterangan}
+                        required
+                    >
+                        <Select
+                            value={form.keterangan}
+                            onValueChange={(val) => set('keterangan', val)}
+                        >
                             <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Pilih Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="close">CLOSE (Selesai Ditindaklanjuti)</SelectItem>
-                                <SelectItem value="open">OPEN (Belum Selesai)</SelectItem>
+                                <SelectItem value="close">
+                                    CLOSE (Selesai Ditindaklanjuti)
+                                </SelectItem>
+                                <SelectItem value="open">
+                                    OPEN (Belum Selesai)
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                     </FormField>
 
-                    <div className="grid grid-cols-2 gap-4 border-t border-border pt-2">
+                    <div className="grid grid-cols-1 gap-4 border-t border-border pt-2 sm:grid-cols-2">
                         <div>
                             <Label className="mb-1 block text-xs font-medium text-foreground">
                                 Eviden Sebelum (Foto)
@@ -669,7 +1036,9 @@ function UnsafeConditionDialog({
                                         alt="Sebelum"
                                         className="h-16 w-auto rounded border object-cover"
                                     />
-                                    <span className="text-[11px] text-muted-foreground">Foto saat ini</span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                        Foto saat ini
+                                    </span>
                                 </div>
                             )}
                             <Input
@@ -679,7 +1048,9 @@ function UnsafeConditionDialog({
                                 className="cursor-pointer text-xs"
                             />
                             {errors.foto_sebelum && (
-                                <p className="mt-1 text-xs text-destructive">{errors.foto_sebelum}</p>
+                                <p className="mt-1 text-xs text-destructive">
+                                    {errors.foto_sebelum}
+                                </p>
                             )}
                         </div>
 
@@ -694,7 +1065,9 @@ function UnsafeConditionDialog({
                                         alt="Sesudah"
                                         className="h-16 w-auto rounded border object-cover"
                                     />
-                                    <span className="text-[11px] text-muted-foreground">Foto saat ini</span>
+                                    <span className="text-[11px] text-muted-foreground">
+                                        Foto saat ini
+                                    </span>
                                 </div>
                             )}
                             <Input
@@ -704,7 +1077,9 @@ function UnsafeConditionDialog({
                                 className="cursor-pointer text-xs"
                             />
                             {errors.foto_sesudah && (
-                                <p className="mt-1 text-xs text-destructive">{errors.foto_sesudah}</p>
+                                <p className="mt-1 text-xs text-destructive">
+                                    {errors.foto_sesudah}
+                                </p>
                             )}
                         </div>
                     </div>
@@ -719,7 +1094,11 @@ function UnsafeConditionDialog({
                             Batal
                         </Button>
                         <Button type="submit" disabled={saving}>
-                            {saving ? 'Menyimpan...' : editing ? 'Simpan Perubahan' : 'Tambah Temuan'}
+                            {saving
+                                ? 'Menyimpan...'
+                                : editing
+                                  ? 'Simpan Perubahan'
+                                  : 'Tambah Temuan'}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -732,6 +1111,9 @@ UnsafeConditionsInput.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Input Pemeliharaan', href: harInput.index() },
-        { title: 'Unsafe Action & Condition', href: unsafeConditionRoutes.index() },
+        {
+            title: 'Unsafe Action & Condition',
+            href: unsafeConditionRoutes.index(),
+        },
     ],
 };

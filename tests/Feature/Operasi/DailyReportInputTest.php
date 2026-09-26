@@ -26,7 +26,7 @@ class DailyReportInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
             ->get(route('operasi.input.daily-report.index'))
             ->assertForbidden();
     }
@@ -45,7 +45,7 @@ class DailyReportInputTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operasi/input/daily-report')
+                ->component('operasi/input/daily-report/index')
                 ->where('engine.id', $engine->id)
                 ->has('grid.rows', 31)
                 ->where('can_write', true),

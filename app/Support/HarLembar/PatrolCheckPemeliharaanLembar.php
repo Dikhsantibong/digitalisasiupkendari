@@ -2,6 +2,7 @@
 
 namespace App\Support\HarLembar;
 
+use App\Enums\PermissionName;
 use App\Support\Indonesian;
 
 /**
@@ -23,6 +24,11 @@ class PatrolCheckPemeliharaanLembar extends HarLembar
     public function key(): string
     {
         return 'patrol-check-pemeliharaan';
+    }
+
+    public function fieldPermission(): ?PermissionName
+    {
+        return PermissionName::HarLapanganPatrolCheckPemeliharaan;
     }
 
     public function title(): string

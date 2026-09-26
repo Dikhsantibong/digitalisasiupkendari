@@ -20,6 +20,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -42,8 +43,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import vibrationRoutes from '@/routes/har/formulir/vibration';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import harFormulir from '@/routes/har/formulir';
+import vibrationRoutes from '@/routes/har/formulir/vibration';
 import type { IdName } from '@/types';
 
 export type VibrationMeasurement = {
@@ -144,15 +147,27 @@ type Props = {
 
 // Helper for computing (max + min) / 2
 const calculateAvg = (val1: string, val2: string): string => {
-    if (!val1 && !val2) return '';
+    if (!val1 && !val2) {
+return '';
+}
+
     const n1 = parseFloat(val1.replace(',', '.'));
     const n2 = parseFloat(val2.replace(',', '.'));
+
     if (!isNaN(n1) && !isNaN(n2)) {
         const avg = (n1 + n2) / 2;
+
         return avg.toFixed(2);
     }
-    if (!isNaN(n1)) return n1.toFixed(2);
-    if (!isNaN(n2)) return n2.toFixed(2);
+
+    if (!isNaN(n1)) {
+return n1.toFixed(2);
+}
+
+    if (!isNaN(n2)) {
+return n2.toFixed(2);
+}
+
     return '';
 };
 
@@ -174,6 +189,8 @@ export default function VibrationIndex({
     default_measurements,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     // Current Machine & Date
     const [machineId, setMachineId] = useState<number>(
         selected_machine_id ?? (machines[0]?.id || 0)
@@ -320,11 +337,13 @@ export default function VibrationIndex({
             setMarginLeft(record.page_margin_left ?? 10);
             setMarginRight(record.page_margin_right ?? 10);
             setLineSpacing(record.line_spacing ?? '1.1');
+
             if (record.format === 'html' && record.content_html) {
                 setHtmlContent(record.content_html);
                 setViewTab('html');
             }
         }
+
         setPreviewKey((k) => k + 1);
     }, [record]);
 
@@ -344,6 +363,7 @@ export default function VibrationIndex({
                 const vMin = field === 'v_min' ? val : row.v_min;
                 row.v_avg = calculateAvg(vMax, vMin);
             }
+
             if (field === 'h_max' || field === 'h_min') {
                 const hMax = field === 'h_max' ? val : row.h_max;
                 const hMin = field === 'h_min' ? val : row.h_min;
@@ -351,6 +371,7 @@ export default function VibrationIndex({
             }
 
             next[index] = row;
+
             return next;
         });
     };
@@ -383,11 +404,22 @@ export default function VibrationIndex({
     // When machine changes in selector
     const handleMachineChange = (newMachineId: string) => {
         const m = machines.find((mach) => String(mach.id) === newMachineId);
+
         if (m) {
             setMachineId(m.id);
-            if (m.type) setModelType(m.type);
-            if (m.serial_number) setSerialNumber(m.serial_number);
-            if (m.capacity_kw) setInstalledPower(m.capacity_kw);
+
+            if (m.type) {
+setModelType(m.type);
+}
+
+            if (m.serial_number) {
+setSerialNumber(m.serial_number);
+}
+
+            if (m.capacity_kw) {
+setInstalledPower(m.capacity_kw);
+}
+
             setMachineNumber(
                 m.name
                     .replace(/MIRRLEES\s*#/i, '')
@@ -547,6 +579,7 @@ export default function VibrationIndex({
             preserveScroll: true,
             onSuccess: () => {
                 setPreviewKey((k) => k + 1);
+
                 if (onSuccessCallback) {
                     onSuccessCallback();
                 }
@@ -589,18 +622,20 @@ export default function VibrationIndex({
             <Head title="Formulir Pengukuran Tekanan Vibrasi" />
 
             {/* Top Bar Header */}
-            <div className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/95 px-6 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:px-6 supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center gap-3">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => router.get(harFormulir.index().url)}
-                        title="Kembali ke Hub Formulir"
-                    >
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
+                    {can('har.input.view') && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => router.get(harFormulir.index().url)}
+                            title="Kembali ke Hub Formulir"
+                        >
+                            <ArrowLeft className="h-5 w-5" />
+                        </Button>
+                    )}
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <h1 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
                                 <Activity className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                 Formulir Pengukuran Tekanan Vibrasi
@@ -618,7 +653,7 @@ export default function VibrationIndex({
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex max-w-full flex-wrap items-center gap-2">
                     <Button
                         variant="outline"
                         size="sm"
@@ -875,11 +910,15 @@ export default function VibrationIndex({
                                         value={managerUlId}
                                         onValueChange={(val) => {
                                             setManagerUlId(val);
+
                                             if (val !== 'custom') {
                                                 const emp = manager_options.find(
                                                     (e) => String(e.id) === val
                                                 );
-                                                if (emp) setManagerUlName(emp.name);
+
+                                                if (emp) {
+setManagerUlName(emp.name);
+}
                                             }
                                         }}
                                     >
@@ -924,11 +963,15 @@ export default function VibrationIndex({
                                         value={tlHarId}
                                         onValueChange={(val) => {
                                             setTlHarId(val);
+
                                             if (val !== 'custom') {
                                                 const emp = tl_options.find(
                                                     (e) => String(e.id) === val
                                                 );
-                                                if (emp) setTlHarName(emp.name);
+
+                                                if (emp) {
+setTlHarName(emp.name);
+}
                                             }
                                         }}
                                     >
@@ -973,11 +1016,15 @@ export default function VibrationIndex({
                                         value={staffHarId}
                                         onValueChange={(val) => {
                                             setStaffHarId(val);
+
                                             if (val !== 'custom') {
                                                 const emp = staff_options.find(
                                                     (e) => String(e.id) === val
                                                 );
-                                                if (emp) setStaffHarName(emp.name);
+
+                                                if (emp) {
+setStaffHarName(emp.name);
+}
                                             }
                                         }}
                                     >
@@ -1113,7 +1160,7 @@ export default function VibrationIndex({
                     <div className="lg:col-span-8 space-y-4">
                         {/* Tab Headers */}
                         <div className="flex items-center justify-between border-b border-border pb-2">
-                            <div className="flex items-center gap-2">
+                            <div className="flex max-w-full flex-wrap items-center gap-2">
                                 <Button
                                     variant={viewTab === 'form' ? 'default' : 'outline'}
                                     size="sm"
@@ -1144,7 +1191,7 @@ export default function VibrationIndex({
                             </div>
 
                             {viewTab === 'form' && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex max-w-full flex-wrap items-center gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
@@ -1217,6 +1264,25 @@ export default function VibrationIndex({
                                         </Badge>
                                     </div>
 
+                                    {compact ? (
+<MobileRowEditor
+    rows={measurements}
+    canWrite
+    rowKey={(row) => row.no}
+    title={(row) => `${row.no}. ${row.point}`}
+    subtitle={(row) => [row.code ? `Titik ${row.code}` : '', row.no < 13 ? `V avg ${row.v_avg || '–'}` : '', row.no !== 16 ? `H avg ${row.h_avg || '–'}` : ''].filter(Boolean).join(' · ')}
+    onChange={(index, key, value) => handleMeasurementChange(index, key, String(value ?? ''))}
+    fields={[
+        { key: 'v_max', label: 'Vertikal max', placeholder: '0.00', group: 'Vertikal', hidden: (row) => row.no >= 13, parse: (value) => String(value) },
+        { key: 'v_min', label: 'Vertikal min', placeholder: '0.00', group: 'Vertikal', hidden: (row) => row.no >= 13, parse: (value) => String(value) },
+        { key: 'v_avg', label: 'Vertikal avg (otomatis)', type: 'display', group: 'Vertikal', hidden: (row) => row.no >= 13 },
+        { key: 'h_max', label: 'Horizontal max', placeholder: '0.00', group: 'Horizontal', hidden: (row) => row.no === 16, parse: (value) => String(value) },
+        { key: 'h_min', label: 'Horizontal min', placeholder: '0.00', group: 'Horizontal', hidden: (row) => row.no === 16, parse: (value) => String(value) },
+        { key: 'h_avg', label: 'Horizontal avg (otomatis)', type: 'display', group: 'Horizontal', hidden: (row) => row.no === 16 },
+        { key: 'note', label: 'Keterangan', placeholder: '-' },
+    ]}
+/>
+                                    ) : (
                                     <div className="overflow-x-auto">
                                         <table className="w-full text-xs text-left border-collapse">
                                             <thead>
@@ -1419,6 +1485,7 @@ export default function VibrationIndex({
                                             </tbody>
                                         </table>
                                     </div>
+                                    )}
                                 </div>
 
                                 {/* Standar & Kesimpulan Bawah */}
@@ -1582,6 +1649,7 @@ export default function VibrationIndex({
                                 <tbody className="divide-y divide-border">
                                     {history.map((h) => {
                                         const mach = machines.find((m) => m.id === h.machine_id);
+
                                         return (
                                             <tr key={h.id} className="hover:bg-muted/20">
                                                 <td className="py-2 px-3 font-semibold">

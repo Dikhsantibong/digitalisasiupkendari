@@ -13,7 +13,8 @@ use Illuminate\Database\Seeder;
  * Synchronises the permission catalogue and the system roles with the code.
  *
  * The seeder is idempotent and safe to re-run after new permissions are added
- * to {@see PermissionName}: existing rows are updated, new ones are created, and
+ * to {@see PermissionName}: existing rows are updated, new ones are created,
+ * rows no longer in the catalogue are deleted, and
  * permissions a role already lost by hand are not silently restored — only the
  * system roles' default mapping is re-applied.
  */
@@ -24,6 +25,10 @@ class RolePermissionSeeder extends Seeder
     public function run(): void
     {
         $permissions = $this->seedPermissions();
+
+        // Permissions dropped from the catalogue (e.g. one split into per-page
+        // permissions) are removed along with their role grants.
+        Permission::query()->whereNotIn('name', PermissionName::values())->delete();
 
         foreach (RoleName::cases() as $roleName) {
             $role = Role::query()->updateOrCreate(

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operasi\AuxiliaryReadingStoreRequest;
 use App\Models\AuxiliarySource;
@@ -23,12 +24,14 @@ use Inertia\Response;
  */
 class AuxiliaryReadingController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganAuxiliary), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -66,19 +69,19 @@ class AuxiliaryReadingController extends Controller
             $rows[] = $row;
         }
 
-        return Inertia::render('operasi/input/auxiliary-readings', [
+        return Inertia::render('operasi/input/auxiliary-readings/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'sources' => $sources->all(),
             'rows' => $rows,
             'options' => ['units' => $units->all(), 'years' => range($year - 2, $year + 1)],
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganAuxiliary),
         ]);
     }
 
     public function store(AuxiliaryReadingStoreRequest $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganAuxiliary), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);

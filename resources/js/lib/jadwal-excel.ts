@@ -225,7 +225,7 @@ const base64FromBuffer = (buffer: ArrayBuffer): string => {
     return btoa(binary);
 };
 
-const loadImageBase64 = async (url: string): Promise<string | null> => {
+export const loadImageBase64 = async (url: string): Promise<string | null> => {
     try {
         const response = await fetch(url);
 

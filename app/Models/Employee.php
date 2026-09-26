@@ -52,6 +52,11 @@ class Employee extends Model
     /** @use HasFactory<EmployeeFactory> */
     use HasFactory;
 
+    /** Jabatan of the field maintenance staff under the Koordinator Pemeliharaan. */
+    public const POSITION_HARMES = 'Harmes';
+
+    public const POSITION_HARLIST = 'Harlist';
+
     protected static function booted(): void
     {
         static::saving(function (Employee $employee): void {
@@ -62,7 +67,26 @@ class Employee extends Model
                 (bool) ($employee->is_active ?? true),
                 $employee->division,
             ));
+
+            if ($employee->canonicalPosition() === null) {
+                $employee->division = self::fieldDivision($employee->position, $employee->regu) ?? $employee->division;
+            }
         });
+    }
+
+    /**
+     * The divisi of field staff outside the report-signer jabatan: shift
+     * operators (any regu, Leader Shift included) belong to Operasi under the
+     * Koordinator Operasi; Harmes and Harlist to Pemeliharaan under the
+     * Koordinator Pemeliharaan. Null for anyone else.
+     */
+    public static function fieldDivision(?string $position, ?string $regu): ?string
+    {
+        if ($regu !== null && $regu !== '') {
+            return 'operasi';
+        }
+
+        return in_array($position, [self::POSITION_HARMES, self::POSITION_HARLIST], true) ? 'pemeliharaan' : null;
     }
 
     /**

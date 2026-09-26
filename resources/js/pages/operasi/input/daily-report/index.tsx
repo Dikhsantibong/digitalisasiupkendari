@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
+import { MobileGridForm } from '@/components/mobile/grid-form';
 import { useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -13,14 +14,25 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { formatNumber } from '@/lib/format';
 import { dashboard } from '@/routes';
 import dailyReport from '@/routes/operasi/input/daily-report';
 import type { IdName } from '@/types';
 
 const MONTHS = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
 ];
 
 /** Excel-like styling for the grouped daily grid. */
@@ -133,6 +145,7 @@ export default function DailyReportInput({
     const [rows, setRows] = useState<GridRow[]>(grid.rows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
 
     // Reset the grid when the server sends a different unit/engine/period, using
     // the "adjust state during render" pattern rather than an effect.
@@ -156,7 +169,10 @@ export default function DailyReportInput({
     };
 
     const columns = useMemo<readonly ColumnOrColumnGroup<GridRow>[]>(() => {
-        const editable = (key: keyof GridRow, name: string): Column<GridRow> => ({
+        const editable = (
+            key: keyof GridRow,
+            name: string,
+        ): Column<GridRow> => ({
             key,
             name,
             width: 92,
@@ -174,7 +190,8 @@ export default function DailyReportInput({
             name,
             width,
             headerCellClass: 'rdg-sub-header rdg-derived-header',
-            cellClass: 'rdg-derived-cell text-right tabular-nums text-muted-foreground',
+            cellClass:
+                'rdg-derived-cell text-right tabular-nums text-muted-foreground',
             renderCell: ({ row }) => num(row[key] as number | null),
         });
 
@@ -237,7 +254,9 @@ export default function DailyReportInput({
                 editable('air_pps_stand_akhir', 'PPS'),
                 editable('air_softener_stand_akhir', 'Softener'),
             ]),
-            group('KETERANGAN', [{ ...editable('catatan', 'Catatan'), width: 170 }]),
+            group('KETERANGAN', [
+                { ...editable('catatan', 'Catatan'), width: 170 },
+            ]),
         );
 
         return cols;
@@ -268,7 +287,8 @@ export default function DailyReportInput({
                 rows: rows.map((row) => ({
                     day: row.day,
                     kwh_produksi_stand_akhir: row.kwh_produksi_stand_akhir,
-                    kwh_pakai_sendiri_stand_akhir: row.kwh_pakai_sendiri_stand_akhir,
+                    kwh_pakai_sendiri_stand_akhir:
+                        row.kwh_pakai_sendiri_stand_akhir,
                     beban_puncak_pagi_kw: row.beban_puncak_pagi_kw,
                     beban_puncak_malam_kw: row.beban_puncak_malam_kw,
                     pemakaian_pelumas_liter: row.pemakaian_pelumas_liter,
@@ -321,7 +341,9 @@ export default function DailyReportInput({
                     <Selector
                         label="Mesin"
                         value={engine ? String(engine.id) : ''}
-                        onChange={(value) => visit({ engine_id: Number(value) })}
+                        onChange={(value) =>
+                            visit({ engine_id: Number(value) })
+                        }
                         options={options.machines.map((m) => ({
                             value: String(m.id),
                             label: m.name,
@@ -359,50 +381,83 @@ export default function DailyReportInput({
 
                 {engine === null ? (
                     <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                        Unit ini belum punya mesin aktif. Tambahkan mesin dulu di
-                        Master Mesin.
+                        Unit ini belum punya mesin aktif. Tambahkan mesin dulu
+                        di Master Mesin.
                     </div>
                 ) : (
                     <>
-                        <style>{GRID_STYLES}</style>
-                        <div
-                            className="operasi-grid overflow-hidden rounded-md border border-border"
-                            onPaste={onPaste}
-                        >
-                            <DataGrid
-                                className="rdg-light"
-                                style={{ blockSize: '62vh' }}
+                        {compact ? (
+                            <MobileGridForm
                                 columns={columns}
                                 rows={rows}
-                                rowKeyGetter={(row) => row.day}
+                                rowKey={(row) => row.day}
                                 onRowsChange={(next) => {
                                     setRows(next);
                                     setDirty(true);
                                 }}
-                                onSelectedCellChange={onSelectedCellChange}
-                                rowClass={(row) =>
-                                    row.is_complete
-                                        ? 'bg-emerald-50/60'
-                                        : undefined
-                                }
+                                isRowDone={(row) => Boolean(row.is_complete)}
+                                readOnly={Boolean(period?.locked)}
                             />
-                        </div>
+                        ) : (
+                            <>
+                                <style>{GRID_STYLES}</style>
+                                <div
+                                    className="operasi-grid overflow-hidden rounded-md border border-border"
+                                    onPaste={onPaste}
+                                >
+                                    <DataGrid
+                                        className="rdg-light"
+                                        style={{ blockSize: '62vh' }}
+                                        columns={columns}
+                                        rows={rows}
+                                        rowKeyGetter={(row) => row.day}
+                                        onRowsChange={(next) => {
+                                            setRows(next);
+                                            setDirty(true);
+                                        }}
+                                        onSelectedCellChange={
+                                            onSelectedCellChange
+                                        }
+                                        rowClass={(row) =>
+                                            row.is_complete
+                                                ? 'bg-emerald-50/60'
+                                                : undefined
+                                        }
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            <SummaryCard label="kWh Produksi" value={totals?.kwh_produksi} />
-                            <SummaryCard label="kWh Netto" value={totals?.kwh_netto} />
-                            <SummaryCard label="Pemakaian HSD (L)" value={totals?.pemakaian_hsd} />
+                            <SummaryCard
+                                label="kWh Produksi"
+                                value={totals?.kwh_produksi}
+                            />
+                            <SummaryCard
+                                label="kWh Netto"
+                                value={totals?.kwh_netto}
+                            />
+                            <SummaryCard
+                                label="Pemakaian HSD (L)"
+                                value={totals?.pemakaian_hsd}
+                            />
                             {usesMfo ? (
-                                <SummaryCard label="Pemakaian MFO (L)" value={totals?.pemakaian_mfo} />
+                                <SummaryCard
+                                    label="Pemakaian MFO (L)"
+                                    value={totals?.pemakaian_mfo}
+                                />
                             ) : (
-                                <SummaryCard label="Pemakaian Pelumas (L)" value={totals?.pemakaian_pelumas_liter} />
+                                <SummaryCard
+                                    label="Pemakaian Pelumas (L)"
+                                    value={totals?.pemakaian_pelumas_liter}
+                                />
                             )}
                         </div>
                         <p className="text-[13px] text-muted-foreground">
-                            Kolom hasil (kWh Prod, Netto, Pakai HSD/MFO) dihitung
-                            ulang oleh server setelah disimpan. Tip: salin satu blok
-                            dari Excel, klik sel awal, lalu tempel (Ctrl+V) untuk
-                            mengisi banyak sel sekaligus.
+                            Kolom hasil (kWh Prod, Netto, Pakai HSD/MFO)
+                            dihitung ulang oleh server setelah disimpan. Tip:
+                            salin satu blok dari Excel, klik sel awal, lalu
+                            tempel (Ctrl+V) untuk mengisi banyak sel sekaligus.
                         </p>
                     </>
                 )}

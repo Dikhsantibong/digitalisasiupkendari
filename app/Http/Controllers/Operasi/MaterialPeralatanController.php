@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\OperasiMaterialPeralatan;
 use App\Models\Unit;
@@ -18,6 +19,8 @@ use Inertia\Response;
 
 class MaterialPeralatanController extends Controller
 {
+    use AuthorizesFieldInput;
+
     private const DEFAULT_MATERIALS = [
         ['nama_item' => 'Air Aki Tambah kemasan 1L/Btl Reff Yuasa', 'satuan' => 'Botol', 'safety_stock' => 2, 'ilt' => 3, 'rop' => 2, 'roq' => 2],
         ['nama_item' => 'Air Aki Zuur 1L/btl', 'satuan' => 'Botol', 'safety_stock' => 2, 'ilt' => 3, 'rop' => 2, 'roq' => 2],
@@ -100,9 +103,9 @@ class MaterialPeralatanController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::OperasiInputView) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganMaterialPeralatan) ||
             $user->hasPermissionTo(PermissionName::OperasiLaporanView) ||
-            $user->hasPermissionTo(PermissionName::OperasiInputView) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganMaterialPeralatan) ||
             $user->hasPermissionTo(PermissionName::OperasiLaporanView),
             403
         );
@@ -192,10 +195,10 @@ class MaterialPeralatanController extends Controller
         $totalNilaiStok = $records->sum(fn ($r) => (float) $r->stok_akhir * (float) $r->harga_satuan);
         $lowStockCount = $records->filter(fn ($r) => (float) $r->rop > 0 && (float) $r->stok_akhir <= (float) $r->rop)->count();
 
-        $canWrite = $user->hasPermissionTo(PermissionName::OperasiInputWrite) ||
-            $user->hasPermissionTo(PermissionName::OperasiInputWrite);
+        $canWrite = $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan);
 
-        return Inertia::render('operasi/input/material-peralatan', [
+        return Inertia::render('operasi/input/material-peralatan/index', [
             'filters' => [
                 'unit_id' => $unit->id,
                 'month' => $month,
@@ -221,8 +224,8 @@ class MaterialPeralatanController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::OperasiInputWrite) ||
-            $user->hasPermissionTo(PermissionName::OperasiInputWrite),
+            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan),
             403
         );
 
@@ -322,8 +325,8 @@ class MaterialPeralatanController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::OperasiInputWrite) ||
-            $user->hasPermissionTo(PermissionName::OperasiInputWrite),
+            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan),
             403
         );
         abort_unless($user->canAccessUnit($materialPeralatan->unit_id), 403);
@@ -345,9 +348,9 @@ class MaterialPeralatanController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::OperasiInputView) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganMaterialPeralatan) ||
             $user->hasPermissionTo(PermissionName::OperasiLaporanView) ||
-            $user->hasPermissionTo(PermissionName::OperasiInputView) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganMaterialPeralatan) ||
             $user->hasPermissionTo(PermissionName::OperasiLaporanView),
             403
         );

@@ -20,6 +20,8 @@ enum RoleName: string
     case SiteLeader = 'site_leader';
     case ProjectLeaderOperasi = 'project_leader_operasi';
     case Operator = 'operator';
+    case Harmes = 'harmes';
+    case Harlist = 'harlist';
 
     public function label(): string
     {
@@ -34,6 +36,8 @@ enum RoleName: string
             self::SiteLeader => 'Site Leader',
             self::ProjectLeaderOperasi => 'Project Leader Operasi',
             self::Operator => 'Operator',
+            self::Harmes => 'Harmes (Pemeliharaan Mesin)',
+            self::Harlist => 'Harlist (Pemeliharaan Listrik)',
         };
     }
 
@@ -49,7 +53,9 @@ enum RoleName: string
             self::TeamLeaderPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan.',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
             self::ProjectLeaderOperasi => 'Operator senior yang menjadwalkan shift regu, mengelola absensi & laporan pada unit pembangkit yang ditugaskan.',
-            self::Operator => 'Mencatat data operasi harian pada unit pembangkit yang ditugaskan.',
+            self::Operator => 'Operator shift (termasuk Leader Shift) divisi Operasi di bawah Koordinator Operasi: mencatat logsheet harian dan absen pada unit pembangkit yang ditugaskan.',
+            self::Harmes => 'Teknisi pemeliharaan mesin divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
+            self::Harlist => 'Teknisi pemeliharaan listrik divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
         };
     }
 
@@ -65,7 +71,9 @@ enum RoleName: string
             self::TeamLeaderPdm,
             self::SiteLeader,
             self::ProjectLeaderOperasi,
-            self::Operator => RoleScope::Unit,
+            self::Operator,
+            self::Harmes,
+            self::Harlist => RoleScope::Unit,
         };
     }
 
@@ -231,6 +239,7 @@ enum RoleName: string
                 PermissionName::OperatorAbsensiWrite,
                 PermissionName::OperatorPresensi,
                 PermissionName::OperasiLaporanView,
+                ...PermissionName::operasiLapangan(),
             ],
 
             self::Operator => [
@@ -238,6 +247,22 @@ enum RoleName: string
                 // The operator sees the shift schedule they belong to (read-only).
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorPresensi,
+                // Every Operasi input page, one permission each — adjustable per
+                // role in Role & Akses.
+                ...PermissionName::operasiLapangan(),
+            ],
+
+            // Field maintenance staff (divisi Pemeliharaan): absen plus every HAR
+            // input & formulir page, one permission each — adjustable per role
+            // in Role & Akses — not the TL's har.input.* permissions.
+            self::Harmes,
+            self::Harlist => [
+                PermissionName::UnitViewAny,
+                PermissionName::UnitView,
+                PermissionName::MachineViewAny,
+                PermissionName::MachineView,
+                PermissionName::OperatorPresensi,
+                ...PermissionName::harLapangan(),
             ],
         };
     }

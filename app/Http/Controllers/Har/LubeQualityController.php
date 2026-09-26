@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarLubeQuality;
 use App\Models\Machine;
@@ -21,6 +22,8 @@ use Inertia\Response as InertiaResponse;
 
 class LubeQualityController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly HarLubeQualityPdfBuilder $pdfBuilder,
         private readonly ActivityLogger $activityLogger,
@@ -30,7 +33,7 @@ class LubeQualityController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganLubeQuality) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -151,14 +154,14 @@ class LubeQualityController extends Controller
             'default_analisa_text' => HarLubeQuality::defaultAnalisaText(),
             'default_cba_text' => HarLubeQuality::defaultCbaText(),
             'default_rekomendasi_text' => HarLubeQuality::defaultRekomendasiText(),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLubeQuality),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLubeQuality), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -263,7 +266,7 @@ class LubeQualityController extends Controller
     public function reset(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLubeQuality), 403);
 
         $unitId = $request->integer('unit_id');
         $machineId = $request->integer('machine_id');
@@ -304,7 +307,7 @@ class LubeQualityController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganLubeQuality) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -402,7 +405,7 @@ class LubeQualityController extends Controller
     public function destroy(Request $request, HarLubeQuality $record): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLubeQuality), 403);
         abort_unless($user->canAccessUnit($record->unit_id), 403);
 
         $unitName = $record->unit?->name;

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\OperasiResourcePembangkit;
 use App\Models\Unit;
@@ -18,13 +19,15 @@ use Inertia\Response;
 
 class ResourcePembangkitController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::OperasiInputView) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganResourcePembangkit) ||
             $user->hasPermissionTo(PermissionName::OperasiLaporanView),
             403
         );
@@ -78,7 +81,7 @@ class ResourcePembangkitController extends Controller
             ];
         }
 
-        return Inertia::render('operasi/input/resource-pembangkit', [
+        return Inertia::render('operasi/input/resource-pembangkit/index', [
             'filters' => [
                 'unit_id' => $unit->id,
                 'month' => $month,
@@ -95,14 +98,14 @@ class ResourcePembangkitController extends Controller
                 'units' => $units->all(),
                 'years' => range($year - 3, $year + 1),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganResourcePembangkit),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganResourcePembangkit), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -155,7 +158,7 @@ class ResourcePembangkitController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::OperasiInputView) ||
+            $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganResourcePembangkit) ||
             $user->hasPermissionTo(PermissionName::OperasiLaporanView),
             403
         );

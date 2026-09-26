@@ -5,14 +5,11 @@ import ActivityController from '@/actions/App/Http/Controllers/Har/ActivityContr
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { FormField } from '@/components/form-field';
+import { MobileRecordList } from '@/components/mobile/record-list';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -29,6 +26,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import activityRoutes from '@/routes/har/input/activity';
 import type { IdName } from '@/types';
@@ -79,11 +77,27 @@ type Props = {
 };
 
 const MONTHS = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    'Januari',
+    'Februari',
+    'Maret',
+    'April',
+    'Mei',
+    'Juni',
+    'Juli',
+    'Agustus',
+    'September',
+    'Oktober',
+    'November',
+    'Desember',
 ];
 
-export default function ActivitiesInput({ filters, activities, options, can_write }: Props) {
+export default function ActivitiesInput({
+    filters,
+    activities,
+    options,
+    can_write,
+}: Props) {
+    const compact = useCompactLayout();
     const [open, setOpen] = useState(false);
     const [editing, setEditing] = useState<Activity | null>(null);
 
@@ -126,19 +140,28 @@ export default function ActivitiesInput({ filters, activities, options, can_writ
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                 </div>
 
@@ -148,6 +171,44 @@ export default function ActivitiesInput({ filters, activities, options, can_writ
                             title="Belum ada kegiatan"
                             description="Tambahkan kegiatan HARMES untuk periode ini."
                         />
+                    ) : compact ? (
+                        <div className="bg-muted/30 p-2">
+                            <MobileRecordList
+                                records={activities.map((a) => ({
+                                    key: a.id,
+                                    title: a.activity_date,
+                                    meta: [
+                                        ['Mesin', a.engine_name],
+                                        ['WO', a.wonum],
+                                        ['Hasil', a.work_result],
+                                        ['Uraian', a.tasks_count],
+                                        ['Material', a.materials_count],
+                                    ],
+                                    onClick: can_write
+                                        ? () => openEdit(a)
+                                        : undefined,
+                                    actions: can_write ? (
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => openEdit(a)}
+                                            >
+                                                <Pencil className="size-4" />
+                                                Ubah
+                                            </Button>
+                                            <ConfirmDeleteDialog
+                                                action={ActivityController.destroy.form(
+                                                    a.id,
+                                                )}
+                                                title="Hapus kegiatan?"
+                                                description="Kegiatan beserta uraian & material akan dihapus permanen."
+                                            />
+                                        </>
+                                    ) : undefined,
+                                }))}
+                            />
+                        </div>
                     ) : (
                         <Table>
                             <TableHeader>
@@ -156,28 +217,55 @@ export default function ActivitiesInput({ filters, activities, options, can_writ
                                     <TableHead>Mesin</TableHead>
                                     <TableHead>WO</TableHead>
                                     <TableHead>Hasil</TableHead>
-                                    <TableHead className="text-right">Uraian</TableHead>
-                                    <TableHead className="text-right">Material</TableHead>
-                                    {can_write && <TableHead className="w-24 text-right">Aksi</TableHead>}
+                                    <TableHead className="text-right">
+                                        Uraian
+                                    </TableHead>
+                                    <TableHead className="text-right">
+                                        Material
+                                    </TableHead>
+                                    {can_write && (
+                                        <TableHead className="w-24 text-right">
+                                            Aksi
+                                        </TableHead>
+                                    )}
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {activities.map((a) => (
                                     <TableRow key={a.id}>
                                         <TableCell>{a.activity_date}</TableCell>
-                                        <TableCell>{a.engine_name ?? '—'}</TableCell>
-                                        <TableCell className="text-muted-foreground">{a.wonum ?? '—'}</TableCell>
-                                        <TableCell className="text-muted-foreground">{a.work_result ?? '—'}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{a.tasks_count}</TableCell>
-                                        <TableCell className="text-right tabular-nums">{a.materials_count}</TableCell>
+                                        <TableCell>
+                                            {a.engine_name ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                            {a.wonum ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
+                                            {a.work_result ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                            {a.tasks_count}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                            {a.materials_count}
+                                        </TableCell>
                                         {can_write && (
                                             <TableCell>
                                                 <div className="flex items-center justify-end gap-1">
-                                                    <Button variant="ghost" size="sm" onClick={() => openEdit(a)} aria-label="Ubah">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            openEdit(a)
+                                                        }
+                                                        aria-label="Ubah"
+                                                    >
                                                         <Pencil className="size-4" />
                                                     </Button>
                                                     <ConfirmDeleteDialog
-                                                        action={ActivityController.destroy.form(a.id)}
+                                                        action={ActivityController.destroy.form(
+                                                            a.id,
+                                                        )}
                                                         title="Hapus kegiatan?"
                                                         description="Kegiatan beserta uraian & material akan dihapus permanen."
                                                     />
@@ -195,7 +283,9 @@ export default function ActivitiesInput({ filters, activities, options, can_writ
             {can_write && (
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                        <DialogTitle>{editing ? 'Ubah' : 'Tambah'} Kegiatan</DialogTitle>
+                        <DialogTitle>
+                            {editing ? 'Ubah' : 'Tambah'} Kegiatan
+                        </DialogTitle>
                         <ActivityForm
                             key={editing?.id ?? 'new'}
                             filters={filters}
@@ -224,7 +314,9 @@ function ActivityForm({
     const [form, setForm] = useState({
         activity_date: editing?.activity_date ?? '',
         engine_id: editing?.engine_id ? String(editing.engine_id) : '',
-        maintenance_type_id: editing?.maintenance_type_id ? String(editing.maintenance_type_id) : '',
+        maintenance_type_id: editing?.maintenance_type_id
+            ? String(editing.maintenance_type_id)
+            : '',
         wo_id: editing?.wo_id ? String(editing.wo_id) : '',
         work_result: editing?.work_result ?? '',
         no_lh05: editing?.no_lh05 ?? '',
@@ -257,7 +349,9 @@ function ActivityForm({
             year: filters.year,
             ...form,
             engine_id: form.engine_id ? Number(form.engine_id) : null,
-            maintenance_type_id: form.maintenance_type_id ? Number(form.maintenance_type_id) : null,
+            maintenance_type_id: form.maintenance_type_id
+                ? Number(form.maintenance_type_id)
+                : null,
             wo_id: form.wo_id ? Number(form.wo_id) : null,
             tasks: tasks.filter((t) => t.task_description.trim() !== ''),
             materials: materials.filter((m) => m.material_name.trim() !== ''),
@@ -280,54 +374,126 @@ function ActivityForm({
     return (
         <div className="flex flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
-                <FormField label="Tanggal" htmlFor="activity_date" required error={errors.activity_date}>
-                    <Input id="activity_date" type="date" value={form.activity_date} onChange={(e) => set('activity_date', e.target.value)} />
+                <FormField
+                    label="Tanggal"
+                    htmlFor="activity_date"
+                    required
+                    error={errors.activity_date}
+                >
+                    <Input
+                        id="activity_date"
+                        type="date"
+                        value={form.activity_date}
+                        onChange={(e) => set('activity_date', e.target.value)}
+                    />
                 </FormField>
                 <FormField label="Mesin" error={errors.engine_id}>
-                    <Select value={form.engine_id || undefined} onValueChange={(v) => set('engine_id', v)}>
-                        <SelectTrigger className="w-full"><SelectValue placeholder="Pilih mesin" /></SelectTrigger>
+                    <Select
+                        value={form.engine_id || undefined}
+                        onValueChange={(v) => set('engine_id', v)}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih mesin" />
+                        </SelectTrigger>
                         <SelectContent>
                             {options.machines.map((m) => (
-                                <SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>
+                                <SelectItem key={m.id} value={String(m.id)}>
+                                    {m.name}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </FormField>
                 <FormField label="Jenis HAR" error={errors.maintenance_type_id}>
-                    <Select value={form.maintenance_type_id || undefined} onValueChange={(v) => set('maintenance_type_id', v)}>
-                        <SelectTrigger className="w-full"><SelectValue placeholder="Pilih jenis" /></SelectTrigger>
+                    <Select
+                        value={form.maintenance_type_id || undefined}
+                        onValueChange={(v) => set('maintenance_type_id', v)}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Pilih jenis" />
+                        </SelectTrigger>
                         <SelectContent>
                             {options.maintenance_types.map((t) => (
-                                <SelectItem key={t.id} value={String(t.id)}>{t.code} · {t.name}</SelectItem>
+                                <SelectItem key={t.id} value={String(t.id)}>
+                                    {t.code} · {t.name}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </FormField>
                 <FormField label="Work Order" error={errors.wo_id}>
-                    <Select value={form.wo_id || undefined} onValueChange={(v) => set('wo_id', v)}>
-                        <SelectTrigger className="w-full"><SelectValue placeholder="Kaitkan WO (opsional)" /></SelectTrigger>
+                    <Select
+                        value={form.wo_id || undefined}
+                        onValueChange={(v) => set('wo_id', v)}
+                    >
+                        <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Kaitkan WO (opsional)" />
+                        </SelectTrigger>
                         <SelectContent>
                             {options.work_orders.map((w) => (
-                                <SelectItem key={w.id} value={String(w.id)}>{w.wonum}</SelectItem>
+                                <SelectItem key={w.id} value={String(w.id)}>
+                                    {w.wonum}
+                                </SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </FormField>
-                <FormField label="Hasil Pekerjaan" htmlFor="work_result" error={errors.work_result}>
-                    <Input id="work_result" value={form.work_result} onChange={(e) => set('work_result', e.target.value)} autoComplete="off" />
+                <FormField
+                    label="Hasil Pekerjaan"
+                    htmlFor="work_result"
+                    error={errors.work_result}
+                >
+                    <Input
+                        id="work_result"
+                        value={form.work_result}
+                        onChange={(e) => set('work_result', e.target.value)}
+                        autoComplete="off"
+                    />
                 </FormField>
-                <FormField label="No. LH-05" htmlFor="no_lh05" error={errors.no_lh05}>
-                    <Input id="no_lh05" value={form.no_lh05} onChange={(e) => set('no_lh05', e.target.value)} autoComplete="off" />
+                <FormField
+                    label="No. LH-05"
+                    htmlFor="no_lh05"
+                    error={errors.no_lh05}
+                >
+                    <Input
+                        id="no_lh05"
+                        value={form.no_lh05}
+                        onChange={(e) => set('no_lh05', e.target.value)}
+                        autoComplete="off"
+                    />
                 </FormField>
                 <FormField label="No. SR" htmlFor="no_sr" error={errors.no_sr}>
-                    <Input id="no_sr" value={form.no_sr} onChange={(e) => set('no_sr', e.target.value)} autoComplete="off" />
+                    <Input
+                        id="no_sr"
+                        value={form.no_sr}
+                        onChange={(e) => set('no_sr', e.target.value)}
+                        autoComplete="off"
+                    />
                 </FormField>
-                <FormField label="No. TUG-9" htmlFor="no_tug9" error={errors.no_tug9}>
-                    <Input id="no_tug9" value={form.no_tug9} onChange={(e) => set('no_tug9', e.target.value)} autoComplete="off" />
+                <FormField
+                    label="No. TUG-9"
+                    htmlFor="no_tug9"
+                    error={errors.no_tug9}
+                >
+                    <Input
+                        id="no_tug9"
+                        value={form.no_tug9}
+                        onChange={(e) => set('no_tug9', e.target.value)}
+                        autoComplete="off"
+                    />
                 </FormField>
             </div>
-            <FormField label="Keterangan" htmlFor="keterangan" error={errors.keterangan}>
-                <Input id="keterangan" value={form.keterangan} onChange={(e) => set('keterangan', e.target.value)} autoComplete="off" />
+            <FormField
+                label="Keterangan"
+                htmlFor="keterangan"
+                error={errors.keterangan}
+            >
+                <Input
+                    id="keterangan"
+                    value={form.keterangan}
+                    onChange={(e) => set('keterangan', e.target.value)}
+                    autoComplete="off"
+                />
             </FormField>
 
             <SubList
@@ -342,12 +508,25 @@ function ActivityForm({
                             placeholder={`Uraian ${index + 1}`}
                             onChange={(e) =>
                                 setTasks((current) =>
-                                    current.map((t, i) => (i === index ? { task_description: e.target.value } : t)),
+                                    current.map((t, i) =>
+                                        i === index
+                                            ? {
+                                                  task_description:
+                                                      e.target.value,
+                                              }
+                                            : t,
+                                    ),
                                 )
                             }
                             autoComplete="off"
                         />
-                        <RemoveButton onClick={() => setTasks((current) => current.filter((_, i) => i !== index))} />
+                        <RemoveButton
+                            onClick={() =>
+                                setTasks((current) =>
+                                    current.filter((_, i) => i !== index),
+                                )
+                            }
+                        />
                     </div>
                 ))}
             </SubList>
@@ -356,36 +535,81 @@ function ActivityForm({
                 title="Material Terpakai"
                 addLabel="Tambah material"
                 onAdd={() =>
-                    setMaterials((m) => [...m, { material_name: '', part_number: '', quantity: '', unit_of_measure: '' }])
+                    setMaterials((m) => [
+                        ...m,
+                        {
+                            material_name: '',
+                            part_number: '',
+                            quantity: '',
+                            unit_of_measure: '',
+                        },
+                    ])
                 }
             >
                 {materials.map((material, index) => (
-                    <div key={index} className="grid grid-cols-[1fr_1fr_80px_80px_auto] items-center gap-2">
+                    <div
+                        key={index}
+                        className="grid grid-cols-[1fr_1fr_80px_80px_auto] items-center gap-2"
+                    >
                         <Input
                             value={material.material_name}
                             placeholder="Nama material"
-                            onChange={(e) => updateMaterial(setMaterials, index, 'material_name', e.target.value)}
+                            onChange={(e) =>
+                                updateMaterial(
+                                    setMaterials,
+                                    index,
+                                    'material_name',
+                                    e.target.value,
+                                )
+                            }
                             autoComplete="off"
                         />
                         <Input
                             value={material.part_number}
                             placeholder="No. part"
-                            onChange={(e) => updateMaterial(setMaterials, index, 'part_number', e.target.value)}
+                            onChange={(e) =>
+                                updateMaterial(
+                                    setMaterials,
+                                    index,
+                                    'part_number',
+                                    e.target.value,
+                                )
+                            }
                             autoComplete="off"
                         />
                         <Input
                             value={material.quantity}
                             placeholder="Jml"
                             type="number"
-                            onChange={(e) => updateMaterial(setMaterials, index, 'quantity', e.target.value)}
+                            onChange={(e) =>
+                                updateMaterial(
+                                    setMaterials,
+                                    index,
+                                    'quantity',
+                                    e.target.value,
+                                )
+                            }
                         />
                         <Input
                             value={material.unit_of_measure}
                             placeholder="Satuan"
-                            onChange={(e) => updateMaterial(setMaterials, index, 'unit_of_measure', e.target.value)}
+                            onChange={(e) =>
+                                updateMaterial(
+                                    setMaterials,
+                                    index,
+                                    'unit_of_measure',
+                                    e.target.value,
+                                )
+                            }
                             autoComplete="off"
                         />
-                        <RemoveButton onClick={() => setMaterials((current) => current.filter((_, i) => i !== index))} />
+                        <RemoveButton
+                            onClick={() =>
+                                setMaterials((current) =>
+                                    current.filter((_, i) => i !== index),
+                                )
+                            }
+                        />
                     </div>
                 ))}
             </SubList>
@@ -405,7 +629,9 @@ function updateMaterial(
     key: keyof Material,
     value: string,
 ) {
-    setMaterials((current) => current.map((m, i) => (i === index ? { ...m, [key]: value } : m)));
+    setMaterials((current) =>
+        current.map((m, i) => (i === index ? { ...m, [key]: value } : m)),
+    );
 }
 
 function SubList({
@@ -435,7 +661,12 @@ function SubList({
 
 function RemoveButton({ onClick }: { onClick: () => void }) {
     return (
-        <button type="button" onClick={onClick} aria-label="Hapus" className="text-destructive">
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label="Hapus"
+            className="text-destructive"
+        >
             <Trash2 className="size-4" />
         </button>
     );

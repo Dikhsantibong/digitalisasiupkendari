@@ -2,15 +2,21 @@ import { Head, router } from '@inertiajs/react';
 import { ClipboardList, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
-import type { Column, ColumnOrColumnGroup, RenderEditCellProps } from 'react-data-grid';
+import type {
+    Column,
+    ColumnOrColumnGroup,
+    RenderEditCellProps,
+} from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { toast } from 'sonner';
+import { MobileRecordList } from '@/components/mobile/record-list';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +36,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import workOrder from '@/routes/har/input/work-order';
@@ -53,7 +60,10 @@ type RowData = {
     material_cost: string | null;
 };
 
-type GridRow = RowData & { _key: number; [key: string]: number | string | null };
+type GridRow = RowData & {
+    _key: number;
+    [key: string]: number | string | null;
+};
 
 type Props = {
     filters: { unit_id: number; month: number; year: number };
@@ -78,14 +88,14 @@ const hydrate = (rows: RowData[]): GridRow[] =>
 
 const formatCost = (val: string | null) => {
     if (!val) {
-return '—';
-}
+        return '—';
+    }
 
     const num = Number(val);
 
     if (isNaN(num)) {
-return val;
-}
+        return val;
+    }
 
     return num.toLocaleString('id-ID');
 };
@@ -126,7 +136,12 @@ function MultilineEditor({
     );
 }
 
-export default function WorkOrderInput({ filters, rows: initialRows, options, can_write }: Props) {
+export default function WorkOrderInput({
+    filters,
+    rows: initialRows,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<GridRow[]>(() => hydrate(initialRows));
     const [nextKey, setNextKey] = useState(Math.max(initialRows.length, 1));
     const [dirty, setDirty] = useState(false);
@@ -134,6 +149,7 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
+    const compact = useCompactLayout();
     const [editingRowKey, setEditingRowKey] = useState<number | null>(null);
     const [formData, setFormData] = useState({
         wonum: '',
@@ -197,7 +213,10 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
 
         if (
             formData.engine_name &&
-            !list.some((m) => m.name.toLowerCase() === formData.engine_name.toLowerCase())
+            !list.some(
+                (m) =>
+                    m.name.toLowerCase() === formData.engine_name.toLowerCase(),
+            )
         ) {
             list.unshift({ id: -1, name: formData.engine_name });
         }
@@ -210,9 +229,15 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
 
         if (
             formData.type_code &&
-            !list.some((t) => t.code.toLowerCase() === formData.type_code.toLowerCase())
+            !list.some(
+                (t) =>
+                    t.code.toLowerCase() === formData.type_code.toLowerCase(),
+            )
         ) {
-            list.unshift({ code: formData.type_code, name: formData.type_code });
+            list.unshift({
+                code: formData.type_code,
+                name: formData.type_code,
+            });
         }
 
         return list;
@@ -223,9 +248,16 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
 
         if (
             formData.work_group_code &&
-            !list.some((w) => w.code.toLowerCase() === formData.work_group_code.toLowerCase())
+            !list.some(
+                (w) =>
+                    w.code.toLowerCase() ===
+                    formData.work_group_code.toLowerCase(),
+            )
         ) {
-            list.unshift({ code: formData.work_group_code, name: formData.work_group_code });
+            list.unshift({
+                code: formData.work_group_code,
+                name: formData.work_group_code,
+            });
         }
 
         return list;
@@ -236,9 +268,15 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
 
         if (
             formData.status_code &&
-            !list.some((s) => s.code.toLowerCase() === formData.status_code.toLowerCase())
+            !list.some(
+                (s) =>
+                    s.code.toLowerCase() === formData.status_code.toLowerCase(),
+            )
         ) {
-            list.unshift({ code: formData.status_code, name: formData.status_code });
+            list.unshift({
+                code: formData.status_code,
+                name: formData.status_code,
+            });
         }
 
         return list;
@@ -249,9 +287,15 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
 
         if (
             formData.cycle_code &&
-            !list.some((c) => c.code.toLowerCase() === formData.cycle_code.toLowerCase())
+            !list.some(
+                (c) =>
+                    c.code.toLowerCase() === formData.cycle_code.toLowerCase(),
+            )
         ) {
-            list.unshift({ code: formData.cycle_code, name: formData.cycle_code });
+            list.unshift({
+                code: formData.cycle_code,
+                name: formData.cycle_code,
+            });
         }
 
         return list;
@@ -262,9 +306,16 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
 
         if (
             formData.waiting_reason &&
-            !list.some((w) => w.value.toLowerCase() === formData.waiting_reason.toLowerCase())
+            !list.some(
+                (w) =>
+                    w.value.toLowerCase() ===
+                    formData.waiting_reason.toLowerCase(),
+            )
         ) {
-            list.unshift({ value: formData.waiting_reason, label: formData.waiting_reason });
+            list.unshift({
+                value: formData.waiting_reason,
+                label: formData.waiting_reason,
+            });
         }
 
         return list;
@@ -286,7 +337,10 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
         material_cost: row.material_cost,
     });
 
-    const saveRows = (rowsToSave: GridRow[], successMessage = 'Data berhasil disimpan') => {
+    const saveRows = (
+        rowsToSave: GridRow[],
+        successMessage = 'Data berhasil disimpan',
+    ) => {
         setSaving(true);
         router.post(
             workOrder.store().url,
@@ -344,8 +398,14 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
             sched_start: row.sched_start ?? '',
             sched_finish: row.sched_finish ?? '',
             waiting_reason: row.waiting_reason ?? '',
-            service_cost: row.service_cost !== null && row.service_cost !== undefined ? String(row.service_cost) : '',
-            material_cost: row.material_cost !== null && row.material_cost !== undefined ? String(row.material_cost) : '',
+            service_cost:
+                row.service_cost !== null && row.service_cost !== undefined
+                    ? String(row.service_cost)
+                    : '',
+            material_cost:
+                row.material_cost !== null && row.material_cost !== undefined
+                    ? String(row.material_cost)
+                    : '',
         });
         setModalOpen(true);
     };
@@ -361,7 +421,9 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
         }
 
         const isDuplicate = rows.some(
-            (r) => r.wonum?.toLowerCase() === wonumTrimmed.toLowerCase() && r._key !== editingRowKey,
+            (r) =>
+                r.wonum?.toLowerCase() === wonumTrimmed.toLowerCase() &&
+                r._key !== editingRowKey,
         );
 
         if (isDuplicate) {
@@ -389,8 +451,14 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                           sched_start: formData.sched_start || null,
                           sched_finish: formData.sched_finish || null,
                           waiting_reason: formData.waiting_reason || null,
-                          service_cost: formData.service_cost !== '' ? formData.service_cost : null,
-                          material_cost: formData.material_cost !== '' ? formData.material_cost : null,
+                          service_cost:
+                              formData.service_cost !== ''
+                                  ? formData.service_cost
+                                  : null,
+                          material_cost:
+                              formData.material_cost !== ''
+                                  ? formData.material_cost
+                                  : null,
                       }
                     : r,
             );
@@ -408,8 +476,12 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                 sched_start: formData.sched_start || null,
                 sched_finish: formData.sched_finish || null,
                 waiting_reason: formData.waiting_reason || null,
-                service_cost: formData.service_cost !== '' ? formData.service_cost : null,
-                material_cost: formData.material_cost !== '' ? formData.material_cost : null,
+                service_cost:
+                    formData.service_cost !== '' ? formData.service_cost : null,
+                material_cost:
+                    formData.material_cost !== ''
+                        ? formData.material_cost
+                        : null,
             };
             setNextKey((k) => k + 1);
             nextRows = [...rows, newRow];
@@ -421,14 +493,20 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
         // Auto-save directly to backend
         saveRows(
             nextRows,
-            isEdit ? 'Work Order berhasil diperbarui' : 'Work Order berhasil ditambahkan',
+            isEdit
+                ? 'Work Order berhasil diperbarui'
+                : 'Work Order berhasil ditambahkan',
         );
     };
 
     const handleDeleteRow = (row: GridRow) => {
         const label = row.wonum ? `"${row.wonum}"` : 'baris ini';
 
-        if (!window.confirm(`Apakah Anda yakin ingin menghapus Work Order ${label}?`)) {
+        if (
+            !window.confirm(
+                `Apakah Anda yakin ingin menghapus Work Order ${label}?`,
+            )
+        ) {
             return;
         }
 
@@ -449,7 +527,10 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
     }, []);
 
     const ROW_HEIGHT = 56;
-    const gridHeight = Math.max(Math.min(displayRows.length * ROW_HEIGHT + 44, 680), 450);
+    const gridHeight = Math.max(
+        Math.min(displayRows.length * ROW_HEIGHT + 44, 680),
+        450,
+    );
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -471,7 +552,9 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                 renderEditCell: textEditor,
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) => (
-                    <span className="font-semibold text-foreground">{row.wonum || '—'}</span>
+                    <span className="font-semibold text-foreground">
+                        {row.wonum || '—'}
+                    </span>
                 ),
             },
             {
@@ -486,10 +569,12 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                 cellClass: 'rdg-wrap-cell',
                 renderCell: ({ row }) => (
                     <div
-                        className="whitespace-pre-wrap break-words py-1 leading-snug text-xs"
+                        className="py-1 text-xs leading-snug break-words whitespace-pre-wrap"
                         title={row.description ?? ''}
                     >
-                        {row.description || <span className="text-muted-foreground">—</span>}
+                        {row.description || (
+                            <span className="text-muted-foreground">—</span>
+                        )}
                     </div>
                 ),
             },
@@ -503,7 +588,10 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) =>
                     row.type_code ? (
-                        <Badge variant="outline" className="font-medium bg-muted/60 text-xs">
+                        <Badge
+                            variant="outline"
+                            className="bg-muted/60 text-xs font-medium"
+                        >
                             {row.type_code}
                         </Badge>
                     ) : (
@@ -520,7 +608,11 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                 renderEditCell: textEditor,
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) => (
-                    <span>{row.engine_name || <span className="text-muted-foreground">—</span>}</span>
+                    <span>
+                        {row.engine_name || (
+                            <span className="text-muted-foreground">—</span>
+                        )}
+                    </span>
                 ),
             },
             {
@@ -533,7 +625,10 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) =>
                     row.work_group_code ? (
-                        <Badge variant="secondary" className="font-normal text-xs">
+                        <Badge
+                            variant="secondary"
+                            className="text-xs font-normal"
+                        >
                             {row.work_group_code}
                         </Badge>
                     ) : (
@@ -550,28 +645,33 @@ export default function WorkOrderInput({ filters, rows: initialRows, options, ca
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) => {
                     if (!row.status_code) {
-return <span className="text-muted-foreground">—</span>;
-}
+                        return <span className="text-muted-foreground">—</span>;
+                    }
 
                     const val = row.status_code.toUpperCase();
-                    const isComp = val === 'COMP' || val === 'CLOSE' || val === 'CLOSED';
+                    const isComp =
+                        val === 'COMP' || val === 'CLOSE' || val === 'CLOSED';
                     const isInprg = val === 'INPRG' || val === 'APPR';
 
                     return (
                         <span
                             className={cn(
-                                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border',
+                                'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
                                 isComp
-                                    ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                    ? 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
                                     : isInprg
-                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800'
-                                      : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-400 dark:border-amber-800',
+                                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400'
+                                      : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/60 dark:text-amber-400',
                             )}
                         >
                             <span
                                 className={cn(
                                     'mr-1.5 size-1.5 rounded-full',
-                                    isComp ? 'bg-slate-400' : isInprg ? 'bg-emerald-500' : 'bg-amber-500',
+                                    isComp
+                                        ? 'bg-slate-400'
+                                        : isInprg
+                                          ? 'bg-emerald-500'
+                                          : 'bg-amber-500',
                                 )}
                             />
                             {row.status_code}
@@ -638,8 +738,12 @@ return <span className="text-muted-foreground">—</span>;
                 editable: can_write,
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) => (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                        {row.waiting_reason || <span className="text-muted-foreground font-normal">—</span>}
+                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                        {row.waiting_reason || (
+                            <span className="font-normal text-muted-foreground">
+                                —
+                            </span>
+                        )}
                     </span>
                 ),
             },
@@ -653,7 +757,9 @@ return <span className="text-muted-foreground">—</span>;
                 renderEditCell: textEditor,
                 headerCellClass: 'rdg-sub-header text-right',
                 cellClass: 'text-right',
-                renderCell: ({ row }) => <span>{formatCost(row.service_cost)}</span>,
+                renderCell: ({ row }) => (
+                    <span>{formatCost(row.service_cost)}</span>
+                ),
             },
             {
                 key: 'material_cost',
@@ -665,7 +771,9 @@ return <span className="text-muted-foreground">—</span>;
                 renderEditCell: textEditor,
                 headerCellClass: 'rdg-sub-header text-right',
                 cellClass: 'text-right',
-                renderCell: ({ row }) => <span>{formatCost(row.material_cost)}</span>,
+                renderCell: ({ row }) => (
+                    <span>{formatCost(row.material_cost)}</span>
+                ),
             },
         ];
 
@@ -688,7 +796,7 @@ return <span className="text-muted-foreground">—</span>;
                             }}
                             title="Edit Work Order"
                             aria-label="Edit baris"
-                            className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                            className="rounded p-1 text-primary transition-colors hover:bg-primary/10"
                         >
                             <Pencil className="size-4" />
                         </button>
@@ -700,7 +808,7 @@ return <span className="text-muted-foreground">—</span>;
                             }}
                             title="Hapus Work Order"
                             aria-label="Hapus baris"
-                            className="rounded p-1 text-destructive hover:bg-destructive/10 transition-colors"
+                            className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
                         >
                             <Trash2 className="size-4" />
                         </button>
@@ -736,19 +844,29 @@ return <span className="text-muted-foreground">—</span>;
                     actions={
                         can_write && (
                             <div className="flex items-center gap-2">
-                                <Button onClick={openCreateModal} className="gap-1.5 shadow-xs">
+                                <Button
+                                    onClick={openCreateModal}
+                                    className="gap-1.5 shadow-xs"
+                                >
                                     <Plus className="size-4" />
                                     Create Work Order
                                 </Button>
                                 {dirty && (
                                     <Button
-                                        onClick={() => saveRows(rows, 'Perubahan berhasil disimpan')}
+                                        onClick={() =>
+                                            saveRows(
+                                                rows,
+                                                'Perubahan berhasil disimpan',
+                                            )
+                                        }
                                         disabled={saving}
                                         variant="secondary"
                                         className="gap-1.5"
                                     >
                                         <Save className="size-4" />
-                                        {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+                                        {saving
+                                            ? 'Menyimpan…'
+                                            : 'Simpan Perubahan'}
                                     </Button>
                                 )}
                             </div>
@@ -761,19 +879,28 @@ return <span className="text-muted-foreground">—</span>;
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
 
                     <div className="mx-1 hidden h-9 w-px self-center bg-border lg:block" />
@@ -786,18 +913,27 @@ return <span className="text-muted-foreground">—</span>;
                         }
                         options={[
                             { value: 'all', label: 'Semua' },
-                            ...options.maintenance_types.map((i) => ({ value: i.code, label: i.code })),
+                            ...options.maintenance_types.map((i) => ({
+                                value: i.code,
+                                label: i.code,
+                            })),
                         ]}
                     />
                     <OperasiSelect
                         label="Filter Work Group"
                         value={colFilters.work_group_code}
                         onChange={(value) =>
-                            setColFilters((f) => ({ ...f, work_group_code: value }))
+                            setColFilters((f) => ({
+                                ...f,
+                                work_group_code: value,
+                            }))
                         }
                         options={[
                             { value: 'all', label: 'Semua' },
-                            ...options.work_groups.map((i) => ({ value: i.code, label: i.code })),
+                            ...options.work_groups.map((i) => ({
+                                value: i.code,
+                                label: i.code,
+                            })),
                         ]}
                     />
                     <OperasiSelect
@@ -808,7 +944,10 @@ return <span className="text-muted-foreground">—</span>;
                         }
                         options={[
                             { value: 'all', label: 'Semua' },
-                            ...options.statuses.map((i) => ({ value: i.code, label: i.code })),
+                            ...options.statuses.map((i) => ({
+                                value: i.code,
+                                label: i.code,
+                            })),
                         ]}
                     />
                     <OperasiSelect
@@ -819,14 +958,20 @@ return <span className="text-muted-foreground">—</span>;
                         }
                         options={[
                             { value: 'all', label: 'Semua' },
-                            ...options.cycles.map((i) => ({ value: i.code, label: i.code })),
+                            ...options.cycles.map((i) => ({
+                                value: i.code,
+                                label: i.code,
+                            })),
                         ]}
                     />
                     <OperasiSelect
                         label="Filter Waiting"
                         value={colFilters.waiting_reason}
                         onChange={(value) =>
-                            setColFilters((f) => ({ ...f, waiting_reason: value }))
+                            setColFilters((f) => ({
+                                ...f,
+                                waiting_reason: value,
+                            }))
                         }
                         options={[
                             { value: 'all', label: 'Semua' },
@@ -845,19 +990,23 @@ return <span className="text-muted-foreground">—</span>;
                         </Button>
                     )}
                     {dirty && !saving && (
-                        <span className="self-end pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
+                        <span className="self-end pb-1 text-[13px] text-amber-600">
+                            Ada perubahan belum disimpan.
+                        </span>
                     )}
                 </div>
 
                 {displayRows.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/60 p-12 text-center">
-                        <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+                        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                             <ClipboardList className="size-6" />
                         </div>
                         <h3 className="text-base font-semibold text-foreground">
-                            {hasActiveFilter ? 'Tidak Ada Data yang Cocok' : 'Belum Ada Work Order'}
+                            {hasActiveFilter
+                                ? 'Tidak Ada Data yang Cocok'
+                                : 'Belum Ada Work Order'}
                         </h3>
-                        <p className="mt-1 text-sm text-muted-foreground max-w-md">
+                        <p className="mt-1 max-w-md text-sm text-muted-foreground">
                             {hasActiveFilter
                                 ? 'Tidak ada Work Order yang sesuai dengan kriteria filter yang dipilih.'
                                 : 'Belum ada Work Order yang tercatat untuk unit dan periode ini. Silakan buat Work Order baru.'}
@@ -865,11 +1014,21 @@ return <span className="text-muted-foreground">—</span>;
                         {can_write && (
                             <div className="mt-4 flex gap-2">
                                 {hasActiveFilter ? (
-                                    <Button variant="outline" size="sm" onClick={() => setColFilters(emptyColFilters)}>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            setColFilters(emptyColFilters)
+                                        }
+                                    >
                                         Reset Filter
                                     </Button>
                                 ) : (
-                                    <Button size="sm" onClick={openCreateModal} className="gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={openCreateModal}
+                                        className="gap-2"
+                                    >
                                         <Plus className="size-4" />
                                         Create Work Order
                                     </Button>
@@ -877,8 +1036,53 @@ return <span className="text-muted-foreground">—</span>;
                             </div>
                         )}
                     </div>
+                ) : compact ? (
+                    <MobileRecordList
+                        records={displayRows.map((row) => ({
+                            key: row._key,
+                            title: row.wonum || 'WO tanpa nomor',
+                            badge: row.status_code ? (
+                                <StatusBadge tone="info">
+                                    {row.status_code}
+                                </StatusBadge>
+                            ) : undefined,
+                            meta: [
+                                ['Uraian', row.description],
+                                ['Mesin', row.engine_name],
+                                ['Jenis', row.type_code],
+                                ['Work group', row.work_group_code],
+                                ['Tanggal', row.report_date],
+                                ['Waiting', row.waiting_reason],
+                            ],
+                            onClick: can_write
+                                ? () => openEditModal(row)
+                                : undefined,
+                            actions: can_write ? (
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openEditModal(row)}
+                                    >
+                                        Ubah
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-destructive"
+                                        onClick={() => handleDeleteRow(row)}
+                                    >
+                                        Hapus
+                                    </Button>
+                                </>
+                            ) : undefined,
+                        }))}
+                    />
                 ) : (
-                    <div className="operasi-grid w-full overflow-hidden rounded-md border border-border" onPaste={onPaste}>
+                    <div
+                        className="operasi-grid w-full overflow-hidden rounded-md border border-border"
+                        onPaste={onPaste}
+                    >
                         <style>{OPERASI_GRID_STYLES}</style>
                         <style>{`
                             .operasi-grid, .operasi-grid .rdg {
@@ -926,7 +1130,9 @@ return <span className="text-muted-foreground">—</span>;
                 )}
 
                 <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-3 text-[12px] text-muted-foreground">
-                    <p className="font-medium text-foreground">Kode yang valid:</p>
+                    <p className="font-medium text-foreground">
+                        Kode yang valid:
+                    </p>
                     {codeList('Jenis', options.maintenance_types)}
                     {codeList('Work Group', options.work_groups)}
                     {codeList('Status', options.statuses)}
@@ -935,16 +1141,21 @@ return <span className="text-muted-foreground">—</span>;
                         <span className="font-medium">Waiting:</span>{' '}
                         {options.waiting_reasons.map((r) => r.value).join(', ')}
                     </div>
-                    <p className="pt-1">Tip: Klik dua kali pada baris tabel atau klik ikon pensil untuk mengubah data.</p>
+                    <p className="pt-1">
+                        Tip: Klik dua kali pada baris tabel atau klik ikon
+                        pensil untuk mengubah data.
+                    </p>
                 </div>
             </div>
 
             {/* Modal Dialog Form Create / Edit Work Order */}
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingRowKey !== null ? 'Edit Work Order' : 'Create Work Order'}
+                            {editingRowKey !== null
+                                ? 'Edit Work Order'
+                                : 'Create Work Order'}
                         </DialogTitle>
                         <DialogDescription>
                             {editingRowKey !== null
@@ -953,19 +1164,26 @@ return <span className="text-muted-foreground">—</span>;
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleModalSubmit} className="space-y-4 py-2">
+                    <form
+                        onSubmit={handleModalSubmit}
+                        className="space-y-4 py-2"
+                    >
                         {/* Baris 1: WONUM & Mesin */}
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div className="space-y-1.5">
                                 <Label htmlFor="wonum">
-                                    WONUM <span className="text-destructive">*</span>
+                                    WONUM{' '}
+                                    <span className="text-destructive">*</span>
                                 </Label>
                                 <Input
                                     id="wonum"
                                     placeholder="Contoh: WO-2026-001"
                                     value={formData.wonum}
                                     onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, wonum: e.target.value }))
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            wonum: e.target.value,
+                                        }))
                                     }
                                     required
                                     autoFocus
@@ -973,14 +1191,21 @@ return <span className="text-muted-foreground">—</span>;
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="engine_name">Mesin / Peralatan</Label>
+                                <Label htmlFor="engine_name">
+                                    Mesin / Peralatan
+                                </Label>
                                 {machineOptions.length > 0 ? (
                                     <Select
-                                        value={formData.engine_name || NONE_VALUE}
+                                        value={
+                                            formData.engine_name || NONE_VALUE
+                                        }
                                         onValueChange={(val) =>
                                             setFormData((prev) => ({
                                                 ...prev,
-                                                engine_name: val === NONE_VALUE ? '' : val,
+                                                engine_name:
+                                                    val === NONE_VALUE
+                                                        ? ''
+                                                        : val,
                                             }))
                                         }
                                     >
@@ -988,11 +1213,17 @@ return <span className="text-muted-foreground">—</span>;
                                             <SelectValue placeholder="Pilih Mesin (Opsional)" />
                                         </SelectTrigger>
                                         <SelectContent className="max-h-60">
-                                            <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                            <SelectItem
+                                                value={NONE_VALUE}
+                                                className="text-muted-foreground"
+                                            >
                                                 — Tanpa Mesin / Umum —
                                             </SelectItem>
                                             {machineOptions.map((m) => (
-                                                <SelectItem key={m.id} value={m.name}>
+                                                <SelectItem
+                                                    key={m.id}
+                                                    value={m.name}
+                                                >
                                                     {m.name}
                                                 </SelectItem>
                                             ))}
@@ -1004,7 +1235,10 @@ return <span className="text-muted-foreground">—</span>;
                                         placeholder="Nama mesin (opsional)"
                                         value={formData.engine_name}
                                         onChange={(e) =>
-                                            setFormData((prev) => ({ ...prev, engine_name: e.target.value }))
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                engine_name: e.target.value,
+                                            }))
                                         }
                                     />
                                 )}
@@ -1013,15 +1247,20 @@ return <span className="text-muted-foreground">—</span>;
 
                         {/* Baris 2: Deskripsi */}
                         <div className="space-y-1.5">
-                            <Label htmlFor="description">Deskripsi Pekerjaan</Label>
+                            <Label htmlFor="description">
+                                Deskripsi Pekerjaan
+                            </Label>
                             <textarea
                                 id="description"
                                 rows={3}
-                                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                                 placeholder="Tuliskan uraian pekerjaan atau kendala Work Order..."
                                 value={formData.description}
                                 onChange={(e) =>
-                                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        description: e.target.value,
+                                    }))
                                 }
                             />
                         </div>
@@ -1035,7 +1274,8 @@ return <span className="text-muted-foreground">—</span>;
                                     onValueChange={(val) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            type_code: val === NONE_VALUE ? '' : val,
+                                            type_code:
+                                                val === NONE_VALUE ? '' : val,
                                         }))
                                     }
                                 >
@@ -1043,12 +1283,21 @@ return <span className="text-muted-foreground">—</span>;
                                         <SelectValue placeholder="Pilih Jenis" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-60">
-                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
                                             — Tanpa Jenis —
                                         </SelectItem>
                                         {typeOptions.map((t) => (
-                                            <SelectItem key={t.code} value={t.code}>
-                                                {t.code} {t.name && t.name !== t.code ? `— ${t.name}` : ''}
+                                            <SelectItem
+                                                key={t.code}
+                                                value={t.code}
+                                            >
+                                                {t.code}{' '}
+                                                {t.name && t.name !== t.code
+                                                    ? `— ${t.name}`
+                                                    : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1056,13 +1305,18 @@ return <span className="text-muted-foreground">—</span>;
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="work_group_code">Work Group</Label>
+                                <Label htmlFor="work_group_code">
+                                    Work Group
+                                </Label>
                                 <Select
-                                    value={formData.work_group_code || NONE_VALUE}
+                                    value={
+                                        formData.work_group_code || NONE_VALUE
+                                    }
                                     onValueChange={(val) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            work_group_code: val === NONE_VALUE ? '' : val,
+                                            work_group_code:
+                                                val === NONE_VALUE ? '' : val,
                                         }))
                                     }
                                 >
@@ -1070,12 +1324,21 @@ return <span className="text-muted-foreground">—</span>;
                                         <SelectValue placeholder="Pilih Work Group" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-60">
-                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
                                             — Tanpa WG —
                                         </SelectItem>
                                         {workGroupOptions.map((w) => (
-                                            <SelectItem key={w.code} value={w.code}>
-                                                {w.code} {w.name && w.name !== w.code ? `— ${w.name}` : ''}
+                                            <SelectItem
+                                                key={w.code}
+                                                value={w.code}
+                                            >
+                                                {w.code}{' '}
+                                                {w.name && w.name !== w.code
+                                                    ? `— ${w.name}`
+                                                    : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1089,7 +1352,8 @@ return <span className="text-muted-foreground">—</span>;
                                     onValueChange={(val) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            status_code: val === NONE_VALUE ? '' : val,
+                                            status_code:
+                                                val === NONE_VALUE ? '' : val,
                                         }))
                                     }
                                 >
@@ -1097,12 +1361,21 @@ return <span className="text-muted-foreground">—</span>;
                                         <SelectValue placeholder="Pilih Status" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-60">
-                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
                                             — Tanpa Status —
                                         </SelectItem>
                                         {statusOptions.map((s) => (
-                                            <SelectItem key={s.code} value={s.code}>
-                                                {s.code} {s.name && s.name !== s.code ? `— ${s.name}` : ''}
+                                            <SelectItem
+                                                key={s.code}
+                                                value={s.code}
+                                            >
+                                                {s.code}{' '}
+                                                {s.name && s.name !== s.code
+                                                    ? `— ${s.name}`
+                                                    : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1116,7 +1389,8 @@ return <span className="text-muted-foreground">—</span>;
                                     onValueChange={(val) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            cycle_code: val === NONE_VALUE ? '' : val,
+                                            cycle_code:
+                                                val === NONE_VALUE ? '' : val,
                                         }))
                                     }
                                 >
@@ -1124,12 +1398,21 @@ return <span className="text-muted-foreground">—</span>;
                                         <SelectValue placeholder="Pilih Siklus" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-60">
-                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
                                             — Tanpa Siklus —
                                         </SelectItem>
                                         {cycleOptions.map((c) => (
-                                            <SelectItem key={c.code} value={c.code}>
-                                                {c.code} {c.name && c.name !== c.code ? `— ${c.name}` : ''}
+                                            <SelectItem
+                                                key={c.code}
+                                                value={c.code}
+                                            >
+                                                {c.code}{' '}
+                                                {c.name && c.name !== c.code
+                                                    ? `— ${c.name}`
+                                                    : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -1146,7 +1429,10 @@ return <span className="text-muted-foreground">—</span>;
                                     type="date"
                                     value={formData.report_date}
                                     onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, report_date: e.target.value }))
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            report_date: e.target.value,
+                                        }))
                                     }
                                 />
                             </div>
@@ -1158,19 +1444,27 @@ return <span className="text-muted-foreground">—</span>;
                                     type="date"
                                     value={formData.sched_start}
                                     onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, sched_start: e.target.value }))
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            sched_start: e.target.value,
+                                        }))
                                     }
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="sched_finish">Sched Finish</Label>
+                                <Label htmlFor="sched_finish">
+                                    Sched Finish
+                                </Label>
                                 <Input
                                     id="sched_finish"
                                     type="date"
                                     value={formData.sched_finish}
                                     onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, sched_finish: e.target.value }))
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            sched_finish: e.target.value,
+                                        }))
                                     }
                                 />
                             </div>
@@ -1179,13 +1473,18 @@ return <span className="text-muted-foreground">—</span>;
                         {/* Baris 5: Waiting Reason, Biaya Jasa, Biaya Material */}
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <div className="space-y-1.5">
-                                <Label htmlFor="waiting_reason">Waiting Reason</Label>
+                                <Label htmlFor="waiting_reason">
+                                    Waiting Reason
+                                </Label>
                                 <Select
-                                    value={formData.waiting_reason || NONE_VALUE}
+                                    value={
+                                        formData.waiting_reason || NONE_VALUE
+                                    }
                                     onValueChange={(val) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            waiting_reason: val === NONE_VALUE ? '' : val,
+                                            waiting_reason:
+                                                val === NONE_VALUE ? '' : val,
                                         }))
                                     }
                                 >
@@ -1193,11 +1492,17 @@ return <span className="text-muted-foreground">—</span>;
                                         <SelectValue placeholder="Pilih Alasan..." />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-60">
-                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
                                             — Tidak Ada Waiting —
                                         </SelectItem>
                                         {waitingReasonOptions.map((w) => (
-                                            <SelectItem key={w.value} value={w.value}>
+                                            <SelectItem
+                                                key={w.value}
+                                                value={w.value}
+                                            >
                                                 {w.label}
                                             </SelectItem>
                                         ))}
@@ -1206,7 +1511,9 @@ return <span className="text-muted-foreground">—</span>;
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="service_cost">Biaya Jasa (Rp)</Label>
+                                <Label htmlFor="service_cost">
+                                    Biaya Jasa (Rp)
+                                </Label>
                                 <Input
                                     id="service_cost"
                                     type="number"
@@ -1215,13 +1522,18 @@ return <span className="text-muted-foreground">—</span>;
                                     placeholder="0"
                                     value={formData.service_cost}
                                     onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, service_cost: e.target.value }))
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            service_cost: e.target.value,
+                                        }))
                                     }
                                 />
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="material_cost">Biaya Material (Rp)</Label>
+                                <Label htmlFor="material_cost">
+                                    Biaya Material (Rp)
+                                </Label>
                                 <Input
                                     id="material_cost"
                                     type="number"
@@ -1230,13 +1542,16 @@ return <span className="text-muted-foreground">—</span>;
                                     placeholder="0"
                                     value={formData.material_cost}
                                     onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, material_cost: e.target.value }))
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            material_cost: e.target.value,
+                                        }))
                                     }
                                 />
                             </div>
                         </div>
 
-                        <DialogFooter className="pt-2 gap-2 sm:gap-0">
+                        <DialogFooter className="gap-2 pt-2 sm:gap-0">
                             <Button
                                 type="button"
                                 variant="outline"

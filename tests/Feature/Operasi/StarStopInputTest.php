@@ -27,7 +27,7 @@ class StarStopInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3, $unit))
             ->get(route('operasi.input.star-stop.index'))
             ->assertForbidden();
     }
@@ -47,7 +47,7 @@ class StarStopInputTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operasi/input/star-stop')
+                ->component('operasi/input/star-stop/index')
                 ->where('engine.id', $engine->id)
                 ->has('options.status_codes', 1)
                 ->has('hours'),

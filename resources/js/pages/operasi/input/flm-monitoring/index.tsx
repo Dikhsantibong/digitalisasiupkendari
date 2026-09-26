@@ -1,13 +1,18 @@
 import { Head, router } from '@inertiajs/react';
-import { Download, FileSpreadsheet, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, Download, FileSpreadsheet, Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { downloadFlmMonitoringWorkbook } from '@/lib/operasi-flm-excel';
 import type { FlmMonitoringRow } from '@/lib/operasi-flm-excel';
 import { dashboard } from '@/routes';
@@ -48,6 +53,9 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const [openRow, setOpenRow] = useState<number | null>(initialRows.length > 0 ? null : 0);
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
 
     const kondisi = Object.entries(options.kondisi_awal);
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
@@ -94,6 +102,148 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
         }
     };
 
+    if (compact) {
+        return (
+            <>
+                <Head title="Monitoring FLM" />
+                <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                    <PageHeader title="Monitoring FLM" description={`${unit.name} · ${periodLabel}`} />
+
+                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
+                        <div className="col-span-2">
+                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(value) => visit({ unit_id: Number(value) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
+                        </div>
+                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(value) => visit({ month: Number(value) })} options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))} className="w-full" />
+                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(value) => visit({ year: Number(value) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
+                    </div>
+
+                    <p className="px-0.5 text-[12px] text-muted-foreground">Temuan tanpa mesin, tanggal &amp; masalah tidak ikut disimpan.</p>
+
+                    {rows.length === 0 && (
+                        <p className="rounded-xl border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">Belum ada temuan FLM untuk periode ini.</p>
+                    )}
+
+                    {rows.map((row, index) => {
+                        const open = openRow === index;
+
+                        return (
+                            <div key={index} className="rounded-xl border border-border bg-card">
+                                <button type="button" onClick={() => setOpenRow(open ? null : index)} className="flex w-full items-center gap-3 p-3 text-left">
+                                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">{row.no_urut}</span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block truncate text-[14px] font-medium text-foreground">{row.mesin || 'Temuan baru'}</span>
+                                        <span className="block truncate text-[12px] text-muted-foreground">
+                                            {row.tanggal ? formatDate(row.tanggal) : 'Tanggal belum diisi'}
+                                            {row.masalah ? ` · ${row.masalah}` : ''}
+                                        </span>
+                                    </span>
+                                    <span className={`shrink-0 rounded-md px-1.5 py-0.5 text-[10.5px] font-bold uppercase ${row.status === 'close' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}`}>
+                                        {row.status}
+                                    </span>
+                                    <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition ${open ? 'rotate-180' : ''}`} />
+                                </button>
+                                {open && (
+                                    <div className="flex flex-col gap-3 border-t border-border p-3">
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Mesin / Peralatan
+                                            <Input value={row.mesin} onChange={(e) => update(index, { mesin: e.target.value })} placeholder="Fuel Transfer Pump" disabled={!can_write} />
+                                        </label>
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Tanggal
+                                            <Input type="date" value={row.tanggal ?? ''} onChange={(e) => update(index, { tanggal: e.target.value || null })} disabled={!can_write} />
+                                        </label>
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Masalah awal yang ditemukan
+                                            <Textarea value={row.masalah} onChange={(e) => update(index, { masalah: e.target.value })} rows={2} disabled={!can_write} />
+                                        </label>
+                                        <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Kondisi awal (tindakan)
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {kondisi.map(([key, label]) => {
+                                                    const active = row.kondisi_awal.includes(key);
+
+                                                    return (
+                                                        <button
+                                                            key={key}
+                                                            type="button"
+                                                            role="checkbox"
+                                                            aria-checked={active}
+                                                            onClick={() => toggleKondisi(index, key, !active)}
+                                                            disabled={!can_write}
+                                                            className={`min-h-9 rounded-lg border px-3 text-[13px] font-medium transition active:scale-95 disabled:opacity-60 ${
+                                                                active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground'
+                                                            }`}
+                                                        >
+                                                            {label}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Kondisi akhir
+                                            <Input value={row.kondisi_akhir} onChange={(e) => update(index, { kondisi_akhir: e.target.value })} placeholder="Ditadah / Backlog" disabled={!can_write} />
+                                        </label>
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Catatan FLM
+                                            <Textarea value={row.catatan} onChange={(e) => update(index, { catatan: e.target.value })} rows={2} disabled={!can_write} />
+                                        </label>
+                                        <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Status
+                                            <ChoiceChips
+                                                options={['OPEN', 'CLOSE']}
+                                                value={row.status.toUpperCase()}
+                                                onChange={(value) => value && update(index, { status: value === 'CLOSE' ? 'close' : 'open' })}
+                                                disabled={!can_write}
+                                                tone={(value) => (value === 'CLOSE' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-amber-500 bg-amber-500 text-white')}
+                                            />
+                                        </div>
+                                        {can_write && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setRows((current) => renumber(current.filter((_, i) => i !== index)));
+                                                    setOpenRow(null);
+                                                    setDirty(true);
+                                                }}
+                                                className="self-start text-destructive"
+                                            >
+                                                <Trash2 className="size-4" />
+                                                Hapus temuan ini
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {can_write && (
+                    <StickyActionBar>
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() => {
+                                setRows((current) => [...current, blankRow(current.length + 1)]);
+                                setOpenRow(rows.length);
+                                setDirty(true);
+                            }}
+                        >
+                            <Plus className="size-4" />
+                            Tambah
+                        </Button>
+                        <Button size="lg" onClick={save} disabled={saving || !dirty}>
+                            <Save className="size-4" />
+                            {saving ? 'Menyimpan…' : 'Simpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Monitoring FLM" />
@@ -103,7 +253,7 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                     description={`Temuan first line maintenance mesin & peralatan, tindakan awal, kondisi akhir dan status — ${unit.name} · ${periodLabel}.`}
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => router.get(operasiInput.index().url)}>Kembali</Button>
+                            {can('operasi.input.view') && <Button variant="outline" onClick={() => router.get(operasiInput.index().url)}>Kembali</Button>}
                             <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
                                 <FileSpreadsheet className="size-4 text-emerald-600" />
                                 {exporting ? 'Menyiapkan…' : 'Excel'}
@@ -130,6 +280,33 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                 </div>
 
                 {!has_saved && <p className="text-[13px] text-muted-foreground">Belum ada temuan FLM tersimpan untuk periode ini. Baris tanpa mesin, tanggal &amp; masalah tidak ikut disimpan.</p>}
+
+                <div className="grid grid-cols-[64px_1fr_64px] items-center gap-3 rounded-md border border-border bg-muted/10 p-4 sm:grid-cols-[140px_1fr_140px]">
+                    <img
+                        src="/logo/sidebar-logo.png"
+                        alt="PLN Nusantara Power"
+                        className="h-8 w-auto rounded-sm bg-white object-contain p-0.5 sm:h-11"
+                        onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}}
+                    />
+                    <div className="text-center">
+                        <div className="text-xs font-semibold uppercase text-muted-foreground">Jasa Pendukung Teknis 6 SITE</div>
+                        <div className="text-xs font-semibold uppercase text-muted-foreground">Laporan Project {unit.name}</div>
+                        <div className="text-base font-bold uppercase text-foreground">Monitoring FLM</div>
+                        <div className="mt-1 text-xs font-semibold uppercase text-primary">
+                            Periode : {periodLabel}
+                        </div>
+                    </div>
+                    <img
+                        src="/logo/mkp.jpg"
+                        alt="Mitra Karya Prima"
+                        className="ml-auto h-8 w-auto rounded-sm bg-white object-contain p-0.5 sm:h-11"
+                        onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}}
+                    />
+                </div>
 
                 <div className="overflow-x-auto rounded-md border border-border bg-card">
                     <table className="w-full min-w-[1200px] border-collapse text-xs">

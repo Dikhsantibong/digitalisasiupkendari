@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\HarLogbookMutasi;
@@ -28,6 +29,8 @@ use Inertia\Response;
  */
 class LogbookMutasiController extends Controller
 {
+    use AuthorizesFieldInput;
+
     /** @var list<string> */
     public const APD = ['HELM', 'WEARPACK', 'SEPATU SAFETY', 'EAR PLUG', 'SARUNG TANGAN'];
 
@@ -61,14 +64,14 @@ class LogbookMutasiController extends Controller
             ])->values()->all(),
             'logbook' => $selected ? $this->present($selected) : null,
             'template' => $this->template($unit),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLogbookMutasi),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLogbookMutasi), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -121,7 +124,7 @@ class LogbookMutasiController extends Controller
     public function destroy(Request $request, HarLogbookMutasi $logbookMutasi): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLogbookMutasi), 403);
         abort_unless($user->canAccessUnit($logbookMutasi->unit_id), 403);
 
         $logbookMutasi->delete();
@@ -207,7 +210,7 @@ class LogbookMutasiController extends Controller
 
     private function authorizeView(User $user): void
     {
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganLogbookMutasi) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
     }
 
     /**

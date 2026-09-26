@@ -11,7 +11,9 @@ use Illuminate\Database\Seeder;
 
 /**
  * Standard roster per generating unit:
- * - 6 Shift Operators (Regu A, B, C, 2 each)
+ * - 6 Shift Operators (Regu A, B, C, 2 each) — divisi Operasi
+ * - 3 Harmes (pemeliharaan mesin) + 2 Harlist (pemeliharaan listrik) —
+ *   divisi Pemeliharaan
  * - 1 Team Leader Pemeliharaan, Operasi, K3 & Keamanan
  * - 1 Staf Pemeliharaan, Operasi, K3
  * - 1 Koordinator Pemeliharaan, Operasi, K3, PDM, Logistik
@@ -33,12 +35,12 @@ class EmployeeSeeder extends Seeder
      * @var list<array{suffix: int, position: string, regu: ?string, label: string, division: ?string}>
      */
     public const UNIT_ROSTER = [
-        ['suffix' => 1, 'position' => 'Operator', 'regu' => 'A', 'label' => 'Operator 1 (Regu A)', 'division' => 'operator'],
-        ['suffix' => 2, 'position' => 'Operator', 'regu' => 'A', 'label' => 'Operator 2 (Regu A)', 'division' => 'operator'],
-        ['suffix' => 3, 'position' => 'Operator', 'regu' => 'B', 'label' => 'Operator 3 (Regu B)', 'division' => 'operator'],
-        ['suffix' => 4, 'position' => 'Operator', 'regu' => 'B', 'label' => 'Operator 4 (Regu B)', 'division' => 'operator'],
-        ['suffix' => 5, 'position' => 'Operator', 'regu' => 'C', 'label' => 'Operator 5 (Regu C)', 'division' => 'operator'],
-        ['suffix' => 6, 'position' => 'Operator', 'regu' => 'C', 'label' => 'Operator 6 (Regu C)', 'division' => 'operator'],
+        ['suffix' => 1, 'position' => 'Operator', 'regu' => 'A', 'label' => 'Operator 1 (Regu A)', 'division' => 'operasi'],
+        ['suffix' => 2, 'position' => 'Operator', 'regu' => 'A', 'label' => 'Operator 2 (Regu A)', 'division' => 'operasi'],
+        ['suffix' => 3, 'position' => 'Operator', 'regu' => 'B', 'label' => 'Operator 3 (Regu B)', 'division' => 'operasi'],
+        ['suffix' => 4, 'position' => 'Operator', 'regu' => 'B', 'label' => 'Operator 4 (Regu B)', 'division' => 'operasi'],
+        ['suffix' => 5, 'position' => 'Operator', 'regu' => 'C', 'label' => 'Operator 5 (Regu C)', 'division' => 'operasi'],
+        ['suffix' => 6, 'position' => 'Operator', 'regu' => 'C', 'label' => 'Operator 6 (Regu C)', 'division' => 'operasi'],
         ['suffix' => 7, 'position' => 'Team Leader Pemeliharaan', 'regu' => null, 'label' => 'TL Pemeliharaan', 'division' => 'pemeliharaan'],
         ['suffix' => 8, 'position' => 'Team Leader Operasi', 'regu' => null, 'label' => 'TL Operasi', 'division' => 'operasi'],
         ['suffix' => 9, 'position' => 'Team Leader K3 & Keamanan', 'regu' => null, 'label' => 'TL K3 & Keamanan', 'division' => 'k3'],
@@ -57,7 +59,20 @@ class EmployeeSeeder extends Seeder
         ['suffix' => 22, 'position' => 'Office PDM', 'regu' => null, 'label' => 'Office PDM', 'division' => 'pdm'],
         ['suffix' => 23, 'position' => 'Office Logistik', 'regu' => null, 'label' => 'Office Logistik', 'division' => 'logistik'],
         ['suffix' => 24, 'position' => 'PIC PDM', 'regu' => null, 'label' => 'PIC PDM', 'division' => 'pdm'],
+        ['suffix' => 25, 'position' => Employee::POSITION_HARMES, 'regu' => null, 'label' => 'Harmes 1', 'division' => 'pemeliharaan'],
+        ['suffix' => 26, 'position' => Employee::POSITION_HARMES, 'regu' => null, 'label' => 'Harmes 2', 'division' => 'pemeliharaan'],
+        ['suffix' => 27, 'position' => Employee::POSITION_HARMES, 'regu' => null, 'label' => 'Harmes 3', 'division' => 'pemeliharaan'],
+        ['suffix' => 28, 'position' => Employee::POSITION_HARLIST, 'regu' => null, 'label' => 'Harlist 1', 'division' => 'pemeliharaan'],
+        ['suffix' => 29, 'position' => Employee::POSITION_HARLIST, 'regu' => null, 'label' => 'Harlist 2', 'division' => 'pemeliharaan'],
     ];
+
+    /**
+     * The NIP of a roster member of a unit, e.g. "PLTD-POASIA-PEG-025".
+     */
+    public static function nip(Unit $unit, int $suffix): string
+    {
+        return sprintf('%s-PEG-%03d', $unit->code, $suffix);
+    }
 
     public function run(): void
     {
@@ -67,7 +82,7 @@ class EmployeeSeeder extends Seeder
         // 1. Seed the unit-level roster
         foreach (Unit::query()->orderBy('id')->get() as $unit) {
             foreach (self::UNIT_ROSTER as $person) {
-                $this->seed(sprintf('%s-PEG-%03d', $unit->code, $person['suffix']), [
+                $this->seed(self::nip($unit, $person['suffix']), [
                     'unit_id' => $unit->id,
                     'service_unit_id' => null,
                     'name' => "{$person['label']} — {$unit->name}",

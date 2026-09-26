@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarInjectorPressure;
 use App\Models\Machine;
@@ -20,6 +21,8 @@ use Inertia\Response as InertiaResponse;
 
 class InjectorPressureController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly HarInjectorPressurePdfBuilder $pdfBuilder,
         private readonly ActivityLogger $activityLogger,
@@ -29,7 +32,7 @@ class InjectorPressureController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganInjectorPressure) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -134,14 +137,14 @@ class InjectorPressureController extends Controller
                 'test_date' => $testDate,
                 'record_id' => $record?->id,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganInjectorPressure),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganInjectorPressure), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -212,7 +215,7 @@ class InjectorPressureController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganInjectorPressure) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -295,7 +298,7 @@ class InjectorPressureController extends Controller
     public function destroy(Request $request, HarInjectorPressure $record): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganInjectorPressure), 403);
         abort_unless($user->canAccessUnit($record->unit_id), 403);
 
         $unitName = $record->unit?->name;

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\HarHydrotest;
@@ -21,6 +22,8 @@ use Inertia\Response as InertiaResponse;
 
 class HydrotestController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly HarHydrotestPdfBuilder $pdfBuilder,
         private readonly ActivityLogger $activityLogger,
@@ -30,7 +33,7 @@ class HydrotestController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganHydrotest) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -130,14 +133,14 @@ class HydrotestController extends Controller
                 'test_date' => $testDate,
                 'record_id' => $record?->id,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganHydrotest),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganHydrotest), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -208,7 +211,7 @@ class HydrotestController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganHydrotest) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -284,7 +287,7 @@ class HydrotestController extends Controller
     public function destroy(HarHydrotest $hydrotest): RedirectResponse
     {
         $user = request()->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganHydrotest), 403);
         abort_unless($user->canAccessUnit($hydrotest->unit_id), 403);
 
         $hydrotest->delete();
@@ -311,7 +314,7 @@ class HydrotestController extends Controller
                     $q->where('service_unit_id', $unit->service_unit_id);
                 }
                 $q->orWhere('position', 'like', '%manager%')
-                  ->orWhere('position', 'like', '%manajer%');
+                    ->orWhere('position', 'like', '%manajer%');
             })
             ->orderBy('name')
             ->get();

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarLaporanGangguan;
 use App\Models\Machine;
@@ -21,13 +22,15 @@ use Inertia\Response;
 
 class LaporanGangguanController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganLaporanGangguan) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -71,14 +74,14 @@ class LaporanGangguanController extends Controller
                 'years' => range($now->year - 3, $now->year + 1),
                 'machines' => $machines->all(),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLaporanGangguan),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLaporanGangguan), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -174,7 +177,7 @@ class LaporanGangguanController extends Controller
     public function destroy(Request $request, HarLaporanGangguan $laporanGangguan): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLaporanGangguan), 403);
         abort_unless($user->canAccessUnit($laporanGangguan->unit_id), 403);
 
         $laporanGangguan->delete();
@@ -194,7 +197,7 @@ class LaporanGangguanController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganLaporanGangguan) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );

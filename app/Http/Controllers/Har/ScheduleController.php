@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\MaintenanceScope;
 use App\Enums\PermissionName;
 use App\Enums\SchedulePlanType;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\MaintenanceSchedule;
@@ -27,12 +28,14 @@ use Inertia\Response;
  */
 class ScheduleController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganSchedule), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -75,14 +78,14 @@ class ScheduleController extends Controller
                 'scopes' => collect(MaintenanceScope::cases())->map(fn (MaintenanceScope $s): array => ['value' => $s->value, 'label' => $s->label()])->all(),
                 'plan_types' => collect(SchedulePlanType::cases())->map(fn (SchedulePlanType $p): array => ['value' => $p->value, 'label' => $p->label()])->all(),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganSchedule),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganSchedule), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);

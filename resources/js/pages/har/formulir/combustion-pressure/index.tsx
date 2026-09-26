@@ -14,6 +14,7 @@ import {
     Sparkles,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -36,9 +37,12 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
-import combustionRoutes from '@/routes/har/formulir/combustion-pressure';
 import harFormulir from '@/routes/har/formulir';
+import combustionRoutes from '@/routes/har/formulir/combustion-pressure';
 
 type CombustionMeasurement = {
     cylinder: number;
@@ -149,6 +153,8 @@ export default function CombustionPressureIndex({
     pdf_url,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     const [viewTab, setViewTab] = useState<'form' | 'html' | 'pdf'>(
         record?.format === 'html' ? 'html' : 'form'
     );
@@ -197,6 +203,7 @@ export default function CombustionPressureIndex({
     const [measurements, setMeasurements] = useState<CombustionMeasurement[]>(
         () => {
             const initial = form_data.measurements || [];
+
             if (initial.length === 0) {
                 return Array.from({ length: 8 }, (_, i) => ({
                     cylinder: i + 1,
@@ -205,6 +212,7 @@ export default function CombustionPressureIndex({
                     rack_position: '',
                 }));
             }
+
             return initial;
         }
     );
@@ -297,9 +305,11 @@ export default function CombustionPressureIndex({
             line_spacing: lineSpacing,
             _k: String(previewKey),
         });
+
         if (record?.id) {
             params.set('record_id', String(record.id));
         }
+
         return `${combustionRoutes.pdf.url()}?${params.toString()}`;
     }, [
         unit.id,
@@ -321,9 +331,11 @@ export default function CombustionPressureIndex({
         setCylindersCount(validCount);
         setMeasurements((prev) => {
             const map = new Map(prev.map((it) => [it.cylinder, it]));
+
             return Array.from({ length: validCount }, (_, i) => {
                 const cyl = i + 1;
                 const existing = map.get(cyl);
+
                 return {
                     cylinder: cyl,
                     combustion_pressure: existing?.combustion_pressure ?? '',
@@ -362,6 +374,7 @@ export default function CombustionPressureIndex({
         setMeasurements((prev) =>
             prev.map((m) => {
                 const s = samples[m.cylinder];
+
                 if (s) {
                     return {
                         cylinder: m.cylinder,
@@ -370,6 +383,7 @@ export default function CombustionPressureIndex({
                         rack_position: s.r,
                     };
                 }
+
                 return m;
             })
         );
@@ -395,12 +409,14 @@ export default function CombustionPressureIndex({
         const id = parseInt(idStr, 10);
         setMachineId(id);
         const sel = machines.find((m) => m.id === id);
+
         if (sel) {
             setModelType(sel.type || '8M 453 AK');
             setSerialNumber(sel.serial_number || '');
             setMachineNumber(sel.name.replace(/[^0-9]/g, '') || '1');
             setInstalledPower(sel.capacity_kw || '2544');
         }
+
         router.get(
             combustionRoutes.index.url(),
             {
@@ -440,6 +456,7 @@ export default function CombustionPressureIndex({
     const handleManagerSelect = (empIdStr: string) => {
         setManagerUlId(empIdStr);
         const emp = manager_options.find((e) => String(e.id) === empIdStr);
+
         if (emp) {
             setManagerUlName(emp.name);
             setManagerUlTitle(emp.position || `Manager UL ${unit.name}`);
@@ -449,6 +466,7 @@ export default function CombustionPressureIndex({
     const handleTlSelect = (empIdStr: string) => {
         setTlHarId(empIdStr);
         const emp = tl_options.find((e) => String(e.id) === empIdStr);
+
         if (emp) {
             setTlHarName(emp.name);
             setTlHarTitle(emp.position || 'Team Leader Pemeliharaan');
@@ -458,6 +476,7 @@ export default function CombustionPressureIndex({
     const handleStaffSelect = (empIdStr: string) => {
         setStaffHarId(empIdStr);
         const emp = staff_options.find((e) => String(e.id) === empIdStr);
+
         if (emp) {
             setStaffHarName(emp.name);
             setStaffHarTitle(emp.position || 'Staf Pemeliharaan');
@@ -466,7 +485,10 @@ export default function CombustionPressureIndex({
 
     // Save action
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setIsSaving(true);
 
         router.post(
@@ -531,9 +553,11 @@ export default function CombustionPressureIndex({
             line_spacing: lineSpacing,
             download: '1',
         });
+
         if (record?.id) {
             params.set('record_id', String(record.id));
         }
+
         window.open(
             `${combustionRoutes.pdf.url()}?${params.toString()}`,
             '_blank'
@@ -551,14 +575,16 @@ export default function CombustionPressureIndex({
                     description={`Pencatatan tekanan kompresi, temperatur gas buang, dan rack position tiap silinder (${unit.name}).`}
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
+                                </Button>
+                            )}
 
                             <Button
                                 variant="outline"
@@ -1176,6 +1202,27 @@ export default function CombustionPressureIndex({
                                     </div>
 
                                     {/* HORIZONTAL MATRIX TABLE MATCHING PHYSICAL SCAN */}
+                                    {compact ? (
+<div className="flex flex-col gap-3">
+    <MobileRowEditor
+        rows={measurements}
+        canWrite
+        rowKey={(m) => m.cylinder}
+        title={(m) => `Silinder ${m.cylinder}`}
+        subtitle={(m) => `${m.combustion_pressure || '–'} kg/cm² · ${m.exhaust_temp || '–'} °C · rack ${m.rack_position || '–'}`}
+        onChange={(index, key, value) => handleMeasurementChange(measurements[index].cylinder, key as 'combustion_pressure', String(value ?? ''))}
+        fields={[
+            { key: 'combustion_pressure', label: 'Tekanan pembakaran (kg/cm²)', placeholder: '80', parse: (value) => String(value) },
+            { key: 'exhaust_temp', label: 'Temperatur gas buang (°C)', placeholder: '350', parse: (value) => String(value) },
+            { key: 'rack_position', label: 'Rack injection pump', placeholder: '28', parse: (value) => String(value) },
+        ]}
+    />
+    <label className="flex flex-col gap-1.5 text-[12px] text-muted-foreground">
+        Keterangan
+        <Textarea value={cylinderNotes} onChange={(e) => setCylinderNotes(e.target.value)} rows={3} placeholder="Catatan umum kondisi silinder, kelainan pembakaran, atau rekomendasi tindakan…" />
+    </label>
+</div>
+                                    ) : (
                                     <div className="overflow-x-auto rounded-md border border-border bg-card shadow-sm">
                                         <table className="w-full text-xs border-collapse">
                                             <thead>
@@ -1295,6 +1342,7 @@ export default function CombustionPressureIndex({
                                             </tbody>
                                         </table>
                                     </div>
+                                    )}
 
                                     {/* SECTION: STANDAR YANG DIIZINKAN & PEMERIKSAAN VISUAL */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
@@ -1414,18 +1462,21 @@ export default function CombustionPressureIndex({
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                    >
-                                        Batal
-                                    </Button>
+                                    {can('har.input.view') && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                        >
+                                            Batal
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="outline"
                                         onClick={() => {
                                             if (can_write) {
                                                 handleSave();
                                             }
+
                                             setViewTab('pdf');
                                             setPreviewKey((k) => k + 1);
                                         }}
@@ -1480,6 +1531,7 @@ export default function CombustionPressureIndex({
                         ) : (
                             history.map((h) => {
                                 const mach = machines.find((m) => m.id === h.machine_id);
+
                                 return (
                                     <div
                                         key={h.id}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operasi\DailyReportStoreRequest;
 use App\Models\DailyEngineReport;
@@ -26,6 +27,8 @@ use Inertia\Response;
  */
 class DailyReportController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly ActivityLogger $activityLogger,
         private readonly OperasiCalculator $calculator,
@@ -34,7 +37,7 @@ class DailyReportController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganDailyReport), 403);
 
         $units = Unit::query()
             ->visibleTo($user)
@@ -67,7 +70,7 @@ class DailyReportController extends Controller
             ->where('year', $year)
             ->first();
 
-        return Inertia::render('operasi/input/daily-report', [
+        return Inertia::render('operasi/input/daily-report/index', [
             'filters' => [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine?->id,
@@ -94,14 +97,14 @@ class DailyReportController extends Controller
                 ])->all(),
                 'years' => range($year - 2, $year + 1),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganDailyReport),
         ]);
     }
 
     public function store(DailyReportStoreRequest $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganDailyReport), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);

@@ -1,12 +1,17 @@
 import { Head, router } from '@inertiajs/react';
-import { Check, Download, Plus, Save, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Download, Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import harInput from '@/routes/har/input';
 import type { IdName } from '@/types';
@@ -56,6 +61,9 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
     const [rows, setRows] = useState<Row[]>(() => fill(initialRows));
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [openRow, setOpenRow] = useState<number | null>(0);
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
     const hasGroups = tabel.columns.some((c) => c.group);
@@ -158,6 +166,149 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
         }
     };
 
+    if (compact) {
+        const summaryOf = (row: Row) => {
+            const text = tabel.columns.find((c) => ['text', 'textarea'].includes(c.type) && row[c.key]);
+
+            return text ? String(row[text.key]) : 'Belum diisi';
+        };
+
+        const mobileEditor = (index: number, column: Column, value: Value) => {
+            switch (column.type) {
+                case 'textarea':
+                    return <Textarea value={String(value ?? '')} onChange={(e) => setValue(index, column, e.target.value)} rows={3} disabled={!can_write} />;
+                case 'select':
+                    return <ChoiceChips options={column.options ?? []} value={String(value ?? '')} onChange={(v) => setValue(index, column, v || null)} disabled={!can_write} />;
+                case 'check': {
+                    const checked = String(value ?? '') === '1';
+
+                    return (
+                        <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={checked}
+                            onClick={() => setValue(index, column, checked ? null : 1)}
+                            disabled={!can_write}
+                            className={`flex min-h-10 items-center gap-2 rounded-lg border px-3 text-[13px] font-medium transition active:scale-95 disabled:opacity-60 ${
+                                checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'
+                            }`}
+                        >
+                            <span className={`flex size-4 items-center justify-center rounded border ${checked ? 'border-white' : 'border-input'}`}>
+                                {checked && <Check className="size-3" />}
+                            </span>
+                            {column.label}
+                        </button>
+                    );
+                }
+                default:
+                    return (
+                        <Input
+                            type={column.type === 'date' ? 'date' : column.type === 'number' ? 'number' : 'text'}
+                            step={column.type === 'number' ? 'any' : undefined}
+                            inputMode={column.type === 'number' ? 'decimal' : undefined}
+                            value={value ?? ''}
+                            onChange={(e) => setValue(index, column, e.target.value === '' ? null : column.type === 'number' ? Number(e.target.value) : e.target.value)}
+                            disabled={!can_write}
+                        />
+                    );
+            }
+        };
+
+        return (
+            <>
+                <Head title={`${tabel.title} - ${unit.name}`} />
+                <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                    <PageHeader title={tabel.title} description={`${unit.name} · ${periodLabel}`} />
+
+                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
+                        <div className="col-span-2">
+                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
+                        </div>
+                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, i) => ({ value: String(i + 1), label }))} className="w-full" />
+                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
+                    </div>
+
+                    <div className="flex items-center justify-between px-0.5">
+                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{rows.length} data</p>
+                        {dirty ? <StatusBadge tone="warning">Belum disimpan</StatusBadge> : has_saved ? <StatusBadge tone="success">Tersimpan</StatusBadge> : null}
+                    </div>
+
+                    {rows.map((row, index) => {
+                        const open = openRow === index;
+
+                        return (
+                            <div key={index} className="rounded-xl border border-border bg-card">
+                                <button type="button" onClick={() => setOpenRow(open ? null : index)} className="flex w-full items-center gap-3 p-3 text-left">
+                                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">{index + 1}</span>
+                                    <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">{summaryOf(row)}</span>
+                                    <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition ${open ? 'rotate-180' : ''}`} />
+                                </button>
+                                {open && (
+                                    <div className="flex flex-col gap-3 border-t border-border p-3">
+                                        {tabel.columns.map((column) => (
+                                            <div key={column.key} className="flex flex-col gap-1.5">
+                                                {column.type !== 'check' && (
+                                                    <span className="text-[12px] font-medium text-muted-foreground">
+                                                        {column.group ? `${column.group} · ${column.label}` : column.label}
+                                                    </span>
+                                                )}
+                                                {mobileEditor(index, column, row[column.key] ?? null)}
+                                            </div>
+                                        ))}
+                                        {can_write && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setRows((c) => c.filter((_, i) => i !== index));
+                                                    setOpenRow(null);
+                                                    setDirty(true);
+                                                }}
+                                                className="self-start text-destructive"
+                                            >
+                                                <Trash2 className="size-4" />
+                                                Hapus data ini
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {tabel.notes.length > 0 && (
+                        <ol className="list-decimal pl-5 text-xs text-muted-foreground">
+                            {tabel.notes.map((note) => (
+                                <li key={note}>{note}</li>
+                            ))}
+                        </ol>
+                    )}
+                </div>
+
+                {can_write && (
+                    <StickyActionBar>
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() => {
+                                setRows((c) => [...c, blankRow(tabel.columns)]);
+                                setOpenRow(rows.length);
+                                setDirty(true);
+                            }}
+                        >
+                            <Plus className="size-4" />
+                            Tambah
+                        </Button>
+                        <Button size="lg" onClick={save} disabled={saving || !dirty}>
+                            <Save className="size-4" />
+                            {saving ? 'Menyimpan…' : 'Simpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+            </>
+        );
+    }
+
     return (
         <>
             <Head title={`${tabel.title} - ${unit.name}`} />
@@ -167,7 +318,7 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                     description={`${tabel.description} — ${unit.name} · ${periodLabel}.`}
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => router.get(harInput.index().url)}>Kembali</Button>
+                            {can('har.input.view') && <Button variant="outline" onClick={() => router.get(harInput.index().url)}>Kembali</Button>}
                             <Button variant="outline" onClick={() => window.open(`${urls.pdf}?${new URLSearchParams({ unit_id: String(filters.unit_id), month: String(filters.month), year: String(filters.year) })}`, '_blank')} className="gap-1.5">
                                 <Download className="size-4 text-rose-600" />
                                 PDF

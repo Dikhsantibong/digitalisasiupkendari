@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarMotorCurrent;
 use App\Models\Machine;
@@ -20,6 +21,8 @@ use Inertia\Response as InertiaResponse;
 
 class MotorCurrentController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly HarMotorCurrentPdfBuilder $pdfBuilder,
         private readonly ActivityLogger $activityLogger,
@@ -29,7 +32,7 @@ class MotorCurrentController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganMotorCurrent) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -134,14 +137,14 @@ class MotorCurrentController extends Controller
                 'record_id' => $record?->id,
             ]),
             'sample_scan_items' => HarMotorCurrentPdfBuilder::SAMPLE_SCAN_ITEMS,
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganMotorCurrent),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganMotorCurrent), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -210,7 +213,7 @@ class MotorCurrentController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganMotorCurrent) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -291,7 +294,7 @@ class MotorCurrentController extends Controller
     public function destroy(Request $request, HarMotorCurrent $record): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganMotorCurrent), 403);
         abort_unless($user->canAccessUnit($record->unit_id), 403);
 
         $unitName = $record->unit?->name;

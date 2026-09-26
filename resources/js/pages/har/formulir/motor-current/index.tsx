@@ -19,6 +19,7 @@ import {
     Zap,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -41,8 +42,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import motorCurrentRoutes from '@/routes/har/formulir/motor-current';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import harFormulir from '@/routes/har/formulir';
+import motorCurrentRoutes from '@/routes/har/formulir/motor-current';
 import type { IdName } from '@/types';
 
 type MotorCurrentItem = {
@@ -148,6 +151,8 @@ export default function MotorCurrentIndex({
     sample_scan_items,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     // Current Machine & Date
     const [machineId, setMachineId] = useState<number>(
         selected_machine_id ?? (machines[0]?.id || 0)
@@ -283,6 +288,7 @@ export default function MotorCurrentIndex({
     const handleDeleteRow = (index: number) => {
         setItems((prev) => {
             const next = prev.filter((_, i) => i !== index);
+
             return next.map((it, i) => ({ ...it, no: i + 1 }));
         });
     };
@@ -328,11 +334,22 @@ export default function MotorCurrentIndex({
     // When machine changes in selector
     const handleMachineChange = (newMachineId: string) => {
         const m = machines.find((mach) => String(mach.id) === newMachineId);
+
         if (m) {
             setMachineId(m.id);
-            if (m.type) setModelType(m.type);
-            if (m.serial_number) setSerialNumber(m.serial_number);
-            if (m.capacity_kw) setInstalledPower(m.capacity_kw);
+
+            if (m.type) {
+setModelType(m.type);
+}
+
+            if (m.serial_number) {
+setSerialNumber(m.serial_number);
+}
+
+            if (m.capacity_kw) {
+setInstalledPower(m.capacity_kw);
+}
+
             setMachineNumber(
                 m.name.replace(/MIRRLEES\s*#/i, '').replace(/MESIN\s*#/i, '').replace(/UNIT\s*#/i, '').trim()
             );
@@ -366,6 +383,7 @@ export default function MotorCurrentIndex({
     const handleManagerUlChange = (empId: string) => {
         setManagerUlId(empId);
         const emp = manager_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setManagerUlName(emp.name);
             setManagerUlTitle(
@@ -378,6 +396,7 @@ export default function MotorCurrentIndex({
     const handleTlHarChange = (empId: string) => {
         setTlHarId(empId);
         const emp = tl_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setTlHarName(emp.name);
             setTlHarTitle(emp.position || 'Team Leader Pemeliharaan');
@@ -388,6 +407,7 @@ export default function MotorCurrentIndex({
     const handleStaffHarChange = (empId: string) => {
         setStaffHarId(empId);
         const emp = staff_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setStaffHarName(emp.name);
             setStaffHarTitle(emp.position || 'Staff Pemeliharaan');
@@ -501,6 +521,7 @@ export default function MotorCurrentIndex({
             preserveScroll: true,
             onSuccess: () => {
                 setPreviewKey((k) => k + 1);
+
                 if (onSuccessCallback) {
                     onSuccessCallback();
                 }
@@ -550,14 +571,16 @@ export default function MotorCurrentIndex({
                     description="Pencatatan pengukuran arus kerja per fasa (R, S, T) elektro-motor auxiliary mesin pembangkit, atur penandatangan & margin layout, dan cetak PDF resmi."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setShowHistory(true)}
@@ -1141,6 +1164,24 @@ export default function MotorCurrentIndex({
                                     </div>
 
                                     {/* Table of Motor Current */}
+                                    {compact ? (
+<MobileRowEditor
+    rows={items}
+    canWrite
+    rowKey={(item, index) => `${item.no}-${index}`}
+    title={(item) => item.motor_name || `Motor ${item.no}`}
+    subtitle={(item) => `R ${item.current_r || '–'} · S ${item.current_s || '–'} · T ${item.current_t || '–'} A`}
+    onChange={(index, key, value) => updateItemField(index, key as 'notes', String(value ?? ''))}
+    onRemove={items.length > 1 ? handleDeleteRow : undefined}
+    fields={[
+        { key: 'motor_name', label: 'Nama elektro motor', placeholder: 'Nama elektro motor' },
+        { key: 'current_r', label: 'Arus R (A)', placeholder: '17.4', parse: (value) => String(value), group: 'Arus kerja' },
+        { key: 'current_s', label: 'Arus S (A)', placeholder: '17.6', parse: (value) => String(value), group: 'Arus kerja' },
+        { key: 'current_t', label: 'Arus T (A)', placeholder: '17.5', parse: (value) => String(value), group: 'Arus kerja' },
+        { key: 'notes', label: 'Keterangan', placeholder: 'Keterangan tambahan' },
+    ]}
+/>
+                                    ) : (
                                     <div className="overflow-x-auto rounded-lg border border-border">
                                         <table className="w-full text-xs text-left">
                                             <thead className="bg-muted/80 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border">
@@ -1230,6 +1271,7 @@ export default function MotorCurrentIndex({
                                             </tbody>
                                         </table>
                                     </div>
+                                    )}
 
                                     {/* General Notes Box */}
                                     <div className="space-y-2 rounded-lg border border-border bg-card p-4">

@@ -45,15 +45,10 @@ const AVAILABLE_TARGETS: string[] = [
     '/operasi/jadwal/blackstart',
     '/operasi/jadwal/commissioning-test',
     '/operasi/jadwal/commissioning-test-peralatan',
+    '/operasi/jadwal/performance-test',
 ];
 
 const JADWAL_LIST: JadwalCard[] = [
-    {
-        title: 'Jadwal Shift Operator',
-        description: 'Penjadwalan gilir kerja (shift) regu operator unit pembangkit harian dan bulanan.',
-        icon: Users,
-        target: '/operasi/jadwal/shift-operator',
-    },
     {
         title: 'Jadwal FLM',
         description: 'Jadwal pemeliharaan tingkat pertama (First Line Maintenance) oleh tim operasi pembangkit.',
@@ -109,10 +104,10 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/operasi/jadwal/commissioning-test-peralatan',
     },
     {
-        title: 'Jadwal Rencana Operasi (ROT, ROB, ROM)',
-        description: 'Perencanaan pola operasi pembangkit harian (ROT), bulanan (ROB), dan tahunan (ROM).',
-        icon: CalendarDays,
-        target: '/operasi/jadwal/rencana-operasi',
+        title: 'Jadwal Pelaksanaan Performance Test Mesin',
+        description: 'Jadwal pelaksanaan uji unjuk kerja (performance test) pembebanan mesin pembangkit 50%, 75%, dan 100% — matriks tahunan per minggu.',
+        icon: Activity,
+        target: '/operasi/jadwal/performance-test',
     },
 ];
 

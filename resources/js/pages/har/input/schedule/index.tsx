@@ -1,8 +1,9 @@
 import { Head, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import DataGrid, { textEditor   } from 'react-data-grid';
-import type {Column, ColumnOrColumnGroup} from 'react-data-grid';
+import DataGrid, { textEditor } from 'react-data-grid';
+import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
+import { MobileGridForm } from '@/components/mobile/grid-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -10,6 +11,7 @@ import {
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import schedule from '@/routes/har/input/schedule';
 import type { IdName } from '@/types';
@@ -20,7 +22,13 @@ type GridRow = {
 } & Record<string, number | string | null>;
 
 type Props = {
-    filters: { unit_id: number; month: number; year: number; scope: string; plan_type: string };
+    filters: {
+        unit_id: number;
+        month: number;
+        year: number;
+        scope: string;
+        plan_type: string;
+    };
     days: number;
     rows: GridRow[];
     options: {
@@ -32,10 +40,17 @@ type Props = {
     can_write: boolean;
 };
 
-export default function SchedulesInput({ filters, days, rows: initialRows, options, can_write }: Props) {
+export default function SchedulesInput({
+    filters,
+    days,
+    rows: initialRows,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<GridRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}-${filters.scope}-${filters.plan_type}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -111,7 +126,11 @@ export default function SchedulesInput({ filters, days, rows: initialRows, optio
                 plan_type: filters.plan_type,
                 rows: payload,
             },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            {
+                preserveScroll: true,
+                onSuccess: () => setDirty(false),
+                onFinish: () => setSaving(false),
+            },
         );
     };
 
@@ -124,7 +143,10 @@ export default function SchedulesInput({ filters, days, rows: initialRows, optio
                     description="Matriks jadwal pemeliharaan per mesin × tanggal. Isi kode siklus (mis. P1/P2) pada hari terkait; paste dari Excel didukung."
                     actions={
                         can_write && (
-                            <Button onClick={save} disabled={saving || rows.length === 0}>
+                            <Button
+                                onClick={save}
+                                disabled={saving || rows.length === 0}
+                            >
                                 {saving ? 'Menyimpan…' : 'Simpan'}
                             </Button>
                         )
@@ -136,34 +158,51 @@ export default function SchedulesInput({ filters, days, rows: initialRows, optio
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                     <OperasiSelect
                         label="Lingkup"
                         value={filters.scope}
                         onChange={(value) => visit({ scope: value })}
-                        options={options.scopes.map((s) => ({ value: s.value, label: s.label }))}
+                        options={options.scopes.map((s) => ({
+                            value: s.value,
+                            label: s.label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Jenis"
                         value={filters.plan_type}
                         onChange={(value) => visit({ plan_type: value })}
-                        options={options.plan_types.map((p) => ({ value: p.value, label: p.label }))}
+                        options={options.plan_types.map((p) => ({
+                            value: p.value,
+                            label: p.label,
+                        }))}
                     />
                     {dirty && !saving && (
-                        <span className="text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
+                        <span className="text-[13px] text-amber-600">
+                            Ada perubahan belum disimpan.
+                        </span>
                     )}
                 </div>
 
@@ -171,8 +210,25 @@ export default function SchedulesInput({ filters, days, rows: initialRows, optio
                     <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
                         Unit ini belum punya mesin aktif.
                     </div>
+                ) : compact ? (
+                    <MobileGridForm
+                        columns={columns}
+                        rows={rows}
+                        rowKey={(row) => row.engine_id}
+                        rowLabel={(row) =>
+                            String(row.engine_name ?? row.engine_id)
+                        }
+                        onRowsChange={(next) => {
+                            setRows(next);
+                            setDirty(true);
+                        }}
+                        readOnly={!can_write}
+                    />
                 ) : (
-                    <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
+                    <div
+                        className="operasi-grid overflow-hidden rounded-md border border-border"
+                        onPaste={onPaste}
+                    >
                         <style>{OPERASI_GRID_STYLES}</style>
                         <DataGrid
                             className="rdg-light"

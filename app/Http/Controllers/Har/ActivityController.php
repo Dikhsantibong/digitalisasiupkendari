@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\Machine;
 use App\Models\MaintenanceActivity;
@@ -26,12 +27,14 @@ use Inertia\Response;
  */
 class ActivityController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganActivity), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -84,7 +87,7 @@ class ActivityController extends Controller
                 'maintenance_types' => MaintenanceType::query()->where('is_active', true)->orderBy('sort_order')->get(['id', 'code', 'name']),
                 'work_orders' => $period === null ? [] : WorkOrder::query()->where('unit_id', $unit->id)->where('report_period_id', $period->id)->orderBy('wonum')->get(['id', 'wonum']),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganActivity),
         ]);
     }
 
@@ -104,7 +107,7 @@ class ActivityController extends Controller
     public function destroy(Request $request, MaintenanceActivity $activity): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganActivity), 403);
         abort_unless($user->canAccessUnit($activity->unit_id), 403);
 
         $activity->delete();
@@ -119,7 +122,7 @@ class ActivityController extends Controller
     private function persist(Request $request, ?MaintenanceActivity $activity): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganActivity), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);

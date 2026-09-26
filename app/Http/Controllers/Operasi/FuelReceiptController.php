@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operasi;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Enums\TankFuelType;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Operasi\FuelReceiptStoreRequest;
 use App\Models\FuelReceipt;
@@ -22,12 +23,14 @@ use Inertia\Response;
  */
 class FuelReceiptController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputView), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganFuelReceipt), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -45,7 +48,7 @@ class FuelReceiptController extends Controller
             ->orderBy('report_date')
             ->get();
 
-        return Inertia::render('operasi/input/fuel-receipts', [
+        return Inertia::render('operasi/input/fuel-receipts/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'receipts' => $receipts->map(fn (FuelReceipt $receipt): array => [
                 'id' => $receipt->id,
@@ -69,14 +72,14 @@ class FuelReceiptController extends Controller
                     ->map(fn (TankFuelType $type): array => ['value' => $type->value, 'label' => $type->label()])
                     ->all(),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganFuelReceipt),
         ]);
     }
 
     public function store(FuelReceiptStoreRequest $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganFuelReceipt), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -102,7 +105,7 @@ class FuelReceiptController extends Controller
     public function destroy(Request $request, FuelReceipt $fuelReceipt): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganFuelReceipt), 403);
         abort_unless($user->canAccessUnit($fuelReceipt->unit_id), 403);
 
         $fuelReceipt->delete();

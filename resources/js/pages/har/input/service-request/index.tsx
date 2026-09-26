@@ -2,15 +2,21 @@ import { Head, router } from '@inertiajs/react';
 import { ClipboardList, Pencil, Plus, Save, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
-import type { Column, ColumnOrColumnGroup, RenderEditCellProps } from 'react-data-grid';
+import type {
+    Column,
+    ColumnOrColumnGroup,
+    RenderEditCellProps,
+} from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { toast } from 'sonner';
+import { MobileRecordList } from '@/components/mobile/record-list';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
+import { StatusBadge } from '@/components/status-badge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,6 +36,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import serviceRequest from '@/routes/har/input/service-request';
@@ -45,7 +52,10 @@ type RowData = {
     engine_name: string | null;
 };
 
-type GridRow = RowData & { _key: number; [key: string]: number | string | null };
+type GridRow = RowData & {
+    _key: number;
+    [key: string]: number | string | null;
+};
 
 type Props = {
     filters: { unit_id: number; month: number; year: number };
@@ -101,7 +111,12 @@ function MultilineEditor({
     );
 }
 
-export default function ServiceRequestInput({ filters, rows: initialRows, options, can_write }: Props) {
+export default function ServiceRequestInput({
+    filters,
+    rows: initialRows,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<GridRow[]>(() => hydrate(initialRows));
     const [nextKey, setNextKey] = useState(Math.max(initialRows.length, 1));
     const [dirty, setDirty] = useState(false);
@@ -109,6 +124,7 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
 
     // Modal state
     const [modalOpen, setModalOpen] = useState(false);
+    const compact = useCompactLayout();
     const [editingRowKey, setEditingRowKey] = useState<number | null>(null);
     const [formData, setFormData] = useState({
         sr_number: '',
@@ -155,7 +171,10 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
 
         if (
             formData.engine_name &&
-            !list.some((m) => m.name.toLowerCase() === formData.engine_name.toLowerCase())
+            !list.some(
+                (m) =>
+                    m.name.toLowerCase() === formData.engine_name.toLowerCase(),
+            )
         ) {
             list.unshift({ id: -1, name: formData.engine_name });
         }
@@ -169,9 +188,16 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
 
         if (
             formData.category_code &&
-            !list.some((c) => c.code.toLowerCase() === formData.category_code.toLowerCase())
+            !list.some(
+                (c) =>
+                    c.code.toLowerCase() ===
+                    formData.category_code.toLowerCase(),
+            )
         ) {
-            list.unshift({ code: formData.category_code, name: formData.category_code });
+            list.unshift({
+                code: formData.category_code,
+                name: formData.category_code,
+            });
         }
 
         return list;
@@ -185,7 +211,10 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
         engine_name: row.engine_name,
     });
 
-    const saveRows = (rowsToSave: GridRow[], successMessage = 'Data berhasil disimpan') => {
+    const saveRows = (
+        rowsToSave: GridRow[],
+        successMessage = 'Data berhasil disimpan',
+    ) => {
         setSaving(true);
         router.post(
             serviceRequest.store().url,
@@ -245,7 +274,9 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
 
         // Check duplicate sr_number (except when editing the same row)
         const isDuplicate = rows.some(
-            (r) => r.sr_number?.toLowerCase() === srTrimmed.toLowerCase() && r._key !== editingRowKey,
+            (r) =>
+                r.sr_number?.toLowerCase() === srTrimmed.toLowerCase() &&
+                r._key !== editingRowKey,
         );
 
         if (isDuplicate) {
@@ -289,14 +320,20 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
         // Auto-save directly to backend
         saveRows(
             nextRows,
-            isEdit ? 'Service Request berhasil diperbarui' : 'Service Request berhasil ditambahkan',
+            isEdit
+                ? 'Service Request berhasil diperbarui'
+                : 'Service Request berhasil ditambahkan',
         );
     };
 
     const handleDeleteRow = (row: GridRow) => {
         const label = row.sr_number ? `"${row.sr_number}"` : 'baris ini';
 
-        if (!window.confirm(`Apakah Anda yakin ingin menghapus Service Request ${label}?`)) {
+        if (
+            !window.confirm(
+                `Apakah Anda yakin ingin menghapus Service Request ${label}?`,
+            )
+        ) {
             return;
         }
 
@@ -317,7 +354,10 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
     }, []);
 
     const ROW_HEIGHT = 56;
-    const gridHeight = Math.max(Math.min(displayRows.length * ROW_HEIGHT + 44, 680), 450);
+    const gridHeight = Math.max(
+        Math.min(displayRows.length * ROW_HEIGHT + 44, 680),
+        450,
+    );
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -339,7 +379,9 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                 renderEditCell: textEditor,
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) => (
-                    <span className="font-semibold text-foreground">{row.sr_number || '—'}</span>
+                    <span className="font-semibold text-foreground">
+                        {row.sr_number || '—'}
+                    </span>
                 ),
             },
             {
@@ -354,10 +396,12 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                 cellClass: 'rdg-wrap-cell',
                 renderCell: ({ row }) => (
                     <div
-                        className="whitespace-pre-wrap break-words py-1 leading-snug text-xs"
+                        className="py-1 text-xs leading-snug break-words whitespace-pre-wrap"
                         title={row.description ?? ''}
                     >
-                        {row.description || <span className="text-muted-foreground">—</span>}
+                        {row.description || (
+                            <span className="text-muted-foreground">—</span>
+                        )}
                     </div>
                 ),
             },
@@ -375,7 +419,10 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                     }
 
                     return (
-                        <Badge variant="outline" className="font-medium bg-muted/60 text-xs">
+                        <Badge
+                            variant="outline"
+                            className="bg-muted/60 text-xs font-medium"
+                        >
                             {row.category_code}
                         </Badge>
                     );
@@ -396,19 +443,24 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                     return (
                         <span
                             className={cn(
-                                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border',
+                                'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
                                 isClosed
-                                    ? 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800',
+                                    ? 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400',
                             )}
                         >
                             <span
                                 className={cn(
                                     'mr-1.5 size-1.5 rounded-full',
-                                    isClosed ? 'bg-slate-400' : 'bg-emerald-500',
+                                    isClosed
+                                        ? 'bg-slate-400'
+                                        : 'bg-emerald-500',
                                 )}
                             />
-                            {row.status ? row.status.charAt(0).toUpperCase() + row.status.slice(1) : 'Open'}
+                            {row.status
+                                ? row.status.charAt(0).toUpperCase() +
+                                  row.status.slice(1)
+                                : 'Open'}
                         </span>
                     );
                 },
@@ -423,7 +475,11 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                 renderEditCell: textEditor,
                 headerCellClass: 'rdg-sub-header',
                 renderCell: ({ row }) => (
-                    <span>{row.engine_name || <span className="text-muted-foreground">—</span>}</span>
+                    <span>
+                        {row.engine_name || (
+                            <span className="text-muted-foreground">—</span>
+                        )}
+                    </span>
                 ),
             },
         ];
@@ -447,7 +503,7 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                             }}
                             title="Edit Service Request"
                             aria-label="Edit baris"
-                            className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                            className="rounded p-1 text-primary transition-colors hover:bg-primary/10"
                         >
                             <Pencil className="size-4" />
                         </button>
@@ -459,7 +515,7 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                             }}
                             title="Hapus Service Request"
                             aria-label="Hapus baris"
-                            className="rounded p-1 text-destructive hover:bg-destructive/10 transition-colors"
+                            className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
                         >
                             <Trash2 className="size-4" />
                         </button>
@@ -487,19 +543,29 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                     actions={
                         can_write && (
                             <div className="flex items-center gap-2">
-                                <Button onClick={openCreateModal} className="gap-1.5 shadow-xs">
+                                <Button
+                                    onClick={openCreateModal}
+                                    className="gap-1.5 shadow-xs"
+                                >
                                     <Plus className="size-4" />
                                     Create Service Request
                                 </Button>
                                 {dirty && (
                                     <Button
-                                        onClick={() => saveRows(rows, 'Perubahan berhasil disimpan')}
+                                        onClick={() =>
+                                            saveRows(
+                                                rows,
+                                                'Perubahan berhasil disimpan',
+                                            )
+                                        }
                                         disabled={saving}
                                         variant="secondary"
                                         className="gap-1.5"
                                     >
                                         <Save className="size-4" />
-                                        {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+                                        {saving
+                                            ? 'Menyimpan…'
+                                            : 'Simpan Perubahan'}
                                     </Button>
                                 )}
                             </div>
@@ -512,19 +578,28 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
 
                     <div className="mx-1 hidden h-9 w-px self-center bg-border lg:block" />
@@ -533,11 +608,17 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         label="Filter Kategori"
                         value={colFilters.category_code}
                         onChange={(value) =>
-                            setColFilters((f) => ({ ...f, category_code: value }))
+                            setColFilters((f) => ({
+                                ...f,
+                                category_code: value,
+                            }))
                         }
                         options={[
                             { value: 'all', label: 'Semua' },
-                            ...options.categories.map((c) => ({ value: c.code, label: c.code })),
+                            ...options.categories.map((c) => ({
+                                value: c.code,
+                                label: c.code,
+                            })),
                         ]}
                     />
                     <OperasiSelect
@@ -563,19 +644,23 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         </Button>
                     )}
                     {dirty && !saving && (
-                        <span className="self-end pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
+                        <span className="self-end pb-1 text-[13px] text-amber-600">
+                            Ada perubahan belum disimpan.
+                        </span>
                     )}
                 </div>
 
                 {displayRows.length === 0 ? (
                     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-card/60 p-12 text-center">
-                        <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+                        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                             <ClipboardList className="size-6" />
                         </div>
                         <h3 className="text-base font-semibold text-foreground">
-                            {hasActiveFilter ? 'Tidak Ada Data yang Cocok' : 'Belum Ada Service Request'}
+                            {hasActiveFilter
+                                ? 'Tidak Ada Data yang Cocok'
+                                : 'Belum Ada Service Request'}
                         </h3>
-                        <p className="mt-1 text-sm text-muted-foreground max-w-md">
+                        <p className="mt-1 max-w-md text-sm text-muted-foreground">
                             {hasActiveFilter
                                 ? 'Tidak ada Service Request yang sesuai dengan filter kategori atau status yang dipilih.'
                                 : 'Belum ada Service Request yang tercatat untuk unit dan periode ini. Silakan buat Service Request baru.'}
@@ -583,11 +668,21 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         {can_write && (
                             <div className="mt-4 flex gap-2">
                                 {hasActiveFilter ? (
-                                    <Button variant="outline" size="sm" onClick={() => setColFilters(emptyColFilters)}>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() =>
+                                            setColFilters(emptyColFilters)
+                                        }
+                                    >
                                         Reset Filter
                                     </Button>
                                 ) : (
-                                    <Button size="sm" onClick={openCreateModal} className="gap-2">
+                                    <Button
+                                        size="sm"
+                                        onClick={openCreateModal}
+                                        className="gap-2"
+                                    >
                                         <Plus className="size-4" />
                                         Create Service Request
                                     </Button>
@@ -595,8 +690,50 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                             </div>
                         )}
                     </div>
+                ) : compact ? (
+                    <MobileRecordList
+                        records={displayRows.map((row) => ({
+                            key: row._key,
+                            title: row.sr_number || 'SR tanpa nomor',
+                            badge: row.status ? (
+                                <StatusBadge tone="info">
+                                    {row.status}
+                                </StatusBadge>
+                            ) : undefined,
+                            meta: [
+                                ['Uraian', row.description],
+                                ['Mesin', row.engine_name],
+                                ['Kategori', row.category_code],
+                            ],
+                            onClick: can_write
+                                ? () => openEditModal(row)
+                                : undefined,
+                            actions: can_write ? (
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => openEditModal(row)}
+                                    >
+                                        Ubah
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="text-destructive"
+                                        onClick={() => handleDeleteRow(row)}
+                                    >
+                                        Hapus
+                                    </Button>
+                                </>
+                            ) : undefined,
+                        }))}
+                    />
                 ) : (
-                    <div className="operasi-grid w-full overflow-hidden rounded-md border border-border" onPaste={onPaste}>
+                    <div
+                        className="operasi-grid w-full overflow-hidden rounded-md border border-border"
+                        onPaste={onPaste}
+                    >
                         <style>{OPERASI_GRID_STYLES}</style>
                         <style>{`
                             .operasi-grid, .operasi-grid .rdg {
@@ -647,7 +784,9 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                     <p className="font-medium text-foreground">Informasi:</p>
                     {options.categories.length > 0 && (
                         <div>
-                            <span className="font-medium">Kategori tersedia:</span>{' '}
+                            <span className="font-medium">
+                                Kategori tersedia:
+                            </span>{' '}
                             {options.categories.map((c) => c.code).join(', ')}
                         </div>
                     )}
@@ -655,7 +794,10 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         <span className="font-medium">Status:</span>{' '}
                         {options.statuses.map((s) => s.label).join(', ')}
                     </div>
-                    <p className="pt-1">Tip: Klik dua kali pada baris tabel atau klik ikon pensil untuk mengubah data.</p>
+                    <p className="pt-1">
+                        Tip: Klik dua kali pada baris tabel atau klik ikon
+                        pensil untuk mengubah data.
+                    </p>
                 </div>
             </div>
 
@@ -664,7 +806,9 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingRowKey !== null ? 'Edit Service Request' : 'Create Service Request'}
+                            {editingRowKey !== null
+                                ? 'Edit Service Request'
+                                : 'Create Service Request'}
                         </DialogTitle>
                         <DialogDescription>
                             {editingRowKey !== null
@@ -673,17 +817,24 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleModalSubmit} className="space-y-4 py-2">
+                    <form
+                        onSubmit={handleModalSubmit}
+                        className="space-y-4 py-2"
+                    >
                         <div className="space-y-1.5">
                             <Label htmlFor="sr_number">
-                                No. SR <span className="text-destructive">*</span>
+                                No. SR{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="sr_number"
                                 placeholder="Contoh: SR-2026-001"
                                 value={formData.sr_number}
                                 onChange={(e) =>
-                                    setFormData((prev) => ({ ...prev, sr_number: e.target.value }))
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        sr_number: e.target.value,
+                                    }))
                                 }
                                 required
                                 autoFocus
@@ -691,14 +842,17 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="engine_name">Mesin / Peralatan</Label>
+                            <Label htmlFor="engine_name">
+                                Mesin / Peralatan
+                            </Label>
                             {machineOptions.length > 0 ? (
                                 <Select
                                     value={formData.engine_name || NONE_VALUE}
                                     onValueChange={(val) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            engine_name: val === NONE_VALUE ? '' : val,
+                                            engine_name:
+                                                val === NONE_VALUE ? '' : val,
                                         }))
                                     }
                                 >
@@ -706,11 +860,17 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                                         <SelectValue placeholder="Pilih Mesin (Opsional)" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-60">
-                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
                                             — Tanpa Mesin / Umum —
                                         </SelectItem>
                                         {machineOptions.map((m) => (
-                                            <SelectItem key={m.id} value={m.name}>
+                                            <SelectItem
+                                                key={m.id}
+                                                value={m.name}
+                                            >
                                                 {m.name}
                                             </SelectItem>
                                         ))}
@@ -722,7 +882,10 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                                     placeholder="Nama mesin (opsional)"
                                     value={formData.engine_name}
                                     onChange={(e) =>
-                                        setFormData((prev) => ({ ...prev, engine_name: e.target.value }))
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            engine_name: e.target.value,
+                                        }))
                                     }
                                 />
                             )}
@@ -736,7 +899,8 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                                     onValueChange={(val) =>
                                         setFormData((prev) => ({
                                             ...prev,
-                                            category_code: val === NONE_VALUE ? '' : val,
+                                            category_code:
+                                                val === NONE_VALUE ? '' : val,
                                         }))
                                     }
                                 >
@@ -744,12 +908,22 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                                         <SelectValue placeholder="Pilih Kategori" />
                                     </SelectTrigger>
                                     <SelectContent className="max-h-60">
-                                        <SelectItem value={NONE_VALUE} className="text-muted-foreground">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
                                             — Tanpa Kategori —
                                         </SelectItem>
                                         {categoryOptions.map((cat) => (
-                                            <SelectItem key={cat.code} value={cat.code}>
-                                                {cat.code} {cat.name && cat.name !== cat.code ? `— ${cat.name}` : ''}
+                                            <SelectItem
+                                                key={cat.code}
+                                                value={cat.code}
+                                            >
+                                                {cat.code}{' '}
+                                                {cat.name &&
+                                                cat.name !== cat.code
+                                                    ? `— ${cat.name}`
+                                                    : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -772,7 +946,10 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                                     </SelectTrigger>
                                     <SelectContent>
                                         {options.statuses.map((st) => (
-                                            <SelectItem key={st.value} value={st.value}>
+                                            <SelectItem
+                                                key={st.value}
+                                                value={st.value}
+                                            >
                                                 {st.label}
                                             </SelectItem>
                                         ))}
@@ -782,20 +959,25 @@ export default function ServiceRequestInput({ filters, rows: initialRows, option
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label htmlFor="description">Deskripsi Pekerjaan / Kendala</Label>
+                            <Label htmlFor="description">
+                                Deskripsi Pekerjaan / Kendala
+                            </Label>
                             <textarea
                                 id="description"
                                 rows={3}
-                                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                                className="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
                                 placeholder="Tuliskan deskripsi kendala, temuan, atau perbaikan..."
                                 value={formData.description}
                                 onChange={(e) =>
-                                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        description: e.target.value,
+                                    }))
                                 }
                             />
                         </div>
 
-                        <DialogFooter className="pt-2 gap-2 sm:gap-0">
+                        <DialogFooter className="gap-2 pt-2 sm:gap-0">
                             <Button
                                 type="button"
                                 variant="outline"

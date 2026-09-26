@@ -18,6 +18,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -40,8 +41,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import batteryVoltageRoutes from '@/routes/har/formulir/battery-voltage';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import harFormulir from '@/routes/har/formulir';
+import batteryVoltageRoutes from '@/routes/har/formulir/battery-voltage';
 import type { IdName } from '@/types';
 
 type BatteryCell = {
@@ -163,6 +166,8 @@ export default function BatteryVoltageIndex({
     sample_scan_cells_110v,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     // Current Machine & Date
     const [machineId, setMachineId] = useState<number>(
         selected_machine_id ?? (machines[0]?.id || 0)
@@ -206,6 +211,7 @@ export default function BatteryVoltageIndex({
         if (form_data.cells_24v && form_data.cells_24v.length === 12) {
             return form_data.cells_24v;
         }
+
         return Array.from({ length: 12 }, (_, i) => ({ cell: i + 1, voltage: '' }));
     });
 
@@ -214,6 +220,7 @@ export default function BatteryVoltageIndex({
         if (form_data.cells_110v && form_data.cells_110v.length === 55) {
             return form_data.cells_110v;
         }
+
         return Array.from({ length: 55 }, (_, i) => ({ cell: i + 1, voltage: '' }));
     });
 
@@ -293,7 +300,11 @@ export default function BatteryVoltageIndex({
         const nums = cells24v
             .map((c) => parseFloat(c.voltage.replace(',', '.')))
             .filter((n) => !isNaN(n));
-        if (nums.length === 0) return { max: '', min: '', total: '' };
+
+        if (nums.length === 0) {
+return { max: '', min: '', total: '' };
+}
+
         return {
             max: String(Math.max(...nums)),
             min: String(Math.min(...nums)),
@@ -305,7 +316,11 @@ export default function BatteryVoltageIndex({
         const nums = cells110v
             .map((c) => parseFloat(c.voltage.replace(',', '.')))
             .filter((n) => !isNaN(n));
-        if (nums.length === 0) return { max: '', min: '', total: '' };
+
+        if (nums.length === 0) {
+return { max: '', min: '', total: '' };
+}
+
         return {
             max: String(Math.max(...nums)),
             min: String(Math.min(...nums)),
@@ -377,11 +392,22 @@ export default function BatteryVoltageIndex({
     // When machine changes in selector
     const handleMachineChange = (newMachineId: string) => {
         const m = machines.find((mach) => String(mach.id) === newMachineId);
+
         if (m) {
             setMachineId(m.id);
-            if (m.type) setModelType(m.type);
-            if (m.serial_number) setSerialNumber(m.serial_number);
-            if (m.capacity_kw) setInstalledPower(m.capacity_kw);
+
+            if (m.type) {
+setModelType(m.type);
+}
+
+            if (m.serial_number) {
+setSerialNumber(m.serial_number);
+}
+
+            if (m.capacity_kw) {
+setInstalledPower(m.capacity_kw);
+}
+
             setMachineNumber(
                 m.name.replace(/MIRRLEES\s*#/i, '').replace(/MESIN\s*#/i, '').replace(/UNIT\s*#/i, '').trim()
             );
@@ -415,6 +441,7 @@ export default function BatteryVoltageIndex({
     const handleManagerUlChange = (empId: string) => {
         setManagerUlId(empId);
         const emp = manager_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setManagerUlName(emp.name);
             setManagerUlTitle(
@@ -427,6 +454,7 @@ export default function BatteryVoltageIndex({
     const handleTlHarChange = (empId: string) => {
         setTlHarId(empId);
         const emp = tl_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setTlHarName(emp.name);
             setTlHarTitle(emp.position || 'Team Leader Pemeliharaan');
@@ -437,6 +465,7 @@ export default function BatteryVoltageIndex({
     const handleStaffHarChange = (empId: string) => {
         setStaffHarId(empId);
         const emp = staff_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setStaffHarName(emp.name);
             setStaffHarTitle(emp.position || 'Staff Pemeliharaan');
@@ -576,6 +605,7 @@ export default function BatteryVoltageIndex({
             preserveScroll: true,
             onSuccess: () => {
                 setPreviewKey((k) => k + 1);
+
                 if (onSuccessCallback) {
                     onSuccessCallback();
                 }
@@ -625,14 +655,16 @@ export default function BatteryVoltageIndex({
                     description="Pencatatan pengukuran tegangan baterai 24V dan 110V, kondisi rectifier charger floating/equilizing/boosting, dan cetak PDF resmi."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setShowHistory(true)}
@@ -1308,6 +1340,21 @@ export default function BatteryVoltageIndex({
                                             </p>
                                         </div>
 
+                                        {compact ? (
+<MobileRowEditor
+    rows={chargingConditions}
+    canWrite
+    rowKey={(row) => `${row.mode}-${row.item}`}
+    title={(row) => `${row.mode} · ${row.item}`}
+    subtitle={(row) => `24V ${row.cond_24v || '–'} · 110V ${row.cond_110v || '–'}`}
+    onChange={(index, key, value) => updateChargingCondition(index, key as 'notes', String(value ?? ''))}
+    fields={[
+        { key: 'cond_24v', label: 'Kondisi 24V', placeholder: 'Kondisi 24V' },
+        { key: 'cond_110v', label: 'Kondisi 110V', placeholder: 'Kondisi 110V' },
+        { key: 'notes', label: 'Keterangan', placeholder: 'Catatan / keterangan…' },
+    ]}
+/>
+                                        ) : (
                                         <div className="overflow-x-auto rounded-md border border-border">
                                             <table className="w-full text-xs text-left">
                                                 <thead className="bg-muted/80 text-muted-foreground uppercase text-[10px] tracking-wider border-b border-border">
@@ -1357,6 +1404,7 @@ export default function BatteryVoltageIndex({
                                                 </tbody>
                                             </table>
                                         </div>
+                                        )}
                                     </div>
 
                                     {/* 4. GENERAL NOTES */}

@@ -1,11 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 import { Download, ImagePlus, Plus, Save, Trash2, Users, X } from 'lucide-react';
 import { useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import harFormulir from '@/routes/har/formulir';
 import dailyMeetingRoutes from '@/routes/har/formulir/daily-meeting';
@@ -46,6 +49,8 @@ const formatDate = (iso: string) => {
  * lembar 1) dan foto eviden (lembar 2). Data juga masuk Laporan Pemeliharaan.
  */
 export default function HarDailyMeetingPage({ unit, filters, options, meetings, meeting, signers, can_write }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     const defaultDate = `${filters.year}-${String(filters.month).padStart(2, '0')}-01`;
     const [form, setForm] = useState(() => ({
         tanggal: meeting?.tanggal ?? defaultDate,
@@ -109,9 +114,11 @@ export default function HarDailyMeetingPage({ unit, filters, options, meetings, 
                     title="Formulir Daily Meeting"
                     description={`Daftar hadir meeting pemeliharaan (lembar 1) dan foto eviden (lembar 2) — ${unit.name} · ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}.`}
                     actions={
-                        <Button variant="outline" onClick={() => router.get(harFormulir.index().url, { unit_id: filters.unit_id })}>
-                            Kembali
-                        </Button>
+                        can('har.input.view') && (
+                            <Button variant="outline" onClick={() => router.get(harFormulir.index().url, { unit_id: filters.unit_id })}>
+                                Kembali
+                            </Button>
+                        )
                     }
                 />
 
@@ -204,6 +211,20 @@ export default function HarDailyMeetingPage({ unit, filters, options, meetings, 
                             ))}
                         </div>
 
+                        {compact ? (
+<MobileRowEditor
+    rows={peserta}
+    canWrite={can_write}
+    title={(row, index) => row.nama || `Peserta ${index + 1}`}
+    subtitle={(row) => [row.jabatan, row.asal].filter(Boolean).join(' · ') || 'Tanda tangan manual'}
+    onChange={(index, key, value) => setRow(index, key, String(value ?? ''))}
+    fields={[
+        { key: 'nama', label: 'Nama' },
+        { key: 'asal', label: 'Asal / perusahaan' },
+        { key: 'jabatan', label: 'Jabatan' },
+    ]}
+/>
+                        ) : (
                         <div className="overflow-x-auto rounded-md border border-border">
                             <table className="w-full min-w-[640px] border-collapse text-xs">
                                 <thead className="bg-muted/60 text-center font-semibold">
@@ -230,8 +251,11 @@ export default function HarDailyMeetingPage({ unit, filters, options, meetings, 
                                 </tbody>
                             </table>
                         </div>
+                        )}
                         {can_write && (
-                            <Button variant="outline" size="sm" onClick={() => { setPeserta((rows) => [...rows, blankPeserta()]); touch(); }} className="w-fit gap-1 text-xs">
+                            <Button variant="outline" size="sm" onClick={() => {
+ setPeserta((rows) => [...rows, blankPeserta()]); touch(); 
+}} className="w-fit gap-1 text-xs">
                                 <Plus className="size-3.5" />
                                 Tambah Baris Peserta
                             </Button>
@@ -244,7 +268,9 @@ export default function HarDailyMeetingPage({ unit, filters, options, meetings, 
                                     <span key={photo.path} className="relative">
                                         <img src={photo.url} alt="Eviden meeting" className="h-28 w-40 rounded object-cover" />
                                         {can_write && (
-                                            <button type="button" onClick={() => { setKept((list) => list.filter((p) => p.path !== photo.path)); touch(); }} className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-white" aria-label="Hapus foto">
+                                            <button type="button" onClick={() => {
+ setKept((list) => list.filter((p) => p.path !== photo.path)); touch(); 
+}} className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-white" aria-label="Hapus foto">
                                                 <X className="size-3" />
                                             </button>
                                         )}
@@ -253,7 +279,9 @@ export default function HarDailyMeetingPage({ unit, filters, options, meetings, 
                                 {uploads.map((file, i) => (
                                     <span key={`${file.name}-${i}`} className="relative">
                                         <img src={URL.createObjectURL(file)} alt={file.name} className="h-28 w-40 rounded object-cover ring-2 ring-amber-400" />
-                                        <button type="button" onClick={() => { setUploads((list) => list.filter((_, j) => j !== i)); touch(); }} className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-white" aria-label="Batalkan foto">
+                                        <button type="button" onClick={() => {
+ setUploads((list) => list.filter((_, j) => j !== i)); touch(); 
+}} className="absolute -top-1 -right-1 rounded-full bg-destructive p-0.5 text-white" aria-label="Batalkan foto">
                                             <X className="size-3" />
                                         </button>
                                     </span>

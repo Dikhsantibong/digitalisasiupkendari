@@ -17,6 +17,7 @@ import {
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -39,6 +40,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import harFormulir from '@/routes/har/formulir';
 import prelubeTestRoutes from '@/routes/har/formulir/prelube-test';
@@ -146,6 +149,8 @@ export default function PrelubeTestPage({
     pdf_url,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     const [viewTab, setViewTab] = useState<'form' | 'html' | 'pdf'>(
         record?.format === 'html' ? 'html' : 'form'
     );
@@ -195,6 +200,7 @@ export default function PrelubeTestPage({
         CylinderChecklistItem[]
     >(() => {
         const initial = form_data.checklist_items || [];
+
         if (initial.length === 0) {
             return Array.from({ length: 8 }, (_, i) => ({
                 cylinder: i + 1,
@@ -205,6 +211,7 @@ export default function PrelubeTestPage({
                 notes: '',
             }));
         }
+
         return initial;
     });
     const [notes, setNotes] = useState<string>(form_data.notes || '');
@@ -266,8 +273,10 @@ export default function PrelubeTestPage({
         setCylindersCount(safeCount);
         setChecklistItems((prev) => {
             const next: CylinderChecklistItem[] = [];
+
             for (let i = 1; i <= safeCount; i++) {
                 const existing = prev.find((p) => p.cylinder === i);
+
                 if (existing) {
                     next.push(existing);
                 } else {
@@ -281,6 +290,7 @@ export default function PrelubeTestPage({
                     });
                 }
             }
+
             return next;
         });
         setPreviewKey((k) => k + 1);
@@ -324,11 +334,22 @@ export default function PrelubeTestPage({
     // When machine changes in selector
     const handleMachineChange = (newMachineId: string) => {
         const m = machines.find((mach) => String(mach.id) === newMachineId);
+
         if (m) {
             setMachineId(m.id);
-            if (m.type) setModelType(m.type);
-            if (m.serial_number) setSerialNumber(m.serial_number);
-            if (m.capacity_kw) setInstalledPower(m.capacity_kw);
+
+            if (m.type) {
+setModelType(m.type);
+}
+
+            if (m.serial_number) {
+setSerialNumber(m.serial_number);
+}
+
+            if (m.capacity_kw) {
+setInstalledPower(m.capacity_kw);
+}
+
             setMachineNumber(m.name.replace(/MIRRLEES\s*#/i, '').trim());
             // Fetch test for this machine and current date
             router.get(
@@ -361,6 +382,7 @@ export default function PrelubeTestPage({
     const handleManagerUlChange = (empId: string) => {
         setManagerUlId(empId);
         const emp = manager_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setManagerUlName(emp.name);
             setManagerUlTitle(
@@ -373,6 +395,7 @@ export default function PrelubeTestPage({
     const handleTlHarChange = (empId: string) => {
         setTlHarId(empId);
         const emp = tl_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setTlHarName(emp.name);
             setTlHarTitle(emp.position || 'Team Leader Pemeliharaan');
@@ -383,6 +406,7 @@ export default function PrelubeTestPage({
     const handleStaffHarChange = (empId: string) => {
         setStaffHarId(empId);
         const emp = staff_options.find((e) => String(e.id) === empId);
+
         if (emp) {
             setStaffHarName(emp.name);
             setStaffHarTitle(emp.position || 'Staff Pemeliharaan');
@@ -400,6 +424,7 @@ export default function PrelubeTestPage({
         params.set('page_margin_left', String(marginLeft));
         params.set('page_margin_right', String(marginRight));
         params.set('line_spacing', lineSpacing);
+
         return `${pdf_url}${separator}${params.toString()}`;
     }, [
         pdf_url,
@@ -454,6 +479,7 @@ export default function PrelubeTestPage({
             preserveScroll: true,
             onSuccess: () => {
                 setPreviewKey((k) => k + 1);
+
                 if (onSuccessCallback) {
                     onSuccessCallback();
                 }
@@ -504,14 +530,16 @@ export default function PrelubeTestPage({
                     description="Input kondisi pelumasan awal per silinder, atur penandatangan & margin layout, dan cetak PDF resmi."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setShowHistory(true)}
@@ -1103,6 +1131,23 @@ export default function PrelubeTestPage({
                                     </div>
 
                                     {/* Checklist Table */}
+                                    {compact ? (
+                                        <MobileRowEditor
+                                            rows={checklistItems}
+                                            canWrite
+                                            rowKey={(item) => item.cylinder}
+                                            title={(item) => `Silinder ${item.cylinder}`}
+                                            subtitle={(item) => ['camshaft', 'conrod', 'piston', 'rocker_arm'].map((f) => item[f as 'camshaft'] || '–').join(' · ')}
+                                            onChange={(index, key, value) => updateChecklistItem(checklistItems[index].cylinder, key as 'camshaft', String(value ?? ''))}
+                                            fields={[
+                                                { key: 'camshaft', label: 'Cam shaft', type: 'select', options: ['v', 'X'], optionLabels: { v: '✓ Keluar oli', X: 'X Tidak keluar' }, optionTone: (option) => (option === 'X' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white'), parse: (v) => String(v), group: 'Kondisi pelumasan' },
+                                                { key: 'conrod', label: 'Crank pin (conrod)', type: 'select', options: ['v', 'X'], optionLabels: { v: '✓ Keluar oli', X: 'X Tidak keluar' }, optionTone: (option) => (option === 'X' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white'), parse: (v) => String(v), group: 'Kondisi pelumasan' },
+                                                { key: 'piston', label: 'Crank pin (piston)', type: 'select', options: ['v', 'X'], optionLabels: { v: '✓ Keluar oli', X: 'X Tidak keluar' }, optionTone: (option) => (option === 'X' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white'), parse: (v) => String(v), group: 'Kondisi pelumasan' },
+                                                { key: 'rocker_arm', label: 'Rocker arm', type: 'select', options: ['v', 'X'], optionLabels: { v: '✓ Keluar oli', X: 'X Tidak keluar' }, optionTone: (option) => (option === 'X' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white'), parse: (v) => String(v), group: 'Kondisi pelumasan' },
+                                                { key: 'notes', label: 'Keterangan', placeholder: 'Catatan silinder…' },
+                                            ]}
+                                        />
+                                    ) : (
                                     <div className="overflow-x-auto rounded-md border border-border">
                                         <table className="w-full border-collapse text-xs min-w-[700px]">
                                             <thead>
@@ -1132,6 +1177,7 @@ export default function PrelubeTestPage({
                                                 {checklistItems.map((item) => {
                                                     const renderToggleGroup = (field: 'camshaft' | 'conrod' | 'piston' | 'rocker_arm') => {
                                                         const current = item[field];
+
                                                         return (
                                                             <div className="flex items-center justify-center gap-1">
                                                                 <button
@@ -1196,6 +1242,8 @@ export default function PrelubeTestPage({
                                             </tbody>
                                         </table>
                                     </div>
+                                    )}
+
 
                                     {/* Keterangan & Catatan Box */}
                                     <div className="grid gap-3 md:grid-cols-2">
@@ -1291,12 +1339,14 @@ export default function PrelubeTestPage({
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                    >
-                                        Batal
-                                    </Button>
+                                    {can('har.input.view') && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                        >
+                                            Batal
+                                        </Button>
+                                    )}
                                     <Button
                                         variant="outline"
                                         onClick={handleOpenPreview}

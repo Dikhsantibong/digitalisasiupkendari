@@ -14,6 +14,7 @@ use App\Models\OperasiFlmJadwal;
 use App\Models\OperasiInventarisJadwal;
 use App\Models\OperasiMeetingShiftJadwal;
 use App\Models\OperasiPembuatanIk;
+use App\Models\OperasiPerformanceTestMesin;
 use App\Models\Unit;
 use App\Services\Operator\AbsensiDocumentBuilder;
 use Illuminate\Database\Eloquent\Builder;
@@ -243,6 +244,29 @@ class OperasiReportSections
      */
     private function performanceTest(int $unitId, int $month, int $year): array
     {
+        $records = OperasiPerformanceTestMesin::query()
+            ->where('unit_id', $unitId)->where('year', $year)
+            ->orderBy('sort_order')->orderBy('id')->get();
+
+        if ($records->isNotEmpty()) {
+            return $records->map(function (OperasiPerformanceTestMesin $r, int $index) use ($month): array {
+                $weeks = [];
+                for ($week = 1; $week <= 4; $week++) {
+                    foreach (['50', '75', '100'] as $load) {
+                        $weeks[$week][$load] = in_array("{$month}-{$week}", (array) ($r->{'beban_'.$load} ?? []));
+                    }
+                }
+
+                return [
+                    'no' => $r->no_urut ?: $index + 1,
+                    'nama' => (string) $r->nama_mesin,
+                    'weeks' => $weeks,
+                    'jumlah_tahun' => count((array) ($r->beban_50 ?? [])) + count((array) ($r->beban_75 ?? [])) + count((array) ($r->beban_100 ?? [])),
+                    'keterangan' => (string) ($r->keterangan ?? ''),
+                ];
+            })->all();
+        }
+
         return OperasiCommPeralatan::query()
             ->where('unit_id', $unitId)->where('year', $year)
             ->orderBy('sort_order')->orderBy('id')->get()

@@ -1,12 +1,18 @@
 import { Head, router } from '@inertiajs/react';
 import { Check, Download, ImagePlus, Save, X } from 'lucide-react';
 import { Fragment, useState } from 'react';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { DayStrip } from '@/components/mobile/day-strip';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import harInput from '@/routes/har/input';
 import program5s5rRoutes from '@/routes/har/input/program-5s5r';
@@ -63,6 +69,10 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
     const [uploads, setUploads] = useState<Record<number, File[]>>({});
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
+    // Phone layout edits one minggu at a time.
+    const [selectedWeek, setSelectedWeek] = useState<number>(initialWeeks[0]?.minggu ?? 1);
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
     const programs = Object.fromEntries(options.programs.map((p) => [p.key, p]));
@@ -135,6 +145,157 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
 
     const pdfUrl = (download: boolean) => program5s5rRoutes.pdf({ query: { ...filters, ...(download ? { download: 1 } : {}) } }).url;
 
+    if (compact) {
+        const week = weeks.find((w) => w.minggu === selectedWeek) ?? weeks[0];
+        const pending = week ? (uploads[week.minggu] ?? []) : [];
+        const room = week ? options.max_evidence - week.evidence.length : 0;
+
+        return (
+            <>
+                <Head title={`Jadwal Program 5S 5R Pemeliharaan - ${unit.name}`} />
+                <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                    <PageHeader title="Program 5S 5R" description={`${unit.name} · ${periodLabel}`} />
+
+                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
+                        <div className="col-span-2">
+                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(value) => visit({ unit_id: Number(value) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
+                        </div>
+                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(value) => visit({ month: Number(value) })} options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))} className="w-full" />
+                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(value) => visit({ year: Number(value) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
+                    </div>
+
+                    <DayStrip
+                        items={weeks.map((w) => ({ key: String(w.minggu), label: `M${w.minggu}`, sub: 'Minggu', done: w.rows.some((r) => r.saved) }))}
+                        value={String(week?.minggu ?? '')}
+                        onChange={(key) => setSelectedWeek(Number(key))}
+                    />
+
+                    {week?.rows.map((row) => {
+                        const program = programs[row.program];
+
+                        return (
+                            <div key={row.program} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
+                                <div>
+                                    <p className="text-[14px] font-semibold text-foreground">{program?.label}</p>
+                                    <p className="text-[12px] text-muted-foreground italic">{program?.istilah}</p>
+                                </div>
+                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Detail
+                                    <Textarea value={row.detail ?? ''} onChange={(e) => setRow(week.minggu, row.program, { detail: e.target.value })} rows={2} disabled={!can_write} />
+                                </label>
+                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    PIC
+                                    <Input value={row.pic ?? ''} onChange={(e) => setRow(week.minggu, row.program, { pic: e.target.value })} disabled={!can_write} />
+                                </label>
+                                <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Kondisi awal
+                                    <ChoiceChips options={options.kondisi} value={row.kondisi_awal ?? ''} onChange={(v) => setRow(week.minggu, row.program, { kondisi_awal: v || null })} disabled={!can_write} />
+                                </div>
+                                <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Tindakan
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {options.tindakan.map((t) => (
+                                            <button
+                                                key={t.key}
+                                                type="button"
+                                                role="checkbox"
+                                                aria-checked={row[t.key]}
+                                                onClick={() => setRow(week.minggu, row.program, { [t.key]: !row[t.key] })}
+                                                disabled={!can_write}
+                                                className={`flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition active:scale-95 disabled:opacity-60 ${
+                                                    row[t.key] ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background text-foreground'
+                                                }`}
+                                            >
+                                                {row[t.key] && <Check className="size-3.5" />}
+                                                {t.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Progres
+                                    <ChoiceChips options={options.progres} value={row.progres ?? ''} onChange={(v) => setRow(week.minggu, row.program, { progres: v || null })} disabled={!can_write} />
+                                </div>
+                                <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Kondisi akhir
+                                    <ChoiceChips options={options.kondisi} value={row.kondisi_akhir ?? ''} onChange={(v) => setRow(week.minggu, row.program, { kondisi_akhir: v || null })} disabled={!can_write} />
+                                </div>
+                                <div className="grid grid-cols-[6rem_1fr] gap-2">
+                                    <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                        Jumlah
+                                        <Input
+                                            type="number"
+                                            min={0}
+                                            inputMode="numeric"
+                                            value={row.jumlah ?? ''}
+                                            onChange={(e) => setRow(week.minggu, row.program, { jumlah: e.target.value === '' ? null : Number(e.target.value) })}
+                                            disabled={!can_write}
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                        Keterangan
+                                        <Input value={row.keterangan ?? ''} onChange={(e) => setRow(week.minggu, row.program, { keterangan: e.target.value })} disabled={!can_write} />
+                                    </label>
+                                </div>
+                            </div>
+                        );
+                    })}
+
+                    {week && (
+                        <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
+                            <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">Foto eviden minggu ke-{week.minggu}</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {week.evidence.map((photo) => (
+                                    <span key={photo.id} className="relative">
+                                        <img src={photo.url} alt={`Eviden minggu ke ${week.minggu}`} className="aspect-video w-full rounded-lg object-cover" />
+                                        {can_write && (
+                                            <button type="button" onClick={() => removeSavedPhoto(week.minggu, photo.id)} className="absolute top-1 right-1 rounded-full bg-destructive p-1 text-white" aria-label="Hapus foto">
+                                                <X className="size-3.5" />
+                                            </button>
+                                        )}
+                                    </span>
+                                ))}
+                                {pending.map((file, i) => (
+                                    <span key={`${file.name}-${i}`} className="relative">
+                                        <img src={URL.createObjectURL(file)} alt={file.name} className="aspect-video w-full rounded-lg object-cover ring-2 ring-amber-400" />
+                                        <button type="button" onClick={() => removeUpload(week.minggu, i)} className="absolute top-1 right-1 rounded-full bg-destructive p-1 text-white" aria-label="Batalkan foto">
+                                            <X className="size-3.5" />
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>
+                            {can_write && room - pending.length > 0 && (
+                                <label className="flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-input text-[13px] text-muted-foreground active:bg-muted">
+                                    <ImagePlus className="size-4" />
+                                    Ambil / pilih foto ({room - pending.length} tersisa)
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="sr-only"
+                                        onChange={(e) => {
+                                            addPhotos(week.minggu, e.target.files, room);
+                                            e.target.value = '';
+                                        }}
+                                    />
+                                </label>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {can_write && (
+                    <StickyActionBar>
+                        <Button size="lg" onClick={save} disabled={saving || !dirty}>
+                            <Save className="size-4" />
+                            {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+            </>
+        );
+    }
+
     return (
         <>
             <Head title={`Jadwal Program 5S 5R Pemeliharaan - ${unit.name}`} />
@@ -144,7 +305,7 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
                     description={`Pelaksanaan Ringkas, Rapi, Resik, Rawat, Rajin per minggu — ${unit.name} · ${periodLabel}.`}
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => router.get(harInput.index().url)}>Kembali</Button>
+                            {can('har.input.view') && <Button variant="outline" onClick={() => router.get(harInput.index().url)}>Kembali</Button>}
                             <Button variant="outline" onClick={() => window.open(pdfUrl(false), '_blank')} className="gap-1.5">
                                 <Download className="size-4 text-rose-600" />
                                 PDF

@@ -22,6 +22,7 @@ import {
     X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -44,8 +45,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import lubeQualityRoutes from '@/routes/har/formulir/lube-quality';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import harFormulir from '@/routes/har/formulir';
+import lubeQualityRoutes from '@/routes/har/formulir/lube-quality';
 import type { IdName } from '@/types';
 
 export type LubeParameterRow = {
@@ -174,6 +177,8 @@ export default function LubeQualityIndex({
     default_rekomendasi_text,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     // Tab View state: 'form' | 'html' | 'pdf'
     const [viewTab, setViewTab] = useState<'form' | 'html' | 'pdf'>('form');
 
@@ -194,6 +199,7 @@ export default function LubeQualityIndex({
     // Parameter Table State
     const [parameters, setParameters] = useState<LubeParameterRow[]>(() => {
         const raw = form_data.parameters || [];
+
         if (raw.length > 0) {
             return raw.map((r: any, idx: number) => ({
                 id: `param-${idx}-${Date.now()}`,
@@ -211,6 +217,7 @@ export default function LubeQualityIndex({
                 keterangan: r.keterangan || 'No Alarm',
             }));
         }
+
         return [
             {
                 id: `param-0-${Date.now()}`,
@@ -430,6 +437,7 @@ export default function LubeQualityIndex({
         setParameters((prev) => {
             const next = [...prev];
             next[index] = { ...next[index], [field]: value };
+
             return next;
         });
     };
@@ -437,6 +445,7 @@ export default function LubeQualityIndex({
     // Photo Handlers
     const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
         if (file) {
             setPhotoFile(file);
             setRemovePhoto(false);
@@ -449,6 +458,7 @@ export default function LubeQualityIndex({
         setPhotoFile(null);
         setPhotoPreview(null);
         setRemovePhoto(true);
+
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -491,7 +501,10 @@ export default function LubeQualityIndex({
 
     // Quick Action: Reset to Standard
     const handleResetToStandard = () => {
-        if (!confirm('Kembalikan isian formulir ke nilai default?')) return;
+        if (!confirm('Kembalikan isian formulir ke nilai default?')) {
+return;
+}
+
         handleFillScanValues();
     };
 
@@ -500,9 +513,17 @@ export default function LubeQualityIndex({
         const separator = pdf_url.includes('?') ? '&' : '?';
         const params = new URLSearchParams();
         params.set('unit_id', String(unit.id));
-        if (selected_machine_id) params.set('machine_id', String(selected_machine_id));
+
+        if (selected_machine_id) {
+params.set('machine_id', String(selected_machine_id));
+}
+
         params.set('test_date', testDate);
-        if (record?.id) params.set('record_id', String(record.id));
+
+        if (record?.id) {
+params.set('record_id', String(record.id));
+}
+
         params.set('t', String(previewKey));
         params.set('document_number', docNumber);
         params.set('revision', revision);
@@ -597,6 +618,7 @@ export default function LubeQualityIndex({
     const handleSave = () => {
         if (!selected_machine_id) {
             alert('Pilih mesin terlebih dahulu sebelum menyimpan formulir.');
+
             return;
         }
 
@@ -643,24 +665,35 @@ export default function LubeQualityIndex({
         if (photoFile) {
             formData.append('photo', photoFile);
         }
+
         if (removePhoto) {
             formData.append('remove_photo', '1');
         }
+
         formData.append('photo_caption', photoCaption);
 
         // Signatories
         formData.append('signature_location', sigLocation);
         formData.append('signature_date', sigDate);
 
-        if (managerUlId !== 'custom') formData.append('manager_ul_id', managerUlId);
+        if (managerUlId !== 'custom') {
+formData.append('manager_ul_id', managerUlId);
+}
+
         formData.append('manager_ul_name', managerUlName);
         formData.append('manager_ul_title', managerUlTitle);
 
-        if (tlHarId !== 'custom') formData.append('tl_har_id', tlHarId);
+        if (tlHarId !== 'custom') {
+formData.append('tl_har_id', tlHarId);
+}
+
         formData.append('tl_har_name', tlHarName);
         formData.append('tl_har_title', tlHarTitle);
 
-        if (staffHarId !== 'custom') formData.append('staff_har_id', staffHarId);
+        if (staffHarId !== 'custom') {
+formData.append('staff_har_id', staffHarId);
+}
+
         formData.append('staff_har_name', staffHarName);
         formData.append('staff_har_title', staffHarTitle);
 
@@ -685,7 +718,10 @@ export default function LubeQualityIndex({
 
     // Reset from server
     const handleResetServer = () => {
-        if (!confirm('Apakah Anda yakin ingin menghapus data formulir ini dari database?')) return;
+        if (!confirm('Apakah Anda yakin ingin menghapus data formulir ini dari database?')) {
+return;
+}
+
         router.post(
             lubeQualityRoutes.reset.url(),
             {
@@ -720,14 +756,16 @@ export default function LubeQualityIndex({
                     description="Pencatatan hasil uji laboratorium dan oil test kit parameter oli pelumas (TBN, Water Content, Viskositas, AW Additive, Kontaminasi)."
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.get(harFormulir.index().url, { unit_id: unit.id })}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
+                                </Button>
+                            )}
                             <Button
                                 variant="outline"
                                 onClick={() => setHistoryOpen(true)}
@@ -993,9 +1031,13 @@ export default function LubeQualityIndex({
                                         value={managerUlId}
                                         onValueChange={(val) => {
                                             setManagerUlId(val);
+
                                             if (val !== 'custom') {
                                                 const emp = manager_options.find((e) => String(e.id) === val);
-                                                if (emp) setManagerUlName(emp.name);
+
+                                                if (emp) {
+setManagerUlName(emp.name);
+}
                                             }
                                         }}
                                     >
@@ -1036,9 +1078,13 @@ export default function LubeQualityIndex({
                                         value={tlHarId}
                                         onValueChange={(val) => {
                                             setTlHarId(val);
+
                                             if (val !== 'custom') {
                                                 const emp = tl_options.find((e) => String(e.id) === val);
-                                                if (emp) setTlHarName(emp.name);
+
+                                                if (emp) {
+setTlHarName(emp.name);
+}
                                             }
                                         }}
                                     >
@@ -1079,9 +1125,13 @@ export default function LubeQualityIndex({
                                         value={staffHarId}
                                         onValueChange={(val) => {
                                             setStaffHarId(val);
+
                                             if (val !== 'custom') {
                                                 const emp = staff_options.find((e) => String(e.id) === val);
-                                                if (emp) setStaffHarName(emp.name);
+
+                                                if (emp) {
+setStaffHarName(emp.name);
+}
                                             }
                                         }}
                                     >
@@ -1244,8 +1294,8 @@ export default function LubeQualityIndex({
                         <div className="rounded-lg border border-border bg-card shadow-sm">
                             {/* Card Header with View Mode Tabs & Action Buttons */}
                             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 bg-muted/10">
-                                <div className="flex items-center gap-2">
-                                    <div className="flex items-center rounded-lg border border-border bg-muted/40 p-1">
+                                <div className="flex max-w-full flex-wrap items-center gap-2">
+                                    <div className="flex max-w-full flex-wrap items-center rounded-lg border border-border bg-muted/40 p-1">
                                         <Button
                                             type="button"
                                             size="sm"
@@ -1342,7 +1392,7 @@ export default function LubeQualityIndex({
                                                     Hasil analisis laboratorium atau oil test kit untuk sampel oli pelumas.
                                                 </p>
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <Button
                                                     type="button"
                                                     variant="outline"
@@ -1366,6 +1416,31 @@ export default function LubeQualityIndex({
                                             </div>
                                         </div>
 
+                                        {compact ? (
+<MobileRowEditor
+    rows={parameters}
+    canWrite
+    rowKey={(row) => row.id}
+    title={(row, index) => row.tanggal || `Sampel ${index + 1}`}
+    subtitle={(row) => row.keterangan || `TBN ${row.tbn || '–'}`}
+    onChange={(index, key, value) => handleParameterChange(index, key as 'tbn', String(value ?? ''))}
+    onRemove={parameters.length > 1 ? handleRemoveParameterRow : undefined}
+    fields={[
+        { key: 'tanggal', label: 'Tanggal sampel', placeholder: '28-Aug-26', parse: (value) => String(value) },
+        { key: 'tbn', label: 'TBN', placeholder: '26,90', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'water_content', label: 'Water content', placeholder: '754,00', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'viscosity_40', label: 'Viskositas 40°C', placeholder: '-', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'viscosity_100', label: 'Viskositas 100°C', placeholder: '-', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'aw_additive', label: 'AW additive', placeholder: '157,00', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'glycol', label: 'Glycol', placeholder: '0,00', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'nitration', label: 'Nitration', placeholder: '0,00', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'oxidation', label: 'Oxidation', placeholder: '10,10', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'soot', label: 'Soot', placeholder: '0,19', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'sulfation', label: 'Sulfation', placeholder: '16,30', parse: (value) => String(value), group: 'Parameter' },
+        { key: 'keterangan', label: 'Keterangan', placeholder: 'No Alarm', parse: (value) => String(value) },
+    ]}
+/>
+                                        ) : (
                                         <div className="overflow-x-auto border border-border rounded-lg bg-background">
                                             <table className="w-full text-xs border-collapse">
                                                 <thead>
@@ -1536,6 +1611,7 @@ export default function LubeQualityIndex({
                                                 </tbody>
                                             </table>
                                         </div>
+                                        )}
                                     </div>
 
                                     {/* SECTION 2: STATUS & STANDARD */}
@@ -1731,7 +1807,7 @@ export default function LubeQualityIndex({
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
                                             <Label className="text-xs font-medium">Format Output:</Label>
                                             <Select
@@ -1775,11 +1851,11 @@ export default function LubeQualityIndex({
                             {/* TAB 3: PDF PREVIEW IFRAME */}
                             {viewTab === 'pdf' && (
                                 <div className="p-4 flex flex-col gap-3">
-                                    <div className="flex items-center justify-between bg-muted/40 p-2.5 rounded-lg border border-border">
+                                    <div className="flex flex-wrap items-center justify-between gap-2 bg-muted/40 p-2.5 rounded-lg border border-border">
                                         <div className="text-xs text-muted-foreground">
                                             Menampilkan pratinjau dokumen PDF secara real-time.
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <Button
                                                 type="button"
                                                 variant="outline"

@@ -1,8 +1,10 @@
-import { ClipboardList, Fingerprint } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { OPERASI_MENUS } from '@/layouts/mobile/menus/operasi';
+import { PEMELIHARAAN_MENUS } from '@/layouts/mobile/menus/pemeliharaan';
+import { UMUM_MENUS } from '@/layouts/mobile/menus/umum';
+import type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
 import { dashboard } from '@/routes';
-import logsheet from '@/routes/operator/logsheet';
-import presensi from '@/routes/operator/presensi';
+
+export type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
 
 /**
  * Registry of modules that get the phone-only shell (no sidebar, no header,
@@ -12,68 +14,24 @@ import presensi from '@/routes/operator/presensi';
  * - Add a module: append an entry.
  * - Pause a module: set `enabled: false`.
  * - Remove it for good: delete the entry. Nothing else references it.
+ * - Add a menu: append it to a list in `layouts/mobile/menus/`. Each menu is
+ *   shown only to users holding its permission, which a Super Admin grants or
+ *   withdraws per role in Role & Akses.
  */
-export type MobileMenu = {
-    key: string;
-    title: string;
-    description: string;
-    icon: LucideIcon;
-    /** Tailwind classes for the icon tile, e.g. `bg-sky-500/10 text-sky-600`. */
-    tone: string;
-    href: string;
-    /** Page component the menu opens, used to title the shell's top bar. */
-    component: string;
-    /** Shown only when the user holds one of these permissions. */
-    permission: string | string[];
-};
-
-export type MobileModule = {
-    key: string;
-    enabled: boolean;
-    title: string;
-    subtitle: string;
-    /** Role names that get this shell on a phone (presentation only; the server still authorises every route). */
-    roles: string[];
-    /** Pages that are replaced by the card menu on a phone, e.g. the post-login dashboard. */
-    homeComponents: string[];
-    /** Home URL the shell's back button returns to. */
-    homeHref: string;
-    menus: MobileMenu[];
-};
-
 export const MOBILE_MODULES: MobileModule[] = [
     {
         key: 'operator',
         enabled: true,
         title: 'Operator',
-        subtitle: 'Input lapangan operator pembangkit',
-        roles: ['operator', 'project_leader_operasi'],
+        subtitle: 'Menu lapangan sesuai peran Anda',
+        roles: ['operator', 'project_leader_operasi', 'harmes', 'harlist'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
-        menus: [
-            {
-                key: 'logsheet',
-                title: 'Input Logsheet',
-                description: 'Catat pembacaan parameter mesin per jam',
-                icon: ClipboardList,
-                tone: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
-                href: logsheet.index().url,
-                component: 'operator/logsheet',
-                permission: [
-                    'operator.logsheet.view',
-                    'operator.logsheet.write',
-                ],
-            },
-            {
-                key: 'presensi',
-                title: 'Absensi',
-                description: 'Absen masuk & pulang dalam radius kantor',
-                icon: Fingerprint,
-                tone: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-                href: presensi.index().url,
-                component: 'operator/presensi',
-                permission: 'operator.presensi',
-            },
-        ],
+        menus: [...UMUM_MENUS, ...OPERASI_MENUS, ...PEMELIHARAAN_MENUS],
     },
 ];
+
+/** Module pages opened to field staff, reused by the desktop sidebar (see MobileMenu.coveredBy). */
+export const FIELD_MENUS: MobileMenu[] = MOBILE_MODULES.flatMap(
+    (module) => module.menus,
+).filter((menu) => menu.coveredBy !== undefined);

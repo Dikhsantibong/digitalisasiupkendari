@@ -1,11 +1,14 @@
 import { Head, router } from '@inertiajs/react';
 import { BookOpen, Download, Plus, Save, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import harFormulir from '@/routes/har/formulir';
 import logbookRoutes from '@/routes/har/formulir/logbook-mutasi';
@@ -65,6 +68,8 @@ const pickLists = (source: Lists): Lists => ({
  * (absensi, APD, job rutin/non rutin, kondisi K3). Masuk Laporan Pemeliharaan.
  */
 export default function HarLogbookMutasiPage({ unit, filters, options, logbooks, logbook, template, can_write }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     const today = new Date();
     const sameMonth = today.getFullYear() === filters.year && today.getMonth() + 1 === filters.month;
     const defaultDate = `${filters.year}-${String(filters.month).padStart(2, '0')}-${String(sameMonth ? today.getDate() : 1).padStart(2, '0')}`;
@@ -109,9 +114,11 @@ export default function HarLogbookMutasiPage({ unit, filters, options, logbooks,
                     title="Logbook Mutasi Harian Tim Pemeliharaan"
                     description={`Absensi, kesiapan APD, job harian rutin & non rutin, serta kondisi K3 — ${unit.name} · ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}.`}
                     actions={
-                        <Button variant="outline" onClick={() => router.get(harFormulir.index().url, { unit_id: filters.unit_id })}>
-                            Kembali
-                        </Button>
+                        can('har.input.view') && (
+                            <Button variant="outline" onClick={() => router.get(harFormulir.index().url, { unit_id: filters.unit_id })}>
+                                Kembali
+                            </Button>
+                        )
                     }
                 />
 
@@ -197,6 +204,17 @@ export default function HarLogbookMutasiPage({ unit, filters, options, logbooks,
                         {SECTIONS.map((section) => (
                             <div key={section.key} className="flex flex-col gap-2">
                                 <h3 className="text-xs font-semibold tracking-wide text-primary uppercase">{section.title}</h3>
+                                {compact ? (
+<MobileRowEditor
+    rows={lists[section.key]}
+    canWrite={can_write}
+    title={(row, index) => row[section.columns[0].key] || `Baris ${index + 1}`}
+    subtitle={(row) => section.columns.slice(1).map((column) => row[column.key]).filter(Boolean).join(' · ')}
+    onChange={(index, key, value) => update(section.key, lists[section.key].map((r, i) => (i === index ? { ...r, [key]: value === '' ? null : String(value) } : r)))}
+    onRemove={(index) => update(section.key, lists[section.key].filter((_, i) => i !== index))}
+    fields={section.columns.map((column) => ({ key: column.key, label: column.label }))}
+/>
+                                ) : (
                                 <div className="overflow-x-auto rounded-md border border-border">
                                     <table className="w-full min-w-[560px] border-collapse text-xs">
                                         <thead className="bg-muted/60 text-center font-semibold">
@@ -242,6 +260,7 @@ export default function HarLogbookMutasiPage({ unit, filters, options, logbooks,
                                         </tbody>
                                     </table>
                                 </div>
+                                )}
                                 {can_write && (
                                     <Button variant="outline" size="sm" onClick={() => update(section.key, [...lists[section.key], blankRow(section)])} className="w-fit gap-1 text-xs">
                                         <Plus className="size-3.5" />

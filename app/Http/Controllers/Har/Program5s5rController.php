@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarProgram5s5rEvidence;
 use App\Models\HarProgram5s5rItem;
@@ -35,6 +36,8 @@ use Inertia\Response;
  */
 class Program5s5rController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
@@ -57,14 +60,14 @@ class Program5s5rController extends Controller
             ],
             'weeks' => $this->weeks($unit, $month, $year, embed: false),
             'has_saved' => HarProgram5s5rItem::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->exists(),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganProgram5s5r),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganProgram5s5r), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -273,7 +276,7 @@ class Program5s5rController extends Controller
 
     private function authorizeView(User $user): void
     {
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputView) || $user->hasPermissionTo(PermissionName::HarLaporanView), 403);
+        abort_unless(($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganProgram5s5r) || $user->hasPermissionTo(PermissionName::HarLaporanView)), 403);
     }
 
     private function text(mixed $value): ?string

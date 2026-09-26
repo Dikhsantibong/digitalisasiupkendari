@@ -2,6 +2,7 @@
 
 namespace App\Support\HarTabel;
 
+use App\Enums\PermissionName;
 use Illuminate\Validation\Rule;
 
 /**
@@ -35,6 +36,15 @@ abstract class HarTabel
     abstract public function columns(): array;
 
     /** Baris kosong yang disiapkan di halaman. */
+    /**
+     * The field permission that opens this table to Harmes / Harlist; null keeps
+     * it to the HAR input permissions.
+     */
+    public function fieldPermission(): ?PermissionName
+    {
+        return null;
+    }
+
     public function blankRows(): int
     {
         return 5;

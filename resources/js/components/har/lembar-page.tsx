@@ -1,6 +1,9 @@
 import { Head, router } from '@inertiajs/react';
 import { Download, Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { DayStrip } from '@/components/mobile/day-strip';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -9,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import harInput from '@/routes/har/input';
 import inputLembar from '@/routes/har/input/lembar';
@@ -74,6 +79,15 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
     const [catatan, setCatatan] = useState(initialCatatan);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
+    // Phone layout edits one grid column (a date / week) at a time; start on today's date when shown.
+    const [selectedColumn, setSelectedColumn] = useState<string>(() => {
+        const now = new Date();
+        const today = now.getFullYear() === filters.year && now.getMonth() + 1 === filters.month ? String(now.getDate()) : null;
+
+        return (lembar.grid.find((c) => c.label === today) ?? lembar.grid[0])?.key ?? '';
+    });
 
     const routes = lembar.menu === 'input' ? inputLembar : jadwalLembar;
     const before = lembar.fields.filter((f) => f.position === 'before');
@@ -222,6 +236,157 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
         </td>
     );
 
+    if (compact) {
+        const column = lembar.grid.find((c) => c.key === selectedColumn) ?? lembar.grid[0];
+        const mobileField = (field: Field, index: number, row: Row) => (
+            <label key={field.key} className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                {field.label}
+                <Input
+                    type={field.type === 'number' ? 'number' : 'text'}
+                    inputMode={field.type === 'number' ? 'decimal' : undefined}
+                    value={row.fields[field.key] ?? ''}
+                    onChange={(e) => setField(index, field.key, e.target.value)}
+                    disabled={!can_write}
+                />
+            </label>
+        );
+        const mobileCell = (index: number, line: string, value: string) => {
+            if (!column) {
+                return null;
+            }
+
+            if (lembar.cell_type === 'mark') {
+                return (
+                    <button
+                        type="button"
+                        onClick={() => setCell(index, line, column.key, value === '1' ? '' : '1')}
+                        disabled={!can_write}
+                        aria-pressed={value === '1'}
+                        className={`min-h-10 rounded-lg border px-4 text-[13px] font-semibold transition active:scale-95 ${value === '1' ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background'}`}
+                    >
+                        {value === '1' ? '✓ Dilaksanakan' : 'Tandai dilaksanakan'}
+                    </button>
+                );
+            }
+
+            return (
+                <ChoiceChips
+                    options={codes}
+                    value={value}
+                    onChange={(v) => setCell(index, line, column.key, v)}
+                    disabled={!can_write}
+                    tone={(code) => (pair ? (code === codes[0] ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-rose-600 bg-rose-600 text-white') : 'border-primary bg-primary text-primary-foreground')}
+                />
+            );
+        };
+
+        return (
+            <>
+                <Head title={`${lembar.title} - ${unit.name}`} />
+                <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                    <PageHeader title={lembar.title} description={`${unit.name} · ${periodLabel}${machineName ? ` · ${machineName}` : ''}`} />
+
+                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
+                        <div className="col-span-2">
+                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
+                        </div>
+                        {lembar.per_machine && (
+                            <div className="col-span-2">
+                                <OperasiSelect label="Mesin" value={String(filters.machine_id ?? '')} onChange={(v) => visit({ machine_id: Number(v) })} options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))} className="w-full" />
+                            </div>
+                        )}
+                        <OperasiSelect label={lembar.yearly ? 'Bulan (rekap)' : 'Bulan'} value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))} className="w-full" />
+                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
+                    </div>
+
+                    {lembar.per_machine && options.machines.length === 0 && <p className="text-[13px] text-amber-600">Unit ini belum punya data mesin — tambahkan di Master Mesin.</p>}
+
+                    <DayStrip
+                        items={lembar.grid.map((c) => ({
+                            key: c.key,
+                            label: c.label,
+                            sub: c.sub ?? c.group,
+                            isRed: c.is_red,
+                            done: rows.some((row) => lembar.lines.some((line) => row.cells[line.key]?.[c.key])),
+                        }))}
+                        value={column?.key ?? ''}
+                        onChange={setSelectedColumn}
+                    />
+
+                    <p className="flex flex-wrap gap-x-3 gap-y-1 px-0.5 text-[12px] text-muted-foreground">
+                        <span className="font-semibold text-foreground">{lembar.legend_title}:</span>
+                        {lembar.codes.map((c) => (
+                            <span key={c.code}>
+                                <strong>{c.code}</strong> = {c.label}
+                            </span>
+                        ))}
+                    </p>
+
+                    {lembar.sections.map((section) => (
+                        <div key={section.key} className="flex flex-col gap-2">
+                            {section.title && <p className="px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{section.title}</p>}
+                            {rows.map((row, index) => {
+                                if (row.section !== section.key) {
+                                    return null;
+                                }
+
+                                return (
+                                    <div key={index} className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                                        {before.map((f) => mobileField(f, index, row))}
+                                        {lembar.lines.map((line) => (
+                                            <div key={line.key} className="flex flex-col gap-1">
+                                                {multiLine && <span className="text-[12px] font-medium text-muted-foreground">{line.label}</span>}
+                                                {mobileCell(index, line.key, column ? (row.cells[line.key]?.[column.key] ?? '') : '')}
+                                            </div>
+                                        ))}
+                                        {after.map((f) => mobileField(f, index, row))}
+                                        {can_write && (
+                                            <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="self-start text-destructive">
+                                                <Trash2 className="size-4" />
+                                                Hapus baris
+                                            </Button>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {can_write && (
+                                <Button type="button" variant="outline" size="sm" onClick={() => addRow(section.key)} className="h-auto max-w-full self-start py-1.5 text-left whitespace-normal">
+                                    <Plus className="size-4" />
+                                    Tambah baris{section.title ? ` ${section.title}` : ''}
+                                </Button>
+                            )}
+                        </div>
+                    ))}
+
+                    {lembar.note_label && (
+                        <div className="flex flex-col gap-1.5">
+                            <Label htmlFor="catatan">{lembar.note_label}</Label>
+                            <Textarea
+                                id="catatan"
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    touch();
+                                }}
+                                disabled={!can_write}
+                                rows={3}
+                            />
+                        </div>
+                    )}
+                </div>
+
+                {can_write && (
+                    <StickyActionBar>
+                        <Button size="lg" onClick={save} disabled={saving || !dirty || (lembar.per_machine && !filters.machine_id)}>
+                            <Save className="size-4" />
+                            {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+            </>
+        );
+    }
+
     let number = 0;
 
     return (
@@ -233,9 +398,11 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                     description={`${lembar.description} — ${unit.name} · ${periodLabel}${machineName ? ` · ${machineName}` : ''}.`}
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => router.get(lembar.menu === 'input' ? harInput.index().url : harJadwal.index().url)}>
-                                Kembali
-                            </Button>
+                            {(lembar.menu !== 'input' || can('har.input.view')) && (
+                                <Button variant="outline" onClick={() => router.get(lembar.menu === 'input' ? harInput.index().url : harJadwal.index().url)}>
+                                    Kembali
+                                </Button>
+                            )}
                             <Button variant="outline" onClick={() => window.open(routes.pdf(lembar.key, { query }).url, '_blank')} className="gap-1.5">
                                 <Download className="size-4 text-rose-600" />
                                 PDF

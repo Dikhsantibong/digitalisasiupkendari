@@ -16,19 +16,13 @@ export type ResolvedMobileModule = {
 };
 
 /**
- * Resolves which mobile module shell (if any) wraps the current page: only on a
- * phone-sized viewport, for a user holding one of the module's roles, on the
- * module's home or one of its menu pages. Returns null everywhere else so the
- * normal layout renders.
+ * The mobile module whose shell would wrap the current page on a phone: for a
+ * user holding one of the module's roles, on the module's home or one of its
+ * menu pages. The viewport is not considered here (unknown while rendering on
+ * the server).
  */
-export function useMobileModule(): ResolvedMobileModule | null {
+export function useMobileModuleCandidate(): ResolvedMobileModule | null {
     const page = usePage();
-    const isMobile = useIsMobile();
-
-    if (!isMobile) {
-        return null;
-    }
-
     const auth = page.props.auth as Auth | undefined;
     const roleNames = (auth?.roles ?? []).map((role) => role.name);
     const permissions = auth?.permissions ?? [];
@@ -57,6 +51,18 @@ export function useMobileModule(): ResolvedMobileModule | null {
     }
 
     return null;
+}
+
+/**
+ * Resolves which mobile module shell (if any) wraps the current page: only on a
+ * phone-sized viewport. Returns null everywhere else so the normal layout
+ * renders.
+ */
+export function useMobileModule(): ResolvedMobileModule | null {
+    const candidate = useMobileModuleCandidate();
+    const isMobile = useIsMobile();
+
+    return isMobile ? candidate : null;
 }
 
 export const MobileShellContext = createContext(false);

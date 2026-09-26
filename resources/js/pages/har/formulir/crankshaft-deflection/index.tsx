@@ -18,6 +18,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -40,6 +41,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import harFormulir from '@/routes/har/formulir';
 import crankshaftRoutes from '@/routes/har/formulir/crankshaft-deflection';
@@ -157,6 +160,8 @@ export default function CrankshaftDeflectionIndex({
     pdf_url,
     can_write,
 }: Props) {
+    const compact = useCompactLayout();
+    const { can } = usePermissions();
     const [viewTab, setViewTab] = useState<'form' | 'html' | 'pdf'>(
         record?.format === 'html' ? 'html' : 'form'
     );
@@ -205,6 +210,7 @@ export default function CrankshaftDeflectionIndex({
     const [measurements, setMeasurements] = useState<CrankshaftMeasurement[]>(
         () => {
             const initial = form_data.measurements || [];
+
             if (initial.length === 0) {
                 return Array.from({ length: 8 }, (_, i) => ({
                     cylinder: i + 1,
@@ -215,6 +221,7 @@ export default function CrankshaftDeflectionIndex({
                     pos_e: '0',
                 }));
             }
+
             return initial;
         }
     );
@@ -307,7 +314,10 @@ export default function CrankshaftDeflectionIndex({
 
     // Update cylinder count dynamically
     const handleCylinderCountChange = (count: number) => {
-        if (count < 1 || count > 32) return;
+        if (count < 1 || count > 32) {
+return;
+}
+
         setCylindersCount(count);
 
         setMeasurements((prev) => {
@@ -328,6 +338,7 @@ export default function CrankshaftDeflectionIndex({
                     });
                 }
             }
+
             return newMeasurements;
         });
     };
@@ -377,6 +388,7 @@ export default function CrankshaftDeflectionIndex({
             Array.from({ length: 8 }, (_, idx) => {
                 const cyl = idx + 1;
                 const s = sampleVals[cyl];
+
                 return {
                     cylinder: cyl,
                     pos_a: s ? s.a : '0',
@@ -408,6 +420,7 @@ export default function CrankshaftDeflectionIndex({
         const newMachineId = parseInt(mIdStr, 10);
         setMachineId(newMachineId);
         const mObj = machines.find((m) => m.id === newMachineId);
+
         if (mObj) {
             setModelType(mObj.type || '8M 453 AK');
             setSerialNumber(mObj.serial_number || '');
@@ -464,6 +477,7 @@ export default function CrankshaftDeflectionIndex({
     const handleManagerSelect = (empIdStr: string) => {
         setManagerUlId(empIdStr);
         const emp = manager_options.find((e) => String(e.id) === empIdStr);
+
         if (emp) {
             setManagerUlName(emp.name);
             setManagerUlTitle(emp.position || `Manager ${unit.service_unit_name || unit.name}`);
@@ -473,6 +487,7 @@ export default function CrankshaftDeflectionIndex({
     const handleTlSelect = (empIdStr: string) => {
         setTlHarId(empIdStr);
         const emp = tl_options.find((e) => String(e.id) === empIdStr);
+
         if (emp) {
             setTlHarName(emp.name);
             setTlHarTitle(emp.position || 'Team Leader Pemeliharaan');
@@ -482,6 +497,7 @@ export default function CrankshaftDeflectionIndex({
     const handleStaffSelect = (empIdStr: string) => {
         setStaffHarId(empIdStr);
         const emp = staff_options.find((e) => String(e.id) === empIdStr);
+
         if (emp) {
             setStaffHarName(emp.name);
             setStaffHarTitle(emp.position || 'Staff Pemeliharaan');
@@ -490,7 +506,10 @@ export default function CrankshaftDeflectionIndex({
 
     // Save action
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setIsSaving(true);
 
         router.post(
@@ -569,6 +588,7 @@ export default function CrankshaftDeflectionIndex({
         url.searchParams.set('page_margin_left', String(marginLeft));
         url.searchParams.set('page_margin_right', String(marginRight));
         url.searchParams.set('line_spacing', lineSpacing);
+
         return url.toString();
     }, [
         pdf_url,
@@ -593,15 +613,17 @@ export default function CrankshaftDeflectionIndex({
                     description={`Pengukuran kelurusan (alignment) dan defleksi poros engkol tiap silinder mesin (${unit.name}).`}
                     actions={
                         <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => router.get(harFormulir.index())}
-                                className="h-9 gap-1.5"
-                            >
-                                <ArrowLeft className="size-4" />
-                                <span>Kembali</span>
-                            </Button>
+                            {can('har.input.view') && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => router.get(harFormulir.index())}
+                                    className="h-9 gap-1.5"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    <span>Kembali</span>
+                                </Button>
+                            )}
 
                             <Button
                                 variant="outline"
@@ -1298,6 +1320,23 @@ export default function CrankshaftDeflectionIndex({
                                             </span>
                                         </div>
 
+                                        {compact ? (
+<MobileRowEditor
+    rows={measurements}
+    canWrite
+    rowKey={(m) => m.cylinder}
+    title={(m) => `Silinder ${m.cylinder}`}
+    subtitle={(m) => ['a', 'b', 'c', 'd', 'e'].map((pos) => `${pos.toUpperCase()} ${m[`pos_${pos}` as 'pos_a'] || '–'}`).join(' · ')}
+    onChange={(index, key, value) => handleMeasurementChange(measurements[index].cylinder, key as 'pos_a', String(value ?? ''))}
+    fields={[
+        { key: 'pos_a', label: 'Posisi A', placeholder: '0', group: 'Defleksi', parse: (value) => String(value) },
+        { key: 'pos_b', label: 'Posisi B', placeholder: '0', group: 'Defleksi', parse: (value) => String(value) },
+        { key: 'pos_c', label: 'Posisi C', placeholder: '0', group: 'Defleksi', parse: (value) => String(value) },
+        { key: 'pos_d', label: 'Posisi D', placeholder: '0', group: 'Defleksi', parse: (value) => String(value) },
+        { key: 'pos_e', label: 'Posisi E', placeholder: '0', group: 'Defleksi', parse: (value) => String(value) },
+    ]}
+/>
+                                        ) : (
                                         <div className="overflow-x-auto rounded-lg border border-border">
                                             <table className="w-full border-collapse text-xs">
                                                 <thead>
@@ -1413,6 +1452,7 @@ export default function CrankshaftDeflectionIndex({
                                                 </tbody>
                                             </table>
                                         </div>
+                                        )}
                                     </div>
 
                                     {/* SECTION: STANDAR YANG DIIZINKAN & KETERANGAN / CATATAN */}
@@ -1562,14 +1602,16 @@ export default function CrankshaftDeflectionIndex({
                                         <span>Riwayat Formulir</span>
                                     </Button>
 
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => router.get(harFormulir.index())}
-                                        className="h-8 text-xs text-muted-foreground hover:text-foreground"
-                                    >
-                                        Batal
-                                    </Button>
+                                    {can('har.input.view') && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => router.get(harFormulir.index())}
+                                            className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                                        >
+                                            Batal
+                                        </Button>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -1620,6 +1662,7 @@ export default function CrankshaftDeflectionIndex({
                         ) : (
                             history.map((h) => {
                                 const hMachine = machines.find((m) => m.id === h.machine_id);
+
                                 return (
                                     <div
                                         key={h.id}

@@ -2,6 +2,7 @@
 
 namespace App\Support\HarLembar;
 
+use App\Enums\PermissionName;
 use App\Models\Holiday;
 use Illuminate\Support\Carbon;
 
@@ -62,6 +63,15 @@ abstract class HarLembar
     abstract public function sections(): array;
 
     /** Satu dokumen per tahun (disimpan month = 0). */
+    /**
+     * The field permission that opens this sheet to Harmes / Harlist; null keeps
+     * it to the HAR input permissions.
+     */
+    public function fieldPermission(): ?PermissionName
+    {
+        return null;
+    }
+
     public function yearly(): bool
     {
         return false;

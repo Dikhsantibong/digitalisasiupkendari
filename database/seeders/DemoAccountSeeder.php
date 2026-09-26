@@ -22,6 +22,8 @@ use Illuminate\Support\Str;
  *  - Site Leader    : one per unit
  *  - Project Leader : one per unit (senior operator: scheduling + reports)
  *  - Operator       : four per unit (shift A–D)
+ *  - Harmes/Harlist : Harmes 1–3 and Harlist 2 per unit (divisi
+ *                     Pemeliharaan), each linked to its employee record
  *  - Report signers : the Koordinator of every divisi (pemeriksa of its
  *                     report), Office (Pemeliharaan, Operasi, K3, Logistik)
  *                     and PIC PDM, one per unit, with the TL role of their
@@ -62,6 +64,20 @@ class DemoAccountSeeder extends Seeder
         'pic-pdm' => [EmployeePosition::PicPdm, RoleName::TeamLeaderPdm],
     ];
 
+    /**
+     * Field maintenance accounts per unit: e-mail prefix => [role, roster
+     * suffix of the employee it is linked to ({@see EmployeeSeeder::UNIT_ROSTER})].
+     *
+     * @var array<string, array{0: RoleName, 1: int}>
+     */
+    private const MAINTENANCE_ACCOUNTS = [
+        'harmes1' => [RoleName::Harmes, 25],
+        'harmes2' => [RoleName::Harmes, 26],
+        'harmes3' => [RoleName::Harmes, 27],
+        'harlist1' => [RoleName::Harlist, 28],
+        'harlist2' => [RoleName::Harlist, 29],
+    ];
+
     public function run(): void
     {
         foreach (ServiceUnit::query()->orderBy('id')->get() as $serviceUnit) {
@@ -93,12 +109,18 @@ class DemoAccountSeeder extends Seeder
             for ($n = 1; $n <= 4; $n++) {
                 $this->account("operator{$n}.{$slug}@".self::DOMAIN, "Operator {$n} {$name}", 'Operator (Shift '.chr(64 + $n).')', RoleName::Operator, $unit);
             }
+
+            foreach (self::MAINTENANCE_ACCOUNTS as $prefix => [$role, $suffix]) {
+                $label = ucfirst(preg_replace('/(\d+)$/', ' $1', $prefix));
+                $user = $this->account("{$prefix}.{$slug}@".self::DOMAIN, "{$label} {$name}", $role->label(), $role, $unit);
+                $this->linkEmployeeByNip($user, EmployeeSeeder::nip($unit, $suffix));
+            }
         }
 
         $this->command?->info('Akun demo dibuat/diperbarui. Kata sandi semua akun: "'.self::PASSWORD.'".');
     }
 
-    private function account(string $email, string $name, string $position, RoleName $role, ServiceUnit|Unit $scope, ?EmployeePosition $employeePosition = null): void
+    private function account(string $email, string $name, string $position, RoleName $role, ServiceUnit|Unit $scope, ?EmployeePosition $employeePosition = null): User
     {
         $user = User::query()->firstOrNew(['email' => $email]);
         $user->fill([
@@ -118,6 +140,21 @@ class DemoAccountSeeder extends Seeder
         if ($employeePosition !== null) {
             $this->linkEmployee($user, $employeePosition, $scope);
         }
+
+        return $user;
+    }
+
+    /**
+     * Link the account to the roster employee with the given NIP, unless
+     * either is already linked.
+     */
+    private function linkEmployeeByNip(User $user, string $nip): void
+    {
+        if (Employee::query()->where('user_id', $user->id)->exists()) {
+            return;
+        }
+
+        Employee::query()->where('nip', $nip)->whereNull('user_id')->update(['user_id' => $user->id]);
     }
 
     /**

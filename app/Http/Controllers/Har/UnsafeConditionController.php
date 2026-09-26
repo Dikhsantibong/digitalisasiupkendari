@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\HarUnsafeCondition;
 use App\Models\Unit;
@@ -20,16 +21,14 @@ use Inertia\Response;
 
 class UnsafeConditionController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
-            $user->hasPermissionTo(PermissionName::HarLaporanView),
-            403
-        );
+        abort_unless(($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganUnsafeCondition) || $user->hasPermissionTo(PermissionName::HarLaporanView)), 403);
 
         $units = Unit::query()->visibleTo($user)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'service_unit_id']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -92,14 +91,14 @@ class UnsafeConditionController extends Controller
                 'units' => $units->all(),
                 'years' => range($year - 3, $year + 1),
             ],
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganUnsafeCondition),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganUnsafeCondition), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -169,7 +168,7 @@ class UnsafeConditionController extends Controller
     public function update(Request $request, HarUnsafeCondition $unsafeCondition): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganUnsafeCondition), 403);
         abort_unless($user->canAccessUnit($unsafeCondition->unit_id), 403);
 
         $validated = $request->validate([
@@ -226,7 +225,7 @@ class UnsafeConditionController extends Controller
     public function destroy(Request $request, HarUnsafeCondition $unsafeCondition): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganUnsafeCondition), 403);
         abort_unless($user->canAccessUnit($unsafeCondition->unit_id), 403);
 
         if ($unsafeCondition->foto_sebelum) {
@@ -252,11 +251,7 @@ class UnsafeConditionController extends Controller
     public function pdf(Request $request): HttpResponse
     {
         $user = $request->user();
-        abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
-            $user->hasPermissionTo(PermissionName::HarLaporanView),
-            403
-        );
+        abort_unless(($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganUnsafeCondition) || $user->hasPermissionTo(PermissionName::HarLaporanView)), 403);
 
         $units = Unit::query()->visibleTo($user)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'service_unit_id']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');

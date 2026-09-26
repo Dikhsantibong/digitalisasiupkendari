@@ -1,19 +1,23 @@
 import { Head, router } from '@inertiajs/react';
-import { AlertOctagon, Droplet, FileCheck, Fuel, Gauge, Package, Plug, TimerReset, Wrench, Zap } from 'lucide-react';
+import { AlertOctagon, ClipboardCheck, ClipboardList, Droplet, FileCheck, Fuel, Gauge, Package, Plug, ShieldAlert, Sparkles, TimerReset, Wrench, Zap } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
 import auxiliary from '@/routes/operasi/input/auxiliary';
+import checklistCommissioningMesin from '@/routes/operasi/input/checklist-commissioning-mesin';
 import dailyReport from '@/routes/operasi/input/daily-report';
 import feeder from '@/routes/operasi/input/feeder';
 import flmMonitoring from '@/routes/operasi/input/flm-monitoring';
 import fuelReceipt from '@/routes/operasi/input/fuel-receipt';
 import kondisiAbnormal from '@/routes/operasi/input/kondisi-abnormal';
 import materialPeralatan from '@/routes/operasi/input/material-peralatan';
+import patrolCheckMesin from '@/routes/operasi/input/patrol-check-mesin';
 import permitToWork from '@/routes/operasi/input/permit-to-work';
+import program5s5r from '@/routes/operasi/input/program-5s5r';
 import resourcePembangkit from '@/routes/operasi/input/resource-pembangkit';
 import starStop from '@/routes/operasi/input/star-stop';
+import unsafeCondition from '@/routes/operasi/input/unsafe-condition';
 
 type InputCard = {
     title: string;
@@ -93,6 +97,34 @@ const INPUT_MENUS: InputCard[] = [
         icon: Wrench,
         url: flmMonitoring.index().url,
         buttonLabel: 'Buka Input Monitoring FLM',
+    },
+    {
+        title: 'Patrol Check Mesin',
+        description: 'Pencatatan pemeriksaan harian mesin pembangkit (Lubricating, Fuel, Cooling, Air Intake/Exhaust, Electrical System) per shift.',
+        icon: ClipboardCheck,
+        url: patrolCheckMesin.index().url,
+        buttonLabel: 'Buka Input Patrol Check Mesin',
+    },
+    {
+        title: 'Checklist Commissioning Test Mesin',
+        description: 'Pemeriksaan dan verifikasi status kesiapan peralatan (Persiapan & Paralel Generator) saat commissioning test mesin pembangkit.',
+        icon: ClipboardList,
+        url: checklistCommissioningMesin.index().url,
+        buttonLabel: 'Buka Checklist Commissioning Mesin',
+    },
+    {
+        title: 'Unsafe Action & Unsafe Condition',
+        description: 'Pencatatan, pelaporan, dan evaluasi tindak lanjut temuan tindakan tidak aman (unsafe action) serta kondisi berbahaya (unsafe condition).',
+        icon: ShieldAlert,
+        url: unsafeCondition.index().url,
+        buttonLabel: 'Buka Unsafe Action & Condition',
+    },
+    {
+        title: 'Program 5S 5R Pengoperasian KIT',
+        description: 'Pencatatan mingguan program Ringkas (Seiri), Rapi (Seiton), Resik (Seiso), Rawat (Seiketsu), Rajin (Shitsuke), progres, kondisi, dan foto eviden.',
+        icon: Sparkles,
+        url: program5s5r.index().url,
+        buttonLabel: 'Buka Program 5S 5R',
     },
 ];
 

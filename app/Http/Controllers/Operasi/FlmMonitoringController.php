@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Models\OperasiFlmMonitoring;
@@ -30,6 +31,7 @@ use Inertia\Response;
  */
 class FlmMonitoringController extends Controller
 {
+    use AuthorizesFieldInput;
     use RendersReportPdf;
 
     public const MIN_ROWS = 10;
@@ -40,7 +42,7 @@ class FlmMonitoringController extends Controller
     {
         [$units, $unit, $month, $year] = $this->target($request);
 
-        return Inertia::render('operasi/input/flm-monitoring', [
+        return Inertia::render('operasi/input/flm-monitoring/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'options' => [
@@ -50,14 +52,14 @@ class FlmMonitoringController extends Controller
             ],
             'rows' => $this->rows($unit, $month, $year),
             'has_saved' => $this->saved($unit, $month, $year)->isNotEmpty(),
-            'can_write' => $request->user()->hasPermissionTo(PermissionName::OperasiInputWrite),
+            'can_write' => $this->allowsFieldInput($request->user(), PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganFlmMonitoring),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganFlmMonitoring), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -179,7 +181,7 @@ class FlmMonitoringController extends Controller
     private function target(Request $request): array
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperasiInputView) || $user->hasPermissionTo(PermissionName::OperasiLaporanView), 403);
+        abort_unless(($this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganFlmMonitoring) || $user->hasPermissionTo(PermissionName::OperasiLaporanView)), 403);
 
         $units = Unit::query()->visibleTo($user)->where('is_active', true)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');

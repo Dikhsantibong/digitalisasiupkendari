@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Models\HarAxialConrod;
@@ -21,6 +22,8 @@ use Inertia\Response as InertiaResponse;
 
 class AxialConrodController extends Controller
 {
+    use AuthorizesFieldInput;
+
     public function __construct(
         private readonly HarAxialConrodPdfBuilder $pdfBuilder,
         private readonly ActivityLogger $activityLogger,
@@ -30,7 +33,7 @@ class AxialConrodController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganAxialConrod) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -145,14 +148,14 @@ class AxialConrodController extends Controller
                 'test_date' => $testDate,
                 'record_id' => $record?->id,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarInputWrite),
+            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganAxialConrod),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganAxialConrod), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -223,7 +226,7 @@ class AxialConrodController extends Controller
     public function reset(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganAxialConrod), 403);
 
         $recordId = $request->integer('record_id');
         if ($recordId) {
@@ -249,7 +252,7 @@ class AxialConrodController extends Controller
     {
         $user = $request->user();
         abort_unless(
-            $user->hasPermissionTo(PermissionName::HarInputView) ||
+            $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganAxialConrod) ||
             $user->hasPermissionTo(PermissionName::HarLaporanView),
             403
         );
@@ -358,7 +361,7 @@ class AxialConrodController extends Controller
     public function destroy(HarAxialConrod $axialConrod): RedirectResponse
     {
         $user = request()->user();
-        abort_unless($user->hasPermissionTo(PermissionName::HarInputWrite), 403);
+        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganAxialConrod), 403);
 
         $unitId = $axialConrod->unit_id;
         $axialConrod->delete();

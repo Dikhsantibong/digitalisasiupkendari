@@ -18,8 +18,9 @@ use Illuminate\Support\Collection;
  *   Pegawai form, one of them the regu's Leader Shift) rotating
  *   through the per-regu {@see ShiftPattern} (default OFF,OFF,S,S,P,P,M,M).
  * - Non Shift: the unit's Project Leader and Koordinator/Office jabatan in
- *   {@see self::NON_SHIFT_POSITIONS}, on office hours (P on weekdays, OFF on
- *   weekends and national holidays).
+ *   {@see self::NON_SHIFT_POSITIONS}, then the Harmes / Harlist maintenance
+ *   staff, on office hours (P on weekdays, OFF on weekends and national
+ *   holidays).
  *
  * Shared by the absensi page and the absensi report so both list the same rows.
  */
@@ -54,7 +55,11 @@ class AttendanceRoster
                 ->get(['id', 'name', 'nip', 'position', 'regu', 'is_shift_leader']);
         }
 
-        $order = array_flip(array_map(fn (EmployeePosition $p): string => $p->value, self::NON_SHIFT_POSITIONS));
+        $order = array_flip([
+            ...array_map(fn (EmployeePosition $p): string => $p->value, self::NON_SHIFT_POSITIONS),
+            Employee::POSITION_HARMES,
+            Employee::POSITION_HARLIST,
+        ]);
 
         return $query->whereNull('regu')->whereIn('position', array_keys($order))
             ->orderBy('name')->get(['id', 'name', 'nip', 'position', 'regu', 'is_shift_leader'])
