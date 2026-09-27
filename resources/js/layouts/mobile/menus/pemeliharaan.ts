@@ -34,7 +34,6 @@ import rekapGangguan from '@/routes/har/input/laporan-gangguan';
 import harLembar from '@/routes/har/input/lembar';
 import patrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import program5s5r from '@/routes/har/input/program-5s5r';
-import schedule from '@/routes/har/input/schedule';
 import serviceRequest from '@/routes/har/input/service-request';
 import unsafeCondition from '@/routes/har/input/unsafe-condition';
 import workOrder from '@/routes/har/input/work-order';
@@ -49,6 +48,7 @@ import injectorPressure from '@/routes/har/pengusahaan/injector-pressure';
 import lubeQuality from '@/routes/har/pengusahaan/lube-quality';
 import motorCurrent from '@/routes/har/pengusahaan/motor-current';
 import prelubeTest from '@/routes/har/pengusahaan/prelube-test';
+import rencanaRealisasi from '@/routes/har/pengusahaan/rencana-realisasi';
 import timingInjectionPump from '@/routes/har/pengusahaan/timing-injection-pump';
 import vibration from '@/routes/har/pengusahaan/vibration';
 
@@ -93,16 +93,6 @@ const INPUT: Entry[] = [
         'bg-teal-500/10 text-teal-600 dark:text-teal-400',
         activity.index().url,
         'har/input/activity/index',
-    ],
-    [
-        'schedule',
-        'Rencana vs Realisasi',
-        'Rencana',
-        'Jadwal pemeliharaan & realisasinya',
-        CalendarRange,
-        'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
-        schedule.index().url,
-        'har/input/schedule/index',
     ],
     [
         'attachment',
@@ -173,6 +163,20 @@ const INPUT: Entry[] = [
         'bg-orange-500/10 text-orange-600 dark:text-orange-400',
         patrolCheckParameter.index().url,
         'har/input/patrol-check-parameter/index',
+    ],
+];
+
+/** Input pemeliharaan — Akses 2 Pengusahaan (pages/pengusahaan/har). */
+const INPUT_PENGUSAHAAN: Entry[] = [
+    [
+        'schedule',
+        'Rencana & Realisasi',
+        'Rencana',
+        'Jadwal pemeliharaan & realisasinya',
+        CalendarRange,
+        'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+        rencanaRealisasi.index().url,
+        'pengusahaan/har/rencana-realisasi/index',
     ],
 ];
 
@@ -364,5 +368,6 @@ const toMenus = (entries: Entry[], group: MobileMenu['group'], coveredBy = 'har.
 export const PEMELIHARAAN_MENUS: MobileMenu[] = [
     ...toMenus(INPUT, 'har-input'),
     ...toMenus(FORMULIR, 'har-formulir'),
+    ...toMenus(INPUT_PENGUSAHAAN, 'har-input', 'har.pengusahaan.view'),
     ...toMenus(FORMULIR_PENGUSAHAAN, 'har-formulir', 'har.pengusahaan.view'),
 ];

@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Award, BatteryCharging, BellRing, BookUser, Boxes, BriefcaseMedical, Building2, CalendarClock, CalendarRange, Cctv, ClipboardCheck, ClipboardList, Clock, Cog, Disc, Droplet, Droplets, FileSpreadsheet, Flame, Fuel, HardHat, LifeBuoy, Ruler, ShieldAlert, ShieldCheck, Signpost, SquarePen, Timer, UserCheck, UserX, Waves, Wrench, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, Award, BatteryCharging, BellRing, BookUser, Boxes, BriefcaseMedical, Building2, CalendarClock, CalendarRange, Cctv, ClipboardCheck, ClipboardList, Clock, Cog, Disc, Droplet, Droplets, FileSpreadsheet, Flame, Fuel, HardHat, LifeBuoy, NotebookPen, Ruler, ShieldAlert, ShieldCheck, Signpost, SquarePen, Timer, UserCheck, UserX, Waves, Wrench, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import harServiceRequest from '@/routes/har/input/service-request';
 import harWorkOrder from '@/routes/har/input/work-order';
@@ -11,9 +11,11 @@ import harPengusahaanCounterWeight from '@/routes/har/pengusahaan/counter-weight
 import harPengusahaanCrankshaftDeflection from '@/routes/har/pengusahaan/crankshaft-deflection';
 import harPengusahaanHydrotest from '@/routes/har/pengusahaan/hydrotest';
 import harPengusahaanInjectorPressure from '@/routes/har/pengusahaan/injector-pressure';
+import harPengusahaanLaporanKegiatan from '@/routes/har/pengusahaan/laporan-kegiatan';
 import harPengusahaanLubeQuality from '@/routes/har/pengusahaan/lube-quality';
 import harPengusahaanMotorCurrent from '@/routes/har/pengusahaan/motor-current';
 import harPengusahaanPrelubeTest from '@/routes/har/pengusahaan/prelube-test';
+import harPengusahaanRencanaRealisasi from '@/routes/har/pengusahaan/rencana-realisasi';
 import harPengusahaanTimingInjectionPump from '@/routes/har/pengusahaan/timing-injection-pump';
 import harPengusahaanVibration from '@/routes/har/pengusahaan/vibration';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
@@ -317,6 +319,24 @@ export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = [
         href: harServiceRequest.index().url,
         permission: 'har.pengusahaan.view',
         component: 'har/input/service-request/index',
+    },
+    {
+        module: 'har',
+        section: 'input',
+        title: 'Rencana & Realisasi',
+        description: 'Rencana & realisasi pemeliharaan rutin (P0–P5), pengukuran air dan monitoring pelumas per mesin.',
+        icon: CalendarRange,
+        href: harPengusahaanRencanaRealisasi.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'input',
+        title: 'Laporan Kegiatan Pemeliharaan',
+        description: 'Kegiatan pemeliharaan mesin serta listrik & kontrol pembangkit per bulan: uraian per mesin, jenis HAR, material dan keterangan.',
+        icon: NotebookPen,
+        href: harPengusahaanLaporanKegiatan.index().url,
+        permission: 'har.pengusahaan.view',
     },
     {
         module: 'har',

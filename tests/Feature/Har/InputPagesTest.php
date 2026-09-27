@@ -35,7 +35,6 @@ class InputPagesTest extends TestCase
             'work order' => ['har.input.work-order.index', [], 'har/input/work-order/index'],
             'service request' => ['har.input.service-request.index', [], 'har/input/service-request/index'],
             'log kegiatan' => ['har.input.activity.index', [], 'har/input/activity/index'],
-            'rencana vs realisasi' => ['har.input.schedule.index', [], 'har/input/schedule/index'],
             'lampiran foto' => ['har.input.attachment.index', [], 'har/input/attachment/index'],
             'unsafe condition' => ['har.input.unsafe-condition.index', [], 'har/input/unsafe-condition/index'],
             'rekap laporan gangguan' => ['har.input.laporan-gangguan.index', [], 'har/input/laporan-gangguan/index'],

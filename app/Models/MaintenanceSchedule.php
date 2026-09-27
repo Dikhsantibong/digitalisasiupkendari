@@ -20,8 +20,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property SchedulePlanType $plan_type
  * @property MaintenanceScope $scope
  * @property array<string, mixed>|null $schedule_data
+ * @property array<string, mixed>|null $durasi_data
+ * @property string|null $jam_operasi
+ * @property string|null $keterangan
+ * @property string|null $status_note
  */
-#[Fillable(['unit_id', 'year', 'month', 'engine_id', 'plan_type', 'scope', 'schedule_data', 'input_by'])]
+#[Fillable(['unit_id', 'year', 'month', 'engine_id', 'plan_type', 'scope', 'schedule_data', 'durasi_data', 'jam_operasi', 'keterangan', 'status_note', 'input_by'])]
 class MaintenanceSchedule extends Model
 {
     use BelongsToUnit;
@@ -35,6 +39,7 @@ class MaintenanceSchedule extends Model
             'plan_type' => SchedulePlanType::class,
             'scope' => MaintenanceScope::class,
             'schedule_data' => 'array',
+            'durasi_data' => 'array',
         ];
     }
 

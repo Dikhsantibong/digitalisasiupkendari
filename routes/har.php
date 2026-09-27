@@ -23,6 +23,7 @@ use App\Http\Controllers\Har\JadwalPembuatanIkController;
 use App\Http\Controllers\Har\JadwalPiketOnCallController;
 use App\Http\Controllers\Har\LaporanController;
 use App\Http\Controllers\Har\LaporanGangguanController;
+use App\Http\Controllers\Har\LaporanKegiatanController;
 use App\Http\Controllers\Har\LaporanPengusahaanController;
 use App\Http\Controllers\Har\LembarController;
 use App\Http\Controllers\Har\LogbookMutasiController;
@@ -89,6 +90,12 @@ Route::middleware(['auth', 'verified'])
         Route::post('formulir/laporan-gangguan', [LaporanGangguanController::class, 'store'])->name('formulir.laporan-gangguan.store');
         Route::delete('formulir/laporan-gangguan/{laporanGangguan}', [LaporanGangguanController::class, 'destroy'])->name('formulir.laporan-gangguan.destroy');
         Route::get('formulir/laporan-gangguan/{laporanGangguan}/pdf', [LaporanGangguanController::class, 'pdf'])->name('formulir.laporan-gangguan.pdf');
+        // Akses 2 — Pengusahaan (TL & Staf): rencana & realisasi pemeliharaan rutin, pengukuran air & pelumas.
+        Route::get('pengusahaan/rencana-realisasi', [ScheduleController::class, 'index'])->name('pengusahaan.rencana-realisasi.index');
+        Route::post('pengusahaan/rencana-realisasi', [ScheduleController::class, 'store'])->name('pengusahaan.rencana-realisasi.store');
+        Route::get('pengusahaan/laporan-kegiatan', [LaporanKegiatanController::class, 'index'])->name('pengusahaan.laporan-kegiatan.index');
+        Route::post('pengusahaan/laporan-kegiatan', [LaporanKegiatanController::class, 'store'])->name('pengusahaan.laporan-kegiatan.store');
+
         // Akses 2 — Pengusahaan (TL & Staf): formulir teknis pemeliharaan per mesin & tanggal uji.
         foreach ([
             'prelube-test' => PrelubeTestController::class,
@@ -125,9 +132,6 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/attachment', [AttachmentController::class, 'index'])->name('input.attachment.index');
         Route::post('input/attachment', [AttachmentController::class, 'store'])->name('input.attachment.store');
         Route::delete('input/attachment/{attachment}', [AttachmentController::class, 'destroy'])->name('input.attachment.destroy');
-
-        Route::get('input/schedule', [ScheduleController::class, 'index'])->name('input.schedule.index');
-        Route::post('input/schedule', [ScheduleController::class, 'store'])->name('input.schedule.store');
 
         Route::get('input/unsafe-condition', [UnsafeConditionController::class, 'index'])->name('input.unsafe-condition.index');
         Route::post('input/unsafe-condition', [UnsafeConditionController::class, 'store'])->name('input.unsafe-condition.store');

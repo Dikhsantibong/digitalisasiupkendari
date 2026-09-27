@@ -14,6 +14,10 @@ export type DayValueField = {
     numeric?: boolean;
     /** Chip / badge colour of a value. */
     tone?: (value: string) => string;
+    /** Text shown for a value (e.g. "✓ Diukur" for "v"). */
+    labels?: Record<string, string>;
+    /** Shown but not editable (e.g. the plan beside the realisation). */
+    readOnly?: boolean;
 };
 
 /**
@@ -97,7 +101,7 @@ export function MobileDayValuesForm<R>({
 
                                             return (
                                                 <span key={field.key} className={`rounded-md border px-2 py-0.5 text-[12px] font-semibold ${field.tone?.(cell) ?? 'border-border bg-muted text-foreground'}`}>
-                                                    {field.label}: {cell}
+                                                    {field.label}: {field.labels?.[cell] ?? cell}
                                                 </span>
                                             );
                                         })}
@@ -107,12 +111,17 @@ export function MobileDayValuesForm<R>({
                                     {fields.map((field) => (
                                         <div key={field.key} className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                             {field.label}
-                                            {field.options ? (
+                                            {field.readOnly ? (
+                                                <span className={`w-fit rounded-md border px-2 py-1 text-[13px] font-semibold ${value(row, field.key, day.day) ? (field.tone?.(value(row, field.key, day.day)) ?? 'border-border bg-muted text-foreground') : 'border-dashed border-border'}`}>
+                                                    {value(row, field.key, day.day) ? (field.labels?.[value(row, field.key, day.day)] ?? value(row, field.key, day.day)) : '—'}
+                                                </span>
+                                            ) : field.options ? (
                                                 <ChoiceChips
                                                     options={field.options}
                                                     value={value(row, field.key, day.day)}
                                                     onChange={(v) => onChange(row, field.key, day.day, v)}
                                                     tone={field.tone}
+                                                    labels={field.labels}
                                                     disabled={readOnly}
                                                 />
                                             ) : (

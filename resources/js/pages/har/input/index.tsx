@@ -1,7 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import {
     AlertTriangle,
-    CalendarRange,
     ClipboardCheck,
     ClipboardList,
     FileWarning,
@@ -23,7 +22,6 @@ import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
 import harInputLembar from '@/routes/har/input/lembar';
 import harPatrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import harProgram5s5r from '@/routes/har/input/program-5s5r';
-import harSchedule from '@/routes/har/input/schedule';
 import harServiceRequest from '@/routes/har/input/service-request';
 import harUnsafeCondition from '@/routes/har/input/unsafe-condition';
 import harWorkOrder from '@/routes/har/input/work-order';
@@ -60,14 +58,6 @@ const INPUT_MENUS: InputCard[] = [
         icon: NotebookPen,
         url: harActivity.index().url,
         buttonLabel: 'Buka Input Log Kegiatan',
-    },
-    {
-        title: 'Rencana vs Realisasi',
-        description:
-            'Pemantauan dan evaluasi perbandingan antara target rencana pemeliharaan dengan realisasinya.',
-        icon: CalendarRange,
-        url: harSchedule.index().url,
-        buttonLabel: 'Buka Input Rencana vs Realisasi',
     },
     {
         title: 'Lampiran Foto',
