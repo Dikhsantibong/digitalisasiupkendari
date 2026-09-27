@@ -2,10 +2,13 @@ import { Head, router } from '@inertiajs/react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import emergencyFacility from '@/routes/k3/input/emergency-facility';
@@ -38,6 +41,7 @@ const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: 
 
 export default function EmergencyFacilityInput({ unit, filters, groups, rows: initial, options, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initial));
+    const compact = useCompactLayout();
     const [nextKey, setNextKey] = useState(initial.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -111,67 +115,114 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
                     {dirty && <span className="pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full border-collapse text-xs">
-                        <thead className="bg-muted/50">
-                            <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
-                                <th className="w-10">No</th>
-                                <th className="text-left">Nama Peralatan</th>
-                                <th className="w-16">Jml Total</th>
-                                <th className="w-16">Jml Ready</th>
-                                <th className="w-16">Not Ready</th>
-                                <th className="w-16">% Kesiapan</th>
-                                <th className="text-left">Lokasi Penempatan</th>
-                                <th className="text-left">Kendala</th>
-                                <th className="text-left">Tindak Lanjut</th>
-                                {can_write && <th className="w-12">Aksi</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {orderedGroups.map((grup) => {
-                                const items = rows.filter((r) => r.grup === grup);
-                                return (
-                                    <Fragment key={grup}>
-                                        <tr className="bg-muted/70">
-                                            <td colSpan={totalCols} className="border border-border p-1.5 text-left text-xs font-bold tracking-wide text-foreground uppercase">{grup}</td>
-                                        </tr>
-                                        {items.map((row, li) => {
-                                            const notReady = Math.max(0, row.jml_total - row.jml_ready);
-                                            const pct = row.jml_total > 0 ? Math.round((row.jml_ready / row.jml_total) * 100) : 0;
-                                            return (
-                                                <tr key={row._key} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
-                                                    <td className="text-center">{li + 1}</td>
-                                                    <td className="min-w-[220px]">
-                                                        {can_write ? <Input value={row.nama_peralatan} onChange={(e) => updateText(row._key, 'nama_peralatan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.nama_peralatan}</span>}
-                                                    </td>
-                                                    <td className="text-center">
-                                                        {can_write ? <Input type="number" min="0" value={row.jml_total || ''} onChange={(e) => updateNum(row._key, 'jml_total', e.target.value)} className="h-8 w-14 text-center text-xs" placeholder="0" /> : row.jml_total}
-                                                    </td>
-                                                    <td className="text-center">
-                                                        {can_write ? <Input type="number" min="0" value={row.jml_ready || ''} onChange={(e) => updateNum(row._key, 'jml_ready', e.target.value)} className="h-8 w-14 text-center text-xs" placeholder="0" /> : row.jml_ready}
-                                                    </td>
-                                                    <td className="text-center font-medium">{notReady}</td>
-                                                    <td className={`text-center font-bold ${pct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{row.jml_total > 0 ? `${pct}%` : '-'}</td>
-                                                    <td className="min-w-[160px]">{can_write ? <Input value={row.lokasi} onChange={(e) => updateText(row._key, 'lokasi', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.lokasi || '-'}</span>}</td>
-                                                    <td className="min-w-[140px]">{can_write ? <Input value={row.kendala} onChange={(e) => updateText(row._key, 'kendala', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.kendala || '-'}</span>}</td>
-                                                    <td className="min-w-[140px]">{can_write ? <Input value={row.tindak_lanjut} onChange={(e) => updateText(row._key, 'tindak_lanjut', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.tindak_lanjut || '-'}</span>}</td>
-                                                    {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(row._key)}><Trash2 className="size-4" /></Button></td>}
-                                                </tr>
-                                            );
-                                        })}
-                                        {can_write && (
-                                            <tr>
-                                                <td colSpan={totalCols} className="border border-border p-1.5">
-                                                    <Button variant="outline" size="sm" onClick={() => addItem(grup)} className="gap-1.5 text-xs"><Plus className="size-3.5" />Tambah Item — {grup}</Button>
-                                                </td>
+                {compact ? (
+                    <div className="flex flex-col gap-4">
+                        {orderedGroups.map((grup) => {
+                            const items = rows.filter((r) => r.grup === grup);
+
+                            return (
+                                <div key={grup} className="flex flex-col gap-2">
+                                    <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{grup}</p>
+                                    <MobileRowEditor<Row>
+                                        rows={items}
+                                        fields={[
+                                            { key: 'nama_peralatan', label: 'Nama Peralatan' },
+                                            { key: 'jml_total', label: 'Jumlah Total', type: 'number', group: 'Kesiapan' },
+                                            { key: 'jml_ready', label: 'Jumlah Ready', type: 'number' },
+                                            { key: 'jml_not_ready', label: 'Not Ready · % Kesiapan', type: 'display', display: (r) => `${Math.max(0, r.jml_total - r.jml_ready)} · ${r.jml_total > 0 ? `${Math.round((r.jml_ready / r.jml_total) * 100)}%` : '-'}` },
+                                            { key: 'lokasi', label: 'Lokasi Penempatan', group: 'Keterangan' },
+                                            { key: 'kendala', label: 'Kendala' },
+                                            { key: 'tindak_lanjut', label: 'Tindak Lanjut' },
+                                        ] satisfies RowField<Row>[]}
+                                        title={(r) => r.nama_peralatan || 'Peralatan baru'}
+                                        subtitle={(r) => `Ready ${r.jml_ready}/${r.jml_total}${r.jml_total > 0 ? ` · ${Math.round((r.jml_ready / r.jml_total) * 100)}%` : ''}`}
+                                        onChange={(i, k, v) => {
+                                            const row = items[i];
+
+                                            if (k === 'jml_total' || k === 'jml_ready') {
+                                                updateNum(row._key, k, String(v));
+                                            } else {
+                                                updateText(row._key, k as 'nama_peralatan' | 'lokasi' | 'kendala' | 'tindak_lanjut', String(v ?? ''));
+                                            }
+                                        }}
+                                        onRemove={(i) => remove(items[i]._key)}
+                                        canWrite={can_write}
+                                        rowKey={(r) => r._key}
+                                        removeLabel="Hapus peralatan"
+                                    />
+                                    {can_write && (
+                                        <Button variant="outline" onClick={() => addItem(grup)} className="h-auto min-h-9 max-w-full gap-1.5 self-start py-2 text-left whitespace-normal">
+                                            <Plus className="size-4" />
+                                            Tambah Item — {grup}
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto rounded-md border border-border bg-card">
+                        <table className="w-full border-collapse text-xs">
+                            <thead className="bg-muted/50">
+                                <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
+                                    <th className="w-10">No</th>
+                                    <th className="text-left">Nama Peralatan</th>
+                                    <th className="w-16">Jml Total</th>
+                                    <th className="w-16">Jml Ready</th>
+                                    <th className="w-16">Not Ready</th>
+                                    <th className="w-16">% Kesiapan</th>
+                                    <th className="text-left">Lokasi Penempatan</th>
+                                    <th className="text-left">Kendala</th>
+                                    <th className="text-left">Tindak Lanjut</th>
+                                    {can_write && <th className="w-12">Aksi</th>}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {orderedGroups.map((grup) => {
+                                    const items = rows.filter((r) => r.grup === grup);
+                                    return (
+                                        <Fragment key={grup}>
+                                            <tr className="bg-muted/70">
+                                                <td colSpan={totalCols} className="border border-border p-1.5 text-left text-xs font-bold tracking-wide text-foreground uppercase">{grup}</td>
                                             </tr>
-                                        )}
-                                    </Fragment>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                            {items.map((row, li) => {
+                                                const notReady = Math.max(0, row.jml_total - row.jml_ready);
+                                                const pct = row.jml_total > 0 ? Math.round((row.jml_ready / row.jml_total) * 100) : 0;
+                                                return (
+                                                    <tr key={row._key} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
+                                                        <td className="text-center">{li + 1}</td>
+                                                        <td className="min-w-[220px]">
+                                                            {can_write ? <Input value={row.nama_peralatan} onChange={(e) => updateText(row._key, 'nama_peralatan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.nama_peralatan}</span>}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            {can_write ? <Input type="number" min="0" value={row.jml_total || ''} onChange={(e) => updateNum(row._key, 'jml_total', e.target.value)} className="h-8 w-14 text-center text-xs" placeholder="0" /> : row.jml_total}
+                                                        </td>
+                                                        <td className="text-center">
+                                                            {can_write ? <Input type="number" min="0" value={row.jml_ready || ''} onChange={(e) => updateNum(row._key, 'jml_ready', e.target.value)} className="h-8 w-14 text-center text-xs" placeholder="0" /> : row.jml_ready}
+                                                        </td>
+                                                        <td className="text-center font-medium">{notReady}</td>
+                                                        <td className={`text-center font-bold ${pct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{row.jml_total > 0 ? `${pct}%` : '-'}</td>
+                                                        <td className="min-w-[160px]">{can_write ? <Input value={row.lokasi} onChange={(e) => updateText(row._key, 'lokasi', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.lokasi || '-'}</span>}</td>
+                                                        <td className="min-w-[140px]">{can_write ? <Input value={row.kendala} onChange={(e) => updateText(row._key, 'kendala', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.kendala || '-'}</span>}</td>
+                                                        <td className="min-w-[140px]">{can_write ? <Input value={row.tindak_lanjut} onChange={(e) => updateText(row._key, 'tindak_lanjut', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.tindak_lanjut || '-'}</span>}</td>
+                                                        {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(row._key)}><Trash2 className="size-4" /></Button></td>}
+                                                    </tr>
+                                                );
+                                            })}
+                                            {can_write && (
+                                                <tr>
+                                                    <td colSpan={totalCols} className="border border-border p-1.5">
+                                                        <Button variant="outline" size="sm" onClick={() => addItem(grup)} className="gap-1.5 text-xs"><Plus className="size-3.5" />Tambah Item — {grup}</Button>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </>
     );

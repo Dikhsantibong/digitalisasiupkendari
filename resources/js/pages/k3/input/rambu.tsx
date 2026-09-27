@@ -2,10 +2,13 @@ import { Head, router } from '@inertiajs/react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import rambu from '@/routes/k3/input/rambu';
@@ -32,6 +35,7 @@ const toRow = (r: Partial<Row> & { id: number }): Row => ({ ...empty(), ...r, id
 
 export default function RambuInput({ unit, filters, rows: initial, options, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(initial.map(toRow));
+    const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -76,29 +80,47 @@ export default function RambuInput({ unit, filters, rows: initial, options, can_
                     {dirty && <span className="pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full border-collapse text-xs">
-                        <thead className="bg-muted/50">
-                            <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
-                                <th className="w-10">No</th><th className="text-left">Rambu-Rambu K3</th><th className="text-left">Lokasi</th><th>Kondisi</th><th className="text-left">Keterangan</th>{can_write && <th className="w-12">Aksi</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.length === 0 ? (
-                                <tr><td colSpan={cols} className="border border-border p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
-                            ) : rows.map((_, i) => (
-                                <tr key={i} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
-                                    <td className="text-center">{i + 1}</td>
-                                    <td className="min-w-[200px]">{cell(i, 'rambu')}</td>
-                                    <td className="min-w-[200px]">{cell(i, 'lokasi')}</td>
-                                    <td className="min-w-[120px]">{cell(i, 'kondisi')}</td>
-                                    <td className="min-w-[180px]">{cell(i, 'keterangan')}</td>
-                                    {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(i)}><Trash2 className="size-4" /></Button></td>}
+                {compact ? (
+                    <MobileRowEditor<Row>
+                        rows={rows}
+                        fields={[
+                            { key: 'rambu', label: 'Rambu-Rambu K3' },
+                            { key: 'lokasi', label: 'Lokasi' },
+                            { key: 'kondisi', label: 'Kondisi' },
+                            { key: 'keterangan', label: 'Keterangan' },
+                        ] satisfies RowField<Row>[]}
+                        title={(r) => r.rambu || 'Rambu belum diisi'}
+                        subtitle={(r) => `${r.lokasi || '-'} · ${r.kondisi || '-'}`}
+                        onChange={(i, k, v) => update(i, k, String(v ?? ''))}
+                        onRemove={removeRow}
+                        canWrite={can_write}
+                        removeLabel="Hapus rambu"
+                    />
+                ) : (
+                    <div className="overflow-x-auto rounded-md border border-border bg-card">
+                        <table className="w-full border-collapse text-xs">
+                            <thead className="bg-muted/50">
+                                <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
+                                    <th className="w-10">No</th><th className="text-left">Rambu-Rambu K3</th><th className="text-left">Lokasi</th><th>Kondisi</th><th className="text-left">Keterangan</th>{can_write && <th className="w-12">Aksi</th>}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {rows.length === 0 ? (
+                                    <tr><td colSpan={cols} className="border border-border p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
+                                ) : rows.map((_, i) => (
+                                    <tr key={i} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
+                                        <td className="text-center">{i + 1}</td>
+                                        <td className="min-w-[200px]">{cell(i, 'rambu')}</td>
+                                        <td className="min-w-[200px]">{cell(i, 'lokasi')}</td>
+                                        <td className="min-w-[120px]">{cell(i, 'kondisi')}</td>
+                                        <td className="min-w-[180px]">{cell(i, 'keterangan')}</td>
+                                        {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(i)}><Trash2 className="size-4" /></Button></td>}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </>
     );

@@ -13,6 +13,7 @@ import {
     UserPlus,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     buildDocumentHeader,
     createSheet,
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import jadwal from '@/routes/har/jadwal';
 import piketOnCall from '@/routes/har/jadwal/piket-on-call';
 import type { IdName } from '@/types';
@@ -164,6 +166,9 @@ export default function HarJadwalPiketOnCallPage({
     const [rows, setRows] = useState<PiketRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     // Dialog state for adding new personnel
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -578,7 +583,7 @@ export default function HarJadwalPiketOnCallPage({
                                 Reset
                             </Button>
                         )}
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button
                                     variant="outline"
@@ -727,371 +732,400 @@ export default function HarJadwalPiketOnCallPage({
                     </div>
 
                     {/* Table Container */}
-                    <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-xs">
-                            <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                <tr>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-10 border border-border p-2 text-center font-bold text-foreground"
-                                    >
-                                        No.
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-48 min-w-44 border border-border p-2 text-left font-bold text-foreground"
-                                    >
-                                        Nama
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-32 min-w-28 border border-border p-2 text-left font-bold text-foreground"
-                                    >
-                                        No. Hp
-                                    </th>
-                                    <th
-                                        colSpan={days.length}
-                                        className="border border-border p-2 text-center font-bold text-foreground uppercase"
-                                    >
-                                        {monthName} {filters.year}
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-16 border border-border p-2 text-center font-bold text-foreground"
-                                    >
-                                        TARGET
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-20 border border-border p-2 text-center font-bold text-foreground"
-                                    >
-                                        REALISASI
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-24 border border-border p-2 text-center font-bold text-foreground"
-                                    >
-                                        A. KINERJA
-                                    </th>
-                                    {can_write && (
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<PiketRow>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => `${row.nama || 'Personil'} · ${row.kategori}`}
+                                categories={[{ key: 'piket', label: 'Piket On Call', onClass: 'border-sky-600 bg-sky-500 text-white' }]}
+                                isOn={(row, _category, day) => (row.piket || []).includes(day)}
+                                onToggle={(row, _category, day) => togglePiket(rows.indexOf(row), day)}
+                                details={(row, index) => (
+                                    <>
+                                        <TimelineField label="Nama" value={row.nama} onChange={(v) => updateField(index, 'nama', v)} readOnly={!can_write} />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <TimelineField label="No. HP" value={row.no_hp || ''} onChange={(v) => updateField(index, 'no_hp', v)} readOnly={!can_write} />
+                                            <TimelineField label="Target" type="number" value={row.target} onChange={(v) => updateField(index, 'target', Number(v))} readOnly={!can_write} />
+                                        </div>
+                                    </>
+                                )}
+                                summary={(row) => `${row.no_hp ? `HP ${row.no_hp} · ` : ''}Piket ${(row.piket || []).length} dari target ${row.target} hari`}
+                                onRemove={(_row, index) => handleRemoveRow(index)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada personil piket."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="print-table w-full border-collapse text-xs">
+                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                    <tr>
                                         <th
                                             rowSpan={2}
-                                            className="no-print w-10 border border-border p-2 text-center font-bold text-foreground"
+                                            className="w-10 border border-border p-2 text-center font-bold text-foreground"
                                         >
-                                            Aksi
+                                            No.
                                         </th>
-                                    )}
-                                </tr>
-                                <tr>
-                                    {days.map((d) => (
                                         <th
-                                            key={d.day}
-                                            className={`w-7 border border-border p-1 text-center font-bold ${
-                                                d.is_red
-                                                    ? 'print-red-text text-red-600'
-                                                    : 'text-foreground'
-                                            }`}
-                                            title={`${d.day} (${d.dow})${
-                                                d.holiday
-                                                    ? ` - ${d.holiday}`
-                                                    : ''
-                                            }`}
+                                            rowSpan={2}
+                                            className="w-48 min-w-44 border border-border p-2 text-left font-bold text-foreground"
                                         >
-                                            {d.day}
+                                            Nama
                                         </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {groupedRows.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={
-                                                days.length +
-                                                (can_write ? 7 : 6)
-                                            }
-                                            className="p-8 text-center text-muted-foreground"
+                                        <th
+                                            rowSpan={2}
+                                            className="w-32 min-w-28 border border-border p-2 text-left font-bold text-foreground"
                                         >
-                                            Belum ada personil yang terdaftar
-                                            untuk unit ini. Klik &quot;Tambah
-                                            Personil&quot; untuk menambahkan
-                                            data.
-                                        </td>
+                                            No. Hp
+                                        </th>
+                                        <th
+                                            colSpan={days.length}
+                                            className="border border-border p-2 text-center font-bold text-foreground uppercase"
+                                        >
+                                            {monthName} {filters.year}
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-16 border border-border p-2 text-center font-bold text-foreground"
+                                        >
+                                            TARGET
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-20 border border-border p-2 text-center font-bold text-foreground"
+                                        >
+                                            REALISASI
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-24 border border-border p-2 text-center font-bold text-foreground"
+                                        >
+                                            A. KINERJA
+                                        </th>
+                                        {can_write && (
+                                            <th
+                                                rowSpan={2}
+                                                className="no-print w-10 border border-border p-2 text-center font-bold text-foreground"
+                                            >
+                                                Aksi
+                                            </th>
+                                        )}
                                     </tr>
-                                ) : (
-                                    groupedRows.map((group) => (
-                                        <Fragment key={group.kategori}>
-                                            {/* Category Header Row */}
-                                            <tr className="print-category-row bg-muted/40 font-bold dark:bg-muted/20">
-                                                <td className="border border-border p-1.5 text-center font-extrabold text-foreground">
-                                                    {group.roman}
-                                                </td>
-                                                <td
-                                                    colSpan={2}
-                                                    className="border border-border p-1.5 text-left font-extrabold tracking-wider text-foreground uppercase"
-                                                >
-                                                    {group.kategori}
-                                                </td>
-                                                <td
-                                                    colSpan={days.length}
-                                                    className="border border-border p-1.5"
-                                                />
-                                                <td className="border border-border p-1.5" />
-                                                <td className="border border-border p-1.5" />
-                                                <td className="border border-border p-1.5" />
-                                                {can_write && (
-                                                    <td className="no-print border border-border p-1.5 text-center">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-6 text-primary hover:bg-primary/10"
-                                                            title={`Tambah Personil ke ${group.kategori}`}
-                                                            onClick={() => {
-                                                                setNewKategori(
-                                                                    group.kategori,
-                                                                );
-                                                                setIsAddOpen(
-                                                                    true,
-                                                                );
-                                                            }}
-                                                        >
-                                                            <Plus className="size-3.5" />
-                                                        </Button>
+                                    <tr>
+                                        {days.map((d) => (
+                                            <th
+                                                key={d.day}
+                                                className={`w-7 border border-border p-1 text-center font-bold ${
+                                                    d.is_red
+                                                        ? 'print-red-text text-red-600'
+                                                        : 'text-foreground'
+                                                }`}
+                                                title={`${d.day} (${d.dow})${
+                                                    d.holiday
+                                                        ? ` - ${d.holiday}`
+                                                        : ''
+                                                }`}
+                                            >
+                                                {d.day}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {groupedRows.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={
+                                                    days.length +
+                                                    (can_write ? 7 : 6)
+                                                }
+                                                className="p-8 text-center text-muted-foreground"
+                                            >
+                                                Belum ada personil yang terdaftar
+                                                untuk unit ini. Klik &quot;Tambah
+                                                Personil&quot; untuk menambahkan
+                                                data.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        groupedRows.map((group) => (
+                                            <Fragment key={group.kategori}>
+                                                {/* Category Header Row */}
+                                                <tr className="print-category-row bg-muted/40 font-bold dark:bg-muted/20">
+                                                    <td className="border border-border p-1.5 text-center font-extrabold text-foreground">
+                                                        {group.roman}
                                                     </td>
-                                                )}
-                                            </tr>
-
-                                            {/* Personnel Rows */}
-                                            {group.items.map(
-                                                ({
-                                                    row,
-                                                    originalIndex,
-                                                    runningNo,
-                                                }) => {
-                                                    const realisasi = (
-                                                        row.piket || []
-                                                    ).length;
-                                                    const target =
-                                                        row.target || 15;
-                                                    const kinerja =
-                                                        target > 0
-                                                            ? Math.round(
-                                                                  (realisasi /
-                                                                      target) *
-                                                                      100,
-                                                              )
-                                                            : 0;
-
-                                                    return (
-                                                        <tr
-                                                            key={originalIndex}
-                                                            className="transition-colors hover:bg-muted/10"
-                                                        >
-                                                            {/* No. */}
-                                                            <td className="border border-border p-1.5 text-center font-medium text-foreground">
-                                                                {runningNo}
-                                                            </td>
-
-                                                            {/* Nama */}
-                                                            <td className="border border-border p-1 font-bold text-foreground">
-                                                                {can_write ? (
-                                                                    <input
-                                                                        type="text"
-                                                                        value={
-                                                                            row.nama
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) =>
-                                                                            updateField(
-                                                                                originalIndex,
-                                                                                'nama',
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                            )
-                                                                        }
-                                                                        className="w-full bg-transparent px-1.5 py-0.5 font-bold uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                        placeholder="Nama Personil"
-                                                                    />
-                                                                ) : (
-                                                                    <span className="px-1.5 uppercase">
-                                                                        {
-                                                                            row.nama
-                                                                        }
-                                                                    </span>
-                                                                )}
-                                                            </td>
-
-                                                            {/* No. Hp */}
-                                                            <td className="border border-border p-1 text-foreground">
-                                                                {can_write ? (
-                                                                    <input
-                                                                        type="text"
-                                                                        value={
-                                                                            row.no_hp
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) =>
-                                                                            updateField(
-                                                                                originalIndex,
-                                                                                'no_hp',
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                            )
-                                                                        }
-                                                                        className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                        placeholder="08..."
-                                                                    />
-                                                                ) : (
-                                                                    <span className="px-1.5 text-xs">
-                                                                        {row.no_hp ||
-                                                                            '-'}
-                                                                    </span>
-                                                                )}
-                                                            </td>
-
-                                                            {/* Day Cells (Interactive toggle) */}
-                                                            {days.map((d) => {
-                                                                const isPiket =
-                                                                    row.piket.includes(
-                                                                        d.day,
+                                                    <td
+                                                        colSpan={2}
+                                                        className="border border-border p-1.5 text-left font-extrabold tracking-wider text-foreground uppercase"
+                                                    >
+                                                        {group.kategori}
+                                                    </td>
+                                                    <td
+                                                        colSpan={days.length}
+                                                        className="border border-border p-1.5"
+                                                    />
+                                                    <td className="border border-border p-1.5" />
+                                                    <td className="border border-border p-1.5" />
+                                                    <td className="border border-border p-1.5" />
+                                                    {can_write && (
+                                                        <td className="no-print border border-border p-1.5 text-center">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-6 text-primary hover:bg-primary/10"
+                                                                title={`Tambah Personil ke ${group.kategori}`}
+                                                                onClick={() => {
+                                                                    setNewKategori(
+                                                                        group.kategori,
                                                                     );
+                                                                    setIsAddOpen(
+                                                                        true,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <Plus className="size-3.5" />
+                                                            </Button>
+                                                        </td>
+                                                    )}
+                                                </tr>
 
-                                                                let cellClass =
-                                                                    'border border-border text-center select-none ';
+                                                {/* Personnel Rows */}
+                                                {group.items.map(
+                                                    ({
+                                                        row,
+                                                        originalIndex,
+                                                        runningNo,
+                                                    }) => {
+                                                        const realisasi = (
+                                                            row.piket || []
+                                                        ).length;
+                                                        const target =
+                                                            row.target || 15;
+                                                        const kinerja =
+                                                            target > 0
+                                                                ? Math.round(
+                                                                      (realisasi /
+                                                                          target) *
+                                                                          100,
+                                                                  )
+                                                                : 0;
 
-                                                                if (isPiket) {
-                                                                    if (
-                                                                        d.is_red
-                                                                    ) {
-                                                                        cellClass +=
-                                                                            'bg-[#dc2626] text-white font-extrabold print-red-cell ';
-                                                                    } else {
-                                                                        cellClass +=
-                                                                            'bg-zinc-200 dark:bg-zinc-700 text-foreground font-extrabold print-piket-cell ';
-                                                                    }
-                                                                } else {
-                                                                    if (
-                                                                        d.is_red
-                                                                    ) {
-                                                                        cellClass +=
-                                                                            'bg-red-50/40 dark:bg-red-950/10 ';
-                                                                    }
-                                                                }
+                                                        return (
+                                                            <tr
+                                                                key={originalIndex}
+                                                                className="transition-colors hover:bg-muted/10"
+                                                            >
+                                                                {/* No. */}
+                                                                <td className="border border-border p-1.5 text-center font-medium text-foreground">
+                                                                    {runningNo}
+                                                                </td>
 
-                                                                if (can_write) {
-                                                                    cellClass +=
-                                                                        'cursor-pointer hover:opacity-80 transition-opacity';
-                                                                }
-
-                                                                return (
-                                                                    <td
-                                                                        key={
-                                                                            d.day
-                                                                        }
-                                                                        className={
-                                                                            cellClass
-                                                                        }
-                                                                        onClick={() =>
-                                                                            togglePiket(
-                                                                                originalIndex,
-                                                                                d.day,
-                                                                            )
-                                                                        }
-                                                                        title={`Tanggal ${d.day} (${d.dow})${
-                                                                            d.holiday
-                                                                                ? ` - ${d.holiday}`
-                                                                                : ''
-                                                                        }: ${
-                                                                            isPiket
-                                                                                ? 'Piket On Call (Klik untuk batalkan)'
-                                                                                : 'Tidak Piket (Klik untuk jadwalkan)'
-                                                                        }`}
-                                                                    >
-                                                                        {isPiket
-                                                                            ? '1'
-                                                                            : ''}
-                                                                    </td>
-                                                                );
-                                                            })}
-
-                                                            {/* TARGET */}
-                                                            <td className="border border-border p-1 text-center font-bold text-foreground">
-                                                                {can_write ? (
-                                                                    <input
-                                                                        type="number"
-                                                                        min="0"
-                                                                        value={
-                                                                            row.target
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) =>
-                                                                            updateField(
-                                                                                originalIndex,
-                                                                                'target',
-                                                                                Number(
+                                                                {/* Nama */}
+                                                                <td className="border border-border p-1 font-bold text-foreground">
+                                                                    {can_write ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={
+                                                                                row.nama
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                updateField(
+                                                                                    originalIndex,
+                                                                                    'nama',
                                                                                     e
                                                                                         .target
                                                                                         .value,
-                                                                                ),
-                                                                            )
-                                                                        }
-                                                                        className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                    />
-                                                                ) : (
-                                                                    row.target
-                                                                )}
-                                                            </td>
-
-                                                            {/* REALISASI */}
-                                                            <td className="border border-border p-1.5 text-center font-bold text-foreground">
-                                                                {realisasi}
-                                                            </td>
-
-                                                            {/* A. KINERJA */}
-                                                            <td
-                                                                className={`border border-border p-1.5 text-center font-bold ${
-                                                                    kinerja >=
-                                                                    100
-                                                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                                                        : 'text-amber-600 dark:text-amber-400'
-                                                                }`}
-                                                            >
-                                                                {kinerja}%
-                                                            </td>
-
-                                                            {/* Aksi (No-Print) */}
-                                                            {can_write && (
-                                                                <td className="no-print border border-border p-1 text-center">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                                        onClick={() =>
-                                                                            handleRemoveRow(
-                                                                                originalIndex,
-                                                                            )
-                                                                        }
-                                                                        title="Hapus Personil"
-                                                                    >
-                                                                        <Trash2 className="size-3.5" />
-                                                                    </Button>
+                                                                                )
+                                                                            }
+                                                                            className="w-full bg-transparent px-1.5 py-0.5 font-bold uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                            placeholder="Nama Personil"
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="px-1.5 uppercase">
+                                                                            {
+                                                                                row.nama
+                                                                            }
+                                                                        </span>
+                                                                    )}
                                                                 </td>
-                                                            )}
-                                                        </tr>
-                                                    );
-                                                },
-                                            )}
-                                        </Fragment>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+
+                                                                {/* No. Hp */}
+                                                                <td className="border border-border p-1 text-foreground">
+                                                                    {can_write ? (
+                                                                        <input
+                                                                            type="text"
+                                                                            value={
+                                                                                row.no_hp
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                updateField(
+                                                                                    originalIndex,
+                                                                                    'no_hp',
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                )
+                                                                            }
+                                                                            className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                            placeholder="08..."
+                                                                        />
+                                                                    ) : (
+                                                                        <span className="px-1.5 text-xs">
+                                                                            {row.no_hp ||
+                                                                                '-'}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+
+                                                                {/* Day Cells (Interactive toggle) */}
+                                                                {days.map((d) => {
+                                                                    const isPiket =
+                                                                        row.piket.includes(
+                                                                            d.day,
+                                                                        );
+
+                                                                    let cellClass =
+                                                                        'border border-border text-center select-none ';
+
+                                                                    if (isPiket) {
+                                                                        if (
+                                                                            d.is_red
+                                                                        ) {
+                                                                            cellClass +=
+                                                                                'bg-[#dc2626] text-white font-extrabold print-red-cell ';
+                                                                        } else {
+                                                                            cellClass +=
+                                                                                'bg-zinc-200 dark:bg-zinc-700 text-foreground font-extrabold print-piket-cell ';
+                                                                        }
+                                                                    } else {
+                                                                        if (
+                                                                            d.is_red
+                                                                        ) {
+                                                                            cellClass +=
+                                                                                'bg-red-50/40 dark:bg-red-950/10 ';
+                                                                        }
+                                                                    }
+
+                                                                    if (can_write) {
+                                                                        cellClass +=
+                                                                            'cursor-pointer hover:opacity-80 transition-opacity';
+                                                                    }
+
+                                                                    return (
+                                                                        <td
+                                                                            key={
+                                                                                d.day
+                                                                            }
+                                                                            className={
+                                                                                cellClass
+                                                                            }
+                                                                            onClick={() =>
+                                                                                togglePiket(
+                                                                                    originalIndex,
+                                                                                    d.day,
+                                                                                )
+                                                                            }
+                                                                            title={`Tanggal ${d.day} (${d.dow})${
+                                                                                d.holiday
+                                                                                    ? ` - ${d.holiday}`
+                                                                                    : ''
+                                                                            }: ${
+                                                                                isPiket
+                                                                                    ? 'Piket On Call (Klik untuk batalkan)'
+                                                                                    : 'Tidak Piket (Klik untuk jadwalkan)'
+                                                                            }`}
+                                                                        >
+                                                                            {isPiket
+                                                                                ? '1'
+                                                                                : ''}
+                                                                        </td>
+                                                                    );
+                                                                })}
+
+                                                                {/* TARGET */}
+                                                                <td className="border border-border p-1 text-center font-bold text-foreground">
+                                                                    {can_write ? (
+                                                                        <input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            value={
+                                                                                row.target
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                updateField(
+                                                                                    originalIndex,
+                                                                                    'target',
+                                                                                    Number(
+                                                                                        e
+                                                                                            .target
+                                                                                            .value,
+                                                                                    ),
+                                                                                )
+                                                                            }
+                                                                            className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                        />
+                                                                    ) : (
+                                                                        row.target
+                                                                    )}
+                                                                </td>
+
+                                                                {/* REALISASI */}
+                                                                <td className="border border-border p-1.5 text-center font-bold text-foreground">
+                                                                    {realisasi}
+                                                                </td>
+
+                                                                {/* A. KINERJA */}
+                                                                <td
+                                                                    className={`border border-border p-1.5 text-center font-bold ${
+                                                                        kinerja >=
+                                                                        100
+                                                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                                                            : 'text-amber-600 dark:text-amber-400'
+                                                                    }`}
+                                                                >
+                                                                    {kinerja}%
+                                                                </td>
+
+                                                                {/* Aksi (No-Print) */}
+                                                                {can_write && (
+                                                                    <td className="no-print border border-border p-1 text-center">
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="size-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                                            onClick={() =>
+                                                                                handleRemoveRow(
+                                                                                    originalIndex,
+                                                                                )
+                                                                            }
+                                                                            title="Hapus Personil"
+                                                                        >
+                                                                            <Trash2 className="size-3.5" />
+                                                                        </Button>
+                                                                    </td>
+                                                                )}
+                                                            </tr>
+                                                        );
+                                                    },
+                                                )}
+                                            </Fragment>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Bottom Legend & Notes */}
                     <div className="border-t border-border bg-muted/20 p-4">

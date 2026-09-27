@@ -70,7 +70,7 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Button onClick={() => router.get(document.edit(query).url)}>
+                                <Button onClick={() => router.get(document.edit(query).url)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
                                     <FilePen className="size-4" />
                                     Buka Dokumen Pemeliharaan (Lihat, Edit &amp; Cetak)
                                 </Button>
@@ -87,7 +87,7 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Button onClick={() => router.get(pengusahaan.edit(query).url)}>
+                                <Button onClick={() => router.get(pengusahaan.edit(query).url)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
                                     <Building2 className="size-4" />
                                     Buka Dokumen Pengusahaan (Lihat, Edit &amp; Cetak)
                                 </Button>

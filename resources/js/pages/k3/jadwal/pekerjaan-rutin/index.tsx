@@ -11,6 +11,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileTimelineForm } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -27,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/k3/jadwal';
 import pekerjaanRutin from '@/routes/k3/jadwal/pekerjaan-rutin';
@@ -89,6 +91,9 @@ export default function K3PekerjaanRutinPage({
     const [nextKey, setNextKey] = useState(initialRows.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     // Modal state for Add & Edit
     const [modalOpen, setModalOpen] = useState(false);
@@ -333,7 +338,7 @@ export default function K3PekerjaanRutinPage({
                                 Reset
                             </Button>
                         )}
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button
                                     variant="outline"
@@ -485,124 +490,148 @@ export default function K3PekerjaanRutinPage({
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-xs">
-                            <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                <tr>
-                                    <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">
-                                        No
-                                    </th>
-                                    <th rowSpan={2} className="w-72 min-w-60 border border-black p-1 text-left font-bold text-foreground">
-                                        URAIAN
-                                    </th>
-                                    <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">
-                                        STATUS
-                                    </th>
-                                    <th
-                                        colSpan={days.length}
-                                        className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase"
-                                    >
-                                        TANGGAL
-                                    </th>
-                                    <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">
-                                        TARGET
-                                    </th>
-                                    <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">
-                                        REAL
-                                    </th>
-                                    <th rowSpan={2} className="w-16 border border-black p-1 text-center font-bold text-foreground">
-                                        KINERJA
-                                    </th>
-                                    <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">
-                                        PARAF
-                                    </th>
-                                    {can_write && (
-                                        <th rowSpan={2} className="no-print w-16 border border-black p-1 text-center font-bold text-foreground">
-                                            Aksi
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<Row>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row) => row._key}
+                                title={(row, _index, editing) => (
+                                    <button type="button" disabled={!can_write || !editing} onClick={() => openEditModal(row)} className="flex items-start gap-1.5 text-left disabled:cursor-default">
+                                        <span>{row.uraian || 'Pekerjaan baru'}</span>
+                                        {can_write && editing && <Pencil className="mt-0.5 size-3.5 shrink-0 text-primary" />}
+                                    </button>
+                                )}
+                                isOn={(row, category, day) => row[category as Category].includes(day)}
+                                onToggle={(row, category, day) => toggleCell(row._key, category as Category, day)}
+                                lockRedDays
+                                summary={(row) => `Target ${row.rencana.length} · Realisasi ${row.realisasi.length} · Kinerja ${row.rencana.length > 0 ? Math.round((row.realisasi.length / row.rencana.length) * 100) : 0}% · Paraf ${row.paraf || 'Empty'}`}
+                                onRemove={(row) => handleRemove(row._key)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="print-table w-full border-collapse text-xs">
+                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                    <tr>
+                                        <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">
+                                            No
                                         </th>
-                                    )}
-                                </tr>
-                                <tr>
-                                    {days.map((d) => (
+                                        <th rowSpan={2} className="w-72 min-w-60 border border-black p-1 text-left font-bold text-foreground">
+                                            URAIAN
+                                        </th>
+                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">
+                                            STATUS
+                                        </th>
                                         <th
-                                            key={d.day}
-                                            className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${
-                                                d.is_red ? 'print-red-text text-red-600' : 'text-foreground'
-                                            }`}
-                                            title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
+                                            colSpan={days.length}
+                                            className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase"
                                         >
-                                            {String(d.day).padStart(2, '0')}
+                                            TANGGAL
                                         </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((row, idx) => {
-                                    const target = row.rencana.length;
-                                    const real = row.realisasi.length;
-                                    const kinerja = target > 0 ? `${Math.round((real / target) * 100)}%` : '0%';
+                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">
+                                            TARGET
+                                        </th>
+                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">
+                                            REAL
+                                        </th>
+                                        <th rowSpan={2} className="w-16 border border-black p-1 text-center font-bold text-foreground">
+                                            KINERJA
+                                        </th>
+                                        <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">
+                                            PARAF
+                                        </th>
+                                        {can_write && (
+                                            <th rowSpan={2} className="no-print w-16 border border-black p-1 text-center font-bold text-foreground">
+                                                Aksi
+                                            </th>
+                                        )}
+                                    </tr>
+                                    <tr>
+                                        {days.map((d) => (
+                                            <th
+                                                key={d.day}
+                                                className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${
+                                                    d.is_red ? 'print-red-text text-red-600' : 'text-foreground'
+                                                }`}
+                                                title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
+                                            >
+                                                {String(d.day).padStart(2, '0')}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((row, idx) => {
+                                        const target = row.rencana.length;
+                                        const real = row.realisasi.length;
+                                        const kinerja = target > 0 ? `${Math.round((real / target) * 100)}%` : '0%';
 
-                                    return (
-                                        <Fragment key={row._key}>
-                                            <tr className="hover:bg-muted/10">
-                                                {/* Baris RENC */}
-                                                <td rowSpan={2} className="border border-black text-center font-medium">
-                                                    {idx + 1}
-                                                </td>
-                                                <td rowSpan={2} className="border border-black px-2 py-1 text-left font-semibold text-foreground">
-                                                    {row.uraian}
-                                                </td>
-                                                <td className="border border-black bg-muted/40 text-center font-bold text-[10px]">
-                                                    RENC
-                                                </td>
-                                                {dayCells(row, 'rencana')}
-                                                <td rowSpan={2} className="border border-black text-center font-bold">
-                                                    {target}
-                                                </td>
-                                                <td rowSpan={2} className="border border-black text-center font-bold">
-                                                    {real}
-                                                </td>
-                                                <td rowSpan={2} className="border border-black text-center font-bold text-foreground">
-                                                    {kinerja}
-                                                </td>
-                                                <td rowSpan={2} className="border border-black text-center text-xs text-muted-foreground">
-                                                    {row.paraf || 'Empty'}
-                                                </td>
-                                                {can_write && (
-                                                    <td rowSpan={2} className="no-print border border-black p-1 text-center">
-                                                        <div className="flex items-center justify-center gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => openEditModal(row)}
-                                                                className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
-                                                                title="Edit Uraian / Paraf"
-                                                            >
-                                                                <Pencil className="size-3.5" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRemove(row._key)}
-                                                                className="rounded p-1 text-destructive hover:bg-destructive/10 transition-colors"
-                                                                title="Hapus Pekerjaan"
-                                                            >
-                                                                <Trash2 className="size-3.5" />
-                                                            </button>
-                                                        </div>
+                                        return (
+                                            <Fragment key={row._key}>
+                                                <tr className="hover:bg-muted/10">
+                                                    {/* Baris RENC */}
+                                                    <td rowSpan={2} className="border border-black text-center font-medium">
+                                                        {idx + 1}
                                                     </td>
-                                                )}
-                                            </tr>
-                                            <tr className="hover:bg-muted/10">
-                                                <td className="border border-black bg-muted/40 text-center font-bold text-[10px]">
-                                                    REAL
-                                                </td>
-                                                {dayCells(row, 'realisasi')}
-                                            </tr>
-                                        </Fragment>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                                    <td rowSpan={2} className="border border-black px-2 py-1 text-left font-semibold text-foreground">
+                                                        {row.uraian}
+                                                    </td>
+                                                    <td className="border border-black bg-muted/40 text-center font-bold text-[10px]">
+                                                        RENC
+                                                    </td>
+                                                    {dayCells(row, 'rencana')}
+                                                    <td rowSpan={2} className="border border-black text-center font-bold">
+                                                        {target}
+                                                    </td>
+                                                    <td rowSpan={2} className="border border-black text-center font-bold">
+                                                        {real}
+                                                    </td>
+                                                    <td rowSpan={2} className="border border-black text-center font-bold text-foreground">
+                                                        {kinerja}
+                                                    </td>
+                                                    <td rowSpan={2} className="border border-black text-center text-xs text-muted-foreground">
+                                                        {row.paraf || 'Empty'}
+                                                    </td>
+                                                    {can_write && (
+                                                        <td rowSpan={2} className="no-print border border-black p-1 text-center">
+                                                            <div className="flex items-center justify-center gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => openEditModal(row)}
+                                                                    className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
+                                                                    title="Edit Uraian / Paraf"
+                                                                >
+                                                                    <Pencil className="size-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemove(row._key)}
+                                                                    className="rounded p-1 text-destructive hover:bg-destructive/10 transition-colors"
+                                                                    title="Hapus Pekerjaan"
+                                                                >
+                                                                    <Trash2 className="size-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                                <tr className="hover:bg-muted/10">
+                                                    <td className="border border-black bg-muted/40 text-center font-bold text-[10px]">
+                                                        REAL
+                                                    </td>
+                                                    {dayCells(row, 'realisasi')}
+                                                </tr>
+                                            </Fragment>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Keterangan & Catatan */}
                     <div className="border-t border-border p-3 text-xs">

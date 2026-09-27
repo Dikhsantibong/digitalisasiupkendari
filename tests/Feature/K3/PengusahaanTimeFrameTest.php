@@ -33,7 +33,7 @@ class PengusahaanTimeFrameTest extends TestCase
                 ->get(route('k3.pengusahaan.time-frame.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/time-frame/index')
+                    ->component('pengusahaan/k3/time-frame/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('days', 31)
@@ -109,7 +109,7 @@ class PengusahaanTimeFrameTest extends TestCase
             ->get(route('k3.pengusahaan.time-frame.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/time-frame/index')
+                ->component('pengusahaan/k3/time-frame/index')
                 ->where('can_write', false)
             );
 

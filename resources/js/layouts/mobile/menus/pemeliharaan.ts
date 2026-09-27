@@ -24,22 +24,9 @@ import {
     Zap,
 } from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
-import axialConrod from '@/routes/har/formulir/axial-conrod';
-import batteryVoltage from '@/routes/har/formulir/battery-voltage';
-import clearanceValve from '@/routes/har/formulir/clearance-valve';
-import combustionPressure from '@/routes/har/formulir/combustion-pressure';
-import counterWeight from '@/routes/har/formulir/counter-weight';
-import crankshaftDeflection from '@/routes/har/formulir/crankshaft-deflection';
 import dailyMeeting from '@/routes/har/formulir/daily-meeting';
-import hydrotest from '@/routes/har/formulir/hydrotest';
-import injectorPressure from '@/routes/har/formulir/injector-pressure';
 import formulirLaporanGangguan from '@/routes/har/formulir/laporan-gangguan';
 import logbookMutasi from '@/routes/har/formulir/logbook-mutasi';
-import lubeQuality from '@/routes/har/formulir/lube-quality';
-import motorCurrent from '@/routes/har/formulir/motor-current';
-import prelubeTest from '@/routes/har/formulir/prelube-test';
-import timingInjectionPump from '@/routes/har/formulir/timing-injection-pump';
-import vibration from '@/routes/har/formulir/vibration';
 import abnormalGangguan from '@/routes/har/input/abnormal-gangguan';
 import activity from '@/routes/har/input/activity';
 import attachment from '@/routes/har/input/attachment';
@@ -51,6 +38,19 @@ import schedule from '@/routes/har/input/schedule';
 import serviceRequest from '@/routes/har/input/service-request';
 import unsafeCondition from '@/routes/har/input/unsafe-condition';
 import workOrder from '@/routes/har/input/work-order';
+import axialConrod from '@/routes/har/pengusahaan/axial-conrod';
+import batteryVoltage from '@/routes/har/pengusahaan/battery-voltage';
+import clearanceValve from '@/routes/har/pengusahaan/clearance-valve';
+import combustionPressure from '@/routes/har/pengusahaan/combustion-pressure';
+import counterWeight from '@/routes/har/pengusahaan/counter-weight';
+import crankshaftDeflection from '@/routes/har/pengusahaan/crankshaft-deflection';
+import hydrotest from '@/routes/har/pengusahaan/hydrotest';
+import injectorPressure from '@/routes/har/pengusahaan/injector-pressure';
+import lubeQuality from '@/routes/har/pengusahaan/lube-quality';
+import motorCurrent from '@/routes/har/pengusahaan/motor-current';
+import prelubeTest from '@/routes/har/pengusahaan/prelube-test';
+import timingInjectionPump from '@/routes/har/pengusahaan/timing-injection-pump';
+import vibration from '@/routes/har/pengusahaan/vibration';
 
 type Entry = [
     key: string,
@@ -176,7 +176,8 @@ const INPUT: Entry[] = [
     ],
 ];
 
-const FORMULIR: Entry[] = [
+/** Formulir teknis pemeliharaan — Akses 2 Pengusahaan (pages/pengusahaan/har). */
+const FORMULIR_PENGUSAHAAN: Entry[] = [
     [
         'prelube_test',
         'Checklist Prelube Test',
@@ -185,7 +186,7 @@ const FORMULIR: Entry[] = [
         Droplet,
         'bg-amber-500/10 text-amber-600 dark:text-amber-400',
         prelubeTest.index().url,
-        'har/formulir/prelube-test/index',
+        'pengusahaan/har/prelube-test/index',
     ],
     [
         'hydrotest',
@@ -195,7 +196,7 @@ const FORMULIR: Entry[] = [
         Waves,
         'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
         hydrotest.index().url,
-        'har/formulir/hydrotest/index',
+        'pengusahaan/har/hydrotest/index',
     ],
     [
         'timing_injection_pump',
@@ -205,7 +206,7 @@ const FORMULIR: Entry[] = [
         Timer,
         'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
         timingInjectionPump.index().url,
-        'har/formulir/timing-injection-pump/index',
+        'pengusahaan/har/timing-injection-pump/index',
     ],
     [
         'crankshaft_deflection',
@@ -215,7 +216,7 @@ const FORMULIR: Entry[] = [
         Ruler,
         'bg-sky-500/10 text-sky-600 dark:text-sky-400',
         crankshaftDeflection.index().url,
-        'har/formulir/crankshaft-deflection/index',
+        'pengusahaan/har/crankshaft-deflection/index',
     ],
     [
         'counter_weight',
@@ -225,7 +226,7 @@ const FORMULIR: Entry[] = [
         Cog,
         'bg-slate-500/10 text-slate-600 dark:text-slate-300',
         counterWeight.index().url,
-        'har/formulir/counter-weight/index',
+        'pengusahaan/har/counter-weight/index',
     ],
     [
         'axial_conrod',
@@ -235,7 +236,7 @@ const FORMULIR: Entry[] = [
         Wrench,
         'bg-violet-500/10 text-violet-600 dark:text-violet-400',
         axialConrod.index().url,
-        'har/formulir/axial-conrod/index',
+        'pengusahaan/har/axial-conrod/index',
     ],
     [
         'clearance_valve',
@@ -245,7 +246,7 @@ const FORMULIR: Entry[] = [
         Ruler,
         'bg-teal-500/10 text-teal-600 dark:text-teal-400',
         clearanceValve.index().url,
-        'har/formulir/clearance-valve/index',
+        'pengusahaan/har/clearance-valve/index',
     ],
     [
         'combustion_pressure',
@@ -255,7 +256,7 @@ const FORMULIR: Entry[] = [
         Flame,
         'bg-orange-500/10 text-orange-600 dark:text-orange-400',
         combustionPressure.index().url,
-        'har/formulir/combustion-pressure/index',
+        'pengusahaan/har/combustion-pressure/index',
     ],
     [
         'injector_pressure',
@@ -265,7 +266,7 @@ const FORMULIR: Entry[] = [
         Gauge,
         'bg-rose-500/10 text-rose-600 dark:text-rose-400',
         injectorPressure.index().url,
-        'har/formulir/injector-pressure/index',
+        'pengusahaan/har/injector-pressure/index',
     ],
     [
         'motor_current',
@@ -275,7 +276,7 @@ const FORMULIR: Entry[] = [
         Zap,
         'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400',
         motorCurrent.index().url,
-        'har/formulir/motor-current/index',
+        'pengusahaan/har/motor-current/index',
     ],
     [
         'vibration',
@@ -285,7 +286,7 @@ const FORMULIR: Entry[] = [
         Vibrate,
         'bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400',
         vibration.index().url,
-        'har/formulir/vibration/index',
+        'pengusahaan/har/vibration/index',
     ],
     [
         'lube_quality',
@@ -295,7 +296,7 @@ const FORMULIR: Entry[] = [
         Droplet,
         'bg-lime-500/10 text-lime-700 dark:text-lime-400',
         lubeQuality.index().url,
-        'har/formulir/lube-quality/index',
+        'pengusahaan/har/lube-quality/index',
     ],
     [
         'battery_voltage',
@@ -305,8 +306,11 @@ const FORMULIR: Entry[] = [
         BatteryCharging,
         'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
         batteryVoltage.index().url,
-        'har/formulir/battery-voltage/index',
+        'pengusahaan/har/battery-voltage/index',
     ],
+];
+
+const FORMULIR: Entry[] = [
     [
         'laporan_gangguan',
         'Laporan Gangguan (LH-05)',
@@ -339,7 +343,7 @@ const FORMULIR: Entry[] = [
     ],
 ];
 
-const toMenus = (entries: Entry[], group: MobileMenu['group']): MobileMenu[] =>
+const toMenus = (entries: Entry[], group: MobileMenu['group'], coveredBy = 'har.input.view'): MobileMenu[] =>
     entries.map(
         ([key, title, short, description, icon, tone, href, component]) => ({
             key: `har-${key}`,
@@ -352,7 +356,7 @@ const toMenus = (entries: Entry[], group: MobileMenu['group']): MobileMenu[] =>
             href,
             component,
             permission: `har.lapangan.${key}`,
-            coveredBy: 'har.input.view',
+            coveredBy,
         }),
     );
 
@@ -360,4 +364,5 @@ const toMenus = (entries: Entry[], group: MobileMenu['group']): MobileMenu[] =>
 export const PEMELIHARAAN_MENUS: MobileMenu[] = [
     ...toMenus(INPUT, 'har-input'),
     ...toMenus(FORMULIR, 'har-formulir'),
+    ...toMenus(FORMULIR_PENGUSAHAAN, 'har-formulir', 'har.pengusahaan.view'),
 ];

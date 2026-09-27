@@ -108,7 +108,7 @@ class PengusahaanFireAlarmController extends Controller
             }
         }
 
-        return Inertia::render('k3/pengusahaan/fire-alarm/index', [
+        return Inertia::render('pengusahaan/k3/fire-alarm/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

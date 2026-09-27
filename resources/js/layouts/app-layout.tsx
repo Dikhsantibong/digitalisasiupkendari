@@ -1,3 +1,5 @@
+import { usePage } from '@inertiajs/react';
+import { MobileTableCards } from '@/components/mobile/table-cards';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileModuleCandidate } from '@/hooks/use-mobile-module';
 import AppLayoutTemplate from '@/layouts/app/app-sidebar-layout';
@@ -5,6 +7,9 @@ import MobileModuleLayout, {
     MobileSplash,
 } from '@/layouts/mobile/mobile-module-layout';
 import type { BreadcrumbItem } from '@/types';
+
+/** Pages whose hand-built input tables become cards on a phone (MobileTableCards). */
+const TABLE_CARD_PAGES = /^(k3|pengusahaan\/(k3|har)|har\/(jadwal|input|formulir))\//;
 
 export default function AppLayout({
     breadcrumbs = [],
@@ -17,19 +22,21 @@ export default function AppLayout({
     // swap to the sidebar-less mobile shell.
     const candidate = useMobileModuleCandidate();
     const isMobile = useIsMobile();
+    const component = usePage().component;
+    const page = (
+        <MobileTableCards enabled={isMobile && TABLE_CARD_PAGES.test(component)}>
+            {children}
+        </MobileTableCards>
+    );
 
     if (candidate && isMobile) {
         return (
-            <MobileModuleLayout resolved={candidate}>
-                {children}
-            </MobileModuleLayout>
+            <MobileModuleLayout resolved={candidate}>{page}</MobileModuleLayout>
         );
     }
 
     const layout = (
-        <AppLayoutTemplate breadcrumbs={breadcrumbs}>
-            {children}
-        </AppLayoutTemplate>
+        <AppLayoutTemplate breadcrumbs={breadcrumbs}>{page}</AppLayoutTemplate>
     );
 
     if (candidate) {

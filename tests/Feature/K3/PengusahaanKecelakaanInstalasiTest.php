@@ -34,7 +34,7 @@ class PengusahaanKecelakaanInstalasiTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/kecelakaan-instalasi/index')
+                    ->component('pengusahaan/k3/kecelakaan-instalasi/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->where('record.is_nihil', true)
@@ -162,7 +162,7 @@ class PengusahaanKecelakaanInstalasiTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/kecelakaan-instalasi/index')
+                ->component('pengusahaan/k3/kecelakaan-instalasi/index')
                 ->where('can_write', false)
             );
 

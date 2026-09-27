@@ -13,6 +13,7 @@ use App\Models\ReportPeriod;
 use App\Models\ServiceRequest;
 use App\Models\SrCategory;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ class ServiceRequestController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganServiceRequest), 403);
+        abort_unless($this->canView($user), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -70,14 +71,14 @@ class ServiceRequestController extends Controller
                 'machines' => Machine::query()->where('unit_id', $unit->id)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'statuses' => collect(ServiceRequestStatus::cases())->map(fn (ServiceRequestStatus $s): array => ['value' => $s->value, 'label' => $s->label()])->all(),
             ],
-            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganServiceRequest),
+            'can_write' => $this->canWrite($user),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganServiceRequest), 403);
+        abort_unless($this->canWrite($user), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -147,5 +148,22 @@ class ServiceRequestController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Service Request disimpan.']);
 
         return back();
+    }
+
+    /**
+     * Work orders & service requests are one data source for both accesses: the
+     * Koordinator Pemeliharaan (Akses 1, har.input.*), the TL & Staf Pemeliharaan
+     * (Akses 2, har.pengusahaan.*) and Harmes / Harlist (field permission).
+     */
+    private function canView(User $user): bool
+    {
+        return $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganServiceRequest)
+            || $user->hasPermissionTo(PermissionName::HarPengusahaanView);
+    }
+
+    private function canWrite(User $user): bool
+    {
+        return $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganServiceRequest)
+            || $user->hasPermissionTo(PermissionName::HarPengusahaanWrite);
     }
 }

@@ -13,6 +13,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     buildDocumentHeader,
     createSheet,
@@ -30,6 +31,7 @@ import {
 } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/har/jadwal';
 import meetingPemeliharaan from '@/routes/har/jadwal/meeting-pemeliharaan';
@@ -135,6 +137,9 @@ export default function HarJadwalMeetingPemeliharaanPage({
     const [rows, setRows] = useState<MeetingRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -511,7 +516,7 @@ export default function HarJadwalMeetingPemeliharaanPage({
 
                     {/* Top Actions */}
                     <div className="flex flex-wrap items-center gap-2">
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button
                                     variant="outline"
@@ -582,7 +587,7 @@ export default function HarJadwalMeetingPemeliharaanPage({
                             </Button>
                         </a>
 
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <Button
                                 size="sm"
                                 onClick={handleSave}
@@ -677,7 +682,7 @@ export default function HarJadwalMeetingPemeliharaanPage({
                     </div>
 
                     {/* Instruction hint */}
-                    {can_write && (
+                    {can_write && (!compact || mobileEditing || dirty) && (
                         <div className="no-print flex items-center justify-between rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
                             <div className="flex items-center gap-2">
                                 <Info className="size-4 text-[#ed7d31]" />
@@ -693,288 +698,317 @@ export default function HarJadwalMeetingPemeliharaanPage({
                     )}
 
                     {/* Meeting Schedule Table */}
-                    <div className="overflow-x-auto rounded-md border border-border">
-                        <table className="print-table w-full border-collapse text-center text-xs">
-                            <thead>
-                                {/* Top Header Row (Orange Background) */}
-                                <tr className="print-orange-header border-b border-border bg-[#ed7d31] font-bold text-black">
-                                    <th
-                                        rowSpan={2}
-                                        style={{ minWidth: '170px' }}
-                                        className="border-r border-border p-2 text-left align-middle"
-                                    >
-                                        <div className="flex items-center gap-1.5">
-                                            <CalendarCheck className="size-3.5" />
-                                            URAIAN
-                                        </div>
-                                    </th>
-                                    <th
-                                        style={{ minWidth: '85px' }}
-                                        className="border-r border-border p-1 text-center font-bold"
-                                    >
-                                        {monthName.toUpperCase()}
-                                    </th>
-                                    {days.map((day) => (
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<MeetingRow>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => row.uraian || 'Meeting baru'}
+                                isOn={(row, category, day) => Number(row[category as 'rencana' | 'realisasi'][String(day)] ?? 0) > 0}
+                                onToggle={(row, category, day) => toggleCell(rows.indexOf(row), category as 'rencana' | 'realisasi', day)}
+                                details={(row, index) => (
+                                    <>
+                                        <TimelineField label="Uraian Meeting" value={row.uraian} onChange={(v) => handleUraianChange(index, v)} readOnly={!can_write} />
+                                        <TimelineField label="Target (kali / bulan)" type="number" value={row.target} onChange={(v) => handleTargetChange(index, Number(v))} readOnly={!can_write} />
+                                    </>
+                                )}
+                                summary={(row) => {
+                                    const count = (map: Record<string, string | number>) => Object.values(map).filter((v) => Number(v) > 0).length;
+
+                                    return `Target ${row.target} · Rencana ${count(row.rencana)} · Realisasi ${count(row.realisasi)}`;
+                                }}
+                                onRemove={(_row, index) => handleRemoveRow(index)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada jadwal meeting."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto rounded-md border border-border">
+                            <table className="print-table w-full border-collapse text-center text-xs">
+                                <thead>
+                                    {/* Top Header Row (Orange Background) */}
+                                    <tr className="print-orange-header border-b border-border bg-[#ed7d31] font-bold text-black">
                                         <th
-                                            key={day.day}
-                                            style={{
-                                                minWidth: '26px',
-                                                width: '26px',
-                                            }}
-                                            className={`border-r border-border p-0.5 text-center font-bold ${
-                                                day.is_red
-                                                    ? 'print-red-text text-red-600'
-                                                    : 'text-black'
-                                            }`}
-                                            title={
-                                                day.holiday ??
-                                                (day.is_weekend
-                                                    ? 'Akhir Pekan'
-                                                    : undefined)
-                                            }
+                                            rowSpan={2}
+                                            style={{ minWidth: '170px' }}
+                                            className="border-r border-border p-2 text-left align-middle"
                                         >
-                                            {day.dow}
+                                            <div className="flex items-center gap-1.5">
+                                                <CalendarCheck className="size-3.5" />
+                                                URAIAN
+                                            </div>
                                         </th>
-                                    ))}
-                                    <th
-                                        rowSpan={2}
-                                        style={{ minWidth: '65px' }}
-                                        className="border-r border-border p-2 text-center align-middle font-bold"
-                                    >
-                                        RENCANA
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        style={{ minWidth: '65px' }}
-                                        className="border-r border-border p-2 text-center align-middle font-bold"
-                                    >
-                                        TARGET
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        style={{ minWidth: '65px' }}
-                                        className="border-r border-border p-2 text-center align-middle font-bold"
-                                    >
-                                        REALISASI
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        style={{ minWidth: '95px' }}
-                                        className="p-2 text-center align-middle font-bold"
-                                    >
-                                        ANALISA KINERJA
-                                    </th>
-                                </tr>
-
-                                {/* Bottom Header Row (Year and Day Numbers) */}
-                                <tr className="print-orange-header border-b border-border bg-[#ed7d31] font-bold text-black">
-                                    <th className="border-r border-border p-1 text-center font-bold">
-                                        {filters.year}
-                                    </th>
-                                    {days.map((day) => (
                                         <th
-                                            key={day.day}
-                                            className={`border-r border-border p-0.5 text-center font-bold ${
-                                                day.is_red
-                                                    ? 'print-red-text text-red-600'
-                                                    : 'text-black'
-                                            }`}
+                                            style={{ minWidth: '85px' }}
+                                            className="border-r border-border p-1 text-center font-bold"
                                         >
-                                            {day.day}
+                                            {monthName.toUpperCase()}
                                         </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {calculatedRows.map((row, rIndex) => (
-                                    <Fragment key={row.id ?? rIndex}>
-                                        {/* Subrow 1: Rencana */}
-                                        <tr className="border-b border-border transition-colors hover:bg-muted/10">
-                                            <td
-                                                rowSpan={2}
-                                                className="border-r border-border bg-background p-2 text-left align-middle"
+                                        {days.map((day) => (
+                                            <th
+                                                key={day.day}
+                                                style={{
+                                                    minWidth: '26px',
+                                                    width: '26px',
+                                                }}
+                                                className={`border-r border-border p-0.5 text-center font-bold ${
+                                                    day.is_red
+                                                        ? 'print-red-text text-red-600'
+                                                        : 'text-black'
+                                                }`}
+                                                title={
+                                                    day.holiday ??
+                                                    (day.is_weekend
+                                                        ? 'Akhir Pekan'
+                                                        : undefined)
+                                                }
                                             >
-                                                {can_write &&
-                                                calculatedRows.length > 1 ? (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <input
-                                                            type="text"
-                                                            value={row.uraian}
-                                                            onChange={(e) =>
-                                                                handleUraianChange(
-                                                                    rIndex,
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="w-full rounded border border-border bg-transparent px-2 py-1 text-xs font-semibold text-foreground focus:border-primary focus:outline-hidden"
-                                                        />
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() =>
-                                                                handleRemoveRow(
-                                                                    rIndex,
-                                                                )
-                                                            }
-                                                            className="no-print size-7 shrink-0 text-muted-foreground hover:text-destructive"
-                                                            title="Hapus baris"
-                                                        >
-                                                            <Trash2 className="size-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="font-semibold text-foreground">
-                                                        {row.uraian}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="border-r border-border bg-muted/10 p-1.5 text-center font-semibold text-muted-foreground">
-                                                RENCANA
-                                            </td>
+                                                {day.dow}
+                                            </th>
+                                        ))}
+                                        <th
+                                            rowSpan={2}
+                                            style={{ minWidth: '65px' }}
+                                            className="border-r border-border p-2 text-center align-middle font-bold"
+                                        >
+                                            RENCANA
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            style={{ minWidth: '65px' }}
+                                            className="border-r border-border p-2 text-center align-middle font-bold"
+                                        >
+                                            TARGET
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            style={{ minWidth: '65px' }}
+                                            className="border-r border-border p-2 text-center align-middle font-bold"
+                                        >
+                                            REALISASI
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            style={{ minWidth: '95px' }}
+                                            className="p-2 text-center align-middle font-bold"
+                                        >
+                                            ANALISA KINERJA
+                                        </th>
+                                    </tr>
 
-                                            {/* Days for Rencana */}
-                                            {days.map((day) => {
-                                                const dKey = String(day.day);
-                                                const val = Number(
-                                                    row.rencana[dKey] ?? 0,
-                                                );
-                                                const isFilled = val > 0;
-
-                                                return (
-                                                    <td
-                                                        key={day.day}
-                                                        onClick={() =>
-                                                            toggleCell(
-                                                                rIndex,
-                                                                'rencana',
-                                                                day.day,
-                                                            )
-                                                        }
-                                                        className={`border-r border-border p-1 text-center font-semibold transition-colors select-none ${
-                                                            isFilled
-                                                                ? 'bg-amber-100 font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
-                                                                : 'bg-background text-foreground'
-                                                        } ${can_write ? 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/20' : 'cursor-default'}`}
-                                                        title={
-                                                            can_write
-                                                                ? isFilled
-                                                                    ? 'Klik untuk mengubah menjadi 0'
-                                                                    : 'Klik untuk menjadwalkan meeting (1)'
-                                                                : undefined
-                                                        }
-                                                    >
-                                                        {val}
-                                                    </td>
-                                                );
-                                            })}
-
-                                            {/* Summary with rowSpan=2 */}
-                                            <td
-                                                rowSpan={2}
-                                                className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
+                                    {/* Bottom Header Row (Year and Day Numbers) */}
+                                    <tr className="print-orange-header border-b border-border bg-[#ed7d31] font-bold text-black">
+                                        <th className="border-r border-border p-1 text-center font-bold">
+                                            {filters.year}
+                                        </th>
+                                        {days.map((day) => (
+                                            <th
+                                                key={day.day}
+                                                className={`border-r border-border p-0.5 text-center font-bold ${
+                                                    day.is_red
+                                                        ? 'print-red-text text-red-600'
+                                                        : 'text-black'
+                                                }`}
                                             >
-                                                {row.totalRencana}
-                                            </td>
-                                            <td
-                                                rowSpan={2}
-                                                className="border-r border-border bg-background p-2 text-center align-middle"
-                                            >
-                                                {can_write ? (
-                                                    <input
-                                                        type="number"
-                                                        min={0}
-                                                        value={row.target}
-                                                        onChange={(e) =>
-                                                            handleTargetChange(
-                                                                rIndex,
-                                                                parseInt(
-                                                                    e.target
-                                                                        .value,
-                                                                    10,
-                                                                ) || 0,
-                                                            )
-                                                        }
-                                                        className="w-14 rounded border border-border bg-transparent p-1 text-center text-sm font-extrabold text-foreground focus:border-primary focus:outline-hidden"
-                                                    />
-                                                ) : (
-                                                    <span className="text-sm font-extrabold text-foreground">
-                                                        {row.target}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td
-                                                rowSpan={2}
-                                                className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
-                                            >
-                                                {row.totalRealisasi}
-                                            </td>
-                                            <td
-                                                rowSpan={2}
-                                                className="bg-background p-2 text-center align-middle text-base font-black"
-                                            >
-                                                <span
-                                                    className={
-                                                        row.performance >= 100
-                                                            ? 'text-emerald-600 dark:text-emerald-400'
-                                                            : row.performance >=
-                                                                80
-                                                              ? 'text-sky-600 dark:text-sky-400'
-                                                              : 'text-amber-600 dark:text-amber-400'
-                                                    }
+                                                {day.day}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {calculatedRows.map((row, rIndex) => (
+                                        <Fragment key={row.id ?? rIndex}>
+                                            {/* Subrow 1: Rencana */}
+                                            <tr className="border-b border-border transition-colors hover:bg-muted/10">
+                                                <td
+                                                    rowSpan={2}
+                                                    className="border-r border-border bg-background p-2 text-left align-middle"
                                                 >
-                                                    {row.performance}%
-                                                </span>
-                                            </td>
-                                        </tr>
+                                                    {can_write &&
+                                                    calculatedRows.length > 1 ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <input
+                                                                type="text"
+                                                                value={row.uraian}
+                                                                onChange={(e) =>
+                                                                    handleUraianChange(
+                                                                        rIndex,
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="w-full rounded border border-border bg-transparent px-2 py-1 text-xs font-semibold text-foreground focus:border-primary focus:outline-hidden"
+                                                            />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() =>
+                                                                    handleRemoveRow(
+                                                                        rIndex,
+                                                                    )
+                                                                }
+                                                                className="no-print size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                                                                title="Hapus baris"
+                                                            >
+                                                                <Trash2 className="size-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="font-semibold text-foreground">
+                                                            {row.uraian}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="border-r border-border bg-muted/10 p-1.5 text-center font-semibold text-muted-foreground">
+                                                    RENCANA
+                                                </td>
 
-                                        {/* Subrow 2: Realisasi */}
-                                        <tr className="border-b-2 border-border transition-colors hover:bg-muted/10">
-                                            <td className="border-r border-border bg-muted/10 p-1.5 text-center font-semibold text-muted-foreground">
-                                                REALISASI
-                                            </td>
+                                                {/* Days for Rencana */}
+                                                {days.map((day) => {
+                                                    const dKey = String(day.day);
+                                                    const val = Number(
+                                                        row.rencana[dKey] ?? 0,
+                                                    );
+                                                    const isFilled = val > 0;
 
-                                            {/* Days for Realisasi */}
-                                            {days.map((day) => {
-                                                const dKey = String(day.day);
-                                                const val = Number(
-                                                    row.realisasi[dKey] ?? 0,
-                                                );
-                                                const isFilled = val > 0;
+                                                    return (
+                                                        <td
+                                                            key={day.day}
+                                                            onClick={() =>
+                                                                toggleCell(
+                                                                    rIndex,
+                                                                    'rencana',
+                                                                    day.day,
+                                                                )
+                                                            }
+                                                            className={`border-r border-border p-1 text-center font-semibold transition-colors select-none ${
+                                                                isFilled
+                                                                    ? 'bg-amber-100 font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-300'
+                                                                    : 'bg-background text-foreground'
+                                                            } ${can_write ? 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-950/20' : 'cursor-default'}`}
+                                                            title={
+                                                                can_write
+                                                                    ? isFilled
+                                                                        ? 'Klik untuk mengubah menjadi 0'
+                                                                        : 'Klik untuk menjadwalkan meeting (1)'
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            {val}
+                                                        </td>
+                                                    );
+                                                })}
 
-                                                return (
-                                                    <td
-                                                        key={day.day}
-                                                        onClick={() =>
-                                                            toggleCell(
-                                                                rIndex,
-                                                                'realisasi',
-                                                                day.day,
-                                                            )
-                                                        }
-                                                        className={`border-r border-border p-1 text-center font-semibold transition-colors select-none ${
-                                                            isFilled
-                                                                ? 'bg-emerald-100 font-bold text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                                                : 'bg-background text-foreground'
-                                                        } ${can_write ? 'cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'cursor-default'}`}
-                                                        title={
-                                                            can_write
-                                                                ? isFilled
-                                                                    ? 'Klik untuk mengubah menjadi 0'
-                                                                    : 'Klik untuk menetapkan realisasi meeting (1)'
-                                                                : undefined
+                                                {/* Summary with rowSpan=2 */}
+                                                <td
+                                                    rowSpan={2}
+                                                    className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
+                                                >
+                                                    {row.totalRencana}
+                                                </td>
+                                                <td
+                                                    rowSpan={2}
+                                                    className="border-r border-border bg-background p-2 text-center align-middle"
+                                                >
+                                                    {can_write ? (
+                                                        <input
+                                                            type="number"
+                                                            min={0}
+                                                            value={row.target}
+                                                            onChange={(e) =>
+                                                                handleTargetChange(
+                                                                    rIndex,
+                                                                    parseInt(
+                                                                        e.target
+                                                                            .value,
+                                                                        10,
+                                                                    ) || 0,
+                                                                )
+                                                            }
+                                                            className="w-14 rounded border border-border bg-transparent p-1 text-center text-sm font-extrabold text-foreground focus:border-primary focus:outline-hidden"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-extrabold text-foreground">
+                                                            {row.target}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td
+                                                    rowSpan={2}
+                                                    className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
+                                                >
+                                                    {row.totalRealisasi}
+                                                </td>
+                                                <td
+                                                    rowSpan={2}
+                                                    className="bg-background p-2 text-center align-middle text-base font-black"
+                                                >
+                                                    <span
+                                                        className={
+                                                            row.performance >= 100
+                                                                ? 'text-emerald-600 dark:text-emerald-400'
+                                                                : row.performance >=
+                                                                    80
+                                                                  ? 'text-sky-600 dark:text-sky-400'
+                                                                  : 'text-amber-600 dark:text-amber-400'
                                                         }
                                                     >
-                                                        {val}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    </Fragment>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                                        {row.performance}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+
+                                            {/* Subrow 2: Realisasi */}
+                                            <tr className="border-b-2 border-border transition-colors hover:bg-muted/10">
+                                                <td className="border-r border-border bg-muted/10 p-1.5 text-center font-semibold text-muted-foreground">
+                                                    REALISASI
+                                                </td>
+
+                                                {/* Days for Realisasi */}
+                                                {days.map((day) => {
+                                                    const dKey = String(day.day);
+                                                    const val = Number(
+                                                        row.realisasi[dKey] ?? 0,
+                                                    );
+                                                    const isFilled = val > 0;
+
+                                                    return (
+                                                        <td
+                                                            key={day.day}
+                                                            onClick={() =>
+                                                                toggleCell(
+                                                                    rIndex,
+                                                                    'realisasi',
+                                                                    day.day,
+                                                                )
+                                                            }
+                                                            className={`border-r border-border p-1 text-center font-semibold transition-colors select-none ${
+                                                                isFilled
+                                                                    ? 'bg-emerald-100 font-bold text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                                                    : 'bg-background text-foreground'
+                                                            } ${can_write ? 'cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950/20' : 'cursor-default'}`}
+                                                            title={
+                                                                can_write
+                                                                    ? isFilled
+                                                                        ? 'Klik untuk mengubah menjadi 0'
+                                                                        : 'Klik untuk menetapkan realisasi meeting (1)'
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            {val}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        </Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </>

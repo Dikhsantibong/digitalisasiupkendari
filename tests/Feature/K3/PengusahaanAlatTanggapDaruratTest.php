@@ -34,7 +34,7 @@ class PengusahaanAlatTanggapDaruratTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/alat-tanggap-darurat/index')
+                    ->component('pengusahaan/k3/alat-tanggap-darurat/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 10)
@@ -131,7 +131,7 @@ class PengusahaanAlatTanggapDaruratTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/alat-tanggap-darurat/index')
+                ->component('pengusahaan/k3/alat-tanggap-darurat/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.jenis', 'Custom APAR Halon')
                 ->where('record.items.0.siap_pakai', 15)

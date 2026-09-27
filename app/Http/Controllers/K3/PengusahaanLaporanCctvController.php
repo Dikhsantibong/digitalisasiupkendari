@@ -106,7 +106,7 @@ class PengusahaanLaporanCctvController extends Controller
             $catatan = '';
         }
 
-        return Inertia::render('k3/pengusahaan/laporan-cctv/index', [
+        return Inertia::render('pengusahaan/k3/laporan-cctv/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

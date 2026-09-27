@@ -35,7 +35,7 @@ class PengusahaanPatrolSecurityTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/patrol-security/index')
+                    ->component('pengusahaan/k3/patrol-security/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 14)
@@ -124,7 +124,7 @@ class PengusahaanPatrolSecurityTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/patrol-security/index')
+                ->component('pengusahaan/k3/patrol-security/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.lokasi_kode', 'POA99')
                 ->where('record.items.0.total', 0)
@@ -209,7 +209,7 @@ class PengusahaanPatrolSecurityTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/patrol-security/index')
+                ->component('pengusahaan/k3/patrol-security/index')
                 ->where('can_write', true)
                 ->has('record.items', 14)
             );

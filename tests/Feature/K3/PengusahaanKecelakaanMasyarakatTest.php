@@ -33,7 +33,7 @@ class PengusahaanKecelakaanMasyarakatTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/kecelakaan-masyarakat/index')
+                    ->component('pengusahaan/k3/kecelakaan-masyarakat/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->where('record.is_nihil', true)

@@ -13,6 +13,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     buildDocumentHeader,
     createSheet,
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import jadwal from '@/routes/har/jadwal';
 import pembuatanIk from '@/routes/har/jadwal/pembuatan-ik';
 import type { IdName } from '@/types';
@@ -158,6 +160,9 @@ export default function HarJadwalPembuatanIkPage({
     const [rows, setRows] = useState<IkRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     // Dialog state
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -222,6 +227,28 @@ export default function HarJadwalPembuatanIkPage({
     };
 
     // Update text fields
+    // Phone: Rencana and Realisasi of a month are toggled separately.
+    const setMonthFlag = (rowIndex: number, category: 'rencana' | 'realisasi', month: number) => {
+        if (!can_write) {
+            return;
+        }
+
+        const key = category === 'rencana' ? 'rencana_bulan' : 'realisasi_bulan';
+
+        setRows((prev) =>
+            prev.map((r, idx) => {
+                if (idx !== rowIndex) {
+                    return r;
+                }
+
+                const months = r[key].includes(month) ? r[key].filter((m) => m !== month) : [...r[key], month].sort((a, b) => a - b);
+
+                return { ...r, [key]: months };
+            }),
+        );
+        setDirty(true);
+    };
+
     const updateTextField = (
         rowIndex: number,
         field: 'instruksi_kerja' | 'pic_pembuat',
@@ -577,7 +604,7 @@ export default function HarJadwalPembuatanIkPage({
                                 Reset
                             </Button>
                         )}
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button
                                     variant="outline"
@@ -717,273 +744,300 @@ export default function HarJadwalPembuatanIkPage({
                     </div>
 
                     {/* Table Container */}
-                    <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-xs">
-                            <thead className="print-orange-header bg-[#ed7d31] text-black">
-                                <tr>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-12 border border-black p-2 text-center font-bold"
-                                    >
-                                        NO
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-72 min-w-64 border border-black p-2 text-left font-bold"
-                                    >
-                                        INSTRUKSI KERJA
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-44 min-w-36 border border-black p-2 text-left font-bold"
-                                    >
-                                        PIC PEMBUAT
-                                    </th>
-                                    <th
-                                        colSpan={12}
-                                        className="border border-black p-1.5 text-center font-bold tracking-wider"
-                                    >
-                                        BULAN
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-16 border border-black p-2 text-center font-bold"
-                                    >
-                                        JUMLAH
-                                    </th>
-                                    {can_write && (
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<IkRow>
+                                days={MONTH_LABELS.map((label, index) => ({ day: index + 1, dow: label, is_red: false }))}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => row.instruksi_kerja || 'Instruksi kerja baru'}
+                                isOn={(row, category, month) => (category === 'rencana' ? row.rencana_bulan : row.realisasi_bulan).includes(month)}
+                                onToggle={(row, category, month) => setMonthFlag(rows.indexOf(row), category as 'rencana' | 'realisasi', month)}
+                                dayLabel={(month) => `Bulan ${OPERASI_MONTHS[month.day - 1] ?? month.dow} ${filters.year}`}
+                                initialDay={new Date().getMonth() + 1}
+                                details={(row, index) => (
+                                    <>
+                                        <TimelineField label="Instruksi Kerja" value={row.instruksi_kerja} onChange={(v) => updateTextField(index, 'instruksi_kerja', v)} readOnly={!can_write} />
+                                        <TimelineField label="PIC Pembuat" value={row.pic_pembuat} onChange={(v) => updateTextField(index, 'pic_pembuat', v)} readOnly={!can_write} />
+                                    </>
+                                )}
+                                summary={(row) => `PIC ${row.pic_pembuat || '-'} · Rencana ${row.rencana_bulan.length} · Realisasi ${row.realisasi_bulan.length} bulan`}
+                                onRemove={(_row, index) => handleRemoveRow(index)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada rencana pembuatan IK."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="print-table w-full border-collapse text-xs">
+                                <thead className="print-orange-header bg-[#ed7d31] text-black">
+                                    <tr>
                                         <th
                                             rowSpan={2}
-                                            className="no-print w-10 border border-black p-2 text-center font-bold"
+                                            className="w-12 border border-black p-2 text-center font-bold"
                                         >
-                                            Aksi
+                                            NO
                                         </th>
-                                    )}
-                                </tr>
-                                <tr>
-                                    {MONTH_LABELS.map((m) => (
                                         <th
-                                            key={m}
-                                            className="w-8 border border-black p-1 text-center font-bold"
+                                            rowSpan={2}
+                                            className="w-72 min-w-64 border border-black p-2 text-left font-bold"
                                         >
-                                            {m}
+                                            INSTRUKSI KERJA
                                         </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {/* Category Header Row */}
-                                <tr className="bg-muted/30 font-bold">
-                                    <td className="border border-black p-1.5 text-center font-extrabold">
-                                        A.
-                                    </td>
-                                    <td
-                                        colSpan={can_write ? 15 : 14}
-                                        className="border border-black p-1.5 text-left font-extrabold tracking-wider uppercase"
-                                    >
-                                        PEMBUATAN INTRUKSI KERJA
-                                    </td>
-                                </tr>
-
-                                {/* IK Data Rows */}
-                                {rows.map((row, idx) => {
-                                    const uniqueMonths = new Set([
-                                        ...row.rencana_bulan,
-                                        ...row.realisasi_bulan,
-                                    ]);
-                                    const rowJumlah = uniqueMonths.size;
-
-                                    return (
-                                        <tr
-                                            key={idx}
-                                            className="transition-colors hover:bg-muted/10"
+                                        <th
+                                            rowSpan={2}
+                                            className="w-44 min-w-36 border border-black p-2 text-left font-bold"
                                         >
-                                            {/* NO */}
-                                            <td className="border border-black p-1 text-center font-medium">
-                                                {idx + 1}
-                                            </td>
+                                            PIC PEMBUAT
+                                        </th>
+                                        <th
+                                            colSpan={12}
+                                            className="border border-black p-1.5 text-center font-bold tracking-wider"
+                                        >
+                                            BULAN
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-16 border border-black p-2 text-center font-bold"
+                                        >
+                                            JUMLAH
+                                        </th>
+                                        {can_write && (
+                                            <th
+                                                rowSpan={2}
+                                                className="no-print w-10 border border-black p-2 text-center font-bold"
+                                            >
+                                                Aksi
+                                            </th>
+                                        )}
+                                    </tr>
+                                    <tr>
+                                        {MONTH_LABELS.map((m) => (
+                                            <th
+                                                key={m}
+                                                className="w-8 border border-black p-1 text-center font-bold"
+                                            >
+                                                {m}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {/* Category Header Row */}
+                                    <tr className="bg-muted/30 font-bold">
+                                        <td className="border border-black p-1.5 text-center font-extrabold">
+                                            A.
+                                        </td>
+                                        <td
+                                            colSpan={can_write ? 15 : 14}
+                                            className="border border-black p-1.5 text-left font-extrabold tracking-wider uppercase"
+                                        >
+                                            PEMBUATAN INTRUKSI KERJA
+                                        </td>
+                                    </tr>
 
-                                            {/* INSTRUKSI KERJA */}
-                                            <td className="border border-black p-0.5">
-                                                {can_write ? (
-                                                    <input
-                                                        type="text"
-                                                        value={
-                                                            row.instruksi_kerja
-                                                        }
-                                                        onChange={(e) =>
-                                                            updateTextField(
-                                                                idx,
-                                                                'instruksi_kerja',
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                        placeholder="IK......................................................"
-                                                    />
-                                                ) : (
-                                                    <span className="px-1.5 text-xs">
-                                                        {row.instruksi_kerja}
-                                                    </span>
-                                                )}
-                                            </td>
+                                    {/* IK Data Rows */}
+                                    {rows.map((row, idx) => {
+                                        const uniqueMonths = new Set([
+                                            ...row.rencana_bulan,
+                                            ...row.realisasi_bulan,
+                                        ]);
+                                        const rowJumlah = uniqueMonths.size;
 
-                                            {/* PIC PEMBUAT */}
-                                            <td className="border border-black p-0.5">
-                                                {can_write ? (
-                                                    <>
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                className="transition-colors hover:bg-muted/10"
+                                            >
+                                                {/* NO */}
+                                                <td className="border border-black p-1 text-center font-medium">
+                                                    {idx + 1}
+                                                </td>
+
+                                                {/* INSTRUKSI KERJA */}
+                                                <td className="border border-black p-0.5">
+                                                    {can_write ? (
                                                         <input
                                                             type="text"
-                                                            list={`emp-list-${idx}`}
                                                             value={
-                                                                row.pic_pembuat
+                                                                row.instruksi_kerja
                                                             }
                                                             onChange={(e) =>
                                                                 updateTextField(
                                                                     idx,
-                                                                    'pic_pembuat',
-                                                                    e.target
-                                                                        .value,
+                                                                    'instruksi_kerja',
+                                                                    e.target.value,
                                                                 )
                                                             }
-                                                            className="w-full bg-transparent px-1.5 py-0.5 text-xs uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                            placeholder="Nama PIC"
+                                                            className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                            placeholder="IK......................................................"
                                                         />
-                                                        <datalist
-                                                            id={`emp-list-${idx}`}
-                                                        >
-                                                            {employees.map(
-                                                                (emp) => (
-                                                                    <option
-                                                                        key={
-                                                                            emp
-                                                                        }
-                                                                        value={
-                                                                            emp
-                                                                        }
-                                                                    />
-                                                                ),
-                                                            )}
-                                                        </datalist>
-                                                    </>
-                                                ) : (
-                                                    <span className="px-1.5 text-xs uppercase">
-                                                        {row.pic_pembuat || '-'}
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            {/* 12 Month Cells */}
-                                            {Array.from(
-                                                { length: 12 },
-                                                (_, mIdx) => {
-                                                    const m = mIdx + 1;
-                                                    const inRencana =
-                                                        row.rencana_bulan.includes(
-                                                            m,
-                                                        );
-                                                    const inRealisasi =
-                                                        row.realisasi_bulan.includes(
-                                                            m,
-                                                        );
-
-                                                    let cellContent = '';
-                                                    let cellClass =
-                                                        'border border-black text-center font-bold select-none text-xs ';
-
-                                                    if (
-                                                        inRencana &&
-                                                        inRealisasi
-                                                    ) {
-                                                        cellContent = 'R & ✓';
-                                                        cellClass +=
-                                                            'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-200 print-month-both ';
-                                                    } else if (inRencana) {
-                                                        cellContent = 'R';
-                                                        cellClass +=
-                                                            'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 print-month-rencana ';
-                                                    } else if (inRealisasi) {
-                                                        cellContent = '✓';
-                                                        cellClass +=
-                                                            'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 print-month-realisasi ';
-                                                    }
-
-                                                    if (can_write) {
-                                                        cellClass +=
-                                                            'cursor-pointer hover:bg-primary/10 transition-colors';
-                                                    }
-
-                                                    return (
-                                                        <td
-                                                            key={m}
-                                                            className={
-                                                                cellClass
-                                                            }
-                                                            onClick={() =>
-                                                                toggleMonthCell(
-                                                                    idx,
-                                                                    m,
-                                                                )
-                                                            }
-                                                            title={`Bulan ${MONTH_LABELS[mIdx]}: Klik untuk ubah (Kosong -> R -> ✓ -> R & ✓)`}
-                                                        >
-                                                            {cellContent}
-                                                        </td>
-                                                    );
-                                                },
-                                            )}
-
-                                            {/* JUMLAH */}
-                                            <td className="border border-black p-1 text-center font-bold">
-                                                {rowJumlah}
-                                            </td>
-
-                                            {/* Action (No-Print) */}
-                                            {can_write && (
-                                                <td className="no-print border border-black p-0.5 text-center">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                        onClick={() =>
-                                                            handleRemoveRow(idx)
-                                                        }
-                                                        title="Hapus Baris"
-                                                    >
-                                                        <Trash2 className="size-3.5" />
-                                                    </Button>
+                                                    ) : (
+                                                        <span className="px-1.5 text-xs">
+                                                            {row.instruksi_kerja}
+                                                        </span>
+                                                    )}
                                                 </td>
-                                            )}
-                                        </tr>
-                                    );
-                                })}
 
-                                {/* TOTAL IK Row */}
-                                <tr className="bg-muted/40 font-bold">
-                                    <td
-                                        colSpan={3}
-                                        className="border border-black p-1.5 text-center font-extrabold tracking-wider"
-                                    >
-                                        TOTAL IK
-                                    </td>
-                                    {Array.from({ length: 12 }, (_, mIdx) => (
+                                                {/* PIC PEMBUAT */}
+                                                <td className="border border-black p-0.5">
+                                                    {can_write ? (
+                                                        <>
+                                                            <input
+                                                                type="text"
+                                                                list={`emp-list-${idx}`}
+                                                                value={
+                                                                    row.pic_pembuat
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateTextField(
+                                                                        idx,
+                                                                        'pic_pembuat',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                className="w-full bg-transparent px-1.5 py-0.5 text-xs uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                placeholder="Nama PIC"
+                                                            />
+                                                            <datalist
+                                                                id={`emp-list-${idx}`}
+                                                            >
+                                                                {employees.map(
+                                                                    (emp) => (
+                                                                        <option
+                                                                            key={
+                                                                                emp
+                                                                            }
+                                                                            value={
+                                                                                emp
+                                                                            }
+                                                                        />
+                                                                    ),
+                                                                )}
+                                                            </datalist>
+                                                        </>
+                                                    ) : (
+                                                        <span className="px-1.5 text-xs uppercase">
+                                                            {row.pic_pembuat || '-'}
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* 12 Month Cells */}
+                                                {Array.from(
+                                                    { length: 12 },
+                                                    (_, mIdx) => {
+                                                        const m = mIdx + 1;
+                                                        const inRencana =
+                                                            row.rencana_bulan.includes(
+                                                                m,
+                                                            );
+                                                        const inRealisasi =
+                                                            row.realisasi_bulan.includes(
+                                                                m,
+                                                            );
+
+                                                        let cellContent = '';
+                                                        let cellClass =
+                                                            'border border-black text-center font-bold select-none text-xs ';
+
+                                                        if (
+                                                            inRencana &&
+                                                            inRealisasi
+                                                        ) {
+                                                            cellContent = 'R & ✓';
+                                                            cellClass +=
+                                                                'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-200 print-month-both ';
+                                                        } else if (inRencana) {
+                                                            cellContent = 'R';
+                                                            cellClass +=
+                                                                'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 print-month-rencana ';
+                                                        } else if (inRealisasi) {
+                                                            cellContent = '✓';
+                                                            cellClass +=
+                                                                'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 print-month-realisasi ';
+                                                        }
+
+                                                        if (can_write) {
+                                                            cellClass +=
+                                                                'cursor-pointer hover:bg-primary/10 transition-colors';
+                                                        }
+
+                                                        return (
+                                                            <td
+                                                                key={m}
+                                                                className={
+                                                                    cellClass
+                                                                }
+                                                                onClick={() =>
+                                                                    toggleMonthCell(
+                                                                        idx,
+                                                                        m,
+                                                                    )
+                                                                }
+                                                                title={`Bulan ${MONTH_LABELS[mIdx]}: Klik untuk ubah (Kosong -> R -> ✓ -> R & ✓)`}
+                                                            >
+                                                                {cellContent}
+                                                            </td>
+                                                        );
+                                                    },
+                                                )}
+
+                                                {/* JUMLAH */}
+                                                <td className="border border-black p-1 text-center font-bold">
+                                                    {rowJumlah}
+                                                </td>
+
+                                                {/* Action (No-Print) */}
+                                                {can_write && (
+                                                    <td className="no-print border border-black p-0.5 text-center">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                            onClick={() =>
+                                                                handleRemoveRow(idx)
+                                                            }
+                                                            title="Hapus Baris"
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                        </Button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
+
+                                    {/* TOTAL IK Row */}
+                                    <tr className="bg-muted/40 font-bold">
                                         <td
-                                            key={mIdx}
-                                            className="border border-black p-1 text-center font-extrabold"
+                                            colSpan={3}
+                                            className="border border-black p-1.5 text-center font-extrabold tracking-wider"
                                         >
-                                            {monthTotals[mIdx + 1] ?? 0}
+                                            TOTAL IK
                                         </td>
-                                    ))}
-                                    <td className="border border-black p-1 text-center font-extrabold">
-                                        {grandTotalIk}
-                                    </td>
-                                    {can_write && (
-                                        <td className="no-print border border-black" />
-                                    )}
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                        {Array.from({ length: 12 }, (_, mIdx) => (
+                                            <td
+                                                key={mIdx}
+                                                className="border border-black p-1 text-center font-extrabold"
+                                            >
+                                                {monthTotals[mIdx + 1] ?? 0}
+                                            </td>
+                                        ))}
+                                        <td className="border border-black p-1 text-center font-extrabold">
+                                            {grandTotalIk}
+                                        </td>
+                                        {can_write && (
+                                            <td className="no-print border border-black" />
+                                        )}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Bottom Section: Recap Table & Legends */}
                     <div className="flex flex-col items-start justify-between gap-4 border-t border-border bg-muted/10 p-4 md:flex-row">

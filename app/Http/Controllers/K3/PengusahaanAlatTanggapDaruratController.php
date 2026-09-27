@@ -107,7 +107,7 @@ class PengusahaanAlatTanggapDaruratController extends Controller
             }
         }
 
-        return Inertia::render('k3/pengusahaan/alat-tanggap-darurat/index', [
+        return Inertia::render('pengusahaan/k3/alat-tanggap-darurat/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

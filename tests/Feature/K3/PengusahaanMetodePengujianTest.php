@@ -36,7 +36,7 @@ class PengusahaanMetodePengujianTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/metode-pengujian/index')
+                    ->component('pengusahaan/k3/metode-pengujian/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('rows', 9)
@@ -146,7 +146,7 @@ class PengusahaanMetodePengujianTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/metode-pengujian/index')
+                ->component('pengusahaan/k3/metode-pengujian/index')
                 ->where('can_write', false)
             );
 

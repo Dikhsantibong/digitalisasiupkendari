@@ -12,6 +12,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -28,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/k3/jadwal';
 import patrolCheck from '@/routes/k3/jadwal/patrol-check';
@@ -89,6 +91,9 @@ export default function K3PatrolCheckPage({
     const [nextKey, setNextKey] = useState(initialRows.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [form, setForm] = useState({ uraian: '', bobot_sla: 0 });
@@ -265,7 +270,7 @@ export default function K3PatrolCheckPage({
                                 Reset
                             </Button>
                         )}
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button variant="outline" size="sm" onClick={handleMarkPlanWorkingDays} className="gap-1.5 text-xs" title="Isi rencana untuk seluruh hari kerja">
                                     <CheckCheck className="size-3.5 text-primary" />
@@ -330,90 +335,121 @@ export default function K3PatrolCheckPage({
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-xs">
-                            <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                <tr>
-                                    <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
-                                    <th rowSpan={2} className="w-64 min-w-56 border border-black p-1 text-left font-bold text-foreground">Uraian Pekerjaan</th>
-                                    <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">Status</th>
-                                    <th colSpan={days.length} className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase">Tanggal</th>
-                                    <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
-                                    <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">REALISASI</th>
-                                    <th rowSpan={2} className="w-16 border border-black p-1 text-center font-bold text-foreground">PERSENTASE</th>
-                                    <th rowSpan={2} className="w-36 min-w-28 border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
-                                    <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">BOBOT SLA</th>
-                                    {can_write && <th rowSpan={2} className="no-print w-9 border border-black p-1 text-center font-bold text-foreground">Aksi</th>}
-                                </tr>
-                                <tr>
-                                    {days.map((d) => (
-                                        <th key={d.day} className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`} title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}>
-                                            {d.day}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((row, idx) => {
-                                    const target = row.rencana.length;
-                                    const realisasi = row.realisasi.length;
-                                    const persentase = target > 0 ? Math.round((realisasi / target) * 100) : 0;
+                    {compact ? (
+                        <div className="flex flex-col gap-3 p-3">
+                            <MobileTimelineForm<Row>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row) => row._key}
+                                title={(row) => row.uraian || 'Pekerjaan baru'}
+                                isOn={(row, category, day) => row[category as Category].includes(day)}
+                                onToggle={(row, category, day) => toggleCell(row._key, category as Category, day)}
+                                lockRedDays
+                                details={(row) => (
+                                    <>
+                                        <TimelineField label="Uraian" value={row.uraian} onChange={(v) => updateField(row._key, 'uraian', v)} readOnly={!can_write} />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <TimelineField label="Bobot SLA" type="number" value={row.bobot_sla || ''} onChange={(v) => updateField(row._key, 'bobot_sla', Number(v))} readOnly={!can_write} placeholder="0" />
+                                            <TimelineField label="Keterangan" value={row.keterangan || ''} onChange={(v) => updateField(row._key, 'keterangan', v)} readOnly={!can_write} placeholder="Catatan…" />
+                                        </div>
+                                    </>
+                                )}
+                                summary={(row) => `Target ${row.rencana.length} · Realisasi ${row.realisasi.length} · ${row.rencana.length > 0 ? Math.round((row.realisasi.length / row.rencana.length) * 100) : 0}%`}
+                                onRemove={(row) => handleRemove(row._key)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                            />
+                            <p className="rounded-xl bg-muted/50 px-3 py-2 text-[13px] font-semibold text-foreground">
+                                Bobot SLA Keseluruhan: <span className={overallSla >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>{overallSla}%</span>
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="print-table w-full border-collapse text-xs">
+                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                    <tr>
+                                        <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
+                                        <th rowSpan={2} className="w-64 min-w-56 border border-black p-1 text-left font-bold text-foreground">Uraian Pekerjaan</th>
+                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">Status</th>
+                                        <th colSpan={days.length} className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase">Tanggal</th>
+                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
+                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">REALISASI</th>
+                                        <th rowSpan={2} className="w-16 border border-black p-1 text-center font-bold text-foreground">PERSENTASE</th>
+                                        <th rowSpan={2} className="w-36 min-w-28 border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
+                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">BOBOT SLA</th>
+                                        {can_write && <th rowSpan={2} className="no-print w-9 border border-black p-1 text-center font-bold text-foreground">Aksi</th>}
+                                    </tr>
+                                    <tr>
+                                        {days.map((d) => (
+                                            <th key={d.day} className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`} title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}>
+                                                {d.day}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((row, idx) => {
+                                        const target = row.rencana.length;
+                                        const realisasi = row.realisasi.length;
+                                        const persentase = target > 0 ? Math.round((realisasi / target) * 100) : 0;
 
-                                    return (
-                                        <Fragment key={row._key}>
-                                            <tr className="transition-colors hover:bg-muted/10">
-                                                <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
-                                                <td rowSpan={2} className="border border-black p-1 text-left align-top text-foreground">
-                                                    {can_write ? (
-                                                        <input type="text" value={row.uraian} onChange={(e) => updateField(row._key, 'uraian', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
-                                                    ) : (
-                                                        <span className="px-1 text-xs">{row.uraian}</span>
-                                                    )}
-                                                </td>
-                                                <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
-                                                {dayCells(row, 'rencana')}
-                                                <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
-                                                <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
-                                                <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${persentase >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{persentase}%</td>
-                                                <td rowSpan={2} className="border border-black p-1 text-left align-top">
-                                                    {can_write ? (
-                                                        <input type="text" value={row.keterangan || ''} onChange={(e) => updateField(row._key, 'keterangan', e.target.value)} placeholder="Catatan…" className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
-                                                    ) : (
-                                                        <span className="px-1 text-xs">{row.keterangan || '-'}</span>
-                                                    )}
-                                                </td>
-                                                <td rowSpan={2} className="border border-black p-1 text-center align-middle">
-                                                    {can_write ? (
-                                                        <input type="number" min="0" step="any" value={row.bobot_sla || ''} onChange={(e) => updateField(row._key, 'bobot_sla', Number(e.target.value))} placeholder="0" className="w-12 bg-transparent text-center text-xs font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
-                                                    ) : (
-                                                        <span className="text-xs font-bold">{row.bobot_sla || 0}</span>
-                                                    )}
-                                                </td>
-                                                {can_write && (
-                                                    <td rowSpan={2} className="no-print border border-black p-1 text-center align-middle">
-                                                        <Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => handleRemove(row._key)} title="Hapus Pekerjaan">
-                                                            <Trash2 className="size-3.5" />
-                                                        </Button>
+                                        return (
+                                            <Fragment key={row._key}>
+                                                <tr className="transition-colors hover:bg-muted/10">
+                                                    <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top text-foreground">
+                                                        {can_write ? (
+                                                            <input type="text" value={row.uraian} onChange={(e) => updateField(row._key, 'uraian', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
+                                                        ) : (
+                                                            <span className="px-1 text-xs">{row.uraian}</span>
+                                                        )}
                                                     </td>
-                                                )}
-                                            </tr>
-                                            <tr className="transition-colors hover:bg-muted/10">
-                                                <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">REAL</td>
-                                                {dayCells(row, 'realisasi')}
-                                            </tr>
-                                        </Fragment>
-                                    );
-                                })}
-                                {/* Overall SLA */}
-                                <tr className="bg-muted/50 font-bold">
-                                    <td colSpan={3 + days.length + 3} className="border border-black p-1 text-right text-foreground uppercase">Bobot SLA Keseluruhan</td>
-                                    <td className="border border-black p-1 text-center text-foreground" />
-                                    <td className={`border border-black p-1 text-center font-extrabold ${overallSla >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{overallSla}%</td>
-                                    {can_write && <td className="no-print border border-black" />}
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                                    <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
+                                                    {dayCells(row, 'rencana')}
+                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
+                                                    <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${persentase >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{persentase}%</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top">
+                                                        {can_write ? (
+                                                            <input type="text" value={row.keterangan || ''} onChange={(e) => updateField(row._key, 'keterangan', e.target.value)} placeholder="Catatan…" className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
+                                                        ) : (
+                                                            <span className="px-1 text-xs">{row.keterangan || '-'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle">
+                                                        {can_write ? (
+                                                            <input type="number" min="0" step="any" value={row.bobot_sla || ''} onChange={(e) => updateField(row._key, 'bobot_sla', Number(e.target.value))} placeholder="0" className="w-12 bg-transparent text-center text-xs font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
+                                                        ) : (
+                                                            <span className="text-xs font-bold">{row.bobot_sla || 0}</span>
+                                                        )}
+                                                    </td>
+                                                    {can_write && (
+                                                        <td rowSpan={2} className="no-print border border-black p-1 text-center align-middle">
+                                                            <Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => handleRemove(row._key)} title="Hapus Pekerjaan">
+                                                                <Trash2 className="size-3.5" />
+                                                            </Button>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                                <tr className="transition-colors hover:bg-muted/10">
+                                                    <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">REAL</td>
+                                                    {dayCells(row, 'realisasi')}
+                                                </tr>
+                                            </Fragment>
+                                        );
+                                    })}
+                                    {/* Overall SLA */}
+                                    <tr className="bg-muted/50 font-bold">
+                                        <td colSpan={3 + days.length + 3} className="border border-black p-1 text-right text-foreground uppercase">Bobot SLA Keseluruhan</td>
+                                        <td className="border border-black p-1 text-center text-foreground" />
+                                        <td className={`border border-black p-1 text-center font-extrabold ${overallSla >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{overallSla}%</td>
+                                        {can_write && <td className="no-print border border-black" />}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Legend */}
                     <div className="border-t border-border bg-muted/20 p-4">

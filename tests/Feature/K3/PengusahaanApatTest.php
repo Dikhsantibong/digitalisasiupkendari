@@ -34,7 +34,7 @@ class PengusahaanApatTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/apat/index')
+                    ->component('pengusahaan/k3/apat/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 7)
@@ -128,7 +128,7 @@ class PengusahaanApatTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/apat/index')
+                ->component('pengusahaan/k3/apat/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.nama_alat', 'PASIR SILIKA KHUSUS')
                 ->where('record.items.0.jumlah', 8)

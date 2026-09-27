@@ -36,7 +36,7 @@ class PengusahaanJamKerjaBulananTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/jam-kerja-bulanan/index')
+                    ->component('pengusahaan/k3/jam-kerja-bulanan/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record')
@@ -128,7 +128,7 @@ class PengusahaanJamKerjaBulananTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/jam-kerja-bulanan/index')
+                ->component('pengusahaan/k3/jam-kerja-bulanan/index')
                 ->where('has_detail_record', true)
                 ->where('record.karyawan_tetap', 8)
                 ->where('record.karyawan_tetap_shift', 2)
@@ -162,7 +162,7 @@ class PengusahaanJamKerjaBulananTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/jam-kerja-bulanan/index')
+                ->component('pengusahaan/k3/jam-kerja-bulanan/index')
                 ->where('komulatif_lalu_suggested', 15000)
                 ->where('record.jam_kerja_komulatif_bulan_lalu', 15000)
             );
@@ -214,7 +214,7 @@ class PengusahaanJamKerjaBulananTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/jam-kerja-bulanan/index')
+                ->component('pengusahaan/k3/jam-kerja-bulanan/index')
                 ->where('can_write', false)
             );
 

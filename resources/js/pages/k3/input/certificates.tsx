@@ -2,9 +2,12 @@ import { Head, router } from '@inertiajs/react';
 import { Plus, Printer, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import certificate from '@/routes/k3/input/certificate';
 import type { IdName } from '@/types';
@@ -86,6 +89,7 @@ const STATUS_CLASS: Record<StatusKey, string> = {
 
 export default function CertificateInput({ filters, rows: initialRows, options, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initialRows));
+    const compact = useCompactLayout();
     const [nextKey, setNextKey] = useState(initialRows.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -178,72 +182,102 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-x-auto">
-                    <table className="cert-table w-full border-collapse text-xs">
-                        <thead>
-                            <tr>
-                                <th rowSpan={2} className={`${thBase} w-8`}>NO</th>
-                                <th rowSpan={2} className={`${thBase} min-w-40 text-left`}>NAMA KATEGORI ALAT</th>
-                                <th rowSpan={2} className={`${thBase} min-w-32`}>JENIS</th>
-                                <th rowSpan={2} className={thBase}>KAPASITAS</th>
-                                <th rowSpan={2} className={thBase}>LOKASI</th>
-                                <th rowSpan={2} className={thBase}>MERK MANUFACTURE</th>
-                                <th rowSpan={2} className={thBase}>NO. SERI ALAT</th>
-                                <th rowSpan={2} className={`${thBase} min-w-40`}>REGULASI PERATURAN</th>
-                                <th colSpan={2} className={thBase}>IJIN PEMAKAIAN AWAL</th>
-                                <th colSpan={2} className={thBase}>PEMERIKSAAN PENGUJIAN TERAKHIR</th>
-                                <th rowSpan={2} className={thBase}>PENGUJIAN ULANG (TANGGAL)</th>
-                                <th rowSpan={2} className={thBase}>STATUS (AKTIF/ EXPIRED/ BELUM)</th>
-                                <th rowSpan={2} className={thBase}>BATASAN UJI</th>
-                                <th rowSpan={2} className={`${thBase} min-w-32`}>KETERANGAN</th>
-                                {can_write && <th rowSpan={2} className={`${thBase} no-print w-10`}>Aksi</th>}
-                            </tr>
-                            <tr>
-                                <th className={thBase}>NOMOR</th>
-                                <th className={thBase}>TANGGAL</th>
-                                <th className={thBase}>NOMOR</th>
-                                <th className={thBase}>TANGGAL</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.length === 0 ? (
-                                <tr><td colSpan={can_write ? 17 : 16} className="border border-black p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
-                            ) : rows.map((r, i) => {
-                                const st = statusOf(r);
-                                return (
-                                    <tr key={r._key} className="[&>td]:border [&>td]:border-black [&>td]:p-1 hover:bg-muted/20">
-                                        <td className="text-center">{i + 1}</td>
-                                        <td className="min-w-40">
-                                            {can_write ? (
-                                                <select value={r.category_code ?? ''} onChange={(e) => updateCategory(r._key, e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none">
-                                                    <option value="">— pilih —</option>
-                                                    {options.categories.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                                                </select>
-                                            ) : (
-                                                <span className="text-xs">{options.categories.find((c) => c.code === r.category_code)?.name ?? r.category_code ?? '-'}</span>
-                                            )}
-                                        </td>
-                                        <td className="min-w-32">{txt(r, 'jenis')}</td>
-                                        <td className="min-w-24">{txt(r, 'kapasitas')}</td>
-                                        <td className="min-w-24">{txt(r, 'lokasi')}</td>
-                                        <td className="min-w-28">{txt(r, 'merk_manufacture')}</td>
-                                        <td className="min-w-28">{txt(r, 'no_seri')}</td>
-                                        <td className="min-w-40">{txt(r, 'regulasi')}</td>
-                                        <td className="min-w-24">{txt(r, 'ijin_awal_nomor')}</td>
-                                        <td className="min-w-32">{txt(r, 'ijin_awal_tanggal', 'date')}</td>
-                                        <td className="min-w-24">{txt(r, 'uji_terakhir_nomor')}</td>
-                                        <td className="min-w-32">{txt(r, 'uji_terakhir_tanggal', 'date')}</td>
-                                        <td className="min-w-32">{txt(r, 'uji_ulang_tanggal', 'date')}</td>
-                                        <td className={`text-center text-xs font-bold ${STATUS_CLASS[st]}`}>{st}</td>
-                                        <td className="min-w-24">{txt(r, 'batasan_uji')}</td>
-                                        <td className="min-w-32">{txt(r, 'keterangan')}</td>
-                                        {can_write && <td className="no-print text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(r._key)}><Trash2 className="size-4" /></Button></td>}
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                    </div>
+                    {compact ? (
+                        <MobileRowEditor<Row>
+                            rows={rows}
+                            fields={[
+                                { key: 'category_code', label: 'Nama Kategori Alat', type: 'select', options: options.categories.map((c) => c.code), optionLabels: Object.fromEntries(options.categories.map((c) => [c.code, c.name])), group: 'Peralatan' },
+                                { key: 'jenis', label: 'Jenis' },
+                                { key: 'kapasitas', label: 'Kapasitas' },
+                                { key: 'lokasi', label: 'Lokasi' },
+                                { key: 'merk_manufacture', label: 'Merk Manufacture' },
+                                { key: 'no_seri', label: 'No. Seri Alat' },
+                                { key: 'regulasi', label: 'Regulasi Peraturan' },
+                                { key: 'ijin_awal_nomor', label: 'Nomor', group: 'Ijin Pemakaian Awal' },
+                                { key: 'ijin_awal_tanggal', label: 'Tanggal', type: 'date' },
+                                { key: 'uji_terakhir_nomor', label: 'Nomor', group: 'Pemeriksaan Pengujian Terakhir' },
+                                { key: 'uji_terakhir_tanggal', label: 'Tanggal', type: 'date' },
+                                { key: 'uji_ulang_tanggal', label: 'Pengujian Ulang (Tanggal)', type: 'date', group: 'Status' },
+                                { key: 'masa_berlaku_tahun', label: 'Status', type: 'display', display: (r) => statusOf(r) },
+                                { key: 'batasan_uji', label: 'Batasan Uji' },
+                                { key: 'keterangan', label: 'Keterangan' },
+                            ] satisfies RowField<Row>[]}
+                            title={(r) => options.categories.find((c) => c.code === r.category_code)?.name ?? (r.jenis || 'Peralatan baru')}
+                            subtitle={(r) => `${r.jenis || '-'} · ${statusOf(r)}`}
+                            onChange={(i, k, v) => (k === 'category_code' ? updateCategory(rows[i]._key, String(v ?? '')) : update(rows[i]._key, k as TextField, String(v ?? '')))}
+                            onRemove={(i) => removeRow(rows[i]._key)}
+                            canWrite={can_write}
+                            rowKey={(r) => r._key}
+                            removeLabel="Hapus peralatan"
+                        />
+                    ) : (
+                        <div className="overflow-x-auto">
+                        <table className="cert-table w-full border-collapse text-xs">
+                            <thead>
+                                <tr>
+                                    <th rowSpan={2} className={`${thBase} w-8`}>NO</th>
+                                    <th rowSpan={2} className={`${thBase} min-w-40 text-left`}>NAMA KATEGORI ALAT</th>
+                                    <th rowSpan={2} className={`${thBase} min-w-32`}>JENIS</th>
+                                    <th rowSpan={2} className={thBase}>KAPASITAS</th>
+                                    <th rowSpan={2} className={thBase}>LOKASI</th>
+                                    <th rowSpan={2} className={thBase}>MERK MANUFACTURE</th>
+                                    <th rowSpan={2} className={thBase}>NO. SERI ALAT</th>
+                                    <th rowSpan={2} className={`${thBase} min-w-40`}>REGULASI PERATURAN</th>
+                                    <th colSpan={2} className={thBase}>IJIN PEMAKAIAN AWAL</th>
+                                    <th colSpan={2} className={thBase}>PEMERIKSAAN PENGUJIAN TERAKHIR</th>
+                                    <th rowSpan={2} className={thBase}>PENGUJIAN ULANG (TANGGAL)</th>
+                                    <th rowSpan={2} className={thBase}>STATUS (AKTIF/ EXPIRED/ BELUM)</th>
+                                    <th rowSpan={2} className={thBase}>BATASAN UJI</th>
+                                    <th rowSpan={2} className={`${thBase} min-w-32`}>KETERANGAN</th>
+                                    {can_write && <th rowSpan={2} className={`${thBase} no-print w-10`}>Aksi</th>}
+                                </tr>
+                                <tr>
+                                    <th className={thBase}>NOMOR</th>
+                                    <th className={thBase}>TANGGAL</th>
+                                    <th className={thBase}>NOMOR</th>
+                                    <th className={thBase}>TANGGAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.length === 0 ? (
+                                    <tr><td colSpan={can_write ? 17 : 16} className="border border-black p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
+                                ) : rows.map((r, i) => {
+                                    const st = statusOf(r);
+                                    return (
+                                        <tr key={r._key} className="[&>td]:border [&>td]:border-black [&>td]:p-1 hover:bg-muted/20">
+                                            <td className="text-center">{i + 1}</td>
+                                            <td className="min-w-40">
+                                                {can_write ? (
+                                                    <select value={r.category_code ?? ''} onChange={(e) => updateCategory(r._key, e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none">
+                                                        <option value="">— pilih —</option>
+                                                        {options.categories.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+                                                    </select>
+                                                ) : (
+                                                    <span className="text-xs">{options.categories.find((c) => c.code === r.category_code)?.name ?? r.category_code ?? '-'}</span>
+                                                )}
+                                            </td>
+                                            <td className="min-w-32">{txt(r, 'jenis')}</td>
+                                            <td className="min-w-24">{txt(r, 'kapasitas')}</td>
+                                            <td className="min-w-24">{txt(r, 'lokasi')}</td>
+                                            <td className="min-w-28">{txt(r, 'merk_manufacture')}</td>
+                                            <td className="min-w-28">{txt(r, 'no_seri')}</td>
+                                            <td className="min-w-40">{txt(r, 'regulasi')}</td>
+                                            <td className="min-w-24">{txt(r, 'ijin_awal_nomor')}</td>
+                                            <td className="min-w-32">{txt(r, 'ijin_awal_tanggal', 'date')}</td>
+                                            <td className="min-w-24">{txt(r, 'uji_terakhir_nomor')}</td>
+                                            <td className="min-w-32">{txt(r, 'uji_terakhir_tanggal', 'date')}</td>
+                                            <td className="min-w-32">{txt(r, 'uji_ulang_tanggal', 'date')}</td>
+                                            <td className={`text-center text-xs font-bold ${STATUS_CLASS[st]}`}>{st}</td>
+                                            <td className="min-w-24">{txt(r, 'batasan_uji')}</td>
+                                            <td className="min-w-32">{txt(r, 'keterangan')}</td>
+                                            {can_write && <td className="no-print text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(r._key)}><Trash2 className="size-4" /></Button></td>}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* NB legend */}

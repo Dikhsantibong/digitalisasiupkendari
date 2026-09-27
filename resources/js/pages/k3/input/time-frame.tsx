@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { DayStrip } from '@/components/mobile/day-strip';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -16,6 +17,8 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import timeFrame from '@/routes/k3/input/time-frame';
@@ -74,6 +77,12 @@ export default function TimeFrameInput({
     can_write,
 }: Props) {
     const [rows, setRows] = useState<ServerRow[]>(initialRows);
+    const compact = useCompactLayout();
+    const [mobileDay, setMobileDay] = useState(() => {
+        const today = new Date().getDate();
+
+        return days.some((d) => d.day === today) ? today : (days[0]?.day ?? 1);
+    });
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -318,90 +327,138 @@ export default function TimeFrameInput({
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-xs">
-                            <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                <tr>
-                                    <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
-                                    <th rowSpan={2} className="w-56 min-w-48 border border-black p-1 text-left font-bold text-foreground">Uraian Pelaporan</th>
-                                    <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">PIC</th>
-                                    <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">Status</th>
-                                    <th colSpan={days.length} className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase">Time line</th>
-                                    <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
-                                    <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">REALISASI</th>
-                                    <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">KINERJA</th>
-                                    <th rowSpan={2} className="w-40 min-w-32 border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
-                                </tr>
-                                <tr>
-                                    {days.map((d) => (
-                                        <th key={d.day} className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`} title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}>
-                                            {d.day}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={days.length + 8} className="border border-black p-6 text-center text-xs text-muted-foreground">
-                                            Belum ada master jenis kegiatan K3. Tambahkan di Master K3 &amp; Keamanan → Jenis Kegiatan.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    rows.map((row, idx) => {
-                                        const target = row.rencana.length;
-                                        const realisasi = row.realisasi.length;
-                                        const kinerja = target > 0 ? Math.round((realisasi / target) * 100) : 0;
+                    {compact ? (
+                        <div className="flex flex-col gap-3 p-3">
+                            <DayStrip
+                                items={days.map((d) => ({ key: String(d.day), label: String(d.day), sub: d.dow, isRed: d.is_red, done: rows.some((r) => r.rencana.includes(d.day) || r.realisasi.includes(d.day)) }))}
+                                value={String(mobileDay)}
+                                onChange={(key) => setMobileDay(Number(key))}
+                            />
+                            {rows.map((row, index) => (
+                                <div key={row.activity_type_id} className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3">
+                                    <div className="text-[14px] font-medium text-foreground">
+                                        {index + 1}. {row.uraian}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(['rencana', 'realisasi'] as const).map((category) => {
+                                            const on = row[category].includes(mobileDay);
 
-                                        return (
-                                            <Fragment key={row.activity_type_id}>
-                                                {/* RENC */}
-                                                <tr className="transition-colors hover:bg-muted/10">
-                                                    <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top text-[11px] text-foreground">{row.uraian}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-center align-top">
-                                                        {can_write ? (
-                                                            <input
-                                                                type="text"
-                                                                value={row.pic || ''}
-                                                                onChange={(e) => updateField(row.activity_type_id, 'pic', e.target.value)}
-                                                                className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                            />
-                                                        ) : (
-                                                            <span className="text-xs">{row.pic || '-'}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
-                                                    {dayCells(row, 'rencana')}
-                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
-                                                    <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{kinerja}%</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top">
-                                                        {can_write ? (
-                                                            <input
-                                                                type="text"
-                                                                value={row.keterangan || ''}
-                                                                onChange={(e) => updateField(row.activity_type_id, 'keterangan', e.target.value)}
-                                                                placeholder="Catatan…"
-                                                                className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                            />
-                                                        ) : (
-                                                            <span className="px-1 text-xs">{row.keterangan || '-'}</span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                                {/* REAL */}
-                                                <tr className="transition-colors hover:bg-muted/10">
-                                                    <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">REAL</td>
-                                                    {dayCells(row, 'realisasi')}
-                                                </tr>
-                                            </Fragment>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                            return (
+                                                <button
+                                                    key={category}
+                                                    type="button"
+                                                    disabled={!can_write}
+                                                    onClick={() => toggleCell(row.activity_type_id, category, mobileDay)}
+                                                    className={`min-h-10 rounded-lg border text-[13px] font-medium transition active:scale-95 disabled:opacity-60 ${on ? (category === 'rencana' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-amber-500 bg-amber-400 text-black') : 'border-border bg-background text-foreground'}`}
+                                                >
+                                                    {on ? '✓ ' : ''}
+                                                    {category === 'rencana' ? 'Rencana' : 'Realisasi'}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            PIC
+                                            <Input value={row.pic} onChange={(e) => updateField(row.activity_type_id, 'pic', e.target.value)} disabled={!can_write} />
+                                        </label>
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Keterangan
+                                            <Input value={row.keterangan} onChange={(e) => updateField(row.activity_type_id, 'keterangan', e.target.value)} disabled={!can_write} />
+                                        </label>
+                                    </div>
+                                    <div className="text-[12px] text-muted-foreground">
+                                        Bulan ini: rencana {row.rencana.length} hari · realisasi {row.realisasi.length} hari
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="print-table w-full border-collapse text-xs">
+                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                    <tr>
+                                        <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
+                                        <th rowSpan={2} className="w-56 min-w-48 border border-black p-1 text-left font-bold text-foreground">Uraian Pelaporan</th>
+                                        <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">PIC</th>
+                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">Status</th>
+                                        <th colSpan={days.length} className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase">Time line</th>
+                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
+                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">REALISASI</th>
+                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">KINERJA</th>
+                                        <th rowSpan={2} className="w-40 min-w-32 border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
+                                    </tr>
+                                    <tr>
+                                        {days.map((d) => (
+                                            <th key={d.day} className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`} title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}>
+                                                {d.day}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={days.length + 8} className="border border-black p-6 text-center text-xs text-muted-foreground">
+                                                Belum ada master jenis kegiatan K3. Tambahkan di Master K3 &amp; Keamanan → Jenis Kegiatan.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        rows.map((row, idx) => {
+                                            const target = row.rencana.length;
+                                            const realisasi = row.realisasi.length;
+                                            const kinerja = target > 0 ? Math.round((realisasi / target) * 100) : 0;
+
+                                            return (
+                                                <Fragment key={row.activity_type_id}>
+                                                    {/* RENC */}
+                                                    <tr className="transition-colors hover:bg-muted/10">
+                                                        <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
+                                                        <td rowSpan={2} className="border border-black p-1 text-left align-top text-[11px] text-foreground">{row.uraian}</td>
+                                                        <td rowSpan={2} className="border border-black p-1 text-center align-top">
+                                                            {can_write ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={row.pic || ''}
+                                                                    onChange={(e) => updateField(row.activity_type_id, 'pic', e.target.value)}
+                                                                    className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                />
+                                                            ) : (
+                                                                <span className="text-xs">{row.pic || '-'}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
+                                                        {dayCells(row, 'rencana')}
+                                                        <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
+                                                        <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
+                                                        <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{kinerja}%</td>
+                                                        <td rowSpan={2} className="border border-black p-1 text-left align-top">
+                                                            {can_write ? (
+                                                                <input
+                                                                    type="text"
+                                                                    value={row.keterangan || ''}
+                                                                    onChange={(e) => updateField(row.activity_type_id, 'keterangan', e.target.value)}
+                                                                    placeholder="Catatan…"
+                                                                    className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                />
+                                                            ) : (
+                                                                <span className="px-1 text-xs">{row.keterangan || '-'}</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                    {/* REAL */}
+                                                    <tr className="transition-colors hover:bg-muted/10">
+                                                        <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">REAL</td>
+                                                        {dayCells(row, 'realisasi')}
+                                                    </tr>
+                                                </Fragment>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Legend */}
                     <div className="border-t border-border bg-muted/20 p-4">

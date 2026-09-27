@@ -35,7 +35,7 @@ class PengusahaanInspeksiRambuTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/inspeksi-rambu/index')
+                    ->component('pengusahaan/k3/inspeksi-rambu/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 34)
@@ -128,7 +128,7 @@ class PengusahaanInspeksiRambuTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/inspeksi-rambu/index')
+                ->component('pengusahaan/k3/inspeksi-rambu/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.rambu_k3', 'Awas Radiasi Laser')
                 ->where('record.items.0.lokasi', 'Laboratorium Pengujian')
@@ -213,7 +213,7 @@ class PengusahaanInspeksiRambuTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/inspeksi-rambu/index')
+                ->component('pengusahaan/k3/inspeksi-rambu/index')
                 ->where('can_write', true)
                 ->has('record.items', 34)
             );

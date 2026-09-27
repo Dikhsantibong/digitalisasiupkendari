@@ -96,7 +96,7 @@ class PengusahaanTimeFrameController extends Controller
             })->all();
         }
 
-        return Inertia::render('k3/pengusahaan/time-frame/index', [
+        return Inertia::render('pengusahaan/k3/time-frame/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

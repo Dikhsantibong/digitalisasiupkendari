@@ -34,7 +34,7 @@ class PengusahaanPemeriksaanP3kTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/pemeriksaan-p3k/index')
+                    ->component('pengusahaan/k3/pemeriksaan-p3k/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 20)
@@ -139,7 +139,7 @@ class PengusahaanPemeriksaanP3kTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/pemeriksaan-p3k/index')
+                ->component('pengusahaan/k3/pemeriksaan-p3k/index')
                 ->where('has_saved', false)
                 ->where('record.locations', ['Gedung A', 'Gedung B'])
                 ->where('record.items.0.nama_isi', 'Kasa Steril Khusus')

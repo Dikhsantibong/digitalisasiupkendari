@@ -1,22 +1,6 @@
 import { Head, router } from '@inertiajs/react';
-import {
-    Activity,
-    AlertOctagon,
-    BatteryCharging,
-    BookOpen,
-    Cog,
-    Disc,
-    Droplet,
-    Flame,
-    Fuel,
-    Ruler,
-    Sliders,
-    Timer,
-    Users,
-    Waves,
-    Wrench,
-    Zap,
-} from 'lucide-react';
+import { AlertOctagon, BookOpen, Users } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -36,109 +20,12 @@ type Props = {
 type FormulirCard = {
     title: string;
     description: string;
-    icon: typeof Wrench;
+    icon: LucideIcon;
     target: string;
     active?: boolean;
 };
 
 const FORMULIR_LIST: FormulirCard[] = [
-    {
-        title: 'Formulir Checklist Prelube Test',
-        description: 'Checklist pemeriksaan sistem pelumasan awal (prelube pump, tekanan oli, dan kesiapan pelumasan mesin).',
-        icon: Droplet,
-        target: '/har/formulir/prelube-test',
-        active: true,
-    },
-    {
-        title: 'Formulir Checklist Hydrotest',
-        description: 'Checklist pengujian tekanan hidrolik (hydrotest) pipa, bejana tekan, cooler, dan sistem pendingin.',
-        icon: Waves,
-        target: '/har/formulir/hydrotest',
-        active: true,
-    },
-    {
-        title: 'Formulir Checklist Timing Injection Pump',
-        description: 'Checklist dan verifikasi sudut penyemprotan bahan bakar (timing injection) pompa injeksi mesin.',
-        icon: Timer,
-        target: '/har/formulir/timing-injection-pump',
-        active: true,
-    },
-    {
-        title: 'Formulir Pengukuran Defleksi Crankshaft',
-        description: 'Pencatatan pengukuran kelurusan (alignment) dan defleksi poros engkol (crankshaft) tiap silinder mesin.',
-        icon: Sliders,
-        target: '/har/formulir/defleksi-crankshaft',
-        active: true,
-    },
-    {
-        title: 'Formulir Pemeriksaan Kondisi Kekencangan Baut Counter Weight',
-        description: 'Pemeriksaan torsi kekencangan baut counter weight dan penguncian poros engkol.',
-        icon: Wrench,
-        target: '/har/formulir/baut-counter-weight',
-        active: true,
-    },
-    {
-        title: 'Formulir Pemeriksaan Axial Conrod & Baut Conrod',
-        description: 'Pemeriksaan clearance axial connecting rod, kondisi bearing, dan torsi pengencangan baut conrod.',
-        icon: Disc,
-        target: '/har/formulir/axial-conrod',
-        active: true,
-    },
-    {
-        title: 'Formulir Pengukuran Backlash Gear Camshaft',
-        description: 'Pengukuran kerenggangan (backlash) roda gigi timing gear dan camshaft mesin pembangkit.',
-        icon: Cog,
-        target: '/har/formulir/backlash-gear-camshaft',
-    },
-    {
-        title: 'Formulir Pengukuran Clearance Valve',
-        description: 'Pencatatan celah katup hisap (inlet valve) dan katup buang (exhaust valve) pada silinder head.',
-        icon: Ruler,
-        target: '/har/formulir/clearance-valve',
-        active: true,
-    },
-    {
-        title: 'Formulir Pengukuran Tekanan Pembakaran',
-        description: 'Pencatatan tekanan kompresi (Pcomp) dan tekanan pembakaran maksimum (Pmax) tiap silinder mesin.',
-        icon: Flame,
-        target: '/har/formulir/tekanan-pembakaran',
-        active: true,
-    },
-    {
-        title: 'Formulir Pengukuran Tekanan Pengabutan Injektor',
-        description: 'Pengukuran tekanan bukaan pengabutan injektor (nozzle injection pressure) sebelum dan sesudah kalibrasi.',
-        icon: Fuel,
-        target: '/har/formulir/tekanan-pengabutan-injektor',
-        active: true,
-    },
-    {
-        title: 'Data Pengukuran Arus Kerja Elektro Motor',
-        description: 'Pencatatan hasil pengukuran arus kerja elektro motor auxiliary mesin per fasa (R, S, T).',
-        icon: Zap,
-        target: '/har/formulir/arus-motor',
-        active: true,
-    },
-    {
-        title: 'Formulir Pengukuran Tekanan Vibrasi',
-        description: 'Pengukuran tingkat getaran (vibration level) pada bearing mesin, generator, turbocharger, dan auxiliary.',
-        icon: Activity,
-        target: '/har/formulir/tekanan-vibrasi',
-        active: true,
-    },
-    {
-        title: 'Formulir Pengukuran Kualitas Pelumas',
-        description: 'Pencatatan hasil uji laboratorium parameter oli pelumas (viskositas, TBN, water content, kontaminasi).',
-        icon: Fuel,
-        target: '/har/formulir/kualitas-pelumas',
-        active: true,
-    },
-    {
-        title: 'Formulir Pengukuran Tegangan Baterai',
-        description: 'Pemeriksaan tegangan sel, berat jenis elektrolit, dan kesiapan baterai starting dan kontrol DC.',
-        icon: BatteryCharging,
-        target: '/har/formulir/tegangan-baterai',
-        active: true,
-    },
     {
         title: 'Formulir Laporan Gangguan (LH-05)',
         description: 'Laporan kerusakan unit pembangkit: data mesin, tanggal & peralatan rusak, gejala, urutan kejadian, analisa penyebab, akibat, tindak lanjut, dan eviden.',

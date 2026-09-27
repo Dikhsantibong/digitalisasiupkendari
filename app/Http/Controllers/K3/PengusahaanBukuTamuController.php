@@ -74,7 +74,7 @@ class PengusahaanBukuTamuController extends Controller
             $catatan = '';
         }
 
-        return Inertia::render('k3/pengusahaan/buku-tamu/index', [
+        return Inertia::render('pengusahaan/k3/buku-tamu/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

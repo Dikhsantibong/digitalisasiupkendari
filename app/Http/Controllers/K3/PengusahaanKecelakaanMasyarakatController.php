@@ -69,7 +69,7 @@ class PengusahaanKecelakaanMasyarakatController extends Controller
                 : [],
         ];
 
-        return Inertia::render('k3/pengusahaan/kecelakaan-masyarakat/index', [
+        return Inertia::render('pengusahaan/k3/kecelakaan-masyarakat/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

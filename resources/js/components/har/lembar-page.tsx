@@ -3,6 +3,7 @@ import { Download, Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
+import { MobileModeBar } from '@/components/mobile/mode-bar';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -80,6 +81,8 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const compact = useCompactLayout();
+    // Phone: a jadwal sheet opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
     const { can } = usePermissions();
     // Phone layout edits one grid column (a date / week) at a time; start on today's date when shown.
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
@@ -238,7 +241,15 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
 
     if (compact) {
         const column = lembar.grid.find((c) => c.key === selectedColumn) ?? lembar.grid[0];
-        const mobileField = (field: Field, index: number, row: Row) => (
+        const viewing = lembar.menu === 'jadwal' && !mobileEditing;
+        const codeLabel = (code: string) => lembar.codes.find((c) => c.code === code)?.label;
+        const mobileField = (field: Field, index: number, row: Row) =>
+            viewing ? (
+                <div key={field.key} className="flex flex-col gap-0.5 text-[12px] text-muted-foreground">
+                    {field.label}
+                    <span className="text-[14px] text-foreground">{row.fields[field.key] || '—'}</span>
+                </div>
+            ) : (
             <label key={field.key} className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                 {field.label}
                 <Input
@@ -249,10 +260,22 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                     disabled={!can_write}
                 />
             </label>
-        );
+            );
         const mobileCell = (index: number, line: string, value: string) => {
             if (!column) {
                 return null;
+            }
+
+            if (viewing) {
+                const done = lembar.cell_type === 'mark' ? value === '1' : value !== '';
+
+                return (
+                    <span
+                        className={`w-fit rounded-md border px-2 py-0.5 text-[12px] font-semibold ${done ? 'border-emerald-600 bg-emerald-500 text-black' : 'border-dashed border-border text-muted-foreground'}`}
+                    >
+                        {lembar.cell_type === 'mark' ? (done ? '✓ Dilaksanakan' : 'Belum dilaksanakan') : value ? `${value}${codeLabel(value) ? ` — ${codeLabel(value)}` : ''}` : '—'}
+                    </span>
+                );
             }
 
             if (lembar.cell_type === 'mark') {
@@ -283,8 +306,9 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
         return (
             <>
                 <Head title={`${lembar.title} - ${unit.name}`} />
-                <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                <div className={`flex flex-col gap-3 p-4 ${can_write && (!viewing || dirty) ? 'pb-28' : ''}`}>
                     <PageHeader title={lembar.title} description={`${unit.name} · ${periodLabel}${machineName ? ` · ${machineName}` : ''}`} />
+                    {lembar.menu === 'jadwal' && can_write && <MobileModeBar editing={mobileEditing} onChange={setMobileEditing} />}
 
                     <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
                         <div className="col-span-2">
@@ -340,7 +364,7 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                                             </div>
                                         ))}
                                         {after.map((f) => mobileField(f, index, row))}
-                                        {can_write && (
+                                        {can_write && !viewing && (
                                             <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="self-start text-destructive">
                                                 <Trash2 className="size-4" />
                                                 Hapus baris
@@ -349,7 +373,7 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                                     </div>
                                 );
                             })}
-                            {can_write && (
+                            {can_write && !viewing && (
                                 <Button type="button" variant="outline" size="sm" onClick={() => addRow(section.key)} className="h-auto max-w-full self-start py-1.5 text-left whitespace-normal">
                                     <Plus className="size-4" />
                                     Tambah baris{section.title ? ` ${section.title}` : ''}
@@ -368,14 +392,14 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                                     setCatatan(e.target.value);
                                     touch();
                                 }}
-                                disabled={!can_write}
+                                disabled={!can_write || viewing}
                                 rows={3}
                             />
                         </div>
                     )}
                 </div>
 
-                {can_write && (
+                {can_write && (!viewing || dirty) && (
                     <StickyActionBar>
                         <Button size="lg" onClick={save} disabled={saving || !dirty || (lembar.per_machine && !filters.machine_id)}>
                             <Save className="size-4" />

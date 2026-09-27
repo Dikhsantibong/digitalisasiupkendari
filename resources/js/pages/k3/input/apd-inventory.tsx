@@ -2,10 +2,13 @@ import { Head, router } from '@inertiajs/react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import apdInventory from '@/routes/k3/input/apd-inventory';
@@ -38,6 +41,7 @@ const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: 
 
 export default function ApdInventoryInput({ unit, filters, groups, rows: initial, options, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initial));
+    const compact = useCompactLayout();
     const [nextKey, setNextKey] = useState(initial.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -105,72 +109,118 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
                     {dirty && <span className="pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full border-collapse text-xs">
-                        <thead className="bg-muted/50">
-                            <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
-                                <th className="w-10">No</th>
-                                <th className="text-left">Alat Pelindung Diri</th>
-                                <th className="w-20">Jumlah</th>
-                                <th className="w-24">Satuan</th>
-                                <th className="text-left">Lokasi</th>
-                                <th className="text-left">Keterangan</th>
-                                <th className="text-left">Foto (URL)</th>
-                                {can_write && <th className="w-12">Aksi</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {orderedGroups.map((grup) => {
-                                const items = rows.filter((r) => r.grup === grup);
-                                let lastSub = '__none__';
-                                let n = 0;
-                                return (
-                                    <Fragment key={grup}>
-                                        <tr className="bg-muted/70">
-                                            <td colSpan={totalCols} className="border border-border p-1.5 text-left text-xs font-bold tracking-wide text-foreground uppercase">{grup}</td>
-                                        </tr>
-                                        {items.map((row) => {
-                                            const showSub = row.subkategori && row.subkategori !== lastSub;
-                                            if (row.subkategori !== lastSub) lastSub = row.subkategori;
-                                            n += 1;
-                                            return (
-                                                <Fragment key={row._key}>
-                                                    {showSub && (
-                                                        <tr className="bg-muted/30">
-                                                            <td className="border border-border p-1 text-center text-[11px] font-semibold text-muted-foreground" />
-                                                            <td colSpan={totalCols - 1} className="border border-border p-1 text-left text-[11px] font-semibold text-foreground">{row.subkategori}</td>
-                                                        </tr>
-                                                    )}
-                                                    <tr className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
-                                                        <td className="text-center">{n}</td>
-                                                        <td className="min-w-[220px] pl-3">
-                                                            {can_write ? <Input value={row.nama} onChange={(e) => updateText(row._key, 'nama', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.nama}</span>}
-                                                        </td>
-                                                        <td className="text-center">
-                                                            {can_write ? <Input type="number" min="0" value={row.jumlah || ''} onChange={(e) => updateNum(row._key, e.target.value)} className="h-8 w-16 text-center text-xs" placeholder="0" /> : row.jumlah}
-                                                        </td>
-                                                        <td className="min-w-[80px]">{can_write ? <Input value={row.satuan} onChange={(e) => updateText(row._key, 'satuan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.satuan}</span>}</td>
-                                                        <td className="min-w-[140px]">{can_write ? <Input value={row.lokasi} onChange={(e) => updateText(row._key, 'lokasi', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.lokasi || '-'}</span>}</td>
-                                                        <td className="min-w-[140px]">{can_write ? <Input value={row.keterangan} onChange={(e) => updateText(row._key, 'keterangan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.keterangan || '-'}</span>}</td>
-                                                        <td className="min-w-[140px]">{can_write ? <Input value={row.foto} onChange={(e) => updateText(row._key, 'foto', e.target.value)} className="h-8 text-xs" placeholder="https://…" /> : <span className="text-xs">{row.foto || '-'}</span>}</td>
-                                                        {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(row._key)}><Trash2 className="size-4" /></Button></td>}
-                                                    </tr>
-                                                </Fragment>
-                                            );
-                                        })}
-                                        {can_write && (
-                                            <tr>
-                                                <td colSpan={totalCols} className="border border-border p-1.5">
-                                                    <Button variant="outline" size="sm" onClick={() => addItem(grup)} className="gap-1.5 text-xs"><Plus className="size-3.5" />Tambah Item — {grup}</Button>
-                                                </td>
+                {compact ? (
+                    <div className="flex flex-col gap-4">
+                        {orderedGroups.map((grup) => {
+                            const items = rows.filter((r) => r.grup === grup);
+
+                            return (
+                                <div key={grup} className="flex flex-col gap-2">
+                                    <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{grup}</p>
+                                    <MobileRowEditor<Row>
+                                        rows={items}
+                                        fields={[
+                                            { key: 'nama', label: 'Alat Pelindung Diri' },
+                                            { key: 'jumlah', label: 'Jumlah', type: 'number' },
+                                            { key: 'satuan', label: 'Satuan' },
+                                            { key: 'lokasi', label: 'Lokasi' },
+                                            { key: 'keterangan', label: 'Keterangan' },
+                                            { key: 'foto', label: 'Foto (URL)', placeholder: 'https://…' },
+                                        ] satisfies RowField<Row>[]}
+                                        title={(r) => r.nama || 'Item baru'}
+                                        subtitle={(r) => `${r.jumlah} ${r.satuan || ''}${r.subkategori ? ` · ${r.subkategori}` : ''}`}
+                                        onChange={(i, k, v) => {
+                                            const row = items[i];
+
+                                            if (k === 'jumlah') {
+                                                updateNum(row._key, String(v));
+                                            } else {
+                                                updateText(row._key, k as 'nama' | 'subkategori' | 'satuan' | 'lokasi' | 'keterangan' | 'foto', String(v ?? ''));
+                                            }
+                                        }}
+                                        onRemove={(i) => remove(items[i]._key)}
+                                        canWrite={can_write}
+                                        rowKey={(r) => r._key}
+                                        removeLabel="Hapus item"
+                                    />
+                                    {can_write && (
+                                        <Button variant="outline" onClick={() => addItem(grup)} className="h-auto min-h-9 max-w-full gap-1.5 self-start py-2 text-left whitespace-normal">
+                                            <Plus className="size-4" />
+                                            Tambah Item — {grup}
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto rounded-md border border-border bg-card">
+                        <table className="w-full border-collapse text-xs">
+                            <thead className="bg-muted/50">
+                                <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
+                                    <th className="w-10">No</th>
+                                    <th className="text-left">Alat Pelindung Diri</th>
+                                    <th className="w-20">Jumlah</th>
+                                    <th className="w-24">Satuan</th>
+                                    <th className="text-left">Lokasi</th>
+                                    <th className="text-left">Keterangan</th>
+                                    <th className="text-left">Foto (URL)</th>
+                                    {can_write && <th className="w-12">Aksi</th>}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {orderedGroups.map((grup) => {
+                                    const items = rows.filter((r) => r.grup === grup);
+                                    let lastSub = '__none__';
+                                    let n = 0;
+                                    return (
+                                        <Fragment key={grup}>
+                                            <tr className="bg-muted/70">
+                                                <td colSpan={totalCols} className="border border-border p-1.5 text-left text-xs font-bold tracking-wide text-foreground uppercase">{grup}</td>
                                             </tr>
-                                        )}
-                                    </Fragment>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
+                                            {items.map((row) => {
+                                                const showSub = row.subkategori && row.subkategori !== lastSub;
+                                                if (row.subkategori !== lastSub) lastSub = row.subkategori;
+                                                n += 1;
+                                                return (
+                                                    <Fragment key={row._key}>
+                                                        {showSub && (
+                                                            <tr className="bg-muted/30">
+                                                                <td className="border border-border p-1 text-center text-[11px] font-semibold text-muted-foreground" />
+                                                                <td colSpan={totalCols - 1} className="border border-border p-1 text-left text-[11px] font-semibold text-foreground">{row.subkategori}</td>
+                                                            </tr>
+                                                        )}
+                                                        <tr className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
+                                                            <td className="text-center">{n}</td>
+                                                            <td className="min-w-[220px] pl-3">
+                                                                {can_write ? <Input value={row.nama} onChange={(e) => updateText(row._key, 'nama', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.nama}</span>}
+                                                            </td>
+                                                            <td className="text-center">
+                                                                {can_write ? <Input type="number" min="0" value={row.jumlah || ''} onChange={(e) => updateNum(row._key, e.target.value)} className="h-8 w-16 text-center text-xs" placeholder="0" /> : row.jumlah}
+                                                            </td>
+                                                            <td className="min-w-[80px]">{can_write ? <Input value={row.satuan} onChange={(e) => updateText(row._key, 'satuan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.satuan}</span>}</td>
+                                                            <td className="min-w-[140px]">{can_write ? <Input value={row.lokasi} onChange={(e) => updateText(row._key, 'lokasi', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.lokasi || '-'}</span>}</td>
+                                                            <td className="min-w-[140px]">{can_write ? <Input value={row.keterangan} onChange={(e) => updateText(row._key, 'keterangan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.keterangan || '-'}</span>}</td>
+                                                            <td className="min-w-[140px]">{can_write ? <Input value={row.foto} onChange={(e) => updateText(row._key, 'foto', e.target.value)} className="h-8 text-xs" placeholder="https://…" /> : <span className="text-xs">{row.foto || '-'}</span>}</td>
+                                                            {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(row._key)}><Trash2 className="size-4" /></Button></td>}
+                                                        </tr>
+                                                    </Fragment>
+                                                );
+                                            })}
+                                            {can_write && (
+                                                <tr>
+                                                    <td colSpan={totalCols} className="border border-border p-1.5">
+                                                        <Button variant="outline" size="sm" onClick={() => addItem(grup)} className="gap-1.5 text-xs"><Plus className="size-3.5" />Tambah Item — {grup}</Button>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
                 <p className="text-[12px] text-muted-foreground">* Untuk item dengan subkategori, isi kolom subkategori lewat data awal; item tambahan baru masuk tanpa subkategori (dapat dikelompokkan manual).</p>
             </div>
         </>

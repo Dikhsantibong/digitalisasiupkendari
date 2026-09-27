@@ -34,7 +34,7 @@ class PengusahaanInventarisApdTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/inventaris-apd/index')
+                    ->component('pengusahaan/k3/inventaris-apd/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 37)
@@ -141,7 +141,7 @@ class PengusahaanInventarisApdTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/inventaris-apd/index')
+                ->component('pengusahaan/k3/inventaris-apd/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.nama_alat', 'Full Body Harness Petzl')
                 ->where('record.items.0.jumlah', 5)

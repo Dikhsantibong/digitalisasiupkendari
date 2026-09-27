@@ -14,6 +14,7 @@ import {
     Users,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileTimelineForm } from '@/components/mobile/timeline-form';
 import {
     buildDocumentHeader,
     createSheet,
@@ -31,6 +32,7 @@ import {
 } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/har/jadwal';
 import patrolCheck from '@/routes/har/jadwal/patrol-check';
@@ -141,6 +143,9 @@ export default function HarJadwalPatrolCheckPage({
     const [rows, setRows] = useState<OperatorRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -497,7 +502,7 @@ export default function HarJadwalPatrolCheckPage({
 
                     {/* Top Action Buttons */}
                     <div className="flex flex-wrap items-center gap-2">
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button
                                     variant="outline"
@@ -533,7 +538,7 @@ export default function HarJadwalPatrolCheckPage({
                                 Reset
                             </Button>
                         )}
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <Button
                                 size="sm"
                                 onClick={handleSave}
@@ -700,295 +705,318 @@ export default function HarJadwalPatrolCheckPage({
                     </div>
 
                     {/* Schedule Table */}
-                    <div className="overflow-x-auto rounded-md border border-border">
-                        <table className="print-table w-full border-collapse text-center text-xs">
-                            <thead>
-                                <tr className="border-b border-border bg-muted/30">
-                                    <th
-                                        style={{ minWidth: '180px' }}
-                                        className="border-r border-border p-2.5 text-left font-bold text-foreground"
-                                    >
-                                        <div className="flex items-center gap-1.5">
-                                            <Users className="size-3.5 text-muted-foreground" />
-                                            NAMA
-                                        </div>
-                                    </th>
-                                    <th
-                                        style={{ minWidth: '120px' }}
-                                        className="border-r border-border p-2 font-bold text-foreground"
-                                    >
-                                        RENCANA / REALISASI
-                                    </th>
-                                    {days.map((day) => (
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<OperatorRow>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row) => row.employee_id}
+                                title={(row) => `${row.name}${row.regu ? ` · Regu ${row.regu}` : ''}`}
+                                isOn={(row, category, day) => String(row[category as 'rencana' | 'realisasi'][String(day)] ?? '') === '1'}
+                                onToggle={(row, category, day) => toggleCell(row.employee_id, category as 'rencana' | 'realisasi', day)}
+                                lockRedDays
+                                summary={(row) => {
+                                    const count = (map: Record<string, string | number>) => Object.values(map).filter((v) => String(v) === '1').length;
+
+                                    return `Rencana ${count(row.rencana)} · Realisasi ${count(row.realisasi)} dari target ${target_working_days} hari`;
+                                }}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada personil patrol check."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto rounded-md border border-border">
+                            <table className="print-table w-full border-collapse text-center text-xs">
+                                <thead>
+                                    <tr className="border-b border-border bg-muted/30">
                                         <th
-                                            key={day.day}
-                                            style={{
-                                                minWidth: '30px',
-                                                width: '30px',
-                                            }}
-                                            className={`border-r border-border p-1 text-center font-bold ${
-                                                day.is_red
-                                                    ? 'print-red-cell bg-red-600 text-white dark:bg-red-700'
-                                                    : 'bg-muted/40 text-foreground'
-                                            }`}
-                                            title={
-                                                day.holiday ??
-                                                (day.is_weekend
-                                                    ? 'Akhir Pekan'
-                                                    : undefined)
-                                            }
+                                            style={{ minWidth: '180px' }}
+                                            className="border-r border-border p-2.5 text-left font-bold text-foreground"
                                         >
-                                            <div className="text-[11px] leading-tight">
-                                                {day.day}
-                                            </div>
-                                            <div className="text-[9px] font-normal uppercase opacity-85">
-                                                {day.dow}
+                                            <div className="flex items-center gap-1.5">
+                                                <Users className="size-3.5 text-muted-foreground" />
+                                                NAMA
                                             </div>
                                         </th>
-                                    ))}
-                                    <th
-                                        style={{ minWidth: '70px' }}
-                                        className="border-r border-border bg-muted/40 p-2 font-bold text-foreground"
-                                    >
-                                        RENCANA
-                                    </th>
-                                    <th
-                                        style={{ minWidth: '70px' }}
-                                        className="border-r border-border bg-muted/40 p-2 font-bold text-foreground"
-                                    >
-                                        REALISASI
-                                    </th>
-                                    <th
-                                        style={{ minWidth: '65px' }}
-                                        className="border-r border-border bg-muted/40 p-2 font-bold text-foreground"
-                                    >
-                                        TARGET
-                                    </th>
-                                    <th
-                                        style={{ minWidth: '95px' }}
-                                        className="bg-muted/40 p-2 font-bold text-foreground"
-                                    >
-                                        ANALISA KINERJA
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={2 + days.length + 4}
-                                            className="p-8 text-center text-sm text-muted-foreground"
+                                        <th
+                                            style={{ minWidth: '120px' }}
+                                            className="border-r border-border p-2 font-bold text-foreground"
                                         >
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                <ShieldCheck className="size-8 text-muted-foreground/50" />
-                                                <p className="font-semibold text-foreground">
-                                                    Tidak ada data operator
-                                                    untuk unit ini.
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Data nama diambil dari
-                                                    personil berposisi Operator
-                                                    pada unit yang bersangkutan
-                                                    (tidak termasuk Manager UL,
-                                                    Staf, dan Seluruh Team
-                                                    Leader).
-                                                </p>
-                                            </div>
-                                        </td>
+                                            RENCANA / REALISASI
+                                        </th>
+                                        {days.map((day) => (
+                                            <th
+                                                key={day.day}
+                                                style={{
+                                                    minWidth: '30px',
+                                                    width: '30px',
+                                                }}
+                                                className={`border-r border-border p-1 text-center font-bold ${
+                                                    day.is_red
+                                                        ? 'print-red-cell bg-red-600 text-white dark:bg-red-700'
+                                                        : 'bg-muted/40 text-foreground'
+                                                }`}
+                                                title={
+                                                    day.holiday ??
+                                                    (day.is_weekend
+                                                        ? 'Akhir Pekan'
+                                                        : undefined)
+                                                }
+                                            >
+                                                <div className="text-[11px] leading-tight">
+                                                    {day.day}
+                                                </div>
+                                                <div className="text-[9px] font-normal uppercase opacity-85">
+                                                    {day.dow}
+                                                </div>
+                                            </th>
+                                        ))}
+                                        <th
+                                            style={{ minWidth: '70px' }}
+                                            className="border-r border-border bg-muted/40 p-2 font-bold text-foreground"
+                                        >
+                                            RENCANA
+                                        </th>
+                                        <th
+                                            style={{ minWidth: '70px' }}
+                                            className="border-r border-border bg-muted/40 p-2 font-bold text-foreground"
+                                        >
+                                            REALISASI
+                                        </th>
+                                        <th
+                                            style={{ minWidth: '65px' }}
+                                            className="border-r border-border bg-muted/40 p-2 font-bold text-foreground"
+                                        >
+                                            TARGET
+                                        </th>
+                                        <th
+                                            style={{ minWidth: '95px' }}
+                                            className="bg-muted/40 p-2 font-bold text-foreground"
+                                        >
+                                            ANALISA KINERJA
+                                        </th>
                                     </tr>
-                                ) : (
-                                    rows.map((row, rIndex) => (
-                                        <Fragment key={row.employee_id}>
-                                            {/* Subrow 1: Rencana */}
-                                            <tr className="border-b border-border transition-colors hover:bg-muted/10">
-                                                <td
-                                                    rowSpan={2}
-                                                    className="border-r border-border bg-background p-2 text-left align-middle"
-                                                >
-                                                    <div className="font-semibold text-foreground uppercase">
-                                                        {row.name}
-                                                    </div>
-                                                    <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
-                                                        {row.nip && (
-                                                            <span>
-                                                                NIP. {row.nip}
-                                                            </span>
-                                                        )}
-                                                        {row.regu && (
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="h-4 px-1 text-[9px] font-normal"
-                                                            >
-                                                                Regu {row.regu}
-                                                            </Badge>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="border-r border-border bg-muted/10 p-1.5 font-semibold text-muted-foreground">
-                                                    RENCANA
-                                                </td>
+                                </thead>
+                                <tbody>
+                                    {rows.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={2 + days.length + 4}
+                                                className="p-8 text-center text-sm text-muted-foreground"
+                                            >
+                                                <div className="flex flex-col items-center justify-center gap-2">
+                                                    <ShieldCheck className="size-8 text-muted-foreground/50" />
+                                                    <p className="font-semibold text-foreground">
+                                                        Tidak ada data operator
+                                                        untuk unit ini.
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Data nama diambil dari
+                                                        personil berposisi Operator
+                                                        pada unit yang bersangkutan
+                                                        (tidak termasuk Manager UL,
+                                                        Staf, dan Seluruh Team
+                                                        Leader).
+                                                    </p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        rows.map((row, rIndex) => (
+                                            <Fragment key={row.employee_id}>
+                                                {/* Subrow 1: Rencana */}
+                                                <tr className="border-b border-border transition-colors hover:bg-muted/10">
+                                                    <td
+                                                        rowSpan={2}
+                                                        className="border-r border-border bg-background p-2 text-left align-middle"
+                                                    >
+                                                        <div className="font-semibold text-foreground uppercase">
+                                                            {row.name}
+                                                        </div>
+                                                        <div className="flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                                                            {row.nip && (
+                                                                <span>
+                                                                    NIP. {row.nip}
+                                                                </span>
+                                                            )}
+                                                            {row.regu && (
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className="h-4 px-1 text-[9px] font-normal"
+                                                                >
+                                                                    Regu {row.regu}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="border-r border-border bg-muted/10 p-1.5 font-semibold text-muted-foreground">
+                                                        RENCANA
+                                                    </td>
 
-                                                {/* Day cells for Rencana */}
-                                                {days.map((day) => {
-                                                    const dKey = String(
-                                                        day.day,
-                                                    );
-                                                    const val =
-                                                        row.rencana[dKey];
-                                                    const isPiket =
-                                                        String(val ?? '') ===
-                                                        '1';
+                                                    {/* Day cells for Rencana */}
+                                                    {days.map((day) => {
+                                                        const dKey = String(
+                                                            day.day,
+                                                        );
+                                                        const val =
+                                                            row.rencana[dKey];
+                                                        const isPiket =
+                                                            String(val ?? '') ===
+                                                            '1';
 
-                                                    if (day.is_red) {
+                                                        if (day.is_red) {
+                                                            return (
+                                                                <td
+                                                                    key={day.day}
+                                                                    className="print-red-cell border-r border-border bg-red-600 dark:bg-red-700"
+                                                                />
+                                                            );
+                                                        }
+
                                                         return (
                                                             <td
                                                                 key={day.day}
-                                                                className="print-red-cell border-r border-border bg-red-600 dark:bg-red-700"
-                                                            />
-                                                        );
-                                                    }
-
-                                                    return (
-                                                        <td
-                                                            key={day.day}
-                                                            onClick={() =>
-                                                                toggleCell(
-                                                                    row.employee_id,
-                                                                    'rencana',
-                                                                    day.day,
-                                                                )
-                                                            }
-                                                            className={`border-r border-border p-1 text-center font-bold transition-colors select-none ${
-                                                                isPiket
-                                                                    ? 'print-piket-cell bg-[#00b0f0] text-black'
-                                                                    : 'bg-background hover:bg-sky-50 dark:hover:bg-sky-950/20'
-                                                            } ${can_write ? 'cursor-pointer' : 'cursor-default'}`}
-                                                            title={
-                                                                can_write
-                                                                    ? isPiket
-                                                                        ? 'Klik untuk membatalkan piket'
-                                                                        : 'Klik untuk menetapkan piket rencana'
-                                                                    : undefined
-                                                            }
-                                                        >
-                                                            {isPiket ? '1' : ''}
-                                                        </td>
-                                                    );
-                                                })}
-
-                                                {/* Summary Columns: Only rendered on the first row with full table rowspan */}
-                                                {rIndex === 0 && (
-                                                    <>
-                                                        <td
-                                                            rowSpan={
-                                                                rows.length * 2
-                                                            }
-                                                            className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
-                                                        >
-                                                            {totalRencana}
-                                                        </td>
-                                                        <td
-                                                            rowSpan={
-                                                                rows.length * 2
-                                                            }
-                                                            className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
-                                                        >
-                                                            {totalRealisasi}
-                                                        </td>
-                                                        <td
-                                                            rowSpan={
-                                                                rows.length * 2
-                                                            }
-                                                            className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
-                                                        >
-                                                            {
-                                                                target_working_days
-                                                            }
-                                                        </td>
-                                                        <td
-                                                            rowSpan={
-                                                                rows.length * 2
-                                                            }
-                                                            className="bg-background p-2 text-center align-middle text-base font-black"
-                                                        >
-                                                            <span
-                                                                className={
-                                                                    performance >=
-                                                                    100
-                                                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                                                        : performance >=
-                                                                            80
-                                                                          ? 'text-sky-600 dark:text-sky-400'
-                                                                          : 'text-amber-600 dark:text-amber-400'
+                                                                onClick={() =>
+                                                                    toggleCell(
+                                                                        row.employee_id,
+                                                                        'rencana',
+                                                                        day.day,
+                                                                    )
+                                                                }
+                                                                className={`border-r border-border p-1 text-center font-bold transition-colors select-none ${
+                                                                    isPiket
+                                                                        ? 'print-piket-cell bg-[#00b0f0] text-black'
+                                                                        : 'bg-background hover:bg-sky-50 dark:hover:bg-sky-950/20'
+                                                                } ${can_write ? 'cursor-pointer' : 'cursor-default'}`}
+                                                                title={
+                                                                    can_write
+                                                                        ? isPiket
+                                                                            ? 'Klik untuk membatalkan piket'
+                                                                            : 'Klik untuk menetapkan piket rencana'
+                                                                        : undefined
                                                                 }
                                                             >
-                                                                {performance}%
-                                                            </span>
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
+                                                                {isPiket ? '1' : ''}
+                                                            </td>
+                                                        );
+                                                    })}
 
-                                            {/* Subrow 2: Realisasi */}
-                                            <tr className="border-b-2 border-border transition-colors hover:bg-muted/10">
-                                                <td className="border-r border-border bg-muted/10 p-1.5 font-semibold text-muted-foreground">
-                                                    REALISASI
-                                                </td>
+                                                    {/* Summary Columns: Only rendered on the first row with full table rowspan */}
+                                                    {rIndex === 0 && (
+                                                        <>
+                                                            <td
+                                                                rowSpan={
+                                                                    rows.length * 2
+                                                                }
+                                                                className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
+                                                            >
+                                                                {totalRencana}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={
+                                                                    rows.length * 2
+                                                                }
+                                                                className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
+                                                            >
+                                                                {totalRealisasi}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={
+                                                                    rows.length * 2
+                                                                }
+                                                                className="border-r border-border bg-background p-2 text-center align-middle text-sm font-extrabold text-foreground"
+                                                            >
+                                                                {
+                                                                    target_working_days
+                                                                }
+                                                            </td>
+                                                            <td
+                                                                rowSpan={
+                                                                    rows.length * 2
+                                                                }
+                                                                className="bg-background p-2 text-center align-middle text-base font-black"
+                                                            >
+                                                                <span
+                                                                    className={
+                                                                        performance >=
+                                                                        100
+                                                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                                                            : performance >=
+                                                                                80
+                                                                              ? 'text-sky-600 dark:text-sky-400'
+                                                                              : 'text-amber-600 dark:text-amber-400'
+                                                                    }
+                                                                >
+                                                                    {performance}%
+                                                                </span>
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
 
-                                                {/* Day cells for Realisasi */}
-                                                {days.map((day) => {
-                                                    const dKey = String(
-                                                        day.day,
-                                                    );
-                                                    const val =
-                                                        row.realisasi[dKey];
-                                                    const isPiket =
-                                                        String(val ?? '') ===
-                                                        '1';
+                                                {/* Subrow 2: Realisasi */}
+                                                <tr className="border-b-2 border-border transition-colors hover:bg-muted/10">
+                                                    <td className="border-r border-border bg-muted/10 p-1.5 font-semibold text-muted-foreground">
+                                                        REALISASI
+                                                    </td>
 
-                                                    if (day.is_red) {
+                                                    {/* Day cells for Realisasi */}
+                                                    {days.map((day) => {
+                                                        const dKey = String(
+                                                            day.day,
+                                                        );
+                                                        const val =
+                                                            row.realisasi[dKey];
+                                                        const isPiket =
+                                                            String(val ?? '') ===
+                                                            '1';
+
+                                                        if (day.is_red) {
+                                                            return (
+                                                                <td
+                                                                    key={day.day}
+                                                                    className="print-red-cell border-r border-border bg-red-600 dark:bg-red-700"
+                                                                />
+                                                            );
+                                                        }
+
                                                         return (
                                                             <td
                                                                 key={day.day}
-                                                                className="print-red-cell border-r border-border bg-red-600 dark:bg-red-700"
-                                                            />
+                                                                onClick={() =>
+                                                                    toggleCell(
+                                                                        row.employee_id,
+                                                                        'realisasi',
+                                                                        day.day,
+                                                                    )
+                                                                }
+                                                                className={`border-r border-border p-1 text-center font-bold transition-colors select-none ${
+                                                                    isPiket
+                                                                        ? 'print-piket-cell bg-[#00b0f0] text-black'
+                                                                        : 'bg-background hover:bg-sky-50 dark:hover:bg-sky-950/20'
+                                                                } ${can_write ? 'cursor-pointer' : 'cursor-default'}`}
+                                                                title={
+                                                                    can_write
+                                                                        ? isPiket
+                                                                            ? 'Klik untuk membatalkan piket'
+                                                                            : 'Klik untuk menetapkan piket realisasi'
+                                                                        : undefined
+                                                                }
+                                                            >
+                                                                {isPiket ? '1' : ''}
+                                                            </td>
                                                         );
-                                                    }
-
-                                                    return (
-                                                        <td
-                                                            key={day.day}
-                                                            onClick={() =>
-                                                                toggleCell(
-                                                                    row.employee_id,
-                                                                    'realisasi',
-                                                                    day.day,
-                                                                )
-                                                            }
-                                                            className={`border-r border-border p-1 text-center font-bold transition-colors select-none ${
-                                                                isPiket
-                                                                    ? 'print-piket-cell bg-[#00b0f0] text-black'
-                                                                    : 'bg-background hover:bg-sky-50 dark:hover:bg-sky-950/20'
-                                                            } ${can_write ? 'cursor-pointer' : 'cursor-default'}`}
-                                                            title={
-                                                                can_write
-                                                                    ? isPiket
-                                                                        ? 'Klik untuk membatalkan piket'
-                                                                        : 'Klik untuk menetapkan piket realisasi'
-                                                                    : undefined
-                                                            }
-                                                        >
-                                                            {isPiket ? '1' : ''}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        </Fragment>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                                    })}
+                                                </tr>
+                                            </Fragment>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Footer Legend matching user's image */}
                     <div className="mt-2 space-y-1 text-xs">

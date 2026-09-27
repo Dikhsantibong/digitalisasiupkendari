@@ -13,6 +13,7 @@ use App\Models\MaintenanceCycle;
 use App\Models\MaintenanceType;
 use App\Models\ReportPeriod;
 use App\Models\Unit;
+use App\Models\User;
 use App\Models\WorkGroup;
 use App\Models\WorkOrder;
 use App\Models\WoStatus;
@@ -38,7 +39,7 @@ class WorkOrderController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganWorkOrder), 403);
+        abort_unless($this->canView($user), 403);
 
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
         abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
@@ -87,14 +88,14 @@ class WorkOrderController extends Controller
                 'machines' => Machine::query()->where('unit_id', $unit->id)->where('is_active', true)->orderBy('name')->get(['id', 'name']),
                 'waiting_reasons' => collect(WoWaitingReason::cases())->map(fn (WoWaitingReason $r): array => ['value' => $r->value, 'label' => $r->label()])->all(),
             ],
-            'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganWorkOrder),
+            'can_write' => $this->canWrite($user),
         ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganWorkOrder), 403);
+        abort_unless($this->canWrite($user), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -222,5 +223,22 @@ class WorkOrderController extends Controller
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    /**
+     * Work orders & service requests are one data source for both accesses: the
+     * Koordinator Pemeliharaan (Akses 1, har.input.*), the TL & Staf Pemeliharaan
+     * (Akses 2, har.pengusahaan.*) and Harmes / Harlist (field permission).
+     */
+    private function canView(User $user): bool
+    {
+        return $this->allowsFieldInput($user, PermissionName::HarInputView, PermissionName::HarLapanganWorkOrder)
+            || $user->hasPermissionTo(PermissionName::HarPengusahaanView);
+    }
+
+    private function canWrite(User $user): bool
+    {
+        return $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganWorkOrder)
+            || $user->hasPermissionTo(PermissionName::HarPengusahaanWrite);
     }
 }

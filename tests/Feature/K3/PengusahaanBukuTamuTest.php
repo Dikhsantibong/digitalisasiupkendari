@@ -35,7 +35,7 @@ class PengusahaanBukuTamuTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/buku-tamu/index')
+                    ->component('pengusahaan/k3/buku-tamu/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 3)
@@ -134,7 +134,7 @@ class PengusahaanBukuTamuTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/buku-tamu/index')
+                ->component('pengusahaan/k3/buku-tamu/index')
                 ->where('has_saved', true)
                 ->where('record.items.0.keterangan', 'PT. SUCOFINDO / SURVEY JAKARTA')
                 ->where('record.items.0.kontraktor', 2)
@@ -219,7 +219,7 @@ class PengusahaanBukuTamuTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/buku-tamu/index')
+                ->component('pengusahaan/k3/buku-tamu/index')
                 ->where('can_write', true)
                 ->has('record.items', 3)
             );

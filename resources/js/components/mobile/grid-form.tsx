@@ -4,7 +4,7 @@ import type { ColumnOrColumnGroup } from 'react-data-grid';
 import { DayStrip } from '@/components/mobile/day-strip';
 import { Input } from '@/components/ui/input';
 
-type Leaf<R> = {
+export type Leaf<R> = {
     key: string;
     label: string;
     group: string | null;
@@ -16,7 +16,7 @@ const text = (value: ReactNode, fallback: string) =>
         ? String(value)
         : fallback;
 
-function leaves<R>(
+export function leaves<R>(
     columns: readonly ColumnOrColumnGroup<R>[],
     group: string | null = null,
 ): Leaf<R>[] {

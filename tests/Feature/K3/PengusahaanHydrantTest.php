@@ -34,7 +34,7 @@ class PengusahaanHydrantTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/hydrant/index')
+                    ->component('pengusahaan/k3/hydrant/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 7)
@@ -135,7 +135,7 @@ class PengusahaanHydrantTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/hydrant/index')
+                ->component('pengusahaan/k3/hydrant/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.lokasi', 'Pilar Hydrant Halaman Belakang')
             );

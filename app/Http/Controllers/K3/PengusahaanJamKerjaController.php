@@ -58,7 +58,7 @@ class PengusahaanJamKerjaController extends Controller
             ])
             ->all();
 
-        return Inertia::render('k3/pengusahaan/jam-kerja/index', [
+        return Inertia::render('pengusahaan/k3/jam-kerja/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

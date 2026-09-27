@@ -1,6 +1,21 @@
-import { AlertTriangle, Award, BellRing, BookUser, Boxes, BriefcaseMedical, Building2, CalendarClock, CalendarRange, Cctv, ClipboardCheck, Clock, Droplets, FileSpreadsheet, Flame, HardHat, LifeBuoy, ShieldAlert, ShieldCheck, Signpost, SquarePen, UserCheck, UserX } from 'lucide-react';
+import { Activity, AlertTriangle, Award, BatteryCharging, BellRing, BookUser, Boxes, BriefcaseMedical, Building2, CalendarClock, CalendarRange, Cctv, ClipboardCheck, ClipboardList, Clock, Cog, Disc, Droplet, Droplets, FileSpreadsheet, Flame, Fuel, HardHat, LifeBuoy, Ruler, ShieldAlert, ShieldCheck, Signpost, SquarePen, Timer, UserCheck, UserX, Waves, Wrench, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import harServiceRequest from '@/routes/har/input/service-request';
+import harWorkOrder from '@/routes/har/input/work-order';
 import harPengusahaan from '@/routes/har/pengusahaan';
+import harPengusahaanAxialConrod from '@/routes/har/pengusahaan/axial-conrod';
+import harPengusahaanBatteryVoltage from '@/routes/har/pengusahaan/battery-voltage';
+import harPengusahaanClearanceValve from '@/routes/har/pengusahaan/clearance-valve';
+import harPengusahaanCombustionPressure from '@/routes/har/pengusahaan/combustion-pressure';
+import harPengusahaanCounterWeight from '@/routes/har/pengusahaan/counter-weight';
+import harPengusahaanCrankshaftDeflection from '@/routes/har/pengusahaan/crankshaft-deflection';
+import harPengusahaanHydrotest from '@/routes/har/pengusahaan/hydrotest';
+import harPengusahaanInjectorPressure from '@/routes/har/pengusahaan/injector-pressure';
+import harPengusahaanLubeQuality from '@/routes/har/pengusahaan/lube-quality';
+import harPengusahaanMotorCurrent from '@/routes/har/pengusahaan/motor-current';
+import harPengusahaanPrelubeTest from '@/routes/har/pengusahaan/prelube-test';
+import harPengusahaanTimingInjectionPump from '@/routes/har/pengusahaan/timing-injection-pump';
+import harPengusahaanVibration from '@/routes/har/pengusahaan/vibration';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanAlatTanggapDarurat from '@/routes/k3/pengusahaan/alat-tanggap-darurat';
 import k3PengusahaanAparApab from '@/routes/k3/pengusahaan/apar-apab';
@@ -72,7 +87,17 @@ export type PengusahaanMenu = {
     href: string | null;
     /** Shown only to users holding this permission (Role & Akses). */
     permission: string;
+    /**
+     * The Inertia page the menu opens; defaults to
+     * `pengusahaan/{module}/{last URL segment}/index` (see .ai/rules/pengusahaan.md).
+     */
+    component?: string;
 };
+
+/** The Inertia page component a Pengusahaan menu opens (used by the phone shell). */
+export function pengusahaanComponent(menu: PengusahaanMenu): string {
+    return menu.component ?? `pengusahaan/${menu.module}/${(menu.href ?? '').split('?')[0].split('/').filter(Boolean).pop()}/index`;
+}
 
 export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = [
     {
@@ -272,5 +297,142 @@ export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = [
         icon: Building2,
         href: k3PengusahaanInspeksiTempatKerja.index().url,
         permission: 'k3.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'input',
+        title: 'Work Order',
+        description: 'Work order pemeliharaan (PM, CM, rekomendasi engineering, waiting shutdown & material) — data yang sama dengan Koordinator Pemeliharaan.',
+        icon: Wrench,
+        href: harWorkOrder.index().url,
+        permission: 'har.pengusahaan.view',
+        component: 'har/input/work-order/index',
+    },
+    {
+        module: 'har',
+        section: 'input',
+        title: 'Service Request',
+        description: 'Permintaan perbaikan (service request) dari operasi — data yang sama dengan Koordinator Pemeliharaan.',
+        icon: ClipboardList,
+        href: harServiceRequest.index().url,
+        permission: 'har.pengusahaan.view',
+        component: 'har/input/service-request/index',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Checklist Prelube Test',
+        description: 'Checklist pelumasan awal per silinder: camshaft, conrod, piston & rocker arm.',
+        icon: Droplet,
+        href: harPengusahaanPrelubeTest.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Checklist Hydrotest',
+        description: 'Checklist kebocoran O-ring liner & liner per silinder.',
+        icon: Waves,
+        href: harPengusahaanHydrotest.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Timing Injection Pump',
+        description: 'Checklist timing pembakaran injection pump sebelum & sesudah penyetelan.',
+        icon: Timer,
+        href: harPengusahaanTimingInjectionPump.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Defleksi Crankshaft',
+        description: 'Pengukuran defleksi crankshaft per silinder (posisi A–E).',
+        icon: Ruler,
+        href: harPengusahaanCrankshaftDeflection.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Baut Counter Weight',
+        description: 'Pemeriksaan kekencangan baut counter weight per silinder.',
+        icon: Cog,
+        href: harPengusahaanCounterWeight.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Axial Conrod & Baut Conrod',
+        description: 'Pemeriksaan axial connecting rod & pengencangan baut conrod.',
+        icon: Disc,
+        href: harPengusahaanAxialConrod.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Clearance Valve',
+        description: 'Pengukuran clearance katup exhaust & inlet sebelum dan sesudah penyetelan.',
+        icon: Ruler,
+        href: harPengusahaanClearanceValve.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Tekanan Pembakaran',
+        description: 'Tekanan pembakaran, temperatur gas buang & rack injection pump per silinder.',
+        icon: Flame,
+        href: harPengusahaanCombustionPressure.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Tekanan Pengabutan Injektor',
+        description: 'Tekanan pengabutan injektor sebelum & sesudah kalibrasi.',
+        icon: Fuel,
+        href: harPengusahaanInjectorPressure.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Arus Kerja Elektro Motor',
+        description: 'Arus kerja elektro motor auxiliary per fasa (R, S, T).',
+        icon: Zap,
+        href: harPengusahaanMotorCurrent.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Tekanan Vibrasi',
+        description: 'Vibrasi vertikal & horizontal per titik pengukuran.',
+        icon: Activity,
+        href: harPengusahaanVibration.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Kualitas Pelumas',
+        description: 'Hasil uji laboratorium oli pelumas, analisa & rekomendasi.',
+        icon: Droplets,
+        href: harPengusahaanLubeQuality.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        module: 'har',
+        section: 'formulir',
+        title: 'Tegangan Baterai',
+        description: 'Tegangan sel baterai 24 V & 110 V dan kondisi charging.',
+        icon: BatteryCharging,
+        href: harPengusahaanBatteryVoltage.index().url,
+        permission: 'har.pengusahaan.view',
     },
 ];

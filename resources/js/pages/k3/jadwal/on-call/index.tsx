@@ -12,6 +12,7 @@ import {
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { MobileMatrixForm } from '@/components/mobile/matrix-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -29,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/k3/jadwal';
 import onCall from '@/routes/k3/jadwal/on-call';
@@ -193,6 +195,9 @@ export default function JadwalOnCallPage({
     const [nextKey, setNextKey] = useState(initialRows.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     // Modal state for Add & Edit Personil
     const [personModalOpen, setPersonModalOpen] = useState(false);
@@ -418,10 +423,7 @@ export default function JadwalOnCallPage({
         });
     };
 
-    const applyShiftCode = (code: string) => {
-        if (!activeCell) return;
-        const { rowKey, date } = activeCell;
-
+    const setShift = (rowKey: number, date: string, code: string) => {
         setRows((prev) =>
             prev.map((r) => {
                 if (r._key !== rowKey) return r;
@@ -443,6 +445,11 @@ export default function JadwalOnCallPage({
         );
 
         setDirty(true);
+    };
+
+    const applyShiftCode = (code: string) => {
+        if (!activeCell) return;
+        setShift(activeCell.rowKey, activeCell.date, code);
         setActiveCell(null);
     };
 
@@ -504,7 +511,7 @@ export default function JadwalOnCallPage({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button
                                     variant="outline"
@@ -559,22 +566,24 @@ export default function JadwalOnCallPage({
                 </div>
 
                 {/* Quick Hint */}
-                <div className="flex items-center gap-2 rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                    <PhoneCall className="size-4 text-primary" />
-                    <span>
-                        Klik pada sel tanggal untuk memilih kode shift (<strong>DT, P, S, M, L, CT, SD, I, DL, dll</strong>). Total hari on-call dan rupiah otomatis terhitung.
-                    </span>
-                </div>
+                {(!compact || mobileEditing) && (
+                    <div className="flex items-center gap-2 rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                        <PhoneCall className="size-4 text-primary" />
+                        <span>
+                            Klik pada sel tanggal untuk memilih kode shift (<strong>DT, P, S, M, L, CT, SD, I, DL, dll</strong>). Total hari on-call dan rupiah otomatis terhitung.
+                        </span>
+                    </div>
+                )}
 
                 {/* Official Spreadsheet Layout */}
                 <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
                     {/* Header Kop Resmi */}
-                    <div className="grid grid-cols-[140px_1fr_140px] items-center border-b border-border bg-muted/30 p-4 text-center">
+                    <div className="grid grid-cols-[56px_1fr_56px] items-center border-b border-border bg-muted/30 p-2 text-center sm:grid-cols-[140px_1fr_140px] sm:p-4">
                         <div className="flex items-center justify-center p-1">
                             <img
                                 src="/logo/sidebar-logo.png"
                                 alt="PLN Nusantara Power"
-                                className="max-h-12 max-w-[130px] object-contain"
+                                className="max-h-8 max-w-full object-contain sm:max-h-12 sm:max-w-[130px]"
                                 onError={(e) => {
                                     (e.target as HTMLElement).style.display = 'none';
                                 }}
@@ -595,7 +604,7 @@ export default function JadwalOnCallPage({
                             <img
                                 src="/logo/mkp.jpg"
                                 alt="MKP Mitra Karya Prima"
-                                className="max-h-12 max-w-[130px] object-contain"
+                                className="max-h-8 max-w-full object-contain sm:max-h-12 sm:max-w-[130px]"
                                 onError={(e) => {
                                     (e.target as HTMLElement).style.display = 'none';
                                 }}
@@ -604,187 +613,222 @@ export default function JadwalOnCallPage({
                     </div>
 
                     {/* Table View */}
-                    <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-left text-xs">
-                            <thead>
-                                <tr className="border-b border-slate-300 bg-slate-100 text-center font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
-                                    <th className="w-10 border-r border-slate-300 px-2 py-2 dark:border-slate-700">NO</th>
-                                    <th className="min-w-[170px] border-r border-slate-300 px-3 py-2 text-left dark:border-slate-700">NAMA</th>
-                                    <th className="min-w-[90px] border-r border-slate-300 px-2 py-2 dark:border-slate-700">KODE PRK</th>
-                                    <th className="min-w-[130px] border-r border-slate-300 px-2 py-2 text-left dark:border-slate-700">JABATAN</th>
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileMatrixForm<Row>
+                                columns={days.map((d) => ({ key: d.date, label: String(d.day), sub: d.dow, isRed: d.is_red }))}
+                                rows={rows}
+                                rowKey={(row) => row._key}
+                                rowLabel={(row, _index, editing) => (
+                                    <div className="flex items-start gap-2">
+                                        <span className="min-w-0 flex-1">{row.nama}</span>
+                                        {can_write && editing && (
+                                            <>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => openEditPersonModal(row)} className="size-8 text-primary" aria-label="Edit personil">
+                                                    <Pencil className="size-4" />
+                                                </Button>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => handleDeletePerson(row._key)} className="size-8 text-muted-foreground hover:text-destructive" aria-label="Hapus personil">
+                                                    <Trash2 className="size-4" />
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                                rowSub={(row) => `${row.jabatan || '-'} · Total ${row.total} hari`}
+                                value={(row, date) => row.schedule[date] || ''}
+                                onChange={(index, date, code) => setShift(rows[index]._key, date, code)}
+                                options={SHIFT_OPTIONS.map((o) => o.code)}
+                                optionTone={(code) => `border-transparent ${SHIFT_OPTIONS.find((o) => o.code === code)?.bg ?? ''}`}
+                                viewNotes={Object.fromEntries(SHIFT_OPTIONS.map((o) => [o.code, o.label.replace(/^[^(]*\(|\)$/g, '')]))}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada data personil on call untuk periode ini. Tekan Tambah Personil untuk memulai."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-left text-xs">
+                                <thead>
+                                    <tr className="border-b border-slate-300 bg-slate-100 text-center font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
+                                        <th className="w-10 border-r border-slate-300 px-2 py-2 dark:border-slate-700">NO</th>
+                                        <th className="min-w-[170px] border-r border-slate-300 px-3 py-2 text-left dark:border-slate-700">NAMA</th>
+                                        <th className="min-w-[90px] border-r border-slate-300 px-2 py-2 dark:border-slate-700">KODE PRK</th>
+                                        <th className="min-w-[130px] border-r border-slate-300 px-2 py-2 text-left dark:border-slate-700">JABATAN</th>
 
-                                    {/* Date headers (16..30/31 then 1..15) */}
-                                    {days.map((d) => {
-                                        const isHoliday = d.is_holiday;
-                                        const isWeekend = d.is_weekend;
-                                        return (
-                                            <th
-                                                key={d.date}
-                                                className={`min-w-[28px] max-w-[32px] border-r border-slate-300 px-0.5 py-1 text-center font-bold dark:border-slate-700 ${
-                                                    isHoliday
-                                                        ? 'bg-red-200 text-red-900 dark:bg-red-950 dark:text-red-200'
-                                                        : isWeekend
-                                                          ? 'bg-yellow-200 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200'
-                                                          : ''
-                                                }`}
-                                                title={d.holiday ? `${d.date}: ${d.holiday}` : d.date}
-                                            >
-                                                <div className="text-[11px] leading-tight">{d.day}</div>
-                                                <div className="text-[9px] font-normal text-muted-foreground">{d.dow}</div>
-                                            </th>
-                                        );
-                                    })}
+                                        {/* Date headers (16..30/31 then 1..15) */}
+                                        {days.map((d) => {
+                                            const isHoliday = d.is_holiday;
+                                            const isWeekend = d.is_weekend;
+                                            return (
+                                                <th
+                                                    key={d.date}
+                                                    className={`min-w-[28px] max-w-[32px] border-r border-slate-300 px-0.5 py-1 text-center font-bold dark:border-slate-700 ${
+                                                        isHoliday
+                                                            ? 'bg-red-200 text-red-900 dark:bg-red-950 dark:text-red-200'
+                                                            : isWeekend
+                                                              ? 'bg-yellow-200 text-yellow-900 dark:bg-yellow-950 dark:text-yellow-200'
+                                                              : ''
+                                                    }`}
+                                                    title={d.holiday ? `${d.date}: ${d.holiday}` : d.date}
+                                                >
+                                                    <div className="text-[11px] leading-tight">{d.day}</div>
+                                                    <div className="text-[9px] font-normal text-muted-foreground">{d.dow}</div>
+                                                </th>
+                                            );
+                                        })}
 
-                                    <th className="w-16 border-r border-slate-300 bg-yellow-300 px-2 py-2 text-center font-bold text-yellow-950 dark:bg-yellow-600 dark:text-yellow-100">
-                                        TOTAL
-                                    </th>
-                                    <th className="min-w-[95px] border-r border-slate-300 bg-orange-300 px-2 py-2 text-center font-bold text-orange-950 dark:bg-orange-600 dark:text-orange-100">
-                                        NILAI
-                                    </th>
-                                    <th className="min-w-[105px] border-r border-slate-300 px-2 py-2 text-center font-bold">
-                                        RUPIAH
-                                    </th>
-                                    {can_write && (
-                                        <th className="w-20 px-2 py-2 text-center">
-                                            AKSI
+                                        <th className="w-16 border-r border-slate-300 bg-yellow-300 px-2 py-2 text-center font-bold text-yellow-950 dark:bg-yellow-600 dark:text-yellow-100">
+                                            TOTAL
                                         </th>
-                                    )}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {rows.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={days.length + (can_write ? 8 : 7)}
-                                            className="py-10 text-center text-muted-foreground"
-                                        >
-                                            Belum ada data personil on call untuk periode ini. Klik <strong>Tambah Personil</strong> di atas untuk memulai.
-                                        </td>
+                                        <th className="min-w-[95px] border-r border-slate-300 bg-orange-300 px-2 py-2 text-center font-bold text-orange-950 dark:bg-orange-600 dark:text-orange-100">
+                                            NILAI
+                                        </th>
+                                        <th className="min-w-[105px] border-r border-slate-300 px-2 py-2 text-center font-bold">
+                                            RUPIAH
+                                        </th>
+                                        {can_write && (
+                                            <th className="w-20 px-2 py-2 text-center">
+                                                AKSI
+                                            </th>
+                                        )}
                                     </tr>
-                                ) : (
-                                    rows.map((row, index) => (
-                                        <tr
-                                            key={row._key}
-                                            className="transition-colors hover:bg-muted/30"
-                                        >
-                                            <td className="border-r border-border px-2 py-2 text-center font-medium text-muted-foreground">
-                                                {index + 1}
+                                </thead>
+                                <tbody className="divide-y divide-border">
+                                    {rows.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={days.length + (can_write ? 8 : 7)}
+                                                className="py-10 text-center text-muted-foreground"
+                                            >
+                                                Belum ada data personil on call untuk periode ini. Klik <strong>Tambah Personil</strong> di atas untuk memulai.
                                             </td>
-                                            <td className="border-r border-border px-3 py-2 font-semibold text-foreground">
-                                                {row.nama}
-                                            </td>
-                                            <td className="border-r border-border px-2 py-2 text-center font-mono text-[11px] text-muted-foreground">
-                                                {row.kode_prk || '-'}
-                                            </td>
-                                            <td className="border-r border-border px-2 py-2 text-muted-foreground">
-                                                {row.jabatan || '-'}
-                                            </td>
+                                        </tr>
+                                    ) : (
+                                        rows.map((row, index) => (
+                                            <tr
+                                                key={row._key}
+                                                className="transition-colors hover:bg-muted/30"
+                                            >
+                                                <td className="border-r border-border px-2 py-2 text-center font-medium text-muted-foreground">
+                                                    {index + 1}
+                                                </td>
+                                                <td className="border-r border-border px-3 py-2 font-semibold text-foreground">
+                                                    {row.nama}
+                                                </td>
+                                                <td className="border-r border-border px-2 py-2 text-center font-mono text-[11px] text-muted-foreground">
+                                                    {row.kode_prk || '-'}
+                                                </td>
+                                                <td className="border-r border-border px-2 py-2 text-muted-foreground">
+                                                    {row.jabatan || '-'}
+                                                </td>
 
-                                            {/* Date cells */}
-                                            {days.map((d) => {
-                                                const val = row.schedule[d.date] || '';
-                                                const isHoliday = d.is_holiday;
-                                                const isWeekend = d.is_weekend;
-                                                const isLibur = val.toUpperCase() === 'L';
-                                                const isShift = Boolean(val && !isLibur);
+                                                {/* Date cells */}
+                                                {days.map((d) => {
+                                                    const val = row.schedule[d.date] || '';
+                                                    const isHoliday = d.is_holiday;
+                                                    const isWeekend = d.is_weekend;
+                                                    const isLibur = val.toUpperCase() === 'L';
+                                                    const isShift = Boolean(val && !isLibur);
 
-                                                return (
-                                                    <td
-                                                        key={d.date}
-                                                        onClick={() => handleCellClick(row._key, d.date, d.day, row.nama)}
-                                                        className={`border-r border-border p-0 text-center font-mono text-xs font-bold transition-all ${
-                                                            can_write ? 'cursor-pointer hover:ring-2 hover:ring-primary/50' : ''
-                                                        } ${
-                                                            isHoliday
-                                                                ? 'bg-red-50 dark:bg-red-950/30'
-                                                                : isWeekend
-                                                                  ? 'bg-yellow-50/50 dark:bg-yellow-950/20'
-                                                                  : ''
-                                                        }`}
-                                                    >
-                                                        <div
-                                                            className={`flex size-full min-h-[30px] items-center justify-center ${
-                                                                isLibur
-                                                                    ? 'text-rose-600 font-extrabold'
-                                                                    : isShift
-                                                                      ? 'text-blue-700 dark:text-blue-300'
-                                                                      : 'text-muted-foreground/30'
+                                                    return (
+                                                        <td
+                                                            key={d.date}
+                                                            onClick={() => handleCellClick(row._key, d.date, d.day, row.nama)}
+                                                            className={`border-r border-border p-0 text-center font-mono text-xs font-bold transition-all ${
+                                                                can_write ? 'cursor-pointer hover:ring-2 hover:ring-primary/50' : ''
+                                                            } ${
+                                                                isHoliday
+                                                                    ? 'bg-red-50 dark:bg-red-950/30'
+                                                                    : isWeekend
+                                                                      ? 'bg-yellow-50/50 dark:bg-yellow-950/20'
+                                                                      : ''
                                                             }`}
                                                         >
-                                                            {val || ''}
+                                                            <div
+                                                                className={`flex size-full min-h-[30px] items-center justify-center ${
+                                                                    isLibur
+                                                                        ? 'text-rose-600 font-extrabold'
+                                                                        : isShift
+                                                                          ? 'text-blue-700 dark:text-blue-300'
+                                                                          : 'text-muted-foreground/30'
+                                                                }`}
+                                                            >
+                                                                {val || ''}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
+
+                                                {/* Total */}
+                                                <td className="border-r border-border bg-yellow-100/70 px-2 py-2 text-center font-mono font-bold text-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-200">
+                                                    {row.total}
+                                                </td>
+
+                                                {/* Nilai */}
+                                                <td className="border-r border-border px-2 py-2 text-right font-mono text-xs">
+                                                    {row.nilai ? row.nilai.toLocaleString('id-ID') : '0'}
+                                                </td>
+
+                                                {/* Rupiah */}
+                                                <td className="border-r border-border bg-muted/20 px-2 py-2 text-right font-mono font-bold text-foreground">
+                                                    {row.rupiah > 0 ? row.rupiah.toLocaleString('id-ID') : '-'}
+                                                </td>
+
+                                                {/* Aksi */}
+                                                {can_write && (
+                                                    <td className="px-2 py-2 text-center">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-7 text-muted-foreground hover:text-foreground"
+                                                                onClick={() => openEditPersonModal(row)}
+                                                                title="Ubah data personil"
+                                                            >
+                                                                <Pencil className="size-3.5" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-7 text-destructive hover:bg-destructive/10"
+                                                                onClick={() => handleDeletePerson(row._key)}
+                                                                title="Hapus personil"
+                                                            >
+                                                                <Trash2 className="size-3.5" />
+                                                            </Button>
                                                         </div>
                                                     </td>
-                                                );
-                                            })}
-
-                                            {/* Total */}
-                                            <td className="border-r border-border bg-yellow-100/70 px-2 py-2 text-center font-mono font-bold text-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-200">
-                                                {row.total}
+                                                )}
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                                {rows.length > 0 && (
+                                    <tfoot>
+                                        <tr className="border-t-2 border-border bg-muted/60 font-bold">
+                                            <td
+                                                colSpan={days.length + 4}
+                                                className="border-r border-border px-4 py-2.5 text-right uppercase tracking-wider text-muted-foreground"
+                                            >
+                                                TOTAL KESELURUHAN:
                                             </td>
-
-                                            {/* Nilai */}
-                                            <td className="border-r border-border px-2 py-2 text-right font-mono text-xs">
-                                                {row.nilai ? row.nilai.toLocaleString('id-ID') : '0'}
+                                            <td className="border-r border-border bg-yellow-200 px-2 py-2.5 text-center font-mono font-bold text-yellow-950 dark:bg-yellow-900 dark:text-yellow-100">
+                                                {totalOnCallAll}
                                             </td>
-
-                                            {/* Rupiah */}
-                                            <td className="border-r border-border bg-muted/20 px-2 py-2 text-right font-mono font-bold text-foreground">
-                                                {row.rupiah > 0 ? row.rupiah.toLocaleString('id-ID') : '-'}
+                                            <td className="border-r border-border px-2 py-2.5 text-right font-mono text-xs">
+                                                {totalNilaiAll.toLocaleString('id-ID')}
                                             </td>
-
-                                            {/* Aksi */}
-                                            {can_write && (
-                                                <td className="px-2 py-2 text-center">
-                                                    <div className="flex items-center justify-center gap-1">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-7 text-muted-foreground hover:text-foreground"
-                                                            onClick={() => openEditPersonModal(row)}
-                                                            title="Ubah data personil"
-                                                        >
-                                                            <Pencil className="size-3.5" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-7 text-destructive hover:bg-destructive/10"
-                                                            onClick={() => handleDeletePerson(row._key)}
-                                                            title="Hapus personil"
-                                                        >
-                                                            <Trash2 className="size-3.5" />
-                                                        </Button>
-                                                    </div>
-                                                </td>
-                                            )}
+                                            <td className="border-r border-border bg-primary/10 px-2 py-2.5 text-right font-mono text-xs font-bold text-primary">
+                                                {totalRupiahAll > 0 ? totalRupiahAll.toLocaleString('id-ID') : '-'}
+                                            </td>
+                                            {can_write && <td></td>}
                                         </tr>
-                                    ))
+                                    </tfoot>
                                 )}
-                            </tbody>
-                            {rows.length > 0 && (
-                                <tfoot>
-                                    <tr className="border-t-2 border-border bg-muted/60 font-bold">
-                                        <td
-                                            colSpan={days.length + 4}
-                                            className="border-r border-border px-4 py-2.5 text-right uppercase tracking-wider text-muted-foreground"
-                                        >
-                                            TOTAL KESELURUHAN:
-                                        </td>
-                                        <td className="border-r border-border bg-yellow-200 px-2 py-2.5 text-center font-mono font-bold text-yellow-950 dark:bg-yellow-900 dark:text-yellow-100">
-                                            {totalOnCallAll}
-                                        </td>
-                                        <td className="border-r border-border px-2 py-2.5 text-right font-mono text-xs">
-                                            {totalNilaiAll.toLocaleString('id-ID')}
-                                        </td>
-                                        <td className="border-r border-border bg-primary/10 px-2 py-2.5 text-right font-mono text-xs font-bold text-primary">
-                                            {totalRupiahAll > 0 ? totalRupiahAll.toLocaleString('id-ID') : '-'}
-                                        </td>
-                                        {can_write && <td></td>}
-                                    </tr>
-                                </tfoot>
-                            )}
-                        </table>
-                    </div>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* Keterangan & Legenda Kode Shift */}

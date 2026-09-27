@@ -83,7 +83,7 @@ class PengusahaanInspeksiTempatKerjaController extends Controller
             $catatan = '';
         }
 
-        return Inertia::render('k3/pengusahaan/inspeksi-tempat-kerja/index', [
+        return Inertia::render('pengusahaan/k3/inspeksi-tempat-kerja/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

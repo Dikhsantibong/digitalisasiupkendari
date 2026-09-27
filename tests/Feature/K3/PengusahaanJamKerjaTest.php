@@ -35,7 +35,7 @@ class PengusahaanJamKerjaTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/jam-kerja/index')
+                    ->component('pengusahaan/k3/jam-kerja/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record')
@@ -154,7 +154,7 @@ class PengusahaanJamKerjaTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/jam-kerja/index')
+                ->component('pengusahaan/k3/jam-kerja/index')
                 ->where('can_write', false)
             );
 

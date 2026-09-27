@@ -41,7 +41,7 @@ class PengusahaanEvaluasiPengujianController extends Controller
         [$rows, $hasSaved] = $this->loadRows($unit, $year);
         $meta = $this->findMeta($unit, $year);
 
-        return Inertia::render('k3/pengusahaan/evaluasi-pengujian/index', [
+        return Inertia::render('pengusahaan/k3/evaluasi-pengujian/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

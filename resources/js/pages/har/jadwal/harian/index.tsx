@@ -14,6 +14,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     buildDocumentHeader,
     createSheet,
@@ -41,6 +42,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import jadwal from '@/routes/har/jadwal';
 import harian from '@/routes/har/jadwal/harian';
 import type { IdName } from '@/types';
@@ -156,6 +158,9 @@ export default function HarJadwalHarianPage({
     const [rows, setRows] = useState<HarianRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     // Dialog state for adding activity
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -524,7 +529,7 @@ export default function HarJadwalHarianPage({
                                 Reset
                             </Button>
                         )}
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <>
                                 <Button
                                     variant="outline"
@@ -713,288 +718,323 @@ export default function HarJadwalHarianPage({
                     </div>
 
                     {/* Table Container */}
-                    <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-xs">
-                            <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                <tr>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-10 border border-black p-2 text-center font-bold text-foreground"
-                                    >
-                                        No
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-64 min-w-56 border border-black p-2 text-left font-bold text-foreground"
-                                    >
-                                        KEGIATAN
-                                    </th>
-                                    <th
-                                        colSpan={days.length}
-                                        className="border border-black p-1.5 text-center font-bold tracking-wider text-foreground uppercase"
-                                    >
-                                        {monthName}
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-14 border border-black p-2 text-center font-bold text-foreground"
-                                    >
-                                        TARGET
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-16 border border-black p-2 text-center font-bold text-foreground"
-                                    >
-                                        RENCANA
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-16 border border-black p-2 text-center font-bold text-foreground"
-                                    >
-                                        REALISASI
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-20 border border-black p-2 text-center font-bold text-foreground"
-                                    >
-                                        ANALISA KINERJA
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-48 min-w-40 border border-black p-2 text-left font-bold text-foreground"
-                                    >
-                                        Keterangan
-                                    </th>
-                                    {can_write && (
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<HarianRow>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => row.kegiatan || 'Kegiatan baru'}
+                                categories={[{ key: 'jadwal', label: 'Terlaksana', onClass: 'border-emerald-600 bg-emerald-500 text-black' }]}
+                                isOn={(row, _category, day) => (row.jadwal || []).includes(day)}
+                                onToggle={(row, _category, day) => toggleDay(rows.indexOf(row), day)}
+                                lockRedDays
+                                details={(row, index) => (
+                                    <>
+                                        <TimelineField label="Kegiatan" value={row.kegiatan} onChange={(v) => updateField(index, 'kegiatan', v)} readOnly={!can_write} />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <TimelineField label="Target" type="number" value={row.target} onChange={(v) => updateField(index, 'target', Number(v))} readOnly={!can_write} />
+                                            <TimelineField label="Keterangan" value={row.keterangan || ''} onChange={(v) => updateField(index, 'keterangan', v)} readOnly={!can_write} placeholder="Catatan…" />
+                                        </div>
+                                    </>
+                                )}
+                                summary={(row) => {
+                                    const target = row.target || target_working_days;
+                                    const realisasi = (row.jadwal || []).length;
+
+                                    return `Target ${target} · Realisasi ${realisasi} · Kinerja ${target > 0 ? Math.round((realisasi / target) * 100) : 0}%`;
+                                }}
+                                onRemove={(_row, index) => handleRemoveRow(index)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada kegiatan harian."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="print-table w-full border-collapse text-xs">
+                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                    <tr>
                                         <th
                                             rowSpan={2}
-                                            className="no-print w-10 border border-black p-2 text-center font-bold text-foreground"
+                                            className="w-10 border border-black p-2 text-center font-bold text-foreground"
                                         >
-                                            Aksi
+                                            No
                                         </th>
-                                    )}
-                                </tr>
-                                <tr>
-                                    {days.map((d) => (
                                         <th
-                                            key={d.day}
-                                            className={`w-7 border border-black p-1 text-center font-bold ${
-                                                d.is_red
-                                                    ? 'print-red-text text-red-600'
-                                                    : 'text-foreground'
-                                            }`}
-                                            title={`${d.day} (${d.dow})${
-                                                d.holiday
-                                                    ? ` - ${d.holiday}`
-                                                    : ''
-                                            }`}
+                                            rowSpan={2}
+                                            className="w-64 min-w-56 border border-black p-2 text-left font-bold text-foreground"
                                         >
-                                            {d.day}
+                                            KEGIATAN
                                         </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((row, idx) => {
-                                    const realisasi = (row.jadwal || []).length;
-                                    const target =
-                                        row.target || target_working_days;
-                                    const kinerja =
-                                        target > 0
-                                            ? Math.round(
-                                                  (realisasi / target) * 100,
-                                              )
-                                            : 0;
-
-                                    return (
-                                        <tr
-                                            key={idx}
-                                            className="transition-colors hover:bg-muted/10"
+                                        <th
+                                            colSpan={days.length}
+                                            className="border border-black p-1.5 text-center font-bold tracking-wider text-foreground uppercase"
                                         >
-                                            {/* No */}
-                                            <td className="border border-black p-1 text-center font-medium text-foreground">
-                                                {idx + 1}
-                                            </td>
+                                            {monthName}
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-14 border border-black p-2 text-center font-bold text-foreground"
+                                        >
+                                            TARGET
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-16 border border-black p-2 text-center font-bold text-foreground"
+                                        >
+                                            RENCANA
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-16 border border-black p-2 text-center font-bold text-foreground"
+                                        >
+                                            REALISASI
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-20 border border-black p-2 text-center font-bold text-foreground"
+                                        >
+                                            ANALISA KINERJA
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="w-48 min-w-40 border border-black p-2 text-left font-bold text-foreground"
+                                        >
+                                            Keterangan
+                                        </th>
+                                        {can_write && (
+                                            <th
+                                                rowSpan={2}
+                                                className="no-print w-10 border border-black p-2 text-center font-bold text-foreground"
+                                            >
+                                                Aksi
+                                            </th>
+                                        )}
+                                    </tr>
+                                    <tr>
+                                        {days.map((d) => (
+                                            <th
+                                                key={d.day}
+                                                className={`w-7 border border-black p-1 text-center font-bold ${
+                                                    d.is_red
+                                                        ? 'print-red-text text-red-600'
+                                                        : 'text-foreground'
+                                                }`}
+                                                title={`${d.day} (${d.dow})${
+                                                    d.holiday
+                                                        ? ` - ${d.holiday}`
+                                                        : ''
+                                                }`}
+                                            >
+                                                {d.day}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((row, idx) => {
+                                        const realisasi = (row.jadwal || []).length;
+                                        const target =
+                                            row.target || target_working_days;
+                                        const kinerja =
+                                            target > 0
+                                                ? Math.round(
+                                                      (realisasi / target) * 100,
+                                                  )
+                                                : 0;
 
-                                            {/* KEGIATAN */}
-                                            <td className="border border-black p-1 text-foreground">
-                                                {can_write ? (
-                                                    <input
-                                                        type="text"
-                                                        value={row.kegiatan}
-                                                        onChange={(e) =>
-                                                            updateField(
-                                                                idx,
-                                                                'kegiatan',
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                    />
-                                                ) : (
-                                                    <span className="px-1.5 text-xs">
-                                                        {row.kegiatan}
-                                                    </span>
-                                                )}
-                                            </td>
+                                        return (
+                                            <tr
+                                                key={idx}
+                                                className="transition-colors hover:bg-muted/10"
+                                            >
+                                                {/* No */}
+                                                <td className="border border-black p-1 text-center font-medium text-foreground">
+                                                    {idx + 1}
+                                                </td>
 
-                                            {/* Day Cells */}
-                                            {days.map((d) => {
-                                                if (d.is_red) {
+                                                {/* KEGIATAN */}
+                                                <td className="border border-black p-1 text-foreground">
+                                                    {can_write ? (
+                                                        <input
+                                                            type="text"
+                                                            value={row.kegiatan}
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    idx,
+                                                                    'kegiatan',
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                            className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                    ) : (
+                                                        <span className="px-1.5 text-xs">
+                                                            {row.kegiatan}
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* Day Cells */}
+                                                {days.map((d) => {
+                                                    if (d.is_red) {
+                                                        return (
+                                                            <td
+                                                                key={d.day}
+                                                                className="print-red-cell border border-black bg-[#ff0000] select-none"
+                                                                title={`${d.day} (${d.dow}): Libur / Akhir Pekan`}
+                                                            />
+                                                        );
+                                                    }
+
+                                                    const isDone =
+                                                        row.jadwal.includes(d.day);
+
                                                     return (
                                                         <td
                                                             key={d.day}
-                                                            className="print-red-cell border border-black bg-[#ff0000] select-none"
-                                                            title={`${d.day} (${d.dow}): Libur / Akhir Pekan`}
-                                                        />
+                                                            onClick={() =>
+                                                                toggleDay(
+                                                                    idx,
+                                                                    d.day,
+                                                                )
+                                                            }
+                                                            className={`border border-black text-center font-bold transition-colors select-none ${
+                                                                isDone
+                                                                    ? 'bg-slate-200 text-foreground dark:bg-slate-700'
+                                                                    : 'hover:bg-muted/40'
+                                                            } ${
+                                                                can_write
+                                                                    ? 'cursor-pointer'
+                                                                    : ''
+                                                            }`}
+                                                            title={`Tanggal ${d.day} (${d.dow}): ${
+                                                                isDone
+                                                                    ? 'Terlaksana (1) - Klik untuk batalkan'
+                                                                    : 'Belum Terlaksana - Klik untuk tandai (1)'
+                                                            }`}
+                                                        >
+                                                            {isDone ? '1' : ''}
+                                                        </td>
                                                     );
-                                                }
+                                                })}
 
-                                                const isDone =
-                                                    row.jadwal.includes(d.day);
-
-                                                return (
-                                                    <td
-                                                        key={d.day}
-                                                        onClick={() =>
-                                                            toggleDay(
-                                                                idx,
-                                                                d.day,
-                                                            )
-                                                        }
-                                                        className={`border border-black text-center font-bold transition-colors select-none ${
-                                                            isDone
-                                                                ? 'bg-slate-200 text-foreground dark:bg-slate-700'
-                                                                : 'hover:bg-muted/40'
-                                                        } ${
-                                                            can_write
-                                                                ? 'cursor-pointer'
-                                                                : ''
-                                                        }`}
-                                                        title={`Tanggal ${d.day} (${d.dow}): ${
-                                                            isDone
-                                                                ? 'Terlaksana (1) - Klik untuk batalkan'
-                                                                : 'Belum Terlaksana - Klik untuk tandai (1)'
-                                                        }`}
-                                                    >
-                                                        {isDone ? '1' : ''}
-                                                    </td>
-                                                );
-                                            })}
-
-                                            {/* TARGET */}
-                                            <td className="border border-black p-1 text-center font-bold text-foreground">
-                                                {can_write ? (
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={row.target}
-                                                        onChange={(e) =>
-                                                            updateField(
-                                                                idx,
-                                                                'target',
-                                                                Number(
-                                                                    e.target
-                                                                        .value,
-                                                                ),
-                                                            )
-                                                        }
-                                                        className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                    />
-                                                ) : (
-                                                    row.target
-                                                )}
-                                            </td>
-
-                                            {/* RENCANA */}
-                                            <td className="border border-black p-1 text-center font-bold text-foreground">
-                                                {can_write ? (
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={
-                                                            row.rencana_count
-                                                        }
-                                                        onChange={(e) =>
-                                                            updateField(
-                                                                idx,
-                                                                'rencana_count',
-                                                                Number(
-                                                                    e.target
-                                                                        .value,
-                                                                ),
-                                                            )
-                                                        }
-                                                        className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                    />
-                                                ) : (
-                                                    row.rencana_count
-                                                )}
-                                            </td>
-
-                                            {/* REALISASI */}
-                                            <td className="border border-black p-1 text-center font-extrabold text-foreground">
-                                                {realisasi}
-                                            </td>
-
-                                            {/* ANALISA KINERJA */}
-                                            <td
-                                                className={`border border-black p-1 text-center font-extrabold ${
-                                                    kinerja >= 100
-                                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                                        : 'text-amber-600 dark:text-amber-400'
-                                                }`}
-                                            >
-                                                {kinerja}%
-                                            </td>
-
-                                            {/* Keterangan */}
-                                            <td className="border border-black p-1 text-foreground">
-                                                {can_write ? (
-                                                    <input
-                                                        type="text"
-                                                        value={
-                                                            row.keterangan || ''
-                                                        }
-                                                        onChange={(e) =>
-                                                            updateField(
-                                                                idx,
-                                                                'keterangan',
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        placeholder="Catatan kegiatan..."
-                                                        className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                    />
-                                                ) : (
-                                                    <span className="px-1 text-xs">
-                                                        {row.keterangan || '-'}
-                                                    </span>
-                                                )}
-                                            </td>
-
-                                            {/* Aksi (No-Print) */}
-                                            {can_write && (
-                                                <td className="no-print border border-black p-1 text-center">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                        onClick={() =>
-                                                            handleRemoveRow(idx)
-                                                        }
-                                                        title="Hapus Kegiatan"
-                                                    >
-                                                        <Trash2 className="size-3.5" />
-                                                    </Button>
+                                                {/* TARGET */}
+                                                <td className="border border-black p-1 text-center font-bold text-foreground">
+                                                    {can_write ? (
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={row.target}
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    idx,
+                                                                    'target',
+                                                                    Number(
+                                                                        e.target
+                                                                            .value,
+                                                                    ),
+                                                                )
+                                                            }
+                                                            className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                    ) : (
+                                                        row.target
+                                                    )}
                                                 </td>
-                                            )}
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+
+                                                {/* RENCANA */}
+                                                <td className="border border-black p-1 text-center font-bold text-foreground">
+                                                    {can_write ? (
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={
+                                                                row.rencana_count
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    idx,
+                                                                    'rencana_count',
+                                                                    Number(
+                                                                        e.target
+                                                                            .value,
+                                                                    ),
+                                                                )
+                                                            }
+                                                            className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                    ) : (
+                                                        row.rencana_count
+                                                    )}
+                                                </td>
+
+                                                {/* REALISASI */}
+                                                <td className="border border-black p-1 text-center font-extrabold text-foreground">
+                                                    {realisasi}
+                                                </td>
+
+                                                {/* ANALISA KINERJA */}
+                                                <td
+                                                    className={`border border-black p-1 text-center font-extrabold ${
+                                                        kinerja >= 100
+                                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                                            : 'text-amber-600 dark:text-amber-400'
+                                                    }`}
+                                                >
+                                                    {kinerja}%
+                                                </td>
+
+                                                {/* Keterangan */}
+                                                <td className="border border-black p-1 text-foreground">
+                                                    {can_write ? (
+                                                        <input
+                                                            type="text"
+                                                            value={
+                                                                row.keterangan || ''
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    idx,
+                                                                    'keterangan',
+                                                                    e.target.value,
+                                                                )
+                                                            }
+                                                            placeholder="Catatan kegiatan..."
+                                                            className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        />
+                                                    ) : (
+                                                        <span className="px-1 text-xs">
+                                                            {row.keterangan || '-'}
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* Aksi (No-Print) */}
+                                                {can_write && (
+                                                    <td className="no-print border border-black p-1 text-center">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                            onClick={() =>
+                                                                handleRemoveRow(idx)
+                                                            }
+                                                            title="Hapus Kegiatan"
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                        </Button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
 
                     {/* Bottom Legend & Summary */}
                     <div className="border-t border-border bg-muted/20 p-4">

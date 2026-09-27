@@ -34,7 +34,7 @@ class PengusahaanAparApabTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/apar-apab/index')
+                    ->component('pengusahaan/k3/apar-apab/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 33)
@@ -147,7 +147,7 @@ class PengusahaanAparApabTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/apar-apab/index')
+                ->component('pengusahaan/k3/apar-apab/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.lokasi', 'Turbine Area')
                 ->where('record.items.0.no_rfid', '999')

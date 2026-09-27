@@ -4,10 +4,12 @@ import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { MobileMatrixForm } from '@/components/mobile/matrix-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import patrol from '@/routes/k3/input/patrol';
 import type { IdName } from '@/types';
@@ -41,6 +43,7 @@ const rowTotal = (row: GridRow, days: number): number => {
 
 export default function PatrolInput({ filters, days, rows: initialRows, options, can_write }: Props) {
     const [rows, setRows] = useState<GridRow[]>(initialRows);
+    const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -172,21 +175,37 @@ export default function PatrolInput({ filters, days, rows: initialRows, options,
                         Belum ada lokasi patroli. Tambahkan lewat Master K3 &amp; Keamanan → Lokasi Patroli.
                     </div>
                 ) : (
-                    <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
-                        <style>{OPERASI_GRID_STYLES}</style>
-                        <DataGrid
-                            className="rdg-light"
-                            style={{ blockSize: '60vh' }}
-                            columns={columns}
+                    compact ? (
+                        <MobileMatrixForm<GridRow>
+                            columns={Array.from({ length: days }, (_, i) => ({ key: `day_${i + 1}`, label: String(i + 1) }))}
                             rows={rows}
-                            rowKeyGetter={(row) => row.location_id}
-                            onRowsChange={(next) => {
-                                setRows(next);
+                            rowKey={(row) => row.location_id}
+                            rowLabel={(row) => row.location_name}
+                            rowSub={(row) => `Total bulan ini: ${rowTotal(row, days)}`}
+                            value={(row, column) => (row[column] === null || row[column] === undefined ? '' : String(row[column]))}
+                            onChange={(index, column, value) => {
+                                setRows((current) => current.map((row, i) => (i === index ? { ...row, [column]: value } : row)));
                                 setDirty(true);
                             }}
-                            onSelectedCellChange={onSelectedCellChange}
+                            readOnly={!can_write}
                         />
-                    </div>
+                    ) : (
+                        <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
+                            <style>{OPERASI_GRID_STYLES}</style>
+                            <DataGrid
+                                className="rdg-light"
+                                style={{ blockSize: '60vh' }}
+                                columns={columns}
+                                rows={rows}
+                                rowKeyGetter={(row) => row.location_id}
+                                onRowsChange={(next) => {
+                                    setRows(next);
+                                    setDirty(true);
+                                }}
+                                onSelectedCellChange={onSelectedCellChange}
+                            />
+                        </div>
+                    )
                 )}
             </div>
         </>

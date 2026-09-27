@@ -114,7 +114,7 @@ class PengusahaanHydrantController extends Controller
             }
         }
 
-        return Inertia::render('k3/pengusahaan/hydrant/index', [
+        return Inertia::render('pengusahaan/k3/hydrant/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

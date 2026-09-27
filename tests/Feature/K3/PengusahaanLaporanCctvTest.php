@@ -35,7 +35,7 @@ class PengusahaanLaporanCctvTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/laporan-cctv/index')
+                    ->component('pengusahaan/k3/laporan-cctv/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 1)
@@ -119,7 +119,7 @@ class PengusahaanLaporanCctvTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/laporan-cctv/index')
+                ->component('pengusahaan/k3/laporan-cctv/index')
                 ->where('has_saved', false)
                 ->where('record.items.0.lokasi_cctv', '9. Area Dermaga Jetty Baru')
             );
@@ -203,7 +203,7 @@ class PengusahaanLaporanCctvTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/laporan-cctv/index')
+                ->component('pengusahaan/k3/laporan-cctv/index')
                 ->where('can_write', true)
                 ->has('record.items', 1)
             );

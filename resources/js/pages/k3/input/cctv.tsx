@@ -2,10 +2,13 @@ import { Head, router } from '@inertiajs/react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import cctv from '@/routes/k3/input/cctv';
@@ -35,6 +38,7 @@ const toRow = (r: Partial<Row> & { id: number }): Row => ({ ...empty(), ...r, id
 
 export default function CctvInput({ unit, filters, rows: initial, options, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(initial.map(toRow));
+    const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -79,42 +83,63 @@ export default function CctvInput({ unit, filters, rows: initial, options, can_w
                     {dirty && <span className="pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full border-collapse text-xs">
-                        <thead className="bg-muted/50">
-                            <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
-                                <th className="w-10">No</th><th className="w-32">Tanggal</th><th>No CCTV</th><th className="text-left">Titik Lokasi CCTV</th><th>Status</th><th>Foto Terpasang (URL)</th><th>Foto Tampilan (URL)</th><th className="text-left">Keterangan</th>{can_write && <th className="w-12">Aksi</th>}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.length === 0 ? (
-                                <tr><td colSpan={cols} className="border border-border p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
-                            ) : rows.map((_, i) => (
-                                <tr key={i} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
-                                    <td className="text-center">{i + 1}</td>
-                                    <td>{cell(i, 'tanggal', 'date')}</td>
-                                    <td className="min-w-[80px]">{cell(i, 'no_cctv')}</td>
-                                    <td className="min-w-[200px]">{cell(i, 'titik_lokasi')}</td>
-                                    <td className="min-w-[90px]">
-                                        {can_write ? (
-                                            <select value={rows[i].status} onChange={(e) => update(i, 'status', e.target.value)} className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                                                <option value="on">ON</option>
-                                                <option value="off">OFF</option>
-                                                <option value="rusak">RUSAK</option>
-                                            </select>
-                                        ) : (
-                                            <span className="text-xs uppercase">{rows[i].status}</span>
-                                        )}
-                                    </td>
-                                    <td className="min-w-[140px]">{cell(i, 'foto_terpasang', 'text', 'https://…')}</td>
-                                    <td className="min-w-[140px]">{cell(i, 'foto_tampilan', 'text', 'https://…')}</td>
-                                    <td className="min-w-[160px]">{cell(i, 'keterangan')}</td>
-                                    {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(i)}><Trash2 className="size-4" /></Button></td>}
+                {compact ? (
+                    <MobileRowEditor<Row>
+                        rows={rows}
+                        fields={[
+                            { key: 'no_cctv', label: 'No CCTV', group: 'Identitas' },
+                            { key: 'titik_lokasi', label: 'Titik Lokasi CCTV' },
+                            { key: 'tanggal', label: 'Tanggal', type: 'date' },
+                            { key: 'status', label: 'Status', type: 'select', options: ['on', 'off', 'rusak'], optionLabels: { on: 'ON', off: 'OFF', rusak: 'RUSAK' }, parse: (v) => String(v) || 'on' },
+                            { key: 'foto_terpasang', label: 'Foto Terpasang (URL)', placeholder: 'https://…', group: 'Dokumentasi' },
+                            { key: 'foto_tampilan', label: 'Foto Tampilan (URL)', placeholder: 'https://…' },
+                            { key: 'keterangan', label: 'Keterangan' },
+                        ] satisfies RowField<Row>[]}
+                        title={(r) => r.titik_lokasi || 'Lokasi belum diisi'}
+                        subtitle={(r) => `No ${r.no_cctv || '-'} · ${r.status.toUpperCase()}`}
+                        onChange={(i, k, v) => update(i, k, String(v ?? ''))}
+                        onRemove={removeRow}
+                        canWrite={can_write}
+                        removeLabel="Hapus CCTV"
+                    />
+                ) : (
+                    <div className="overflow-x-auto rounded-md border border-border bg-card">
+                        <table className="w-full border-collapse text-xs">
+                            <thead className="bg-muted/50">
+                                <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
+                                    <th className="w-10">No</th><th className="w-32">Tanggal</th><th>No CCTV</th><th className="text-left">Titik Lokasi CCTV</th><th>Status</th><th>Foto Terpasang (URL)</th><th>Foto Tampilan (URL)</th><th className="text-left">Keterangan</th>{can_write && <th className="w-12">Aksi</th>}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                            </thead>
+                            <tbody>
+                                {rows.length === 0 ? (
+                                    <tr><td colSpan={cols} className="border border-border p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
+                                ) : rows.map((_, i) => (
+                                    <tr key={i} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
+                                        <td className="text-center">{i + 1}</td>
+                                        <td>{cell(i, 'tanggal', 'date')}</td>
+                                        <td className="min-w-[80px]">{cell(i, 'no_cctv')}</td>
+                                        <td className="min-w-[200px]">{cell(i, 'titik_lokasi')}</td>
+                                        <td className="min-w-[90px]">
+                                            {can_write ? (
+                                                <select value={rows[i].status} onChange={(e) => update(i, 'status', e.target.value)} className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
+                                                    <option value="on">ON</option>
+                                                    <option value="off">OFF</option>
+                                                    <option value="rusak">RUSAK</option>
+                                                </select>
+                                            ) : (
+                                                <span className="text-xs uppercase">{rows[i].status}</span>
+                                            )}
+                                        </td>
+                                        <td className="min-w-[140px]">{cell(i, 'foto_terpasang', 'text', 'https://…')}</td>
+                                        <td className="min-w-[140px]">{cell(i, 'foto_tampilan', 'text', 'https://…')}</td>
+                                        <td className="min-w-[160px]">{cell(i, 'keterangan')}</td>
+                                        {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(i)}><Trash2 className="size-4" /></Button></td>}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </>
     );

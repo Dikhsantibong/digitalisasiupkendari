@@ -69,7 +69,7 @@ class PengusahaanKecelakaanInstalasiController extends Controller
                 : [],
         ];
 
-        return Inertia::render('k3/pengusahaan/kecelakaan-instalasi/index', [
+        return Inertia::render('pengusahaan/k3/kecelakaan-instalasi/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

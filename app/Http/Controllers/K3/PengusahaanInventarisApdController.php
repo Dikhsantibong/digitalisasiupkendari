@@ -107,7 +107,7 @@ class PengusahaanInventarisApdController extends Controller
             }
         }
 
-        return Inertia::render('k3/pengusahaan/inventaris-apd/index', [
+        return Inertia::render('pengusahaan/k3/inventaris-apd/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

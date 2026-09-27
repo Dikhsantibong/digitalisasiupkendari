@@ -42,7 +42,7 @@ class PengusahaanMetodePengujianController extends Controller
         [$rows, $hasSaved] = $this->loadRows($unit, $month, $year);
         $meta = $this->findMeta($unit, $month, $year);
 
-        return Inertia::render('k3/pengusahaan/metode-pengujian/index', [
+        return Inertia::render('pengusahaan/k3/metode-pengujian/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

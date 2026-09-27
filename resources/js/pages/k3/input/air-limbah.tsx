@@ -459,12 +459,12 @@ export default function AirLimbahPage({
                 {/* Official Header Preview Container */}
                 <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
                     {/* Official PLN & MKP Kop Header */}
-                    <div className="grid grid-cols-[140px_1fr_140px] items-center border-b border-border bg-muted/40 p-4 text-center">
+                    <div className="grid grid-cols-[56px_1fr_56px] items-center border-b border-border bg-muted/40 p-2 text-center sm:grid-cols-[140px_1fr_140px] sm:p-4">
                         <div className="flex items-center justify-center p-1">
                             <img
                                 src="/logo/sidebar-logo.png"
                                 alt="PLN Nusantara Power"
-                                className="max-h-12 max-w-[130px] object-contain"
+                                className="max-h-8 max-w-full object-contain sm:max-h-12 sm:max-w-[130px]"
                                 onError={(e) => {
                                     (e.target as HTMLElement).style.display = 'none';
                                 }}
@@ -488,7 +488,7 @@ export default function AirLimbahPage({
                             <img
                                 src="/logo/mkp.jpg"
                                 alt="MKP Mitra Karya Prima"
-                                className="max-h-12 max-w-[130px] object-contain"
+                                className="max-h-8 max-w-full object-contain sm:max-h-12 sm:max-w-[130px]"
                                 onError={(e) => {
                                     (e.target as HTMLElement).style.display = 'none';
                                 }}

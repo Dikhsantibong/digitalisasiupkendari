@@ -108,7 +108,7 @@ class FieldRoleTest extends TestCase
             // Every other HAR input & formulir page opens too, each through its own permission.
             $this->actingAs($user)->get(route('har.input.laporan-gangguan.index', $query))->assertOk();
             $this->actingAs($user)->get(route('har.input.work-order.index', $query))->assertOk();
-            $this->actingAs($user)->get(route('har.formulir.prelube-test.index', $query))->assertOk();
+            $this->actingAs($user)->get(route('har.pengusahaan.prelube-test.index', $query))->assertOk();
             $this->actingAs($user)->get(route('har.formulir.logbook-mutasi.index', $query))->assertOk();
 
             // The TL's hubs, jadwal, and the operator's own menus stay closed.

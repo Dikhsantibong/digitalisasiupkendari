@@ -58,7 +58,7 @@ class PengusahaanCertificateController extends Controller
             ])
             ->all();
 
-        return Inertia::render('k3/pengusahaan/certificate/index', [
+        return Inertia::render('pengusahaan/k3/certificate/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

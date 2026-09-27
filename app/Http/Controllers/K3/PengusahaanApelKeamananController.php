@@ -75,7 +75,7 @@ class PengusahaanApelKeamananController extends Controller
             $catatan = '';
         }
 
-        return Inertia::render('k3/pengusahaan/apel-keamanan/index', [
+        return Inertia::render('pengusahaan/k3/apel-keamanan/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

@@ -35,7 +35,7 @@ class PengusahaanInspeksiTempatKerjaTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/inspeksi-tempat-kerja/index')
+                    ->component('pengusahaan/k3/inspeksi-tempat-kerja/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 68)
@@ -157,7 +157,7 @@ class PengusahaanInspeksiTempatKerjaTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/inspeksi-tempat-kerja/index')
+                ->component('pengusahaan/k3/inspeksi-tempat-kerja/index')
                 ->where('has_saved', true)
                 ->where('record.items.0.status', 'Y')
                 ->where('record.items.0.comment', 'Sesuai aturan 5R')
@@ -244,7 +244,7 @@ class PengusahaanInspeksiTempatKerjaTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/inspeksi-tempat-kerja/index')
+                ->component('pengusahaan/k3/inspeksi-tempat-kerja/index')
                 ->where('can_write', true)
                 ->has('record.items', 68)
             );

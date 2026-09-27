@@ -108,7 +108,7 @@ class PengusahaanEmergencyFacilityController extends Controller
             $prevMonthPeriods = [];
         }
 
-        return Inertia::render('k3/pengusahaan/emergency-facility/index', [
+        return Inertia::render('pengusahaan/k3/emergency-facility/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

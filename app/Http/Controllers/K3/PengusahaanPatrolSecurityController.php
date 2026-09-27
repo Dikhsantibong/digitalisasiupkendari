@@ -113,7 +113,7 @@ class PengusahaanPatrolSecurityController extends Controller
             $catatan = '';
         }
 
-        return Inertia::render('k3/pengusahaan/patrol-security/index', [
+        return Inertia::render('pengusahaan/k3/patrol-security/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

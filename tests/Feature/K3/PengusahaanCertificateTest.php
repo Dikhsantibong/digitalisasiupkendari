@@ -35,7 +35,7 @@ class PengusahaanCertificateTest extends TestCase
                 ->get(route('k3.pengusahaan.certificate.index', ['unit_id' => $unit->id]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/certificate/index')
+                    ->component('pengusahaan/k3/certificate/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('options.categories')
@@ -131,7 +131,7 @@ class PengusahaanCertificateTest extends TestCase
             ->get(route('k3.pengusahaan.certificate.index', ['unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/certificate/index')
+                ->component('pengusahaan/k3/certificate/index')
                 ->where('can_write', false)
             );
 

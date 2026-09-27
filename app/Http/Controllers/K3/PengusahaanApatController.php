@@ -110,7 +110,7 @@ class PengusahaanApatController extends Controller
             }
         }
 
-        return Inertia::render('k3/pengusahaan/apat/index', [
+        return Inertia::render('pengusahaan/k3/apat/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

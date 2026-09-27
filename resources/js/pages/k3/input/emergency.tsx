@@ -4,10 +4,12 @@ import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import { MobileGridList } from '@/components/mobile/grid-list';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import emergency from '@/routes/k3/input/emergency';
 import type { IdName } from '@/types';
@@ -49,6 +51,7 @@ const readiness = (row: GridRow): string => {
 
 export default function EmergencyInput({ filters, rows: initialRows, options, can_write }: Props) {
     const [rows, setRows] = useState<GridRow[]>(initialRows);
+    const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -185,21 +188,34 @@ export default function EmergencyInput({ filters, rows: initialRows, options, ca
                         Belum ada fasilitas darurat. Tambahkan lewat Master K3 &amp; Keamanan → Fasilitas Darurat.
                     </div>
                 ) : (
-                    <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
-                        <style>{OPERASI_GRID_STYLES}</style>
-                        <DataGrid
-                            className="rdg-light"
-                            style={{ blockSize: `${gridHeight}px` }}
+                    compact ? (
+                        <MobileGridList<GridRow>
                             columns={columns}
                             rows={rows}
-                            rowKeyGetter={(row) => row.equipment_id}
+                            rowKey={(row) => row.equipment_id}
+                            readOnly={!can_write}
                             onRowsChange={(next) => {
                                 setRows(next);
                                 setDirty(true);
                             }}
-                            onSelectedCellChange={onSelectedCellChange}
                         />
-                    </div>
+                    ) : (
+                        <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
+                            <style>{OPERASI_GRID_STYLES}</style>
+                            <DataGrid
+                                className="rdg-light"
+                                style={{ blockSize: `${gridHeight}px` }}
+                                columns={columns}
+                                rows={rows}
+                                rowKeyGetter={(row) => row.equipment_id}
+                                onRowsChange={(next) => {
+                                    setRows(next);
+                                    setDirty(true);
+                                }}
+                                onSelectedCellChange={onSelectedCellChange}
+                            />
+                        </div>
+                    )
                 )}
             </div>
         </>

@@ -89,73 +89,27 @@ Route::middleware(['auth', 'verified'])
         Route::post('formulir/laporan-gangguan', [LaporanGangguanController::class, 'store'])->name('formulir.laporan-gangguan.store');
         Route::delete('formulir/laporan-gangguan/{laporanGangguan}', [LaporanGangguanController::class, 'destroy'])->name('formulir.laporan-gangguan.destroy');
         Route::get('formulir/laporan-gangguan/{laporanGangguan}/pdf', [LaporanGangguanController::class, 'pdf'])->name('formulir.laporan-gangguan.pdf');
-        Route::get('formulir/prelube-test', [PrelubeTestController::class, 'index'])->name('formulir.prelube-test.index');
-        Route::post('formulir/prelube-test', [PrelubeTestController::class, 'store'])->name('formulir.prelube-test.store');
-        Route::get('formulir/prelube-test/pdf', [PrelubeTestController::class, 'pdf'])->name('formulir.prelube-test.pdf');
-        Route::delete('formulir/prelube-test/{prelubeTest}', [PrelubeTestController::class, 'destroy'])->name('formulir.prelube-test.destroy');
-
-        Route::get('formulir/hydrotest', [HydrotestController::class, 'index'])->name('formulir.hydrotest.index');
-        Route::post('formulir/hydrotest', [HydrotestController::class, 'store'])->name('formulir.hydrotest.store');
-        Route::get('formulir/hydrotest/pdf', [HydrotestController::class, 'pdf'])->name('formulir.hydrotest.pdf');
-        Route::delete('formulir/hydrotest/{hydrotest}', [HydrotestController::class, 'destroy'])->name('formulir.hydrotest.destroy');
-
-        Route::get('formulir/timing-injection-pump', [TimingInjectionPumpController::class, 'index'])->name('formulir.timing-injection-pump.index');
-        Route::post('formulir/timing-injection-pump', [TimingInjectionPumpController::class, 'store'])->name('formulir.timing-injection-pump.store');
-        Route::get('formulir/timing-injection-pump/pdf', [TimingInjectionPumpController::class, 'pdf'])->name('formulir.timing-injection-pump.pdf');
-        Route::delete('formulir/timing-injection-pump/{timingInjectionPump}', [TimingInjectionPumpController::class, 'destroy'])->name('formulir.timing-injection-pump.destroy');
-
-        Route::get('formulir/tekanan-pembakaran', [CombustionPressureController::class, 'index'])->name('formulir.combustion-pressure.index');
-        Route::post('formulir/tekanan-pembakaran', [CombustionPressureController::class, 'store'])->name('formulir.combustion-pressure.store');
-        Route::get('formulir/tekanan-pembakaran/pdf', [CombustionPressureController::class, 'pdf'])->name('formulir.combustion-pressure.pdf');
-        Route::delete('formulir/tekanan-pembakaran/{combustionPressure}', [CombustionPressureController::class, 'destroy'])->name('formulir.combustion-pressure.destroy');
-
-        Route::get('formulir/defleksi-crankshaft', [CrankshaftDeflectionController::class, 'index'])->name('formulir.crankshaft-deflection.index');
-        Route::post('formulir/defleksi-crankshaft', [CrankshaftDeflectionController::class, 'store'])->name('formulir.crankshaft-deflection.store');
-        Route::get('formulir/defleksi-crankshaft/pdf', [CrankshaftDeflectionController::class, 'pdf'])->name('formulir.crankshaft-deflection.pdf');
-        Route::delete('formulir/defleksi-crankshaft/{crankshaftDeflection}', [CrankshaftDeflectionController::class, 'destroy'])->name('formulir.crankshaft-deflection.destroy');
-
-        Route::get('formulir/clearance-valve', [ClearanceValveController::class, 'index'])->name('formulir.clearance-valve.index');
-        Route::post('formulir/clearance-valve', [ClearanceValveController::class, 'store'])->name('formulir.clearance-valve.store');
-        Route::get('formulir/clearance-valve/pdf', [ClearanceValveController::class, 'pdf'])->name('formulir.clearance-valve.pdf');
-        Route::delete('formulir/clearance-valve/{clearanceValve}', [ClearanceValveController::class, 'destroy'])->name('formulir.clearance-valve.destroy');
-
-        Route::get('formulir/tekanan-pengabutan-injektor', [InjectorPressureController::class, 'index'])->name('formulir.injector-pressure.index');
-        Route::post('formulir/tekanan-pengabutan-injektor', [InjectorPressureController::class, 'store'])->name('formulir.injector-pressure.store');
-        Route::get('formulir/tekanan-pengabutan-injektor/pdf', [InjectorPressureController::class, 'pdf'])->name('formulir.injector-pressure.pdf');
-        Route::delete('formulir/tekanan-pengabutan-injektor/{injectorPressure}', [InjectorPressureController::class, 'destroy'])->name('formulir.injector-pressure.destroy');
-
-        Route::get('formulir/baut-counter-weight', [CounterWeightController::class, 'index'])->name('formulir.counter-weight.index');
-        Route::post('formulir/baut-counter-weight', [CounterWeightController::class, 'store'])->name('formulir.counter-weight.store');
-        Route::get('formulir/baut-counter-weight/pdf', [CounterWeightController::class, 'pdf'])->name('formulir.counter-weight.pdf');
-        Route::delete('formulir/baut-counter-weight/{counterWeight}', [CounterWeightController::class, 'destroy'])->name('formulir.counter-weight.destroy');
-
-        Route::get('formulir/axial-conrod', [AxialConrodController::class, 'index'])->name('formulir.axial-conrod.index');
-        Route::post('formulir/axial-conrod', [AxialConrodController::class, 'store'])->name('formulir.axial-conrod.store');
-        Route::post('formulir/axial-conrod/reset', [AxialConrodController::class, 'reset'])->name('formulir.axial-conrod.reset');
-        Route::get('formulir/axial-conrod/pdf', [AxialConrodController::class, 'pdf'])->name('formulir.axial-conrod.pdf');
-        Route::delete('formulir/axial-conrod/{axialConrod}', [AxialConrodController::class, 'destroy'])->name('formulir.axial-conrod.destroy');
-
-        Route::get('formulir/arus-motor', [MotorCurrentController::class, 'index'])->name('formulir.motor-current.index');
-        Route::post('formulir/arus-motor', [MotorCurrentController::class, 'store'])->name('formulir.motor-current.store');
-        Route::get('formulir/arus-motor/pdf', [MotorCurrentController::class, 'pdf'])->name('formulir.motor-current.pdf');
-        Route::delete('formulir/arus-motor/{motorCurrent}', [MotorCurrentController::class, 'destroy'])->name('formulir.motor-current.destroy');
-
-        Route::get('formulir/tegangan-baterai', [BatteryVoltageController::class, 'index'])->name('formulir.battery-voltage.index');
-        Route::post('formulir/tegangan-baterai', [BatteryVoltageController::class, 'store'])->name('formulir.battery-voltage.store');
-        Route::get('formulir/tegangan-baterai/pdf', [BatteryVoltageController::class, 'pdf'])->name('formulir.battery-voltage.pdf');
-        Route::delete('formulir/tegangan-baterai/{batteryVoltage}', [BatteryVoltageController::class, 'destroy'])->name('formulir.battery-voltage.destroy');
-
-        Route::get('formulir/kualitas-pelumas', [LubeQualityController::class, 'index'])->name('formulir.lube-quality.index');
-        Route::post('formulir/kualitas-pelumas', [LubeQualityController::class, 'store'])->name('formulir.lube-quality.store');
-        Route::post('formulir/kualitas-pelumas/reset', [LubeQualityController::class, 'reset'])->name('formulir.lube-quality.reset');
-        Route::get('formulir/kualitas-pelumas/pdf', [LubeQualityController::class, 'pdf'])->name('formulir.lube-quality.pdf');
-        Route::delete('formulir/kualitas-pelumas/{lubeQuality}', [LubeQualityController::class, 'destroy'])->name('formulir.lube-quality.destroy');
-
-        Route::get('formulir/tekanan-vibrasi', [VibrationController::class, 'index'])->name('formulir.vibration.index');
-        Route::post('formulir/tekanan-vibrasi', [VibrationController::class, 'store'])->name('formulir.vibration.store');
-        Route::post('formulir/tekanan-vibrasi/reset', [VibrationController::class, 'reset'])->name('formulir.vibration.reset');
-        Route::get('formulir/tekanan-vibrasi/pdf', [VibrationController::class, 'pdf'])->name('formulir.vibration.pdf');
-        Route::delete('formulir/tekanan-vibrasi/{vibration}', [VibrationController::class, 'destroy'])->name('formulir.vibration.destroy');
+        // Akses 2 — Pengusahaan (TL & Staf): formulir teknis pemeliharaan per mesin & tanggal uji.
+        foreach ([
+            'prelube-test' => PrelubeTestController::class,
+            'hydrotest' => HydrotestController::class,
+            'timing-injection-pump' => TimingInjectionPumpController::class,
+            'crankshaft-deflection' => CrankshaftDeflectionController::class,
+            'counter-weight' => CounterWeightController::class,
+            'axial-conrod' => AxialConrodController::class,
+            'clearance-valve' => ClearanceValveController::class,
+            'combustion-pressure' => CombustionPressureController::class,
+            'injector-pressure' => InjectorPressureController::class,
+            'motor-current' => MotorCurrentController::class,
+            'vibration' => VibrationController::class,
+            'lube-quality' => LubeQualityController::class,
+            'battery-voltage' => BatteryVoltageController::class,
+        ] as $slug => $controller) {
+            Route::get("pengusahaan/{$slug}", [$controller, 'index'])->name("pengusahaan.{$slug}.index");
+            Route::post("pengusahaan/{$slug}", [$controller, 'store'])->name("pengusahaan.{$slug}.store");
+            Route::get("pengusahaan/{$slug}/pdf", [$controller, 'pdf'])->name("pengusahaan.{$slug}.pdf");
+            Route::delete("pengusahaan/{$slug}/{record}", [$controller, 'destroy'])->name("pengusahaan.{$slug}.destroy")->whereNumber('record');
+        }
 
         Route::get('input/work-order', [WorkOrderController::class, 'index'])->name('input.work-order.index');
         Route::post('input/work-order', [WorkOrderController::class, 'store'])->name('input.work-order.store');

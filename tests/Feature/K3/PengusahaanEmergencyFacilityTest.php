@@ -36,7 +36,7 @@ class PengusahaanEmergencyFacilityTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/emergency-facility/index')
+                    ->component('pengusahaan/k3/emergency-facility/index')
                     ->where('unit.id', $unit->id)
                     ->where('filters.periode', 'M1')
                     ->where('can_write', true)
@@ -266,7 +266,7 @@ class PengusahaanEmergencyFacilityTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/emergency-facility/index')
+                ->component('pengusahaan/k3/emergency-facility/index')
                 ->where('can_write', false)
             );
 

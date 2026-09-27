@@ -35,7 +35,7 @@ class PengusahaanApelKeamananTest extends TestCase
                 ]))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page
-                    ->component('k3/pengusahaan/apel-keamanan/index')
+                    ->component('pengusahaan/k3/apel-keamanan/index')
                     ->where('unit.id', $unit->id)
                     ->where('can_write', true)
                     ->has('record.items', 93)
@@ -193,7 +193,7 @@ class PengusahaanApelKeamananTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/pengusahaan/apel-keamanan/index')
+                ->component('pengusahaan/k3/apel-keamanan/index')
                 ->where('can_write', true)
                 ->has('record.items', 84) // Feb 2026 has 28 days => 28 * 3 = 84
             );

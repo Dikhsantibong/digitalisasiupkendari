@@ -117,7 +117,7 @@ class PengusahaanAparApabController extends Controller
             }
         }
 
-        return Inertia::render('k3/pengusahaan/apar-apab/index', [
+        return Inertia::render('pengusahaan/k3/apar-apab/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

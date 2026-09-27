@@ -13,6 +13,8 @@ import {
     X,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
+import { TimelineField } from '@/components/mobile/timeline-form';
 import {
     buildDocumentHeader,
     createSheet,
@@ -35,6 +37,7 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/har/jadwal';
 import p0P5 from '@/routes/har/jadwal/p0-p5';
@@ -161,6 +164,9 @@ export default function HarJadwalP0P5Page({
     const [rows, setRows] = useState<MachineScheduleRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the schedule opens read-only; "Ubah Jadwal" switches to the input layout.
+    const [mobileEditing, setMobileEditing] = useState(false);
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -644,7 +650,7 @@ export default function HarJadwalP0P5Page({
                                 Reset
                             </Button>
                         )}
-                        {can_write && (
+                        {can_write && (!compact || mobileEditing || dirty) && (
                             <Button
                                 size="sm"
                                 onClick={handleSave}
@@ -829,676 +835,705 @@ export default function HarJadwalP0P5Page({
                     </div>
 
                     {/* Matrix Table */}
-                    <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-[11px]">
-                            <thead>
-                                <tr className="border-b border-border bg-muted/40 font-bold text-foreground">
-                                    <th
-                                        rowSpan={2}
-                                        className="w-10 border border-border px-1.5 py-2 text-center"
-                                    >
-                                        NO
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="min-w-44 border border-border px-2 py-2 text-left"
-                                    >
-                                        MESIN / TIPE / S.N
-                                    </th>
-                                    <th className="w-16 border border-border px-1 py-1.5 text-center uppercase">
-                                        {monthName}
-                                    </th>
-                                    <th
-                                        colSpan={days.length}
-                                        className="border border-border px-1 py-1.5 text-center font-bold tracking-wider uppercase"
-                                    >
-                                        JENIS HAR
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="min-w-36 border border-border px-2 py-2 text-center"
-                                    >
-                                        JAM OPERASI PEMELIHARAAN
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="min-w-36 border border-border px-2 py-2 text-center"
-                                    >
-                                        KETERANGAN
-                                    </th>
-                                </tr>
-                                <tr className="border-b border-border font-bold">
-                                    <th className="border border-border bg-muted/60 px-1 py-1 text-center">
-                                        {filters.year}
-                                    </th>
-                                    {days.map((d) => (
-                                        <th
-                                            key={`th-day-${d.day}`}
-                                            className={`w-7 border border-border px-0.5 py-1 text-center text-[10px] ${
-                                                d.is_red
-                                                    ? 'print-red-cell bg-red-600 font-bold text-white'
-                                                    : 'bg-muted/50 text-foreground'
-                                            }`}
-                                            title={
-                                                d.holiday ??
-                                                (d.is_weekend
-                                                    ? 'Akhir Pekan'
-                                                    : undefined)
-                                            }
-                                        >
-                                            {d.day}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={days.length + 5}
-                                            className="border border-border p-8 text-center text-xs text-muted-foreground"
-                                        >
-                                            Belum ada mesin aktif pada unit{' '}
-                                            {unit.name}.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    rows.map((row, idx) => (
-                                        <Fragment
-                                            key={`machine-${row.machine_id}`}
-                                        >
-                                            {/* Sub-row 1: RENC */}
-                                            <tr className="hover:bg-muted/5">
-                                                {/* Cell 1: NO */}
-                                                <td
-                                                    rowSpan={3}
-                                                    className="border border-border bg-card px-1 py-1.5 text-center font-bold text-foreground"
-                                                >
-                                                    {idx + 1}
-                                                </td>
-
-                                                {/* Cell 2: MESIN / TIPE / S.N */}
-                                                <td
-                                                    rowSpan={2}
-                                                    className="border border-border bg-card px-2 py-1.5 text-left align-top"
-                                                >
-                                                    <div className="font-bold text-foreground">
-                                                        {row.name}
-                                                    </div>
-                                                    {row.type && (
-                                                        <div className="text-[10px] text-muted-foreground">
-                                                            {row.type}
-                                                        </div>
-                                                    )}
-                                                    {row.serial_number && (
-                                                        <div className="font-mono text-[10px] text-muted-foreground">
-                                                            SN.{' '}
-                                                            {row.serial_number}
-                                                        </div>
-                                                    )}
-                                                </td>
-
-                                                {/* Sub Col: RENC */}
-                                                <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
-                                                    RENC
-                                                </td>
-
-                                                {/* Day Cells: RENCANA */}
-                                                {days.map((d) => {
-                                                    const val =
-                                                        row.rencana[
-                                                            String(d.day)
-                                                        ] ?? '';
-                                                    const customColor =
-                                                        row.warna?.rencana?.[
-                                                            String(d.day)
-                                                        ];
-                                                    const colorClass =
-                                                        getCellColorClass(
-                                                            'rencana',
-                                                            val,
-                                                            customColor,
-                                                            d.is_red,
-                                                        );
-
-                                                    return (
-                                                        <td
-                                                            key={`renc-${row.machine_id}-${d.day}`}
-                                                            className={`group/cell relative border border-border p-0 text-center font-bold ${colorClass}`}
-                                                        >
-                                                            {can_write ? (
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger
-                                                                        asChild
-                                                                    >
-                                                                        <div className="flex h-7 w-full cursor-pointer items-center justify-center select-none hover:opacity-85">
-                                                                            {
-                                                                                val
-                                                                            }
-                                                                        </div>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent
-                                                                        align="center"
-                                                                        side="top"
-                                                                        className="no-print w-60 p-2.5 shadow-lg"
-                                                                    >
-                                                                        <div className="space-y-2 text-xs">
-                                                                            <div className="font-semibold text-foreground">
-                                                                                Tgl{' '}
-                                                                                {
-                                                                                    d.day
-                                                                                }{' '}
-                                                                                (
-                                                                                {
-                                                                                    monthName
-                                                                                }
-
-                                                                                )
-                                                                                —
-                                                                                Rencana
-                                                                            </div>
-
-                                                                            {/* Cycle Quick Picks */}
-                                                                            <div>
-                                                                                <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                                                                                    Pilih
-                                                                                    Siklus
-                                                                                    Pemeliharaan:
-                                                                                </div>
-                                                                                <div className="grid grid-cols-3 gap-1">
-                                                                                    {CYCLE_OPTIONS.map(
-                                                                                        (
-                                                                                            opt,
-                                                                                        ) => (
-                                                                                            <Button
-                                                                                                key={
-                                                                                                    opt
-                                                                                                }
-                                                                                                size="sm"
-                                                                                                variant={
-                                                                                                    val ===
-                                                                                                    opt
-                                                                                                        ? 'default'
-                                                                                                        : 'outline'
-                                                                                                }
-                                                                                                className="h-6 text-[11px] font-bold"
-                                                                                                onClick={() =>
-                                                                                                    updateCell(
-                                                                                                        row.machine_id,
-                                                                                                        'rencana',
-                                                                                                        d.day,
-                                                                                                        opt,
-                                                                                                    )
-                                                                                                }
-                                                                                            >
-                                                                                                {
-                                                                                                    opt
-                                                                                                }
-                                                                                            </Button>
-                                                                                        ),
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Color Assignment */}
-                                                                            <div className="border-t border-border pt-2">
-                                                                                <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                                                                                    Warna
-                                                                                    &
-                                                                                    Jenis
-                                                                                    Kegiatan:
-                                                                                </div>
-                                                                                <div className="space-y-1">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
-                                                                                        onClick={() =>
-                                                                                            setCellColor(
-                                                                                                row.machine_id,
-                                                                                                'rencana',
-                                                                                                d.day,
-                                                                                                'yellow',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <span className="size-3.5 shrink-0 border border-black/80 bg-[#ffff00]" />
-                                                                                        <span>
-                                                                                            Ganti
-                                                                                            Pelumas
-                                                                                        </span>
-                                                                                        {(customColor ===
-                                                                                            'yellow' ||
-                                                                                            (!customColor &&
-                                                                                                val ===
-                                                                                                    'P2')) && (
-                                                                                            <Check className="ml-auto size-3 text-primary" />
-                                                                                        )}
-                                                                                    </button>
-
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
-                                                                                        onClick={() =>
-                                                                                            setCellColor(
-                                                                                                row.machine_id,
-                                                                                                'rencana',
-                                                                                                d.day,
-                                                                                                'green',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <span className="size-3.5 shrink-0 border border-black/80 bg-[#92d050]" />
-                                                                                        <span>
-                                                                                            Ganti
-                                                                                            Pelumas+Cleaning
-                                                                                            Rad
-                                                                                        </span>
-                                                                                        {(customColor ===
-                                                                                            'green' ||
-                                                                                            (!customColor &&
-                                                                                                val ===
-                                                                                                    'P3')) && (
-                                                                                            <Check className="ml-auto size-3 text-primary" />
-                                                                                        )}
-                                                                                    </button>
-
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs text-muted-foreground hover:bg-muted"
-                                                                                        onClick={() =>
-                                                                                            setCellColor(
-                                                                                                row.machine_id,
-                                                                                                'rencana',
-                                                                                                d.day,
-                                                                                                '',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <span className="size-3.5 shrink-0 rounded-xs border border-border bg-card" />
-                                                                                        <span>
-                                                                                            Tanpa
-                                                                                            Warna
-                                                                                        </span>
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Clear */}
-                                                                            {val && (
-                                                                                <div className="border-t border-border pt-1.5">
-                                                                                    <Button
-                                                                                        size="sm"
-                                                                                        variant="ghost"
-                                                                                        className="h-6 w-full gap-1 text-[11px] text-destructive hover:bg-destructive/10"
-                                                                                        onClick={() =>
-                                                                                            updateCell(
-                                                                                                row.machine_id,
-                                                                                                'rencana',
-                                                                                                d.day,
-                                                                                                '',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <Trash2 className="size-3" />
-                                                                                        Hapus
-                                                                                        Nilai
-                                                                                    </Button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            ) : (
-                                                                <span className="block py-1">
-                                                                    {val}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-
-                                                {/* JAM OPERASI PEMELIHARAAN (Rowspan 3) */}
-                                                <td
-                                                    rowSpan={3}
-                                                    className="border border-border bg-card p-1 text-left align-top"
-                                                >
-                                                    {can_write ? (
-                                                        <textarea
-                                                            value={
-                                                                row.operating_hours
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateTextField(
-                                                                    row.machine_id,
-                                                                    'operating_hours',
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            rows={4}
-                                                            placeholder="P3: 1000 JAM&#10;P2: 1250 JAM"
-                                                            className="w-full resize-none rounded-xs border border-transparent bg-transparent p-1 text-[11px] leading-relaxed font-medium text-foreground transition-colors hover:border-border focus:border-primary focus:bg-background focus:outline-none"
-                                                        />
-                                                    ) : (
-                                                        <div className="p-1 text-[11px] leading-relaxed whitespace-pre-line text-foreground">
-                                                            {row.operating_hours ||
-                                                                '-'}
-                                                        </div>
-                                                    )}
-                                                </td>
-
-                                                {/* KETERANGAN (Rowspan 3) */}
-                                                <td
-                                                    rowSpan={3}
-                                                    className="border border-border bg-card p-1 text-left align-top"
-                                                >
-                                                    {can_write ? (
-                                                        <textarea
-                                                            value={
-                                                                row.keterangan
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateTextField(
-                                                                    row.machine_id,
-                                                                    'keterangan',
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            rows={4}
-                                                            placeholder="Catatan kegiatan..."
-                                                            className="w-full resize-none rounded-xs border border-transparent bg-transparent p-1 text-[11px] leading-relaxed text-foreground transition-colors hover:border-border focus:border-primary focus:bg-background focus:outline-none"
-                                                        />
-                                                    ) : (
-                                                        <div className="p-1 text-[11px] leading-relaxed whitespace-pre-line text-foreground">
-                                                            {row.keterangan ||
-                                                                '-'}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-
-                                            {/* Sub-row 2: REAL */}
-                                            <tr className="hover:bg-muted/5">
-                                                <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
-                                                    REAL
-                                                </td>
-                                                {days.map((d) => {
-                                                    const val =
-                                                        row.realisasi[
-                                                            String(d.day)
-                                                        ] ?? '';
-                                                    const customColor =
-                                                        row.warna?.realisasi?.[
-                                                            String(d.day)
-                                                        ];
-                                                    const colorClass =
-                                                        getCellColorClass(
-                                                            'realisasi',
-                                                            val,
-                                                            customColor,
-                                                            d.is_red,
-                                                        );
-
-                                                    return (
-                                                        <td
-                                                            key={`real-${row.machine_id}-${d.day}`}
-                                                            className={`group/cell relative border border-border p-0 text-center font-bold ${colorClass}`}
-                                                        >
-                                                            {can_write ? (
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger
-                                                                        asChild
-                                                                    >
-                                                                        <div className="flex h-7 w-full cursor-pointer items-center justify-center select-none hover:opacity-85">
-                                                                            {
-                                                                                val
-                                                                            }
-                                                                        </div>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent
-                                                                        align="center"
-                                                                        side="top"
-                                                                        className="no-print w-60 p-2.5 shadow-lg"
-                                                                    >
-                                                                        <div className="space-y-2 text-xs">
-                                                                            <div className="font-semibold text-foreground">
-                                                                                Tgl{' '}
-                                                                                {
-                                                                                    d.day
-                                                                                }{' '}
-                                                                                (
-                                                                                {
-                                                                                    monthName
-                                                                                }
-
-                                                                                )
-                                                                                —
-                                                                                Realisasi
-                                                                            </div>
-
-                                                                            {/* Cycle Quick Picks */}
-                                                                            <div>
-                                                                                <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                                                                                    Pilih
-                                                                                    Siklus
-                                                                                    Pemeliharaan:
-                                                                                </div>
-                                                                                <div className="grid grid-cols-3 gap-1">
-                                                                                    {CYCLE_OPTIONS.map(
-                                                                                        (
-                                                                                            opt,
-                                                                                        ) => (
-                                                                                            <Button
-                                                                                                key={
-                                                                                                    opt
-                                                                                                }
-                                                                                                size="sm"
-                                                                                                variant={
-                                                                                                    val ===
-                                                                                                    opt
-                                                                                                        ? 'default'
-                                                                                                        : 'outline'
-                                                                                                }
-                                                                                                className="h-6 text-[11px] font-bold"
-                                                                                                onClick={() =>
-                                                                                                    updateCell(
-                                                                                                        row.machine_id,
-                                                                                                        'realisasi',
-                                                                                                        d.day,
-                                                                                                        opt,
-                                                                                                    )
-                                                                                                }
-                                                                                            >
-                                                                                                {
-                                                                                                    opt
-                                                                                                }
-                                                                                            </Button>
-                                                                                        ),
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Color Assignment */}
-                                                                            <div className="border-t border-border pt-2">
-                                                                                <div className="mb-1 text-[10px] font-medium text-muted-foreground">
-                                                                                    Warna
-                                                                                    &
-                                                                                    Jenis
-                                                                                    Kegiatan:
-                                                                                </div>
-                                                                                <div className="space-y-1">
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
-                                                                                        onClick={() =>
-                                                                                            setCellColor(
-                                                                                                row.machine_id,
-                                                                                                'realisasi',
-                                                                                                d.day,
-                                                                                                'yellow',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <span className="size-3.5 shrink-0 border border-black/80 bg-[#ffff00]" />
-                                                                                        <span>
-                                                                                            Ganti
-                                                                                            Pelumas
-                                                                                        </span>
-                                                                                        {(customColor ===
-                                                                                            'yellow' ||
-                                                                                            (!customColor &&
-                                                                                                (val ===
-                                                                                                    'P2' ||
-                                                                                                    (val &&
-                                                                                                        val !==
-                                                                                                            'P3')))) && (
-                                                                                            <Check className="ml-auto size-3 text-primary" />
-                                                                                        )}
-                                                                                    </button>
-
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
-                                                                                        onClick={() =>
-                                                                                            setCellColor(
-                                                                                                row.machine_id,
-                                                                                                'realisasi',
-                                                                                                d.day,
-                                                                                                'green',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <span className="size-3.5 shrink-0 border border-black/80 bg-[#92d050]" />
-                                                                                        <span>
-                                                                                            Ganti
-                                                                                            Pelumas+Cleaning
-                                                                                            Rad
-                                                                                        </span>
-                                                                                        {(customColor ===
-                                                                                            'green' ||
-                                                                                            (!customColor &&
-                                                                                                val ===
-                                                                                                    'P3')) && (
-                                                                                            <Check className="ml-auto size-3 text-primary" />
-                                                                                        )}
-                                                                                    </button>
-
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs text-muted-foreground hover:bg-muted"
-                                                                                        onClick={() =>
-                                                                                            setCellColor(
-                                                                                                row.machine_id,
-                                                                                                'realisasi',
-                                                                                                d.day,
-                                                                                                '',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <span className="size-3.5 shrink-0 rounded-xs border border-border bg-card" />
-                                                                                        <span>
-                                                                                            Tanpa
-                                                                                            Warna
-                                                                                        </span>
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {/* Clear */}
-                                                                            {val && (
-                                                                                <div className="border-t border-border pt-1.5">
-                                                                                    <Button
-                                                                                        size="sm"
-                                                                                        variant="ghost"
-                                                                                        className="h-6 w-full gap-1 text-[11px] text-destructive hover:bg-destructive/10"
-                                                                                        onClick={() =>
-                                                                                            updateCell(
-                                                                                                row.machine_id,
-                                                                                                'realisasi',
-                                                                                                d.day,
-                                                                                                '',
-                                                                                            )
-                                                                                        }
-                                                                                    >
-                                                                                        <Trash2 className="size-3" />
-                                                                                        Hapus
-                                                                                        Nilai
-                                                                                    </Button>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            ) : (
-                                                                <span className="block py-1">
-                                                                    {val}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-
-                                            {/* Sub-row 3: DURASI */}
-                                            <tr className="hover:bg-muted/5">
-                                                <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
-                                                    WAKTU
-                                                </td>
-                                                <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
-                                                    DURASI
-                                                </td>
-                                                {days.map((d) => {
-                                                    const val =
-                                                        row.durasi[
-                                                            String(d.day)
-                                                        ] ?? '';
-                                                    return (
-                                                        <td
-                                                            key={`durasi-${row.machine_id}-${d.day}`}
-                                                            className={`border border-border p-0 text-center text-[10px] ${
-                                                                d.is_red
-                                                                    ? 'print-red-cell bg-red-50 text-foreground dark:bg-red-950/20'
-                                                                    : 'text-foreground'
-                                                            }`}
-                                                        >
-                                                            {can_write ? (
-                                                                <input
-                                                                    type="text"
-                                                                    value={val}
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        updateCell(
-                                                                            row.machine_id,
-                                                                            'durasi',
-                                                                            d.day,
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    placeholder=""
-                                                                    maxLength={
-                                                                        4
-                                                                    }
-                                                                    className="h-7 w-full bg-transparent p-0 text-center text-[10px] font-medium text-foreground transition-colors hover:bg-muted/40 focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                />
-                                                            ) : (
-                                                                <span className="block py-1">
-                                                                    {val}
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                    );
-                                                })}
-                                            </tr>
-                                        </Fragment>
-                                    ))
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileDayValuesForm<MachineScheduleRow>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row) => row.machine_id}
+                                title={(row) => `${row.name}${row.type ? ` · ${row.type}` : ''}`}
+                                fields={[
+                                    { key: 'rencana', label: 'Rencana', options: CYCLE_OPTIONS, tone: () => 'border-amber-500 bg-amber-400 text-black' },
+                                    { key: 'realisasi', label: 'Realisasi', options: CYCLE_OPTIONS, tone: () => 'border-emerald-600 bg-emerald-500 text-black' },
+                                    { key: 'durasi', label: 'Durasi (jam)', numeric: true },
+                                ]}
+                                value={(row, field, day) => String(row[field as 'rencana' | 'realisasi' | 'durasi'][String(day)] ?? '')}
+                                onChange={(row, field, day, value) => updateCell(row.machine_id, field as 'rencana' | 'realisasi' | 'durasi', day, value)}
+                                details={(row) => (
+                                    <>
+                                        <TimelineField label="Jam Operasi (EOH)" value={row.operating_hours || ''} onChange={(v) => updateTextField(row.machine_id, 'operating_hours', v)} readOnly={!can_write} />
+                                        <TimelineField label="Keterangan" value={row.keterangan || ''} onChange={(v) => updateTextField(row.machine_id, 'keterangan', v)} readOnly={!can_write} />
+                                    </>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
+                                summary={(row) => `EOH ${row.operating_hours || '-'} · Rencana ${Object.keys(row.rencana).length} · Realisasi ${Object.keys(row.realisasi).length} hari`}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada mesin pada unit ini."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="print-table w-full border-collapse text-[11px]">
+                                <thead>
+                                    <tr className="border-b border-border bg-muted/40 font-bold text-foreground">
+                                        <th
+                                            rowSpan={2}
+                                            className="w-10 border border-border px-1.5 py-2 text-center"
+                                        >
+                                            NO
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="min-w-44 border border-border px-2 py-2 text-left"
+                                        >
+                                            MESIN / TIPE / S.N
+                                        </th>
+                                        <th className="w-16 border border-border px-1 py-1.5 text-center uppercase">
+                                            {monthName}
+                                        </th>
+                                        <th
+                                            colSpan={days.length}
+                                            className="border border-border px-1 py-1.5 text-center font-bold tracking-wider uppercase"
+                                        >
+                                            JENIS HAR
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="min-w-36 border border-border px-2 py-2 text-center"
+                                        >
+                                            JAM OPERASI PEMELIHARAAN
+                                        </th>
+                                        <th
+                                            rowSpan={2}
+                                            className="min-w-36 border border-border px-2 py-2 text-center"
+                                        >
+                                            KETERANGAN
+                                        </th>
+                                    </tr>
+                                    <tr className="border-b border-border font-bold">
+                                        <th className="border border-border bg-muted/60 px-1 py-1 text-center">
+                                            {filters.year}
+                                        </th>
+                                        {days.map((d) => (
+                                            <th
+                                                key={`th-day-${d.day}`}
+                                                className={`w-7 border border-border px-0.5 py-1 text-center text-[10px] ${
+                                                    d.is_red
+                                                        ? 'print-red-cell bg-red-600 font-bold text-white'
+                                                        : 'bg-muted/50 text-foreground'
+                                                }`}
+                                                title={
+                                                    d.holiday ??
+                                                    (d.is_weekend
+                                                        ? 'Akhir Pekan'
+                                                        : undefined)
+                                                }
+                                            >
+                                                {d.day}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={days.length + 5}
+                                                className="border border-border p-8 text-center text-xs text-muted-foreground"
+                                            >
+                                                Belum ada mesin aktif pada unit{' '}
+                                                {unit.name}.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        rows.map((row, idx) => (
+                                            <Fragment
+                                                key={`machine-${row.machine_id}`}
+                                            >
+                                                {/* Sub-row 1: RENC */}
+                                                <tr className="hover:bg-muted/5">
+                                                    {/* Cell 1: NO */}
+                                                    <td
+                                                        rowSpan={3}
+                                                        className="border border-border bg-card px-1 py-1.5 text-center font-bold text-foreground"
+                                                    >
+                                                        {idx + 1}
+                                                    </td>
+
+                                                    {/* Cell 2: MESIN / TIPE / S.N */}
+                                                    <td
+                                                        rowSpan={2}
+                                                        className="border border-border bg-card px-2 py-1.5 text-left align-top"
+                                                    >
+                                                        <div className="font-bold text-foreground">
+                                                            {row.name}
+                                                        </div>
+                                                        {row.type && (
+                                                            <div className="text-[10px] text-muted-foreground">
+                                                                {row.type}
+                                                            </div>
+                                                        )}
+                                                        {row.serial_number && (
+                                                            <div className="font-mono text-[10px] text-muted-foreground">
+                                                                SN.{' '}
+                                                                {row.serial_number}
+                                                            </div>
+                                                        )}
+                                                    </td>
+
+                                                    {/* Sub Col: RENC */}
+                                                    <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
+                                                        RENC
+                                                    </td>
+
+                                                    {/* Day Cells: RENCANA */}
+                                                    {days.map((d) => {
+                                                        const val =
+                                                            row.rencana[
+                                                                String(d.day)
+                                                            ] ?? '';
+                                                        const customColor =
+                                                            row.warna?.rencana?.[
+                                                                String(d.day)
+                                                            ];
+                                                        const colorClass =
+                                                            getCellColorClass(
+                                                                'rencana',
+                                                                val,
+                                                                customColor,
+                                                                d.is_red,
+                                                            );
+
+                                                        return (
+                                                            <td
+                                                                key={`renc-${row.machine_id}-${d.day}`}
+                                                                className={`group/cell relative border border-border p-0 text-center font-bold ${colorClass}`}
+                                                            >
+                                                                {can_write ? (
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger
+                                                                            asChild
+                                                                        >
+                                                                            <div className="flex h-7 w-full cursor-pointer items-center justify-center select-none hover:opacity-85">
+                                                                                {
+                                                                                    val
+                                                                                }
+                                                                            </div>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent
+                                                                            align="center"
+                                                                            side="top"
+                                                                            className="no-print w-60 p-2.5 shadow-lg"
+                                                                        >
+                                                                            <div className="space-y-2 text-xs">
+                                                                                <div className="font-semibold text-foreground">
+                                                                                    Tgl{' '}
+                                                                                    {
+                                                                                        d.day
+                                                                                    }{' '}
+                                                                                    (
+                                                                                    {
+                                                                                        monthName
+                                                                                    }
+
+                                                                                    )
+                                                                                    —
+                                                                                    Rencana
+                                                                                </div>
+
+                                                                                {/* Cycle Quick Picks */}
+                                                                                <div>
+                                                                                    <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+                                                                                        Pilih
+                                                                                        Siklus
+                                                                                        Pemeliharaan:
+                                                                                    </div>
+                                                                                    <div className="grid grid-cols-3 gap-1">
+                                                                                        {CYCLE_OPTIONS.map(
+                                                                                            (
+                                                                                                opt,
+                                                                                            ) => (
+                                                                                                <Button
+                                                                                                    key={
+                                                                                                        opt
+                                                                                                    }
+                                                                                                    size="sm"
+                                                                                                    variant={
+                                                                                                        val ===
+                                                                                                        opt
+                                                                                                            ? 'default'
+                                                                                                            : 'outline'
+                                                                                                    }
+                                                                                                    className="h-6 text-[11px] font-bold"
+                                                                                                    onClick={() =>
+                                                                                                        updateCell(
+                                                                                                            row.machine_id,
+                                                                                                            'rencana',
+                                                                                                            d.day,
+                                                                                                            opt,
+                                                                                                        )
+                                                                                                    }
+                                                                                                >
+                                                                                                    {
+                                                                                                        opt
+                                                                                                    }
+                                                                                                </Button>
+                                                                                            ),
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* Color Assignment */}
+                                                                                <div className="border-t border-border pt-2">
+                                                                                    <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+                                                                                        Warna
+                                                                                        &
+                                                                                        Jenis
+                                                                                        Kegiatan:
+                                                                                    </div>
+                                                                                    <div className="space-y-1">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
+                                                                                            onClick={() =>
+                                                                                                setCellColor(
+                                                                                                    row.machine_id,
+                                                                                                    'rencana',
+                                                                                                    d.day,
+                                                                                                    'yellow',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <span className="size-3.5 shrink-0 border border-black/80 bg-[#ffff00]" />
+                                                                                            <span>
+                                                                                                Ganti
+                                                                                                Pelumas
+                                                                                            </span>
+                                                                                            {(customColor ===
+                                                                                                'yellow' ||
+                                                                                                (!customColor &&
+                                                                                                    val ===
+                                                                                                        'P2')) && (
+                                                                                                <Check className="ml-auto size-3 text-primary" />
+                                                                                            )}
+                                                                                        </button>
+
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
+                                                                                            onClick={() =>
+                                                                                                setCellColor(
+                                                                                                    row.machine_id,
+                                                                                                    'rencana',
+                                                                                                    d.day,
+                                                                                                    'green',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <span className="size-3.5 shrink-0 border border-black/80 bg-[#92d050]" />
+                                                                                            <span>
+                                                                                                Ganti
+                                                                                                Pelumas+Cleaning
+                                                                                                Rad
+                                                                                            </span>
+                                                                                            {(customColor ===
+                                                                                                'green' ||
+                                                                                                (!customColor &&
+                                                                                                    val ===
+                                                                                                        'P3')) && (
+                                                                                                <Check className="ml-auto size-3 text-primary" />
+                                                                                            )}
+                                                                                        </button>
+
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs text-muted-foreground hover:bg-muted"
+                                                                                            onClick={() =>
+                                                                                                setCellColor(
+                                                                                                    row.machine_id,
+                                                                                                    'rencana',
+                                                                                                    d.day,
+                                                                                                    '',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <span className="size-3.5 shrink-0 rounded-xs border border-border bg-card" />
+                                                                                            <span>
+                                                                                                Tanpa
+                                                                                                Warna
+                                                                                            </span>
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* Clear */}
+                                                                                {val && (
+                                                                                    <div className="border-t border-border pt-1.5">
+                                                                                        <Button
+                                                                                            size="sm"
+                                                                                            variant="ghost"
+                                                                                            className="h-6 w-full gap-1 text-[11px] text-destructive hover:bg-destructive/10"
+                                                                                            onClick={() =>
+                                                                                                updateCell(
+                                                                                                    row.machine_id,
+                                                                                                    'rencana',
+                                                                                                    d.day,
+                                                                                                    '',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <Trash2 className="size-3" />
+                                                                                            Hapus
+                                                                                            Nilai
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                ) : (
+                                                                    <span className="block py-1">
+                                                                        {val}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+
+                                                    {/* JAM OPERASI PEMELIHARAAN (Rowspan 3) */}
+                                                    <td
+                                                        rowSpan={3}
+                                                        className="border border-border bg-card p-1 text-left align-top"
+                                                    >
+                                                        {can_write ? (
+                                                            <textarea
+                                                                value={
+                                                                    row.operating_hours
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateTextField(
+                                                                        row.machine_id,
+                                                                        'operating_hours',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                rows={4}
+                                                                placeholder="P3: 1000 JAM&#10;P2: 1250 JAM"
+                                                                className="w-full resize-none rounded-xs border border-transparent bg-transparent p-1 text-[11px] leading-relaxed font-medium text-foreground transition-colors hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                                                            />
+                                                        ) : (
+                                                            <div className="p-1 text-[11px] leading-relaxed whitespace-pre-line text-foreground">
+                                                                {row.operating_hours ||
+                                                                    '-'}
+                                                            </div>
+                                                        )}
+                                                    </td>
+
+                                                    {/* KETERANGAN (Rowspan 3) */}
+                                                    <td
+                                                        rowSpan={3}
+                                                        className="border border-border bg-card p-1 text-left align-top"
+                                                    >
+                                                        {can_write ? (
+                                                            <textarea
+                                                                value={
+                                                                    row.keterangan
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateTextField(
+                                                                        row.machine_id,
+                                                                        'keterangan',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                rows={4}
+                                                                placeholder="Catatan kegiatan..."
+                                                                className="w-full resize-none rounded-xs border border-transparent bg-transparent p-1 text-[11px] leading-relaxed text-foreground transition-colors hover:border-border focus:border-primary focus:bg-background focus:outline-none"
+                                                            />
+                                                        ) : (
+                                                            <div className="p-1 text-[11px] leading-relaxed whitespace-pre-line text-foreground">
+                                                                {row.keterangan ||
+                                                                    '-'}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+
+                                                {/* Sub-row 2: REAL */}
+                                                <tr className="hover:bg-muted/5">
+                                                    <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
+                                                        REAL
+                                                    </td>
+                                                    {days.map((d) => {
+                                                        const val =
+                                                            row.realisasi[
+                                                                String(d.day)
+                                                            ] ?? '';
+                                                        const customColor =
+                                                            row.warna?.realisasi?.[
+                                                                String(d.day)
+                                                            ];
+                                                        const colorClass =
+                                                            getCellColorClass(
+                                                                'realisasi',
+                                                                val,
+                                                                customColor,
+                                                                d.is_red,
+                                                            );
+
+                                                        return (
+                                                            <td
+                                                                key={`real-${row.machine_id}-${d.day}`}
+                                                                className={`group/cell relative border border-border p-0 text-center font-bold ${colorClass}`}
+                                                            >
+                                                                {can_write ? (
+                                                                    <DropdownMenu>
+                                                                        <DropdownMenuTrigger
+                                                                            asChild
+                                                                        >
+                                                                            <div className="flex h-7 w-full cursor-pointer items-center justify-center select-none hover:opacity-85">
+                                                                                {
+                                                                                    val
+                                                                                }
+                                                                            </div>
+                                                                        </DropdownMenuTrigger>
+                                                                        <DropdownMenuContent
+                                                                            align="center"
+                                                                            side="top"
+                                                                            className="no-print w-60 p-2.5 shadow-lg"
+                                                                        >
+                                                                            <div className="space-y-2 text-xs">
+                                                                                <div className="font-semibold text-foreground">
+                                                                                    Tgl{' '}
+                                                                                    {
+                                                                                        d.day
+                                                                                    }{' '}
+                                                                                    (
+                                                                                    {
+                                                                                        monthName
+                                                                                    }
+
+                                                                                    )
+                                                                                    —
+                                                                                    Realisasi
+                                                                                </div>
+
+                                                                                {/* Cycle Quick Picks */}
+                                                                                <div>
+                                                                                    <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+                                                                                        Pilih
+                                                                                        Siklus
+                                                                                        Pemeliharaan:
+                                                                                    </div>
+                                                                                    <div className="grid grid-cols-3 gap-1">
+                                                                                        {CYCLE_OPTIONS.map(
+                                                                                            (
+                                                                                                opt,
+                                                                                            ) => (
+                                                                                                <Button
+                                                                                                    key={
+                                                                                                        opt
+                                                                                                    }
+                                                                                                    size="sm"
+                                                                                                    variant={
+                                                                                                        val ===
+                                                                                                        opt
+                                                                                                            ? 'default'
+                                                                                                            : 'outline'
+                                                                                                    }
+                                                                                                    className="h-6 text-[11px] font-bold"
+                                                                                                    onClick={() =>
+                                                                                                        updateCell(
+                                                                                                            row.machine_id,
+                                                                                                            'realisasi',
+                                                                                                            d.day,
+                                                                                                            opt,
+                                                                                                        )
+                                                                                                    }
+                                                                                                >
+                                                                                                    {
+                                                                                                        opt
+                                                                                                    }
+                                                                                                </Button>
+                                                                                            ),
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* Color Assignment */}
+                                                                                <div className="border-t border-border pt-2">
+                                                                                    <div className="mb-1 text-[10px] font-medium text-muted-foreground">
+                                                                                        Warna
+                                                                                        &
+                                                                                        Jenis
+                                                                                        Kegiatan:
+                                                                                    </div>
+                                                                                    <div className="space-y-1">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
+                                                                                            onClick={() =>
+                                                                                                setCellColor(
+                                                                                                    row.machine_id,
+                                                                                                    'realisasi',
+                                                                                                    d.day,
+                                                                                                    'yellow',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <span className="size-3.5 shrink-0 border border-black/80 bg-[#ffff00]" />
+                                                                                            <span>
+                                                                                                Ganti
+                                                                                                Pelumas
+                                                                                            </span>
+                                                                                            {(customColor ===
+                                                                                                'yellow' ||
+                                                                                                (!customColor &&
+                                                                                                    (val ===
+                                                                                                        'P2' ||
+                                                                                                        (val &&
+                                                                                                            val !==
+                                                                                                                'P3')))) && (
+                                                                                                <Check className="ml-auto size-3 text-primary" />
+                                                                                            )}
+                                                                                        </button>
+
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs font-semibold hover:bg-muted"
+                                                                                            onClick={() =>
+                                                                                                setCellColor(
+                                                                                                    row.machine_id,
+                                                                                                    'realisasi',
+                                                                                                    d.day,
+                                                                                                    'green',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <span className="size-3.5 shrink-0 border border-black/80 bg-[#92d050]" />
+                                                                                            <span>
+                                                                                                Ganti
+                                                                                                Pelumas+Cleaning
+                                                                                                Rad
+                                                                                            </span>
+                                                                                            {(customColor ===
+                                                                                                'green' ||
+                                                                                                (!customColor &&
+                                                                                                    val ===
+                                                                                                        'P3')) && (
+                                                                                                <Check className="ml-auto size-3 text-primary" />
+                                                                                            )}
+                                                                                        </button>
+
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs text-muted-foreground hover:bg-muted"
+                                                                                            onClick={() =>
+                                                                                                setCellColor(
+                                                                                                    row.machine_id,
+                                                                                                    'realisasi',
+                                                                                                    d.day,
+                                                                                                    '',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <span className="size-3.5 shrink-0 rounded-xs border border-border bg-card" />
+                                                                                            <span>
+                                                                                                Tanpa
+                                                                                                Warna
+                                                                                            </span>
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {/* Clear */}
+                                                                                {val && (
+                                                                                    <div className="border-t border-border pt-1.5">
+                                                                                        <Button
+                                                                                            size="sm"
+                                                                                            variant="ghost"
+                                                                                            className="h-6 w-full gap-1 text-[11px] text-destructive hover:bg-destructive/10"
+                                                                                            onClick={() =>
+                                                                                                updateCell(
+                                                                                                    row.machine_id,
+                                                                                                    'realisasi',
+                                                                                                    d.day,
+                                                                                                    '',
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            <Trash2 className="size-3" />
+                                                                                            Hapus
+                                                                                            Nilai
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </DropdownMenuContent>
+                                                                    </DropdownMenu>
+                                                                ) : (
+                                                                    <span className="block py-1">
+                                                                        {val}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+
+                                                {/* Sub-row 3: DURASI */}
+                                                <tr className="hover:bg-muted/5">
+                                                    <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
+                                                        WAKTU
+                                                    </td>
+                                                    <td className="border border-border bg-muted/20 px-1 py-1 text-center text-[10px] font-bold text-foreground">
+                                                        DURASI
+                                                    </td>
+                                                    {days.map((d) => {
+                                                        const val =
+                                                            row.durasi[
+                                                                String(d.day)
+                                                            ] ?? '';
+                                                        return (
+                                                            <td
+                                                                key={`durasi-${row.machine_id}-${d.day}`}
+                                                                className={`border border-border p-0 text-center text-[10px] ${
+                                                                    d.is_red
+                                                                        ? 'print-red-cell bg-red-50 text-foreground dark:bg-red-950/20'
+                                                                        : 'text-foreground'
+                                                                }`}
+                                                            >
+                                                                {can_write ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={val}
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            updateCell(
+                                                                                row.machine_id,
+                                                                                'durasi',
+                                                                                d.day,
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            )
+                                                                        }
+                                                                        placeholder=""
+                                                                        maxLength={
+                                                                            4
+                                                                        }
+                                                                        className="h-7 w-full bg-transparent p-0 text-center text-[10px] font-medium text-foreground transition-colors hover:bg-muted/40 focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                    />
+                                                                ) : (
+                                                                    <span className="block py-1">
+                                                                        {val}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            </Fragment>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
 
                 {/* Helpful Instruction Note */}

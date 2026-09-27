@@ -45,10 +45,12 @@ class AksesPengusahaanTest extends TestCase
         $this->actingAs($tl)->get(route('har.laporan.index', ['unit_id' => $unit->id]))->assertOk();
         $this->actingAs($tl)->get(route('har.laporan.pengusahaan.edit', $query))->assertOk()->assertInertia(fn ($page) => $page->where('can_write', true));
 
-        // Akses 1 input is closed; the Laporan Pembangkit (and the jadwal it
-        // prints, as for every laporan reader) stays readable for approval.
+        // Akses 1 input is closed — except Work Order & Service Request, one data
+        // source shared with the Koordinator — and the Laporan Pembangkit (and the
+        // jadwal it prints, as for every laporan reader) stays readable for approval.
         $this->actingAs($tl)->get(route('har.input.index'))->assertForbidden();
-        $this->actingAs($tl)->post(route('har.input.work-order.store'), $query + ['rows' => []])->assertForbidden();
+        $this->actingAs($tl)->get(route('har.input.work-order.index', $query))->assertOk()->assertInertia(fn ($page) => $page->where('can_write', true));
+        $this->actingAs($tl)->get(route('har.input.service-request.index', $query))->assertOk()->assertInertia(fn ($page) => $page->where('can_write', true));
         $this->actingAs($tl)->get(route('har.laporan.document.edit', $query))->assertOk()->assertInertia(fn ($page) => $page->where('can_write', false));
     }
 

@@ -108,7 +108,7 @@ class PengusahaanPemeriksaanP3kController extends Controller
             }
         }
 
-        return Inertia::render('k3/pengusahaan/pemeriksaan-p3k/index', [
+        return Inertia::render('pengusahaan/k3/pemeriksaan-p3k/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

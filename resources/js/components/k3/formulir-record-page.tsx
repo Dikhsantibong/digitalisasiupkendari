@@ -21,6 +21,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import formulir from '@/routes/k3/formulir';
 import recordRoutes from '@/routes/k3/formulir/record';
@@ -413,10 +414,18 @@ function SectionTable({
     onAdd: (section: RecordSection) => void;
     onDelete: (sectionKey: string, rowKey: string) => void;
 }) {
+    const compact = useCompactLayout();
     const columns = sections[0].columns;
     const { top, bottom } = headerCells(columns);
     const hasGroup = bottom.length > 0;
     const totalColumns = columns.length + 1 + (canWrite ? 1 : 0);
+
+    // Phone: every row as a card with its columns as labelled fields.
+    if (compact) {
+        return (
+            <SectionCards sections={sections} rows={rows} canWrite={canWrite} showSectionRows={showSectionRows} onChange={onChange} onAdd={onAdd} onDelete={onDelete} />
+        );
+    }
 
     return (
         <div className={`overflow-x-auto border border-border ${showSectionRows || !sections[0].label ? 'rounded-md' : 'rounded-b-md'}`}>
@@ -501,6 +510,77 @@ function SectionTable({
     );
 }
 
+/**
+ * Phone layout of {@link SectionTable}: a card per row (titled by its item
+ * column), each column a labelled field using the same {@link RecordCell}.
+ */
+function SectionCards({
+    sections,
+    rows,
+    canWrite,
+    showSectionRows,
+    onChange,
+    onAdd,
+    onDelete,
+}: {
+    sections: RecordSection[];
+    rows: Record<string, Row[]>;
+    canWrite: boolean;
+    showSectionRows: boolean;
+    onChange: (sectionKey: string, rowKey: string, column: string, value: string) => void;
+    onAdd: (section: RecordSection) => void;
+    onDelete: (sectionKey: string, rowKey: string) => void;
+}) {
+    return (
+        <div className="flex flex-col gap-3">
+            {sections.map((section) => {
+                const itemColumn = section.columns.find((column) => column.item) ?? section.columns[0];
+
+                return (
+                    <div key={section.key} className="flex flex-col gap-2">
+                        {showSectionRows && section.label && (
+                            <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                {section.letter ? `${section.letter}. ` : ''}
+                                {section.label}
+                            </p>
+                        )}
+                        {(rows[section.key] ?? []).length === 0 && (
+                            <p className="rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground">Belum ada baris.</p>
+                        )}
+                        {(rows[section.key] ?? []).map((row, index) => (
+                            <div key={row._key} className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                                <div className="flex items-start gap-2">
+                                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">{index + 1}</span>
+                                    <span className="min-w-0 flex-1 pt-1 text-[14px] font-medium text-foreground">{row[itemColumn?.key ?? ''] || '—'}</span>
+                                    {canWrite && (
+                                        <Button variant="ghost" size="icon" onClick={() => onDelete(section.key, row._key)} className="size-8 text-muted-foreground hover:text-destructive" aria-label="Hapus baris">
+                                            <Trash2 className="size-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 gap-2.5">
+                                    {section.columns.map((column) => (
+                                        <label key={column.key} className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            {column.group ? `${column.group} · ${column.label}` : column.label}
+                                            <RecordCell column={column} value={row[column.key] ?? ''} canWrite={canWrite} onChange={(value) => onChange(section.key, row._key, column.key, value)} />
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        {canWrite && section.addable && (
+                            <Button type="button" variant="outline" onClick={() => onAdd(section)} className="h-auto min-h-9 max-w-full gap-1.5 self-start py-2 text-left whitespace-normal">
+                                <Plus className="size-4" />
+                                Tambah Baris{section.label ? ` ${section.label}` : ''}
+                            </Button>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function RecordCell({
@@ -515,6 +595,8 @@ function RecordCell({
     onChange: (value: string) => void;
 }) {
     const align = column.align === 'center' ? 'text-center' : '';
+    const compact = useCompactLayout();
+    const touch = compact ? 'h-10 w-full text-sm' : '';
 
     if (!canWrite) {
         return <div className={`${align} ${column.item ? 'font-medium' : ''}`}>{value || (column.type === 'text' ? '' : '-')}</div>;
@@ -532,7 +614,7 @@ function RecordCell({
 
         return (
             <Select value={current} onValueChange={onChange}>
-                <SelectTrigger size="sm" className={`h-7 w-full min-w-[90px] justify-center text-xs ${tone}`}>
+                <SelectTrigger size="sm" className={`h-7 w-full min-w-[90px] justify-center text-xs ${tone} ${touch}`}>
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -552,7 +634,7 @@ function RecordCell({
                 type="date"
                 value={ISO_DATE.test(value) ? value : ''}
                 onChange={(e) => onChange(e.target.value || '-')}
-                className="h-7 min-w-[130px] text-xs"
+                className={`h-7 min-w-[130px] text-xs ${touch}`}
             />
         );
     }
@@ -561,7 +643,7 @@ function RecordCell({
         <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className={`h-7 min-w-[80px] text-xs ${align} ${column.item ? 'min-w-[160px] font-medium' : ''}`}
+            className={`h-7 min-w-[80px] text-xs ${align} ${column.item ? 'min-w-[160px] font-medium' : ''} ${touch}`}
         />
     );
 }
