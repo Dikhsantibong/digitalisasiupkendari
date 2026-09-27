@@ -38,9 +38,8 @@ class TimeFrameInputTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('k3/input/time-frame')
-                ->where('days', 31)
+                ->has('days', 31)
                 ->has('rows', 2)
-                ->where('filters.plan_type', 'rencana'),
             );
     }
 
@@ -51,18 +50,19 @@ class TimeFrameInputTest extends TestCase
         $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.time-frame.store'), [
-            'unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'plan_type' => 'rencana',
+            'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
             'rows' => [[
                 'activity_type_id' => $type->id, 'pic' => 'Budi',
-                'days' => ['1' => 'X', '2' => '', '15' => 'X'],
+                'rencana' => [1, 15],
+                'realisasi' => [],
             ]],
         ])->assertRedirect();
 
         $plan = K3ActivityPlan::query()
             ->where('unit_id', $unit->id)->where('k3_activity_type_id', $type->id)->firstOrFail();
 
-        $this->assertSame(['1' => 'X', '15' => 'X'], $plan->plan_days);
-        $this->assertNull($plan->real_days);
+        $this->assertSame(['1' => '1', '15' => '1'], $plan->plan_days);
+        $this->assertSame([], $plan->real_days);
         $this->assertSame('Budi', $plan->pic);
     }
 
@@ -71,15 +71,20 @@ class TimeFrameInputTest extends TestCase
         $unit = Unit::factory()->create();
         $type = K3ActivityType::factory()->create();
         $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
-        $base = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['activity_type_id' => $type->id, 'days' => ['1' => 'X']]]];
 
-        $this->actingAs($user)->post(route('k3.input.time-frame.store'), [...$base, 'plan_type' => 'rencana'])->assertRedirect();
-        $this->actingAs($user)->post(route('k3.input.time-frame.store'), [...$base, 'plan_type' => 'realisasi'])->assertRedirect();
+        $this->actingAs($user)->post(route('k3.input.time-frame.store'), [
+            'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
+            'rows' => [[
+                'activity_type_id' => $type->id,
+                'rencana' => [1],
+                'realisasi' => [1],
+            ]],
+        ])->assertRedirect();
 
         $this->assertSame(1, K3ActivityPlan::query()->where('unit_id', $unit->id)->count());
         $plan = K3ActivityPlan::query()->firstOrFail();
-        $this->assertSame(['1' => 'X'], $plan->plan_days);
-        $this->assertSame(['1' => 'X'], $plan->real_days);
+        $this->assertSame(['1' => '1'], $plan->plan_days);
+        $this->assertSame(['1' => '1'], $plan->real_days);
     }
 
     public function test_a_user_cannot_save_for_a_foreign_unit(): void
@@ -89,7 +94,7 @@ class TimeFrameInputTest extends TestCase
 
         $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $ownUnit))
             ->post(route('k3.input.time-frame.store'), [
-                'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'plan_type' => 'rencana', 'rows' => [],
+                'unit_id' => $foreignUnit->id, 'month' => 8, 'year' => 2026, 'rows' => [],
             ])
             ->assertForbidden();
     }

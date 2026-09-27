@@ -9,7 +9,7 @@ use Inertia\Response;
 
 /**
  * Akses 2 — Pengusahaan (Team Leader & Staf) of Operasi, Pemeliharaan and K3:
- * one hub page per menu section (Jadwal, Input, Formulir) listing
+ * one hub page per menu section (Input, Formulir — no Jadwal) listing
  * the pages registered for it in resources/js/lib/pengusahaan-menus.ts. Each
  * module route file registers `pengusahaan/{section}` with a `module` default.
  * The Laporan Pengusahaan itself is opened only from the module's Laporan
@@ -19,7 +19,6 @@ class PengusahaanController extends Controller
 {
     /** @var array<string, string> section key => label, in menu order */
     public const SECTIONS = [
-        'jadwal' => 'Jadwal',
         'input' => 'Input',
         'formulir' => 'Formulir',
     ];

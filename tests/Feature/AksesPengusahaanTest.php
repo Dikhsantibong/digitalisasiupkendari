@@ -33,13 +33,15 @@ class AksesPengusahaanTest extends TestCase
         $tl = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
         $query = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
-        foreach (['jadwal', 'input', 'formulir'] as $section) {
+        foreach (['input', 'formulir'] as $section) {
             $this->actingAs($tl)->get(route('har.pengusahaan.index', $section))
                 ->assertOk()
                 ->assertInertia(fn ($page) => $page->component('pengusahaan/index')->where('module.key', 'har')->where('section.key', $section));
         }
         // The Laporan Pengusahaan has one door: the module's Laporan page.
         $this->actingAs($tl)->get(route('har.pengusahaan.index', 'laporan'))->assertNotFound();
+        // Pengusahaan has no Jadwal menu.
+        $this->actingAs($tl)->get('/har/pengusahaan/jadwal')->assertNotFound();
         $this->actingAs($tl)->get(route('har.laporan.index', ['unit_id' => $unit->id]))->assertOk();
         $this->actingAs($tl)->get(route('har.laporan.pengusahaan.edit', $query))->assertOk()->assertInertia(fn ($page) => $page->where('can_write', true));
 
