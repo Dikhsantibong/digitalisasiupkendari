@@ -31,7 +31,7 @@ class K3KesiapanApdTest extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->component('k3/input/kesiapan-apd')
+            ->component('k3/input/kesiapan-apd/index')
             ->has('rows')
             ->has('groups')
             ->has('options')

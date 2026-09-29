@@ -56,7 +56,7 @@ class CertificateController extends Controller
             ])
             ->all();
 
-        return Inertia::render('k3/input/certificates', [
+        return Inertia::render('k3/input/certificate/index', [
             'filters' => ['unit_id' => $unit->id],
             'rows' => $rows,
             'options' => [

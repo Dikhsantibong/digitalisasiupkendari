@@ -481,4 +481,4 @@ body { font-size: 11px; color: #000; }
     max-height: 34px !important;
 }
 
-
+@include('reports.partials.pengusahaan-cover-styles')

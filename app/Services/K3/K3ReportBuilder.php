@@ -23,11 +23,13 @@ use App\Models\K3AirLimbah;
 use App\Models\K3ApdInventory;
 use App\Models\K3Attachment;
 use App\Models\K3CctvList;
+use App\Models\K3DokumenIk;
 use App\Models\K3EmergencyFacilityCheck;
 use App\Models\K3FireAlarmInspection;
 use App\Models\K3FormulirRecord;
 use App\Models\K3HydrantInspection;
 use App\Models\K3InstruksiKerja;
+use App\Models\K3JadwalPembuatanIk;
 use App\Models\K3KegiatanRutin;
 use App\Models\K3MetodePengujianPeralatan;
 use App\Models\K3MetodePengujianPeralatanMeta;
@@ -97,6 +99,8 @@ class K3ReportBuilder
             'certificates' => $this->certificates($unit),
             'apd_inventory' => $this->apdInventory($unit->id, $month, $year),
             'instruksi_kerja' => $this->instruksiKerja($unit->id, $month, $year),
+            'pembuatan_ik' => $this->pembuatanIk($unit->id, $year),
+            'dokumen_ik' => $this->dokumenIk($unit->id, $month, $year),
             'patrol' => $this->patrol($unit->id, $month, $year),
             'employees' => $this->employees($unit),
             'attachments' => $this->attachments($unit->id, $month, $year),
@@ -908,6 +912,52 @@ class K3ReportBuilder
                 'satuan' => $a->satuan,
                 'lokasi' => $a->lokasi,
                 'keterangan' => $a->keterangan,
+            ])
+            ->all();
+    }
+
+    /**
+     * Jadwal Pembuatan IK K3 of the year: R (rencana) & ✓ (realisasi) per month.
+     *
+     * @return list<array{no: int, instruksi_kerja: string, pic_pembuat: string, rencana_bulan: list<int>, realisasi_bulan: list<int>, keterangan: string}>
+     */
+    private function pembuatanIk(int $unitId, int $year): array
+    {
+        return K3JadwalPembuatanIk::query()
+            ->where('unit_id', $unitId)->where('year', $year)
+            ->orderBy('sort_order')->orderBy('id')
+            ->get()
+            ->values()
+            ->map(fn (K3JadwalPembuatanIk $r, int $i): array => [
+                'no' => $r->no_urut ?: $i + 1,
+                'instruksi_kerja' => (string) $r->instruksi_kerja,
+                'pic_pembuat' => (string) $r->pic_pembuat,
+                'rencana_bulan' => array_map('intval', (array) ($r->rencana_bulan ?? [])),
+                'realisasi_bulan' => array_map('intval', (array) ($r->realisasi_bulan ?? [])),
+                'keterangan' => (string) $r->keterangan,
+            ])
+            ->all();
+    }
+
+    /**
+     * The Dokumen IK K3 of the period, attached to the report in the official layout.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function dokumenIk(int $unitId, int $month, int $year): array
+    {
+        return K3DokumenIk::query()
+            ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
+            ->orderBy('sort_order')->orderBy('id')
+            ->get()
+            ->map(fn (K3DokumenIk $doc): array => [
+                'sistem' => $doc->sistem,
+                'judul' => $doc->judul,
+                'no_dokumen' => (string) $doc->no_dokumen,
+                'tanggal' => $doc->tanggal?->format('Y-m-d') ?? '',
+                'revisi' => (string) $doc->revisi,
+                'halaman' => (string) $doc->halaman,
+                'sections' => $doc->sections,
             ])
             ->all();
     }

@@ -34,7 +34,7 @@ class AccidentInputTest extends TestCase
         $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.accident.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('k3/input/accidents')->where('can_write', true));
+            ->assertInertia(fn ($page) => $page->component('k3/input/accident/index')->where('can_write', true));
     }
 
     public function test_saving_replaces_the_periods_rows(): void

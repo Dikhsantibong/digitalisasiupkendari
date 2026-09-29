@@ -82,7 +82,7 @@ class KondisiK3Controller extends Controller
             ->where('month', $month)
             ->first();
 
-        return Inertia::render('k3/input/kondisi-k3', [
+        return Inertia::render('k3/input/kondisi-k3/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'options' => [

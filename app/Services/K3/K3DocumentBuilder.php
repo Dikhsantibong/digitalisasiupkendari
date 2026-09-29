@@ -19,7 +19,22 @@ class K3DocumentBuilder
         private readonly K3ReportBuilder $reports,
         private readonly K3InputTables $inputTables,
         private readonly ReportWorkflowService $workflows,
+        private readonly K3PengusahaanReport $pengusahaan,
     ) {}
+
+    /**
+     * The Laporan Pengusahaan Pembangkit (K3 & KAM): the kop, cover & pengesahan
+     * data plus every Akses 2 — Pengusahaan K3 input & formulir as a section.
+     *
+     * @return array<string, mixed>
+     */
+    public function buildPengusahaan(Unit $unit, int $month, int $year): array
+    {
+        return [
+            ...$this->build($unit, $month, $year),
+            'pengusahaan' => $this->pengusahaan->sections($unit, $month, $year),
+        ];
+    }
 
     /**
      * @return array<string, mixed>

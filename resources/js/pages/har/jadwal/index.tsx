@@ -75,12 +75,6 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/har/jadwal/pembuatan-ik',
     },
     {
-        title: 'Jadwal Individual Test Peralatan Non Mesin dan Instalasi',
-        description: 'Pengujian mandiri peralatan proteksi, transformator, motor bantu listrik, dan panel instalasi.',
-        icon: Sliders,
-        target: '/har/jadwal/individual-test',
-    },
-    {
         title: 'Jadwal Inventarisasi Tools & Material',
         description: 'Inventarisasi tools & material per minggu (1 baik, 2 tidak baik, 3 rusak) dengan merek, penerimaan, satuan, jumlah, dan keterangan.',
         icon: Boxes,

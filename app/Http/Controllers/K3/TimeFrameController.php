@@ -68,7 +68,7 @@ class TimeFrameController extends Controller
             ];
         })->all();
 
-        return Inertia::render('k3/input/time-frame', [
+        return Inertia::render('k3/input/time-frame/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

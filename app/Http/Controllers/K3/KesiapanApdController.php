@@ -82,7 +82,7 @@ class KesiapanApdController extends Controller
             ->where('month', $month)
             ->first();
 
-        return Inertia::render('k3/input/kesiapan-apd', [
+        return Inertia::render('k3/input/kesiapan-apd/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'groups' => K3KesiapanApdForm::GROUPS,

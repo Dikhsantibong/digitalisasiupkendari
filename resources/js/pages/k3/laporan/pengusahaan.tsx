@@ -36,7 +36,7 @@ export default function K3LaporanPengusahaan({
             <Head title="Dokumen Laporan Pengusahaan Pembangkit K3" />
             <DocumentEditor
                 title="Laporan Pengusahaan Pembangkit (K3 & KAM)"
-                description="Laporan kinerja K3 & KAM terisi otomatis dari seluruh data input. Edit sebagai teks atau spreadsheet, simpan, lalu unduh PDF multi-orientasi (Portrait & Landscape)."
+                description="Laporan kinerja K3 & KAM terisi otomatis dari seluruh input & formulir Pengusahaan K3 (Time Frame, APAR, Hydrant, Buku Tamu, Jam Kerja, P3K, Sertifikasi, dll.). Edit sebagai teks atau spreadsheet, simpan, lalu unduh PDF multi-orientasi (Portrait & Landscape). Dokumen yang sudah disimpan: tekan Muat Ulang dari Data untuk mengambil isi terbaru."
                 backUrl={laporan.index().url}
                 backLabel="Kembali"
                 numberLabel="No. Dokumen"

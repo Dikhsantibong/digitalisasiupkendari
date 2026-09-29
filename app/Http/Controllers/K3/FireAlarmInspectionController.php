@@ -40,7 +40,7 @@ class FireAlarmInspectionController extends Controller
             ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
             ->orderBy('sort_order')->orderBy('id')->get();
 
-        return Inertia::render('k3/input/fire-alarm', [
+        return Inertia::render('k3/input/fire-alarm/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'rows' => $rows,

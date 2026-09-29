@@ -318,7 +318,9 @@ class DocumentTest extends TestCase
                 ->where('format', 'html')
                 ->where('has_saved', false)
                 ->where('can_write', true)
-                ->where('content', fn (string $html) => str_contains($html, 'har-logos-table')
+                // The shared Laporan Pengusahaan cover (as K3 & Operasi) with its photo.
+                ->where('content', fn (string $html) => str_contains($html, 'pc-cover')
+                    && str_contains($html, '/background/bg-login.jpeg')
                     && str_contains($html, '/logo/sidebar-logo.png')
                     && str_contains($html, '/logo/k3.png')
                 )

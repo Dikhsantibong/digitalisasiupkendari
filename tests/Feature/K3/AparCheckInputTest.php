@@ -37,7 +37,7 @@ class AparCheckInputTest extends TestCase
             ->get(route('k3.input.apar-check.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/input/apar-checks')
+                ->component('k3/input/apar-check/index')
                 ->has('rows', 3),
             );
     }

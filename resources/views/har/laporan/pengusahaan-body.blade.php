@@ -286,102 +286,15 @@
     ];
 @endphp
 
-{{-- 1. COVER --}}
-<div class="har-cover" id="sec-1">
-    <svg class="har-cover-bg" viewBox="0 0 794 1123" xmlns="http://www.w3.org/2000/svg">
-        <polygon points="0,0 210,0 0,270" fill="#0b2545" />
-        <polygon points="210,0 248,0 0,320 0,270" fill="#00a3e0" />
-        <polygon points="248,0 262,0 0,338 0,320" fill="#f59e0b" />
-        <polygon points="0,110 135,35 110,170 0,230" fill="#0080b0" opacity="0.25" />
-        <polygon points="460,1123 794,520 794,1123" fill="#005b82" />
-        <path d="M 0 715 Q 220 815 540 735 Q 568 725 565 750 C 560 780 480 960 470 1123 L 0 1123 Z" fill="#0b2545" />
-        <path d="M 0 707 Q 220 807 540 727 Q 575 717 572 750 C 567 780 487 960 477 1123 L 470 1123 C 480 960 560 780 565 750 Q 568 725 540 735 Q 220 815 0 715 Z" fill="#f59e0b" />
-    </svg>
-
-    <div class="har-cover-content">
-        <table class="har-logos-table">
-            <tr>
-                <td class="har-logo-cell-left">
-                    <img src="/logo/sidebar-logo.png" class="har-logo-pln" alt="PLN Nusantara Power">
-                </td>
-                <td class="har-logo-divider-cell">
-                    <div class="har-logo-vdiv"></div>
-                </td>
-                <td class="har-logo-cell-right">
-                    <img src="/logo/k3.png" class="har-logo-k3" alt="K3">
-                </td>
-            </tr>
-        </table>
-
-        <div class="har-cover-title-wrap">
-            <h1 class="har-cover-main-title">
-                LAPORAN PENGUSAHAAN<br>PEMBANGKIT
-            </h1>
-            <div class="har-cover-title-line"></div>
-        </div>
-
-        <div class="har-cover-spec-box">
-            <table class="har-spec-table">
-                <tr>
-                    <td class="har-spec-label">NAMA PEMBANGKIT</td>
-                    <td class="har-spec-colon">:</td>
-                    <td class="har-spec-val">{{ strtoupper($report['unit']['name'] ?? '') }}</td>
-                </tr>
-                <tr>
-                    <td class="har-spec-label">PERIODE PELAPORAN</td>
-                    <td class="har-spec-colon">:</td>
-                    <td class="har-spec-val">BULAN {{ strtoupper($report['period']['label'] ?? '') }}</td>
-                </tr>
-            </table>
-        </div>
-    </div>
-
-    <div class="har-cover-pillars-badge">
-        <table class="har-pillars-table">
-            <tr>
-                <td class="har-pillar-item">
-                    <svg class="har-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        <polyline points="9 12 11 14 15 10"/>
-                    </svg>
-                    <span class="har-p-text">
-                        <strong>ANDAL</strong><small>RELIABLE</small>
-                    </span>
-                </td>
-                <td class="har-pillar-sep">|</td>
-                <td class="har-pillar-item">
-                    <svg class="har-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                    <span class="har-p-text">
-                        <strong>EFISIEN</strong><small>EFFICIENT</small>
-                    </span>
-                </td>
-                <td class="har-pillar-sep">|</td>
-                <td class="har-pillar-item">
-                    <svg class="har-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
-                        <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-                    </svg>
-                    <span class="har-p-text">
-                        <strong>BERSIH</strong><small>CLEAN</small>
-                    </span>
-                </td>
-                <td class="har-pillar-sep">|</td>
-                <td class="har-pillar-item">
-                    <svg class="har-p-icon" viewBox="0 0 24 24" fill="none" stroke="#0a2540" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                        <path d="m9 12 2 2 4-4"/>
-                    </svg>
-                    <span class="har-p-text">
-                        <strong>AMAN</strong><small>SAFE</small>
-                    </span>
-                </td>
-            </tr>
-        </table>
-    </div>
-</div>
+{{-- 1. COVER (sampul yang sama dengan Laporan Pengusahaan K3 & Operasi) --}}
+@include('reports.partials.pengusahaan-cover', [
+    'id' => 'sec-1',
+    'title' => 'LAPORAN PENGUSAHAAN PEMBANGKIT',
+    'subtitle' => 'PEMELIHARAAN',
+    'unitName' => $report['unit']['name'] ?? '',
+    'monthName' => \App\Support\Indonesian::monthName((int) ($report['period']['month'] ?? 1)),
+    'year' => $report['period']['year'] ?? '',
+])
 
 {{-- 2. LEMBAR PENGESAHAN --}}
 <div class="break-before har-pengesahan-page" id="sec-2">

@@ -40,7 +40,7 @@ class AttachmentController extends Controller
             ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
             ->orderByDesc('id')->get();
 
-        return Inertia::render('k3/input/attachments', [
+        return Inertia::render('k3/input/attachment/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'attachments' => $attachments->map(fn (K3Attachment $a): array => [
                 'id' => $a->id,

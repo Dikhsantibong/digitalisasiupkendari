@@ -37,7 +37,7 @@ class TimeFrameInputTest extends TestCase
             ->get(route('k3.input.time-frame.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/input/time-frame')
+                ->component('k3/input/time-frame/index')
                 ->has('days', 31)
                 ->has('rows', 2)
             );

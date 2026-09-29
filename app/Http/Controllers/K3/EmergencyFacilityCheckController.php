@@ -116,7 +116,7 @@ class EmergencyFacilityCheckController extends Controller
             ])->all();
         }
 
-        return Inertia::render('k3/input/emergency-facility', [
+        return Inertia::render('k3/input/emergency-facility/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'groups' => array_keys(self::DEFAULTS),

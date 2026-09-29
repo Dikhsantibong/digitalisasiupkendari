@@ -60,7 +60,7 @@ class PatrolController extends Controller
             return $row;
         })->all();
 
-        return Inertia::render('k3/input/patrols', [
+        return Inertia::render('k3/input/patrol/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'days' => $days,
             'rows' => $rows,

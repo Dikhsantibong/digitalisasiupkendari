@@ -57,7 +57,7 @@ class AccidentController extends Controller
             ])
             ->all();
 
-        return Inertia::render('k3/input/accidents', [
+        return Inertia::render('k3/input/accident/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'rows' => $rows,
             'options' => [

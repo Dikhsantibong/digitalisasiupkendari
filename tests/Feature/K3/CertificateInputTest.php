@@ -37,7 +37,7 @@ class CertificateInputTest extends TestCase
             ->get(route('k3.input.certificate.index', ['unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/input/certificates')
+                ->component('k3/input/certificate/index')
                 ->has('rows', 2),
             );
     }

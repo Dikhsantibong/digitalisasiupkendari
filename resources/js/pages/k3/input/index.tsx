@@ -7,6 +7,7 @@ import {
     ClipboardCheck,
     ClipboardList,
     Droplets,
+    FileText,
     Flame,
     Gauge,
     HardHat,
@@ -30,6 +31,7 @@ import k3AparCheck from '@/routes/k3/input/apar-check';
 import k3Attachment from '@/routes/k3/input/attachment';
 import k3Cctv from '@/routes/k3/input/cctv';
 import k3Certificate from '@/routes/k3/input/certificate';
+import k3DokumenIk from '@/routes/k3/input/dokumen-ik';
 import k3Emergency from '@/routes/k3/input/emergency';
 import k3EmergencyFacility from '@/routes/k3/input/emergency-facility';
 import k3FireAlarm from '@/routes/k3/input/fire-alarm';
@@ -142,6 +144,13 @@ const INPUT_MENUS: InputCard[] = [
         icon: Droplets,
         url: k3AirLimbah.index().url,
         buttonLabel: 'Buka Logbook Air Limbah',
+    },
+    {
+        title: 'Dokumen IK K3',
+        description: 'Susun dokumen Instruksi Kerja (IK) K3 Lingkungan Pembangkit dari template (Alat, Bahan, Referensi, Langkah Pelaksanaan), cetak PDF, dan lampirkan ke Laporan K3.',
+        icon: FileText,
+        url: k3DokumenIk.index().url,
+        buttonLabel: 'Buka Dokumen IK',
     },
     {
         title: 'Fasilitas Darurat',

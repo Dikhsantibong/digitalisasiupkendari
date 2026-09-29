@@ -41,7 +41,7 @@ class EmergencyInputTest extends TestCase
             ->get(route('k3.input.emergency.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/input/emergency')
+                ->component('k3/input/emergency/index')
                 ->where('filters.week', 'bulanan')
                 ->has('rows', 1)
                 ->where('rows.0.persen_kesiapan', '75%'),

@@ -7,6 +7,7 @@ use App\Http\Controllers\K3\AttachmentController;
 use App\Http\Controllers\K3\CctvListController;
 use App\Http\Controllers\K3\CertificateController;
 use App\Http\Controllers\K3\DocumentController;
+use App\Http\Controllers\K3\DokumenIkController;
 use App\Http\Controllers\K3\EmergencyFacilityCheckController;
 use App\Http\Controllers\K3\EmergencyFacilityController;
 use App\Http\Controllers\K3\FireAlarmInspectionController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\K3\InspectionController;
 use App\Http\Controllers\K3\InstruksiKerjaController;
 use App\Http\Controllers\K3\JadwalController;
 use App\Http\Controllers\K3\JadwalOnCallController;
+use App\Http\Controllers\K3\JadwalPembuatanIkController;
 use App\Http\Controllers\K3\KegiatanRutinController;
 use App\Http\Controllers\K3\KesiapanApdController;
 use App\Http\Controllers\K3\KondisiK3Controller;
@@ -75,6 +77,9 @@ Route::middleware(['auth', 'verified'])
         Route::get('jadwal/instruksi-kerja', [InstruksiKerjaController::class, 'index'])->name('jadwal.instruksi-kerja.index');
         Route::post('jadwal/instruksi-kerja', [InstruksiKerjaController::class, 'store'])->name('jadwal.instruksi-kerja.store');
         Route::get('jadwal/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('jadwal.instruksi-kerja.pdf');
+        Route::get('jadwal/pembuatan-ik', [JadwalPembuatanIkController::class, 'index'])->name('jadwal.pembuatan-ik.index');
+        Route::post('jadwal/pembuatan-ik', [JadwalPembuatanIkController::class, 'store'])->name('jadwal.pembuatan-ik.store');
+        Route::get('jadwal/pembuatan-ik/pdf', [JadwalPembuatanIkController::class, 'pdf'])->name('jadwal.pembuatan-ik.pdf');
         Route::get('jadwal/patrol-check', [PatrolCheckController::class, 'index'])->name('jadwal.patrol-check.index');
         Route::post('jadwal/patrol-check', [PatrolCheckController::class, 'store'])->name('jadwal.patrol-check.store');
         Route::get('jadwal/patrol-check/pdf', [PatrolCheckController::class, 'pdf'])->name('jadwal.patrol-check.pdf');
@@ -141,6 +146,11 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/air-limbah', [AirLimbahController::class, 'index'])->name('input.air-limbah.index');
         Route::post('input/air-limbah', [AirLimbahController::class, 'store'])->name('input.air-limbah.store');
         Route::get('input/air-limbah/pdf', [AirLimbahController::class, 'pdf'])->name('input.air-limbah.pdf');
+
+        Route::get('input/dokumen-ik', [DokumenIkController::class, 'index'])->name('input.dokumen-ik.index');
+        Route::post('input/dokumen-ik', [DokumenIkController::class, 'store'])->name('input.dokumen-ik.store');
+        Route::get('input/dokumen-ik/pdf', [DokumenIkController::class, 'pdf'])->name('input.dokumen-ik.pdf');
+        Route::delete('input/dokumen-ik/{dokumenIk}', [DokumenIkController::class, 'destroy'])->name('input.dokumen-ik.destroy');
 
         Route::get('input/certificate', [CertificateController::class, 'index'])->name('input.certificate.index');
         Route::post('input/certificate', [CertificateController::class, 'store'])->name('input.certificate.store');

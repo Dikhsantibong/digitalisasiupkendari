@@ -114,7 +114,7 @@ class ApdInventoryController extends Controller
 
         $groups = collect(self::DEFAULTS)->pluck('grup')->unique()->values()->all();
 
-        return Inertia::render('k3/input/apd-inventory', [
+        return Inertia::render('k3/input/apd-inventory/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'groups' => $groups,

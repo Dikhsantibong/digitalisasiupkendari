@@ -62,7 +62,7 @@ class FireExtinguisherCheckController extends Controller
             ];
         })->all();
 
-        return Inertia::render('k3/input/apar-checks', [
+        return Inertia::render('k3/input/apar-check/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'rows' => $rows,
             'options' => ['units' => $units->all(), 'years' => range($year - 3, $year + 1)],

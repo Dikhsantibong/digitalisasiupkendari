@@ -100,7 +100,7 @@ class AirLimbahController extends Controller
             ])->all();
         }
 
-        return Inertia::render('k3/input/air-limbah', [
+        return Inertia::render('k3/input/air-limbah/index', [
             'unit' => [
                 'id' => $unit->id,
                 'name' => $unit->name,

@@ -69,7 +69,7 @@ class InspectionController extends Controller
             ];
         })->all();
 
-        return Inertia::render('k3/input/inspections', [
+        return Inertia::render('k3/input/inspection/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year, 'form_code' => $formCode],
             'header' => [
                 'inspection_date' => $inspection?->inspection_date?->format('Y-m-d'),

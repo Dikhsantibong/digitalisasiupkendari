@@ -69,7 +69,7 @@ class EmergencyFacilityController extends Controller
             ];
         })->all();
 
-        return Inertia::render('k3/input/emergency', [
+        return Inertia::render('k3/input/emergency/index', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year, 'week' => $week === null ? 'bulanan' : (string) $week],
             'rows' => $rows,
             'options' => [

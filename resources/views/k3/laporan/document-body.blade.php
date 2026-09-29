@@ -43,6 +43,8 @@
     $prRows = $pekerjaanRutin['rows'] ?? [];
     $apdInventory = $report['apd_inventory'] ?? [];
     $instruksiKerja = $report['instruksi_kerja'] ?? [];
+    $pembuatanIk = $report['pembuatan_ik'] ?? [];
+    $dokumenIk = $report['dokumen_ik'] ?? [];
     $employees = $report['employees'] ?? [];
     $attachments = $report['attachments'] ?? [];
     $airLimbah = $report['air_limbah'] ?? [];
@@ -937,16 +939,54 @@
 <div class="k3-section k3-landscape" id="sec-5-28">
     @include('k3.laporan.partials.kop', $kop + ['title' => 'JADWAL PEMBUATAN IK K3'])
 
-    <div class="k3-sub-title">28. Jadwal Pembuatan &amp; Review Instruksi Kerja (IK) K3</div>
+    <div class="k3-sub-title">28. Jadwal Pembuatan &amp; Review Instruksi Kerja (IK) K3 — Tahun {{ $period['year'] ?? '' }}</div>
 
-    @if(empty($instruksiKerja))
-        @include('k3.laporan.partials.no-data', ['message' => 'Belum ada data jadwal pembuatan IK K3 pada periode ini.'])
+    @if(empty($pembuatanIk))
+        @include('k3.laporan.partials.no-data', ['message' => 'Belum ada data jadwal pembuatan IK K3 untuk tahun ini (menu Jadwal → Pembuatan IK K3).'])
     @else
+        @php $ikMonths = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES']; @endphp
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" style="width: 26px;">No</th>
+                    <th rowspan="2">Instruksi Kerja</th>
+                    <th rowspan="2" style="width: 90px;">PIC Pembuat</th>
+                    <th colspan="12">Bulan (R = Rencana, &#10003; = Realisasi)</th>
+                    <th rowspan="2" style="width: 80px;">Keterangan</th>
+                </tr>
+                <tr>
+                    @foreach($ikMonths as $m)
+                        <th style="width: 26px;">{{ $m }}</th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($pembuatanIk as $ik)
+                    <tr>
+                        <td class="text-center">{{ $ik['no'] }}</td>
+                        <td>{{ $ik['instruksi_kerja'] }}</td>
+                        <td class="text-center">{{ $ik['pic_pembuat'] ?: '—' }}</td>
+                        @foreach(range(1, 12) as $m)
+                            @php
+                                $planned = in_array($m, $ik['rencana_bulan'], true);
+                                $done = in_array($m, $ik['realisasi_bulan'], true);
+                            @endphp
+                            <td class="text-center font-bold" style="{{ $done ? 'background-color:#bbf7d0;' : ($planned ? 'background-color:#fef08a;' : '') }}">{!! $planned ? 'R' : '' !!}{!! $planned && $done ? ' ' : '' !!}{!! $done ? '&#10003;' : '' !!}</td>
+                        @endforeach
+                        <td>{{ $ik['keterangan'] ?: '' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
+    @if(! empty($instruksiKerja))
+        <div class="k3-sub-title" style="margin-top: 12px;">Jadwal Instruksi Kerja K3L Bulan Ini</div>
         <table class="report-table">
             <thead>
                 <tr>
                     <th style="width: 30px;">No</th>
-                    <th>Kegiatan Pembuatan / Review IK</th>
+                    <th>Kegiatan</th>
                     <th style="width: 80px;">PIC</th>
                     <th>Peserta</th>
                     <th style="width: 70px;">Rencana</th>
@@ -1099,7 +1139,7 @@
                 <tr>
                     <td class="text-center">{{ $loop->iteration }}</td>
                     <td>{{ $item['title'] }}</td>
-                    <td class="text-center font-bold" style="color: #15803d;">Terlampir</td>
+                    <td class="text-center font-bold" style="color: #15803d;">{{ str_contains($item['title'], 'dokumen IK') && ! empty($dokumenIk) ? 'Terlampir ('.count($dokumenIk).' IK)' : 'Terlampir' }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -1132,3 +1172,11 @@
         </table>
     @endif
 </div>
+
+{{-- ===================== LAMPIRAN: DOKUMEN IK K3 (portrait, satu IK per halaman) ===================== --}}
+@foreach($dokumenIk as $doc)
+    <div class="page-break"></div>
+    <div class="k3-section" id="sec-7-ik-{{ $loop->iteration }}">
+        @include('k3.dokumen-ik.document', ['doc' => $doc, 'unitName' => $unit['name'] ?? ''])
+    </div>
+@endforeach

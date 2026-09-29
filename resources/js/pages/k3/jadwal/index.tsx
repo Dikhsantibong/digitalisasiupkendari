@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import {
     CalendarClock,
     CalendarDays,
+    FilePen,
     FileText,
     Leaf,
     PhoneCall,
@@ -38,6 +39,7 @@ const AVAILABLE_TARGETS: string[] = [
     '/k3/jadwal/patrol-check',
     '/k3/jadwal/pekerjaan-rutin',
     '/k3/jadwal/on-call',
+    '/k3/jadwal/pembuatan-ik',
 ];
 
 const JADWAL_LIST: JadwalCard[] = [
@@ -70,6 +72,12 @@ const JADWAL_LIST: JadwalCard[] = [
         description: 'Penyusunan, sosialisasi, standardisasi, dan peninjauan Instruksi Kerja (IK) prosedur K3L.',
         icon: FileText,
         target: '/k3/jadwal/instruksi-kerja',
+    },
+    {
+        title: 'Jadwal Pembuatan IK K3',
+        description: 'Rencana (R) dan realisasi (✓) penyusunan dokumen Instruksi Kerja K3 & Lingkungan per bulan dalam satu tahun, lengkap dengan PIC pembuat.',
+        icon: FilePen,
+        target: '/k3/jadwal/pembuatan-ik',
     },
 ];
 

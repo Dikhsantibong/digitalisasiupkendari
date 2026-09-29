@@ -46,6 +46,17 @@ trait EmbedsReportLogo
             );
         }
 
+        // The cover photo of the Laporan Pengusahaan (HAR, K3 & Operasi).
+        $coverPath = public_path('background/bg-login.jpeg');
+        if (is_file($coverPath)) {
+            $coverUri = 'data:image/jpeg;base64,'.base64_encode((string) file_get_contents($coverPath));
+            $html = (string) preg_replace(
+                '#src=(["\'])[^"\']*background/bg-login\.jpeg\1#i',
+                'src="'.$coverUri.'"',
+                $html,
+            );
+        }
+
         return $html;
     }
 }

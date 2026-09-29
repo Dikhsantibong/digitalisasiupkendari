@@ -11,6 +11,7 @@ import {
     Droplets,
     FileBarChart,
     FileCheck2,
+    FilePen,
     FileText,
     Flame,
     Gauge,
@@ -32,6 +33,7 @@ import k3ApdInventory from '@/routes/k3/input/apd-inventory';
 import k3Attachment from '@/routes/k3/input/attachment';
 import k3Cctv from '@/routes/k3/input/cctv';
 import k3Certificate from '@/routes/k3/input/certificate';
+import k3DokumenIk from '@/routes/k3/input/dokumen-ik';
 import k3Emergency from '@/routes/k3/input/emergency';
 import k3EmergencyFacility from '@/routes/k3/input/emergency-facility';
 import k3FireAlarm from '@/routes/k3/input/fire-alarm';
@@ -84,25 +86,27 @@ export const K3_PROJECT_MENUS: MobileMenu[] = [
         ['pekerjaan-rutin', 'Jadwal Pekerjaan Rutin K3L & Lingkungan', 'Pekerjaan Rutin', Leaf, '/k3/jadwal/pekerjaan-rutin', 'k3/jadwal/pekerjaan-rutin/index'],
         ['jadwal-patrol', 'Jadwal Patrol Check Harian K3L', 'Patrol Check', ShieldCheck, '/k3/jadwal/patrol-check', 'k3/jadwal/patrol-check/index'],
         ['instruksi-kerja', 'Jadwal Instruksi Kerja K3L', 'Instruksi Kerja', FileText, '/k3/jadwal/instruksi-kerja', 'k3/jadwal/instruksi-kerja/index'],
+        ['pembuatan-ik', 'Jadwal Pembuatan IK K3', 'Pembuatan IK', FilePen, '/k3/jadwal/pembuatan-ik', 'k3/jadwal/pembuatan-ik/index'],
     ]),
     ...section('k3p-input', 'k3.input.view', 'Input K3 & Keamanan', [
-        ['time-frame', 'Time Frame', 'Time Frame', CalendarRange, k3TimeFrame.index().url, 'k3/input/time-frame'],
-        ['accidents', 'Laporan Kecelakaan', 'Kecelakaan', ClipboardCheck, k3Accident.index().url, 'k3/input/accidents'],
-        ['inspections', 'Inspeksi Checklist', 'Inspeksi', ClipboardList, k3Inspection.index().url, 'k3/input/inspections'],
-        ['apar-checks', 'Inspeksi APAR/APAB', 'APAR/APAB', Flame, k3AparCheck.index().url, 'k3/input/apar-checks'],
-        ['hydrant', 'Inspeksi Hydrant', 'Hydrant', Droplets, k3Hydrant.index().url, 'k3/input/hydrant'],
-        ['cctv', 'Daftar CCTV', 'CCTV', Cctv, k3Cctv.index().url, 'k3/input/cctv'],
-        ['fire-alarm', 'Inspeksi Fire Alarm', 'Fire Alarm', BellRing, k3FireAlarm.index().url, 'k3/input/fire-alarm'],
-        ['rambu', 'Inspeksi Rambu-Rambu K3 & B3', 'Rambu', SignpostBig, k3Rambu.index().url, 'k3/input/rambu'],
-        ['emergency-facility', 'Pemeriksaan Emergency Facility', 'Emergency Facility', Siren, k3EmergencyFacility.index().url, 'k3/input/emergency-facility'],
-        ['kesiapan-apd', 'Kesiapan APD', 'Kesiapan APD', HardHat, k3KesiapanApd.index().url, 'k3/input/kesiapan-apd'],
-        ['apd-inventory', 'Daftar Inventaris APD', 'Inventaris APD', HardHat, k3ApdInventory.index().url, 'k3/input/apd-inventory'],
-        ['air-limbah', 'Logbook Pemantauan Air Limbah', 'Air Limbah', Droplets, k3AirLimbah.index().url, 'k3/input/air-limbah'],
-        ['emergency', 'Fasilitas Darurat', 'Fasilitas Darurat', Siren, k3Emergency.index().url, 'k3/input/emergency'],
-        ['patrols', 'Patroli Keamanan', 'Patroli', ShieldCheck, k3Patrol.index().url, 'k3/input/patrols'],
-        ['certificates', 'Sertifikasi Peralatan', 'Sertifikasi', ScrollText, k3Certificate.index().url, 'k3/input/certificates'],
-        ['attachments', 'Lampiran K3', 'Lampiran', Image, k3Attachment.index().url, 'k3/input/attachments'],
-        ['kondisi-k3', 'Kondisi K3 (Unsafe Action & Condition)', 'Kondisi K3', AlertTriangle, k3KondisiK3.index().url, 'k3/input/kondisi-k3'],
+        ['time-frame', 'Time Frame', 'Time Frame', CalendarRange, k3TimeFrame.index().url, 'k3/input/time-frame/index'],
+        ['accidents', 'Laporan Kecelakaan', 'Kecelakaan', ClipboardCheck, k3Accident.index().url, 'k3/input/accident/index'],
+        ['inspections', 'Inspeksi Checklist', 'Inspeksi', ClipboardList, k3Inspection.index().url, 'k3/input/inspection/index'],
+        ['apar-checks', 'Inspeksi APAR/APAB', 'APAR/APAB', Flame, k3AparCheck.index().url, 'k3/input/apar-check/index'],
+        ['hydrant', 'Inspeksi Hydrant', 'Hydrant', Droplets, k3Hydrant.index().url, 'k3/input/hydrant/index'],
+        ['cctv', 'Daftar CCTV', 'CCTV', Cctv, k3Cctv.index().url, 'k3/input/cctv/index'],
+        ['fire-alarm', 'Inspeksi Fire Alarm', 'Fire Alarm', BellRing, k3FireAlarm.index().url, 'k3/input/fire-alarm/index'],
+        ['rambu', 'Inspeksi Rambu-Rambu K3 & B3', 'Rambu', SignpostBig, k3Rambu.index().url, 'k3/input/rambu/index'],
+        ['emergency-facility', 'Pemeriksaan Emergency Facility', 'Emergency Facility', Siren, k3EmergencyFacility.index().url, 'k3/input/emergency-facility/index'],
+        ['kesiapan-apd', 'Kesiapan APD', 'Kesiapan APD', HardHat, k3KesiapanApd.index().url, 'k3/input/kesiapan-apd/index'],
+        ['apd-inventory', 'Daftar Inventaris APD', 'Inventaris APD', HardHat, k3ApdInventory.index().url, 'k3/input/apd-inventory/index'],
+        ['air-limbah', 'Logbook Pemantauan Air Limbah', 'Air Limbah', Droplets, k3AirLimbah.index().url, 'k3/input/air-limbah/index'],
+        ['dokumen-ik', 'Dokumen IK K3', 'Dokumen IK', FileText, k3DokumenIk.index().url, 'k3/input/dokumen-ik/index'],
+        ['emergency', 'Fasilitas Darurat', 'Fasilitas Darurat', Siren, k3Emergency.index().url, 'k3/input/emergency/index'],
+        ['patrols', 'Patroli Keamanan', 'Patroli', ShieldCheck, k3Patrol.index().url, 'k3/input/patrol/index'],
+        ['certificates', 'Sertifikasi Peralatan', 'Sertifikasi', ScrollText, k3Certificate.index().url, 'k3/input/certificate/index'],
+        ['attachments', 'Lampiran K3', 'Lampiran', Image, k3Attachment.index().url, 'k3/input/attachment/index'],
+        ['kondisi-k3', 'Kondisi K3 (Unsafe Action & Condition)', 'Kondisi K3', AlertTriangle, k3KondisiK3.index().url, 'k3/input/kondisi-k3/index'],
     ]),
     ...section('k3p-formulir', 'k3.input.view', 'Formulir K3 & Keamanan', [
         ['sarana-prasarana', 'Formulir Atribut, Peralatan, Administrasi & Sarana Prasarana', 'Sarana Prasarana', ShieldCheck, '/k3/formulir/sarana-prasarana', 'k3/formulir/sarana-prasarana/index'],

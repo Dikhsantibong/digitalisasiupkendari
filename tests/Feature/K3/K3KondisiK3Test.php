@@ -33,7 +33,7 @@ class K3KondisiK3Test extends TestCase
 
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
-            ->component('k3/input/kondisi-k3')
+            ->component('k3/input/kondisi-k3/index')
             ->has('rows')
             ->has('options')
             ->where('filters.unit_id', $unit->id)

@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Enums/** | .ai/rules/enums.md |
 | resources/js/pages/har/jadwal/** | .ai/rules/har-jadwal.md |
 | app/Services/Har/** | .ai/rules/har.md |
+| resources/js/pages/k3/input/** | .ai/rules/input.md |
 | resources/js/pages/k3/jadwal/** | .ai/rules/jadwal.md |
 | resources/js/** | .ai/rules/js.md |
 | app/Services/K3/** | .ai/rules/k3.md |

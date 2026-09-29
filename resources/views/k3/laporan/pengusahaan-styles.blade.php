@@ -403,4 +403,6 @@
     .text-left { text-align: left !important; }
     .font-bold { font-weight: bold !important; }
     .text-muted { color: #64748b !important; }
+
+    @include('reports.partials.pengusahaan-cover-styles')
 </style>

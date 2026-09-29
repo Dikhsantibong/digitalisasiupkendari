@@ -47,7 +47,7 @@ class LaporanPengusahaanController extends Controller
             (int) ($request->integer('year') ?: $now->year),
         ];
 
-        $data = $this->builder->build($unit, $month, $year);
+        $data = $this->builder->buildPengusahaan($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
         return Inertia::render('k3/laporan/pengusahaan', [
@@ -56,7 +56,7 @@ class LaporanPengusahaanController extends Controller
             'content' => $record?->content_html ?? $this->builder->pengusahaanBodyHtml($data),
             'content_styles' => $this->builder->pengusahaanStyles(),
             'letterhead' => $this->builder->letterhead($data),
-            'grid' => $record?->content_grid ?? $this->gridBuilder->build($data),
+            'grid' => $record?->content_grid ?? $this->gridBuilder->buildPengusahaan($data),
             'format' => $record?->format ?? 'html',
             'has_saved' => $record !== null,
             'pdf_url' => route('k3.laporan.pengusahaan.pdf', [
@@ -78,7 +78,7 @@ class LaporanPengusahaanController extends Controller
             (int) ($request->integer('year') ?: $now->year),
         ];
 
-        $data = $this->builder->build($unit, $month, $year);
+        $data = $this->builder->buildPengusahaan($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
         $styles = $this->builder->pengusahaanStyles();
 
@@ -87,11 +87,14 @@ class LaporanPengusahaanController extends Controller
             $pdf = $merger->render($styles, $body, [['show' => '', 'orientation' => 'landscape']], [], self::FOOTER);
         } else {
             $body = $this->embedAssets($record?->content_html ?? $this->builder->pengusahaanBodyHtml($data));
-            $pdf = $merger->render($styles, $body, [
+            // Portrait cover & narrow sections, landscape wide tables (and the photo
+            // appendix of documents saved before the report moved to pengusahaan data).
+            $segments = array_values(array_filter([
                 ['show' => 'seg-cover-info', 'orientation' => 'portrait'],
                 ['show' => 'seg-tables-wide', 'orientation' => 'landscape'],
                 ['show' => 'seg-attachments', 'orientation' => 'portrait'],
-            ], ['seg-cover-info', 'seg-tables-wide', 'seg-attachments'], self::FOOTER);
+            ], fn (array $segment): bool => str_contains($body, $segment['show'])));
+            $pdf = $merger->render($styles, $body, $segments, array_column($segments, 'show'), self::FOOTER);
         }
 
         $disposition = $request->boolean('download') ? 'attachment' : 'inline';
@@ -122,7 +125,7 @@ class LaporanPengusahaanController extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
 
-        $data = $this->builder->build($unit, $month, $year);
+        $data = $this->builder->buildPengusahaan($unit, $month, $year);
 
         $record = K3DocumentRecord::query()->firstOrNew([
             'unit_id' => $unit->id, 'type' => 'pengusahaan', 'month' => $month, 'year' => $year,
@@ -162,7 +165,7 @@ class LaporanPengusahaanController extends Controller
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
 
-        $data = $this->builder->build($unit, $month, $year);
+        $data = $this->builder->buildPengusahaan($unit, $month, $year);
 
         $record = K3DocumentRecord::query()->firstOrNew([
             'unit_id' => $unit->id, 'type' => 'pengusahaan', 'month' => $month, 'year' => $year,
@@ -174,7 +177,7 @@ class LaporanPengusahaanController extends Controller
         $record->format = 'html';
         $record->content_version = self::BODY_VERSION;
         $record->content_html = $this->builder->pengusahaanBodyHtml($data);
-        $record->content_grid = $this->gridBuilder->build($data);
+        $record->content_grid = $this->gridBuilder->buildPengusahaan($data);
         $record->snapshot = $data['report'];
         $record->save();
 

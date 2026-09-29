@@ -157,6 +157,99 @@ class K3DocumentGridBuilder
     }
 
     /**
+     * The Laporan Pengusahaan (K3 & KAM) as a grid: every pengusahaan section
+     * ({@see K3PengusahaanReport}) with its header & body cells, colspans and
+     * rowspans turned into merges.
+     *
+     * @param  array<string, mixed>  $data  the K3DocumentBuilder::buildPengusahaan() payload
+     * @return array<string, mixed>
+     */
+    public function buildPengusahaan(array $data): array
+    {
+        /** @var array<string, mixed> $report */
+        $report = $data['report'];
+        /** @var list<array<string, mixed>> $sections */
+        $sections = $data['pengusahaan'] ?? [];
+
+        $rows = [];
+        $merges = [];
+        $width = self::COLS;
+        foreach ($sections as $section) {
+            foreach ([...$section['head'], ...$section['rows']] as $line) {
+                $width = max($width, (int) array_sum(array_map(fn (array $cell): int => (int) ($cell['c'] ?? 1), $line)));
+            }
+        }
+
+        $full = function (array $cell) use (&$rows, &$merges, $width): void {
+            $rows[] = [$cell];
+            $merges[] = [count($rows) - 1, 0, count($rows) - 1, $width - 1];
+        };
+
+        $full($this->c((string) ($report['unit']['service_unit'] ?? 'UNIT LAYANAN'), true, 'c'));
+        $full($this->c('LAPORAN PENGUSAHAAN PEMBANGKIT (K3 & KAM) — '.$report['unit']['name'].' · '.$report['period']['label'], true, 'c'));
+        $rows[] = [$this->c('')];
+
+        foreach ($sections as $section) {
+            $full($this->c("{$section['no']}. {$section['title']}  ({$section['number']})", true));
+            foreach ($section['meta'] as $label => $value) {
+                $full($this->c("{$label}: {$value}"));
+            }
+
+            // Place the header & body cells, skipping the slots taken by an earlier rowspan.
+            $taken = [];
+            $lines = [...array_map(fn (array $l): array => [$l, true], $section['head']), ...array_map(fn (array $l): array => [$l, false], $section['rows'])];
+            foreach ($lines as $offset => [$line, $isHead]) {
+                $r = count($rows);
+                $row = [];
+                $col = 0;
+                foreach ($line as $cell) {
+                    while (isset($taken[$offset][$col])) {
+                        $row[$col] = $this->c('');
+                        $col++;
+                    }
+                    $span = (int) ($cell['c'] ?? 1);
+                    $down = (int) ($cell['r'] ?? 1);
+                    $row[$col] = $this->c((string) ($cell['t'] ?? ''), $isHead || ! empty($cell['b']), $isHead ? 'c' : (string) ($cell['a'] ?? 'l'));
+                    for ($x = 1; $x < $span; $x++) {
+                        $row[$col + $x] = $this->c('');
+                    }
+                    for ($y = 1; $y < $down; $y++) {
+                        for ($x = 0; $x < $span; $x++) {
+                            $taken[$offset + $y][$col + $x] = true;
+                        }
+                    }
+                    if ($span > 1 || $down > 1) {
+                        $merges[] = [$r, $col, $r + $down - 1, $col + $span - 1];
+                    }
+                    $col += $span;
+                }
+                while (isset($taken[$offset][$col])) {
+                    $row[$col] = $this->c('');
+                    $col++;
+                }
+                ksort($row);
+                $rows[] = array_values($row);
+            }
+
+            if ($section['rows'] === []) {
+                $full($this->c('Belum diisi pada periode ini.'));
+            }
+            if ($section['note'] !== null) {
+                $full($this->c('Catatan: '.$section['note']));
+            }
+            $rows[] = [$this->c('')];
+        }
+
+        return [
+            'name' => 'Laporan Pengusahaan K3',
+            'cols' => $width,
+            'col_widths' => [40, 200, ...array_fill(0, max(0, $width - 2), 70)],
+            'merges' => $merges,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
      * @return array{t: string, b?: bool, a?: string}
      */
     private function c(string $text, bool $bold = false, string $align = 'l'): array

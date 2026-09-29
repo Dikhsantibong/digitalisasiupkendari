@@ -37,7 +37,7 @@ class InspectionInputTest extends TestCase
             ->get(route('k3.input.inspection.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'form_code' => 'tempat-kerja']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('k3/input/inspections')
+                ->component('k3/input/inspection/index')
                 ->where('filters.form_code', 'tempat-kerja')
                 ->has('rows', 3),
             );
