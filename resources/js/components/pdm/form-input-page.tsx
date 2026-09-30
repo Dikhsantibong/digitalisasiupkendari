@@ -2,6 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import { Check, Download, FileSpreadsheet, ImagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
+import { CompactField, MobileCompactRows } from '@/components/mobile/compact-rows';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -11,6 +13,8 @@ import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { rowSummary } from '@/lib/mobile-row-summary';
 import { columnTotal, downloadPdmFormWorkbook, sectionNumberOffset } from '@/lib/pdm-input-excel';
 import type { PdmFormColumn, PdmFormDefinition, PdmFormField, PdmFormSection, PdmFormSummary } from '@/lib/pdm-input-excel';
 import { dashboard } from '@/routes';
@@ -68,6 +72,9 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the row just added opens in the compact list (flat index across sections).
+    const [focus, setFocus] = useState<{ index: number; nonce: number } | null>(null);
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
     const machineName = options.machines.find((m) => m.id === filters.machine_id)?.name;
@@ -116,6 +123,8 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
     };
 
     const addRow = (section: PdmFormSection) => {
+        const before = form.sections.slice(0, form.sections.findIndex((s) => s.key === section.key) + 1).reduce((sum, s) => sum + (rows[s.key]?.length ?? 0), 0);
+        setFocus({ index: before, nonce: (focus?.nonce ?? 0) + 1 });
         setRows((current) => ({ ...current, [section.key]: [...current[section.key], blankRow(section)] }));
         touch();
     };
@@ -417,6 +426,133 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
             </div>
         );
     };
+
+    // Phones: one collapsed line per row; tick-only rows (checklists) tick inline,
+    // other rows render their inputs only when opened.
+    if (compact) {
+        const flat = form.sections.flatMap((section) => (rows[section.key] ?? []).map((row, i) => ({ section, row, i })));
+        const editable = (section: PdmFormSection) => section.columns.filter((c) => c.type !== 'readonly');
+        const tickOnly = (section: PdmFormSection) => editable(section).length > 0 && editable(section).every((c) => c.type === 'check');
+        const ticks = (section: PdmFormSection, row: RowData, i: number) => (
+            <div className="flex flex-wrap gap-3">
+                {editable(section).map((column) => (
+                    <label key={column.key} className="flex items-center gap-1.5 text-[12.5px]">
+                        {cellEditor(section, column, row, i)}
+                        {column.label}
+                    </label>
+                ))}
+            </div>
+        );
+
+        return (
+            <>
+                <Head title={form.title} />
+                <div className={`flex flex-1 flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                    <PageHeader title={form.title} description={`${unit.name} · ${periodLabel}${machineName ? ` · ${machineName}` : ''}`} />
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
+                            <FileSpreadsheet className="size-4 text-emerald-600" />
+                            {exporting ? 'Menyiapkan…' : 'Excel'}
+                        </Button>
+                        <Button variant="outline" onClick={() => window.open(forms.pdf(form.key, { query }).url, '_blank')} className="gap-1.5">
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                    </div>
+                    <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+                    {form.per_machine && options.machines.length > 0 && (
+                        <div className="rounded-md border border-border bg-card p-3">
+                            <OperasiSelect
+                                label="Mesin"
+                                value={String(filters.machine_id ?? '')}
+                                onChange={(value) => visit({ machine_id: Number(value) })}
+                                options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))}
+                                className="w-full"
+                            />
+                        </div>
+                    )}
+                    {!document.saved && <p className="text-[12px] text-muted-foreground">Belum ada data tersimpan untuk periode ini. Baris kosong tidak ikut disimpan.</p>}
+
+                    {fieldBlock('header')}
+
+                    <MobileCompactRows
+                        canWrite={can_write}
+                        focus={focus}
+                        rows={flat.map(({ section, row, i }, index) => {
+                            const summaryLine = rowSummary(section.columns, row);
+                            const quick = tickOnly(section);
+
+                            return {
+                                key: index,
+                                index,
+                                section: section.key,
+                                title: summaryLine.title,
+                                subtitle: quick ? undefined : summaryLine.subtitle,
+                                searchText: summaryLine.searchText,
+                                empty: summaryLine.empty,
+                                quick: quick ? ticks(section, row, i) : undefined,
+                                quickOnly: quick,
+                            };
+                        })}
+                        sections={form.sections.map((section) => ({
+                            key: section.key,
+                            title: section.title,
+                            action: can_write && !section.fixed && (
+                                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => addRow(section)}>
+                                    <Plus className="size-3.5" />
+                                    Tambah
+                                </Button>
+                            ),
+                            footer: section.totals && section.totals.length > 0 && (
+                                <p className="rounded-lg bg-muted/60 px-3 py-2 text-[12px]">
+                                    <span className="font-semibold">Total</span>{' '}
+                                    {section.totals.map((key) => `${section.columns.find((c) => c.key === key)?.label ?? key}: ${columnTotal(rows[section.key] ?? [], key)}`).join(' · ')}
+                                </p>
+                            ),
+                        }))}
+                        renderEditor={(index) => {
+                            const { section, row, i } = flat[index];
+
+                            return editable(section).map((column) => (
+                                <CompactField key={column.key} label={`${column.group ? `${column.group} · ` : ''}${column.label}${column.unit ? ` (${column.unit})` : ''}`}>
+                                    <div className={column.type === 'check' ? '' : 'rounded-md border border-input bg-background'}>{cellEditor(section, column, row, i)}</div>
+                                </CompactField>
+                            ));
+                        }}
+                        onRemove={(index) => {
+                            const { section, i } = flat[index];
+
+                            if (!section.fixed) {
+                                removeRow(section.key, i);
+                            }
+                        }}
+                    />
+
+                    {document.summary && (
+                        <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-[12.5px]">
+                            <p className="font-semibold">{document.summary.title}</p>
+                            {document.summary.rows.map((row, i) => (
+                                <p key={i} className="text-muted-foreground">
+                                    {row.map((cell, j) => `${document.summary?.columns[j]}: ${cell}`).join(' · ')}
+                                </p>
+                            ))}
+                        </div>
+                    )}
+
+                    {fieldBlock('footer')}
+                </div>
+
+                {can_write && (
+                    <StickyActionBar>
+                        <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                            <Save className="size-4" />
+                            {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+            </>
+        );
+    }
 
     return (
         <>

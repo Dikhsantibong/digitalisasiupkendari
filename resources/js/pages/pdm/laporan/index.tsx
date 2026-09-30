@@ -117,9 +117,9 @@ export default function PdmLaporanIndex({ filters, options, contents }: Props) {
                         </StatusBadge>
                     </div>
 
-                    <div className="grid gap-4 p-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2">
                         {(Object.keys(GROUP_LABELS) as ReportContent['group'][]).map((group) => (
-                            <div key={group}>
+                            <div key={group} className="min-w-0">
                                 <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{GROUP_LABELS[group]}</h3>
                                 <ol className="divide-y divide-border rounded-md border border-border">
                                     {contents
@@ -135,7 +135,7 @@ export default function PdmLaporanIndex({ filters, options, contents }: Props) {
                                                     <span className="truncate text-foreground" title={item.title}>{item.title}</span>
                                                 </span>
                                                 <span className="flex shrink-0 items-center gap-2">
-                                                    <span className="text-[11px] text-muted-foreground">{item.orientation === 'portrait' ? 'Portrait' : 'Landscape'}</span>
+                                                    <span className="hidden text-[11px] text-muted-foreground sm:inline">{item.orientation === 'portrait' ? 'Portrait' : 'Landscape'}</span>
                                                     <StatusBadge tone={item.saved ? 'success' : 'neutral'}>{item.saved ? 'Tersimpan' : 'Isian bawaan'}</StatusBadge>
                                                 </span>
                                             </li>

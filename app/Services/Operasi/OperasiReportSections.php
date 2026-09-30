@@ -91,7 +91,8 @@ class OperasiReportSections
 
         return [
             'days' => $roster['days'],
-            'employees' => array_values(array_filter($roster['employees'], fn (array $e): bool => $e['cells'] !== [])),
+            // Operators with a schedule or at least one absen masuk this month.
+            'employees' => array_values(array_filter($roster['employees'], fn (array $e): bool => $e['cells'] !== [] || ($e['status'] ?? []) !== [])),
         ];
     }
 

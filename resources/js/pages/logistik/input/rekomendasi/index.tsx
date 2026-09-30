@@ -2,11 +2,15 @@ import { Head, router } from '@inertiajs/react';
 import { Download, FileSpreadsheet, Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { CompactField, MobileCompactRows } from '@/components/mobile/compact-rows';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { downloadRekomendasiWorkbook } from '@/lib/logistik-excel';
 import { dashboard } from '@/routes';
 import logistikInput from '@/routes/logistik/input';
@@ -54,6 +58,8 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
+    const [focus, setFocus] = useState<{ index: number; nonce: number } | null>(null);
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} Tahun ${filters.year}`;
     const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
@@ -74,6 +80,7 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
     const renumber = (list: Row[]) => list.map((row, i) => ({ ...row, no_urut: i + 1 }));
 
     const addRow = () => {
+        setFocus({ index: rows.length, nonce: (focus?.nonce ?? 0) + 1 });
         setRows((current) => [...current, blankRow(current.length + 1)]);
         setDirty(true);
     };
@@ -103,6 +110,64 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
             setExporting(false);
         }
     };
+
+    // Phones: one collapsed line per uraian, only the opened one renders its fields.
+    if (compact) {
+        return (
+            <>
+                <Head title="Rekomendasi Logistik & Gudang" />
+                <div className={`flex flex-1 flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                    <PageHeader title="Rekomendasi Logistik & Gudang" description={`${unit.name} · ${periodLabel}`} />
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
+                            <FileSpreadsheet className="size-4 text-emerald-600" />
+                            {exporting ? 'Menyiapkan…' : 'Excel'}
+                        </Button>
+                        <Button variant="outline" onClick={() => window.open(rekomendasi.pdf({ query }).url, '_blank')} className="gap-1.5">
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                    </div>
+                    <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+                    {!has_saved && <p className="text-[12px] text-muted-foreground">Belum ada rekomendasi tersimpan — uraian standar sudah disiapkan.</p>}
+                    <MobileCompactRows
+                        canWrite={can_write}
+                        focus={focus}
+                        rows={rows.map((row, index) => ({
+                            key: index,
+                            index,
+                            title: row.uraian || 'Uraian baru — ketuk untuk mengisi',
+                            subtitle: [row.kondisi_existing && `Kondisi: ${row.kondisi_existing}`, row.tindak_lanjut && `Tindak lanjut: ${row.tindak_lanjut}`].filter(Boolean).join(' · '),
+                            searchText: `${row.uraian} ${row.kondisi_existing} ${row.tindak_lanjut} ${row.keterangan}`,
+                            empty: !row.uraian,
+                        }))}
+                        renderEditor={(index) =>
+                            COLUMNS.map((column) => (
+                                <CompactField key={column.key} label={column.label}>
+                                    <Textarea rows={2} value={rows[index][column.key]} onChange={(e) => update(index, column.key, e.target.value)} disabled={!can_write} />
+                                </CompactField>
+                            ))
+                        }
+                        onRemove={removeRow}
+                    />
+                    {can_write && (
+                        <Button variant="outline" onClick={addRow} className="gap-1.5">
+                            <Plus className="size-4" />
+                            Tambah Baris
+                        </Button>
+                    )}
+                </div>
+                {can_write && (
+                    <StickyActionBar>
+                        <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                            <Save className="size-4" />
+                            {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+            </>
+        );
+    }
 
     return (
         <>

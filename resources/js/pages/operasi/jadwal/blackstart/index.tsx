@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
+import { MobileTimelineForm, TimelineField, weekColumnOf, weekKeyOf, YEAR_WEEK_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import blackstart from '@/routes/operasi/jadwal/blackstart';
@@ -136,6 +138,9 @@ export default function OperasiJadwalBlackstartIndex({
     can_write,
 }: Props) {
     const [rows, setRows] = useState<BlackstartRow[]>(initialRows);
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
+    const [initialWeek] = useState(() => weekColumnOf(new Date()));
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -539,6 +544,32 @@ export default function OperasiJadwalBlackstartIndex({
                     </div>
 
                     {/* Table 1: Matrix 12 Bulan x 4 Minggu */}
+                    {compact ? (
+                        <div className="py-3">
+                            <MobileTimelineForm<BlackstartRow>
+                                days={YEAR_WEEK_DAYS}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => row.uraian || 'Uraian baru'}
+                                isOn={(row, category, week) => (category === 'rencana' ? row.rencana : row.realisasi).includes(weekKeyOf(week))}
+                                onToggle={(row, category, week) => handleToggleCell(rows.indexOf(row), category as 'rencana' | 'realisasi', weekKeyOf(week))}
+                                details={(row, index) => (
+                                    <>
+                                        <TimelineField label="Uraian Pemeriksaan" value={row.uraian} onChange={(v) => handleUpdateField(index, 'uraian', v)} readOnly={!can_write} />
+                                        <TimelineField label="PIC Pembuat" value={row.pic} onChange={(v) => handleUpdateField(index, 'pic', v)} readOnly={!can_write} />
+                                    </>
+                                )}
+                                summary={(row) => `PIC ${row.pic || '-'} · Rencana ${row.rencana.length} · Realisasi ${row.realisasi.length}`}
+                                onRemove={(_row, index) => handleRemoveRow(index)}
+                                dayLabel={(week) => `${week.dow} ${filters.year} · minggu ${week.label}`}
+                                initialDay={initialWeek}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada uraian pemeriksaan."
+                            />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
@@ -749,6 +780,7 @@ export default function OperasiJadwalBlackstartIndex({
                             </tbody>
                         </table>
                     </div>
+                    )}
 
                     {/* Table 2: Recap Kinerja Bawah Kiri (matching reference) */}
                     <div className="mt-6 w-full max-w-lg">

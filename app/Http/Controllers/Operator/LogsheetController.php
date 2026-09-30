@@ -13,8 +13,12 @@ use App\Models\OperatorLogsheet;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Services\Operasi\LogsheetAggregator;
+use App\Support\Indonesian;
+use App\Support\JadwalPdf;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -69,34 +73,11 @@ class LogsheetController extends Controller
 
         $logDate = ($request->date('log_date') ?? Carbon::now())->toDateString();
 
-        // For now every unit uses the shared parameter set. When machines/units
-        // carry a plant-type marker, resolve the set from that instead.
-        $parameters = LogsheetParameter::query()
-            ->where('plant_type', PlantType::All->value)->where('is_active', true)
-            ->orderBy('sort_order')->orderBy('id')->get();
-
-        $logsheet = $engine === null ? null : OperatorLogsheet::query()
-            ->with('readings')
-            ->where('engine_id', $engine->id)->whereDate('log_date', $logDate)->first();
-
-        $stored = $logsheet?->readings->groupBy(fn ($r): string => substr((string) $r->time_slot, 0, 5)) ?? collect();
-
-        $rows = collect(self::SLOTS)->map(function (string $slot) use ($stored, $parameters): array {
-            $byParam = ($stored->get($slot) ?? collect())->keyBy('parameter_id');
-            $values = [];
-            $filled = false;
-            foreach ($parameters as $parameter) {
-                $value = $byParam->get($parameter->id)?->value;
-                $values['p_'.$parameter->id] = $this->trimNumber($value);
-                $filled = $filled || ($value !== null);
-            }
-
-            return ['time_slot' => $slot, 'values' => $values, 'filled' => $filled];
-        })->all();
+        [$parameters, $logsheet, $rows] = $this->sheet($engine, $logDate);
 
         $isSubmitted = $logsheet?->status === LogsheetStatus::Submitted;
 
-        return Inertia::render('operator/logsheet', [
+        return Inertia::render('operator/logsheet/index', [
             'filters' => ['unit_id' => $unit->id, 'engine_id' => $engine?->id, 'log_date' => $logDate],
             'stats' => $engine === null ? [] : $this->dayStats($parameters, $logsheet, count(self::SLOTS)),
             'header' => [
@@ -207,6 +188,76 @@ class LogsheetController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Logsheet dikirim & dikunci.']);
 
         return back();
+    }
+
+    /**
+     * PDF (A4 landscape) of one machine's logsheet for one day: every time slot
+     * × every parameter, like the paper logsheet.
+     */
+    public function pdf(Request $request): HttpResponse
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetView), 403);
+
+        [$unit, $engine] = $this->resolveTarget($request);
+        $logDate = ($request->date('log_date') ?? Carbon::now())->toDateString();
+        [$parameters, $logsheet, $rows] = $this->sheet($engine, $logDate);
+        $date = Carbon::parse($logDate);
+
+        $pdf = Pdf::loadView('operator.logsheet-pdf', [
+            'unit' => $unit,
+            'engine' => $engine,
+            'hariTanggal' => Indonesian::dayName($date).', '.Indonesian::longDate($date),
+            'shift' => $logsheet?->shift,
+            'status' => $logsheet?->status === LogsheetStatus::Submitted ? 'Terkirim' : 'Draft',
+            'parameters' => $parameters,
+            'rows' => $rows,
+            'stats' => $this->dayStats($parameters, $logsheet, count(self::SLOTS)),
+            ...JadwalPdf::logos(),
+        ])->setPaper('a4', 'landscape');
+
+        $filename = sprintf('Logsheet_%s_%s_%s.pdf', str_replace(' ', '_', $unit->name), str_replace([' ', '#'], ['_', ''], $engine->name), $date->format('Ymd'));
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * The machine's sheet for the day: active parameters, the stored logsheet and
+     * one row per time slot with its values keyed p_{parameter id}.
+     *
+     * @return array{0: Collection<int, LogsheetParameter>, 1: OperatorLogsheet|null, 2: list<array{time_slot: string, values: array<string, string|null>, filled: bool}>}
+     */
+    private function sheet(?Machine $engine, string $logDate): array
+    {
+        // For now every unit uses the shared parameter set. When machines/units
+        // carry a plant-type marker, resolve the set from that instead.
+        $parameters = LogsheetParameter::query()
+            ->where('plant_type', PlantType::All->value)->where('is_active', true)
+            ->orderBy('sort_order')->orderBy('id')->get();
+
+        $logsheet = $engine === null ? null : OperatorLogsheet::query()
+            ->with('readings')
+            ->where('engine_id', $engine->id)->whereDate('log_date', $logDate)->first();
+
+        $stored = $logsheet?->readings->groupBy(fn ($r): string => substr((string) $r->time_slot, 0, 5)) ?? collect();
+
+        $rows = collect(self::SLOTS)->map(function (string $slot) use ($stored, $parameters): array {
+            $byParam = ($stored->get($slot) ?? collect())->keyBy('parameter_id');
+            $values = [];
+            $filled = false;
+            foreach ($parameters as $parameter) {
+                $value = $byParam->get($parameter->id)?->value;
+                $values['p_'.$parameter->id] = $this->trimNumber($value);
+                $filled = $filled || ($value !== null);
+            }
+
+            return ['time_slot' => $slot, 'values' => $values, 'filled' => $filled];
+        })->all();
+
+        return [$parameters, $logsheet, $rows];
     }
 
     /**

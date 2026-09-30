@@ -23,6 +23,7 @@ import {
     XLSX_COLORS,
 } from '@/lib/jadwal-excel';
 import type { StyleSpec } from '@/lib/jadwal-excel';
+import { MobileTimelineForm, TimelineField, weekColumnOf, weekKeyOf, YEAR_WEEK_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import performanceTest from '@/routes/operasi/jadwal/performance-test';
@@ -76,6 +78,13 @@ type Props = {
     rows: PerformanceTestRow[];
     can_write: boolean;
 };
+
+/** Phone toggles of a week column: the three load tests. */
+const BEBAN_CATEGORIES = [
+    { key: '50', label: 'Beban 50%', onClass: 'border-amber-500 bg-amber-300 text-black' },
+    { key: '75', label: 'Beban 75%', onClass: 'border-orange-500 bg-orange-400 text-black' },
+    { key: '100', label: 'Beban 100%', onClass: 'border-emerald-600 bg-emerald-500 text-black' },
+];
 
 const MONTH_NAMES = [
     'JANUARY',
@@ -161,6 +170,9 @@ export default function JadwalPerformanceTestIndex({
     can_write,
 }: Props) {
     const [rows, setRows] = useState<PerformanceTestRow[]>(initialRows);
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
+    const [initialWeek] = useState(() => weekColumnOf(new Date()));
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -772,6 +784,29 @@ export default function JadwalPerformanceTestIndex({
                     </div>
 
                     {/* Table 1: Matrix 12 Bulan x 4 Minggu = 48 Kolom */}
+                    {compact ? (
+                        <div className="py-3">
+                            <MobileTimelineForm<PerformanceTestRow>
+                                days={YEAR_WEEK_DAYS}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => row.nama_mesin || 'Baris baru'}
+                                categories={BEBAN_CATEGORIES}
+                                isOn={(row, category, week) => row[`beban_${category}` as 'beban_50' | 'beban_75' | 'beban_100'].includes(weekKeyOf(week))}
+                                onToggle={(row, category, week) => handleToggleCell(rows.indexOf(row), category as '50' | '75' | '100', weekKeyOf(week))}
+                                details={(row, index) => <TimelineField label="Nama" value={row.nama_mesin} onChange={(v) => handleUpdateName(index, v)} readOnly={!can_write} />}
+                                summary={(row) => `50% · ${row.beban_50.length} — 75% · ${row.beban_75.length} — 100% · ${row.beban_100.length} minggu`}
+                                onRemove={(_row, index) => handleRemoveRow(index)}
+                                sectionOf={(row) => row.section || 'A. PEMBUATAN DATA TEKNIKS'}
+                                dayLabel={(week) => `${week.dow} ${filters.year} · minggu ${week.label}`}
+                                initialDay={initialWeek}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada baris."
+                            />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
@@ -1109,6 +1144,7 @@ export default function JadwalPerformanceTestIndex({
                             </tbody>
                         </table>
                     </div>
+                    )}
 
                     {/* Table 2: Recap Table Bawah Kiri (matching reference) */}
                     <div className="mt-6 w-full max-w-md">

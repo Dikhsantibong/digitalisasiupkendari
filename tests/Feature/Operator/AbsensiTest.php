@@ -3,12 +3,15 @@
 namespace Tests\Feature\Operator;
 
 use App\Enums\RoleName;
+use App\Enums\ScheduleGroupType;
 use App\Models\AttendanceCode;
 use App\Models\Employee;
+use App\Models\EmployeePresence;
 use App\Models\Holiday;
 use App\Models\ShiftPattern;
 use App\Models\Unit;
 use App\Models\WorkSchedule;
+use App\Services\Operator\AbsensiDocumentBuilder;
 use Database\Seeders\AttendanceCodeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -79,7 +82,7 @@ class AbsensiTest extends TestCase
             ->get(route('operator.absensi.index', $this->target($unit)))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operator/absensi')
+                ->component('operator/absensi/index')
                 ->where('can_write', true)
                 ->where('period_label', 'Agustus 2026')
                 ->has('days', 31)
@@ -237,5 +240,61 @@ class AbsensiTest extends TestCase
                 'cells' => [['employee_id' => $employee->id, 'day' => 1, 'code' => 'P']],
             ]))
             ->assertForbidden();
+    }
+
+    public function test_the_month_sheet_exports_to_pdf(): void
+    {
+        $unit = Unit::factory()->create(['name' => 'PLTD Poasia']);
+        $operator = $this->shiftEmployee($unit);
+        $this->nonShiftEmployee($unit);
+        $tl = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
+
+        $this->actingAs($tl)->post(route('operator.absensi.store'), $this->target($unit, [
+            'cells' => [['employee_id' => $operator->id, 'day' => 1, 'code' => 'P'], ['employee_id' => $operator->id, 'day' => 2, 'code' => 'OFF']],
+        ]))->assertRedirect();
+
+        $this->actingAs($tl)->get(route('operator.absensi.pdf', $this->target($unit)))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))->get(route('operator.absensi.pdf', $this->target($unit)))->assertForbidden();
+        $this->actingAs($tl)->get(route('operator.absensi.pdf', $this->target(Unit::factory()->create())))->assertForbidden();
+    }
+
+    public function test_attendance_follows_the_absen_masuk_not_the_generated_schedule(): void
+    {
+        $unit = Unit::factory()->create();
+        $employee = $this->shiftEmployee($unit);
+        $leader = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
+
+        // Scheduled P on 3, 4 and 5 Aug; absen masuk only on the 3rd (late on the 5th is absent).
+        $this->actingAs($leader)->post(route('operator.absensi.store'), $this->target($unit, ['cells' => [
+            ['employee_id' => $employee->id, 'day' => 3, 'code' => 'P'],
+            ['employee_id' => $employee->id, 'day' => 4, 'code' => 'P'],
+            ['employee_id' => $employee->id, 'day' => 5, 'code' => 'OFF'],
+        ]]))->assertRedirect();
+        EmployeePresence::factory()->create([
+            'unit_id' => $unit->id, 'employee_id' => $employee->id, 'work_date' => '2026-08-03',
+            'check_in_at' => '2026-08-02 23:58:00', 'check_out_at' => '2026-08-03 08:05:00', 'late_minutes' => null,
+        ]);
+        // An absen on a day OFF is "di luar jadwal".
+        EmployeePresence::factory()->create(['unit_id' => $unit->id, 'employee_id' => $employee->id, 'work_date' => '2026-08-05', 'check_in_at' => '2026-08-05 00:10:00']);
+
+        $this->actingAs($leader)->get(route('operator.absensi.index', $this->target($unit)))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('sections.0.employees.0.presence.3.in', '07:58')
+                ->where('sections.0.employees.0.presence.3.out', '16:05')
+                ->has('sections.0.employees.0.presence', 2)
+                ->where('today', now('Asia/Makassar')->toDateString()));
+
+        $roster = app(AbsensiDocumentBuilder::class)->build($unit, 8, 2026, ScheduleGroupType::Shift)['employees'][0];
+        $this->assertSame([3 => 'hadir', 4 => 'tidak_hadir', 5 => 'di_luar_jadwal'], $roster['status']);
+        $this->assertSame(2, $roster['hadir']);
+        $this->assertSame(1, $roster['tidak_hadir']);
+        $this->assertSame(0.5, $roster['percent']);
+        $this->assertSame(['P' => 2, 'OFF' => 1], $roster['recap']);
+
+        $this->actingAs($leader)->get(route('operator.absensi.pdf', $this->target($unit)))->assertOk();
     }
 }

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import {
     buildDocumentHeader,
     createSheet,
@@ -146,6 +148,8 @@ export default function PdmJadwalHarianIndex({
     const [meta, setMeta] = useState<DocumentMeta>(initialMeta);
     const [isSaving, setIsSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
@@ -752,6 +756,36 @@ return { ...SPECS.cellLeft, fill: baseBg };
                         </div>
                     </div>
 
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<PdmHarianRow>
+                                days={days}
+                                rows={rows.filter((row) => !row.is_category_header)}
+                                rowKey={(row) => row.id ?? `new-${rows.indexOf(row)}`}
+                                title={(row) => row.kegiatan || 'Kegiatan baru'}
+                                sectionOf={(row) => row.kategori}
+                                categories={[{ key: 'jadwal', label: 'Terlaksana', onClass: 'border-emerald-600 bg-emerald-500 text-black' }]}
+                                isOn={(row, _category, day) => (row.jadwal || []).includes(day)}
+                                onToggle={(row, _category, day) => handleToggleDay(rows.indexOf(row), day)}
+                                details={(row) => (
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <TimelineField label="Target" type="number" value={row.target} onChange={(v) => handleUpdateTarget(rows.indexOf(row), Number(v))} readOnly={!can_write} />
+                                        <TimelineField label="Keterangan" value={row.keterangan || ''} onChange={(v) => handleUpdateKeterangan(rows.indexOf(row), v)} readOnly={!can_write} placeholder="Catatan…" />
+                                    </div>
+                                )}
+                                summary={(row) => {
+                                    const realisasi = (row.jadwal || []).length;
+
+                                    return `Target ${row.target} · Realisasi ${realisasi} · Kinerja ${row.target > 0 ? Math.round((realisasi / row.target) * 100) : 0}%`;
+                                }}
+                                onRemove={(row) => handleDeleteRow(rows.indexOf(row))}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada kegiatan PdM & Matlev."
+                            />
+                        </div>
+                    ) : (
                     <table className="w-full min-w-[1550px] border-collapse text-xs select-none">
                         <thead>
                             <tr className="border-b border-border bg-muted/60 text-muted-foreground">
@@ -1000,6 +1034,7 @@ return { ...SPECS.cellLeft, fill: baseBg };
                             })}
                         </tbody>
                     </table>
+                    )}
                 </div>
 
                 {/* Table Bottom Action: Tambah Kegiatan */}

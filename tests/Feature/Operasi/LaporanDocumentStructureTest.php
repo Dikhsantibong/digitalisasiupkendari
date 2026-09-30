@@ -5,6 +5,7 @@ namespace Tests\Feature\Operasi;
 use App\Enums\FuelType;
 use App\Enums\RoleName;
 use App\Models\Employee;
+use App\Models\EmployeePresence;
 use App\Models\HarUnsafeCondition;
 use App\Models\KondisiAbnormal;
 use App\Models\Machine;
@@ -20,6 +21,7 @@ use App\Models\OperasiMeetingShiftJadwal;
 use App\Models\OperasiPembuatanIk;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
+use Database\Seeders\AttendanceCodeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
 use setasign\Fpdi\Fpdi;
@@ -247,5 +249,25 @@ class LaporanDocumentStructureTest extends TestCase
         $end = strpos($html, 'class="op-section', $start);
 
         return substr($html, $start, $end === false ? null : $end - $start);
+    }
+
+    public function test_the_jadwal_shift_operator_carries_the_real_attendance(): void
+    {
+        [$unit, $engine] = $this->unitWithEngine();
+        $this->seed(AttendanceCodeSeeder::class);
+        $operator = Employee::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'regu' => 'A', 'position' => 'Operator']);
+
+        $this->actingAs($this->userWithRole(RoleName::ProjectLeaderOperasi, $unit))->post(route('operator.absensi.store'), [
+            'unit_id' => $unit->id, 'year' => 2026, 'month' => 8,
+            'cells' => [['employee_id' => $operator->id, 'day' => 3, 'code' => 'P'], ['employee_id' => $operator->id, 'day' => 4, 'code' => 'P']],
+        ])->assertRedirect();
+        EmployeePresence::factory()->create(['unit_id' => $unit->id, 'employee_id' => $operator->id, 'work_date' => '2026-08-03', 'check_in_at' => '2026-08-03 00:00:00']);
+
+        $section = $this->section($this->content($unit, $engine), 'sec-4-1');
+
+        $this->assertStringContainsString('% Hadir', $section);
+        $this->assertStringContainsString('op-mark-hadir', $section);
+        $this->assertStringContainsString('op-absent', $section);
+        $this->assertStringContainsString('50,0%', $section);
     }
 }

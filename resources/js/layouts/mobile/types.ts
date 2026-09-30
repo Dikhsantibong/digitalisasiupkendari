@@ -4,6 +4,10 @@ import type { LucideIcon } from 'lucide-react';
 export const MOBILE_MENU_GROUPS = [
     { key: 'umum', label: 'Umum' },
     { key: 'operasi', label: 'Input Operasi' },
+    { key: 'op-jadwal', label: 'Jadwal Operasi' },
+    { key: 'op-input', label: 'Input Operasi' },
+    { key: 'op-formulir', label: 'Formulir Operasi' },
+    { key: 'op-laporan', label: 'Laporan Operasi' },
     { key: 'har-jadwal', label: 'Jadwal Pemeliharaan' },
     { key: 'har-input', label: 'Input Pemeliharaan' },
     { key: 'har-formulir', label: 'Formulir Pemeliharaan' },
@@ -16,6 +20,12 @@ export const MOBILE_MENU_GROUPS = [
     { key: 'k3-input', label: 'Input K3 & Keamanan' },
     { key: 'k3-formulir', label: 'Formulir K3 & Keamanan' },
     { key: 'k3-laporan', label: 'Laporan K3 & Keamanan' },
+    { key: 'log-jadwal', label: 'Jadwal Logistik & Gudang' },
+    { key: 'log-input', label: 'Input Logistik & Gudang' },
+    { key: 'log-laporan', label: 'Laporan Logistik & Gudang' },
+    { key: 'pdm-jadwal', label: 'Jadwal PdM & MATLEV' },
+    { key: 'pdm-input', label: 'Input PdM & MATLEV' },
+    { key: 'pdm-laporan', label: 'Laporan PdM & MATLEV' },
 ] as const;
 
 export type MobileMenuGroup = (typeof MOBILE_MENU_GROUPS)[number]['key'];

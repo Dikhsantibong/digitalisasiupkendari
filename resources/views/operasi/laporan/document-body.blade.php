@@ -54,6 +54,8 @@
     };
 
     $shiftOperator = $sections['shift_operator'] ?? ['days' => [], 'employees' => []];
+    // Attendance marks of the Jadwal Shift (AttendanceCalculator statuses from the presensi).
+    $statusMarks = ['hadir' => '&#10003;', 'terlambat' => '&#10003;', 'tidak_hadir' => '&#10007;', 'menunggu' => '&#8226;', 'di_luar_jadwal' => '&#9679;'];
     $program5s5r = $sections['program_5s5r'] ?? [];
     $dataTeknisBulanIni = $sections['data_teknis_bulan_ini'] ?? [];
     $unsafeConditions = $sections['unsafe_conditions'] ?? [];
@@ -311,6 +313,9 @@
                 <th rowspan="2" style="width: 130px;">Nama</th>
                 <th rowspan="2" style="width: 34px;">Regu</th>
                 <th colspan="{{ count($shiftOperator['days']) }}">Tanggal</th>
+                <th rowspan="2" style="width: 26px;">Hadir</th>
+                <th rowspan="2" style="width: 26px;">Tdk Hadir</th>
+                <th rowspan="2" style="width: 30px;">% Hadir</th>
             </tr>
             <tr>
                 @foreach($shiftOperator['days'] as $day)
@@ -323,11 +328,23 @@
                     <td class="op-name">{{ $employee['name'] }}</td>
                     <td class="c">{{ $employee['regu'] ?? '—' }}</td>
                     @foreach($shiftOperator['days'] as $day)
-                        <td class="c">{{ $employee['cells'][$day['day']] ?? '' }}</td>
+                        @php $status = $employee['status'][$day['day']] ?? null; @endphp
+                        <td class="c{{ $status === 'tidak_hadir' ? ' op-absent' : '' }}">{{ $employee['cells'][$day['day']] ?? '' }}@if($status)<span class="op-mark op-mark-{{ $status }}">{!! $statusMarks[$status] !!}</span>@endif</td>
                     @endforeach
+                    <td class="c" style="font-weight: bold; color: #047857;">{{ $employee['hadir'] ?? 0 }}</td>
+                    <td class="c" style="font-weight: bold; color: {{ ($employee['tidak_hadir'] ?? 0) > 0 ? '#be123c' : '#555' }};">{{ $employee['tidak_hadir'] ?? 0 }}</td>
+                    <td class="c">{{ ($employee['percent'] ?? null) !== null ? number_format($employee['percent'] * 100, 1, ',', '.').'%' : '-' }}</td>
                 </tr>
             @endforeach
         </table>
+        <div class="op-legend">
+            Kehadiran dari absen masuk akun operator:
+            <span class="op-mark op-mark-hadir">&#10003;</span> hadir
+            &nbsp;<span class="op-mark op-mark-terlambat">&#10003;</span> hadir terlambat
+            &nbsp;<span class="op-mark op-mark-tidak_hadir">&#10007;</span> tidak hadir (jadwal kerja tanpa absen)
+            &nbsp;<span class="op-mark op-mark-di_luar_jadwal">&#9679;</span> absen di luar jadwal.
+            % Hadir = jadwal kerja (P/S/M) yang diabsen &divide; jadwal kerja yang sudah lewat.
+        </div>
     @endif
 </div>
 

@@ -6,7 +6,14 @@ import { MobileModeBar } from '@/components/mobile/mode-bar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-export type TimelineDay = { day: number; dow: string; is_red: boolean; holiday?: string | null };
+export type TimelineDay = {
+    day: number;
+    dow: string;
+    is_red: boolean;
+    holiday?: string | null;
+    /** Strip label when it is not the day number (e.g. "M2" for a week column). */
+    label?: string;
+};
 
 export type TimelineCategory = {
     key: string;
@@ -14,6 +21,36 @@ export type TimelineCategory = {
     /** Classes of the toggle / badge when it is on. */
     onClass: string;
 };
+
+const DOW = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+/** The dates of a month for pages whose server payload only carries `days_in_month`; weekends are red. */
+export function monthTimelineDays(year: number, month: number, count: number): TimelineDay[] {
+    return Array.from({ length: count }, (_, index) => {
+        const weekday = new Date(year, month - 1, index + 1).getDay();
+
+        return { day: index + 1, dow: DOW[weekday], is_red: weekday === 0 || weekday === 6 };
+    });
+}
+
+/** The twelve months of a yearly plan as strip "days" (1 … 12). */
+export const YEAR_MONTH_DAYS: TimelineDay[] = MONTH_SHORT.map((label, index) => ({ day: index + 1, dow: label, is_red: false }));
+
+/** The 48 week columns (12 months × M1–M4) of a yearly plan, numbered 1 … 48; see {@link weekKeyOf}. */
+export const YEAR_WEEK_DAYS: TimelineDay[] = MONTH_SHORT.flatMap((month, index) =>
+    [1, 2, 3, 4].map((week) => ({ day: index * 4 + week, dow: month, is_red: false, label: `M${week}` })),
+);
+
+/** The `{month}-{week}` key a yearly week-plan page stores for a strip column of {@link YEAR_WEEK_DAYS}. */
+export function weekKeyOf(day: number): string {
+    return `${Math.ceil(day / 4)}-${((day - 1) % 4) + 1}`;
+}
+
+/** The {@link YEAR_WEEK_DAYS} column of a date (week = ⌈date ÷ 7⌉, capped at M4). */
+export function weekColumnOf(date: Date): number {
+    return date.getMonth() * 4 + Math.min(4, Math.ceil(date.getDate() / 7));
+}
 
 export const RENC_REAL: TimelineCategory[] = [
     { key: 'rencana', label: 'Rencana (RENC)', onClass: 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-black' },
@@ -100,7 +137,7 @@ export function MobileTimelineForm<R>({
             <DayStrip
                 items={days.map((d) => ({
                     key: String(d.day),
-                    label: String(d.day),
+                    label: d.label ?? String(d.day),
                     sub: d.dow,
                     isRed: d.is_red,
                     done: rows.some((row) => categories.some((c) => isOn(row, c.key, d.day))),

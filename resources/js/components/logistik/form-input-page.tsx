@@ -2,6 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import { Check, Download, FileSpreadsheet, ImagePlus, Plus, Save, Trash2, X } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
+import { CompactField, MobileCompactRows } from '@/components/mobile/compact-rows';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -9,8 +11,10 @@ import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { computeRow, downloadLogistikFormWorkbook, sectionTotals } from '@/lib/logistik-form-excel';
 import type { FormColumn, FormDefinition, FormRow, FormSummary, FormValue } from '@/lib/logistik-form-excel';
+import { rowSummary } from '@/lib/mobile-row-summary';
 import { dashboard } from '@/routes';
 import logistikInput from '@/routes/logistik/input';
 import formRoutes from '@/routes/logistik/input/form';
@@ -51,6 +55,9 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the row just added opens in the compact list.
+    const [focus, setFocus] = useState<{ index: number; nonce: number } | null>(null);
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} Tahun ${filters.year}`;
     const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
@@ -90,6 +97,7 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
     };
 
     const addRow = (section: string) => {
+        setFocus({ index: rows.map((row) => row.section).lastIndexOf(section) + 1, nonce: (focus?.nonce ?? 0) + 1 });
         setRows((current) => {
             const last = current.map((row) => row.section).lastIndexOf(section);
             const next = [...current];
@@ -259,6 +267,116 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
             headerCells.push({ group: column.group, label: column.group ?? column.label, span: 1, width: column.width });
         }
     });
+
+    // Phones: one collapsed line per row, only the opened row renders its inputs.
+    if (compact) {
+        const computedOf = (index: number) => computeRow(columns, rows[index].data);
+        const single = form.sections.length === 1 && !form.sections[0].title;
+
+        return (
+            <>
+                <Head title={form.title} />
+                <div className={`flex flex-1 flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
+                    <PageHeader title={form.title} description={`${unit.name} · ${periodLabel}`} />
+                    <div className="grid grid-cols-2 gap-2">
+                        <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
+                            <FileSpreadsheet className="size-4 text-emerald-600" />
+                            {exporting ? 'Menyiapkan…' : 'Excel'}
+                        </Button>
+                        <Button variant="outline" onClick={() => window.open(formRoutes.pdf(form.key, { query }).url, '_blank')} className="gap-1.5">
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                    </div>
+                    <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+                    <p className="text-[12px] text-muted-foreground">
+                        {!has_saved && 'Belum ada data tersimpan — isian bawaan sudah disiapkan. '}
+                        Ketuk baris untuk melihat / mengisi. Baris kosong tidak ikut disimpan.
+                    </p>
+
+                    <MobileCompactRows
+                        canWrite={can_write}
+                        focus={focus}
+                        rows={rows.map((row, index) => {
+                            const summaryLine = rowSummary(columns, computedOf(index));
+
+                            return { key: index, index, section: row.section, title: summaryLine.title, subtitle: summaryLine.subtitle, searchText: summaryLine.searchText, empty: summaryLine.empty };
+                        })}
+                        sections={form.sections.map((section) => {
+                            const sectionIndexes = rows.map((row, index) => (row.section === section.key ? index : -1)).filter((index) => index !== -1);
+                            const totals = sectionTotals(section, sectionIndexes.map(computedOf));
+
+                            return {
+                                key: single ? null : section.key,
+                                title: section.title ?? undefined,
+                                action: can_write && !single && (
+                                    <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => addRow(section.key)}>
+                                        <Plus className="size-3.5" />
+                                        Tambah
+                                    </Button>
+                                ),
+                                footer: section.totals.length > 0 && (
+                                    <p className="rounded-lg bg-muted/60 px-3 py-2 text-[12px]">
+                                        <span className="font-semibold">Total</span>{' '}
+                                        {section.totals.map((key) => `${columns.find((c) => c.key === key)?.label ?? key}: ${totals[key] ?? 0}`).join(' · ')}
+                                    </p>
+                                ),
+                            };
+                        })}
+                        renderEditor={(index) => {
+                            const data = computedOf(index);
+
+                            return columns.map((column) => (
+                                <CompactField key={column.key} label={column.group ? `${column.group} · ${column.label}` : column.label}>
+                                    <div className={['text', 'number', 'date', 'textarea', 'select'].includes(column.type) ? 'rounded-md border border-input bg-background' : ''}>{editor(column, index, data)}</div>
+                                </CompactField>
+                            ));
+                        }}
+                        onRemove={removeRow}
+                    />
+
+                    {can_write && single && (
+                        <Button variant="outline" onClick={() => addRow(form.sections[0].key)} className="gap-1.5">
+                            <Plus className="size-4" />
+                            Tambah Baris
+                        </Button>
+                    )}
+
+                    {summary && (
+                        <div className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-[12.5px]">
+                            <p className="font-semibold">{summary.title}</p>
+                            {summary.rows.map((row, i) => (
+                                <p key={i} className="text-muted-foreground">
+                                    {row.map((cell, j) => `${summary.columns[j]}: ${cell}`).join(' · ')}
+                                </p>
+                            ))}
+                            <p className="text-[11px] text-muted-foreground">Ringkasan dihitung dari data tersimpan.</p>
+                        </div>
+                    )}
+
+                    {form.notes.length > 0 && (
+                        <div className="text-[12px] text-muted-foreground">
+                            <span className="font-semibold">Catatan:</span>
+                            <ol className="ml-5 list-decimal">
+                                {form.notes.map((note) => (
+                                    <li key={note}>{note}</li>
+                                ))}
+                            </ol>
+                        </div>
+                    )}
+                </div>
+
+                {can_write && (
+                    <StickyActionBar>
+                        <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                            <Save className="size-4" />
+                            {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+            </>
+        );
+    }
 
     const tableWidth = 40 + columns.reduce((sum, column) => sum + (column.width ?? 110), 0) + (can_write ? 40 : 0);
 

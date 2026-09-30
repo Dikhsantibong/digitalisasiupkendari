@@ -48,9 +48,11 @@ class LaporanDocumentController extends Controller
      *      no data, Daftar Isi page numbers filled at export, cover unnumbered;
      * v6 = Lembar Pengesahan, Resume Statistik with 3D charts, and every jadwal /
      *      input point embedding its own PDF view (OperasiReportTables);
-     * v7 = Lembar Pengesahan & tanda tangan laporan from the report workflow.
+     * v7 = Lembar Pengesahan & tanda tangan laporan from the report workflow;
+     * v8 = Jadwal Shift Operator carries the real attendance from the presensi
+     *      (hadir / tidak hadir marks, Hadir, Tdk Hadir, % Hadir).
      */
-    private const BODY_VERSION = 7;
+    private const BODY_VERSION = 8;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN OPERASI PEMBANGKIT';
 

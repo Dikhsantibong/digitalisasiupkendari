@@ -28,8 +28,9 @@ class OperasiFoundationTest extends TestCase
 
         $this->assertTrue($user->hasPermissionTo(PermissionName::OperasiInputWrite));
         $this->assertTrue($user->hasPermissionTo(PermissionName::OperasiLaporanView));
-        $this->assertTrue($user->hasPermissionTo(PermissionName::OperasiBeritaAcaraCreate));
         $this->assertTrue($user->hasPermissionTo(PermissionName::OperasiMasterManage));
+        // Berita Acara & the daily inputs are Akses 2 — Pengusahaan (TL & Staf Operasi).
+        $this->assertFalse($user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite));
     }
 
     public function test_tl_pemeliharaan_holds_no_operasi_permission(): void
@@ -37,7 +38,7 @@ class OperasiFoundationTest extends TestCase
         $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, Unit::factory()->create());
 
         $this->assertFalse($user->hasPermissionTo(PermissionName::OperasiInputWrite));
-        $this->assertFalse($user->hasPermissionTo(PermissionName::OperasiBeritaAcaraCreate));
+        $this->assertFalse($user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite));
     }
 
     public function test_work_module_seeder_registers_the_operasi_module(): void

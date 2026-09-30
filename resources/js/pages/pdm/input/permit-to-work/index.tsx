@@ -2,6 +2,9 @@ import { Head, router } from '@inertiajs/react';
 import { Download, FileSpreadsheet, Plus, Save } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { CompactField, MobileCompactRows } from '@/components/mobile/compact-rows';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmDocumentHeader } from '@/components/pdm/document-header';
@@ -9,6 +12,7 @@ import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { downloadPermitToWorkWorkbook } from '@/lib/pdm-input-excel';
 import { dashboard } from '@/routes';
 import pdmInput from '@/routes/pdm/input';
@@ -38,6 +42,8 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
+    const [focus, setFocus] = useState<{ index: number; nonce: number } | null>(null);
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
     const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
@@ -58,6 +64,7 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
     };
 
     const addRow = () => {
+        setFocus({ index: rows.length, nonce: (focus?.nonce ?? 0) + 1 });
         setRows((current) => [...current, { id: null, no_urut: current.length + 1, uraian: '', tanggal: null, status: 'open' }]);
         setDirty(true);
     };
@@ -122,6 +129,43 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
 
                 {!has_saved && <p className="text-[13px] text-muted-foreground">Belum ada PTW tersimpan untuk periode ini. Baris tanpa uraian &amp; tanggal tidak ikut disimpan.</p>}
 
+                {compact ? (
+                    <>
+                        <p className="rounded-lg bg-muted/60 px-3 py-2 text-[12.5px]">
+                            <span className="font-semibold">Total</span> Open {totalOpen} · Close {totalClose}
+                        </p>
+                        <MobileCompactRows
+                            canWrite={can_write}
+                            focus={focus}
+                            rows={rows.map((row, index) => ({
+                                key: index,
+                                index,
+                                title: row.uraian || (row.tanggal ? 'Tanpa uraian' : 'Baris kosong — ketuk untuk mengisi'),
+                                subtitle: isFilled(row) ? `${row.tanggal ?? 'Tanpa tanggal'} · ${row.status === 'open' ? 'Open' : 'Close'}` : undefined,
+                                searchText: `${row.uraian} ${row.tanggal ?? ''}`,
+                                empty: !isFilled(row),
+                                badge: isFilled(row) && (
+                                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${row.status === 'open' ? 'bg-amber-500/15 text-amber-700' : 'bg-emerald-500/15 text-emerald-700'}`}>
+                                        {row.status === 'open' ? 'OPEN' : 'CLOSE'}
+                                    </span>
+                                ),
+                            }))}
+                            renderEditor={(index) => (
+                                <>
+                                    <CompactField label="Uraian">
+                                        <Input value={rows[index].uraian} onChange={(e) => update(index, { uraian: e.target.value })} disabled={!can_write} />
+                                    </CompactField>
+                                    <CompactField label="Tanggal">
+                                        <Input type="date" value={rows[index].tanggal ?? ''} onChange={(e) => update(index, { tanggal: e.target.value || null })} disabled={!can_write} />
+                                    </CompactField>
+                                    <CompactField label="Status">
+                                        <ChoiceChips options={['open', 'close']} labels={{ open: 'Open', close: 'Close' }} value={rows[index].status} onChange={(value) => value && update(index, { status: value as Row['status'] })} disabled={!can_write} />
+                                    </CompactField>
+                                </>
+                            )}
+                        />
+                    </>
+                ) : (
                 <div className="overflow-x-auto rounded-md border border-border bg-card">
                     <table className="w-full min-w-[720px] border-collapse text-xs">
                         <thead className="bg-[#ed7d31] text-center text-[11px] font-semibold text-slate-900">
@@ -172,9 +216,10 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
                         </tbody>
                     </table>
                 </div>
+                )}
 
                 {can_write && (
-                    <div>
+                    <div className={compact ? 'pb-24' : undefined}>
                         <Button variant="outline" size="sm" onClick={addRow} className="gap-1.5">
                             <Plus className="size-4" />
                             Tambah Baris
@@ -182,6 +227,15 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
                     </div>
                 )}
             </div>
+
+            {compact && can_write && (
+                <StickyActionBar>
+                    <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                        <Save className="size-4" />
+                        {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                    </Button>
+                </StickyActionBar>
+            )}
         </>
     );
 }

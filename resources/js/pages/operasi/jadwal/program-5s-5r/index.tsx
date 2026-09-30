@@ -6,7 +6,9 @@ import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSh
 import type { StyleSpec } from '@/lib/jadwal-excel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { monthTimelineDays, MobileTimelineForm, RENC_REAL, TimelineField } from '@/components/mobile/timeline-form';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import program from '@/routes/operasi/jadwal/program-5s-5r';
@@ -31,6 +33,9 @@ const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: 
 
 export default function Program5s5rPage({ unit, filters, options, days_in_month, rows: initial, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initial));
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
+    const timelineDays = useMemo(() => monthTimelineDays(filters.year, filters.month, days_in_month), [filters.year, filters.month, days_in_month]);
     const [nextKey, setNextKey] = useState(initial.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -134,6 +139,31 @@ export default function Program5s5rPage({ unit, filters, options, days_in_month,
                             </div>
                         </div>
                     </div>
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<Row>
+                                days={timelineDays}
+                                rows={rows}
+                                rowKey={(row) => row._key}
+                                title={(row) => row.pelaksana || 'Pelaksana baru'}
+                                categories={RENC_REAL}
+                                isOn={(row, category, day) => row[category as Cat].includes(day)}
+                                onToggle={(row, category, day) => toggle(row._key, category as Cat, day)}
+                                details={(row) => (
+                                    <>
+                                        <TimelineField label="Pelaksana" value={row.pelaksana} onChange={(v) => setField(row._key, 'pelaksana', v)} readOnly={!can_write} />
+                                        <TimelineField label="Target" type="number" value={row.target} onChange={(v) => setField(row._key, 'target', v)} readOnly={!can_write} />
+                                    </>
+                                )}
+                                summary={(row) => `Rencana ${row.rencana.length} · Realisasi ${row.realisasi.length} / target ${row.target} · Kinerja ${row.target > 0 ? Math.round((row.realisasi.length / row.target) * 100) : 0}%`}
+                                onRemove={(row) => remove(row._key)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada pelaksana."
+                            />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                     <table className="p-table w-full border-collapse text-xs">
                         <thead>
@@ -176,6 +206,7 @@ export default function Program5s5rPage({ unit, filters, options, days_in_month,
                         </tbody>
                     </table>
                     </div>
+                    )}
                 </div>
             </div>
         </>

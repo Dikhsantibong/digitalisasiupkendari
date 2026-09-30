@@ -133,7 +133,7 @@ class BeritaAcaraTest extends TestCase
         $unit = Unit::factory()->create();
 
         $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
-            ->get(route('operasi.berita-acara.index'))
+            ->get(route('operasi.pengusahaan.berita-acara.index'))
             ->assertForbidden();
     }
 
@@ -141,8 +141,8 @@ class BeritaAcaraTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
-            ->get(route('operasi.berita-acara.pdf', [
+        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->get(route('operasi.pengusahaan.berita-acara.pdf', [
                 'type' => BeritaAcaraType::Hsd->value,
                 'unit_id' => $unit->id,
                 'month' => 8,
@@ -156,10 +156,10 @@ class BeritaAcaraTest extends TestCase
     public function test_saving_a_berita_acara_stores_the_edited_html(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
 
         $this->actingAs($user)
-            ->post(route('operasi.berita-acara.store'), [
+            ->post(route('operasi.pengusahaan.berita-acara.store'), [
                 'unit_id' => $unit->id,
                 'type' => BeritaAcaraType::Hsd->value,
                 'month' => 8,
@@ -180,7 +180,7 @@ class BeritaAcaraTest extends TestCase
     public function test_saving_twice_updates_the_same_record(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
         $payload = [
             'unit_id' => $unit->id,
             'type' => BeritaAcaraType::Hsd->value,
@@ -189,8 +189,8 @@ class BeritaAcaraTest extends TestCase
             'format' => 'html',
         ];
 
-        $this->actingAs($user)->post(route('operasi.berita-acara.store'), [...$payload, 'content_html' => '<p>Versi 1</p>'])->assertRedirect();
-        $this->actingAs($user)->post(route('operasi.berita-acara.store'), [...$payload, 'content_html' => '<p>Versi 2</p>'])->assertRedirect();
+        $this->actingAs($user)->post(route('operasi.pengusahaan.berita-acara.store'), [...$payload, 'content_html' => '<p>Versi 1</p>'])->assertRedirect();
+        $this->actingAs($user)->post(route('operasi.pengusahaan.berita-acara.store'), [...$payload, 'content_html' => '<p>Versi 2</p>'])->assertRedirect();
 
         $this->assertDatabaseCount('document_records', 1);
         $record = DocumentRecord::query()->firstOrFail();
@@ -200,10 +200,10 @@ class BeritaAcaraTest extends TestCase
     public function test_saving_in_excel_mode_stores_the_grid(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
 
         $this->actingAs($user)
-            ->post(route('operasi.berita-acara.store'), [
+            ->post(route('operasi.pengusahaan.berita-acara.store'), [
                 'unit_id' => $unit->id,
                 'type' => BeritaAcaraType::Hsd->value,
                 'month' => 8,
@@ -226,8 +226,8 @@ class BeritaAcaraTest extends TestCase
     {
         $unit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
-            ->post(route('operasi.berita-acara.store'), [
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->post(route('operasi.pengusahaan.berita-acara.store'), [
                 'unit_id' => $unit->id,
                 'type' => BeritaAcaraType::Hsd->value,
                 'month' => 8,
@@ -240,9 +240,9 @@ class BeritaAcaraTest extends TestCase
     public function test_pdf_renders_from_the_saved_grid_in_excel_mode(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
 
-        $this->actingAs($user)->post(route('operasi.berita-acara.store'), [
+        $this->actingAs($user)->post(route('operasi.pengusahaan.berita-acara.store'), [
             'unit_id' => $unit->id,
             'type' => BeritaAcaraType::Hsd->value,
             'month' => 8,
@@ -255,7 +255,7 @@ class BeritaAcaraTest extends TestCase
             ],
         ])->assertRedirect();
 
-        $response = $this->actingAs($user)->get(route('operasi.berita-acara.pdf', [
+        $response = $this->actingAs($user)->get(route('operasi.pengusahaan.berita-acara.pdf', [
             'type' => BeritaAcaraType::Hsd->value,
             'unit_id' => $unit->id,
             'month' => 8,
@@ -269,9 +269,9 @@ class BeritaAcaraTest extends TestCase
     public function test_reopening_a_saved_document_loads_the_edited_html(): void
     {
         $unit = Unit::factory()->create();
-        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
 
-        $this->actingAs($user)->post(route('operasi.berita-acara.store'), [
+        $this->actingAs($user)->post(route('operasi.pengusahaan.berita-acara.store'), [
             'unit_id' => $unit->id,
             'type' => BeritaAcaraType::Hsd->value,
             'month' => 8,
@@ -281,7 +281,7 @@ class BeritaAcaraTest extends TestCase
         ])->assertRedirect();
 
         $this->actingAs($user)
-            ->get(route('operasi.berita-acara.show', [
+            ->get(route('operasi.pengusahaan.berita-acara.show', [
                 'type' => BeritaAcaraType::Hsd->value,
                 'unit_id' => $unit->id,
                 'month' => 8,
@@ -289,7 +289,7 @@ class BeritaAcaraTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operasi/berita-acara/editor')
+                ->component('pengusahaan/operasi/berita-acara/editor')
                 ->where('has_saved', true)
                 ->has('content_styles')
                 ->where('content', fn ($html) => str_contains((string) $html, 'Catatan khusus editan')),
@@ -301,8 +301,8 @@ class BeritaAcaraTest extends TestCase
         $ownUnit = Unit::factory()->create();
         $foreignUnit = Unit::factory()->create();
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
-            ->post(route('operasi.berita-acara.store'), [
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+            ->post(route('operasi.pengusahaan.berita-acara.store'), [
                 'unit_id' => $foreignUnit->id,
                 'type' => BeritaAcaraType::Hsd->value,
                 'month' => 8,

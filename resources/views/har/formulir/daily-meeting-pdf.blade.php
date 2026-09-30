@@ -1,4 +1,4 @@
-{{-- PDF (A4 portrait) Formulir Daily Meeting Pemeliharaan — per meeting: lembar 1 daftar hadir, lembar 2 foto eviden. Data: Har\DailyMeetingController::pdfView(). --}}
+{{-- PDF (A4 portrait) Daily Meeting Pemeliharaan — per meeting: lembar 1 daftar hadir (tanda tangan canvas peserta dari absensi QR), lembar 2 foto eviden. Data: Har\DailyMeetingController::pdfView(). --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -20,7 +20,8 @@
         .hadir th { font-weight: bold; text-align: center; background: #f2f2f2; }
         .hadir td { height: 22px; }
         .c { text-align: center; }
-        .ttd-no { font-size: 7px; vertical-align: top; }
+        .ttd-no { font-size: 7px; vertical-align: top; padding: 1px 4px !important; }
+        .ttd-no img { max-height: 24px; max-width: 110px; }
         .sign { width: 100%; margin-top: 26px; }
         .sign td { width: 50%; text-align: center; vertical-align: top; }
         .sign .space { height: 60px; }
@@ -65,7 +66,11 @@
                         <td>{{ $peserta['nama'] ?? '' }}</td>
                         <td class="c">{{ $peserta['asal'] ?? '' }}</td>
                         <td class="c">{{ $peserta['jabatan'] ?? '' }}</td>
-                        <td class="ttd-no" style="text-align: {{ $index % 2 === 0 ? 'left' : 'right' }};">{{ $peserta ? $index + 1 : '' }}</td>
+                        @php $ttd = $meeting['ttd_images'][$index] ?? null; @endphp
+                        <td class="ttd-no" style="text-align: {{ $index % 2 === 0 ? 'left' : 'right' }};">
+                            @if($peserta){{ $index + 1 }}.@endif
+                            @if($ttd)<img src="{{ $ttd }}" alt="TTD {{ $peserta['nama'] ?? '' }}">@endif
+                        </td>
                     </tr>
                 @endforeach
             </tbody>

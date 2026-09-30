@@ -14,6 +14,7 @@ use App\Http\Controllers\Har\FormulirController;
 use App\Http\Controllers\Har\HydrotestController;
 use App\Http\Controllers\Har\InjectorPressureController;
 use App\Http\Controllers\Har\InputHubController;
+use App\Http\Controllers\Har\InstruksiKerjaController;
 use App\Http\Controllers\Har\JadwalController;
 use App\Http\Controllers\Har\JadwalHarianController;
 use App\Http\Controllers\Har\JadwalMeetingPemeliharaanController;
@@ -29,6 +30,7 @@ use App\Http\Controllers\Har\LembarController;
 use App\Http\Controllers\Har\LogbookMutasiController;
 use App\Http\Controllers\Har\LubeQualityController;
 use App\Http\Controllers\Har\MasterController;
+use App\Http\Controllers\Har\MeetingAttendanceController;
 use App\Http\Controllers\Har\MotorCurrentController;
 use App\Http\Controllers\Har\PatrolCheckParameterController;
 use App\Http\Controllers\Har\PrelubeTestController;
@@ -82,6 +84,10 @@ Route::middleware(['auth', 'verified'])
         Route::post('formulir/daily-meeting', [DailyMeetingController::class, 'store'])->name('formulir.daily-meeting.store');
         Route::delete('formulir/daily-meeting/{dailyMeeting}', [DailyMeetingController::class, 'destroy'])->name('formulir.daily-meeting.destroy');
         Route::get('formulir/daily-meeting/{dailyMeeting}/pdf', [DailyMeetingController::class, 'pdf'])->name('formulir.daily-meeting.pdf');
+        Route::get('formulir/daily-meeting-pdf', [DailyMeetingController::class, 'pdfMonth'])->name('formulir.daily-meeting.pdf-bulan');
+        Route::post('formulir/daily-meeting/{dailyMeeting}/absensi', [DailyMeetingController::class, 'toggleAbsensi'])->name('formulir.daily-meeting.absensi');
+        Route::post('formulir/daily-meeting/{dailyMeeting}/peserta', [DailyMeetingController::class, 'storePeserta'])->name('formulir.daily-meeting.peserta.store');
+        Route::delete('formulir/daily-meeting/{dailyMeeting}/peserta/{uid}', [DailyMeetingController::class, 'destroyPeserta'])->name('formulir.daily-meeting.peserta.destroy');
         Route::get('formulir/logbook-mutasi', [LogbookMutasiController::class, 'index'])->name('formulir.logbook-mutasi.index');
         Route::post('formulir/logbook-mutasi', [LogbookMutasiController::class, 'store'])->name('formulir.logbook-mutasi.store');
         Route::delete('formulir/logbook-mutasi/{logbookMutasi}', [LogbookMutasiController::class, 'destroy'])->name('formulir.logbook-mutasi.destroy');
@@ -133,6 +139,11 @@ Route::middleware(['auth', 'verified'])
         Route::post('input/attachment', [AttachmentController::class, 'store'])->name('input.attachment.store');
         Route::delete('input/attachment/{attachment}', [AttachmentController::class, 'destroy'])->name('input.attachment.destroy');
 
+        Route::get('input/instruksi-kerja', [InstruksiKerjaController::class, 'index'])->name('input.instruksi-kerja.index');
+        Route::post('input/instruksi-kerja', [InstruksiKerjaController::class, 'store'])->name('input.instruksi-kerja.store');
+        Route::get('input/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('input.instruksi-kerja.pdf');
+        Route::delete('input/instruksi-kerja/{instruksiKerja}', [InstruksiKerjaController::class, 'destroy'])->whereNumber('instruksiKerja')->name('input.instruksi-kerja.destroy');
+
         Route::get('input/unsafe-condition', [UnsafeConditionController::class, 'index'])->name('input.unsafe-condition.index');
         Route::post('input/unsafe-condition', [UnsafeConditionController::class, 'store'])->name('input.unsafe-condition.store');
         Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])->name('input.unsafe-condition.update');
@@ -178,3 +189,15 @@ Route::middleware(['auth', 'verified'])
         Route::put('master/{resource}/{id}', [MasterController::class, 'update'])->name('master.update');
         Route::delete('master/{resource}/{id}', [MasterController::class, 'destroy'])->name('master.destroy');
     });
+
+/*
+ * Public QR attendance of a Daily Meeting Pemeliharaan: no login (attendees may
+ * come from other companies); the meeting's secret token is the only key.
+ */
+Route::get('hadir/{token}', [MeetingAttendanceController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]{20,40}')
+    ->name('har.absensi-meeting.show');
+Route::post('hadir/{token}', [MeetingAttendanceController::class, 'store'])
+    ->where('token', '[A-Za-z0-9]{20,40}')
+    ->middleware('throttle:30,1')
+    ->name('har.absensi-meeting.store');

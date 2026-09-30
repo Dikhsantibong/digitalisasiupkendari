@@ -1,68 +1,29 @@
 import { Head, router } from '@inertiajs/react';
-import { AlertOctagon, ClipboardCheck, ClipboardList, Droplet, FileCheck, Fuel, Gauge, Package, Plug, ShieldAlert, Sparkles, TimerReset, Wrench, Zap } from 'lucide-react';
+import { AlertOctagon, ClipboardCheck, ClipboardList, FileCheck, FileText, Package, ShieldAlert, Sparkles, Wrench } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
-import auxiliary from '@/routes/operasi/input/auxiliary';
 import checklistCommissioningMesin from '@/routes/operasi/input/checklist-commissioning-mesin';
-import dailyReport from '@/routes/operasi/input/daily-report';
-import feeder from '@/routes/operasi/input/feeder';
 import flmMonitoring from '@/routes/operasi/input/flm-monitoring';
-import fuelReceipt from '@/routes/operasi/input/fuel-receipt';
+import instruksiKerja from '@/routes/operasi/input/instruksi-kerja';
 import kondisiAbnormal from '@/routes/operasi/input/kondisi-abnormal';
 import materialPeralatan from '@/routes/operasi/input/material-peralatan';
 import patrolCheckMesin from '@/routes/operasi/input/patrol-check-mesin';
 import permitToWork from '@/routes/operasi/input/permit-to-work';
 import program5s5r from '@/routes/operasi/input/program-5s5r';
-import resourcePembangkit from '@/routes/operasi/input/resource-pembangkit';
-import starStop from '@/routes/operasi/input/star-stop';
 import unsafeCondition from '@/routes/operasi/input/unsafe-condition';
 
 type InputCard = {
     title: string;
     description: string;
-    icon: typeof Gauge;
+    icon: LucideIcon;
     url: string;
     buttonLabel: string;
 };
 
 const INPUT_MENUS: InputCard[] = [
-    {
-        title: 'Input Harian',
-        description: 'Pencatatan data produksi kWh harian, pemakaian sendiri, beban puncak, dan konsumsi BBM.',
-        icon: Gauge,
-        url: dailyReport.index().url,
-        buttonLabel: 'Buka Input Harian',
-    },
-    {
-        title: 'Star-Stop Mesin',
-        description: 'Pencatatan riwayat start, stop, gangguan, dan status operasional mesin pembangkit.',
-        icon: TimerReset,
-        url: starStop.index().url,
-        buttonLabel: 'Buka Input Star-Stop',
-    },
-    {
-        title: 'Feeder',
-        description: 'Pencatatan pembacaan beban, tegangan, arus, dan penyaluran energi pada masing-masing feeder.',
-        icon: Zap,
-        url: feeder.index().url,
-        buttonLabel: 'Buka Input Feeder',
-    },
-    {
-        title: 'Pasokan Cadangan',
-        description: 'Pencatatan kWh pasokan cadangan (auxiliary power supply) dan pemakaian listrik internal.',
-        icon: Plug,
-        url: auxiliary.index().url,
-        buttonLabel: 'Buka Input Pasokan Cadangan',
-    },
-    {
-        title: 'Penerimaan BBM',
-        description: 'Pencatatan transaksi penerimaan bahan bakar (BBM/Pelumas), sounding tangki, dan volume supply.',
-        icon: Fuel,
-        url: fuelReceipt.index().url,
-        buttonLabel: 'Buka Input Penerimaan BBM',
-    },
     {
         title: 'Kondisi Abnormal & Gangguan',
         description: 'Pencatatan dan pemantauan kejadian kondisi abnormal serta gangguan mesin pembangkit beserta durasi kejadian.',
@@ -71,11 +32,11 @@ const INPUT_MENUS: InputCard[] = [
         buttonLabel: 'Buka Input Kondisi Abnormal',
     },
     {
-        title: 'Resource Pembangkit',
-        description: 'Pencatatan dan pemantauan harian stok awal, pemakaian, penerimaan, dan stok akhir BBM pembangkit.',
-        icon: Droplet,
-        url: resourcePembangkit.index().url,
-        buttonLabel: 'Buka Input Resource Pembangkit',
+        title: 'Instruksi Kerja (IK)',
+        description: 'Buat IK operasi dari template (mis. start / stop mesin PLTD): alat, pelaksana, langkah pelaksanaan dan tanda tangan — bebas disesuaikan, cetak PDF format MKP.',
+        icon: FileText,
+        url: instruksiKerja.index().url,
+        buttonLabel: 'Buka Instruksi Kerja',
     },
     {
         title: 'Material & Peralatan',

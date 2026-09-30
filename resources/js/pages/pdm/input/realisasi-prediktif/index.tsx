@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { Download, FileSpreadsheet, Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmDocumentHeader } from '@/components/pdm/document-header';
@@ -10,6 +11,7 @@ import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { downloadRealisasiPrediktifWorkbook } from '@/lib/pdm-input-excel';
 import type { RealisasiExportMeta } from '@/lib/pdm-input-excel';
 import { dashboard } from '@/routes';
@@ -52,6 +54,7 @@ export default function PdmRealisasiPrediktifInput({ unit, kop_lines, filters, o
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
     const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
@@ -162,6 +165,32 @@ export default function PdmRealisasiPrediktifInput({ unit, kop_lines, filters, o
 
                 {!has_saved && <p className="text-[13px] text-muted-foreground">Belum ada data tersimpan untuk periode ini — kegiatan standar sudah disiapkan.</p>}
 
+                {compact ? (
+                    <MobileTimelineForm<Row>
+                        days={days}
+                        rows={rows}
+                        rowKey={(row, index) => row.id ?? `new-${index}`}
+                        title={(row) => row.uraian || 'Kegiatan baru'}
+                        isOn={(row, category, day) => (category === 'rencana' ? row.rencana : row.realisasi).includes(day)}
+                        onToggle={(row, category, day) => toggleDay(rows.indexOf(row), category as 'rencana' | 'realisasi', day)}
+                        details={(row, index) => (
+                            <>
+                                <TimelineField label="Uraian" value={row.uraian} onChange={(v) => update(index, { uraian: v })} readOnly={!can_write} />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <TimelineField label="Mesin / Tipe / S.N" value={row.mesin} onChange={(v) => update(index, { mesin: v })} readOnly={!can_write} placeholder="ZHEJIANG #1" />
+                                    <TimelineField label="Durasi" type="number" value={row.durasi ?? ''} onChange={(v) => update(index, { durasi: v === '' ? null : Number(v) })} readOnly={!can_write} />
+                                </div>
+                            </>
+                        )}
+                        summary={(row) => `${row.mesin ? `${row.mesin} · ` : ''}Target ${row.rencana.length} · Realisasi ${row.realisasi.length} · Kinerja ${kinerja(row)}`}
+                        onRemove={(_row, index) => {
+                            setRows((current) => current.filter((_, i) => i !== index));
+                            setDirty(true);
+                        }}
+                        readOnly={!can_write}
+                        empty="Belum ada kegiatan prediktif."
+                    />
+                ) : (
                 <div className="overflow-x-auto rounded-md border border-border bg-card">
                     <table className="w-full min-w-[1250px] border-collapse text-xs">
                         <thead className="bg-muted text-center text-[11px] font-semibold">
@@ -236,6 +265,7 @@ export default function PdmRealisasiPrediktifInput({ unit, kop_lines, filters, o
                         </tbody>
                     </table>
                 </div>
+                )}
 
                 {can_write && (
                     <div>

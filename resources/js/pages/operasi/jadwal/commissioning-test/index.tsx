@@ -28,6 +28,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,6 +41,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import jadwal from '@/routes/operasi/jadwal';
 import commissioningTest from '@/routes/operasi/jadwal/commissioning-test';
 import type { IdName } from '@/types';
@@ -149,6 +151,7 @@ export default function HarJadwalCommissioningTestPage({
     can_write,
 }: Props) {
     const [rows, setRows] = useState<CommissioningRow[]>(initialRows);
+    const compact = useCompactLayout();
     const [catatan, setCatatan] = useState(initialCatatan);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -657,6 +660,53 @@ export default function HarJadwalCommissioningTestPage({
                     </div>
 
                     {/* Table Container */}
+                    {compact ? (
+                        <div className="flex flex-col gap-3 p-3">
+                            {rows.length === 0 && <p className="rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground">Belum ada kegiatan.</p>}
+                            {groupedSections.map(({ section, items }) => (
+                                <Fragment key={section}>
+                                    <p className="mt-1 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{section}</p>
+                                    {items.map(({ row, originalIndex }, position) => (
+                                        <div key={row.id ?? `new-${originalIndex}`} className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                                            <div className="flex items-start gap-2">
+                                                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">{position + 1}</span>
+                                                {can_write ? (
+                                                    <Input value={row.kegiatan} onChange={(e) => updateField(originalIndex, 'kegiatan', e.target.value)} className="h-10 min-w-0 flex-1 text-sm" />
+                                                ) : (
+                                                    <div className="min-w-0 flex-1 pt-1 text-[14px] font-medium text-foreground">{row.kegiatan}</div>
+                                                )}
+                                                {can_write && (
+                                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveRow(originalIndex)} className="size-9 shrink-0 text-muted-foreground hover:text-destructive" aria-label="Hapus kegiatan">
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                            <ChoiceChips
+                                                options={STATUS_COLUMNS.map((column) => column.key)}
+                                                value={row.status ?? ''}
+                                                onChange={(value) => toggleStatus(originalIndex, value || (row.status ?? ''))}
+                                                disabled={!can_write}
+                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                    PIC
+                                                    <select value={row.pic} onChange={(e) => updateField(originalIndex, 'pic', e.target.value)} disabled={!can_write} className="h-10 rounded-md border border-input bg-transparent px-2 text-sm text-foreground">
+                                                        <option value="">—</option>
+                                                        {row.pic && !employees.includes(row.pic) && <option value={row.pic}>{row.pic}</option>}
+                                                        {employees.map((name) => <option key={name} value={name}>{name}</option>)}
+                                                    </select>
+                                                </label>
+                                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                    Paraf
+                                                    <Input value={row.paraf} onChange={(e) => updateField(originalIndex, 'paraf', e.target.value)} disabled={!can_write} className="h-10 text-sm" />
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </Fragment>
+                            ))}
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="print-table w-full border-collapse text-xs">
                             <thead className="print-orange-header bg-[#ed7d31] text-black">
@@ -905,6 +955,7 @@ export default function HarJadwalCommissioningTestPage({
                             </tbody>
                         </table>
                     </div>
+                    )}
 
                     {/* CATATAN Box matching media_1789474426713.png */}
                     <div className="border-t border-black">

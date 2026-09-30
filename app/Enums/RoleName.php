@@ -168,6 +168,7 @@ enum RoleName: string
                 // Manager oversees the Operator module (read-only): field
                 // logsheets and the shift schedule / attendance.
                 PermissionName::OperatorLogsheetView,
+                PermissionName::OperatorMutasiView,
                 PermissionName::OperatorAbsensiView,
             ],
 
@@ -188,13 +189,12 @@ enum RoleName: string
                 PermissionName::OperasiInputView,
                 PermissionName::OperasiInputWrite,
                 PermissionName::OperasiLaporanView,
-                PermissionName::OperasiBeritaAcaraView,
-                PermissionName::OperasiBeritaAcaraCreate,
                 PermissionName::OperasiMasterViewAny,
                 PermissionName::OperasiMasterManage,
                 // The operators work under the Koordinator Operasi: field
                 // logsheets and the shift schedule & attendance.
                 PermissionName::OperatorLogsheetView,
+                PermissionName::OperatorMutasiView,
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorAbsensiWrite,
             ],
@@ -228,6 +228,7 @@ enum RoleName: string
                 // TL Operasi still verifies the operators' logsheets and sees
                 // the shift schedule.
                 PermissionName::OperatorLogsheetView,
+                PermissionName::OperatorMutasiView,
                 PermissionName::OperatorAbsensiView,
             ],
 
@@ -329,6 +330,9 @@ enum RoleName: string
                 PermissionName::K3MonitoringView,
                 PermissionName::LogistikLaporanView,
                 PermissionName::PdmLaporanView,
+                // The Project Leader also holds (creates) the Daily Meeting
+                // Pemeliharaan and shows its QR attendance code.
+                PermissionName::HarLapanganDailyMeeting,
             ],
 
             self::Operator => [
@@ -382,7 +386,9 @@ enum RoleName: string
             PermissionName::ReportProjectView,
             // The operator fills the hourly logsheet (Operator module).
             PermissionName::OperatorLogsheetWrite,
+            PermissionName::OperatorMutasiWrite,
             PermissionName::OperatorLogsheetView,
+            PermissionName::OperatorMutasiView,
         ];
     }
 

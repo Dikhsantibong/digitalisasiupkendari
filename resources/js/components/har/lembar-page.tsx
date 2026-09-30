@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Download, Plus, Save, Trash2 } from 'lucide-react';
+import { ChevronDown, Download, Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
@@ -83,6 +83,9 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
     const compact = useCompactLayout();
     // Phone: a jadwal sheet opens read-only; "Ubah Jadwal" switches to the input layout.
     const [mobileEditing, setMobileEditing] = useState(false);
+    // Phone: one section open at a time; a row's detail fields open on demand.
+    const [openSection, setOpenSection] = useState<string | null>(null);
+    const [detailRow, setDetailRow] = useState<number | null>(null);
     const { can } = usePermissions();
     // Phone layout edits one grid column (a date / week) at a time; start on today's date when shown.
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
@@ -346,41 +349,85 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                         ))}
                     </p>
 
-                    {lembar.sections.map((section) => (
-                        <div key={section.key} className="flex flex-col gap-2">
-                            {section.title && <p className="px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{section.title}</p>}
-                            {rows.map((row, index) => {
-                                if (row.section !== section.key) {
-                                    return null;
-                                }
+                    {lembar.sections.map((section, sectionIndex) => {
+                        const collapsible = lembar.sections.length > 1;
+                        const expanded = !collapsible || (openSection ?? lembar.sections[0]?.key) === section.key;
+                        const count = rows.filter((row) => row.section === section.key).length;
 
-                                return (
-                                    <div key={index} className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
-                                        {before.map((f) => mobileField(f, index, row))}
-                                        {lembar.lines.map((line) => (
-                                            <div key={line.key} className="flex flex-col gap-1">
-                                                {multiLine && <span className="text-[12px] font-medium text-muted-foreground">{line.label}</span>}
-                                                {mobileCell(index, line.key, column ? (row.cells[line.key]?.[column.key] ?? '') : '')}
+                        return (
+                            <div key={section.key} className="flex flex-col gap-2">
+                                {collapsible ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenSection(expanded ? '' : section.key)}
+                                        className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2.5 text-left"
+                                        aria-expanded={expanded}
+                                    >
+                                        <span className="min-w-0 flex-1 truncate text-[12px] font-semibold tracking-wide text-foreground uppercase">{section.title || `Bagian ${sectionIndex + 1}`}</span>
+                                        <span className="shrink-0 text-[11px] text-muted-foreground">{count} baris</span>
+                                        <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition ${expanded ? 'rotate-180' : ''}`} />
+                                    </button>
+                                ) : (
+                                    section.title && <p className="px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{section.title}</p>
+                                )}
+                                {expanded &&
+                                    rows.map((row, index) => {
+                                        if (row.section !== section.key) {
+                                            return null;
+                                        }
+
+                                        // Detail fields (name, notes …) show as text; inputs only on "Ubah detail".
+                                        const detailOpen = !viewing && detailRow === index;
+                                        const summary = [...before, ...after].map((f) => row.fields[f.key]).filter(Boolean);
+
+                                        return (
+                                            <div key={index} className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                                                {viewing || detailOpen ? (
+                                                    before.map((f) => mobileField(f, index, row))
+                                                ) : (
+                                                    <p className="text-[14px] leading-snug font-medium text-foreground">{summary[0] || <span className="text-muted-foreground italic">Baris baru — isi detail</span>}</p>
+                                                )}
+                                                {lembar.lines.map((line) => (
+                                                    <div key={line.key} className="flex flex-col gap-1">
+                                                        {multiLine && <span className="text-[12px] font-medium text-muted-foreground">{line.label}</span>}
+                                                        {mobileCell(index, line.key, column ? (row.cells[line.key]?.[column.key] ?? '') : '')}
+                                                    </div>
+                                                ))}
+                                                {(viewing || detailOpen) && after.map((f) => mobileField(f, index, row))}
+                                                {can_write && !viewing && (
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <button type="button" onClick={() => setDetailRow(detailOpen ? null : index)} className="text-[12px] font-medium text-primary">
+                                                            {detailOpen ? 'Tutup detail' : 'Ubah detail baris'}
+                                                        </button>
+                                                        {detailOpen && (
+                                                            <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="ml-auto text-destructive">
+                                                                <Trash2 className="size-4" />
+                                                                Hapus baris
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
-                                        ))}
-                                        {after.map((f) => mobileField(f, index, row))}
-                                        {can_write && !viewing && (
-                                            <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="self-start text-destructive">
-                                                <Trash2 className="size-4" />
-                                                Hapus baris
-                                            </Button>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            {can_write && !viewing && (
-                                <Button type="button" variant="outline" size="sm" onClick={() => addRow(section.key)} className="h-auto max-w-full self-start py-1.5 text-left whitespace-normal">
-                                    <Plus className="size-4" />
-                                    Tambah baris{section.title ? ` ${section.title}` : ''}
-                                </Button>
-                            )}
-                        </div>
-                    ))}
+                                        );
+                                    })}
+                                {expanded && can_write && !viewing && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setDetailRow(rows.map((row) => row.section).lastIndexOf(section.key) + 1);
+                                            addRow(section.key);
+                                        }}
+                                        className="h-auto max-w-full self-start py-1.5 text-left whitespace-normal"
+                                    >
+                                        <Plus className="size-4" />
+                                        Tambah baris{section.title ? ` ${section.title}` : ''}
+                                    </Button>
+                                )}
+                            </div>
+                        );
+                    })}
 
                     {lembar.note_label && (
                         <div className="flex flex-col gap-1.5">

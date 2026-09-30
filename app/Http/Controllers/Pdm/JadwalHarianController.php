@@ -337,13 +337,13 @@ class JadwalHarianController extends Controller
         $this->activityLogger->log(
             event: ActivityEvent::Updated,
             description: "Memperbarui jadwal kegiatan harian PdM & Matlev unit {$unit->name} periode {$month}/{$year}",
-            subjectType: PdmJadwalHarian::class,
             properties: [
                 'unit_id' => $unit->id,
                 'month' => $month,
                 'year' => $year,
                 'rows_count' => count($validated['rows']),
-            ]
+            ],
+            unit: $unit->id,
         );
 
         return redirect()

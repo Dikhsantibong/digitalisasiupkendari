@@ -2,6 +2,7 @@ import { Activity, BatteryCharging, Boxes, CalendarClock, FileBarChart, FileText
 import type { LucideIcon } from 'lucide-react';
 import { PEMELIHARAAN_MENUS } from '@/layouts/mobile/menus/pemeliharaan';
 import type { MobileMenu } from '@/layouts/mobile/types';
+import harInstruksiKerja from '@/routes/har/input/instruksi-kerja';
 import harJadwal from '@/routes/har/jadwal';
 import harJadwalLembar from '@/routes/har/jadwal/lembar';
 import harLaporan from '@/routes/har/laporan';
@@ -53,6 +54,18 @@ export const HAR_PROJECT_MENUS: MobileMenu[] = [
     ...PEMELIHARAAN_MENUS.filter((menu) => menu.coveredBy === 'har.input.view').map(
         (menu): MobileMenu => ({ ...menu, key: `harp-${menu.key}`, permission: 'har.input.view', coveredBy: undefined }),
     ),
+    {
+        key: 'harp-instruksi-kerja',
+        group: 'har-input',
+        title: 'Instruksi Kerja (IK) Pemeliharaan',
+        short: 'Instruksi Kerja',
+        description: 'Buat & cetak IK dari template',
+        icon: FileText,
+        tone: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+        href: harInstruksiKerja.index().url,
+        component: 'har/input/instruksi-kerja/index',
+        permission: 'har.input.view',
+    },
     {
         key: 'harp-laporan',
         group: 'har-laporan',

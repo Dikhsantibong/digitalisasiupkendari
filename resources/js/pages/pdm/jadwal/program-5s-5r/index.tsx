@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { MobileTimelineForm, RENC_REAL, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -32,6 +33,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import {
     buildDocumentHeader,
     createSheet,
@@ -113,6 +115,8 @@ export default function PdmJadwalProgram5s5rIndex({
 }: Props) {
     const [rows, setRows] = useState<Program5s5rRow[]>(initialRows);
     const [dirty, setDirty] = useState(false);
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     // Modal States
@@ -730,6 +734,31 @@ return null;
                     </div>
 
                     <div className="overflow-x-auto">
+                        {compact ? (
+                            <div className="p-3">
+                                <MobileTimelineForm<Program5s5rRow>
+                                days={days}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => row.uraian || 'Program baru'}
+                                categories={RENC_REAL}
+                                isOn={(row, category, day) => (category === 'rencana' ? row.rencana : row.realisasi).includes(day)}
+                                onToggle={(row, category, day) => handleToggleDay(rows.indexOf(row), category as 'rencana' | 'realisasi', day)}
+                                details={(row, index) => (
+                                    <>
+                                        <TimelineField label="Uraian" value={row.uraian} onChange={(v) => handleUpdateUraian(index, v)} readOnly={!can_write} />
+                                        <TimelineField label="Target" type="number" value={row.target} onChange={(v) => handleUpdateTarget(index, Number(v))} readOnly={!can_write} />
+                                    </>
+                                )}
+                                summary={(row) => `Target ${row.target} · Rencana ${row.rencana.length} · Realisasi ${row.realisasi.length}`}
+                                onRemove={(_row, index) => handleDeleteRow(index)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada program 5S 5R."
+                            />
+                            </div>
+                        ) : (
                         <table className="w-full min-w-[1550px] border-collapse text-xs">
                             <thead>
                                 <tr className="border-b border-border bg-[#ed7d31] text-white">
@@ -967,6 +996,7 @@ return null;
                                 })}
                             </tbody>
                         </table>
+                        )}
                     </div>
                 </div>
 

@@ -2,6 +2,9 @@ import { Head, router } from '@inertiajs/react';
 import { Download, FileSpreadsheet, FolderPlus, Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { CompactField, MobileCompactRows } from '@/components/mobile/compact-rows';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -11,6 +14,7 @@ import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { downloadKesiapanApdWorkbook } from '@/lib/pdm-input-excel';
 import { dashboard } from '@/routes';
 import pdmInput from '@/routes/pdm/input';
@@ -56,6 +60,18 @@ const ANSWER_COLUMNS: { key: AnswerKey; label: string }[] = [
     { key: 'cara_kerja', label: 'Ergonomi/ Tdk Ergonomi' },
 ];
 
+/** Phone labels of the assessment columns (the desktop shows them under group headers). */
+const ANSWER_LABELS: Record<AnswerKey, string> = {
+    kelayakan_apd: 'APD — kelayakan',
+    peralatan_jumlah: 'Peralatan kerja — jumlah',
+    peralatan_kelayakan: 'Peralatan kerja — kelayakan',
+    sop_pnp: 'SOP/IK — bidang PNP',
+    sop_vendor: 'SOP/IK — bidang Vendor',
+    p3k_kotak: 'P3K — kotak',
+    p3k_isi: 'P3K — isi',
+    cara_kerja: 'Cara kerja',
+};
+
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 
 const blankRow = (kelompok: string): Row => ({
@@ -83,6 +99,8 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
+    const [focus, setFocus] = useState<{ index: number; nonce: number } | null>(null);
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
     const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
@@ -107,6 +125,7 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
 
     const addRow = (kelompok: string) => {
         const lastIndex = rows.map((row) => row.kelompok).lastIndexOf(kelompok);
+        setFocus({ index: lastIndex + 1, nonce: (focus?.nonce ?? 0) + 1 });
         const next = [...rows];
         next.splice(lastIndex + 1, 0, blankRow(kelompok));
         setRows(next);
@@ -211,6 +230,65 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                     </p>
                 )}
 
+                {compact ? (
+                    <MobileCompactRows
+                        canWrite={can_write}
+                        focus={focus}
+                        rows={groups.flatMap((group, groupIndex) =>
+                            group.items.map(({ row, index }) => {
+                                const answered = ANSWER_COLUMNS.filter((column) => row[column.key]).length;
+
+                                return {
+                                    key: index,
+                                    index,
+                                    section: String(groupIndex),
+                                    title: row.inspeksi || 'Item baru — ketuk untuk mengisi',
+                                    subtitle: [row.jumlah !== null && `${row.jumlah} ${row.satuan ?? ''}`.trim(), `${answered}/${ANSWER_COLUMNS.length} dinilai`].filter(Boolean).join(' · '),
+                                    searchText: `${row.kelompok} ${row.inspeksi} ${row.keterangan}`,
+                                    empty: !row.inspeksi,
+                                };
+                            }),
+                        )}
+                        sections={groups.map((group, groupIndex) => ({
+                            key: String(groupIndex),
+                            title: `${ROMAN[groupIndex] ?? groupIndex + 1}. ${group.kelompok}`,
+                            action: can_write && (
+                                <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => addRow(group.kelompok)}>
+                                    <Plus className="size-3.5" />
+                                    Tambah
+                                </Button>
+                            ),
+                        }))}
+                        renderEditor={(index) => {
+                            const row = rows[index];
+
+                            return (
+                                <>
+                                    <CompactField label="Inspeksi">
+                                        <Input value={row.inspeksi} onChange={(e) => updateRow(index, { inspeksi: e.target.value })} disabled={!can_write} />
+                                    </CompactField>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <CompactField label="Jumlah">
+                                            <Input type="number" inputMode="numeric" min={0} value={row.jumlah ?? ''} onChange={(e) => updateRow(index, { jumlah: e.target.value === '' ? null : Number(e.target.value) })} disabled={!can_write} />
+                                        </CompactField>
+                                        <CompactField label="Satuan">
+                                            <Input value={row.satuan ?? ''} onChange={(e) => updateRow(index, { satuan: e.target.value })} disabled={!can_write} />
+                                        </CompactField>
+                                    </div>
+                                    {ANSWER_COLUMNS.map((column) => (
+                                        <CompactField key={column.key} label={ANSWER_LABELS[column.key]}>
+                                            <ChoiceChips options={options.answers[column.key]} value={row[column.key] ?? ''} onChange={(value) => updateRow(index, { [column.key]: value || null } as Partial<Row>)} disabled={!can_write} />
+                                        </CompactField>
+                                    ))}
+                                    <CompactField label="Keterangan">
+                                        <Input value={row.keterangan} onChange={(e) => updateRow(index, { keterangan: e.target.value })} disabled={!can_write} />
+                                    </CompactField>
+                                </>
+                            );
+                        }}
+                        onRemove={removeRow}
+                    />
+                ) : (
                 <div className="overflow-x-auto rounded-md border border-border bg-card">
                     <table className="w-full min-w-[1150px] border-collapse text-xs">
                         <thead className="bg-sky-500/90 text-center text-[11px] font-semibold text-slate-900">
@@ -302,9 +380,10 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                         </tbody>
                     </table>
                 </div>
+                )}
 
                 {can_write && (
-                    <div>
+                    <div className={compact ? 'pb-24' : undefined}>
                         <Button variant="outline" size="sm" onClick={addGroup} className="gap-1.5">
                             <FolderPlus className="size-4" />
                             Tambah Kelompok Inspeksi
@@ -324,6 +403,15 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                     />
                 </div>
             </div>
+
+            {compact && can_write && (
+                <StickyActionBar>
+                    <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                        <Save className="size-4" />
+                        {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                    </Button>
+                </StickyActionBar>
+            )}
         </>
     );
 }

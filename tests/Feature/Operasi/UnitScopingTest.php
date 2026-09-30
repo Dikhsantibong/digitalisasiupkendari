@@ -27,6 +27,8 @@ class UnitScopingTest extends TestCase
 
     private User $tlBauBau;
 
+    private User $pengusahaanBauBau;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -39,6 +41,11 @@ class UnitScopingTest extends TestCase
         $this->tlBauBau = User::factory()->create();
         $this->tlBauBau->assignRole(RoleName::KoordinatorOperasi, $this->bauBau);
         $this->tlBauBau = $this->tlBauBau->fresh();
+
+        // The daily input is Akses 2 — Pengusahaan (TL & Staf Operasi).
+        $this->pengusahaanBauBau = User::factory()->create();
+        $this->pengusahaanBauBau->assignRole(RoleName::TeamLeaderOperasi, $this->bauBau);
+        $this->pengusahaanBauBau = $this->pengusahaanBauBau->fresh();
     }
 
     public function test_access_control_resolves_only_the_assigned_unit(): void
@@ -57,8 +64,8 @@ class UnitScopingTest extends TestCase
         $this->assertNotEmpty($bauBauMachineIds);
         $this->assertNotEmpty($poasiaMachineIds);
 
-        $this->actingAs($this->tlBauBau)
-            ->get(route('operasi.input.daily-report.index', ['unit_id' => $this->bauBau->id]))
+        $this->actingAs($this->pengusahaanBauBau)
+            ->get(route('operasi.pengusahaan.daily-report.index', ['unit_id' => $this->bauBau->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('filters.unit_id', $this->bauBau->id)
@@ -74,8 +81,8 @@ class UnitScopingTest extends TestCase
     public function test_requesting_a_foreign_unit_falls_back_to_the_users_own_unit(): void
     {
         // Even if the URL asks for Poasia, the user only ever gets their own unit.
-        $this->actingAs($this->tlBauBau)
-            ->get(route('operasi.input.daily-report.index', ['unit_id' => $this->poasia->id]))
+        $this->actingAs($this->pengusahaanBauBau)
+            ->get(route('operasi.pengusahaan.daily-report.index', ['unit_id' => $this->poasia->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->where('filters.unit_id', $this->bauBau->id));
     }
@@ -84,8 +91,8 @@ class UnitScopingTest extends TestCase
     {
         $poasiaEngine = Machine::query()->where('unit_id', $this->poasia->id)->firstOrFail();
 
-        $this->actingAs($this->tlBauBau)
-            ->post(route('operasi.input.daily-report.store'), [
+        $this->actingAs($this->pengusahaanBauBau)
+            ->post(route('operasi.pengusahaan.daily-report.store'), [
                 'unit_id' => $this->poasia->id,
                 'engine_id' => $poasiaEngine->id,
                 'month' => 8,

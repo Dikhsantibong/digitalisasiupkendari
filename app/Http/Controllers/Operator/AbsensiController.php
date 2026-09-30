@@ -9,15 +9,21 @@ use App\Enums\ScheduleGroupType;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceCode;
 use App\Models\Employee;
+use App\Models\EmployeePresence;
 use App\Models\Holiday;
 use App\Models\Unit;
 use App\Models\WorkSchedule;
 use App\Services\ActivityLogger;
+use App\Services\Operator\AbsensiDocumentBuilder;
 use App\Services\Operator\AttendanceCalculator;
 use App\Services\Operator\AttendanceRoster;
+use App\Services\Operator\PresenceRecorder;
 use App\Support\Indonesian;
+use App\Support\JadwalPdf;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -78,6 +84,18 @@ class AbsensiController extends Controller
 
         $holidays = Holiday::query()->whereYear('date', $year)->whereMonth('date', $month)->get(['date', 'description']);
 
+        // The presensi (absen masuk / pulang) of the month: the real attendance
+        // behind each schedule cell, per employee and day.
+        $presence = [];
+        foreach (EmployeePresence::query()->where('unit_id', $unit->id)->whereYear('work_date', $year)->whereMonth('work_date', $month)->get() as $p) {
+            $presence[$p->employee_id][(int) $p->work_date->day] = [
+                'in' => $p->check_in_at->timezone(PresenceRecorder::TIMEZONE)->format('H:i'),
+                'out' => $p->check_out_at?->timezone(PresenceRecorder::TIMEZONE)->format('H:i'),
+                'late' => $p->late_minutes,
+                'shift' => $p->shift_code,
+            ];
+        }
+
         $days = collect(range(1, Carbon::create($year, $month, 1)->daysInMonth))
             ->map(function (int $day) use ($year, $month, $holidays): array {
                 $date = Carbon::create($year, $month, $day);
@@ -103,10 +121,11 @@ class AbsensiController extends Controller
                 'regu' => $e->regu,
                 'is_shift_leader' => $e->is_shift_leader,
                 'cells' => $cells[$e->id] ?? (object) [],
+                'presence' => $presence[$e->id] ?? (object) [],
             ])->all(),
         ];
 
-        return Inertia::render('operator/absensi', [
+        return Inertia::render('operator/absensi/index', [
             'filters' => ['unit_id' => $unit->id, 'year' => $year, 'month' => $month],
             'period_label' => Indonesian::monthName($month).' '.$year,
             'options' => [
@@ -126,7 +145,37 @@ class AbsensiController extends Controller
             'patterns' => $this->roster->shiftSequences($unit)
                 ->map(fn (array $codes, string $regu): array => ['regu' => $regu, 'sequence' => implode(', ', $codes)])
                 ->values()->all(),
+            'today' => Carbon::now(PresenceRecorder::TIMEZONE)->toDateString(),
             'can_write' => $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite),
+        ]);
+    }
+
+    /**
+     * PDF (A4 landscape) of the month's sheet: Kerja Shift then Non Shift, with
+     * the per-employee recap and attendance percentage.
+     */
+    public function pdf(Request $request, AbsensiDocumentBuilder $builder): HttpResponse
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorAbsensiView), 403);
+
+        [$unit, $year, $month] = $this->resolveTarget($request);
+
+        $pdf = Pdf::loadView('operator.absensi-pdf', [
+            'unit' => $unit,
+            'periodLabel' => Indonesian::monthName($month).' '.$year,
+            'sections' => [
+                $builder->build($unit, $month, $year, ScheduleGroupType::Shift),
+                $builder->build($unit, $month, $year, ScheduleGroupType::NonShift),
+            ],
+            ...JadwalPdf::logos(),
+        ])->setPaper('a4', 'landscape');
+
+        $filename = sprintf('Jadwal_Shift_%s_%04d_%02d.pdf', str_replace(' ', '_', $unit->name), $year, $month);
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename="'.$filename.'"',
         ]);
     }
 

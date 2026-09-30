@@ -1,17 +1,13 @@
 <?php
 
-use App\Http\Controllers\Operasi\AuxiliaryReadingController;
-use App\Http\Controllers\Operasi\BeritaAcaraController;
 use App\Http\Controllers\Operasi\BlackstartController;
 use App\Http\Controllers\Operasi\ChecklistCommissioningMesinController;
-use App\Http\Controllers\Operasi\DailyReportController;
 use App\Http\Controllers\Operasi\DataTeknisController;
 use App\Http\Controllers\Operasi\DocumentTemplateController;
-use App\Http\Controllers\Operasi\FeederReadingController;
 use App\Http\Controllers\Operasi\FlmController;
 use App\Http\Controllers\Operasi\FlmMonitoringController;
-use App\Http\Controllers\Operasi\FuelReceiptController;
 use App\Http\Controllers\Operasi\InputHubController;
+use App\Http\Controllers\Operasi\InstruksiKerjaController;
 use App\Http\Controllers\Operasi\InventarisController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestPeralatanController;
@@ -25,11 +21,16 @@ use App\Http\Controllers\Operasi\MaterialPeralatanController;
 use App\Http\Controllers\Operasi\MeetingShiftController;
 use App\Http\Controllers\Operasi\PatrolCheckMesinController;
 use App\Http\Controllers\Operasi\PembuatanIkController;
+use App\Http\Controllers\Operasi\PengusahaanAuxiliaryReadingController;
+use App\Http\Controllers\Operasi\PengusahaanBeritaAcaraController;
+use App\Http\Controllers\Operasi\PengusahaanDailyReportController;
+use App\Http\Controllers\Operasi\PengusahaanFeederReadingController;
+use App\Http\Controllers\Operasi\PengusahaanFuelReceiptController;
+use App\Http\Controllers\Operasi\PengusahaanResourcePembangkitController;
+use App\Http\Controllers\Operasi\PengusahaanStarStopController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
 use App\Http\Controllers\Operasi\Program5s5rInputController;
-use App\Http\Controllers\Operasi\ResourcePembangkitController;
-use App\Http\Controllers\Operasi\StarStopController;
 use App\Http\Controllers\Operasi\UnsafeConditionController;
 use App\Http\Controllers\PengusahaanController;
 use Illuminate\Support\Facades\Route;
@@ -76,34 +77,10 @@ Route::middleware(['auth', 'verified'])
         Route::get('jadwal/performance-test/pdf', [JadwalPerformanceTestController::class, 'pdf'])->name('jadwal.performance-test.pdf');
         Route::get('input', [InputHubController::class, 'index'])->name('input.index');
 
-        Route::get('input/laporan-harian', [DailyReportController::class, 'index'])
-            ->name('input.daily-report.index');
-        Route::post('input/laporan-harian', [DailyReportController::class, 'store'])
-            ->name('input.daily-report.store');
-
-        Route::get('input/star-stop', [StarStopController::class, 'index'])
-            ->name('input.star-stop.index');
-        Route::post('input/star-stop', [StarStopController::class, 'store'])
-            ->name('input.star-stop.store');
-        Route::delete('input/star-stop/{engineStatusLog}', [StarStopController::class, 'destroy'])
-            ->name('input.star-stop.destroy');
-
-        Route::get('input/feeder', [FeederReadingController::class, 'index'])
-            ->name('input.feeder.index');
-        Route::post('input/feeder', [FeederReadingController::class, 'store'])
-            ->name('input.feeder.store');
-
-        Route::get('input/pasokan-cadangan', [AuxiliaryReadingController::class, 'index'])
-            ->name('input.auxiliary.index');
-        Route::post('input/pasokan-cadangan', [AuxiliaryReadingController::class, 'store'])
-            ->name('input.auxiliary.store');
-
-        Route::get('input/penerimaan-bbm', [FuelReceiptController::class, 'index'])
-            ->name('input.fuel-receipt.index');
-        Route::post('input/penerimaan-bbm', [FuelReceiptController::class, 'store'])
-            ->name('input.fuel-receipt.store');
-        Route::delete('input/penerimaan-bbm/{fuelReceipt}', [FuelReceiptController::class, 'destroy'])
-            ->name('input.fuel-receipt.destroy');
+        Route::get('input/instruksi-kerja', [InstruksiKerjaController::class, 'index'])->name('input.instruksi-kerja.index');
+        Route::post('input/instruksi-kerja', [InstruksiKerjaController::class, 'store'])->name('input.instruksi-kerja.store');
+        Route::get('input/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('input.instruksi-kerja.pdf');
+        Route::delete('input/instruksi-kerja/{instruksiKerja}', [InstruksiKerjaController::class, 'destroy'])->whereNumber('instruksiKerja')->name('input.instruksi-kerja.destroy');
 
         Route::get('input/kondisi-abnormal', [KondisiAbnormalController::class, 'index'])
             ->name('input.kondisi-abnormal.index');
@@ -120,13 +97,6 @@ Route::middleware(['auth', 'verified'])
             ->name('input.material-peralatan.destroy');
         Route::get('input/material-peralatan/pdf', [MaterialPeralatanController::class, 'pdf'])
             ->name('input.material-peralatan.pdf');
-
-        Route::get('input/resource-pembangkit', [ResourcePembangkitController::class, 'index'])
-            ->name('input.resource-pembangkit.index');
-        Route::post('input/resource-pembangkit', [ResourcePembangkitController::class, 'store'])
-            ->name('input.resource-pembangkit.store');
-        Route::get('input/resource-pembangkit/pdf', [ResourcePembangkitController::class, 'pdf'])
-            ->name('input.resource-pembangkit.pdf');
 
         Route::get('input/permit-to-work', [PermitToWorkController::class, 'index'])
             ->name('input.permit-to-work.index');
@@ -174,6 +144,35 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/program-5s5r/pdf', [Program5s5rInputController::class, 'pdf'])
             ->name('input.program-5s5r.pdf');
 
+        // Akses 2 — Pengusahaan Operasi (TL & Staf Operasi): data harian pembangkit
+        // and Berita Acara. Operators keep their operasi.lapangan.* page permission.
+        Route::get('pengusahaan/laporan-harian', [PengusahaanDailyReportController::class, 'index'])->name('pengusahaan.daily-report.index');
+        Route::post('pengusahaan/laporan-harian', [PengusahaanDailyReportController::class, 'store'])->name('pengusahaan.daily-report.store');
+
+        Route::get('pengusahaan/star-stop', [PengusahaanStarStopController::class, 'index'])->name('pengusahaan.star-stop.index');
+        Route::post('pengusahaan/star-stop', [PengusahaanStarStopController::class, 'store'])->name('pengusahaan.star-stop.store');
+        Route::delete('pengusahaan/star-stop/{engineStatusLog}', [PengusahaanStarStopController::class, 'destroy'])->name('pengusahaan.star-stop.destroy');
+
+        Route::get('pengusahaan/feeder', [PengusahaanFeederReadingController::class, 'index'])->name('pengusahaan.feeder.index');
+        Route::post('pengusahaan/feeder', [PengusahaanFeederReadingController::class, 'store'])->name('pengusahaan.feeder.store');
+
+        Route::get('pengusahaan/pasokan-cadangan', [PengusahaanAuxiliaryReadingController::class, 'index'])->name('pengusahaan.auxiliary.index');
+        Route::post('pengusahaan/pasokan-cadangan', [PengusahaanAuxiliaryReadingController::class, 'store'])->name('pengusahaan.auxiliary.store');
+
+        Route::get('pengusahaan/penerimaan-bbm', [PengusahaanFuelReceiptController::class, 'index'])->name('pengusahaan.fuel-receipt.index');
+        Route::post('pengusahaan/penerimaan-bbm', [PengusahaanFuelReceiptController::class, 'store'])->name('pengusahaan.fuel-receipt.store');
+        Route::delete('pengusahaan/penerimaan-bbm/{fuelReceipt}', [PengusahaanFuelReceiptController::class, 'destroy'])->name('pengusahaan.fuel-receipt.destroy');
+
+        Route::get('pengusahaan/resource-pembangkit', [PengusahaanResourcePembangkitController::class, 'index'])->name('pengusahaan.resource-pembangkit.index');
+        Route::post('pengusahaan/resource-pembangkit', [PengusahaanResourcePembangkitController::class, 'store'])->name('pengusahaan.resource-pembangkit.store');
+        Route::get('pengusahaan/resource-pembangkit/pdf', [PengusahaanResourcePembangkitController::class, 'pdf'])->name('pengusahaan.resource-pembangkit.pdf');
+
+        Route::get('pengusahaan/berita-acara', [PengusahaanBeritaAcaraController::class, 'index'])->name('pengusahaan.berita-acara.index');
+        Route::post('pengusahaan/berita-acara', [PengusahaanBeritaAcaraController::class, 'store'])->name('pengusahaan.berita-acara.store');
+        Route::get('pengusahaan/berita-acara/{type}', [PengusahaanBeritaAcaraController::class, 'show'])->name('pengusahaan.berita-acara.show');
+        Route::get('pengusahaan/berita-acara/{type}/preview', [PengusahaanBeritaAcaraController::class, 'preview'])->name('pengusahaan.berita-acara.preview');
+        Route::get('pengusahaan/berita-acara/{type}/pdf', [PengusahaanBeritaAcaraController::class, 'pdf'])->name('pengusahaan.berita-acara.pdf');
+
         // Akses 2 — Pengusahaan (TL & Staf): hub per menu section.
         Route::get('pengusahaan/{section}', [PengusahaanController::class, 'index'])->name('pengusahaan.index')
             ->defaults('module', 'operasi')->whereIn('section', array_keys(PengusahaanController::SECTIONS));
@@ -184,12 +183,6 @@ Route::middleware(['auth', 'verified'])
         Route::post('laporan/{report}/dokumen/muat-ulang', [LaporanDocumentController::class, 'regenerate'])->name('laporan.document.regenerate');
         Route::get('laporan/{report}/dokumen/pdf', [LaporanDocumentController::class, 'pdf'])->name('laporan.document.pdf');
         Route::get('laporan/{report}', [LaporanController::class, 'show'])->name('laporan.show');
-
-        Route::get('berita-acara', [BeritaAcaraController::class, 'index'])->name('berita-acara.index');
-        Route::post('berita-acara', [BeritaAcaraController::class, 'store'])->name('berita-acara.store');
-        Route::get('berita-acara/{type}', [BeritaAcaraController::class, 'show'])->name('berita-acara.show');
-        Route::get('berita-acara/{type}/preview', [BeritaAcaraController::class, 'preview'])->name('berita-acara.preview');
-        Route::get('berita-acara/{type}/pdf', [BeritaAcaraController::class, 'pdf'])->name('berita-acara.pdf');
 
         Route::get('document-template', [DocumentTemplateController::class, 'index'])->name('document-template.index');
         Route::put('document-template/{type}', [DocumentTemplateController::class, 'update'])->name('document-template.update');

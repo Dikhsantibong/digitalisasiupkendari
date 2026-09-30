@@ -329,7 +329,7 @@ const FORMULIR: Entry[] = [
         'daily_meeting',
         'Daily Meeting',
         'Daily Meeting',
-        'Notulen daily meeting pemeliharaan',
+        'Buat meeting & QR absensi peserta',
         MessageSquare,
         'bg-blue-500/10 text-blue-600 dark:text-blue-400',
         dailyMeeting.index().url,

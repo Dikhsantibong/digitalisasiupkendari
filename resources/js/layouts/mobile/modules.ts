@@ -3,7 +3,11 @@ import { HAR_PROJECT_MENUS } from '@/layouts/mobile/menus/har-project';
 import { K3_PENGUSAHAAN_MENUS } from '@/layouts/mobile/menus/k3-pengusahaan';
 import { K3_PROJECT_MENUS } from '@/layouts/mobile/menus/k3-project';
 import { LAPORAN_PROJECT_MENUS } from '@/layouts/mobile/menus/laporan-project';
+import { LOGISTIK_MENUS } from '@/layouts/mobile/menus/logistik';
 import { OPERASI_MENUS } from '@/layouts/mobile/menus/operasi';
+import { OPERASI_PENGUSAHAAN_MENUS } from '@/layouts/mobile/menus/operasi-pengusahaan';
+import { OPERASI_PROJECT_MENUS } from '@/layouts/mobile/menus/operasi-project';
+import { PDM_MENUS } from '@/layouts/mobile/menus/pdm';
 import { PEMELIHARAAN_MENUS } from '@/layouts/mobile/menus/pemeliharaan';
 import { UMUM_MENUS } from '@/layouts/mobile/menus/umum';
 import type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
@@ -33,6 +37,28 @@ export const MOBILE_MODULES: MobileModule[] = [
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         menus: [...UMUM_MENUS, ...OPERASI_MENUS, ...PEMELIHARAAN_MENUS, ...LAPORAN_PROJECT_MENUS],
+    },
+    {
+        // Akses 1 — Laporan Project Operasi on a phone: Koordinator Operasi.
+        key: 'operasi-project',
+        enabled: true,
+        title: 'Operasi',
+        subtitle: 'Jadwal, input & laporan project operasi',
+        roles: ['koordinator_operasi'],
+        homeComponents: ['dashboard'],
+        homeHref: dashboard().url,
+        menus: OPERASI_PROJECT_MENUS,
+    },
+    {
+        // Akses 2 — Pengusahaan Operasi on a phone: TL & Staf Operasi (Manager UL keeps the full app).
+        key: 'operasi-pengusahaan',
+        enabled: true,
+        title: 'Operasi',
+        subtitle: 'Input harian, berita acara & laporan pengusahaan',
+        roles: ['tl_operasi', 'staf_operasi'],
+        homeComponents: ['dashboard'],
+        homeHref: dashboard().url,
+        menus: OPERASI_PENGUSAHAAN_MENUS,
     },
     {
         // Akses 1 — Laporan Project Pemeliharaan on a phone: Koordinator (& Office) Pemeliharaan.
@@ -77,6 +103,28 @@ export const MOBILE_MODULES: MobileModule[] = [
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         menus: K3_PENGUSAHAAN_MENUS,
+    },
+    {
+        // Logistik & Gudang on a phone: TL Logistik & Gudang.
+        key: 'logistik',
+        enabled: true,
+        title: 'Logistik & Gudang',
+        subtitle: 'Jadwal, input & laporan logistik & gudang',
+        roles: ['tl_logistik'],
+        homeComponents: ['dashboard'],
+        homeHref: dashboard().url,
+        menus: LOGISTIK_MENUS,
+    },
+    {
+        // PdM & Maturity Level on a phone: TL PdM.
+        key: 'pdm',
+        enabled: true,
+        title: 'PdM & Maturity Level',
+        subtitle: 'Jadwal, input & laporan PdM & MATLEV',
+        roles: ['tl_pdm'],
+        homeComponents: ['dashboard'],
+        homeHref: dashboard().url,
+        menus: PDM_MENUS,
     },
 ];
 

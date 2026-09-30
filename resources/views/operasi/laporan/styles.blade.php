@@ -191,6 +191,14 @@
 .op-plan { background: #fef08a; }
 .op-current { background: #fde68a; }
 .op-day-off { background: #fecaca; }
+.op-mark { font-family: 'DejaVu Sans', sans-serif; font-size: 5.5px; font-weight: bold; margin-left: 1px; }
+.op-mark-hadir { color: #059669; }
+.op-mark-terlambat { color: #d97706; }
+.op-mark-tidak_hadir { color: #e11d48; }
+.op-mark-menunggu { color: #64748b; }
+.op-mark-di_luar_jadwal { color: #7c3aed; }
+td.op-absent { background: #ffe4e6; }
+.op-legend { font-size: 6.5px; color: #333; margin-top: 3px; }
 
 /* Red line shown in place of a table whose data has not been input yet */
 .op-no-data { margin: 10px 0 16px 0; }

@@ -109,7 +109,7 @@ class PresensiTest extends TestCase
             ->get(route('operator.presensi.index'))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operator/presensi')
+                ->component('operator/presensi/index')
                 ->where('office.radius_m', 300)
                 ->where('office.latitude', self::OFFICE['latitude'])
                 ->where('today', null)

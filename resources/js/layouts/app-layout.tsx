@@ -9,7 +9,7 @@ import MobileModuleLayout, {
 import type { BreadcrumbItem } from '@/types';
 
 /** Pages whose hand-built input tables become cards on a phone (MobileTableCards). */
-const TABLE_CARD_PAGES = /^(k3|pengusahaan\/(k3|har)|har\/(jadwal|input|formulir))\//;
+const TABLE_CARD_PAGES = /^(k3|pengusahaan\/(k3|har|operasi)|operasi\/(jadwal|input)|har\/(jadwal|input|formulir)|pdm\/(jadwal|input)|logistik\/(jadwal|input))\//;
 
 export default function AppLayout({
     breadcrumbs = [],

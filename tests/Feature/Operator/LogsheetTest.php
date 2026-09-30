@@ -43,15 +43,15 @@ class LogsheetTest extends TestCase
     {
         $user = $this->userWithRole(RoleName::Operator, Unit::factory()->create());
 
-        $this->actingAs($user)->get(route('operasi.input.daily-report.index'))->assertOk();
+        $this->actingAs($user)->get(route('operasi.pengusahaan.daily-report.index'))->assertOk();
 
         // Withdrawn in Role & Akses: the page closes again.
         Role::query()->where('name', RoleName::Operator->value)->sole()
             ->permissions()->detach(Permission::query()->where('name', 'operasi.lapangan.daily_report')->value('id'));
         $user->forgetAccessCache();
 
-        $this->actingAs($user->fresh())->get(route('operasi.input.daily-report.index'))->assertForbidden();
-        $this->actingAs($user->fresh())->get(route('operasi.input.star-stop.index'))->assertOk();
+        $this->actingAs($user->fresh())->get(route('operasi.pengusahaan.daily-report.index'))->assertForbidden();
+        $this->actingAs($user->fresh())->get(route('operasi.pengusahaan.star-stop.index'))->assertOk();
     }
 
     public function test_the_operator_sees_the_logsheet_grid(): void
@@ -63,7 +63,7 @@ class LogsheetTest extends TestCase
             ->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operator/logsheet')
+                ->component('operator/logsheet/index')
                 ->where('can_write', true)
                 ->where('is_submitted', false)
                 ->has('parameters', 22)
@@ -188,5 +188,30 @@ class LogsheetTest extends TestCase
                 'unit_id' => $foreignUnit->id, 'engine_id' => $foreignEngine->id, 'log_date' => '2026-08-10', 'time_slot' => '01:00', 'values' => [],
             ])
             ->assertForbidden();
+    }
+
+    public function test_the_logsheet_pdf_prints_the_day_sheet(): void
+    {
+        $unit = Unit::factory()->create(['name' => 'PLTD Poasia']);
+        $engine = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Cummins #6']);
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $parameter = LogsheetParameter::query()->where('is_active', true)->orderBy('sort_order')->firstOrFail();
+
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), [
+            'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',
+            'shift' => 'A', 'time_slot' => '01:00', 'values' => ['p_'.$parameter->id => '250.5'],
+        ])->assertRedirect();
+
+        $query = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10'];
+        $this->actingAs($operator)->get(route('operator.logsheet.pdf', $query))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $view = $this->actingAs($operator)->get(route('operator.logsheet.index', $query))->viewData('page');
+        $this->assertSame('250.5', $view['props']['rows'][0]['values']['p_'.$parameter->id]);
+
+        $foreign = Machine::factory()->create(['is_active' => true]);
+        $this->actingAs($operator)->get(route('operator.logsheet.pdf', ['unit_id' => $foreign->unit_id, 'engine_id' => $foreign->id, 'log_date' => '2026-08-10']))->assertForbidden();
+        $this->actingAs($this->userWithRole(RoleName::SiteLeader, $unit))->get(route('operator.logsheet.pdf', $query))->assertForbidden();
     }
 }

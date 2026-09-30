@@ -64,8 +64,6 @@ enum PermissionName: string
     case OperasiInputView = 'operasi.input.view';
     case OperasiInputWrite = 'operasi.input.write';
     case OperasiLaporanView = 'operasi.laporan.view';
-    case OperasiBeritaAcaraView = 'operasi.berita_acara.view';
-    case OperasiBeritaAcaraCreate = 'operasi.berita_acara.create';
     case OperasiMasterViewAny = 'operasi.master.view_any';
     case OperasiMasterManage = 'operasi.master.manage';
 
@@ -97,6 +95,8 @@ enum PermissionName: string
     case OperatorAbsensiView = 'operator.absensi.view';
     case OperatorAbsensiWrite = 'operator.absensi.write';
     case OperatorPresensi = 'operator.presensi';
+    case OperatorMutasiView = 'operator.mutasi.view';
+    case OperatorMutasiWrite = 'operator.mutasi.write';
 
     case HarInputView = 'har.input.view';
     case HarInputWrite = 'har.input.write';
@@ -228,8 +228,6 @@ enum PermissionName: string
             self::OperasiInputView,
             self::OperasiInputWrite,
             self::OperasiLaporanView,
-            self::OperasiBeritaAcaraView,
-            self::OperasiBeritaAcaraCreate,
             self::OperasiMasterViewAny,
             self::OperasiMasterManage => PermissionGroup::Operasi,
 
@@ -255,7 +253,9 @@ enum PermissionName: string
             self::OperatorLogsheetWrite,
             self::OperatorAbsensiView,
             self::OperatorAbsensiWrite,
-            self::OperatorPresensi => PermissionGroup::Operator,
+            self::OperatorPresensi,
+            self::OperatorMutasiView,
+            self::OperatorMutasiWrite => PermissionGroup::Operator,
 
             self::HarInputView,
             self::HarInputWrite,
@@ -392,8 +392,6 @@ enum PermissionName: string
             self::OperasiInputView => 'Melihat input operasi',
             self::OperasiInputWrite => 'Mengisi input operasi',
             self::OperasiLaporanView => 'Melihat & mencetak laporan operasi',
-            self::OperasiBeritaAcaraView => 'Melihat berita acara operasi',
-            self::OperasiBeritaAcaraCreate => 'Membuat berita acara operasi',
             self::OperasiMasterViewAny => 'Melihat master data operasi',
             self::OperasiMasterManage => 'Mengelola master data operasi',
             self::OperasiPengusahaanView => 'Membuka menu & Laporan Pengusahaan operasi',
@@ -417,6 +415,8 @@ enum PermissionName: string
             self::OperatorAbsensiView => 'Melihat jadwal & absensi shift',
             self::OperatorAbsensiWrite => 'Menjadwalkan & mengisi absensi shift',
             self::OperatorPresensi => 'Absen masuk & pulang dalam radius kantor',
+            self::OperatorMutasiView => 'Melihat lembar mutasi operator',
+            self::OperatorMutasiWrite => 'Mengisi & serah terima lembar mutasi operator',
 
             self::HarInputView => 'Melihat input pemeliharaan',
             self::HarInputWrite => 'Mengisi input pemeliharaan (WO/SR, log kegiatan, biaya, foto)',

@@ -14,9 +14,9 @@ use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\MaterialPeralatanController;
 use App\Http\Controllers\Operasi\MeetingShiftController;
 use App\Http\Controllers\Operasi\PembuatanIkController;
+use App\Http\Controllers\Operasi\PengusahaanResourcePembangkitController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
-use App\Http\Controllers\Operasi\ResourcePembangkitController;
 use App\Models\Unit;
 use App\Services\Reports\Chart3d;
 use App\Services\Reports\ReportWorkflowService;
@@ -51,7 +51,7 @@ class OperasiReportTables
         'kondisi_abnormal' => [KondisiAbnormalController::class, 'Laporan Kondisi Abnormal & Gangguan'],
         'material_peralatan' => [MaterialPeralatanController::class, 'Laporan Material dan Peralatan'],
         'permit_to_work' => [PermitToWorkController::class, 'Laporan Permit to Work Pembangkit'],
-        'resource_pembangkit' => [ResourcePembangkitController::class, 'Laporan Resource Pembangkit'],
+        'resource_pembangkit' => [PengusahaanResourcePembangkitController::class, 'Laporan Resource Pembangkit'],
     ];
 
     public function __construct(

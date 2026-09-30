@@ -32,6 +32,7 @@ export function MobileDayValuesForm<R>({
     rowKey,
     title,
     fields,
+    fieldsOf,
     value,
     onChange,
     details,
@@ -46,6 +47,8 @@ export function MobileDayValuesForm<R>({
     rowKey: (row: R, index: number) => Key;
     title: (row: R, index: number) => ReactNode;
     fields: DayValueField[];
+    /** Fields of one row when rows differ (e.g. a tick row beside a minutes row); defaults to `fields`. */
+    fieldsOf?: (row: R) => DayValueField[];
     value: (row: R, field: string, day: number) => string;
     onChange: (row: R, field: string, day: number, value: string) => void;
     details?: (row: R, index: number) => ReactNode;
@@ -62,14 +65,15 @@ export function MobileDayValuesForm<R>({
     });
     const day = days.find((d) => d.day === selected) ?? days[0];
     const viewing = !!onEditingChange && (readOnly || !editing);
-    const filled = (row: R, d: number) => fields.some((f) => value(row, f.key, d) !== '');
+    const rowFields = (row: R) => fieldsOf?.(row) ?? fields;
+    const filled = (row: R, d: number) => rowFields(row).some((f) => value(row, f.key, d) !== '');
     const visible = viewing && day ? rows.filter((row) => filled(row, day.day)) : rows;
 
     return (
         <div className="flex flex-col gap-3">
             {onEditingChange && !readOnly && <MobileModeBar editing={editing} onChange={onEditingChange} />}
             <DayStrip
-                items={days.map((d) => ({ key: String(d.day), label: String(d.day), sub: d.dow, isRed: d.is_red, done: rows.some((row) => filled(row, d.day)) }))}
+                items={days.map((d) => ({ key: String(d.day), label: d.label ?? String(d.day), sub: d.dow, isRed: d.is_red, done: rows.some((row) => filled(row, d.day)) }))}
                 value={String(selected)}
                 onChange={(key) => setSelected(Number(key))}
             />
@@ -94,7 +98,7 @@ export function MobileDayValuesForm<R>({
                             <div className="text-[14px] font-medium text-foreground">{title(row, index)}</div>
                             {viewing ? (
                                 <div className="flex flex-wrap gap-1.5">
-                                    {fields
+                                    {rowFields(row)
                                         .filter((field) => value(row, field.key, day.day) !== '')
                                         .map((field) => {
                                             const cell = value(row, field.key, day.day);
@@ -108,7 +112,7 @@ export function MobileDayValuesForm<R>({
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-2.5">
-                                    {fields.map((field) => (
+                                    {rowFields(row).map((field) => (
                                         <div key={field.key} className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                             {field.label}
                                             {field.readOnly ? (

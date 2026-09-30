@@ -11,7 +11,6 @@ import {
     FileBarChart,
     Flame,
     FileCog,
-    FileSignature,
     Fuel,
     Gauge,
     HardHat,
@@ -74,7 +73,6 @@ import k3Monitoring from '@/routes/k3/monitoring';
 import logistikInput from '@/routes/logistik/input';
 import logistikJadwal from '@/routes/logistik/jadwal';
 import logistikLaporan from '@/routes/logistik/laporan';
-import beritaAcara from '@/routes/operasi/berita-acara';
 import documentTemplate from '@/routes/operasi/document-template';
 import operasiInput from '@/routes/operasi/input';
 import operasiJadwal from '@/routes/operasi/jadwal';
@@ -82,6 +80,7 @@ import laporan from '@/routes/operasi/laporan';
 import master from '@/routes/operasi/master';
 import absensi from '@/routes/operator/absensi';
 import logsheet from '@/routes/operator/logsheet';
+import mutasiOperator from '@/routes/operator/mutasi';
 import presensi from '@/routes/operator/presensi';
 import pdmInput from '@/routes/pdm/input';
 import pdmJadwal from '@/routes/pdm/jadwal';
@@ -171,6 +170,11 @@ export function AppSidebar() {
                     href: logsheet.index(),
                     icon: NotebookPen,
                 },
+                can('operator.mutasi.view') && {
+                    title: 'Lembar Mutasi',
+                    href: mutasiOperator.index(),
+                    icon: ClipboardCheck,
+                },
                 can('operator.absensi.view') && {
                     title: 'Jadwal Shift',
                     href: absensi.index(),
@@ -203,11 +207,6 @@ export function AppSidebar() {
                     href: operasiInput.index(),
                     icon: SquarePen,
                 },
-                can('operasi.berita_acara.view') && {
-                    title: 'Berita Acara',
-                    href: beritaAcara.index(),
-                    icon: FileSignature,
-                },
                 ...pengusahaanItems('operasi', 'operasi.input.view'),
                 can(['operasi.laporan.view', 'operasi.pengusahaan.view']) && {
                     title: 'Laporan',
@@ -234,6 +233,13 @@ export function AppSidebar() {
                     href: harFormulir.index(),
                     icon: ClipboardCheck,
                 },
+                // Project Leader (and field staff) hold only the Daily Meeting page.
+                !can('har.input.view') &&
+                    can('har.lapangan.daily_meeting') && {
+                        title: 'Daily Meeting',
+                        href: harFormulir.dailyMeeting.index(),
+                        icon: ClipboardCheck,
+                    },
                 ...pengusahaanItems('har', 'har.input.view'),
                 can(['har.laporan.view', 'har.pengusahaan.view']) && {
                     title: 'Laporan',

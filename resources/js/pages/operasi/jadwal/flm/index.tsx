@@ -1,6 +1,9 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Download, FileSpreadsheet, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
+import type { DayValueField } from '@/components/mobile/day-values-form';
+import { monthTimelineDays, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
 import type { StyleSpec } from '@/lib/jadwal-excel';
@@ -12,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import flm from '@/routes/operasi/jadwal/flm';
@@ -60,6 +64,13 @@ const PRINT_CSS = `
 }
 `;
 
+/** Phone fields of a row: a tick, a duration or a shift letter per date. */
+const FIELDS: Record<RowType, DayValueField[]> = {
+    mark: [{ key: 'v', label: 'Realisasi', options: ['1'], labels: { '1': '✓ Terlaksana' }, tone: () => 'border-slate-500 bg-slate-300 text-black' }],
+    minutes: [{ key: 'v', label: 'Waktu (menit)', numeric: true }],
+    shift: [{ key: 'v', label: 'Kode shift tanggal ini' }],
+};
+
 const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: i, days: { ...r.days } }));
 
 export default function OperasiFlmPage({ unit, filters, options, days_in_month, rows: initialRows, can_write }: Props) {
@@ -68,6 +79,8 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [form, setForm] = useState<{ section: Section; shift: string; label: string; row_type: RowType; target: number }>({ section: 'non_rutin', shift: 'A', label: 'REALISASI', row_type: 'mark', target: 15 });
 
@@ -77,6 +90,8 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
 
     const monthName = useMemo(() => OPERASI_MONTHS[filters.month - 1] ?? '', [filters.month]);
     const days = useMemo(() => Array.from({ length: days_in_month }, (_, i) => i + 1), [days_in_month]);
+    const timelineDays = useMemo(() => monthTimelineDays(filters.year, filters.month, days_in_month), [filters.year, filters.month, days_in_month]);
+    const orderedRows = useMemo(() => SECTIONS.flatMap((s) => rows.filter((r) => r.section === s.key)), [rows]);
 
     const visit = (patch: Partial<Props['filters']>) => router.get(flm.index().url, { ...filters, ...patch }, { preserveState: true, preserveScroll: true, replace: true });
 
@@ -246,6 +261,43 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
                         </div>
                     </div>
 
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileDayValuesForm<Row>
+                                days={timelineDays}
+                                rows={orderedRows}
+                                rowKey={(row) => row._key}
+                                title={(row) => `${SECTIONS.find((s) => s.key === row.section)?.label ?? ''} · ${row.label}${row.shift ? ` (${row.shift})` : ''}`}
+                                fields={FIELDS.mark}
+                                fieldsOf={(row) => FIELDS[row.row_type]}
+                                value={(row, _field, day) => row.days[String(day)] ?? ''}
+                                onChange={(row, _field, day, value) => setDay(row._key, day, row.row_type === 'shift' ? value.toUpperCase() : value)}
+                                details={(row) => (
+                                    <>
+                                        <TimelineField label="Uraian" value={row.label} onChange={(v) => updateMeta(row._key, 'label', v)} readOnly={!can_write} />
+                                        <TimelineField label="Shift" value={row.shift} onChange={(v) => updateMeta(row._key, 'shift', v)} readOnly={!can_write} />
+                                        {row.row_type !== 'shift' && <TimelineField label="Target" type="number" value={row.target} onChange={(v) => updateMeta(row._key, 'target', v)} readOnly={!can_write} />}
+                                        {can_write && (
+                                            <Button variant="outline" size="sm" onClick={() => remove(row._key)} className="gap-1.5 text-destructive"><Trash2 className="size-3.5" />Hapus baris</Button>
+                                        )}
+                                    </>
+                                )}
+                                summary={(row) => {
+                                    const realisasi = realisasiOf(row);
+
+                                    if (realisasi === null) {
+                                        return 'Jadwal shift';
+                                    }
+
+                                    return `Realisasi ${realisasi} / target ${row.target} · ${row.target > 0 ? Math.round((realisasi / row.target) * 100) : 0}%`;
+                                }}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada baris FLM."
+                            />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                         <table className="flm-table w-full border-collapse text-xs">
                             <thead>
@@ -306,6 +358,7 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
                             </tbody>
                         </table>
                     </div>
+                    )}
                 </div>
             </div>
 

@@ -2,6 +2,8 @@ import { Head, router } from '@inertiajs/react';
 import { Download, FileSpreadsheet, Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { CompactField, MobileCompactRows } from '@/components/mobile/compact-rows';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -11,6 +13,8 @@ import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { rowSummary } from '@/lib/mobile-row-summary';
 import { downloadSampleMonitoringWorkbook } from '@/lib/pdm-input-excel';
 import type { SampleColumn, SampleRekapRow, SampleSection } from '@/lib/pdm-input-excel';
 import { dashboard } from '@/routes';
@@ -53,6 +57,9 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the row just added opens in its section's compact list.
+    const [focus, setFocus] = useState<{ section: string; index: number; nonce: number } | null>(null);
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`;
     const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
@@ -75,6 +82,7 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
     };
 
     const addRow = (section: SampleSection) => {
+        setFocus({ section: section.key, index: rows[section.key].length, nonce: (focus?.nonce ?? 0) + 1 });
         setRows((current) => ({ ...current, [section.key]: [...current[section.key], blank(section)] }));
         touch();
     };
@@ -145,6 +153,25 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
                         </Button>
                     )}
                 </div>
+                {compact ? (
+                    <MobileCompactRows
+                        canWrite={can_write}
+                        focus={focus?.section === key ? focus : null}
+                        rows={rows[key].map((row, index) => {
+                            const line = rowSummary(section.columns, row);
+
+                            return { key: index, index, title: line.title, subtitle: line.subtitle, searchText: line.searchText, empty: line.empty };
+                        })}
+                        renderEditor={(index) =>
+                            section.columns.map((column) => (
+                                <CompactField key={column.key} label={column.label}>
+                                    <div className="rounded-md border border-input bg-background">{editor(section, column, rows[key][index], index)}</div>
+                                </CompactField>
+                            ))
+                        }
+                        onRemove={(index) => removeRow(key, index)}
+                    />
+                ) : (
                 <div className="overflow-x-auto rounded-md border border-border bg-card">
                     <table className="w-full min-w-[1150px] border-collapse text-xs">
                         <thead className="bg-[#1f4e79]/10 text-center text-[11px] font-semibold">
@@ -175,6 +202,7 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
                         </tbody>
                     </table>
                 </div>
+                )}
             </div>
         );
     };
@@ -301,7 +329,17 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
                         className="rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
                     />
                 </div>
+                {compact && can_write && <div className="h-20" />}
             </div>
+
+            {compact && can_write && (
+                <StickyActionBar>
+                    <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                        <Save className="size-4" />
+                        {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                    </Button>
+                </StickyActionBar>
+            )}
         </>
     );
 }

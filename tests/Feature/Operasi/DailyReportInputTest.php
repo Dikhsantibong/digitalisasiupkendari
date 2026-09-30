@@ -27,7 +27,7 @@ class DailyReportInputTest extends TestCase
         $unit = Unit::factory()->create();
 
         $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
-            ->get(route('operasi.input.daily-report.index'))
+            ->get(route('operasi.pengusahaan.daily-report.index'))
             ->assertForbidden();
     }
 
@@ -36,8 +36,8 @@ class DailyReportInputTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
-            ->get(route('operasi.input.daily-report.index', [
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->get(route('operasi.pengusahaan.daily-report.index', [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine->id,
                 'month' => 8,
@@ -45,7 +45,7 @@ class DailyReportInputTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operasi/input/daily-report/index')
+                ->component('pengusahaan/operasi/daily-report/index')
                 ->where('engine.id', $engine->id)
                 ->has('grid.rows', 31)
                 ->where('can_write', true),
@@ -56,10 +56,10 @@ class DailyReportInputTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
-        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
 
         $this->actingAs($user)
-            ->post(route('operasi.input.daily-report.store'), [
+            ->post(route('operasi.pengusahaan.daily-report.store'), [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine->id,
                 'month' => 8,
@@ -92,8 +92,8 @@ class DailyReportInputTest extends TestCase
         $foreignUnit = Unit::factory()->create();
         $foreignEngine = Machine::factory()->forUnit($foreignUnit)->create();
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
-            ->post(route('operasi.input.daily-report.store'), [
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+            ->post(route('operasi.pengusahaan.daily-report.store'), [
                 'unit_id' => $foreignUnit->id,
                 'engine_id' => $foreignEngine->id,
                 'month' => 8,

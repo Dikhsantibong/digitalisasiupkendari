@@ -5,6 +5,7 @@ import {
     ClipboardList,
     FileWarning,
     Gauge,
+    FileText,
     Image,
     NotebookPen,
     ShieldAlert,
@@ -18,6 +19,7 @@ import harInput from '@/routes/har/input';
 import harAbnormalGangguan from '@/routes/har/input/abnormal-gangguan';
 import harActivity from '@/routes/har/input/activity';
 import harAttachment from '@/routes/har/input/attachment';
+import harInstruksiKerja from '@/routes/har/input/instruksi-kerja';
 import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
 import harInputLembar from '@/routes/har/input/lembar';
 import harPatrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
@@ -66,6 +68,14 @@ const INPUT_MENUS: InputCard[] = [
         icon: Image,
         url: harAttachment.index().url,
         buttonLabel: 'Buka Input Lampiran Foto',
+    },
+    {
+        title: 'Instruksi Kerja (IK)',
+        description:
+            'Buat IK pemeliharaan dari template (mis. PM 1500 jam Cummins KTA 50): alat, pelaksana, langkah pelaksanaan dan tanda tangan — bebas disesuaikan, cetak PDF format MKP.',
+        icon: FileText,
+        url: harInstruksiKerja.index().url,
+        buttonLabel: 'Buka Instruksi Kerja',
     },
     {
         title: 'Unsafe Action & Unsafe Condition',

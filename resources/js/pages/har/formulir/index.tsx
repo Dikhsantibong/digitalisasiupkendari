@@ -35,7 +35,7 @@ const FORMULIR_LIST: FormulirCard[] = [
     },
     {
         title: 'Formulir Daily Meeting',
-        description: 'Daftar hadir meeting pemeliharaan (acara, hari/tanggal, waktu, tempat, peserta) dengan foto eviden di lembar kedua PDF.',
+        description: 'Buat meeting (acara, hari/tanggal, waktu, tempat), tampilkan QR code — peserta scan & isi absensi dengan tanda tangan di HP. Export PDF daftar hadir + foto eviden.',
         icon: Users,
         target: formulir.dailyMeeting.index().url,
         active: true,

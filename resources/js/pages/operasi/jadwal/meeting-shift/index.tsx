@@ -6,11 +6,14 @@ import { buildDocumentHeader, createSheet, downloadWorkbook, paintSheet, setColW
 import type { StyleSpec } from '@/lib/jadwal-excel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
+import { monthTimelineDays, TimelineField } from '@/components/mobile/timeline-form';
 import {
     Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import meeting from '@/routes/operasi/jadwal/meeting-shift';
@@ -35,6 +38,9 @@ const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: 
 
 export default function MeetingShiftPage({ unit, filters, options, days_in_month, rows: initial, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initial));
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
+    const timelineDays = useMemo(() => monthTimelineDays(filters.year, filters.month, days_in_month), [filters.year, filters.month, days_in_month]);
     const [nextKey, setNextKey] = useState(initial.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -127,6 +133,34 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                             </div>
                         </div>
                     </div>
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileDayValuesForm<Row>
+                                days={timelineDays}
+                                rows={rows}
+                                rowKey={(row) => row._key}
+                                title={(row) => row.label || 'Kegiatan'}
+                                fields={[{ key: 'v', label: 'Realisasi', options: ['1'], labels: { '1': '✓ Terlaksana' }, tone: () => 'border-slate-500 bg-slate-300 text-black' }]}
+                                fieldsOf={(row) => (row.row_type === 'shift' ? [{ key: 'v', label: 'Kode shift tanggal ini' }] : [{ key: 'v', label: 'Realisasi', options: ['1'], labels: { '1': '✓ Terlaksana' }, tone: () => 'border-slate-500 bg-slate-300 text-black' }])}
+                                value={(row, _field, day) => row.days[String(day)] ?? ''}
+                                onChange={(row, _field, day, value) => setDay(row._key, day, value.toUpperCase())}
+                                details={(row) => (
+                                    <>
+                                        <TimelineField label="Hari / Tanggal (uraian)" value={row.label} onChange={(v) => setMeta(row._key, 'label', v)} readOnly={!can_write} />
+                                        {row.row_type !== 'shift' && <TimelineField label="Target" type="number" value={row.target} onChange={(v) => setMeta(row._key, 'target', v)} readOnly={!can_write} />}
+                                        {can_write && (
+                                            <Button variant="outline" size="sm" onClick={() => remove(row._key)} className="gap-1.5 text-destructive"><Trash2 className="size-3.5" />Hapus baris</Button>
+                                        )}
+                                    </>
+                                )}
+                                summary={(row) => (row.row_type === 'shift' ? 'Jadwal shift' : `Realisasi ${realisasiOf(row)} / target ${row.target} · Kinerja ${row.target > 0 ? Math.round((realisasiOf(row) / row.target) * 100) : 0}%`)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada baris meeting."
+                            />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                     <table className="p-table w-full border-collapse text-xs">
                         <thead>
@@ -170,6 +204,7 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                         </tbody>
                     </table>
                     </div>
+                    )}
                 </div>
             </div>
 

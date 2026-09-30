@@ -6,6 +6,8 @@ import { buildDocumentHeader, createSheet, downloadWorkbook, paintSheet, setColW
 import type { StyleSpec } from '@/lib/jadwal-excel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { MobileTimelineForm, TimelineField, YEAR_MONTH_DAYS } from '@/components/mobile/timeline-form';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import dataTeknis from '@/routes/operasi/jadwal/pembuatan-data-teknis';
@@ -28,6 +30,9 @@ const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: 
 
 export default function DataTeknisPage({ unit, filters, options, rows: initial, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initial));
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
+    const [currentMonth] = useState(() => new Date().getMonth() + 1);
     const [nextKey, setNextKey] = useState(initial.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -107,6 +112,33 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
                             </div>
                         </div>
                     </div>
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<Row>
+                                days={YEAR_MONTH_DAYS}
+                                rows={rows}
+                                rowKey={(row) => row._key}
+                                title={(row) => row.nama || 'Baris baru'}
+                                categories={[{ key: 'plan', label: 'Dijadwalkan', onClass: 'border-slate-500 bg-slate-300 text-black' }]}
+                                isOn={(row, _category, month) => !!row.months[String(month)]}
+                                onToggle={(row, _category, month) => toggle(row._key, month)}
+                                details={(row) => (
+                                    <>
+                                        <TimelineField label="Nama" value={row.nama} onChange={(v) => setField(row._key, 'nama', v)} readOnly={!can_write} />
+                                        <TimelineField label="PIC" value={row.pic} onChange={(v) => setField(row._key, 'pic', v)} readOnly={!can_write} />
+                                    </>
+                                )}
+                                summary={(row) => `PIC ${row.pic || '-'} · ${Object.keys(row.months).length} bulan dijadwalkan`}
+                                dayLabel={(month) => `Bulan ${month.dow} ${filters.year}`}
+                                initialDay={currentMonth}
+                                onRemove={(row) => remove(row._key)}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada dokumen."
+                            />
+                        </div>
+                    ) : (
                     <div className="overflow-x-auto">
                     <table className="p-table w-full border-collapse text-xs">
                         <thead>
@@ -135,6 +167,7 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
                         </tbody>
                     </table>
                     </div>
+                    )}
                 </div>
             </div>
         </>

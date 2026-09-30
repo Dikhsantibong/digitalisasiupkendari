@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Check, Download, ImagePlus, Save, X } from 'lucide-react';
+import { Check, ChevronDown, Download, ImagePlus, Save, X } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
@@ -70,6 +70,8 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const compact = useCompactLayout();
+    // Phone: one program card open at a time.
+    const [openProgram, setOpenProgram] = useState<string | null>(null);
     const { can } = usePermissions();
     // Phone layout edits one minggu at a time.
     const [selectedWeek, setSelectedWeek] = useState<number>(initialWeeks[0]?.minggu ?? 1);
@@ -172,13 +174,21 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
 
                     {week?.rows.map((row) => {
                         const program = programs[row.program];
+                        const isOpen = openProgram === row.program;
+                        const summary = [row.kondisi_awal && row.kondisi_akhir ? `${row.kondisi_awal} → ${row.kondisi_akhir}` : row.kondisi_awal, row.progres && `Progres ${row.progres}`, row.pic && `PIC ${row.pic}`].filter(Boolean).join(' · ');
 
                         return (
-                            <div key={row.program} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3">
-                                <div>
-                                    <p className="text-[14px] font-semibold text-foreground">{program?.label}</p>
-                                    <p className="text-[12px] text-muted-foreground italic">{program?.istilah}</p>
-                                </div>
+                            <div key={row.program} className={`flex flex-col gap-3 rounded-xl border bg-card p-3 ${isOpen ? 'border-primary/50' : 'border-border'}`}>
+                                <button type="button" onClick={() => setOpenProgram(isOpen ? null : row.program)} className="flex items-start gap-2 text-left" aria-expanded={isOpen}>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-[14px] font-semibold text-foreground">{program?.label}</span>
+                                        <span className="block text-[12px] text-muted-foreground italic">{program?.istilah}</span>
+                                        {!isOpen && <span className="mt-0.5 block truncate text-[12px] text-muted-foreground not-italic">{summary || 'Belum diisi — ketuk untuk mengisi'}</span>}
+                                    </span>
+                                    <ChevronDown className={`mt-0.5 size-4 shrink-0 text-muted-foreground transition ${isOpen ? 'rotate-180' : ''}`} />
+                                </button>
+                                {isOpen && (
+                                <>
                                 <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                     Detail
                                     <Textarea value={row.detail ?? ''} onChange={(e) => setRow(week.minggu, row.program, { detail: e.target.value })} rows={2} disabled={!can_write} />
@@ -237,6 +247,8 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
                                         <Input value={row.keterangan ?? ''} onChange={(e) => setRow(week.minggu, row.program, { keterangan: e.target.value })} disabled={!can_write} />
                                     </label>
                                 </div>
+                                </>
+                                )}
                             </div>
                         );
                     })}

@@ -28,7 +28,7 @@ class StarStopInputTest extends TestCase
         $unit = Unit::factory()->create();
 
         $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
-            ->get(route('operasi.input.star-stop.index'))
+            ->get(route('operasi.pengusahaan.star-stop.index'))
             ->assertForbidden();
     }
 
@@ -38,8 +38,8 @@ class StarStopInputTest extends TestCase
         $engine = Machine::factory()->forUnit($unit)->create();
         UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
-            ->get(route('operasi.input.star-stop.index', [
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->get(route('operasi.pengusahaan.star-stop.index', [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine->id,
                 'month' => 8,
@@ -47,7 +47,7 @@ class StarStopInputTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('operasi/input/star-stop/index')
+                ->component('pengusahaan/operasi/star-stop/index')
                 ->where('engine.id', $engine->id)
                 ->has('options.status_codes', 1)
                 ->has('hours'),
@@ -59,10 +59,10 @@ class StarStopInputTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->forUnit($unit)->create();
         $status = UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
-        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
 
         $this->actingAs($user)
-            ->post(route('operasi.input.star-stop.store'), [
+            ->post(route('operasi.pengusahaan.star-stop.store'), [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine->id,
                 'status_code_id' => $status->id,
@@ -86,8 +86,8 @@ class StarStopInputTest extends TestCase
         $engine = Machine::factory()->forUnit($unit)->create();
         $status = UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
-            ->post(route('operasi.input.star-stop.store'), [
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->post(route('operasi.pengusahaan.star-stop.store'), [
                 'unit_id' => $unit->id,
                 'engine_id' => $engine->id,
                 'status_code_id' => $status->id,
@@ -105,8 +105,8 @@ class StarStopInputTest extends TestCase
         $foreignEngine = Machine::factory()->forUnit($foreignUnit)->create();
         $status = UnitStatusCode::factory()->create(['unit_id' => null, 'category' => StatusCodeCategory::Operasi]);
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $ownUnit))
-            ->post(route('operasi.input.star-stop.store'), [
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $ownUnit))
+            ->post(route('operasi.pengusahaan.star-stop.store'), [
                 'unit_id' => $foreignUnit->id,
                 'engine_id' => $foreignEngine->id,
                 'status_code_id' => $status->id,
@@ -130,8 +130,8 @@ class StarStopInputTest extends TestCase
             'status_code_id' => $status->id,
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))
-            ->delete(route('operasi.input.star-stop.destroy', $log))
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))
+            ->delete(route('operasi.pengusahaan.star-stop.destroy', $log))
             ->assertRedirect();
 
         $this->assertDatabaseMissing('engine_status_logs', ['id' => $log->id]);

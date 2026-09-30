@@ -166,8 +166,13 @@ class FieldRoleTest extends TestCase
             }
 
             // Every other Input Operasi page opens too, each through its own permission.
-            foreach (['daily-report', 'star-stop', 'feeder', 'auxiliary', 'fuel-receipt', 'kondisi-abnormal', 'resource-pembangkit', 'material-peralatan', 'permit-to-work', 'checklist-commissioning-mesin'] as $page) {
+            foreach (['kondisi-abnormal', 'material-peralatan', 'permit-to-work', 'checklist-commissioning-mesin'] as $page) {
                 $this->actingAs($user)->get(route("operasi.input.{$page}.index", $query))->assertOk();
+            }
+
+            // The daily inputs moved to Pengusahaan Operasi; operators still reach them through their page permission.
+            foreach (['daily-report', 'star-stop', 'feeder', 'auxiliary', 'fuel-receipt', 'resource-pembangkit'] as $page) {
+                $this->actingAs($user)->get(route("operasi.pengusahaan.{$page}.index", $query))->assertOk();
             }
 
             // The Koordinator's hub stays closed, and the HAR pages belong to Harmes / Harlist

@@ -15,20 +15,20 @@ import {
     Zap,
 } from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
-import auxiliary from '@/routes/operasi/input/auxiliary';
 import checklistCommissioningMesin from '@/routes/operasi/input/checklist-commissioning-mesin';
-import dailyReport from '@/routes/operasi/input/daily-report';
-import feeder from '@/routes/operasi/input/feeder';
 import flmMonitoring from '@/routes/operasi/input/flm-monitoring';
-import fuelReceipt from '@/routes/operasi/input/fuel-receipt';
 import kondisiAbnormal from '@/routes/operasi/input/kondisi-abnormal';
 import materialPeralatan from '@/routes/operasi/input/material-peralatan';
 import patrolCheckMesin from '@/routes/operasi/input/patrol-check-mesin';
 import permitToWork from '@/routes/operasi/input/permit-to-work';
 import program5s5r from '@/routes/operasi/input/program-5s5r';
-import resourcePembangkit from '@/routes/operasi/input/resource-pembangkit';
-import starStop from '@/routes/operasi/input/star-stop';
 import unsafeCondition from '@/routes/operasi/input/unsafe-condition';
+import auxiliary from '@/routes/operasi/pengusahaan/auxiliary';
+import dailyReport from '@/routes/operasi/pengusahaan/daily-report';
+import feeder from '@/routes/operasi/pengusahaan/feeder';
+import fuelReceipt from '@/routes/operasi/pengusahaan/fuel-receipt';
+import resourcePembangkit from '@/routes/operasi/pengusahaan/resource-pembangkit';
+import starStop from '@/routes/operasi/pengusahaan/star-stop';
 
 type Entry = [
     key: string,
@@ -185,6 +185,9 @@ const ENTRIES: Entry[] = [
     ],
 ];
 
+/** Pages that moved to Akses 2 — Pengusahaan Operasi (pages/pengusahaan/operasi/{page}). */
+const PENGUSAHAAN_PAGES = ['daily-report', 'star-stop', 'feeder-readings', 'auxiliary-readings', 'fuel-receipts', 'resource-pembangkit'];
+
 export const OPERASI_MENUS: MobileMenu[] = ENTRIES.map(
     ([key, title, short, description, icon, tone, href, page]) => ({
         key: `operasi-${key}`,
@@ -195,8 +198,9 @@ export const OPERASI_MENUS: MobileMenu[] = ENTRIES.map(
         icon,
         tone,
         href,
-        component: `operasi/input/${page}/index`,
+        component: PENGUSAHAAN_PAGES.includes(page) ? `pengusahaan/operasi/${page}/index` : `operasi/input/${page}/index`,
         permission: `operasi.lapangan.${key}`,
-        coveredBy: 'operasi.input.view',
+        // TL & Staf reach the Pengusahaan pages from their own hub, the Koordinator the rest.
+        coveredBy: PENGUSAHAAN_PAGES.includes(page) ? 'operasi.pengusahaan.view' : 'operasi.input.view',
     }),
 );

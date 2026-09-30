@@ -37,7 +37,7 @@ class PresensiController extends Controller
         $today = $shift !== null ? $this->recorder->presenceOn($employee, $shift['work_date']) : null;
         $open = $employee !== null ? $this->recorder->openPresence($employee) : null;
 
-        return Inertia::render('operator/presensi', [
+        return Inertia::render('operator/presensi/index', [
             'employee' => $employee === null ? null : [
                 'name' => $employee->name,
                 'position' => $employee->position,

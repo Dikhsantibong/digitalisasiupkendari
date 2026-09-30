@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import {
     buildDocumentHeader,
     createSheet,
@@ -157,6 +159,8 @@ export default function PdmJadwalPatrolCheckIndex({
     const [rows, setRows] = useState<PatrolCheckRow[]>(initialRows);
     const [meta, setMeta] = useState<MetaState>(initialMeta);
     const [dirty, setDirty] = useState(false);
+    const compact = useCompactLayout();
+    const [mobileEditing, setMobileEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     // Modal States
@@ -849,6 +853,35 @@ return { ...SPECS.cell, fill: baseBg };
                         </div>
                     </div>
 
+                    {compact ? (
+                        <div className="p-3">
+                            <MobileTimelineForm<PatrolCheckRow>
+                                days={days}
+                                rows={rows.filter((row) => !row.is_category_header)}
+                                rowKey={(row) => row.id ?? `new-${rows.indexOf(row)}`}
+                                title={(row) => row.nama || 'Petugas baru'}
+                                sectionOf={(row) => row.kategori}
+                                categories={[{ key: 'jadwal', label: 'Piket', onClass: 'border-sky-600 bg-sky-500 text-white' }]}
+                                isOn={(row, _category, day) => (row.jadwal || []).includes(day)}
+                                onToggle={(row, _category, day) => handleToggleDay(rows.indexOf(row), day)}
+                                details={(row) => (
+                                    <>
+                                        <TimelineField label="Nama" value={row.nama} onChange={(v) => handleUpdateNama(rows.indexOf(row), v)} readOnly={!can_write} />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <TimelineField label="No. HP" value={row.no_hp || ''} onChange={(v) => handleUpdateNoHp(rows.indexOf(row), v)} readOnly={!can_write} />
+                                            <TimelineField label="Target" type="number" value={row.target} onChange={(v) => handleUpdateTarget(rows.indexOf(row), Number(v))} readOnly={!can_write} />
+                                        </div>
+                                    </>
+                                )}
+                                summary={(row) => `${row.no_hp ? `HP ${row.no_hp} · ` : ''}Target ${row.target} · Piket ${(row.jadwal || []).length} hari`}
+                                onRemove={(row) => handleDeleteRow(rows.indexOf(row))}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada petugas piket patrol check."
+                            />
+                        </div>
+                    ) : (
                     <table className="w-full min-w-[1550px] border-collapse text-xs">
                         <thead>
                             <tr className="border-b border-border bg-muted/60 text-muted-foreground">
@@ -1089,6 +1122,7 @@ return { ...SPECS.cell, fill: baseBg };
                             })}
                         </tbody>
                     </table>
+                    )}
                 </div>
 
                 {/* Table Bottom Action: Tambah Personil */}

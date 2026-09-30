@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Award, BatteryCharging, BellRing, BookUser, Boxes, BriefcaseMedical, Building2, CalendarClock, CalendarRange, Cctv, ClipboardCheck, ClipboardList, Clock, Cog, Disc, Droplet, Droplets, FileSpreadsheet, Flame, Fuel, HardHat, LifeBuoy, NotebookPen, Ruler, ShieldAlert, ShieldCheck, Signpost, SquarePen, Timer, UserCheck, UserX, Waves, Wrench, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, Award, BatteryCharging, BellRing, BookUser, Boxes, BriefcaseMedical, Building2, CalendarClock, CalendarRange, Cctv, ClipboardCheck, ClipboardList, Clock, Cog, Disc, Droplet, Droplets, FileSignature, FileSpreadsheet, Flame, Fuel, Gauge, HardHat, LifeBuoy, NotebookPen, Plug, Ruler, ShieldAlert, ShieldCheck, Signpost, SquarePen, Timer, TimerReset, UserCheck, UserX, Waves, Wrench, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import harServiceRequest from '@/routes/har/input/service-request';
 import harWorkOrder from '@/routes/har/input/work-order';
@@ -42,6 +42,13 @@ import k3PengusahaanPatrolSecurity from '@/routes/k3/pengusahaan/patrol-security
 import k3PengusahaanPemeriksaanP3k from '@/routes/k3/pengusahaan/pemeriksaan-p3k';
 import k3PengusahaanTimeFrame from '@/routes/k3/pengusahaan/time-frame';
 import operasiPengusahaan from '@/routes/operasi/pengusahaan';
+import operasiPengusahaanAuxiliary from '@/routes/operasi/pengusahaan/auxiliary';
+import operasiPengusahaanBeritaAcara from '@/routes/operasi/pengusahaan/berita-acara';
+import operasiPengusahaanDailyReport from '@/routes/operasi/pengusahaan/daily-report';
+import operasiPengusahaanFeeder from '@/routes/operasi/pengusahaan/feeder';
+import operasiPengusahaanFuelReceipt from '@/routes/operasi/pengusahaan/fuel-receipt';
+import operasiPengusahaanResourcePembangkit from '@/routes/operasi/pengusahaan/resource-pembangkit';
+import operasiPengusahaanStarStop from '@/routes/operasi/pengusahaan/star-stop';
 
 /**
  * Akses 2 — Pengusahaan (Team Leader & Staf) of Operasi, Pemeliharaan & K3.
@@ -102,6 +109,76 @@ export function pengusahaanComponent(menu: PengusahaanMenu): string {
 }
 
 export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = [
+    {
+        module: 'operasi',
+        section: 'input',
+        title: 'Input Harian',
+        description: 'Produksi kWh harian, pemakaian sendiri, beban puncak, dan konsumsi BBM per mesin.',
+        icon: Gauge,
+        href: operasiPengusahaanDailyReport.index().url,
+        permission: 'operasi.pengusahaan.view',
+        component: 'pengusahaan/operasi/daily-report/index',
+    },
+    {
+        module: 'operasi',
+        section: 'input',
+        title: 'Star-Stop Mesin',
+        description: 'Riwayat start, stop, gangguan, dan status operasional mesin pembangkit.',
+        icon: TimerReset,
+        href: operasiPengusahaanStarStop.index().url,
+        permission: 'operasi.pengusahaan.view',
+        component: 'pengusahaan/operasi/star-stop/index',
+    },
+    {
+        module: 'operasi',
+        section: 'input',
+        title: 'Feeder',
+        description: 'Pembacaan beban, tegangan, arus, dan penyaluran energi per feeder.',
+        icon: Zap,
+        href: operasiPengusahaanFeeder.index().url,
+        permission: 'operasi.pengusahaan.view',
+        component: 'pengusahaan/operasi/feeder-readings/index',
+    },
+    {
+        module: 'operasi',
+        section: 'input',
+        title: 'Pasokan Cadangan',
+        description: 'kWh pasokan cadangan (auxiliary power supply) dan pemakaian listrik internal.',
+        icon: Plug,
+        href: operasiPengusahaanAuxiliary.index().url,
+        permission: 'operasi.pengusahaan.view',
+        component: 'pengusahaan/operasi/auxiliary-readings/index',
+    },
+    {
+        module: 'operasi',
+        section: 'input',
+        title: 'Penerimaan BBM',
+        description: 'Transaksi penerimaan bahan bakar (BBM/Pelumas), sounding tangki, dan volume supply.',
+        icon: Fuel,
+        href: operasiPengusahaanFuelReceipt.index().url,
+        permission: 'operasi.pengusahaan.view',
+        component: 'pengusahaan/operasi/fuel-receipts/index',
+    },
+    {
+        module: 'operasi',
+        section: 'input',
+        title: 'Resource Pembangkit',
+        description: 'Stok awal, pemakaian, penerimaan, dan stok akhir BBM pembangkit per hari.',
+        icon: Droplet,
+        href: operasiPengusahaanResourcePembangkit.index().url,
+        permission: 'operasi.pengusahaan.view',
+        component: 'pengusahaan/operasi/resource-pembangkit/index',
+    },
+    {
+        module: 'operasi',
+        section: 'formulir',
+        title: 'Berita Acara',
+        description: 'Berita acara pemakaian BBM & pelumas bulanan — buat, edit, pratinjau, dan cetak PDF.',
+        icon: FileSignature,
+        href: operasiPengusahaanBeritaAcara.index().url,
+        permission: 'operasi.pengusahaan.view',
+        component: 'pengusahaan/operasi/berita-acara/index',
+    },
     {
         module: 'k3',
         section: 'input',

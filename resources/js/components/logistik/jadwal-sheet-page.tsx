@@ -3,11 +3,13 @@ import { Download, FileSpreadsheet, ImagePlus, Plus, Save, Trash2, X } from 'luc
 import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
+import { LogistikSheetMobile } from '@/components/logistik/jadwal-sheet-mobile';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dailyProgress, downloadLogistikJadwalWorkbook, jadwalProgress, maturityLevel, patrolSummary, rekapAbsensi } from '@/lib/logistik-jadwal-excel';
 import type { JadwalColumn, JadwalRow, JadwalSection, JadwalSheetDef } from '@/lib/logistik-jadwal-excel';
 import { dashboard } from '@/routes';
@@ -60,6 +62,7 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
+    const compact = useCompactLayout();
 
     const routes = sheet.menu === 'input' ? inputSheet : jadwalSheet;
     const menuIndex = sheet.menu === 'input' ? logistikInput.index().url : logistikJadwal.index().url;
@@ -826,6 +829,43 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
             </tbody>
         </table>
     );
+
+    // Phones get a per-date card layout of the same sheet (same state & save).
+    if (compact) {
+        return (
+            <>
+                <Head title={sheet.title} />
+                <LogistikSheetMobile
+                    sheet={sheet}
+                    sections={sections}
+                    codes={codes}
+                    columns={columns}
+                    rows={rows}
+                    unit={unit}
+                    filters={filters}
+                    options={options}
+                    periodLabel={periodLabel}
+                    hasSaved={has_saved}
+                    canWrite={can_write}
+                    dirty={dirty}
+                    saving={saving}
+                    exporting={exporting}
+                    uploads={uploads}
+                    onVisit={visit}
+                    onSetCode={setCode}
+                    onUpdateRow={updateRow}
+                    onAddRow={addRow}
+                    onRemoveRow={removeRow}
+                    onAddPhotos={addPhotos}
+                    onRemoveKeptPhoto={removeKeptPhoto}
+                    onRemoveNewPhoto={removeNewPhoto}
+                    onSave={save}
+                    onExportExcel={exportExcel}
+                    pdfUrl={routes.pdf(sheet.key, { query }).url}
+                />
+            </>
+        );
+    }
 
     const legend: Record<JadwalSheetDef['layout'], string> = {
         kegiatan: 'Klik sel tanggal: kosong → 1 (rencana) → ✓ (realisasi). Target kosong = jumlah rencana.',

@@ -5,6 +5,7 @@ namespace App\Services\Operator;
 use App\Enums\ScheduleGroupType;
 use App\Models\AttendanceCode;
 use App\Models\Employee;
+use App\Models\EmployeePresence;
 use App\Models\Holiday;
 use App\Models\Unit;
 use App\Models\WorkSchedule;
@@ -53,7 +54,11 @@ class AbsensiDocumentBuilder
             }
         }
 
-        $recap = $this->calculator->summarise($entries, $codeById);
+        $presences = EmployeePresence::query()
+            ->whereIn('employee_id', $employees->pluck('id'))
+            ->whereYear('work_date', $year)->whereMonth('work_date', $month)
+            ->get();
+        $recap = $this->calculator->summarise($entries, $codeById, $presences);
 
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
         $holidayDates = Holiday::query()->whereYear('date', $year)->whereMonth('date', $month)->get(['date']);
@@ -87,6 +92,10 @@ class AbsensiDocumentBuilder
                 'regu' => $e->regu,
                 'cells' => $cells[$e->id] ?? [],
                 'recap' => $recap['per_employee'][$e->id]['counts'] ?? [],
+                'hadir' => $recap['per_employee'][$e->id]['hadir'] ?? 0,
+                'terlambat' => $recap['per_employee'][$e->id]['terlambat'] ?? 0,
+                'tidak_hadir' => $recap['per_employee'][$e->id]['tidak_hadir'] ?? 0,
+                'status' => $recap['per_employee'][$e->id]['days'] ?? [],
                 'percent' => $recap['per_employee'][$e->id]['percent'] ?? null,
             ])->all(),
             'codes' => $codes->map(fn (AttendanceCode $c): array => ['code' => $c->code, 'label' => $c->label])->all(),
