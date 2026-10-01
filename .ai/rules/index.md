@@ -23,6 +23,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Logistik/** | .ai/rules/logistik.md |
 | resources/js/layouts/mobile/** | .ai/rules/mobile.md |
 | app/Models/** | .ai/rules/models.md |
+| app/Services/Monitoring/** | .ai/rules/monitoring.md |
 | app/Services/Notifications/** | .ai/rules/notifications.md |
 | app/Services/Operasi/** | .ai/rules/operasi.md |
 | resources/js/pages/operator/** | .ai/rules/operator.md |

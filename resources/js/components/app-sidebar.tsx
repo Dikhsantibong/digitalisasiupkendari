@@ -9,6 +9,7 @@ import {
     Database,
     Factory,
     FileBarChart,
+    FileCheck2,
     Flame,
     FileCog,
     Fuel,
@@ -73,6 +74,7 @@ import k3Monitoring from '@/routes/k3/monitoring';
 import logistikInput from '@/routes/logistik/input';
 import logistikJadwal from '@/routes/logistik/jadwal';
 import logistikLaporan from '@/routes/logistik/laporan';
+import monitoringRoutes from '@/routes/monitoring';
 import documentTemplate from '@/routes/operasi/document-template';
 import operasiInput from '@/routes/operasi/input';
 import operasiJadwal from '@/routes/operasi/jadwal';
@@ -116,6 +118,32 @@ export function AppSidebar() {
             items: [
                 { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
             ],
+        },
+        // Monitoring lintas modul (Super Admin, atau role yang diberi monitoring.view).
+        {
+            label: 'Monitoring',
+            items: [
+                can('monitoring.view') && {
+                    title: 'Ringkasan Monitoring',
+                    href: monitoringRoutes.index(),
+                    icon: Gauge,
+                },
+                can('monitoring.view') && {
+                    title: 'Kelengkapan Input',
+                    href: monitoringRoutes.input(),
+                    icon: ClipboardCheck,
+                },
+                can('monitoring.view') && {
+                    title: 'Verifikasi Laporan',
+                    href: monitoringRoutes.laporan(),
+                    icon: FileCheck2,
+                },
+                can('activity_log.view_any') && {
+                    title: 'Log Aktivitas',
+                    href: activityLogs.index(),
+                    icon: History,
+                },
+            ].filter(Boolean) as NavGroup['items'],
         },
         {
             label: 'Master Data',
@@ -326,11 +354,6 @@ export function AppSidebar() {
                     title: 'Role & Akses',
                     href: roles.index(),
                     icon: ShieldCheck,
-                },
-                can('activity_log.view_any') && {
-                    title: 'Log Aktivitas',
-                    href: activityLogs.index(),
-                    icon: History,
                 },
                 can('setting.manage') && {
                     title: 'Lokasi Absensi',

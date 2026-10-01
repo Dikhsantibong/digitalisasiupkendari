@@ -44,4 +44,12 @@ class ReportWorkflowLog extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * @return BelongsTo<ReportWorkflow, $this>
+     */
+    public function workflow(): BelongsTo
+    {
+        return $this->belongsTo(ReportWorkflow::class, 'report_workflow_id');
+    }
 }

@@ -177,6 +177,8 @@ enum PermissionName: string
 
     case SettingManage = 'setting.manage';
 
+    case MonitoringView = 'monitoring.view';
+
     case NotifikasiJadwal = 'notifikasi.jadwal';
     case NotifikasiAbsensi = 'notifikasi.absensi';
     case NotifikasiKejadian = 'notifikasi.kejadian';
@@ -341,6 +343,8 @@ enum PermissionName: string
 
             self::SettingManage => PermissionGroup::System,
 
+            self::MonitoringView => PermissionGroup::Monitoring,
+
             self::NotifikasiJadwal,
             self::NotifikasiAbsensi,
             self::NotifikasiKejadian,
@@ -504,6 +508,8 @@ enum PermissionName: string
             self::ReportProjectExport => 'Mengekspor laporan project',
 
             self::SettingManage => 'Mengelola pengaturan aplikasi',
+
+            self::MonitoringView => 'Melihat menu Monitoring (kelengkapan input & verifikasi laporan unit yang dapat diakses)',
 
             self::NotifikasiJadwal => 'Menerima pengingat jadwal modul (ringkasan harian & jadwal pribadi)',
             self::NotifikasiAbsensi => 'Menerima pengingat absen masuk / pulang & shift besok',

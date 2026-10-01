@@ -2,6 +2,7 @@
 
 use App\Enums\ReportModule;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Monitoring\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReportWorkflowController;
@@ -11,6 +12,13 @@ Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    // Monitoring (Super Admin / monitoring.view): kelengkapan input & verifikasi laporan unit yang dapat diakses.
+    Route::prefix('monitoring')->name('monitoring.')->group(function (): void {
+        Route::get('/', [MonitoringController::class, 'index'])->name('index');
+        Route::get('kelengkapan-input', [MonitoringController::class, 'input'])->name('input');
+        Route::get('verifikasi-laporan', [MonitoringController::class, 'laporan'])->name('laporan');
+    });
 
     // Notifikasi milik akun yang login (lonceng, halaman Notifikasi, preferensi, push ke perangkat).
     Route::prefix('notifikasi')->name('notifications.')->group(function (): void {
