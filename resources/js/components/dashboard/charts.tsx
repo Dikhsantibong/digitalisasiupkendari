@@ -89,7 +89,7 @@ export function Panel({
     return (
         <div
             className={cn(
-                'flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-xs',
+                'flex min-w-0 flex-col gap-3 rounded-md border border-border bg-card p-4',
                 className,
             )}
         >

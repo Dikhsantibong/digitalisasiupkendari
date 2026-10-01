@@ -107,7 +107,7 @@ class LaporanDocumentController extends Controller
                 'month' => $month,
                 'year' => $year,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiLaporanView) && $workflow['editable'],
+            'can_write' => $user->hasPermissionTo(PermissionName::OperasiLaporanView) && ! $user->isReadOnly() && $workflow['editable'],
             'workflow' => $workflow,
         ]);
     }

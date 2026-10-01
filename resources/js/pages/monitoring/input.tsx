@@ -79,7 +79,7 @@ export default function MonitoringInput({ filters, options, period_label, groups
                     </label>
                 </MonitoringFilterBar>
 
-                <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 md:flex-row md:items-center">
+                <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-4 md:flex-row md:items-center">
                     <div className="flex items-center gap-3 md:w-64">
                         <span className="text-3xl font-bold text-foreground tabular-nums">{percent === null ? '—' : `${percent}%`}</span>
                         <span className="text-[12px] leading-snug text-muted-foreground">
@@ -106,8 +106,8 @@ export default function MonitoringInput({ filters, options, period_label, groups
                             onClick={() => setGroup(item.key)}
                             aria-pressed={group === item.key}
                             className={cn(
-                                'flex h-9 shrink-0 items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium whitespace-nowrap transition',
-                                group === item.key ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:bg-muted',
+                                'flex h-9 shrink-0 items-center gap-2 rounded-md border px-3.5 text-[13px] font-medium whitespace-nowrap transition',
+                                group === item.key ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-muted',
                             )}
                         >
                             {item.label}
@@ -118,7 +118,7 @@ export default function MonitoringInput({ filters, options, period_label, groups
                     ))}
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="overflow-hidden rounded-md border border-border bg-card">
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse text-[13px]" data-keep-table>
                             <thead>
@@ -200,7 +200,7 @@ export default function MonitoringInput({ filters, options, period_label, groups
                                             <PercentPill percent={openUnit.groups[g.key] ?? null} current={current} />
                                         </div>
                                         <PercentBar percent={openUnit.groups[g.key] ?? null} />
-                                        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+                                        <ul className="flex flex-col divide-y divide-border rounded-md border border-border">
                                             {entries
                                                 .filter((entry) => entry.group === g.key)
                                                 .map((entry) => {

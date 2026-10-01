@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Dashboard\DashboardDummyData;
 use App\Support\Indonesian;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -27,9 +28,14 @@ use Inertia\Response;
  */
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
+
+        // Kantor induk UP Kendari & Manager UL land on the Portal Pemantauan.
+        if ($user->usesPortal()) {
+            return redirect()->route('portal.index');
+        }
 
         /** @var Collection<int, Unit> $units */
         $units = Unit::query()->visibleTo($user)->with('serviceUnit:id,name')->orderBy('name')->get();

@@ -27,6 +27,10 @@ export type Auth = {
     roles: AuthRole[];
     isSuperAdmin: boolean;
     hasGlobalAccess: boolean;
+    /** Portal Pemantauan layout (kantor induk UP Kendari & Manager UL). */
+    usesPortal: boolean;
+    /** View-only account: saving, changing and deleting are refused by the server. */
+    readOnly: boolean;
 };
 
 export type Passkey = {

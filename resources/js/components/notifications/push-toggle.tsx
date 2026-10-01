@@ -97,13 +97,13 @@ export function PushToggle({ compact = false }: { compact?: boolean }) {
     return (
         <div
             className={cn(
-                'flex gap-3 rounded-xl border',
+                'flex gap-3 rounded-md border',
                 compact ? 'items-center border-primary/20 bg-primary/5 p-2.5' : 'flex-col border-border bg-card p-4 sm:flex-row sm:items-center',
             )}
         >
             <span
                 className={cn(
-                    'flex shrink-0 items-center justify-center rounded-xl',
+                    'flex shrink-0 items-center justify-center rounded-md',
                     compact ? 'size-9' : 'size-11',
                     state === 'subscribed' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-primary/10 text-primary',
                 )}

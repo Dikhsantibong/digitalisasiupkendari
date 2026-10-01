@@ -63,7 +63,7 @@ export default function NotificationsIndex({ notifications, filters, unread_by_m
 
                 <PushToggle />
 
-                <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-3 md:p-4">
+                <section className="flex flex-col gap-3 rounded-md border border-border bg-card p-3 md:p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex rounded-lg bg-muted p-1" role="tablist">
                             {(['all', 'unread'] as const).map((status) => (
@@ -119,7 +119,7 @@ export default function NotificationsIndex({ notifications, filters, unread_by_m
 
                     {notifications.data.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 py-12 text-center">
-                            <span className="flex size-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                            <span className="flex size-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
                                 <Bell className="size-6" />
                             </span>
                             <p className="text-[13px] text-muted-foreground">
@@ -169,7 +169,7 @@ export default function NotificationsIndex({ notifications, filters, unread_by_m
                     )}
                 </section>
 
-                <section className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-4">
+                <section className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
                     <div>
                         <h2 className="text-[15px] font-semibold text-foreground">Pengaturan pengingat</h2>
                         <p className="text-[13px] text-muted-foreground">Berlaku untuk akun Anda di semua perangkat.</p>
@@ -180,7 +180,7 @@ export default function NotificationsIndex({ notifications, filters, unread_by_m
                             <label
                                 key={category.key}
                                 className={cn(
-                                    'flex items-start gap-3 rounded-xl border border-border p-3',
+                                    'flex items-start gap-3 rounded-md border border-border p-3',
                                     category.allowed ? 'cursor-pointer hover:bg-muted/40' : 'opacity-60',
                                 )}
                             >

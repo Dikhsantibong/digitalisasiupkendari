@@ -56,7 +56,7 @@ export default function AbsensiMeetingPage({ meeting }: Props) {
             <Head title={`Absensi — ${meeting.acara}`} />
             <div className="min-h-svh bg-muted/40 px-4 py-6 sm:py-10">
                 <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-                    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                    <div className="overflow-hidden rounded-md border border-border bg-card">
                         <div className="flex flex-col items-center gap-2 bg-primary px-5 py-5 text-center text-primary-foreground">
                             <img
                                 src="/logo/mkp.jpg"
@@ -100,7 +100,7 @@ export default function AbsensiMeetingPage({ meeting }: Props) {
                     </div>
 
                     {hadir ? (
-                        <div className="flex flex-col items-center gap-3 rounded-2xl border border-emerald-500/40 bg-card px-5 py-8 text-center shadow-sm">
+                        <div className="flex flex-col items-center gap-3 rounded-md border border-emerald-500/40 bg-card px-5 py-8 text-center">
                             <CheckCircle2 className="size-16 text-emerald-500" />
                             <div>
                                 <p className="text-lg font-semibold text-foreground">
@@ -127,7 +127,7 @@ export default function AbsensiMeetingPage({ meeting }: Props) {
                             </Button>
                         </div>
                     ) : meeting.dibuka ? (
-                        <div className="rounded-2xl border border-border bg-card px-5 py-5 shadow-sm">
+                        <div className="rounded-md border border-border bg-card px-5 py-5">
                             <h2 className="mb-1 text-base font-semibold text-foreground">
                                 Form Absensi
                             </h2>
@@ -140,7 +140,7 @@ export default function AbsensiMeetingPage({ meeting }: Props) {
                             />
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-5 py-8 text-center shadow-sm">
+                        <div className="flex flex-col items-center gap-3 rounded-md border border-border bg-card px-5 py-8 text-center">
                             <Lock className="size-12 text-muted-foreground" />
                             <p className="font-semibold text-foreground">
                                 Absensi sudah ditutup

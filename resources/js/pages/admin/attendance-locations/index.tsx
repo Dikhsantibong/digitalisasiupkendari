@@ -83,7 +83,7 @@ function LocationCard({ unit }: { unit: UnitLocation }) {
     };
 
     return (
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
+        <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-4">
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                     <p className="truncate text-[14px] font-semibold text-foreground">

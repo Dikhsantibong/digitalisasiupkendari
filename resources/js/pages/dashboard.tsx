@@ -3,13 +3,10 @@ import {
     Activity,
     ArrowDownRight,
     ArrowUpRight,
-    Building2,
     Factory,
     FlaskConical,
-    Info,
     Package,
     ShieldCheck,
-    Users,
     Wrench,
     Zap,
 } from 'lucide-react';
@@ -35,7 +32,9 @@ import type {
     ValueFormat,
 } from '@/components/dashboard/charts';
 import { EmptyState } from '@/components/empty-state';
+import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
+import { SummaryCard } from '@/components/summary-card';
 import {
     Table,
     TableBody,
@@ -206,25 +205,25 @@ const MODULES: Record<
         title: 'Pemeliharaan (HAR)',
         subtitle: 'Work order, service request & biaya',
         icon: Wrench,
-        accent: 'text-amber-500',
+        accent: 'text-chart-1',
     },
     k3: {
         title: 'K3 & Keamanan',
         subtitle: 'Kegiatan, inspeksi, sertifikat & patroli',
         icon: ShieldCheck,
-        accent: 'text-emerald-500',
+        accent: 'text-chart-1',
     },
     logistik: {
         title: 'Logistik',
         subtitle: 'Persediaan material, BBM & pelumas',
         icon: Package,
-        accent: 'text-violet-500',
+        accent: 'text-chart-1',
     },
     pdm: {
         title: 'Predictive Maintenance',
         subtitle: 'Kondisi aset & monitoring prediktif',
         icon: Activity,
-        accent: 'text-rose-500',
+        accent: 'text-chart-1',
     },
 };
 
@@ -233,47 +232,9 @@ const MODULE_ORDER: ModuleKey[] = ['operasi', 'har', 'k3', 'logistik', 'pdm'];
 
 function DummyTag() {
     return (
-        <span className="rounded-full border border-amber-300/70 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-amber-700 uppercase dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300">
+        <span className="rounded-sm border border-amber-300/70 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-amber-800 uppercase">
             Data dummy
         </span>
-    );
-}
-
-function HeroStat({
-    icon: Icon,
-    label,
-    value,
-    unit,
-    hint,
-}: {
-    icon: LucideIcon;
-    label: string;
-    value: ReactNode;
-    unit?: string;
-    hint?: string;
-}) {
-    return (
-        <div className="flex items-center gap-3 rounded-lg bg-white/10 px-3.5 py-3 ring-1 ring-white/15 backdrop-blur-sm">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-white/15">
-                <Icon className="size-4.5" />
-            </span>
-            <div className="min-w-0">
-                <p className="truncate text-[11px] font-medium tracking-wide text-white/70 uppercase">
-                    {label}
-                </p>
-                <p className="text-xl leading-tight font-semibold tabular-nums">
-                    {value}
-                    {unit && (
-                        <span className="ml-1 text-xs font-normal text-white/70">
-                            {unit}
-                        </span>
-                    )}
-                </p>
-                {hint && (
-                    <p className="truncate text-[11px] text-white/60">{hint}</p>
-                )}
-            </div>
-        </div>
     );
 }
 
@@ -282,8 +243,8 @@ function KpiTile({ kpi, accent }: { kpi: Kpi; accent: string }) {
     const Arrow = kpi.delta >= 0 ? ArrowUpRight : ArrowDownRight;
 
     return (
-        <div className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border bg-card p-3.5 shadow-xs">
-            <p className="truncate text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+        <div className="flex min-w-0 flex-col gap-1.5 rounded-md border border-border bg-card p-3.5">
+            <p className="truncate text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 {kpi.label}
             </p>
             <div className="flex items-end justify-between gap-2">
@@ -297,10 +258,10 @@ function KpiTile({ kpi, accent }: { kpi: Kpi; accent: string }) {
                 </p>
                 <span
                     className={cn(
-                        'inline-flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums',
+                        'inline-flex shrink-0 items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[12px] font-semibold tabular-nums',
                         improving
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
+                            ? 'bg-emerald-500/10 text-emerald-700'
+                            : 'bg-red-500/10 text-red-700',
                     )}
                 >
                     <Arrow className="size-3" />
@@ -311,7 +272,7 @@ function KpiTile({ kpi, accent }: { kpi: Kpi; accent: string }) {
                 </span>
             </div>
             <Sparkline values={kpi.spark} className={accent} />
-            <p className="text-[10.5px] text-muted-foreground">vs bulan lalu</p>
+            <p className="text-xs text-muted-foreground">vs bulan lalu</p>
         </div>
     );
 }
@@ -336,19 +297,12 @@ function ModuleSection({
             className="flex scroll-mt-20 flex-col gap-3"
         >
             <div className="flex flex-wrap items-center gap-3 border-b border-border pb-2">
-                <span
-                    className={cn(
-                        'flex size-8 items-center justify-center rounded-md bg-current/10',
-                        meta.accent,
-                    )}
-                >
-                    <Icon className="size-4" />
-                </span>
+                <Icon className="size-5 shrink-0 text-primary" />
                 <div className="min-w-0">
-                    <h2 className="text-[15px] leading-tight font-semibold text-foreground">
+                    <h2 className="text-base leading-tight font-semibold text-foreground">
                         {meta.title}
                     </h2>
-                    <p className="text-[11.5px] text-muted-foreground">
+                    <p className="text-[13px] text-muted-foreground">
                         {meta.subtitle}
                     </p>
                 </div>
@@ -381,12 +335,12 @@ function CompactTable({
         <div className="-mx-4 -mb-4 overflow-x-auto border-t border-border">
             <Table>
                 <TableHeader>
-                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                    <TableRow className="bg-secondary hover:bg-secondary">
                         {head.map((h) => (
                             <TableHead
                                 key={h.label}
                                 className={cn(
-                                    'h-8 text-[11px] font-semibold tracking-wide uppercase',
+                                    'h-9 text-xs font-semibold tracking-wide uppercase',
                                     h.align === 'right' && 'text-right',
                                 )}
                             >
@@ -395,7 +349,7 @@ function CompactTable({
                         ))}
                     </TableRow>
                 </TableHeader>
-                <TableBody className="text-[12.5px]">{children}</TableBody>
+                <TableBody className="text-[13px]">{children}</TableBody>
             </Table>
         </div>
     );
@@ -429,90 +383,56 @@ export default function Dashboard(props: Props) {
         <>
             <Head title="Dashboard" />
             <div className="flex flex-1 flex-col gap-5 p-4 md:p-6">
-                {/* Hero */}
-                <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-chart-5 via-[#0b6aa2] to-chart-1 p-5 text-white shadow-sm md:p-6">
-                    <div className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-white/10 blur-2xl" />
-                    <div className="pointer-events-none absolute -bottom-28 left-1/3 size-72 rounded-full bg-chart-4/20 blur-3xl" />
-                    <div className="relative flex flex-col gap-5">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                            <div className="flex flex-col gap-1">
-                                <p className="text-[11px] font-semibold tracking-[0.18em] text-chart-4 uppercase">
-                                    PLN UP Kendari
-                                </p>
-                                <h1 className="text-2xl font-semibold tracking-tight md:text-[26px]">
-                                    {isExecutive
-                                        ? 'Dashboard Eksekutif'
-                                        : `Dashboard ${visibleModules[0] ? MODULES[visibleModules[0]].title : 'Unit'}`}
-                                </h1>
-                                <p className="text-[13px] text-white/75">
-                                    {hasGlobalAccess
-                                        ? 'Ringkasan kinerja seluruh unit pembangkit'
-                                        : 'Ringkasan sesuai penugasan Anda'}
-                                    {roleLabel && <> · {roleLabel}</>}
-                                </p>
-                            </div>
-                            <div className="flex flex-col items-start gap-1.5 md:items-end">
-                                <span className="rounded-full bg-white/15 px-3 py-1 text-[12px] font-medium ring-1 ring-white/20">
-                                    Periode {periodLabel}
-                                </span>
-                                {isDummy && (
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-white/70">
-                                        <Info className="size-3" />
-                                        Grafik modul masih menggunakan data
-                                        dummy
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                            <HeroStat
-                                icon={Factory}
-                                label="Unit Pembangkit"
-                                value={summary.units}
-                                hint={`${summary.activeUnits} unit aktif`}
-                            />
-                            <HeroStat
-                                icon={Building2}
-                                label="Unit Layanan"
-                                value={summary.serviceUnits}
-                            />
-                            <HeroStat
-                                icon={Zap}
-                                label="Kapasitas Terpasang"
-                                value={summary.installedCapacity.toLocaleString(
-                                    'id-ID',
-                                )}
-                                unit="MW"
-                                hint={
-                                    summary.installedCapacity === 0
-                                        ? 'Data kapasitas belum diisi'
-                                        : undefined
-                                }
-                            />
-                            <HeroStat
-                                icon={Users}
-                                label="Pengguna"
-                                value={summary.users ?? '—'}
-                                hint={
-                                    summary.users === null
-                                        ? 'Di luar hak akses Anda'
-                                        : undefined
-                                }
-                            />
-                        </div>
-                    </div>
+                <PageHeader
+                    title={
+                        isExecutive
+                            ? 'Dashboard Eksekutif'
+                            : `Dashboard ${visibleModules[0] ? MODULES[visibleModules[0]].title : 'Unit'}`
+                    }
+                    description={`${hasGlobalAccess ? 'Ringkasan kinerja seluruh unit pembangkit' : 'Ringkasan sesuai penugasan Anda'}${roleLabel ? ` · ${roleLabel}` : ''} · Periode ${periodLabel}`}
+                />
+
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    <SummaryCard
+                        label="Unit Pembangkit"
+                        value={summary.units}
+                        hint={`${summary.activeUnits} unit aktif`}
+                    />
+                    <SummaryCard
+                        label="Unit Layanan"
+                        value={summary.serviceUnits}
+                    />
+                    <SummaryCard
+                        label="Kapasitas Terpasang"
+                        value={summary.installedCapacity.toLocaleString(
+                            'id-ID',
+                        )}
+                        unit="MW"
+                        hint={
+                            summary.installedCapacity === 0
+                                ? 'Data kapasitas belum diisi'
+                                : undefined
+                        }
+                    />
+                    <SummaryCard
+                        label="Pengguna"
+                        value={summary.users ?? '—'}
+                        hint={
+                            summary.users === null
+                                ? 'Di luar hak akses Anda'
+                                : undefined
+                        }
+                    />
                 </div>
 
                 {isDummy && visibleModules.length > 0 && (
-                    <p className="-mt-2 flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
-                        <FlaskConical className="size-3.5 text-amber-500" />
-                        Catatan: angka dan grafik pada setiap modul di bawah
-                        masih{' '}
-                        <span className="font-semibold text-amber-600 dark:text-amber-400">
-                            data dummy
-                        </span>{' '}
-                        untuk pratinjau tampilan, belum terhubung ke data
-                        transaksi.
+                    <p className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+                        <FlaskConical className="mt-0.5 size-4 shrink-0 text-amber-700" />
+                        <span>
+                            Angka dan grafik pada setiap modul di bawah masih{' '}
+                            <b>data dummy</b> untuk pratinjau tampilan, belum
+                            terhubung ke data transaksi.
+                        </span>
                     </p>
                 )}
 
@@ -533,7 +453,7 @@ export default function Dashboard(props: Props) {
                                         <a
                                             key={m.key}
                                             href={`#modul-${m.key}`}
-                                            className="group flex flex-col items-center gap-1.5 rounded-lg border border-transparent p-2 text-center transition hover:border-border hover:bg-muted/50"
+                                            className="group flex flex-col items-center gap-1.5 rounded-md border border-transparent p-2 text-center transition hover:border-border hover:bg-muted/50"
                                         >
                                             <Ring
                                                 value={m.value}
@@ -542,7 +462,7 @@ export default function Dashboard(props: Props) {
                                             <p className="text-[12.5px] font-semibold text-foreground">
                                                 {m.label}
                                             </p>
-                                            <p className="text-[10.5px] text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground">
                                                 {m.caption}
                                             </p>
                                         </a>
@@ -561,7 +481,7 @@ export default function Dashboard(props: Props) {
                 )}
 
                 {isExecutive && (
-                    <nav className="sticky top-2 z-20 -my-1 flex gap-1.5 overflow-x-auto rounded-lg border border-border bg-card/90 p-1.5 shadow-xs backdrop-blur">
+                    <nav className="sticky top-2 z-20 -my-1 flex gap-1.5 overflow-x-auto rounded-md border border-border bg-card p-1.5">
                         {visibleModules.map((key) => {
                             const meta = MODULES[key];
                             const Icon = meta.icon;
@@ -572,9 +492,7 @@ export default function Dashboard(props: Props) {
                                     href={`#modul-${key}`}
                                     className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                 >
-                                    <Icon
-                                        className={cn('size-3.5', meta.accent)}
-                                    />
+                                    <Icon className="size-3.5 text-primary" />
                                     {meta.title}
                                 </a>
                             );
@@ -584,7 +502,7 @@ export default function Dashboard(props: Props) {
                                 href="#modul-unit"
                                 className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
-                                <Factory className="size-3.5 text-slate-500" />
+                                <Factory className="size-3.5 text-primary" />
                                 Unit & Aktivitas
                             </a>
                         )}
@@ -769,7 +687,7 @@ export default function Dashboard(props: Props) {
                                 colors={[
                                     'text-chart-1',
                                     'text-rose-500',
-                                    'text-violet-500',
+                                    'text-chart-2',
                                     'text-amber-500',
                                 ]}
                             />
@@ -820,7 +738,7 @@ export default function Dashboard(props: Props) {
                             >
                                 {har.backlog.map((w) => (
                                     <TableRow key={w.code}>
-                                        <TableCell className="font-mono text-[11.5px] font-medium">
+                                        <TableCell className="font-mono text-[13px] font-medium">
                                             {w.code}
                                         </TableCell>
                                         <TableCell>{w.unit}</TableCell>
@@ -925,7 +843,7 @@ export default function Dashboard(props: Props) {
                         >
                             <BarsChart
                                 data={logistik.fuel_flow}
-                                colors={['text-violet-500', 'text-chart-4']}
+                                colors={['text-chart-2', 'text-chart-4']}
                             />
                         </Panel>
                         <Panel
@@ -949,7 +867,7 @@ export default function Dashboard(props: Props) {
                                 data={logistik.category}
                                 centerLabel="Item"
                                 colors={[
-                                    'text-violet-500',
+                                    'text-chart-2',
                                     'text-chart-1',
                                     'text-chart-4',
                                     'text-emerald-500',
@@ -973,7 +891,7 @@ export default function Dashboard(props: Props) {
                             >
                                 {logistik.critical.map((m) => (
                                     <TableRow key={m.code}>
-                                        <TableCell className="font-mono text-[11.5px]">
+                                        <TableCell className="font-mono text-[13px]">
                                             {m.code}
                                         </TableCell>
                                         <TableCell className="font-medium">
@@ -1111,14 +1029,14 @@ export default function Dashboard(props: Props) {
                         className="flex scroll-mt-20 flex-col gap-3"
                     >
                         <div className="flex flex-wrap items-center gap-3 border-b border-border pb-2">
-                            <span className="flex size-8 items-center justify-center rounded-md bg-slate-500/10 text-slate-500">
+                            <span className="flex size-5 items-center justify-center text-primary">
                                 <Factory className="size-4" />
                             </span>
                             <div>
-                                <h2 className="text-[15px] leading-tight font-semibold text-foreground">
+                                <h2 className="text-base leading-tight font-semibold text-foreground">
                                     Unit & Aktivitas Sistem
                                 </h2>
-                                <p className="text-[11.5px] text-muted-foreground">
+                                <p className="text-[13px] text-muted-foreground">
                                     Data aktual dari master unit dan log
                                     aktivitas
                                 </p>
@@ -1150,7 +1068,7 @@ export default function Dashboard(props: Props) {
                                             {statusBreakdown.map((s) => (
                                                 <span
                                                     key={s.status}
-                                                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11.5px]"
+                                                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[13px]"
                                                 >
                                                     <StatusBadge tone={s.tone}>
                                                         {s.label}
@@ -1230,7 +1148,7 @@ export default function Dashboard(props: Props) {
                                                     >
                                                         {activity.event_label}
                                                     </StatusBadge>
-                                                    <span className="text-[10.5px] text-muted-foreground">
+                                                    <span className="text-xs text-muted-foreground">
                                                         {formatDateTime(
                                                             activity.created_at,
                                                         )}

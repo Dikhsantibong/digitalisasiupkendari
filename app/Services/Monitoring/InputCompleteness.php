@@ -28,6 +28,7 @@ class InputCompleteness
 
     /**
      * @param  Collection<int, Unit>  $units
+     * @param  list<string>|null  $groups  only these {@see InputCatalog::GROUPS} (null = all)
      * @return array{
      *     state: 'past'|'current'|'future',
      *     days_due: int,
@@ -38,7 +39,7 @@ class InputCompleteness
      *     percent: int|null
      * }
      */
-    public function build(Collection $units, int $month, int $year, ?Carbon $today = null): array
+    public function build(Collection $units, int $month, int $year, ?Carbon $today = null, ?array $groups = null): array
     {
         $today ??= Carbon::now(PresenceRecorder::TIMEZONE);
         $start = Carbon::create($year, $month, 1)->startOfDay();
@@ -59,7 +60,8 @@ class InputCompleteness
         $machines = DB::table('machines')->whereIn('unit_id', $unitIds)->where('is_active', true)
             ->selectRaw('unit_id, COUNT(*) as total')->groupBy('unit_id')->pluck('total', 'unit_id');
 
-        $entries = array_values(array_filter($this->catalog->entries(), fn (array $e): bool => Schema::hasTable($e['table'])));
+        $groupKeys = array_values(array_filter(array_keys(InputCatalog::GROUPS), fn (string $g): bool => $groups === null || in_array($g, $groups, true)));
+        $entries = array_values(array_filter($this->catalog->entries(), fn (array $e): bool => in_array($e['group'], $groupKeys, true) && Schema::hasTable($e['table'])));
         $cells = [];
 
         foreach ($entries as $entry) {
@@ -91,9 +93,9 @@ class InputCompleteness
             return $list === [] ? null : (int) round(array_sum($list) / count($list));
         };
 
-        $unitRows = $units->map(function (Unit $unit) use ($cells, $entries, $average): array {
+        $unitRows = $units->map(function (Unit $unit) use ($cells, $entries, $average, $groupKeys): array {
             $groups = [];
-            foreach (array_keys(InputCatalog::GROUPS) as $group) {
+            foreach ($groupKeys as $group) {
                 $groups[$group] = $average(array_map(
                     fn (array $e): ?int => $cells[$unit->id][$e['key']]['percent'],
                     array_filter($entries, fn (array $e): bool => $e['group'] === $group),
@@ -110,7 +112,7 @@ class InputCompleteness
         })->values()->all();
 
         $groups = [];
-        foreach (array_keys(InputCatalog::GROUPS) as $group) {
+        foreach ($groupKeys as $group) {
             $groups[$group] = $average(array_column(array_column($unitRows, 'groups'), $group));
         }
 

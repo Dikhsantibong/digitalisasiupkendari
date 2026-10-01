@@ -43,7 +43,7 @@ const STATUS_CARDS = [
 
 function Panel({ title, icon: Icon, action, children }: { title: string; icon: typeof ClipboardCheck; action?: React.ReactNode; children: React.ReactNode }) {
     return (
-        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <section className="flex flex-col gap-3 rounded-md border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-2">
                 <h2 className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
                     <Icon className="size-4 text-primary" />
@@ -70,7 +70,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                 <MonitoringFilterBar url={monitoring.index().url} filters={filters} options={options} />
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="rounded-md border border-border bg-card p-4">
                         <p className="text-[13px] text-muted-foreground">Kelengkapan input</p>
                         <p className="mt-1 text-3xl font-bold text-foreground tabular-nums">{input.percent === null ? '—' : `${input.percent}%`}</p>
                         <div className="mt-2">
@@ -80,7 +80,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                             {input.state === 'future' ? 'Periode belum berjalan.' : current ? 'Bulan berjalan — dihitung sampai hari ini.' : 'Periode sudah lewat.'}
                         </p>
                     </div>
-                    <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="rounded-md border border-border bg-card p-4">
                         <p className="text-[13px] text-muted-foreground">Laporan final</p>
                         <p className="mt-1 text-3xl font-bold text-foreground tabular-nums">
                             {laporan.counts.final ?? 0}
@@ -88,7 +88,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                         </p>
                         <p className="mt-2 text-[12px] text-muted-foreground">Laporan Pembangkit unit × modul periode ini.</p>
                     </div>
-                    <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="rounded-md border border-border bg-card p-4">
                         <p className="text-[13px] text-muted-foreground">Laporan macet / ditolak</p>
                         <p className="mt-1 text-3xl font-bold text-foreground tabular-nums">
                             <span className={laporan.stuck_total > 0 ? 'text-red-600 dark:text-red-400' : ''}>{laporan.stuck_total}</span>
@@ -96,7 +96,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                         </p>
                         <p className="mt-2 text-[12px] text-muted-foreground">Macet = menunggu di satu tahap ≥ 3 hari (semua periode).</p>
                     </div>
-                    <div className="rounded-xl border border-border bg-card p-4">
+                    <div className="rounded-md border border-border bg-card p-4">
                         <p className="text-[13px] text-muted-foreground">Jabatan penanda tangan kosong</p>
                         <p className="mt-1 text-3xl font-bold tabular-nums">
                             <span className={signerGaps > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}>{signerGaps}</span>
@@ -142,7 +142,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                             </div>
                         )}
                         {input.empty_inputs.length > 0 && (
-                            <div className="mt-1 rounded-lg bg-muted/50 p-3">
+                            <div className="mt-1 rounded-md bg-muted/50 p-3">
                                 <p className="mb-2 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">Input paling sering kosong</p>
                                 <ul className="flex flex-col gap-1.5">
                                     {input.empty_inputs.map((row) => (
@@ -170,7 +170,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                     >
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                             {STATUS_CARDS.map((card) => (
-                                <div key={card.key} className="rounded-lg border border-border p-2.5">
+                                <div key={card.key} className="rounded-md border border-border p-2.5">
                                     <p className={`text-xl font-bold tabular-nums ${card.tone}`}>{laporan.counts[card.key] ?? 0}</p>
                                     <p className="text-[12px] leading-tight text-muted-foreground">{card.label}</p>
                                 </div>
@@ -185,7 +185,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                             <ul className="flex flex-col gap-2">
                                 {laporan.stuck.map((row) => (
                                     <li key={row.id}>
-                                        <Link href={row.url} className="block rounded-lg border border-red-500/30 bg-red-500/5 p-2.5 hover:bg-red-500/10">
+                                        <Link href={row.url} className="block rounded-md border border-red-500/30 bg-red-500/5 p-2.5 hover:bg-red-500/10">
                                             <p className="text-[13px] font-semibold text-foreground">
                                                 {row.module} · {row.unit}
                                             </p>
@@ -196,7 +196,7 @@ export default function MonitoringIndex({ filters, options, period_label, input,
                                     </li>
                                 ))}
                                 {laporan.missing_signers.slice(0, 5).map((row) => (
-                                    <li key={row.unit} className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-2.5">
+                                    <li key={row.unit} className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2.5">
                                         <p className="text-[13px] font-semibold text-foreground">{row.unit}</p>
                                         <p className="text-[12px] text-muted-foreground">Belum ada pegawai aktif: {row.positions.join(', ')}</p>
                                     </li>

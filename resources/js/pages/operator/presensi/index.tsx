@@ -195,7 +195,7 @@ export default function Presensi({
                     description={`Absen hanya bisa dilakukan dalam radius ${office.radius_m} m dari kantor ${office.unit}.`}
                 />
 
-                <div className="flex flex-col items-center gap-1 rounded-2xl bg-linear-to-br from-chart-5 via-[#0b6aa2] to-chart-1 p-5 text-center text-white shadow-md">
+                <div className="flex flex-col items-center gap-1 rounded-md bg-primary p-5 text-center text-primary-foreground">
                     <p className="text-[12.5px] text-white/75">
                         {new Intl.DateTimeFormat('id-ID', {
                             timeZone: timezone,
@@ -416,7 +416,7 @@ export default function Presensi({
                                 (needsNote && note.trim() === '')
                             }
                             className={cn(
-                                'h-16 rounded-2xl text-lg font-semibold shadow-md',
+                                'h-16 rounded-md text-lg font-semibold',
                                 mode === 'out'
                                     ? 'bg-rose-600 hover:bg-rose-700'
                                     : 'bg-emerald-600 hover:bg-emerald-700',

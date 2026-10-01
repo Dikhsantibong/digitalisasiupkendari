@@ -29,6 +29,7 @@ enum PermissionGroup: string
     case Project = 'project';
     case ReportProject = 'report_project';
     case Notifikasi = 'notifikasi';
+    case Portal = 'portal';
     case System = 'system';
 
     public function label(): string
@@ -52,6 +53,7 @@ enum PermissionGroup: string
             self::Project => 'Project',
             self::ReportProject => 'Laporan Project',
             self::Notifikasi => 'Notifikasi',
+            self::Portal => 'Portal Pemantauan (UP Kendari)',
             self::System => 'Sistem',
         };
     }

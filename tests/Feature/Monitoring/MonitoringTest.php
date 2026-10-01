@@ -11,9 +11,7 @@ use App\Models\DailyEngineReport;
 use App\Models\Employee;
 use App\Models\Machine;
 use App\Models\Operasi5s5rJadwal;
-use App\Models\Permission;
 use App\Models\ReportWorkflow;
-use App\Models\Role;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Services\Monitoring\InputCatalog;
@@ -73,10 +71,9 @@ class MonitoringTest extends TestCase
         }
     }
 
-    public function test_a_role_given_monitoring_view_sees_only_its_own_units(): void
+    public function test_the_manager_ul_sees_only_the_units_of_its_ul(): void
     {
-        $role = Role::query()->where('name', RoleName::ManagerUl->value)->firstOrFail();
-        $role->permissions()->attach(Permission::query()->where('name', PermissionName::MonitoringView->value)->value('id'));
+        // Manager UL holds monitoring.view by default (Portal Pemantauan), scoped to its UL.
         $manager = $this->userWithRole(RoleName::ManagerUl, $this->serviceUnit);
         Unit::factory()->create(['is_active' => true, 'name' => 'Unit Lain']);
 

@@ -49,6 +49,9 @@ class HandleInertiaRequests extends Middleware
                 'roles' => $user === null ? [] : $this->roles($user),
                 'isSuperAdmin' => $user?->isSuperAdmin() ?? false,
                 'hasGlobalAccess' => $user?->hasGlobalAccess() ?? false,
+                // Portal Pemantauan layout & view-only mode (kantor induk UP Kendari, Manager UL).
+                'usesPortal' => $user?->usesPortal() ?? false,
+                'readOnly' => $user?->isReadOnly() ?? false,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             // The bell's first count; it then refreshes itself from notifications.feed.

@@ -77,7 +77,7 @@ export function NotificationBell({ variant = 'default' }: { variant?: 'default' 
                         </div>
                     ) : items.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-                            <span className="flex size-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                            <span className="flex size-11 items-center justify-center rounded-md bg-muted text-muted-foreground">
                                 <Bell className="size-5" />
                             </span>
                             <p className="text-[13px] text-muted-foreground">Belum ada notifikasi. Pengingat jadwal & absen akan muncul di sini.</p>

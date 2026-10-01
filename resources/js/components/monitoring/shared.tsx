@@ -41,8 +41,8 @@ export function MonitoringTabs({ filters }: { filters: MonitoringFilters }) {
                         href={href}
                         preserveScroll
                         className={cn(
-                            'flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13px] font-medium whitespace-nowrap transition',
-                            active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:bg-muted',
+                            'flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3.5 text-[13px] font-medium whitespace-nowrap transition',
+                            active ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card text-foreground hover:bg-muted',
                         )}
                     >
                         <Icon className="size-4" />
@@ -72,7 +72,7 @@ export function MonitoringFilterBar({
     };
 
     return (
-        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
+        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-secondary p-3">
             {options.service_units.length > 1 && (
                 <OperasiSelect
                     label="Unit Layanan"

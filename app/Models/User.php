@@ -6,6 +6,7 @@ namespace App\Models;
 use App\Enums\NotificationCategory;
 use App\Enums\PermissionName;
 use App\Enums\RoleName;
+use App\Http\Middleware\EnsureReadOnlyAccess;
 use App\Services\AccessControl;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -79,6 +80,24 @@ class User extends Authenticatable implements PasskeyUser
         return $this->is_active
             && $this->hasPermissionTo($category->permission())
             && ! in_array($category->value, $this->notification_settings['disabled'] ?? [], true);
+    }
+
+    /**
+     * A view-only account (kantor induk UP Kendari): it may read and download,
+     * never save, change or delete anything — enforced for every write
+     * request by {@see EnsureReadOnlyAccess}.
+     */
+    public function isReadOnly(): bool
+    {
+        return ! $this->isSuperAdmin() && $this->hasPermissionTo(PermissionName::PortalReadOnly);
+    }
+
+    /**
+     * Whether the account uses the Portal Pemantauan layout instead of the sidebar app.
+     */
+    public function usesPortal(): bool
+    {
+        return ! $this->isSuperAdmin() && $this->hasPermissionTo(PermissionName::PortalView);
     }
 
     /**

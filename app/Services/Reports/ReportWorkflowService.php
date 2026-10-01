@@ -61,6 +61,7 @@ class ReportWorkflowService
     public function canSubmit(User $user, ReportModule $module, Unit $unit, ?ReportWorkflow $workflow): bool
     {
         return $this->status($workflow)->canBeSubmitted()
+            && ! $user->isReadOnly()
             && $user->hasPermissionTo($module->writePermission())
             && $user->canAccessUnit($unit);
     }

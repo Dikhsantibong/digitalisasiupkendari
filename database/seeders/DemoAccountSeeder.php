@@ -79,8 +79,28 @@ class DemoAccountSeeder extends Seeder
         'harlist2' => [RoleName::Harlist, 29],
     ];
 
+    /**
+     * Kantor induk UP Kendari (Portal Pemantauan, hanya melihat): e-mail prefix
+     * => [role, nama, jabatan]. Global roles, so no unit or UL.
+     *
+     * @var array<string, array{0: RoleName, 1: string, 2: string}>
+     */
+    private const UP_ACCOUNTS = [
+        'manager-up' => [RoleName::ManagerUp, 'Manager UP Kendari', 'Manager UP'],
+        'tl-operasi-up' => [RoleName::TeamLeaderOperasiUp, 'TL Operasi UP Kendari', 'Team Leader Operasi UP'],
+        'tl-har-up' => [RoleName::TeamLeaderPemeliharaanUp, 'TL Pemeliharaan UP Kendari', 'Team Leader Pemeliharaan UP'],
+        'tl-k3-up' => [RoleName::TeamLeaderK3Up, 'TL K3 & Lingkungan UP Kendari', 'Team Leader K3 & Lingkungan UP'],
+        'asman-operasi' => [RoleName::AsmanOperasi, 'Asman Operasi UP Kendari', 'Asisten Manager Operasi'],
+        'asman-har' => [RoleName::AsmanPemeliharaan, 'Asman Pemeliharaan UP Kendari', 'Asisten Manager Pemeliharaan'],
+        'asman-k3' => [RoleName::AsmanK3, 'Asman K3 & Lingkungan UP Kendari', 'Asisten Manager K3 & Lingkungan'],
+    ];
+
     public function run(): void
     {
+        foreach (self::UP_ACCOUNTS as $prefix => [$role, $name, $position]) {
+            $this->account("{$prefix}@".self::DOMAIN, $name, $position, $role, null);
+        }
+
         foreach (ServiceUnit::query()->orderBy('id')->get() as $serviceUnit) {
             $slug = $this->slug($serviceUnit->code ?? $serviceUnit->name ?? (string) $serviceUnit->id);
             $this->account(
@@ -121,7 +141,7 @@ class DemoAccountSeeder extends Seeder
         $this->command?->info('Akun demo dibuat/diperbarui. Kata sandi semua akun: "'.self::PASSWORD.'".');
     }
 
-    private function account(string $email, string $name, string $position, RoleName $role, ServiceUnit|Unit $scope, ?EmployeePosition $employeePosition = null): User
+    private function account(string $email, string $name, string $position, RoleName $role, ServiceUnit|Unit|null $scope, ?EmployeePosition $employeePosition = null): User
     {
         $user = User::query()->firstOrNew(['email' => $email]);
         $user->fill([
@@ -138,7 +158,7 @@ class DemoAccountSeeder extends Seeder
 
         $user->assignRole($role, $scope);
 
-        if ($employeePosition !== null) {
+        if ($employeePosition !== null && $scope !== null) {
             $this->linkEmployee($user, $employeePosition, $scope);
         }
 

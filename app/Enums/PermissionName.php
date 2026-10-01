@@ -179,6 +179,9 @@ enum PermissionName: string
 
     case MonitoringView = 'monitoring.view';
 
+    case PortalView = 'portal.view';
+    case PortalReadOnly = 'portal.readonly';
+
     case NotifikasiJadwal = 'notifikasi.jadwal';
     case NotifikasiAbsensi = 'notifikasi.absensi';
     case NotifikasiKejadian = 'notifikasi.kejadian';
@@ -345,6 +348,9 @@ enum PermissionName: string
 
             self::MonitoringView => PermissionGroup::Monitoring,
 
+            self::PortalView,
+            self::PortalReadOnly => PermissionGroup::Portal,
+
             self::NotifikasiJadwal,
             self::NotifikasiAbsensi,
             self::NotifikasiKejadian,
@@ -510,6 +516,9 @@ enum PermissionName: string
             self::SettingManage => 'Mengelola pengaturan aplikasi',
 
             self::MonitoringView => 'Melihat menu Monitoring (kelengkapan input & verifikasi laporan unit yang dapat diakses)',
+
+            self::PortalView => 'Memakai tampilan Portal Pemantauan (beranda, data input, status & laporan final)',
+            self::PortalReadOnly => 'Mode lihat saja: tidak dapat menyimpan / mengubah / menghapus data apa pun (hanya melihat & mengunduh)',
 
             self::NotifikasiJadwal => 'Menerima pengingat jadwal modul (ringkasan harian & jadwal pribadi)',
             self::NotifikasiAbsensi => 'Menerima pengingat absen masuk / pulang & shift besok',

@@ -32,20 +32,23 @@ class ReportMonitoring
 
     /**
      * @param  Collection<int, Unit>  $units
+     * @param  list<ReportModule>|null  $modules  only these reports (null = all)
      * @return array<string, mixed>
      */
-    public function build(Collection $units, int $month, int $year, ?Carbon $now = null): array
+    public function build(Collection $units, int $month, int $year, ?Carbon $now = null, ?array $modules = null): array
     {
         $now ??= Carbon::now();
+        $modules ??= ReportModule::cases();
+        $moduleValues = array_map(fn (ReportModule $m): string => $m->value, $modules);
         $unitIds = $units->pluck('id')->all();
 
-        $workflows = ReportWorkflow::query()->whereIn('unit_id', $unitIds)->where('month', $month)->where('year', $year)
+        $workflows = ReportWorkflow::query()->whereIn('unit_id', $unitIds)->whereIn('module', $moduleValues)->where('month', $month)->where('year', $year)
             ->with(['steps.employee', 'logs' => fn ($q) => $q->latest('created_at')])
             ->get()->keyBy(fn (ReportWorkflow $w): string => $w->unit_id.'|'.$w->module->value);
 
-        $matrix = $units->map(function (Unit $unit) use ($workflows, $month, $year, $now): array {
+        $matrix = $units->map(function (Unit $unit) use ($workflows, $month, $year, $now, $modules): array {
             $cells = [];
-            foreach (ReportModule::cases() as $module) {
+            foreach ($modules as $module) {
                 $workflow = $workflows->get($unit->id.'|'.$module->value);
                 $cells[$module->value] = $workflow !== null
                     ? $this->cell($workflow, $now)
@@ -66,13 +69,13 @@ class ReportMonitoring
         }
 
         return [
-            'modules' => array_map(fn (ReportModule $m): array => ['key' => $m->value, 'label' => $m->label()], ReportModule::cases()),
+            'modules' => array_map(fn (ReportModule $m): array => ['key' => $m->value, 'label' => $m->label()], $modules),
             'matrix' => $matrix,
             'counts' => $counts,
-            'stuck' => $this->stuck($unitIds, $now),
-            'rejections' => $this->rejections($unitIds, $now),
-            'durations' => $this->durations($unitIds, $year),
-            'missing_signers' => $this->missingSigners($units),
+            'stuck' => $this->stuck($unitIds, $now, $moduleValues),
+            'rejections' => $this->rejections($unitIds, $now, $moduleValues),
+            'durations' => $this->durations($unitIds, $year, $modules),
+            'missing_signers' => $this->missingSigners($units, $modules),
         ];
     }
 
@@ -115,9 +118,9 @@ class ReportMonitoring
      * @param  list<int>  $unitIds
      * @return list<array<string, mixed>>
      */
-    private function stuck(array $unitIds, Carbon $now): array
+    private function stuck(array $unitIds, Carbon $now, array $moduleValues): array
     {
-        return ReportWorkflow::query()->whereIn('unit_id', $unitIds)->whereIn('status', array_map(fn (ReportStatus $s): string => $s->value, self::WAITING))
+        return ReportWorkflow::query()->whereIn('unit_id', $unitIds)->whereIn('module', $moduleValues)->whereIn('status', array_map(fn (ReportStatus $s): string => $s->value, self::WAITING))
             ->with(['unit:id,name', 'steps.employee', 'logs' => fn ($q) => $q->latest('created_at')])
             ->get()
             ->map(function (ReportWorkflow $workflow) use ($now): array {
@@ -144,10 +147,10 @@ class ReportMonitoring
      * @param  list<int>  $unitIds
      * @return list<array<string, mixed>>
      */
-    private function rejections(array $unitIds, Carbon $now): array
+    private function rejections(array $unitIds, Carbon $now, array $moduleValues): array
     {
         return ReportWorkflowLog::query()->where('action', 'tolak')->where('created_at', '>=', $now->copy()->subDays(90))
-            ->whereHas('workflow', fn ($q) => $q->whereIn('unit_id', $unitIds))
+            ->whereHas('workflow', fn ($q) => $q->whereIn('unit_id', $unitIds)->whereIn('module', $moduleValues))
             ->with('workflow.unit:id,name')->latest('created_at')->limit(30)->get()
             ->map(fn (ReportWorkflowLog $log): array => [
                 'id' => $log->id,
@@ -169,7 +172,7 @@ class ReportMonitoring
      * @param  list<int>  $unitIds
      * @return list<array{module: string, verifikasi: float|null, setujui: float|null, sahkan: float|null, final: int}>
      */
-    private function durations(array $unitIds, int $year): array
+    private function durations(array $unitIds, int $year, array $modules): array
     {
         $logs = ReportWorkflowLog::query()->whereHas('workflow', fn ($q) => $q->whereIn('unit_id', $unitIds)->where('year', $year))
             ->with('workflow:id,module')->orderBy('created_at')->get()
@@ -197,7 +200,7 @@ class ReportMonitoring
             $avg = fn (string $step): ?float => empty($samples[$module->value][$step]) ? null : round(array_sum($samples[$module->value][$step]) / count($samples[$module->value][$step]), 1);
 
             return ['module' => $module->label(), 'verifikasi' => $avg('verifikasi'), 'setujui' => $avg('setujui'), 'sahkan' => $avg('sahkan'), 'final' => $finals[$module->value] ?? 0];
-        }, ReportModule::cases());
+        }, $modules);
     }
 
     /**
@@ -206,9 +209,9 @@ class ReportMonitoring
      * @param  Collection<int, Unit>  $units
      * @return list<array{unit: string, positions: list<string>}>
      */
-    private function missingSigners(Collection $units): array
+    private function missingSigners(Collection $units, array $modules): array
     {
-        $positions = collect(ReportModule::cases())
+        $positions = collect($modules)
             ->flatMap(fn (ReportModule $m): array => [...$m->pengesahanSigners(), ...$m->reportSigners()])
             ->map(fn (array $s): EmployeePosition => $s['position'])
             ->unique(fn (EmployeePosition $p): string => $p->value)->values();

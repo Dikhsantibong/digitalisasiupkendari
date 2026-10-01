@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AttendanceLocationController;
 use App\Http\Controllers\Admin\EmployeeController;
 use App\Http\Controllers\Admin\MachineController;
+use App\Http\Controllers\Admin\ReportSignerController;
 use App\Http\Controllers\Admin\RoleAssignmentController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\ServiceUnitController;
@@ -38,6 +39,11 @@ Route::middleware(['auth', 'verified'])
         Route::resource('roles', RoleController::class)->except(['show']);
 
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index');
+
+        // Penanda tangan lintas unit (mis. TL Pemeliharaan PLTD Poasia juga memverifikasi PLTD Poasia Containerized).
+        Route::get('penanda-tangan-laporan', [ReportSignerController::class, 'index'])->name('report-signers.index');
+        Route::post('penanda-tangan-laporan', [ReportSignerController::class, 'store'])->name('report-signers.store');
+        Route::delete('penanda-tangan-laporan/{delegation}', [ReportSignerController::class, 'destroy'])->name('report-signers.destroy');
 
         Route::get('lokasi-absensi', [AttendanceLocationController::class, 'index'])->name('attendance-locations.index');
         Route::put('lokasi-absensi/{unit}', [AttendanceLocationController::class, 'update'])->name('attendance-locations.update');

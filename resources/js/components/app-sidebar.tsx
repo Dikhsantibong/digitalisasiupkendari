@@ -26,6 +26,7 @@ import {
     Siren,
     SquarePen,
     TimerReset,
+    UserCheck,
     UserCog,
     Users,
     Wallet,
@@ -56,6 +57,7 @@ import activityLogs from '@/routes/admin/activity-logs';
 import attendanceLocations from '@/routes/admin/attendance-locations';
 import employees from '@/routes/admin/employees';
 import machines from '@/routes/admin/machines';
+import reportSigners from '@/routes/admin/report-signers';
 import roles from '@/routes/admin/roles';
 import serviceUnits from '@/routes/admin/service-units';
 import units from '@/routes/admin/units';
@@ -354,6 +356,11 @@ export function AppSidebar() {
                     title: 'Role & Akses',
                     href: roles.index(),
                     icon: ShieldCheck,
+                },
+                can('role.assign') && {
+                    title: 'Penanda Tangan Laporan',
+                    href: reportSigners.index(),
+                    icon: UserCheck,
                 },
                 can('setting.manage') && {
                     title: 'Lokasi Absensi',

@@ -9,6 +9,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\Monitoring\InputCatalog;
 use App\Services\Monitoring\InputCompleteness;
+use App\Services\Monitoring\ModuleAccess;
 use App\Services\Monitoring\ReportMonitoring;
 use App\Services\Operator\PresenceRecorder;
 use App\Support\Indonesian;
@@ -28,13 +29,14 @@ class MonitoringController extends Controller
     public function __construct(
         private readonly InputCompleteness $completeness,
         private readonly ReportMonitoring $reports,
+        private readonly ModuleAccess $access,
     ) {}
 
     public function index(Request $request): Response
     {
         [$units, $filters, $options] = $this->scope($request);
-        $input = $this->completeness->build($units, $filters['month'], $filters['year']);
-        $laporan = $this->reports->build($units, $filters['month'], $filters['year']);
+        $input = $this->completeness->build($units, $filters['month'], $filters['year'], groups: $this->access->groups($request->user()));
+        $laporan = $this->reports->build($units, $filters['month'], $filters['year'], modules: $this->access->reportModules($request->user()));
 
         return Inertia::render('monitoring/index', [
             'filters' => $filters,
@@ -62,7 +64,7 @@ class MonitoringController extends Controller
     public function input(Request $request): Response
     {
         [$units, $filters, $options] = $this->scope($request);
-        $input = $this->completeness->build($units, $filters['month'], $filters['year']);
+        $input = $this->completeness->build($units, $filters['month'], $filters['year'], groups: $this->access->groups($request->user()));
 
         return Inertia::render('monitoring/input', [
             'filters' => $filters,
@@ -90,7 +92,7 @@ class MonitoringController extends Controller
             'options' => $options,
             'period_label' => Indonesian::monthName($filters['month']).' '.$filters['year'],
             'stuck_after_days' => ReportMonitoring::STUCK_AFTER_DAYS,
-            ...$this->reports->build($units, $filters['month'], $filters['year']),
+            ...$this->reports->build($units, $filters['month'], $filters['year'], modules: $this->access->reportModules($request->user())),
         ]);
     }
 
@@ -131,7 +133,7 @@ class MonitoringController extends Controller
      */
     private function groupList(array $groups): array
     {
-        return array_map(fn (string $key): array => ['key' => $key, 'label' => InputCatalog::GROUPS[$key], 'percent' => $groups[$key] ?? null], array_keys(InputCatalog::GROUPS));
+        return array_map(fn (string $key): array => ['key' => $key, 'label' => InputCatalog::GROUPS[$key], 'percent' => $groups[$key] ?? null], array_keys($groups));
     }
 
     /**

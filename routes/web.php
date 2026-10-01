@@ -4,6 +4,7 @@ use App\Enums\ReportModule;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Monitoring\MonitoringController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\Portal\PortalController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReportWorkflowController;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,13 @@ Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    // Portal Pemantauan (kantor induk UP Kendari & Manager UL): lihat input, status & laporan final.
+    Route::prefix('pantau')->name('portal.')->group(function (): void {
+        Route::get('/', [PortalController::class, 'index'])->name('index');
+        Route::get('laporan', [PortalController::class, 'laporan'])->name('laporan');
+        Route::get('data-input', [PortalController::class, 'input'])->name('input');
+    });
 
     // Monitoring (Super Admin / monitoring.view): kelengkapan input & verifikasi laporan unit yang dapat diakses.
     Route::prefix('monitoring')->name('monitoring.')->group(function (): void {

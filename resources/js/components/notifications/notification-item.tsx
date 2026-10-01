@@ -27,12 +27,12 @@ export function NotificationItem({
             href={NotificationController.open(notification.id).url}
             onClick={() => onOpen?.(notification)}
             className={cn(
-                'relative flex gap-3 rounded-xl text-left transition outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring active:bg-muted',
+                'relative flex gap-3 rounded-md text-left transition outline-none hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring active:bg-muted',
                 dense ? 'px-2.5 py-2.5' : 'px-3 py-3',
                 !notification.read && 'bg-primary/[0.04]',
             )}
         >
-            <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl', meta.tone)}>
+            <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md', meta.tone)}>
                 <Icon className="size-[18px]" strokeWidth={1.9} />
             </span>
             <span className="min-w-0 flex-1">

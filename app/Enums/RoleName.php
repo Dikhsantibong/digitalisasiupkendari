@@ -36,6 +36,15 @@ enum RoleName: string
     case Harmes = 'harmes';
     case Harlist = 'harlist';
 
+    // Kantor induk UP Kendari — membawahi seluruh unit, hanya melihat (Portal Pemantauan).
+    case ManagerUp = 'manager_up';
+    case TeamLeaderOperasiUp = 'tl_operasi_up';
+    case TeamLeaderPemeliharaanUp = 'tl_pemeliharaan_up';
+    case TeamLeaderK3Up = 'tl_k3_up';
+    case AsmanOperasi = 'asman_operasi';
+    case AsmanPemeliharaan = 'asman_pemeliharaan';
+    case AsmanK3 = 'asman_k3';
+
     public function label(): string
     {
         return match ($this) {
@@ -57,6 +66,13 @@ enum RoleName: string
             self::Operator => 'Operator',
             self::Harmes => 'Harmes (Pemeliharaan Mesin)',
             self::Harlist => 'Harlist (Pemeliharaan Listrik)',
+            self::ManagerUp => 'Manager UP Kendari',
+            self::TeamLeaderOperasiUp => 'TL Operasi UP Kendari',
+            self::TeamLeaderPemeliharaanUp => 'TL Pemeliharaan UP Kendari',
+            self::TeamLeaderK3Up => 'TL K3 & Lingkungan UP Kendari',
+            self::AsmanOperasi => 'Asman Operasi',
+            self::AsmanPemeliharaan => 'Asman Pemeliharaan',
+            self::AsmanK3 => 'Asman K3 & Lingkungan',
         };
     }
 
@@ -81,13 +97,27 @@ enum RoleName: string
             self::Operator => 'Operator shift (termasuk Leader Shift) divisi Operasi di bawah Koordinator Operasi: mencatat logsheet harian dan absen pada unit pembangkit yang ditugaskan.',
             self::Harmes => 'Teknisi pemeliharaan mesin divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
             self::Harlist => 'Teknisi pemeliharaan listrik divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
+            self::ManagerUp => 'Kantor induk UP Kendari: melihat & mengunduh seluruh input dan laporan (Operasi, Pemeliharaan, K3, Logistik, PdM — Laporan Project & Pengusahaan) di semua unit. Hanya melihat.',
+            self::TeamLeaderOperasiUp => 'Kantor induk UP Kendari: melihat input, monitoring & laporan final bidang Operasi di semua unit. Hanya melihat.',
+            self::TeamLeaderPemeliharaanUp => 'Kantor induk UP Kendari: melihat input, monitoring & laporan final bidang Pemeliharaan (termasuk Logistik & PdM) di semua unit. Hanya melihat.',
+            self::TeamLeaderK3Up => 'Kantor induk UP Kendari: melihat input, monitoring & laporan final bidang K3 & Lingkungan di semua unit. Hanya melihat.',
+            self::AsmanOperasi => 'Asisten Manager Operasi UP Kendari: memantau input, monitoring & laporan final bidang Operasi di semua unit. Hanya melihat.',
+            self::AsmanPemeliharaan => 'Asisten Manager Pemeliharaan UP Kendari: memantau input, monitoring & laporan final bidang Pemeliharaan (termasuk Logistik & PdM) di semua unit. Hanya melihat.',
+            self::AsmanK3 => 'Asisten Manager K3 & Lingkungan UP Kendari: memantau input, monitoring & laporan final bidang K3 & Lingkungan di semua unit. Hanya melihat.',
         };
     }
 
     public function scope(): RoleScope
     {
         return match ($this) {
-            self::SuperAdmin => RoleScope::Global,
+            self::SuperAdmin,
+            self::ManagerUp,
+            self::TeamLeaderOperasiUp,
+            self::TeamLeaderPemeliharaanUp,
+            self::TeamLeaderK3Up,
+            self::AsmanOperasi,
+            self::AsmanPemeliharaan,
+            self::AsmanK3 => RoleScope::Global,
             self::ManagerUl => RoleScope::ServiceUnit,
             self::TeamLeaderOperasi,
             self::TeamLeaderPemeliharaan,
@@ -170,6 +200,9 @@ enum RoleName: string
                 PermissionName::OperatorLogsheetView,
                 PermissionName::OperatorMutasiView,
                 PermissionName::OperatorAbsensiView,
+                // Portal Pemantauan layout & Monitoring of the UL (not read-only: the Manager UL still mengesahkan & manages master data).
+                PermissionName::PortalView,
+                PermissionName::MonitoringView,
             ],
 
             // Akses 1 — Laporan Project: the Koordinator (and Office) of the
@@ -357,10 +390,86 @@ enum RoleName: string
                 PermissionName::OperatorPresensi,
                 ...PermissionName::harLapangan(),
             ],
+
+            // Kantor induk UP Kendari: view permissions of their bidang + Portal & read-only.
+            self::TeamLeaderOperasiUp,
+            self::AsmanOperasi => [...self::portalBase(), ...self::portalOperasi()],
+            self::TeamLeaderPemeliharaanUp,
+            self::AsmanPemeliharaan => [...self::portalBase(), ...self::portalPemeliharaan()],
+            self::TeamLeaderK3Up,
+            self::AsmanK3 => [...self::portalBase(), ...self::portalK3()],
+            self::ManagerUp => [
+                ...self::portalBase(),
+                ...self::portalOperasi(),
+                ...self::portalPemeliharaan(),
+                ...self::portalK3(),
+                PermissionName::ReportUnitViewAny,
+                PermissionName::ReportUnitView,
+                PermissionName::ReportProjectViewAny,
+                PermissionName::ReportProjectView,
+            ],
         };
 
         // Every role gets the reminder notifications; the Super Admin already holds all cases.
         return $this === self::SuperAdmin ? $granted : [...$granted, ...PermissionName::notifications()];
+    }
+
+    /**
+     * What every kantor induk (UP Kendari) viewer holds: the Portal layout,
+     * read-only mode, Monitoring and the unit / machine lists.
+     *
+     * @return list<PermissionName>
+     */
+    private static function portalBase(): array
+    {
+        return [
+            PermissionName::PortalView,
+            PermissionName::PortalReadOnly,
+            PermissionName::MonitoringView,
+            PermissionName::UnitViewAny,
+            PermissionName::UnitView,
+            PermissionName::MachineViewAny,
+            PermissionName::MachineView,
+        ];
+    }
+
+    /** @return list<PermissionName> Operasi (incl. Operator) — view only. */
+    private static function portalOperasi(): array
+    {
+        return [
+            PermissionName::OperasiInputView,
+            PermissionName::OperasiLaporanView,
+            PermissionName::OperasiPengusahaanView,
+            PermissionName::OperatorLogsheetView,
+            PermissionName::OperatorAbsensiView,
+            PermissionName::OperatorMutasiView,
+        ];
+    }
+
+    /** @return list<PermissionName> Pemeliharaan (incl. Logistik & PdM, approved by TL Pemeliharaan) — view only. */
+    private static function portalPemeliharaan(): array
+    {
+        return [
+            PermissionName::HarInputView,
+            PermissionName::HarLaporanView,
+            PermissionName::HarPengusahaanView,
+            PermissionName::HarExecutiveView,
+            PermissionName::LogistikInputView,
+            PermissionName::LogistikLaporanView,
+            PermissionName::PdmInputView,
+            PermissionName::PdmLaporanView,
+        ];
+    }
+
+    /** @return list<PermissionName> K3 & Lingkungan — view only. */
+    private static function portalK3(): array
+    {
+        return [
+            PermissionName::K3InputView,
+            PermissionName::K3LaporanView,
+            PermissionName::K3PengusahaanView,
+            PermissionName::K3MonitoringView,
+        ];
     }
 
     /**

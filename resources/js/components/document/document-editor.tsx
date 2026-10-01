@@ -1,4 +1,4 @@
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Download, ExternalLink, FileSpreadsheet, FileText, Printer, RotateCcw, Save } from 'lucide-react';
 import { useState } from 'react';
 import { ReportWorkflowPanel } from '@/components/document/report-workflow-panel';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { downloadGridAsXlsx } from '@/lib/spreadsheet';
 import type { DocumentGrid, GridCell } from '@/lib/spreadsheet';
+import type { Auth } from '@/types';
 
 export type DocumentEditorMode = 'html' | 'grid';
 
@@ -76,15 +77,18 @@ export function DocumentEditor({
     format,
     hasSaved,
     pdfUrl,
-    canEdit,
     baseName,
     xlsxHeaderLines,
     saveUrl,
     saveExtra,
     regenerateUrl,
     workflow,
+    canEdit: canEditProp,
 }: DocumentEditorProps) {
     const isMobile = useIsMobile();
+    // A view-only account (kantor induk UP Kendari) never gets editing controls; the server refuses changes anyway.
+    const readOnly = (usePage().props.auth as Auth | undefined)?.readOnly ?? false;
+    const canEdit = canEditProp && !readOnly;
     const [mode, setMode] = useState<ViewMode>(format);
     const [html, setHtml] = useState(content);
     const [gridState, setGridState] = useState<DocumentGrid>(grid);

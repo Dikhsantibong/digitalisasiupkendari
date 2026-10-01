@@ -40,11 +40,11 @@ const SHORT: Record<string, string> = {
 
 function Section({ title, icon: Icon, count, children }: { title: string; icon: typeof Clock; count?: number; children: React.ReactNode }) {
     return (
-        <section className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4">
+        <section className="flex flex-col gap-3 rounded-md border border-border bg-card p-4">
             <h2 className="flex items-center gap-2 text-[15px] font-semibold text-foreground">
                 <Icon className="size-4 text-primary" />
                 {title}
-                {count !== undefined && <span className="rounded-full bg-muted px-2 text-[12px] font-medium text-muted-foreground">{count}</span>}
+                {count !== undefined && <span className="rounded-sm bg-muted px-1.5 text-[12px] tabular-nums font-medium text-muted-foreground">{count}</span>}
             </h2>
             {children}
         </section>
@@ -64,7 +64,7 @@ export default function MonitoringLaporan({ filters, options, period_label, stuc
 
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
                     {(['belum', 'draft', 'diajukan', 'verifikasi', 'disetujui', 'final', 'ditolak'] as const).map((key) => (
-                        <div key={key} className="rounded-lg border border-border bg-card p-3">
+                        <div key={key} className="rounded-md border border-border bg-card p-3">
                             <p className={cn('text-2xl font-bold tabular-nums', key === 'final' ? 'text-emerald-600 dark:text-emerald-400' : key === 'ditolak' ? 'text-red-600 dark:text-red-400' : 'text-foreground')}>
                                 {counts[key] ?? 0}
                             </p>
@@ -73,7 +73,7 @@ export default function MonitoringLaporan({ filters, options, period_label, stuc
                     ))}
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-border bg-card">
+                <div className="overflow-hidden rounded-md border border-border bg-card">
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse text-[13px]" data-keep-table>
                             <thead>
@@ -102,7 +102,7 @@ export default function MonitoringLaporan({ filters, options, period_label, stuc
                                                         {cell.waiting_for && <span className="text-[11.5px] leading-snug text-muted-foreground">{cell.waiting_for}</span>}
                                                         {cell.days !== null && cell.status !== 'final' && (
                                                             <span className={cn('text-[11.5px]', cell.stuck ? 'font-semibold text-red-600 dark:text-red-400' : 'text-muted-foreground')}>
-                                                                {cell.stuck ? '⚠ ' : ''}
+                                                                {cell.stuck ? 'Tertahan · ' : ''}
                                                                 {cell.days} hari di tahap ini
                                                             </span>
                                                         )}
@@ -127,7 +127,7 @@ export default function MonitoringLaporan({ filters, options, period_label, stuc
                             <ul className="flex flex-col gap-2">
                                 {stuck.map((row) => (
                                     <li key={row.id}>
-                                        <Link href={row.url} className="flex items-start justify-between gap-3 rounded-lg border border-border p-2.5 hover:bg-muted/50">
+                                        <Link href={row.url} className="flex items-start justify-between gap-3 rounded-md border border-border p-2.5 hover:bg-muted/50">
                                             <span className="min-w-0">
                                                 <span className="block text-[13px] font-semibold text-foreground">
                                                     {row.module} · {row.unit}
@@ -152,7 +152,7 @@ export default function MonitoringLaporan({ filters, options, period_label, stuc
                             <ul className="flex flex-col gap-2">
                                 {rejections.map((row) => (
                                     <li key={row.id}>
-                                        <Link href={row.url} className="block rounded-lg border border-border p-2.5 hover:bg-muted/50">
+                                        <Link href={row.url} className="block rounded-md border border-border p-2.5 hover:bg-muted/50">
                                             <span className="flex items-start justify-between gap-2">
                                                 <span className="text-[13px] font-semibold text-foreground">
                                                     {row.module} · {row.unit} · {row.period}
