@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { ArrowLeft, Download, FileSpreadsheet, FileText, Printer, RotateCcw, Save } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, FileSpreadsheet, FileText, Printer, RotateCcw, Save } from 'lucide-react';
 import { useState } from 'react';
 import { ReportWorkflowPanel } from '@/components/document/report-workflow-panel';
 import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
@@ -9,6 +9,7 @@ import { RichTextEditor } from '@/components/rich-text-editor';
 import { SpreadsheetEditor } from '@/components/spreadsheet-editor';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { downloadGridAsXlsx } from '@/lib/spreadsheet';
 import type { DocumentGrid, GridCell } from '@/lib/spreadsheet';
 
@@ -83,6 +84,7 @@ export function DocumentEditor({
     regenerateUrl,
     workflow,
 }: DocumentEditorProps) {
+    const isMobile = useIsMobile();
     const [mode, setMode] = useState<ViewMode>(format);
     const [html, setHtml] = useState(content);
     const [gridState, setGridState] = useState<DocumentGrid>(grid);
@@ -139,6 +141,12 @@ export function DocumentEditor({
     const downloadPdf = () => {
         const separator = pdfUrl.includes('?') ? '&' : '?';
         window.open(`${pdfUrl}${separator}download=1`, '_blank');
+    };
+
+    // Phone browsers (Android Chrome) cannot show a PDF inside the page: open it in the browser's own viewer.
+    const openPdf = () => {
+        const separator = pdfUrl.includes('?') ? '&' : '?';
+        window.open(`${pdfUrl}${separator}v=${previewKey}`, '_blank');
     };
 
     const downloadXlsx = () => {
@@ -204,25 +212,25 @@ export function DocumentEditor({
             {workflow && <ReportWorkflowPanel workflow={workflow} target={saveExtra} />}
 
             <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card p-3 text-[13px]">
-                <div className="flex overflow-hidden rounded-md border border-border">
+                <div className="grid w-full grid-cols-3 overflow-hidden rounded-md border border-border sm:flex sm:w-auto">
                     <button
                         type="button"
                         onClick={() => setMode('html')}
-                        className={`flex items-center gap-1 px-3 py-1.5 ${mode === 'html' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                        className={`flex items-center justify-center gap-1 px-1.5 py-1.5 text-[12px] whitespace-nowrap sm:px-3 sm:text-[13px] ${mode === 'html' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
                     >
                         <FileText className="size-4" /> Teks (PDF)
                     </button>
                     <button
                         type="button"
                         onClick={() => setMode('grid')}
-                        className={`flex items-center gap-1 px-3 py-1.5 ${mode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                        className={`flex items-center justify-center gap-1 px-1.5 py-1.5 text-[12px] whitespace-nowrap sm:px-3 sm:text-[13px] ${mode === 'grid' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
                     >
                         <FileSpreadsheet className="size-4" /> Excel
                     </button>
                     <button
                         type="button"
                         onClick={openPreview}
-                        className={`flex items-center gap-1 px-3 py-1.5 ${mode === 'pdf' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
+                        className={`flex items-center justify-center gap-1 px-1.5 py-1.5 text-[12px] whitespace-nowrap sm:px-3 sm:text-[13px] ${mode === 'pdf' ? 'bg-primary text-primary-foreground' : 'bg-secondary'}`}
                     >
                         <Printer className="size-4" /> Pratinjau PDF
                     </button>
@@ -262,7 +270,29 @@ export function DocumentEditor({
                 </div>
             )}
 
-            {mode === 'pdf' ? (
+            {mode === 'pdf' && isMobile ? (
+                <div className="flex flex-col items-center gap-3 rounded-md border border-border bg-card px-4 py-8 text-center">
+                    <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <FileText className="size-6" />
+                    </span>
+                    <div>
+                        <p className="text-sm font-semibold text-foreground">Pratinjau PDF di HP</p>
+                        <p className="mt-1 text-[13px] text-muted-foreground">
+                            Browser HP tidak dapat menampilkan PDF di dalam halaman. Buka PDF di penampil browser, atau unduh dokumennya.
+                        </p>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <Button onClick={openPdf}>
+                            <ExternalLink className="size-4" />
+                            Buka Pratinjau PDF
+                        </Button>
+                        <Button variant="secondary" onClick={downloadPdf}>
+                            <Download className="size-4" />
+                            Unduh PDF
+                        </Button>
+                    </div>
+                </div>
+            ) : mode === 'pdf' ? (
                 <PdfPreviewFrame
                     key={previewKey}
                     title="Pratinjau PDF"
@@ -270,7 +300,7 @@ export function DocumentEditor({
                     className="h-[80vh] w-full rounded-md border border-border bg-white"
                 />
             ) : (
-                <div className="rounded-md border border-border bg-card p-2">
+                <div className="rounded-md border border-border bg-card p-1 md:p-2">
                     {mode === 'html' ? (
                         <RichTextEditor
                             value={html}
@@ -278,6 +308,7 @@ export function DocumentEditor({
                             onChange={setHtml}
                             disabled={!canEdit}
                             autoGrow
+                            fitPage
                         />
                     ) : (
                         <SpreadsheetEditor grid={gridState} onChange={setGridState} />

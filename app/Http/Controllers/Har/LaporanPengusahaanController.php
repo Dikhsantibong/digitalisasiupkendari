@@ -25,7 +25,8 @@ class LaporanPengusahaanController extends Controller
     use EmbedsReportLogo;
     use RendersReportPdf;
 
-    private const BODY_VERSION = 7;
+    /** v8 = Lembar Pengesahan removed from the Laporan Pengusahaan Pemeliharaan. */
+    private const BODY_VERSION = 8;
 
     public function __construct(
         private readonly HarDocumentBuilder $builder,

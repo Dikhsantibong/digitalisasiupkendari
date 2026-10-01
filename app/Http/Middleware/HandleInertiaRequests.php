@@ -51,6 +51,11 @@ class HandleInertiaRequests extends Middleware
                 'hasGlobalAccess' => $user?->hasGlobalAccess() ?? false,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // The bell's first count; it then refreshes itself from notifications.feed.
+            'notifications' => fn (): array => [
+                'unread' => $user?->unreadNotifications()->count() ?? 0,
+                'push_public_key' => config('webpush.vapid.public_key'),
+            ],
         ];
     }
 

@@ -177,6 +177,12 @@ enum PermissionName: string
 
     case SettingManage = 'setting.manage';
 
+    case NotifikasiJadwal = 'notifikasi.jadwal';
+    case NotifikasiAbsensi = 'notifikasi.absensi';
+    case NotifikasiKejadian = 'notifikasi.kejadian';
+    case NotifikasiPekerjaan = 'notifikasi.pekerjaan';
+    case NotifikasiLaporan = 'notifikasi.laporan';
+
     public function group(): PermissionGroup
     {
         return match ($this) {
@@ -334,6 +340,12 @@ enum PermissionName: string
             self::ReportProjectExport => PermissionGroup::ReportProject,
 
             self::SettingManage => PermissionGroup::System,
+
+            self::NotifikasiJadwal,
+            self::NotifikasiAbsensi,
+            self::NotifikasiKejadian,
+            self::NotifikasiPekerjaan,
+            self::NotifikasiLaporan => PermissionGroup::Notifikasi,
         };
     }
 
@@ -492,6 +504,12 @@ enum PermissionName: string
             self::ReportProjectExport => 'Mengekspor laporan project',
 
             self::SettingManage => 'Mengelola pengaturan aplikasi',
+
+            self::NotifikasiJadwal => 'Menerima pengingat jadwal modul (ringkasan harian & jadwal pribadi)',
+            self::NotifikasiAbsensi => 'Menerima pengingat absen masuk / pulang & shift besok',
+            self::NotifikasiKejadian => 'Menerima notifikasi kondisi abnormal, gangguan, unsafe & kecelakaan di unitnya',
+            self::NotifikasiPekerjaan => 'Menerima notifikasi Work Order & Service Request baru / berubah status',
+            self::NotifikasiLaporan => 'Menerima notifikasi alur persetujuan Laporan Pembangkit',
         };
     }
 
@@ -513,6 +531,17 @@ enum PermissionName: string
     public static function harLapangan(): array
     {
         return array_values(array_filter(self::cases(), fn (self $p): bool => $p->group() === PermissionGroup::PemeliharaanLapangan));
+    }
+
+    /**
+     * The reminder notifications every role receives by default (a Super Admin
+     * can withdraw them per role in Role & Akses).
+     *
+     * @return list<self>
+     */
+    public static function notifications(): array
+    {
+        return array_values(array_filter(self::cases(), fn (self $p): bool => $p->group() === PermissionGroup::Notifikasi));
     }
 
     /**

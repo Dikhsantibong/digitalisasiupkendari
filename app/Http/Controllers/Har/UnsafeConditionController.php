@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\HarUnsafeCondition;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -95,7 +96,7 @@ class UnsafeConditionController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
         abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganUnsafeCondition), 403);
@@ -135,7 +136,7 @@ class UnsafeConditionController extends Controller
             ->where('month', (int) $validated['month'])
             ->max('sort_order');
 
-        HarUnsafeCondition::query()->create([
+        $finding = HarUnsafeCondition::query()->create([
             'unit_id' => $unit->id,
             'year' => (int) $validated['year'],
             'month' => (int) $validated['month'],
@@ -153,6 +154,8 @@ class UnsafeConditionController extends Controller
             'input_by' => $user->id,
         ]);
 
+        $events->unsafeFound($finding, 'har', $user);
+
         $this->activityLogger->log(
             ActivityEvent::Created,
             "Menambah laporan unsafe action/condition {$unit->name}",
@@ -165,7 +168,7 @@ class UnsafeConditionController extends Controller
         return back();
     }
 
-    public function update(Request $request, HarUnsafeCondition $unsafeCondition): RedirectResponse
+    public function update(Request $request, HarUnsafeCondition $unsafeCondition, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
         abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganUnsafeCondition), 403);
@@ -209,7 +212,12 @@ class UnsafeConditionController extends Controller
             $data['foto_sesudah'] = $request->file('foto_sesudah')->store('har-unsafe', 'public');
         }
 
+        $wasOpen = $unsafeCondition->keterangan !== 'close';
         $unsafeCondition->update($data);
+
+        if ($wasOpen && $unsafeCondition->keterangan === 'close') {
+            $events->unsafeClosed($unsafeCondition, 'har', $user);
+        }
 
         $this->activityLogger->log(
             ActivityEvent::Updated,

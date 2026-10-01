@@ -118,7 +118,7 @@ enum RoleName: string
      */
     public function defaultPermissions(): array
     {
-        return match ($this) {
+        $granted = match ($this) {
             self::SuperAdmin => PermissionName::cases(),
 
             self::ManagerUl => [
@@ -358,6 +358,9 @@ enum RoleName: string
                 ...PermissionName::harLapangan(),
             ],
         };
+
+        // Every role gets the reminder notifications; the Super Admin already holds all cases.
+        return $this === self::SuperAdmin ? $granted : [...$granted, ...PermissionName::notifications()];
     }
 
     /**

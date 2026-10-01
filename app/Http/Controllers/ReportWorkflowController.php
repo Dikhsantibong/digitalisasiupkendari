@@ -7,6 +7,7 @@ use App\Enums\ReportModule;
 use App\Models\ReportWorkflow;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Services\Reports\ReportWorkflowService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,7 @@ class ReportWorkflowController extends Controller
     public function __construct(
         private readonly ReportWorkflowService $workflows,
         private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $events,
     ) {}
 
     public function submit(Request $request, ReportModule $module): RedirectResponse
@@ -33,6 +35,7 @@ class ReportWorkflowController extends Controller
         $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
 
         $workflow = $this->workflows->submit($request->user(), $module, $unit, $month, $year, $validated['note'] ?? null);
+        $this->events->reportWorkflow($workflow, 'ajukan', $request->user());
 
         return $this->done($workflow, "Mengajukan {$module->label()} {$unit->name} periode {$month}/{$year}", 'Laporan diajukan untuk diverifikasi Koordinator.');
     }
@@ -43,6 +46,7 @@ class ReportWorkflowController extends Controller
         $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
 
         $workflow = $this->workflows->verify($request->user(), $workflow, $validated['note'] ?? null);
+        $this->events->reportWorkflow($workflow, 'verifikasi', $request->user());
 
         return $this->done($workflow, "Memverifikasi {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", "Laporan diverifikasi dan diteruskan ke {$module->teamLeaderPosition()->value} untuk disetujui.");
     }
@@ -53,6 +57,7 @@ class ReportWorkflowController extends Controller
         $validated = $request->validate(['reason' => ['required', 'string', 'min:5', 'max:2000']], [], ['reason' => 'alasan penolakan']);
 
         $workflow = $this->workflows->reject($request->user(), $workflow, $validated['reason']);
+        $this->events->reportWorkflow($workflow, 'tolak', $request->user(), $validated['reason']);
 
         return $this->done($workflow, "Menolak {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", 'Laporan ditolak dan dikembalikan untuk perbaikan.');
     }
@@ -63,6 +68,7 @@ class ReportWorkflowController extends Controller
         $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
 
         $workflow = $this->workflows->approve($request->user(), $workflow, $validated['note'] ?? null);
+        $this->events->reportWorkflow($workflow, 'setujui', $request->user());
 
         return $this->done($workflow, "Menyetujui {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", 'Laporan disetujui dan diteruskan ke Manager UL untuk pengesahan.');
     }
@@ -73,6 +79,7 @@ class ReportWorkflowController extends Controller
         $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
 
         $workflow = $this->workflows->ratify($request->user(), $workflow, $validated['note'] ?? null);
+        $this->events->reportWorkflow($workflow, 'sahkan', $request->user());
 
         return $this->done($workflow, "Mengesahkan {$module->label()} {$workflow->unit->name} periode {$workflow->month}/{$workflow->year}", 'Laporan disahkan dan telah FINAL.');
     }

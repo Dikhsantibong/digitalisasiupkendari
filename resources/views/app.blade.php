@@ -31,6 +31,10 @@
         </style>
 
         <link rel="icon" href="/logo/icon.png" type="image/png">
+        {{-- Installable web app: needed on iPhone (Add to Home Screen) to receive push notifications. --}}
+        <link rel="manifest" href="/manifest.webmanifest">
+        <meta name="theme-color" content="#0b6aa2">
+        <meta name="apple-mobile-web-app-capable" content="yes">
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">

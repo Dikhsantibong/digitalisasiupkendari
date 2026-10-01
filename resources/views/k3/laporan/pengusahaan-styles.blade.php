@@ -405,4 +405,32 @@
     .text-muted { color: #64748b !important; }
 
     @include('reports.partials.pengusahaan-cover-styles')
+
+    /* --- Editor-only spacing (TinyMCE) -------------------------------------
+       The document resets body margins for dompdf (the PDF margins come from
+       @page), which made the on-screen editor run edge to edge. Scoped to the
+       editor body (.mce-content-body), so the printed PDF is unchanged — the
+       same approach as the Laporan Pemeliharaan & Operasi styles. */
+    body.mce-content-body {
+        margin: 0 !important;
+        padding: 16px 22px !important;
+    }
+    .mce-content-body .pc-cover {
+        max-width: 210mm;
+        margin: 0 auto;
+        padding: 12px 16px 20px 16px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 2px 14px rgba(0, 0, 0, 0.12);
+        background: #ffffff;
+    }
+    /* Page breaks are inert on screen: show a clear gap between "pages". */
+    .mce-content-body .page-break {
+        margin: 22px 0;
+        border-top: 1px dashed #cbd5e1;
+    }
+    .mce-content-body .seg-tables-wide {
+        margin-top: 22px;
+        padding-top: 18px;
+        border-top: 1px dashed #cbd5e1;
+    }
 </style>

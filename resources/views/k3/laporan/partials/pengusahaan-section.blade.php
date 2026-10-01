@@ -3,6 +3,8 @@
     input / formulir built by App\Services\K3\K3PengusahaanReport. Header & body
     cells: t (text), c (colspan), r (rowspan), w (width), a (l|c|r), b (bold),
     s (section row), i (italic), red (day off), fill (rencana|realisasi mark).
+    Also used by the Operasi report: optional $rightLogo / $rightLogoAlt and
+    $emptyText (defaults are the K3 ones).
 --}}
 @php
     $alignClass = fn (?string $a): string => match ($a) { 'c' => 'text-center', 'r' => 'text-right', default => '' };
@@ -41,7 +43,7 @@
                 <div>Halaman: {{ $section['no'] }}</div>
             </td>
             <td class="page-kop-logo-right">
-                <img src="/logo/k3.png" alt="Logo K3">
+                <img src="{{ $rightLogo ?? '/logo/k3.png' }}" alt="{{ $rightLogoAlt ?? 'Logo K3' }}">
             </td>
         </tr>
     </table>
@@ -84,7 +86,7 @@
             @empty
                 <tr>
                     <td colspan="{{ max(1, (int) array_sum(array_map(fn (array $c): int => (int) ($c['c'] ?? 1), $section['head'][0] ?? []))) }}" class="text-center text-muted">
-                        Belum diisi pada periode ini (menu Pengusahaan K3).
+                        {{ $emptyText ?? 'Belum diisi pada periode ini (menu Pengusahaan K3).' }}
                     </td>
                 </tr>
             @endforelse

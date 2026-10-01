@@ -1,9 +1,25 @@
 import { usePage } from '@inertiajs/react';
+import { Bell } from 'lucide-react';
 import { createContext, useContext } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MOBILE_MODULES } from '@/layouts/mobile/modules';
 import type { MobileMenu, MobileModule } from '@/layouts/mobile/modules';
 import type { Auth } from '@/types';
+
+/** Account pages every shell user reaches (from the bell), shown inside the shell rather than the desktop layout. */
+const SHELL_PAGES: MobileMenu[] = [
+    {
+        key: 'notifikasi',
+        group: 'umum',
+        title: 'Notifikasi',
+        description: 'Pengingat jadwal & absen',
+        icon: Bell,
+        tone: 'bg-primary/10 text-primary',
+        href: '/notifikasi',
+        component: 'notifications/index',
+        permission: [],
+    },
+];
 
 export type ResolvedMobileModule = {
     module: MobileModule;
@@ -42,7 +58,9 @@ export function useMobileModuleCandidate(): ResolvedMobileModule | null {
 
         const menus = module.menus.filter((menu) => allowed(menu.permission));
         const current =
-            menus.find((menu) => menu.component === page.component) ?? null;
+            menus.find((menu) => menu.component === page.component) ??
+            SHELL_PAGES.find((menu) => menu.component === page.component) ??
+            null;
         const isHome = module.homeComponents.includes(page.component);
 
         if (isHome || current) {

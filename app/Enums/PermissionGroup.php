@@ -28,6 +28,7 @@ enum PermissionGroup: string
     case Pdm = 'pdm';
     case Project = 'project';
     case ReportProject = 'report_project';
+    case Notifikasi = 'notifikasi';
     case System = 'system';
 
     public function label(): string
@@ -50,6 +51,7 @@ enum PermissionGroup: string
             self::Pdm => 'PdM & Maturity Level',
             self::Project => 'Project',
             self::ReportProject => 'Laporan Project',
+            self::Notifikasi => 'Notifikasi',
             self::System => 'Sistem',
         };
     }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AccidentReport;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -69,7 +70,7 @@ class AccidentController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user->hasPermissionTo(PermissionName::K3InputWrite), 403);
@@ -96,13 +97,18 @@ class AccidentController extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
 
-        DB::transaction(function () use ($validated, $unit, $month, $year, $user): void {
+        $previous = AccidentReport::query()
+            ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
+            ->get()->map(fn (AccidentReport $report): string => EventNotifier::accidentKey($report))->all();
+        $saved = [];
+
+        DB::transaction(function () use ($validated, $unit, $month, $year, $user, &$saved): void {
             AccidentReport::query()
                 ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
                 ->delete();
 
             foreach ($validated['rows'] ?? [] as $row) {
-                AccidentReport::query()->create([
+                $saved[] = AccidentReport::query()->create([
                     'unit_id' => $unit->id, 'year' => $year, 'month' => $month,
                     'category' => $row['category'],
                     'incident_date' => $row['incident_date'] ?? null,
@@ -118,6 +124,8 @@ class AccidentController extends Controller
                 ]);
             }
         });
+
+        $events->accidents($unit, $saved, $previous, $user);
 
         $this->activityLogger->log(
             ActivityEvent::Updated,

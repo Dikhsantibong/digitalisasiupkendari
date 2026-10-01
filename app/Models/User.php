@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\NotificationCategory;
 use App\Enums\PermissionName;
 use App\Enums\RoleName;
 use App\Services\AccessControl;
@@ -19,6 +20,7 @@ use Illuminate\Support\Carbon;
 use Laravel\Fortify\Contracts\PasskeyUser;
 use Laravel\Fortify\PasskeyAuthenticatable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * @property int $id
@@ -38,14 +40,18 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string|null $remember_token
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property array{disabled?: list<string>, digest_time?: string}|null $notification_settings
  * @property-read Employee|null $employee
  */
 #[Fillable(['name', 'employee_id', 'email', 'position', 'phone', 'password', 'is_active'])]
-#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+#[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token', 'notification_settings'])]
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+    use HasFactory, HasPushSubscriptions, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    /** Default time (WITA) of the morning schedule digest. */
+    public const DEFAULT_DIGEST_TIME = '06:30';
 
     /**
      * Get the attributes that should be cast.
@@ -60,7 +66,27 @@ class User extends Authenticatable implements PasskeyUser
             'two_factor_confirmed_at' => 'datetime',
             'last_login_at' => 'datetime',
             'is_active' => 'boolean',
+            'notification_settings' => 'array',
         ];
+    }
+
+    /**
+     * Whether the user receives a kind of reminder: their role holds its
+     * permission and they have not switched it off themselves.
+     */
+    public function wantsNotification(NotificationCategory $category): bool
+    {
+        return $this->is_active
+            && $this->hasPermissionTo($category->permission())
+            && ! in_array($category->value, $this->notification_settings['disabled'] ?? [], true);
+    }
+
+    /**
+     * The time (HH:MM, WITA) the user's morning schedule digest is sent.
+     */
+    public function digestTime(): string
+    {
+        return $this->notification_settings['digest_time'] ?? self::DEFAULT_DIGEST_TIME;
     }
 
     /**

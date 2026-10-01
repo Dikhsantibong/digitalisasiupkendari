@@ -84,6 +84,8 @@ class LaporanPengusahaanDocumentTest extends TestCase
         $this->assertStringContainsString('pc-cover', (string) $record->content_html);
         $this->assertStringContainsString('background/bg-login.jpeg', (string) $record->content_html);
         $this->assertStringContainsString('seg-tables-wide', (string) $record->content_html);
+        // The Laporan Pengusahaan K3 has no Lembar Pengesahan.
+        $this->assertStringNotContainsString('LEMBAR PENGESAHAN', (string) $record->content_html);
     }
 
     public function test_the_pengusahaan_document_exports_to_pdf_with_merged_orientations(): void

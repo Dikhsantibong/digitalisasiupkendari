@@ -15,6 +15,7 @@ use App\Models\SrCategory;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -75,7 +76,7 @@ class ServiceRequestController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
         abort_unless($this->canWrite($user), 403);
@@ -107,8 +108,10 @@ class ServiceRequestController extends Controller
         $machines = Machine::query()->where('unit_id', $unit->id)->pluck('id', 'name');
 
         $submitted = [];
+        $created = [];
+        $changed = [];
 
-        DB::transaction(function () use ($validated, $unit, $period, $user, $categories, $machines, &$submitted): void {
+        DB::transaction(function () use ($validated, $unit, $period, $user, $categories, $machines, &$submitted, &$created, &$changed): void {
             foreach ($validated['rows'] ?? [] as $row) {
                 $srNumber = trim((string) ($row['sr_number'] ?? ''));
                 if ($srNumber === '') {
@@ -118,7 +121,7 @@ class ServiceRequestController extends Controller
 
                 $status = ServiceRequestStatus::tryFrom((string) ($row['status'] ?? '')) ?? ServiceRequestStatus::Open;
 
-                ServiceRequest::query()->updateOrCreate(
+                $serviceRequest = ServiceRequest::query()->updateOrCreate(
                     ['unit_id' => $unit->id, 'report_period_id' => $period->id, 'sr_number' => $srNumber],
                     [
                         'description' => $row['description'] ?? null,
@@ -129,6 +132,12 @@ class ServiceRequestController extends Controller
                         'input_by' => $user->id,
                     ],
                 );
+
+                if ($serviceRequest->wasRecentlyCreated) {
+                    $created[] = $srNumber;
+                } elseif ($serviceRequest->wasChanged('status')) {
+                    $changed[] = $srNumber.' → '.$status->label();
+                }
             }
 
             ServiceRequest::query()
@@ -137,6 +146,8 @@ class ServiceRequestController extends Controller
                 ->whereNotIn('sr_number', $submitted === [] ? [''] : $submitted)
                 ->delete();
         });
+
+        $events->workItems('sr', $unit, $month, $year, $created, $changed, $user);
 
         $this->activityLogger->log(
             ActivityEvent::Updated,

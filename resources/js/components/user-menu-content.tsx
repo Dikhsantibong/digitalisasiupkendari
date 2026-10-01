@@ -1,5 +1,6 @@
 import { Link, router } from '@inertiajs/react';
 import { LogOut, Settings } from 'lucide-react';
+import type { MouseEvent } from 'react';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -8,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import { detachPushForLogout } from '@/lib/notifications';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import type { User } from '@/types';
@@ -21,9 +23,14 @@ type Props = {
 export function UserMenuContent({ user, showSettings = true }: Props) {
     const cleanup = useMobileNavigation();
 
-    const handleLogout = () => {
-        cleanup();
-        router.flushAll();
+    // Unlink this device's push first (needs the session), then log out.
+    const handleLogout = (event: MouseEvent) => {
+        event.preventDefault();
+        void detachPushForLogout().finally(() => {
+            cleanup();
+            router.flushAll();
+            router.post(logout().url);
+        });
     };
 
     return (

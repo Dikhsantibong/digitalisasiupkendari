@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\KondisiAbnormal;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -110,7 +111,7 @@ class KondisiAbnormalController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
         abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganKondisiAbnormal), 403);
@@ -132,6 +133,8 @@ class KondisiAbnormalController extends Controller
             'rows.*.durasi_gangguan' => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        $flagged = [];
+
         foreach ($validated['rows'] as $row) {
             $hasData = ! empty(trim($row['uraian_kondisi'] ?? '')) ||
                 ! empty($row['tanggal']) ||
@@ -151,7 +154,7 @@ class KondisiAbnormalController extends Controller
                 continue;
             }
 
-            KondisiAbnormal::query()->updateOrCreate(
+            $record = KondisiAbnormal::query()->updateOrCreate(
                 [
                     'unit_id' => $unit->id,
                     'year' => (int) $validated['year'],
@@ -168,7 +171,13 @@ class KondisiAbnormalController extends Controller
                     'input_by' => $user->id,
                 ]
             );
+
+            if ($record->wasRecentlyCreated || $record->wasChanged(['is_abnormal', 'is_gangguan'])) {
+                $flagged[] = $record;
+            }
         }
+
+        $events->kondisiAbnormal($unit, $flagged, $user);
 
         $this->activityLogger->log(
             ActivityEvent::Created,

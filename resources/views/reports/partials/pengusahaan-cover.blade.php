@@ -1,7 +1,8 @@
 {{--
     Sampul Laporan Pengusahaan Pembangkit — shared by HAR, K3 & Operasi.
     Params: $title (e.g. "LAPORAN KINERJA K3 & KAM"), $unitName, $monthName, $year,
-    optional $id (anchor of the cover) and $subtitle (line under the title).
+    optional $id (anchor of the cover), $subtitle (line under the title) and
+    $rightLogo / $rightLogoAlt (default the K3 logo).
     The photo is public/background/bg-login.jpeg (inlined for dompdf by EmbedsReportLogo).
 --}}
 <div class="pc-cover" @isset($id) id="{{ $id }}" @endisset>
@@ -13,7 +14,7 @@
                 <div class="pc-parent">UNIT PELAKSANA PENGENDALIAN PEMBANGKITAN KENDARI</div>
                 <div class="pc-unit">UNIT LAYANAN PUSAT LISTRIK TENAGA DIESEL {{ strtoupper(preg_replace('/^PLTD\s+/i', '', (string) ($unitName ?? ''))) }}</div>
             </td>
-            <td class="pc-logo-right"><img src="/logo/k3.png" alt="Logo K3"></td>
+            <td class="pc-logo-right"><img src="{{ $rightLogo ?? '/logo/k3.png' }}" alt="{{ $rightLogoAlt ?? 'Logo K3' }}"></td>
         </tr>
     </table>
 

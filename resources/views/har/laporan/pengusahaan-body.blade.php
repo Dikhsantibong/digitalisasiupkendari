@@ -253,7 +253,6 @@
     $resumeTotal = $resumeData['total'] ?? ['target' => 13.67, 'realisasi' => 13.75, 'analisa_kinerja' => 105];
 
     $sections = [
-        'Lembar Pengesahan',
         'Executive Summary',
         'Daftar Isi',
         'Istilah dan Definisi',
@@ -295,110 +294,6 @@
     'monthName' => \App\Support\Indonesian::monthName((int) ($report['period']['month'] ?? 1)),
     'year' => $report['period']['year'] ?? '',
 ])
-
-{{-- 2. LEMBAR PENGESAHAN --}}
-<div class="break-before har-pengesahan-page" id="sec-2">
-    <table style="width:100%; border-collapse:collapse; border:1.5px solid #000; font-family:'DejaVu Sans', Arial, sans-serif; margin-bottom:28px;">
-        <tr>
-            <td rowspan="4" style="width:150px; text-align:center; vertical-align:middle; padding:8px 10px; border-right:1.5px solid #000;">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="max-height:48px; max-width:140px;">
-            </td>
-            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:10.5pt; border-bottom:1px solid #000; letter-spacing:0.3px; color:#000;">
-                JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE &amp; 6 SITE -KIT
-            </td>
-            <td rowspan="4" style="width:100px; text-align:center; vertical-align:middle; padding:8px 10px; border-left:1.5px solid #000;">
-                <img src="/logo/k3.png" alt="K3" style="max-height:48px; max-width:90px;">
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:10.5pt; border-bottom:1px solid #000; letter-spacing:0.3px; color:#000;">
-                {{ $unitHeaderName }}
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:10.5pt; border-bottom:1px solid #000; letter-spacing:0.3px; color:#000;">
-                LAPORAN PROJECT
-            </td>
-        </tr>
-        <tr>
-            <td style="text-align:center; vertical-align:middle; padding:6px 8px; font-weight:bold; font-size:11pt; letter-spacing:0.5px; color:#000;">
-                LEMBAR PENGESAHAN
-            </td>
-        </tr>
-    </table>
-
-    <div style="font-size:10.5pt; line-height:1.65; color:#000; font-family:'DejaVu Sans', Arial, sans-serif; margin-top:32px; padding:0 8px;">
-        <div style="font-weight:bold; margin-bottom:14px; color:#000;">
-            JASA PENDUKUNG TEKNIS 6 SITE - {{ $unitHeaderName }}
-        </div>
-
-        <div style="margin-bottom:16px;">
-            Dengan ini menyatakan bahwa :
-        </div>
-
-        <div style="font-weight:bold; margin-bottom:18px; color:#000;">
-            1. LAPORAN PEMELIHARAAN PEMBANGKIT
-        </div>
-
-        <div style="margin-bottom:18px; text-align:justify;">
-            Telah disusun berdasarkan kegiatan Pemeliharaan pembangkit serta administrasi dan dokumentasi pendukung.
-        </div>
-
-        <div style="margin-bottom:18px; text-align:justify;">
-            Laporan ini telah dilakukan pemeriksaan dan dinyatakan sesuai untuk digunakan sebagai dokumen pelaporan dan evaluasi kegiatan pemeliharaan pembangkit {{ $unitDisplayName }}.
-        </div>
-
-        <div style="margin-bottom:28px; text-align:justify;">
-            Demikian lembar pengesahan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.
-        </div>
-
-        <div style="margin-top:35px; margin-bottom:18px; text-align:right; padding-right:15px; font-size:10.5pt;">
-            {{ $pengesahanDate }}
-        </div>
-
-        {{-- Signatories Row 1 (Disetujui & Dibuat) --}}
-        <table style="width:100%; border-collapse:collapse; margin-top:10px;">
-            <tr>
-                <td style="width:50%; text-align:left; vertical-align:top; padding-left:12px;">
-                    <div>Disetujui,</div>
-                    <div style="font-weight:bold; margin-top:2px;">{!! $tlHarPosition !!}</div>
-                    <div style="height:70px; margin:4px 0;">
-                        @if(!empty($tlHarSignature))
-                            <img src="{{ $tlHarSignature }}" style="max-height:65px; max-width:140px;" alt="Ttd TL Har">
-                        @endif
-                    </div>
-                    <div style="font-weight:bold;">{{ $tlHarName ?: '(...................................)' }}</div>
-                </td>
-                <td style="width:50%; text-align:center; vertical-align:top; padding-right:12px;">
-                    <div>Dibuat,</div>
-                    <div style="font-weight:bold; margin-top:2px;">{!! $koordinatorPosition !!}</div>
-                    <div style="height:70px; margin:4px 0;">
-                        @if(!empty($koordinatorSignature))
-                            <img src="{{ $koordinatorSignature }}" style="max-height:65px; max-width:140px;" alt="Ttd Koordinator">
-                        @endif
-                    </div>
-                    <div style="font-weight:bold;">{{ $koordinatorName ?: '(...................................)' }}</div>
-                </td>
-            </tr>
-        </table>
-
-        {{-- Signatories Row 2 (Mengetahui) --}}
-        <table style="width:100%; border-collapse:collapse; margin-top:28px;">
-            <tr>
-                <td style="text-align:center; vertical-align:top;">
-                    <div>Mengetahui,</div>
-                    <div style="font-weight:bold; margin-top:2px;">{!! $managerPosition !!}</div>
-                    <div style="height:70px; margin:4px 0;">
-                        @if(!empty($managerSignature))
-                            <img src="{{ $managerSignature }}" style="max-height:65px; max-width:140px;" alt="Ttd Manager">
-                        @endif
-                    </div>
-                    <div style="font-weight:bold;">{{ $managerName ?: '(...................................)' }}</div>
-                </td>
-            </tr>
-        </table>
-    </div>
-</div>
 
 {{-- 3. EXECUTIVE SUMMARY (Sesuai Format Standar PLN NP) --}}
 <div class="break-before" id="sec-3">
@@ -603,8 +498,8 @@
 {{-- 4. DAFTAR ISI --}}
 <div class="har-h2 break-before" id="sec-4">4. Daftar Isi</div>
 @php
-    // Section ids are fixed (sec-11 was the removed Akumulasi Biaya), so map titles to ids explicitly.
-    $sectionIds = [...array_map(fn (int $n): string => 'sec-'.$n, [...range(2, 10), ...range(12, 18)])];
+    // Section ids are fixed (sec-2 was the removed Lembar Pengesahan, sec-11 the removed Akumulasi Biaya), so map titles to ids explicitly.
+    $sectionIds = [...array_map(fn (int $n): string => 'sec-'.$n, [...range(3, 10), ...range(12, 18)])];
     $toc = array_merge([['Cover', 'sec-1']], collect($sections)->map(fn ($t, $i): array => [$t, $sectionIds[$i] ?? 'sec-'.($i + 3)])->all());
 @endphp
 @foreach($toc as $i => [$tocTitle, $anchor])

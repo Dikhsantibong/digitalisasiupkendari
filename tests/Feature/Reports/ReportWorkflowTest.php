@@ -299,6 +299,44 @@ class ReportWorkflowTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('can_write', false)->where('workflow.status', 'final'));
     }
 
+    // Notifikasi alur persetujuan
+
+    public function test_each_step_notifies_the_signer_whose_turn_it_is_and_the_maker(): void
+    {
+        $this->withoutDefer();
+        $maker = $this->makers['har'];
+        $koordinator = $this->signers[EmployeePosition::KoordinatorPemeliharaan->value];
+        $teamLeader = $this->signers[EmployeePosition::TeamLeaderPemeliharaan->value];
+        $manager = $this->signers[EmployeePosition::ManagerUl->value];
+        $titles = fn (User $user): array => $user->notifications()->get()->sortBy('created_at')->map(fn ($n): string => $n->data['title'])->values()->all();
+
+        $this->submit('har');
+        $this->assertSame(['Laporan menunggu verifikasi Anda'], $titles($koordinator));
+        $this->assertSame([], $titles($teamLeader), 'Not the Team Leader\'s turn yet.');
+        $this->assertStringStartsWith('/har/laporan/dokumen?', $koordinator->notifications()->first()->data['url']);
+        $this->assertSame('laporan', $koordinator->notifications()->first()->data['category']);
+
+        $this->act('verify', 'har', EmployeePosition::KoordinatorPemeliharaan);
+        $this->assertSame(['Laporan menunggu persetujuan Anda'], $titles($teamLeader));
+        $this->assertSame(['Laporan Anda sudah diverifikasi'], $titles($maker));
+
+        $this->act('reject', 'har', EmployeePosition::TeamLeaderPemeliharaan);
+        $this->assertContains('Laporan Anda ditolak', $titles($maker));
+        $this->assertStringContainsString(self::REASON, $maker->notifications()->get()->firstWhere('data.title', 'Laporan Anda ditolak')->data['body']);
+        $this->assertSame([], $titles($manager));
+    }
+
+    public function test_a_signer_who_switched_laporan_notifications_off_gets_none(): void
+    {
+        $this->withoutDefer();
+        $koordinator = $this->signers[EmployeePosition::KoordinatorPemeliharaan->value];
+        $koordinator->forceFill(['notification_settings' => ['disabled' => ['laporan']]])->save();
+
+        $this->submit('har');
+
+        $this->assertSame(0, $koordinator->notifications()->count());
+    }
+
     // Test 5 — Penolakan di tiap tahap
 
     public function test_the_koordinator_rejects_and_the_maker_fixes_and_resubmits(): void

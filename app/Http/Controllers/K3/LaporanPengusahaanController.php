@@ -24,7 +24,8 @@ class LaporanPengusahaanController extends Controller
 {
     use EmbedsReportLogo;
 
-    private const BODY_VERSION = 1;
+    /** v2 = Lembar Pengesahan removed from the Laporan Pengusahaan K3. */
+    private const BODY_VERSION = 2;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN KINERJA K3 & KAM';
 

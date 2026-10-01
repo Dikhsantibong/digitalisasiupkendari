@@ -18,6 +18,7 @@ use App\Models\WorkGroup;
 use App\Models\WorkOrder;
 use App\Models\WoStatus;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -92,7 +93,7 @@ class WorkOrderController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
         abort_unless($this->canWrite($user), 403);
@@ -142,8 +143,10 @@ class WorkOrderController extends Controller
         $reasons = collect(WoWaitingReason::cases())->map(fn (WoWaitingReason $r): string => $r->value);
 
         $submittedWonums = [];
+        $created = [];
+        $changed = [];
 
-        DB::transaction(function () use ($validated, $unit, $period, $user, $types, $groups, $statuses, $cycles, $machines, $reasons, &$submittedWonums): void {
+        DB::transaction(function () use ($validated, $unit, $period, $user, $types, $groups, $statuses, $cycles, $machines, $reasons, &$submittedWonums, &$created, &$changed): void {
             foreach ($validated['rows'] ?? [] as $row) {
                 $wonum = trim((string) ($row['wonum'] ?? ''));
                 if ($wonum === '') {
@@ -155,7 +158,7 @@ class WorkOrderController extends Controller
                     ? $row['waiting_reason']
                     : null;
 
-                WorkOrder::query()->updateOrCreate(
+                $workOrder = WorkOrder::query()->updateOrCreate(
                     ['unit_id' => $unit->id, 'report_period_id' => $period->id, 'wonum' => $wonum],
                     [
                         'description' => $row['description'] ?? null,
@@ -176,6 +179,12 @@ class WorkOrderController extends Controller
                         'input_by' => $user->id,
                     ],
                 );
+
+                if ($workOrder->wasRecentlyCreated) {
+                    $created[] = $wonum;
+                } elseif ($workOrder->wasChanged('wo_status_id')) {
+                    $changed[] = $wonum.' → '.($row['status_code'] ?? '-');
+                }
             }
 
             // Rows removed from the grid are removed from this period.
@@ -185,6 +194,8 @@ class WorkOrderController extends Controller
                 ->whereNotIn('wonum', $submittedWonums === [] ? [''] : $submittedWonums)
                 ->delete();
         });
+
+        $events->workItems('wo', $unit, $month, $year, $created, $changed, $user);
 
         $this->activityLogger->log(
             ActivityEvent::Updated,

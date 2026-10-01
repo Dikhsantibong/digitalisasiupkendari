@@ -48,6 +48,7 @@ export const MOBILE_MODULES: MobileModule[] = [
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         menus: OPERASI_PROJECT_MENUS,
+        quick: ['opp-jadwal-flm', 'opp-jadwal-program-5s-5r', 'opp-operasi-kondisi_abnormal', 'opp-operasi-permit_to_work'],
     },
     {
         // Akses 2 — Pengusahaan Operasi on a phone: TL & Staf Operasi (Manager UL keeps the full app).

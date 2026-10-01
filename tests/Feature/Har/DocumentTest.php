@@ -81,6 +81,9 @@ class DocumentTest extends TestCase
         $pengRecord = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('type', 'pengusahaan')->where('month', 9)->firstOrFail();
         $this->assertStringContainsString('LAPORAN PENGUSAHAAN', (string) $pengRecord->content_html);
         $this->assertStringContainsString('Executive Summary', (string) $pengRecord->content_html);
+        // The Laporan Pengusahaan has no Lembar Pengesahan (only the Laporan Pemeliharaan has one).
+        $this->assertStringNotContainsString('LEMBAR PENGESAHAN', (string) $pengRecord->content_html);
+        $this->assertStringNotContainsString('har-pengesahan-page', (string) $pengRecord->content_html);
         $this->assertStringContainsString('MAINTENANCE SUMMARY', (string) $pengRecord->content_html);
         $this->assertStringContainsString('FMKD-314-10.3.3-A9', (string) $pengRecord->content_html);
         $this->assertStringContainsString('Rekapitulasi WO Terbit dan Complete', (string) $pengRecord->content_html);

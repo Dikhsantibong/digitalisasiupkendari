@@ -2,6 +2,8 @@
 
 use App\Enums\ReportModule;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReportWorkflowController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,6 +11,19 @@ Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+
+    // Notifikasi milik akun yang login (lonceng, halaman Notifikasi, preferensi, push ke perangkat).
+    Route::prefix('notifikasi')->name('notifications.')->group(function (): void {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('feed', [NotificationController::class, 'feed'])->name('feed');
+        Route::post('baca-semua', [NotificationController::class, 'markAllRead'])->name('read-all');
+        Route::patch('pengaturan', [NotificationController::class, 'updateSettings'])->name('settings.update');
+        Route::post('uji', [NotificationController::class, 'test'])->middleware('throttle:6,1')->name('test');
+        Route::post('push', [PushSubscriptionController::class, 'store'])->name('push.store');
+        Route::delete('push', [PushSubscriptionController::class, 'destroy'])->name('push.destroy');
+        Route::get('{notification}', [NotificationController::class, 'open'])->whereUuid('notification')->name('open');
+        Route::post('{notification}/baca', [NotificationController::class, 'markRead'])->whereUuid('notification')->name('read');
+    });
 
     // Workflow Laporan Pembangkit (ajukan → verifikasi Koordinator → setujui TL Pemeliharaan → sahkan Manager UL → final),
     // authorised inside ReportWorkflowService.

@@ -16,6 +16,7 @@ use App\Http\Controllers\Operasi\JadwalPerformanceTestController;
 use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\LaporanController;
 use App\Http\Controllers\Operasi\LaporanDocumentController;
+use App\Http\Controllers\Operasi\LaporanPengusahaanController;
 use App\Http\Controllers\Operasi\MasterController;
 use App\Http\Controllers\Operasi\MaterialPeralatanController;
 use App\Http\Controllers\Operasi\MeetingShiftController;
@@ -177,6 +178,11 @@ Route::middleware(['auth', 'verified'])
         Route::get('pengusahaan/{section}', [PengusahaanController::class, 'index'])->name('pengusahaan.index')
             ->defaults('module', 'operasi')->whereIn('section', array_keys(PengusahaanController::SECTIONS));
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
+        // Laporan Pengusahaan Pembangkit (Akses 2) — before laporan/{report} so "pengusahaan" is never taken as a report code.
+        Route::get('laporan/pengusahaan', [LaporanPengusahaanController::class, 'edit'])->name('laporan.pengusahaan.edit');
+        Route::post('laporan/pengusahaan', [LaporanPengusahaanController::class, 'store'])->name('laporan.pengusahaan.store');
+        Route::post('laporan/pengusahaan/muat-ulang', [LaporanPengusahaanController::class, 'regenerate'])->name('laporan.pengusahaan.regenerate');
+        Route::get('laporan/pengusahaan/pdf', [LaporanPengusahaanController::class, 'pdf'])->name('laporan.pengusahaan.pdf');
         Route::get('laporan/{report}/excel', [LaporanController::class, 'spreadsheet'])->name('laporan.spreadsheet');
         Route::get('laporan/{report}/dokumen', [LaporanDocumentController::class, 'edit'])->name('laporan.document.edit');
         Route::post('laporan/{report}/dokumen', [LaporanDocumentController::class, 'store'])->name('laporan.document.store');

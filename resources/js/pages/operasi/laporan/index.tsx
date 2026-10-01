@@ -6,12 +6,12 @@ import {
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/operasi/laporan';
 import document from '@/routes/operasi/laporan/document';
+import pengusahaan from '@/routes/operasi/laporan/pengusahaan';
 import type { IdName } from '@/types';
 
 type ReportDef = {
@@ -88,7 +88,7 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                 {reports.length === 0 ? (
                     <EmptyState title="Belum ada laporan" description="Belum ada laporan terdaftar." />
                 ) : (
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2">
                         {can('operasi.laporan.view') && reports.map((report) => (
                             <div
                                 key={report.code}
@@ -102,50 +102,31 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                         {report.description}
                                     </p>
                                 </div>
-                                <div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button
-                                            onClick={() => openDocument(report)}
-                                        >
-                                            <FilePenLine className="size-4" />
-                                            Buka Dokumen (Lihat, Edit &amp; Cetak)
-                                        </Button>
-                                    </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button onClick={() => openDocument(report)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
+                                        <FilePenLine className="size-4" />
+                                        Buka Dokumen Operasi (Lihat, Edit &amp; Cetak)
+                                    </Button>
                                 </div>
                             </div>
                         ))}
 
-                        {/* Laporan Pengusahaan Pembangkit */}
+                        {/* Laporan Pengusahaan Pembangkit (Akses 2 — data dari input Pengusahaan Operasi) */}
                         {can('operasi.pengusahaan.view') && (
                             <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
                                 <div>
-                                    <div className="flex items-center justify-between gap-2">
-                                        <h2 className="text-base font-semibold text-foreground">
-                                            Laporan Pengusahaan Pembangkit
-                                        </h2>
-                                        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                                            Sementara Disusun
-                                        </Badge>
-                                    </div>
+                                    <h2 className="text-base font-semibold text-foreground">
+                                        Laporan Pengusahaan Pembangkit
+                                    </h2>
                                     <p className="mt-1 text-[13px] text-muted-foreground">
-                                        Laporan kinerja pengusahaan dan evaluasi menyeluruh operasional unit pembangkit.
+                                        Ringkasan kinerja, produksi &amp; pemakaian sendiri, BBM &amp; pelumas, feeder, pasokan cadangan, star-stop, resource pembangkit dan status berita acara — terisi otomatis dari input Pengusahaan Operasi (gabungan Portrait &amp; Landscape).
                                     </p>
                                 </div>
-                                <div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button
-                                            variant="outline"
-                                            disabled
-                                            className="gap-2 cursor-not-allowed opacity-75"
-                                            title="Tombol sementara dinonaktifkan (laporan sedang disiapkan)"
-                                        >
-                                            <Building2 className="size-4" />
-                                            Laporan Pengusahaan Pembangkit
-                                        </Button>
-                                    </div>
-                                    <p className="mt-1 text-[11px] text-muted-foreground italic">
-                                        * Fitur laporan sedang disiapkan
-                                    </p>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button onClick={() => router.get(pengusahaan.edit({ query: reportQuery() }).url)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
+                                        <Building2 className="size-4" />
+                                        Buka Dokumen Pengusahaan (Lihat, Edit &amp; Cetak)
+                                    </Button>
                                 </div>
                             </div>
                         )}

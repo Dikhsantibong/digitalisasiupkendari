@@ -88,7 +88,7 @@ import pdmLaporan from '@/routes/pdm/laporan';
 import type { NavGroup } from '@/types';
 
 export function AppSidebar() {
-    const { can } = usePermissions();
+    const { can, isSuperAdmin } = usePermissions();
 
     // Akses 2 — Pengusahaan (TL & Staf) menus of a module, listed inside the
     // module's own group before its Laporan (registry: lib/pengusahaan-menus.ts,
@@ -356,8 +356,9 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
+                {/* Only the Super Admin (every menu) gets collapsible groups; other roles see a short, flat menu. */}
                 {groups.map((group) =>
-                    group.label === 'Umum' ? (
+                    group.label === 'Umum' || !isSuperAdmin ? (
                         <NavMain
                             key={group.label}
                             label={group.label}

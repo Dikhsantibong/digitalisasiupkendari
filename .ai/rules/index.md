@@ -12,6 +12,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Operasi/** | .ai/rules/controllers-operasi.md |
 | app/Http/Controllers/Operator/**, app/Services/Operator/** | .ai/rules/controllers-operator.md |
 | app/Http/Controllers/** | .ai/rules/controllers.md |
+| resources/js/components/document/** | .ai/rules/document.md |
 | app/Enums/** | .ai/rules/enums.md |
 | resources/js/pages/har/jadwal/** | .ai/rules/har-jadwal.md |
 | app/Services/Har/** | .ai/rules/har.md |
@@ -22,6 +23,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Logistik/** | .ai/rules/logistik.md |
 | resources/js/layouts/mobile/** | .ai/rules/mobile.md |
 | app/Models/** | .ai/rules/models.md |
+| app/Services/Notifications/** | .ai/rules/notifications.md |
 | app/Services/Operasi/** | .ai/rules/operasi.md |
 | resources/js/pages/operator/** | .ai/rules/operator.md |
 | resources/js/pages/k3/** | .ai/rules/pages-k3.md |
