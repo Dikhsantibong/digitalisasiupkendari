@@ -43,15 +43,18 @@ class LogsheetTest extends TestCase
     {
         $user = $this->userWithRole(RoleName::Operator, Unit::factory()->create());
 
-        $this->actingAs($user)->get(route('operasi.pengusahaan.daily-report.index'))->assertOk();
+        // Pengusahaan Operasi belongs to TL & Staf Operasi: closed to the operator.
+        $this->actingAs($user)->get(route('operasi.pengusahaan.daily-report.index'))->assertForbidden();
+
+        $this->actingAs($user)->get(route('operasi.input.kondisi-abnormal.index'))->assertOk();
 
         // Withdrawn in Role & Akses: the page closes again.
         Role::query()->where('name', RoleName::Operator->value)->sole()
-            ->permissions()->detach(Permission::query()->where('name', 'operasi.lapangan.daily_report')->value('id'));
+            ->permissions()->detach(Permission::query()->where('name', 'operasi.lapangan.kondisi_abnormal')->value('id'));
         $user->forgetAccessCache();
 
-        $this->actingAs($user->fresh())->get(route('operasi.pengusahaan.daily-report.index'))->assertForbidden();
-        $this->actingAs($user->fresh())->get(route('operasi.pengusahaan.star-stop.index'))->assertOk();
+        $this->actingAs($user->fresh())->get(route('operasi.input.kondisi-abnormal.index'))->assertForbidden();
+        $this->actingAs($user->fresh())->get(route('operasi.input.permit-to-work.index'))->assertOk();
     }
 
     public function test_the_operator_sees_the_logsheet_grid(): void
@@ -136,28 +139,25 @@ class LogsheetTest extends TestCase
             ->assertSessionHasErrors('shift');
     }
 
-    public function test_submitting_locks_the_sheet(): void
+    public function test_a_previously_sent_sheet_stays_editable(): void
     {
         $unit = Unit::factory()->create();
         $engine = $this->engineForUnit($unit);
         $operator = $this->userWithRole(RoleName::Operator, $unit);
 
-        $this->actingAs($operator)->post(route('operator.logsheet.submit'), [
+        // A sheet sent with the former "Kirim" button no longer locks the operator out.
+        OperatorLogsheet::query()->create([
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',
-        ])->assertRedirect();
+            'status' => LogsheetStatus::Submitted, 'submitted_at' => now(), 'input_by' => $operator->id,
+        ]);
 
-        $logsheet = OperatorLogsheet::query()->where('engine_id', $engine->id)->firstOrFail();
-        $this->assertSame(LogsheetStatus::Submitted, $logsheet->status);
-        $this->assertNotNull($logsheet->submitted_at);
-
-        // Reopening shows it locked, and a further save is rejected.
         $this->actingAs($operator)
             ->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10']))
-            ->assertInertia(fn ($page) => $page->where('can_write', false)->where('is_submitted', true));
+            ->assertInertia(fn ($page) => $page->where('can_write', true));
 
         $this->actingAs($operator)->post(route('operator.logsheet.store'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10', 'time_slot' => '01:00', 'values' => [],
-        ])->assertStatus(422);
+        ])->assertRedirect()->assertSessionHasNoErrors();
     }
 
     public function test_tl_operasi_can_view_but_not_write(): void

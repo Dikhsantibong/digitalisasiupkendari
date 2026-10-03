@@ -98,8 +98,8 @@ class LogsheetController extends Controller
                 'units' => $units->all(),
                 'machines' => $machines->all(),
             ],
-            // The operator can edit only a draft sheet; TL/Manager never write.
-            'can_write' => $user->hasPermissionTo(PermissionName::OperatorLogsheetWrite) && ! $isSubmitted,
+            // The operator can always edit the sheet; TL/Manager never write.
+            'can_write' => $user->hasPermissionTo(PermissionName::OperatorLogsheetWrite),
             'is_submitted' => $isSubmitted,
         ]);
     }
@@ -125,7 +125,6 @@ class LogsheetController extends Controller
 
         $logDate = Carbon::parse($validated['log_date'])->toDateString();
         $logsheet = $this->findOrNewSheet($engine->id, $logDate);
-        abort_if($logsheet->exists && $logsheet->status === LogsheetStatus::Submitted, 422, 'Logsheet sudah dikirim dan terkunci.');
 
         $validParameterIds = array_flip(LogsheetParameter::query()->where('is_active', true)->pluck('id')->all());
 
@@ -158,34 +157,6 @@ class LogsheetController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Data jam {$validated['time_slot']} disimpan."]);
-
-        return back();
-    }
-
-    /** Lock the sheet from further operator edits. */
-    public function submit(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetWrite), 403);
-
-        [$unit, $engine] = $this->resolveTarget($request);
-        $request->validate(['log_date' => ['required', 'date']]);
-        $logDate = Carbon::parse($request->input('log_date'))->toDateString();
-
-        $logsheet = $this->findOrNewSheet($engine->id, $logDate);
-        $logsheet->fill(['unit_id' => $unit->id, 'engine_id' => $engine->id, 'input_by' => $user->id]);
-        $logsheet->status = LogsheetStatus::Submitted;
-        $logsheet->submitted_at = now();
-        $logsheet->save();
-
-        $this->activityLogger->log(
-            ActivityEvent::Updated,
-            "Mengirim logsheet {$engine->name} {$logDate}",
-            $logsheet,
-            unit: $unit->id,
-        );
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Logsheet dikirim & dikunci.']);
 
         return back();
     }

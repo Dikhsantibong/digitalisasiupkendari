@@ -1,1 +1,0 @@
-import{i as e,r as t}from"./wayfinder-MrBSeEIB.js";import{n,t as r}from"./formulir-record-page-B-3aWTy0.js";var i=e(),a=t();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`pemeliharaan-tps-lb3`,`Formulir Pemeliharaan TPS LB3`)};export{o as default};

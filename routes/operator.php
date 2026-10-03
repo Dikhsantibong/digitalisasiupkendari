@@ -21,7 +21,6 @@ Route::middleware(['auth', 'verified'])
     ->group(function (): void {
         Route::get('logsheet', [LogsheetController::class, 'index'])->name('logsheet.index');
         Route::post('logsheet', [LogsheetController::class, 'store'])->name('logsheet.store');
-        Route::post('logsheet/submit', [LogsheetController::class, 'submit'])->name('logsheet.submit');
         Route::get('logsheet/pdf', [LogsheetController::class, 'pdf'])->name('logsheet.pdf');
 
         Route::get('absensi', [AbsensiController::class, 'index'])->name('absensi.index');

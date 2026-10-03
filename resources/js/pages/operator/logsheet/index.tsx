@@ -1,9 +1,8 @@
 import { Head, router } from '@inertiajs/react';
-import { CheckCircle2, Circle, FileDown, FileSpreadsheet, Pencil, Plus, Send } from 'lucide-react';
+import { CheckCircle2, Circle, FileDown, FileSpreadsheet, Pencil, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
-import { StatusBadge } from '@/components/status-badge';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -142,14 +141,6 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
         );
     };
 
-    const submitSheet = () => {
-        router.post(
-            logsheet.submit().url,
-            { unit_id: filters.unit_id, engine_id: filters.engine_id, log_date: filters.log_date },
-            { preserveScroll: true },
-        );
-    };
-
     const noEngine = filters.engine_id === null;
     const [exporting, setExporting] = useState(false);
     const engineName = options.machines.find((m) => m.id === filters.engine_id)?.name ?? '';
@@ -186,14 +177,8 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                     <Plus className="size-4" />
                                     Isi Data
                                 </Button>
-                                <Button variant="secondary" onClick={submitSheet}>
-                                    <Send className="size-4" />
-                                    Kirim
-                                </Button>
                             </div>
-                        ) : (
-                            is_submitted && <StatusBadge tone="success">Terkirim (terkunci)</StatusBadge>
-                        )
+                        ) : undefined
                     }
                 />
 
@@ -370,14 +355,10 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
             </div>
 
             {compact && can_write && !noEngine && (
-                <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+                <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-1 gap-2 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
                     <Button size="lg" onClick={() => openFor()}>
                         <Plus className="size-4" />
                         Isi Data
-                    </Button>
-                    <Button size="lg" variant="secondary" onClick={submitSheet}>
-                        <Send className="size-4" />
-                        Kirim
                     </Button>
                 </div>
             )}
