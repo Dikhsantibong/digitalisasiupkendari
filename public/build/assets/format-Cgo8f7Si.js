@@ -1,0 +1,1 @@
+function e(e){return e?new Date(e).toLocaleString(`id-ID`,{dateStyle:`medium`,timeStyle:`short`}):`—`}function t(e,t=2){if(e==null||e===``)return`—`;let n=typeof e==`string`?Number(e):e;return Number.isNaN(n)?`—`:n.toLocaleString(`id-ID`,{minimumFractionDigits:t,maximumFractionDigits:t})}export{t as n,e as t};

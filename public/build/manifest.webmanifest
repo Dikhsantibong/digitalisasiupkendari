@@ -1,0 +1,19 @@
+{
+    "name": "Management Pelaporan Pembangkit",
+    "short_name": "Pelaporan KIT",
+    "description": "Pelaporan pembangkit UP Kendari — jadwal, input, laporan, dan pengingat.",
+    "start_url": "/dashboard",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#f3f6fa",
+    "theme_color": "#0b6aa2",
+    "lang": "id",
+    "icons": [
+        {
+            "src": "/apple-touch-icon.png",
+            "sizes": "166x166",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}

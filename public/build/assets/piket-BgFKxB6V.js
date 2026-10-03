@@ -1,0 +1,1 @@
+import{i as e,r as t}from"./wayfinder-MrBSeEIB.js";import{n,t as r}from"./jadwal-sheet-page-DnDC7UvV.js";var i=e(),a=t();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`jadwal`,`piket`,`Jadwal Piket Patrol Check Logistik & Gudang (On Call)`)};export{o as default};
