@@ -170,9 +170,11 @@ class FieldRoleTest extends TestCase
                 $this->actingAs($user)->get(route("operasi.input.{$page}.index", $query))->assertOk();
             }
 
-            // The daily inputs moved to Pengusahaan Operasi; operators still reach them through their page permission.
+            // The daily inputs moved to Pengusahaan Operasi (Akses 2 — TL & Staf): closed to
+            // the operator, the Project Leader still reaches them through its page permission.
             foreach (['daily-report', 'star-stop', 'feeder', 'auxiliary', 'fuel-receipt', 'resource-pembangkit'] as $page) {
-                $this->actingAs($user)->get(route("operasi.pengusahaan.{$page}.index", $query))->assertOk();
+                $response = $this->actingAs($user)->get(route("operasi.pengusahaan.{$page}.index", $query));
+                $role === RoleName::Operator ? $response->assertForbidden() : $response->assertOk();
             }
 
             // The Koordinator's hub stays closed, and the HAR pages belong to Harmes / Harlist
@@ -215,8 +217,17 @@ class FieldRoleTest extends TestCase
         $operator = Role::query()->where('name', RoleName::Operator->value)->sole()->permissions()->pluck('name');
         $harmes = Role::query()->where('name', RoleName::Harmes->value)->sole()->permissions()->pluck('name');
 
+        $pengusahaanPages = [
+            PermissionName::OperasiLapanganDailyReport,
+            PermissionName::OperasiLapanganStarStop,
+            PermissionName::OperasiLapanganFeeder,
+            PermissionName::OperasiLapanganAuxiliary,
+            PermissionName::OperasiLapanganFuelReceipt,
+            PermissionName::OperasiLapanganResourcePembangkit,
+        ];
+
         foreach (PermissionName::operasiLapangan() as $permission) {
-            $this->assertTrue($operator->contains($permission->value), $permission->value);
+            $this->assertSame(! in_array($permission, $pengusahaanPages, true), $operator->contains($permission->value), $permission->value);
             $this->assertSame(PermissionGroup::OperasiLapangan, $permission->group());
         }
         foreach (PermissionName::harLapangan() as $permission) {

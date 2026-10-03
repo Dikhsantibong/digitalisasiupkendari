@@ -373,9 +373,19 @@ enum RoleName: string
                 // The operator sees the shift schedule they belong to (read-only).
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorPresensi,
-                // Every Operasi input page, one permission each — adjustable per
-                // role in Role & Akses.
-                ...PermissionName::operasiLapangan(),
+                // Operasi input pages, one permission each — adjustable per
+                // role in Role & Akses. The pages that moved to Pengusahaan
+                // Operasi (Akses 2 — TL & Staf: Input Harian, Star-Stop,
+                // Feeder, Pasokan Cadangan, Penerimaan BBM, Resource
+                // Pembangkit) are not granted to the operator.
+                PermissionName::OperasiLapanganKondisiAbnormal,
+                PermissionName::OperasiLapanganMaterialPeralatan,
+                PermissionName::OperasiLapanganPermitToWork,
+                PermissionName::OperasiLapanganFlmMonitoring,
+                PermissionName::OperasiLapanganPatrolCheckMesin,
+                PermissionName::OperasiLapanganChecklistCommissioning,
+                PermissionName::OperasiLapanganUnsafeCondition,
+                PermissionName::OperasiLapanganProgram5s5r,
             ],
 
             // Field maintenance staff (divisi Pemeliharaan): absen plus every HAR

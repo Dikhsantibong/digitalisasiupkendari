@@ -16,6 +16,13 @@ import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-selec
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanApelKeamanan from '@/routes/k3/pengusahaan/apel-keamanan';
 import type { IdName } from '@/types';
@@ -736,14 +743,35 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                         {/* KELENGKAPAN ATRIBUT */}
                                         <td className="border border-black px-1 py-0.5 text-center align-middle dark:border-border">
                                             {can_write ? (
-                                                <select
-                                                    value={it.kelengkapan_atribut}
-                                                    onChange={(e) => updateItem(it._key, 'kelengkapan_atribut', e.target.value)}
-                                                    className="w-full text-center bg-transparent text-[10px] focus:bg-background focus:outline-none sm:text-[11px]"
-                                                >
-                                                    <option value="Lengkap">Lengkap</option>
-                                                    <option value="Tidak Lengkap">Tidak Lengkap</option>
-                                                </select>
+                                                <>
+                                                    <div className="no-print flex justify-center">
+                                                        <Select
+                                                            value={it.kelengkapan_atribut || 'Lengkap'}
+                                                            onValueChange={(val) => updateItem(it._key, 'kelengkapan_atribut', val)}
+                                                        >
+                                                            <SelectTrigger size="sm" className="h-7 w-full min-w-[95px] text-xs font-medium justify-between bg-transparent">
+                                                                <SelectValue placeholder="Pilih...">
+                                                                    <span className={it.kelengkapan_atribut === 'Lengkap' ? 'text-emerald-700 font-medium dark:text-emerald-400' : 'text-amber-700 font-semibold dark:text-amber-400'}>
+                                                                        {it.kelengkapan_atribut}
+                                                                    </span>
+                                                                </SelectValue>
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Lengkap" className="text-xs">
+                                                                    <span className="text-emerald-700 font-medium dark:text-emerald-400">Lengkap</span>
+                                                                </SelectItem>
+                                                                <SelectItem value="Tidak Lengkap" className="text-xs">
+                                                                    <span className="text-amber-700 font-semibold dark:text-amber-400">Tidak Lengkap</span>
+                                                                </SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                    <span className="hidden print:inline-block">
+                                                        <span className={it.kelengkapan_atribut === 'Lengkap' ? 'text-emerald-700 font-medium' : 'text-amber-700 font-semibold'}>
+                                                            {it.kelengkapan_atribut}
+                                                        </span>
+                                                    </span>
+                                                </>
                                             ) : (
                                                 <span className={it.kelengkapan_atribut === 'Lengkap' ? 'text-emerald-700 font-medium dark:text-emerald-400' : 'text-amber-700 font-semibold dark:text-amber-400'}>
                                                     {it.kelengkapan_atribut}
