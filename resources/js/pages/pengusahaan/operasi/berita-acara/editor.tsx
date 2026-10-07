@@ -7,23 +7,18 @@ import {
     FileCode2,
     FileSpreadsheet,
     Info,
-    Plus,
+    Loader2,
     Printer,
     RotateCcw,
     Save,
-    SlidersHorizontal,
-    Trash2,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { SpreadsheetEditor } from '@/components/spreadsheet-editor';
 import { StatusBadge } from '@/components/status-badge';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -32,134 +27,26 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { downloadGridAsXlsx } from '@/lib/spreadsheet';
-import type { DocumentGrid, GridCell } from '@/lib/spreadsheet';
+import type { DocumentGrid } from '@/lib/spreadsheet';
 import { dashboard } from '@/routes';
 import beritaAcara from '@/routes/operasi/pengusahaan/berita-acara';
-
-type EditorTab = 'form' | 'html' | 'grid' | 'pdf';
-
-type SignatoryOption = {
-    id: number;
-    name: string;
-    nip: string | null;
-    position: string | null;
-    has_signature: boolean;
-    signature_url: string | null;
-};
-
-type PemakaianItem = {
-    mesin: string;
-    liter: number;
-};
-
-type FisikItem = {
-    tangki: string;
-    liter: number;
-};
-
-type PelumasRow = {
-    jenis: string;
-    satuan: string;
-    awal: number;
-    penerimaan: number;
-    stock: number;
-    pemakaian: number;
-    pengiriman: number;
-    administrasi: number;
-    fisik_liter: number;
-    selisih: number;
-};
-
-type FormDataPayload = {
-    is_fuel: boolean;
-    fuel_label?: string;
-    document: {
-        number: string;
-        title: string;
-        revision: string;
-        revision_date?: string;
-    };
-    unit: {
-        name: string;
-        service_unit?: string;
-    };
-    period: {
-        month: number;
-        year: number;
-        label: string;
-    };
-    narrative: {
-        hari: string;
-        tanggal_terbilang: string;
-        bulan: string;
-        tahun_terbilang: string;
-        tanggal_penuh: string;
-    };
-    print_place_date: string;
-    signers: {
-        manajer?: string;
-        manajer_title?: string;
-        manajer_signature?: string;
-        tl_operasi?: string;
-        tl_title?: string;
-        tl_signature?: string;
-    };
-    catatan?: string;
-    // Fuel specific
-    persediaan_awal?: number;
-    penerimaan_range?: string;
-    penerimaan_total?: number;
-    jumlah_stock?: number;
-    pemakaian?: PemakaianItem[];
-    pemakaian_total?: number;
-    pengiriman?: number;
-    administrasi?: number;
-    fisik?: FisikItem[];
-    fisik_total?: number;
-    selisih?: number;
-    // Lubricant specific
-    rows?: PelumasRow[];
-};
-
-type Props = {
-    type: { value: string; label: string };
-    filters: { unit_id: number; month: number; year: number };
-    unit: {
-        id: number;
-        name: string;
-        service_unit_id: number | null;
-        service_unit_name?: string | null;
-    };
-    units: Array<{ id: number; name: string }>;
-    document_number: string;
-    data: FormDataPayload;
-    form_data: FormDataPayload;
-    content: string;
-    content_styles: string;
-    letterhead: string;
-    grid: DocumentGrid;
-    format: 'form' | 'html' | 'grid';
-    has_saved: boolean;
-    manager_options: SignatoryOption[];
-    tl_options: SignatoryOption[];
-    pdf_url: string;
-    can_create: boolean;
-};
-
-const MONTHS = [
-    { value: 1, label: 'Januari' },
-    { value: 2, label: 'Februari' },
-    { value: 3, label: 'Maret' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'Mei' },
-    { value: 6, label: 'Juni' },
-    { value: 7, label: 'Juli' },
-    { value: 8, label: 'Agustus' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'Oktober' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'Desember' },
-];
+import { FeederEditorSection } from './feeder/FeederEditorSection';
+import { FuelEditorSection } from './fuel/FuelEditorSection';
+import { PelumasEditorSection } from './pelumas/PelumasEditorSection';
+import { DocumentMetadataCard } from './shared/DocumentMetadataCard';
+import { PageMarginSettingsCard } from './shared/PageMarginSettingsCard';
+import { SignersCard } from './shared/SignersCard';
+import {
+    MONTHS,
+    type AttachmentItem,
+    type EditorProps,
+    type EditorTab,
+    type FeederRow,
+    type FeederTotals,
+    type FisikItem,
+    type PelumasRow,
+    type PemakaianItem,
+} from './types';
 
 /** Scoped styling for the letterhead banner shown above the spreadsheet editor. */
 const LETTERHEAD_STYLES = `
@@ -171,14 +58,6 @@ const LETTERHEAD_STYLES = `
 .ba-letterhead .ba-meta td { border: 1px solid #000; padding: 3px 6px; }
 .ba-letterhead .ba-hr { border: none; border-top: 1px solid #000; margin-top: 8px; }
 `;
-
-const formatNum = (v: number | string | undefined | null) => {
-    const num = Number(v) || 0;
-    return new Intl.NumberFormat('id-ID', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(num);
-};
 
 export default function BeritaAcaraEditor({
     type,
@@ -198,7 +77,7 @@ export default function BeritaAcaraEditor({
     tl_options = [],
     pdf_url,
     can_create,
-}: Props) {
+}: EditorProps) {
     // Current active tab & editor mode
     const [activeTab, setActiveTab] = useState<EditorTab>(
         format === 'html' ? 'html' : format === 'grid' ? 'grid' : 'form',
@@ -274,63 +153,73 @@ export default function BeritaAcaraEditor({
     );
 
     // Page Layout Settings
+    const [showSettings, setShowSettings] = useState(false);
     const [marginTop, setMarginTop] = useState<number>(15);
     const [marginBottom, setMarginBottom] = useState<number>(15);
     const [marginLeft, setMarginLeft] = useState<number>(15);
     const [marginRight, setMarginRight] = useState<number>(15);
     const [lineSpacing, setLineSpacing] = useState<string>('1.15');
 
-    // Catatan Selisih
-    const [catatan, setCatatan] = useState<string>(
-        form_data.catatan || '',
-    );
-
-    // BBM Form Fields
+    // Fuel State
     const [persediaanAwal, setPersediaanAwal] = useState<number>(
-        Number(form_data.persediaan_awal ?? data.persediaan_awal ?? 0),
+        Number(form_data.persediaan_awal ?? data.persediaan_awal) || 0,
     );
     const [penerimaanRange, setPenerimaanRange] = useState<string>(
         form_data.penerimaan_range || data.penerimaan_range || '',
     );
     const [penerimaanTotal, setPenerimaanTotal] = useState<number>(
-        Number(form_data.penerimaan_total ?? data.penerimaan_total ?? 0),
+        Number(form_data.penerimaan_total ?? data.penerimaan_total) || 0,
     );
     const [pemakaianList, setPemakaianList] = useState<PemakaianItem[]>(
-        form_data.pemakaian || data.pemakaian || [],
+        () => form_data.pemakaian || data.pemakaian || [],
     );
     const [pengirimanTotal, setPengirimanTotal] = useState<number>(
-        Number(form_data.pengiriman ?? data.pengiriman ?? 0),
+        Number(form_data.pengiriman ?? data.pengiriman) || 0,
     );
     const [fisikList, setFisikList] = useState<FisikItem[]>(
-        form_data.fisik || data.fisik || [],
+        () => form_data.fisik || data.fisik || [],
+    );
+    const [catatan, setCatatan] = useState<string>(
+        form_data.catatan || data.catatan || '',
     );
 
-    // Pelumas Form Fields
+    // Lubricant State
     const [pelumasRows, setPelumasRows] = useState<PelumasRow[]>(
-        (form_data.rows || data.rows || []).map((row) => ({
-            jenis: row.jenis || '',
-            satuan: row.satuan || 'Liter',
-            awal: Number(row.awal) || 0,
-            penerimaan: Number(row.penerimaan) || 0,
-            stock: Number(row.stock) || ((Number(row.awal) || 0) + (Number(row.penerimaan) || 0)),
-            pemakaian: Number(row.pemakaian) || 0,
-            pengiriman: Number(row.pengiriman) || 0,
-            administrasi:
-                Number(row.administrasi) ||
-                ((Number(row.awal) || 0) + (Number(row.penerimaan) || 0) - (Number(row.pemakaian) || 0) - (Number(row.pengiriman) || 0)),
-            fisik_liter: Number(row.fisik_liter) || 0,
-            selisih:
-                Number(row.selisih) ||
-                ((Number(row.fisik_liter) || 0) -
-                    ((Number(row.awal) || 0) + (Number(row.penerimaan) || 0) - (Number(row.pemakaian) || 0) - (Number(row.pengiriman) || 0))),
-        })),
+        () => form_data.rows || data.rows || [],
     );
+
+    // Feeder State
+    const isFeeder = type.value === 'feeder';
+    const isFuel = form_data.is_fuel ?? (type.value === 'hsd' || type.value === 'mfo');
+    const [feederRows, setFeederRows] = useState<FeederRow[]>(
+        () => form_data.feeder_rows || data.feeder_rows || [],
+    );
+    const [attachments, setAttachments] = useState<AttachmentItem[]>(
+        () => form_data.attachments || data.attachments || [],
+    );
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+
+    // Computed Feeder Totals
+    const feederTotals = useMemo<FeederTotals>(() => {
+        let exp = 0;
+        let imp = 0;
+        feederRows.forEach((r) => {
+            exp += Number(r.export?.hasil) || 0;
+            imp += Number(r.import?.hasil) || 0;
+        });
+        return {
+            jumlah_export: Math.round(exp * 100) / 100,
+            jumlah_import: Math.round(imp * 100) / 100,
+            total_unit: Math.round((exp - imp) * 100) / 100,
+        };
+    }, [feederRows]);
 
     // Rich Text & Grid State
     const [html, setHtml] = useState(content);
     const [gridState, setGridState] = useState<DocumentGrid>(grid);
 
-    // Computed BBM Real-Time Math
+    // Computed Fuel Real-Time Math
     const jumlahStock = useMemo(
         () => Number((persediaanAwal + penerimaanTotal).toFixed(2)),
         [persediaanAwal, penerimaanTotal],
@@ -369,17 +258,21 @@ export default function BeritaAcaraEditor({
     // Computed Pelumas Summary Row
     const pelumasTotals = useMemo(() => {
         return pelumasRows.reduce(
-            (acc, r) => ({
-                awal: acc.awal + (Number(r.awal) || 0),
-                penerimaan: acc.penerimaan + (Number(r.penerimaan) || 0),
-                stock: acc.stock + (Number(r.stock) || 0),
-                pemakaian: acc.pemakaian + (Number(r.pemakaian) || 0),
-                pengiriman: acc.pengiriman + (Number(r.pengiriman) || 0),
-                administrasi: acc.administrasi + (Number(r.administrasi) || 0),
-                fisik_liter: acc.fisik_liter + (Number(r.fisik_liter) || 0),
-                selisih: acc.selisih + (Number(r.selisih) || 0),
+            (acc, row) => ({
+                jenis: 'TOTAL',
+                satuan: '',
+                awal: Number((acc.awal + (Number(row.awal) || 0)).toFixed(2)),
+                penerimaan: Number((acc.penerimaan + (Number(row.penerimaan) || 0)).toFixed(2)),
+                stock: Number((acc.stock + (Number(row.stock) || 0)).toFixed(2)),
+                pemakaian: Number((acc.pemakaian + (Number(row.pemakaian) || 0)).toFixed(2)),
+                pengiriman: Number((acc.pengiriman + (Number(row.pengiriman) || 0)).toFixed(2)),
+                administrasi: Number((acc.administrasi + (Number(row.administrasi) || 0)).toFixed(2)),
+                fisik_liter: Number((acc.fisik_liter + (Number(row.fisik_liter) || 0)).toFixed(2)),
+                selisih: Number((acc.selisih + (Number(row.selisih) || 0)).toFixed(2)),
             }),
             {
+                jenis: 'TOTAL',
+                satuan: '',
                 awal: 0,
                 penerimaan: 0,
                 stock: 0,
@@ -392,7 +285,6 @@ export default function BeritaAcaraEditor({
         );
     }, [pelumasRows]);
 
-    // Signatory Handlers
     const selectedManager = manager_options.find((m) => String(m.id) === managerId);
     const selectedTl = tl_options.find((t) => String(t.id) === tlId);
 
@@ -418,7 +310,7 @@ export default function BeritaAcaraEditor({
         }
     };
 
-    // BBM Pemakaian List Handlers
+    // Fuel Handlers
     const handleAddPemakaian = () => {
         setPemakaianList((prev) => [
             ...prev,
@@ -441,7 +333,6 @@ export default function BeritaAcaraEditor({
         setPemakaianList((prev) => prev.filter((_, i) => i !== index));
     };
 
-    // BBM Fisik List Handlers
     const handleAddFisik = () => {
         setFisikList((prev) => [
             ...prev,
@@ -464,7 +355,7 @@ export default function BeritaAcaraEditor({
         setFisikList((prev) => prev.filter((_, i) => i !== index));
     };
 
-    // Pelumas Row Handlers
+    // Pelumas Handlers
     const handleAddPelumasRow = () => {
         setPelumasRows((prev) => [
             ...prev,
@@ -483,27 +374,26 @@ export default function BeritaAcaraEditor({
         ]);
     };
 
-    const handleUpdatePelumasRow = (index: number, field: keyof PelumasRow, val: string | number) => {
+    const handleUpdatePelumasRow = (
+        index: number,
+        field: keyof PelumasRow,
+        val: string | number,
+    ) => {
         setPelumasRows((prev) => {
             const next = [...prev];
-            const current = { ...next[index], [field]: val };
+            const row = { ...next[index], [field]: val };
 
-            const awal = Number(current.awal) || 0;
-            const penerimaan = Number(current.penerimaan) || 0;
-            const pemakaian = Number(current.pemakaian) || 0;
-            const pengiriman = Number(current.pengiriman) || 0;
-            const fisik_liter = Number(current.fisik_liter) || 0;
+            const awal = Number(row.awal) || 0;
+            const penerimaan = Number(row.penerimaan) || 0;
+            const pemakaian = Number(row.pemakaian) || 0;
+            const pengiriman = Number(row.pengiriman) || 0;
+            const fisik = Number(row.fisik_liter) || 0;
 
-            const stock = awal + penerimaan;
-            const administrasi = stock - pemakaian - pengiriman;
-            const selisih = fisik_liter - administrasi;
+            row.stock = Number((awal + penerimaan).toFixed(2));
+            row.administrasi = Number((row.stock - pemakaian - pengiriman).toFixed(2));
+            row.selisih = Number((fisik - row.administrasi).toFixed(2));
 
-            next[index] = {
-                ...current,
-                stock: Number(stock.toFixed(2)),
-                administrasi: Number(administrasi.toFixed(2)),
-                selisih: Number(selisih.toFixed(2)),
-            };
+            next[index] = row;
             return next;
         });
     };
@@ -512,7 +402,131 @@ export default function BeritaAcaraEditor({
         setPelumasRows((prev) => prev.filter((_, i) => i !== index));
     };
 
-    // Navigation filters change
+    // Feeder Handlers
+    const handleAddFeederRow = () => {
+        setFeederRows((prev) => [
+            ...prev,
+            {
+                feeder_name: `Feeder Outgoing ${prev.length + 1}`,
+                export: { awal: 0, akhir: 0, f_kali: 1, hasil: 0 },
+                import: { awal: 0, akhir: 0, f_kali: 1, hasil: 0 },
+                keterangan: '',
+            },
+        ]);
+    };
+
+    const handleUpdateFeederName = (index: number, name: string) => {
+        setFeederRows((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], feeder_name: name };
+            return next;
+        });
+    };
+
+    const handleUpdateFeederKeterangan = (index: number, keterangan: string) => {
+        setFeederRows((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], keterangan };
+            return next;
+        });
+    };
+
+    const handleUpdateFeederReading = (
+        index: number,
+        direction: 'export' | 'import',
+        field: 'awal' | 'akhir' | 'f_kali',
+        val: number,
+    ) => {
+        setFeederRows((prev) => {
+            const next = [...prev];
+            const row = { ...next[index] };
+            const reading = { ...row[direction] };
+            reading[field] = val;
+            const diff = reading.akhir - reading.awal;
+            reading.hasil = diff > 0 ? Math.round(diff * reading.f_kali * 100) / 100 : 0;
+            row[direction] = reading;
+            next[index] = row;
+            return next;
+        });
+    };
+
+    const handleRemoveFeederRow = (index: number) => {
+        setFeederRows((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    // Attachment Handlers
+    const handleUploadImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+
+        setIsUploading(true);
+        setUploadError(null);
+
+        try {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('unit_id', String(filters.unit_id));
+                const caption = file.name.replace(/\.[^/.]+$/, '');
+                formData.append('caption', caption);
+
+                const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+                const res = await fetch('/operasi/pengusahaan/berita-acara/lampiran', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.message || 'Gagal mengunggah gambar lampiran.');
+                }
+
+                const uploadRes = await res.json();
+                setAttachments((prev) => [...prev, uploadRes]);
+            }
+        } catch (err: any) {
+            setUploadError(err.message || 'Terjadi kesalahan saat mengunggah gambar.');
+        } finally {
+            setIsUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleUpdateAttachmentCaption = (index: number, caption: string) => {
+        setAttachments((prev) => {
+            const next = [...prev];
+            next[index] = { ...next[index], caption };
+            return next;
+        });
+    };
+
+    const handleRemoveAttachment = async (index: number) => {
+        const item = attachments[index];
+        if (item?.path) {
+            try {
+                const csrfToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content;
+                await fetch('/operasi/pengusahaan/berita-acara/lampiran', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken || '',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ path: item.path }),
+                });
+            } catch (e) {
+                // Ignore cleanup errors
+            }
+        }
+        setAttachments((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    // Filter Navigation
     const handleUnitFilterChange = (newUnitId: string) => {
         router.get(beritaAcara.show({ type: type.value }).url, {
             unit_id: newUnitId,
@@ -571,26 +585,34 @@ export default function BeritaAcaraEditor({
             page_margin_left: marginLeft,
             page_margin_right: marginRight,
             line_spacing: lineSpacing,
-            ...(form_data.is_fuel
+            ...(isFeeder
                 ? {
-                      is_fuel: true,
-                      fuel_label: form_data.fuel_label,
-                      persediaan_awal: persediaanAwal,
-                      penerimaan_range: penerimaanRange,
-                      penerimaan_total: penerimaanTotal,
-                      jumlah_stock: jumlahStock,
-                      pemakaian: pemakaianList,
-                      pemakaian_total: pemakaianTotal,
-                      pengiriman: pengirimanTotal,
-                      administrasi: administrasiTotal,
-                      fisik: fisikList,
-                      fisik_total: fisikTotal,
-                      selisih: selisihTotal,
-                  }
-                : {
                       is_fuel: false,
-                      rows: pelumasRows,
-                  }),
+                      is_feeder: true,
+                      feeder_rows: feederRows,
+                      totals: feederTotals,
+                      attachments: attachments,
+                  }
+                : form_data.is_fuel
+                  ? {
+                        is_fuel: true,
+                        fuel_label: form_data.fuel_label,
+                        persediaan_awal: persediaanAwal,
+                        penerimaan_range: penerimaanRange,
+                        penerimaan_total: penerimaanTotal,
+                        jumlah_stock: jumlahStock,
+                        pemakaian: pemakaianList,
+                        pemakaian_total: pemakaianTotal,
+                        pengiriman: pengirimanTotal,
+                        administrasi: administrasiTotal,
+                        fisik: fisikList,
+                        fisik_total: fisikTotal,
+                        selisih: selisihTotal,
+                    }
+                  : {
+                        is_fuel: false,
+                        rows: pelumasRows,
+                    }),
         };
 
         const postPayload: Record<string, any> = {
@@ -600,1307 +622,441 @@ export default function BeritaAcaraEditor({
             year: filters.year,
             format: formatToSave,
             form_data: formDataPayload,
-            content_html: formatToSave === 'html' ? html : undefined,
-            content_grid: formatToSave === 'grid' ? gridState : undefined,
         };
 
-        router.post(
-            beritaAcara.store().url,
-            postPayload,
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setSavedFormat(formatToSave);
-                    setPreviewKey((k) => k + 1);
-                    if (onSuccessCallback) {
-                        onSuccessCallback();
-                    }
-                },
-                onFinish: () => setIsSaving(false),
-            },
-        );
-    };
-
-    // PDF Actions
-    const previewPdfUrl = useMemo(() => {
-        const separator = pdf_url.includes('?') ? '&' : '?';
-        const params = new URLSearchParams();
-        params.set('t', String(previewKey));
-        params.set('page_margin_top', String(marginTop));
-        params.set('page_margin_bottom', String(marginBottom));
-        params.set('page_margin_left', String(marginLeft));
-        params.set('page_margin_right', String(marginRight));
-        params.set('line_spacing', lineSpacing);
-        return `${pdf_url}${separator}${params.toString()}`;
-    }, [pdf_url, previewKey, marginTop, marginBottom, marginLeft, marginRight, lineSpacing]);
-
-    const handleDownloadPdf = () => {
-        const separator = pdf_url.includes('?') ? '&' : '?';
-        const params = new URLSearchParams();
-        params.set('download', '1');
-        params.set('page_margin_top', String(marginTop));
-        params.set('page_margin_bottom', String(marginBottom));
-        params.set('page_margin_left', String(marginLeft));
-        params.set('page_margin_right', String(marginRight));
-        params.set('line_spacing', lineSpacing);
-        window.open(`${pdf_url}${separator}${params.toString()}`, '_blank');
-    };
-
-    const handleOpenPreview = () => {
-        if (can_create) {
-            handleSave(() => {
-                setActiveTab('pdf');
-            });
-        } else {
-            setActiveTab('pdf');
-            setPreviewKey((k) => k + 1);
+        if (formatToSave === 'html') {
+            postPayload.content_html = html;
+        } else if (formatToSave === 'grid') {
+            postPayload.content_grid = gridState;
         }
+
+        router.post(beritaAcara.store().url, postPayload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setSavedFormat(formatToSave);
+                setPreviewKey((k) => k + 1);
+                if (onSuccessCallback) {
+                    onSuccessCallback();
+                }
+            },
+            onFinish: () => {
+                setIsSaving(false);
+            },
+        });
     };
 
     const handleSwitchTab = (tab: EditorTab) => {
-        if (tab === 'form' || tab === 'html' || tab === 'grid') {
-            setEditMode(tab);
+        if (tab === 'pdf') {
+            handleSave(() => {
+                setActiveTab('pdf');
+            });
+            return;
         }
         setActiveTab(tab);
+        setEditMode(tab);
     };
 
-    const downloadXlsx = () => {
-        const cols = gridState.cols;
-        const header: GridCell[][] = [
-            [{ t: 'UNIT INDUK PEMBANGKITAN DAN PENYALURAN SULAWESI', b: true, a: 'c' }],
-            [{ t: 'UNIT PELAKSANA PENGENDALIAN PEMBANGKITAN KENDARI', b: true, a: 'c' }],
-            [{ t: 'SISTEM MANAJEMEN TERINTEGRASI (9001-14001-45001-SMK3-SMP)' }],
-            [{ t: `No. Surat: ${docNumber}` }],
-        ];
-        const offset = header.length;
-        const shifted = (gridState.merges ?? []).map(
-            ([r1, c1, r2, c2]): [number, number, number, number] => [
-                r1 + offset,
-                c1,
-                r2 + offset,
-                c2,
-            ],
+    const handleResetToSystemTemplate = () => {
+        if (
+            !confirm(
+                'Apakah Anda yakin ingin memuat ulang data sistem? Perubahan yang belum disimpan akan hilang.',
+            )
+        ) {
+            return;
+        }
+        router.get(
+            beritaAcara.show({ type: type.value }).url,
+            {
+                unit_id: filters.unit_id,
+                month: filters.month,
+                year: filters.year,
+            },
+            { replace: true },
         );
-        const headerMerges = header.map(
-            (_, i): [number, number, number, number] => [i, 0, i, cols - 1],
-        );
-        const exportGrid: DocumentGrid = {
-            ...gridState,
-            rows: [...header, ...gridState.rows],
-            merges: [...headerMerges, ...shifted],
-        };
-        downloadGridAsXlsx(exportGrid, `BA-${type.value}-${filters.unit_id}-${filters.month}-${filters.year}.xlsx`);
     };
+
+    const activeFormatBadge =
+        savedFormat === 'grid'
+            ? 'Format: Spreadsheet Grid'
+            : savedFormat === 'html'
+              ? 'Format: Rich Text'
+              : has_saved
+                ? 'Format: Formulir Dinamis'
+                : 'Belum Disimpan (Draft)';
+
+    const dynamicPdfUrl = useMemo(() => {
+        const u = new URL(pdf_url, window.location.origin);
+        u.searchParams.set('page_margin_top', String(marginTop));
+        u.searchParams.set('page_margin_bottom', String(marginBottom));
+        u.searchParams.set('page_margin_left', String(marginLeft));
+        u.searchParams.set('page_margin_right', String(marginRight));
+        u.searchParams.set('line_spacing', lineSpacing);
+        u.searchParams.set('t', String(previewKey));
+        return u.toString();
+    }, [pdf_url, marginTop, marginBottom, marginLeft, marginRight, lineSpacing, previewKey]);
 
     return (
-        <>
-            <Head title={`Buat & Edit ${type.label} - ${unit.name}`} />
+        <div className="space-y-6">
+            <Head title={`Editor ${type.label} - ${unit.name}`} />
 
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                {/* Standard Page Header */}
-                <PageHeader
-                    title={`Buat & Edit ${type.label}`}
-                    description="Input data pemeriksaan berita acara, atur penandatangan & margin layout, dan cetak PDF resmi."
-                    actions={
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Button
-                                variant="outline"
-                                onClick={() => router.get(beritaAcara.index().url)}
-                                className="gap-2"
-                            >
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={handleDownloadPdf}
-                                className="gap-2"
-                            >
-                                <Download className="size-4" />
-                                Unduh PDF
-                            </Button>
-                            {editMode === 'grid' && (
-                                <Button variant="outline" onClick={downloadXlsx} className="gap-2">
-                                    <FileSpreadsheet className="size-4" />
-                                    Unduh Excel
-                                </Button>
-                            )}
-                            {can_create && (
-                                <Button
-                                    onClick={() => handleSave()}
-                                    disabled={isSaving}
-                                    className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                                >
-                                    <Save className="size-4" />
-                                    {isSaving ? 'Menyimpan…' : 'Simpan Berita Acara'}
-                                </Button>
-                            )}
-                        </div>
-                    }
-                />
-
-                {/* Status Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 text-[13px]">
+            <PageHeader
+                title={`${type.label} - ${unit.name}`}
+                description="Lengkapi data formulir, edit langsung tampilan dokumen (HTML), sesuaikan kisi sel (Excel), atau pratinjau PDF sebelum dicetak."
+                actions={
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-muted-foreground">Unit:</span>
-                        <strong className="text-foreground">{unit.name}</strong>
-                        <span className="text-muted-foreground mx-1">•</span>
-                        <span className="text-muted-foreground">Service Unit (UL):</span>
-                        <span className="font-medium text-foreground">
-                            {unit.service_unit_name || '—'}
-                        </span>
-                        <span className="text-muted-foreground mx-1">•</span>
-                        <span className="text-muted-foreground">Periode:</span>
-                        <span className="font-medium text-foreground">
-                            {MONTHS.find((m) => m.value === filters.month)?.label} {filters.year}
-                        </span>
-                        <span className="text-muted-foreground mx-1">•</span>
-                        <span className="text-muted-foreground">Status Dokumen:</span>
-                        {savedFormat !== null ? (
-                            <StatusBadge tone="success">
-                                Tersimpan ({savedFormat === 'form' ? 'Formulir' : savedFormat === 'html' ? 'Teks HTML' : 'Excel'})
-                            </StatusBadge>
-                        ) : (
-                            <StatusBadge tone="neutral">Belum Disimpan</StatusBadge>
+                        <StatusBadge tone={has_saved ? 'success' : 'neutral'}>
+                            {activeFormatBadge}
+                        </StatusBadge>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleResetToSystemTemplate}
+                            title="Reset data ke hitungan otomatis sistem"
+                            className="h-9 gap-1.5 text-xs"
+                        >
+                            <RotateCcw className="size-3.5" />
+                            Hitung Ulang Sistem
+                        </Button>
+                        <a href={dynamicPdfUrl} target="_blank" rel="noopener noreferrer">
+                            <Button size="sm" variant="outline" className="h-9 gap-1.5 text-xs">
+                                <ExternalLink className="size-3.5" />
+                                Cetak Langsung
+                            </Button>
+                        </a>
+                        {can_create && (
+                            <Button
+                                size="sm"
+                                onClick={() => handleSave()}
+                                disabled={isSaving}
+                                className="h-9 gap-1.5 text-xs"
+                            >
+                                {isSaving ? (
+                                    <Loader2 className="size-3.5 animate-spin" />
+                                ) : (
+                                    <Save className="size-3.5" />
+                                )}
+                                Simpan Berita Acara
+                            </Button>
                         )}
                     </div>
-                    <div className="text-[12px] text-muted-foreground">
-                        No. Dokumen: <span className="font-mono font-medium">{docNumber}</span> (Rev. {revision})
+                }
+            />
+
+            {/* Sub-header Filter Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-xs">
+                <div className="flex flex-wrap items-center gap-3">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.get(beritaAcara.index().url)}
+                        className="h-8 gap-1.5 text-xs text-muted-foreground"
+                    >
+                        <ArrowLeft className="size-3.5" />
+                        Kembali
+                    </Button>
+                    <div className="h-4 w-px bg-border" />
+
+                    {/* Unit Select */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Unit:</span>
+                        <Select
+                            value={String(filters.unit_id)}
+                            onValueChange={handleUnitFilterChange}
+                        >
+                            <SelectTrigger className="w-[180px] h-8 text-xs font-semibold">
+                                <SelectValue placeholder="Pilih Unit" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {units.map((u) => (
+                                    <SelectItem key={u.id} value={String(u.id)} className="text-xs">
+                                        {u.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Month Select */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Bulan:</span>
+                        <Select
+                            value={String(filters.month)}
+                            onValueChange={handleMonthFilterChange}
+                        >
+                            <SelectTrigger className="w-[130px] h-8 text-xs font-semibold">
+                                <SelectValue placeholder="Pilih Bulan" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {MONTHS.map((m) => (
+                                    <SelectItem key={m.value} value={String(m.value)} className="text-xs">
+                                        {m.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Year Select */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Tahun:</span>
+                        <Select
+                            value={String(filters.year)}
+                            onValueChange={handleYearFilterChange}
+                        >
+                            <SelectTrigger className="w-[100px] h-8 text-xs font-semibold">
+                                <SelectValue placeholder="Tahun" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {[filters.year - 1, filters.year, filters.year + 1].map((y) => (
+                                    <SelectItem key={y} value={String(y)} className="text-xs">
+                                        {y}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
-                {/* 2-Column Layout */}
-                <div className="flex flex-col lg:flex-row items-start gap-6 w-full">
-                    {/* LEFT COLUMN: Metadata, Signatories, Page Settings */}
-                    <div className="w-full lg:w-[380px] xl:w-[420px] shrink-0 space-y-5">
-                        {/* Card 1: Metadata Formulir & Dokumen */}
-                        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                            <div className="border-b border-border pb-2">
-                                <h3 className="text-sm font-semibold text-foreground">
-                                    Metadata Berita Acara
-                                </h3>
-                                <p className="text-[12px] text-muted-foreground">
-                                    Identitas unit, periode, nomor surat, dan tanggal pemeriksaan.
-                                </p>
-                            </div>
-
-                            <div className="space-y-3 text-xs">
-                                {/* Unit Selector */}
-                                <div className="space-y-1">
-                                    <Label className="text-xs">Unit Pembangkit</Label>
-                                    {units.length > 1 ? (
-                                        <Select
-                                            value={String(unit.id)}
-                                            onValueChange={handleUnitFilterChange}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue placeholder="Pilih unit" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {units.map((u) => (
-                                                    <SelectItem key={u.id} value={String(u.id)}>
-                                                        {u.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    ) : (
-                                        <Input value={unit.name} disabled className="h-8 text-xs bg-muted" />
-                                    )}
-                                </div>
-
-                                {/* Periode Bulan & Tahun */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                        <Label className="text-xs">Bulan</Label>
-                                        <Select
-                                            value={String(filters.month)}
-                                            onValueChange={handleMonthFilterChange}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {MONTHS.map((m) => (
-                                                    <SelectItem key={m.value} value={String(m.value)}>
-                                                        {m.label}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-xs">Tahun</Label>
-                                        <Select
-                                            value={String(filters.year)}
-                                            onValueChange={handleYearFilterChange}
-                                        >
-                                            <SelectTrigger className="h-8 text-xs">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {Array.from({ length: 6 }, (_, i) => filters.year - 3 + i).map((yr) => (
-                                                    <SelectItem key={yr} value={String(yr)}>
-                                                        {yr}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                {/* No. Surat BA & No. Dokumen */}
-                                <div className="space-y-2 rounded-md border border-border/70 p-2.5 bg-muted/20">
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px] font-medium">No. Surat Berita Acara</Label>
-                                        <Input
-                                            value={docNumber}
-                                            onChange={(e) => setDocNumber(e.target.value)}
-                                            placeholder="contoh: 001/BA-BBM/UPKDR/2026"
-                                            className="h-7 text-xs font-mono font-medium"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">Revisi</Label>
-                                            <Input
-                                                value={revision}
-                                                onChange={(e) => setRevision(e.target.value)}
-                                                className="h-7 text-xs"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[11px]">Tgl Revisi</Label>
-                                            <Input
-                                                value={revisionDate}
-                                                onChange={(e) => setRevisionDate(e.target.value)}
-                                                placeholder="YYYY-MM-DD"
-                                                className="h-7 text-xs"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Narasi Pemeriksaan */}
-                                <div className="space-y-2 rounded-md border border-border/70 p-2.5 bg-muted/20">
-                                    <Label className="text-[11px] font-semibold text-foreground">
-                                        Waktu Pelaksanaan / Pemeriksaan
-                                    </Label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-muted-foreground">Hari</Label>
-                                            <Input
-                                                value={hari}
-                                                onChange={(e) => setHari(e.target.value)}
-                                                className="h-7 text-xs"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-muted-foreground">Tanggal Penuh</Label>
-                                            <Input
-                                                value={tanggalPenuh}
-                                                onChange={(e) => setTanggalPenuh(e.target.value)}
-                                                className="h-7 text-xs"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground">Tanggal Terbilang</Label>
-                                        <Input
-                                            value={tanggalTerbilang}
-                                            onChange={(e) => setTanggalTerbilang(e.target.value)}
-                                            className="h-7 text-xs"
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-muted-foreground">Bulan Terbilang</Label>
-                                            <Input
-                                                value={bulanTerbilang}
-                                                onChange={(e) => setBulanTerbilang(e.target.value)}
-                                                className="h-7 text-xs"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] text-muted-foreground">Tahun Terbilang</Label>
-                                            <Input
-                                                value={tahunTerbilang}
-                                                onChange={(e) => setTahunTerbilang(e.target.value)}
-                                                className="h-7 text-xs"
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] text-muted-foreground">Tempat &amp; Tanggal Tanda Tangan</Label>
-                                        <Input
-                                            value={printPlaceDate}
-                                            onChange={(e) => setPrintPlaceDate(e.target.value)}
-                                            placeholder="Kendari, 31 Januari 2026"
-                                            className="h-7 text-xs"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 2: Penandatangan Dokumen */}
-                        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                            <div className="border-b border-border pb-2">
-                                <h3 className="text-sm font-semibold text-foreground">
-                                    Penandatangan Dokumen
-                                </h3>
-                                <p className="text-[12px] text-muted-foreground">
-                                    Hierarki tanda tangan: Menyetujui (Manajer) dan Membuat (TL Operasi).
-                                </p>
-                            </div>
-
-                            <div className="space-y-4 text-xs">
-                                {/* 1. Manajer (Menyetujui - Kiri) */}
-                                <div className="space-y-2.5 rounded-md border border-border/70 p-3 bg-muted/20">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="font-semibold text-foreground">
-                                            1. Menyetujui (Manajer)
-                                        </Label>
-                                        {selectedManager?.has_signature ? (
-                                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 bg-emerald-50 text-[10px] py-0">
-                                                TTD Siap
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="text-muted-foreground text-[10px] py-0">
-                                                Tanpa TTD
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <Select
-                                        value={managerId}
-                                        onValueChange={handleManagerChange}
-                                    >
-                                        <SelectTrigger className="h-7 text-xs">
-                                            <SelectValue placeholder="Pilih Manager UL..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {manager_options.map((e) => (
-                                                <SelectItem key={e.id} value={String(e.id)}>
-                                                    {e.name} {e.position ? `(${e.position})` : ''}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Input
-                                            value={managerName}
-                                            onChange={(e) => setManagerName(e.target.value)}
-                                            placeholder="Nama Manajer"
-                                            className="h-7 text-xs"
-                                        />
-                                        <Input
-                                            value={managerTitle}
-                                            onChange={(e) => setManagerTitle(e.target.value)}
-                                            placeholder="Jabatan"
-                                            className="h-7 text-xs"
-                                        />
-                                    </div>
-                                    {/* Preview space tanda tangan */}
-                                    <div className="flex h-14 w-full items-center justify-center rounded border border-dashed border-border/80 bg-background/60 p-1 text-[11px] text-muted-foreground">
-                                        {selectedManager?.signature_url ? (
-                                            <img
-                                                src={selectedManager.signature_url}
-                                                alt="TTD Manajer"
-                                                className="max-h-12 max-w-[120px] object-contain"
-                                            />
-                                        ) : (
-                                            <span className="italic text-[10px] text-muted-foreground">
-                                                (Space Area Tanda Tangan Manajer)
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* 2. TL Operasi (Membuat - Kanan) */}
-                                <div className="space-y-2.5 rounded-md border border-border/70 p-3 bg-muted/20">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="font-semibold text-foreground">
-                                            2. Membuat (TL Operasi)
-                                        </Label>
-                                        {selectedTl?.has_signature ? (
-                                            <Badge variant="outline" className="border-emerald-500/40 text-emerald-700 bg-emerald-50 text-[10px] py-0">
-                                                TTD Siap
-                                            </Badge>
-                                        ) : (
-                                            <Badge variant="outline" className="text-muted-foreground text-[10px] py-0">
-                                                Tanpa TTD
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    <Select
-                                        value={tlId}
-                                        onValueChange={handleTlChange}
-                                    >
-                                        <SelectTrigger className="h-7 text-xs">
-                                            <SelectValue placeholder="Pilih TL Operasi..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {tl_options.map((e) => (
-                                                <SelectItem key={e.id} value={String(e.id)}>
-                                                    {e.name} {e.position ? `(${e.position})` : ''}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Input
-                                            value={tlName}
-                                            onChange={(e) => setTlName(e.target.value)}
-                                            placeholder="Nama TL Operasi"
-                                            className="h-7 text-xs"
-                                        />
-                                        <Input
-                                            value={tlTitle}
-                                            onChange={(e) => setTlTitle(e.target.value)}
-                                            placeholder="Jabatan"
-                                            className="h-7 text-xs"
-                                        />
-                                    </div>
-                                    {/* Preview space tanda tangan */}
-                                    <div className="flex h-14 w-full items-center justify-center rounded border border-dashed border-border/80 bg-background/60 p-1 text-[11px] text-muted-foreground">
-                                        {selectedTl?.signature_url ? (
-                                            <img
-                                                src={selectedTl.signature_url}
-                                                alt="TTD TL Operasi"
-                                                className="max-h-12 max-w-[120px] object-contain"
-                                            />
-                                        ) : (
-                                            <span className="italic text-[10px] text-muted-foreground">
-                                                (Space Area Tanda Tangan TL Operasi)
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="rounded-md border border-border bg-card p-2 text-[11px] text-muted-foreground">
-                                    <Info className="size-3.5 inline mr-1 text-primary" />
-                                    Tanda tangan digital pegawai otomatis terpasang pada dokumen PDF jika sudah diunggah pada master pegawai.
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card 3: Page Settings */}
-                        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                            <div className="border-b border-border pb-2">
-                                <h3 className="text-sm font-semibold text-foreground">
-                                    Page Settings
-                                </h3>
-                                <p className="text-[12px] text-muted-foreground">
-                                    Pengaturan layout &amp; margin PDF cetak.
-                                </p>
-                            </div>
-
-                            <div className="space-y-3 text-xs">
-                                <div className="grid grid-cols-4 gap-2">
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px]">Atas (mm)</Label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            max={50}
-                                            value={marginTop}
-                                            onChange={(e) => setMarginTop(Number(e.target.value))}
-                                            className="h-7 text-xs text-center"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px]">Bawah (mm)</Label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            max={50}
-                                            value={marginBottom}
-                                            onChange={(e) => setMarginBottom(Number(e.target.value))}
-                                            className="h-7 text-xs text-center"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px]">Kiri (mm)</Label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            max={50}
-                                            value={marginLeft}
-                                            onChange={(e) => setMarginLeft(Number(e.target.value))}
-                                            className="h-7 text-xs text-center"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[11px]">Kanan (mm)</Label>
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            max={50}
-                                            value={marginRight}
-                                            onChange={(e) => setMarginRight(Number(e.target.value))}
-                                            className="h-7 text-xs text-center"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1">
-                                    <Label className="text-[11px]">Spasi Baris</Label>
-                                    <Select value={lineSpacing} onValueChange={setLineSpacing}>
-                                        <SelectTrigger className="h-7 text-xs">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="1.0">1,0 (Rapat)</SelectItem>
-                                            <SelectItem value="1.15">1,15 (Standar ISO)</SelectItem>
-                                            <SelectItem value="1.5">1,5 (Lebar)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* RIGHT COLUMN: Main Content Area */}
-                    <div className="flex-1 w-full min-w-0 flex flex-col gap-4">
-                        <div className="flex flex-1 flex-col justify-between rounded-lg border border-border bg-card shadow-sm">
-                            {/* Card Header with View Tabs */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
-                                <div>
-                                    <h3 className="text-base font-semibold text-foreground">
-                                        Isi Berita Acara &amp; Dokumen
-                                    </h3>
-                                    <p className="text-[12px] text-muted-foreground">
-                                        Kop surat, tanggal, kalkulasi persediaan, dan tanda tangan otomatis disesuaikan pada PDF.
-                                    </p>
-                                </div>
-
-                                {/* Tabs switch */}
-                                <div className="flex flex-wrap overflow-hidden rounded-md border border-border text-xs">
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSwitchTab('form')}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors whitespace-nowrap ${
-                                            activeTab === 'form'
-                                                ? 'bg-primary text-primary-foreground font-medium'
-                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                        }`}
-                                    >
-                                        <SlidersHorizontal className="size-3.5" />
-                                        Editor Formulir
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSwitchTab('html')}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors whitespace-nowrap ${
-                                            activeTab === 'html'
-                                                ? 'bg-primary text-primary-foreground font-medium'
-                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                        }`}
-                                    >
-                                        <FileCode2 className="size-3.5" />
-                                        Editor Teks (HTML)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSwitchTab('grid')}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors whitespace-nowrap ${
-                                            activeTab === 'grid'
-                                                ? 'bg-primary text-primary-foreground font-medium'
-                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                        }`}
-                                    >
-                                        <FileSpreadsheet className="size-3.5" />
-                                        Spreadsheet (Excel)
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleOpenPreview}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 transition-colors whitespace-nowrap ${
-                                            activeTab === 'pdf'
-                                                ? 'bg-primary text-primary-foreground font-medium'
-                                                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                                        }`}
-                                    >
-                                        <Printer className="size-3.5" />
-                                        Pratinjau PDF
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* TAB 1: FORMULIR INPUT CODINGAN BIASA */}
-                            {activeTab === 'form' && (
-                                <div className="p-4 space-y-6">
-                                    {form_data.is_fuel ? (
-                                        /* ================= BBM SECTION ================= */
-                                        <div className="space-y-6">
-                                            {/* Section 1: Persediaan Awal & Penerimaan */}
-                                            <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                                                <div className="flex items-center justify-between border-b border-border pb-2">
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-foreground">
-                                                            1. Persediaan Awal &amp; 2. Penerimaan BBM ({form_data.fuel_label})
-                                                        </h4>
-                                                        <p className="text-[12px] text-muted-foreground">
-                                                            Pencatatan saldo awal dan penerimaan BBM selama periode ini.
-                                                        </p>
-                                                    </div>
-                                                    <Badge variant="outline" className="font-mono text-xs">
-                                                        A = Awal + Penerimaan
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                                    <div className="space-y-1.5">
-                                                        <Label className="font-semibold text-foreground">
-                                                            1. Persediaan Awal (Liter)
-                                                        </Label>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={persediaanAwal}
-                                                            onChange={(e) => setPersediaanAwal(Number(e.target.value) || 0)}
-                                                            className="h-8 font-mono text-right"
-                                                        />
-                                                    </div>
-
-                                                    <div className="space-y-1.5">
-                                                        <Label className="font-semibold text-foreground">
-                                                            Rentang Tanggal Penerimaan
-                                                        </Label>
-                                                        <Input
-                                                            value={penerimaanRange}
-                                                            onChange={(e) => setPenerimaanRange(e.target.value)}
-                                                            placeholder="contoh: 01 Januari 2026 s/d 31 Januari 2026"
-                                                            className="h-8"
-                                                        />
-                                                    </div>
-
-                                                    <div className="space-y-1.5 md:col-span-2">
-                                                        <Label className="font-semibold text-foreground">
-                                                            2. Total Penerimaan BBM (Liter)
-                                                        </Label>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={penerimaanTotal}
-                                                            onChange={(e) => setPenerimaanTotal(Number(e.target.value) || 0)}
-                                                            className="h-8 font-mono text-right"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                {/* Subtotal Box A */}
-                                                <div className="flex items-center justify-between rounded-md border border-primary/20 bg-primary/5 p-3 text-xs">
-                                                    <span className="font-semibold text-foreground">
-                                                        A. Jumlah Stock BBM {form_data.fuel_label} (1 + 2)
-                                                    </span>
-                                                    <span className="text-sm font-bold font-mono text-primary">
-                                                        {formatNum(jumlahStock)} Liter
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Section 2: Pemakaian Mesin */}
-                                            <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-foreground">
-                                                            3. Pemakaian Mesin PLN
-                                                        </h4>
-                                                        <p className="text-[12px] text-muted-foreground">
-                                                            Rincian liter pemakaian bahan bakar per mesin unit pembangkit.
-                                                        </p>
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={handleAddPemakaian}
-                                                        className="h-7 text-xs gap-1"
-                                                    >
-                                                        <Plus className="size-3.5" />
-                                                        Tambah Mesin
-                                                    </Button>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    {pemakaianList.length === 0 ? (
-                                                        <div className="p-4 text-center text-xs text-muted-foreground border border-dashed rounded-md">
-                                                            Belum ada data pemakaian mesin. Klik &ldquo;Tambah Mesin&rdquo; untuk menambahkan.
-                                                        </div>
-                                                    ) : (
-                                                        pemakaianList.map((item, idx) => (
-                                                            <div
-                                                                key={idx}
-                                                                className="flex items-center gap-3 rounded-md border border-border p-2 bg-muted/10 text-xs"
-                                                            >
-                                                                <div className="w-1/2">
-                                                                    <Input
-                                                                        value={item.mesin}
-                                                                        onChange={(e) =>
-                                                                            handleUpdatePemakaian(idx, 'mesin', e.target.value)
-                                                                        }
-                                                                        placeholder="Nama Mesin / Generator"
-                                                                        className="h-7 text-xs"
-                                                                    />
-                                                                </div>
-                                                                <div className="w-1/2 flex items-center gap-2">
-                                                                    <Input
-                                                                        type="number"
-                                                                        step="0.01"
-                                                                        value={item.liter}
-                                                                        onChange={(e) =>
-                                                                            handleUpdatePemakaian(idx, 'liter', e.target.value)
-                                                                        }
-                                                                        placeholder="Liter"
-                                                                        className="h-7 text-xs font-mono text-right"
-                                                                    />
-                                                                    <span className="text-[11px] text-muted-foreground">Liter</span>
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="icon"
-                                                                        variant="ghost"
-                                                                        onClick={() => handleRemovePemakaian(idx)}
-                                                                        className="size-7 text-destructive hover:bg-destructive/10"
-                                                                    >
-                                                                        <Trash2 className="size-3.5" />
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-
-                                                {/* Subtotal Box B */}
-                                                <div className="flex items-center justify-between rounded-md border border-primary/20 bg-primary/5 p-3 text-xs">
-                                                    <span className="font-semibold text-foreground">
-                                                        B. Jumlah Pemakaian (3)
-                                                    </span>
-                                                    <span className="text-sm font-bold font-mono text-primary">
-                                                        {formatNum(pemakaianTotal)} Liter
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Section 3: Pengiriman & Administrasi */}
-                                            <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                                                <div className="border-b border-border pb-2">
-                                                    <h4 className="text-sm font-semibold text-foreground">
-                                                        Pengiriman &amp; Persediaan Administrasi
-                                                    </h4>
-                                                    <p className="text-[12px] text-muted-foreground">
-                                                        Perhitungan sisa persediaan BBM menurut catatan administrasi pembukuan.
-                                                    </p>
-                                                </div>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                                    <div className="space-y-1.5">
-                                                        <Label className="font-semibold text-foreground">
-                                                            C. Jumlah Pengiriman (Liter)
-                                                        </Label>
-                                                        <Input
-                                                            type="number"
-                                                            step="0.01"
-                                                            value={pengirimanTotal}
-                                                            onChange={(e) => setPengirimanTotal(Number(e.target.value) || 0)}
-                                                            className="h-8 font-mono text-right"
-                                                        />
-                                                    </div>
-
-                                                    <div className="flex flex-col justify-end">
-                                                        <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 p-2.5 text-xs">
-                                                            <span className="font-semibold text-foreground">
-                                                                D. Persediaan Administrasi (A - B - C)
-                                                            </span>
-                                                            <span className="text-sm font-bold font-mono text-foreground">
-                                                                {formatNum(administrasiTotal)} Liter
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Section 4: Pemeriksaan Fisik Tangki */}
-                                            <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
-                                                    <div>
-                                                        <h4 className="text-sm font-semibold text-foreground">
-                                                            Jumlah Persediaan menurut Fisik
-                                                        </h4>
-                                                        <p className="text-[12px] text-muted-foreground">
-                                                            Hasil pengukuran fisik (sounding) tangki BBM di lokasi pembangkit.
-                                                        </p>
-                                                    </div>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={handleAddFisik}
-                                                        className="h-7 text-xs gap-1"
-                                                    >
-                                                        <Plus className="size-3.5" />
-                                                        Tambah Tangki
-                                                    </Button>
-                                                </div>
-
-                                                <div className="space-y-2">
-                                                    {fisikList.length === 0 ? (
-                                                        <div className="p-4 text-center text-xs text-muted-foreground border border-dashed rounded-md">
-                                                            Belum ada data tangki fisik. Klik &ldquo;Tambah Tangki&rdquo; untuk menambahkan.
-                                                        </div>
-                                                    ) : (
-                                                        fisikList.map((item, idx) => (
-                                                            <div
-                                                                key={idx}
-                                                                className="flex items-center gap-3 rounded-md border border-border p-2 bg-muted/10 text-xs"
-                                                            >
-                                                                <div className="w-1/2">
-                                                                    <Input
-                                                                        value={item.tangki}
-                                                                        onChange={(e) =>
-                                                                            handleUpdateFisik(idx, 'tangki', e.target.value)
-                                                                        }
-                                                                        placeholder="Nama Tangki"
-                                                                        className="h-7 text-xs"
-                                                                    />
-                                                                </div>
-                                                                <div className="w-1/2 flex items-center gap-2">
-                                                                    <Input
-                                                                        type="number"
-                                                                        step="0.01"
-                                                                        value={item.liter}
-                                                                        onChange={(e) =>
-                                                                            handleUpdateFisik(idx, 'liter', e.target.value)
-                                                                        }
-                                                                        placeholder="Liter"
-                                                                        className="h-7 text-xs font-mono text-right"
-                                                                    />
-                                                                    <span className="text-[11px] text-muted-foreground">Liter</span>
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="icon"
-                                                                        variant="ghost"
-                                                                        onClick={() => handleRemoveFisik(idx)}
-                                                                        className="size-7 text-destructive hover:bg-destructive/10"
-                                                                    >
-                                                                        <Trash2 className="size-3.5" />
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-
-                                                {/* Subtotal Box E */}
-                                                <div className="flex items-center justify-between rounded-md border border-primary/20 bg-primary/5 p-3 text-xs">
-                                                    <span className="font-semibold text-foreground">
-                                                        E. Jumlah Persediaan menurut Fisik
-                                                    </span>
-                                                    <span className="text-sm font-bold font-mono text-primary">
-                                                        {formatNum(fisikTotal)} Liter
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Section 5: Selisih & Catatan */}
-                                            <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-                                                <div className="border-b border-border pb-2">
-                                                    <h4 className="text-sm font-semibold text-foreground">
-                                                        F. Selisih Administrasi vs Fisik &amp; Catatan
-                                                    </h4>
-                                                    <p className="text-[12px] text-muted-foreground">
-                                                        Evaluasi perbedaan volume fisik aktual terhadap saldo administrasi.
-                                                    </p>
-                                                </div>
-
-                                                {/* Selisih Result Banner */}
-                                                <div
-                                                    className={`flex items-center justify-between rounded-md border p-3.5 text-xs ${
-                                                        selisihTotal === 0
-                                                            ? 'border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300'
-                                                            : selisihTotal > 0
-                                                              ? 'border-blue-500/30 bg-blue-50/70 dark:bg-blue-950/30 text-blue-800 dark:text-blue-300'
-                                                              : 'border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-semibold text-sm">
-                                                            F. Selisih Administrasi vs Fisik (E - D):
-                                                        </span>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={
-                                                                selisihTotal === 0
-                                                                    ? 'border-emerald-600 text-emerald-700 bg-emerald-100/50'
-                                                                    : selisihTotal > 0
-                                                                      ? 'border-blue-600 text-blue-700 bg-blue-100/50'
-                                                                      : 'border-amber-600 text-amber-700 bg-amber-100/50'
-                                                            }
-                                                        >
-                                                            {selisihTotal === 0 ? 'Nihil / Sesuai' : selisihTotal > 0 ? 'Lebih Fisik (+)' : 'Kurang Fisik (-)'}
-                                                        </Badge>
-                                                    </div>
-                                                    <span className="text-base font-extrabold font-mono">
-                                                        {selisihTotal > 0 ? `+${formatNum(selisihTotal)}` : formatNum(selisihTotal)} Liter
-                                                    </span>
-                                                </div>
-
-                                                {/* Catatan Selisih */}
-                                                <div className="space-y-1.5 text-xs">
-                                                    <Label className="font-semibold text-foreground">
-                                                        Catatan: * Selisih disebabkan karena:
-                                                    </Label>
-                                                    <textarea
-                                                        rows={3}
-                                                        value={catatan}
-                                                        onChange={(e) => setCatatan(e.target.value)}
-                                                        placeholder="Tuliskan alasan teknis selisih BBM bila ada (misal: penguapan, kalibrasi sounding tangki, dsb.)..."
-                                                        className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        /* ================= PELUMAS SECTION ================= */
-                                        <div className="space-y-4">
-                                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                                <div>
-                                                    <h4 className="text-sm font-semibold text-foreground">
-                                                        Tabel Pemeriksaan Fisik Minyak Pelumas
-                                                    </h4>
-                                                    <p className="text-[12px] text-muted-foreground">
-                                                        Pemeriksaan saldo awal, penerimaan, pemakaian, pengiriman, saldo administrasi, dan stok fisik pelumas.
-                                                    </p>
-                                                </div>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={handleAddPelumasRow}
-                                                    className="h-7 text-xs gap-1"
-                                                >
-                                                    <Plus className="size-3.5" />
-                                                    Tambah Jenis Pelumas
-                                                </Button>
-                                            </div>
-
-                                            <div className="overflow-x-auto rounded-md border border-border">
-                                                <table className="w-full text-xs text-left border-collapse">
-                                                    <thead className="bg-muted/60 text-foreground font-semibold border-b border-border text-[11px]">
-                                                        <tr>
-                                                            <th className="p-2 w-8 text-center">No</th>
-                                                            <th className="p-2 min-w-[140px]">Jenis Pelumas</th>
-                                                            <th className="p-2 w-20">Satuan</th>
-                                                            <th className="p-2 min-w-[100px] text-right">Persediaan Awal</th>
-                                                            <th className="p-2 min-w-[100px] text-right">Penerimaan</th>
-                                                            <th className="p-2 min-w-[100px] text-right bg-muted/40 font-bold">Stock</th>
-                                                            <th className="p-2 min-w-[100px] text-right">Pemakaian</th>
-                                                            <th className="p-2 min-w-[100px] text-right">Pengiriman</th>
-                                                            <th className="p-2 min-w-[100px] text-right bg-muted/40 font-bold">Saldo Adm</th>
-                                                            <th className="p-2 min-w-[100px] text-right">Stock Fisik</th>
-                                                            <th className="p-2 min-w-[100px] text-right font-bold">Selisih</th>
-                                                            <th className="p-2 w-10 text-center">Aksi</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-border">
-                                                        {pelumasRows.length === 0 ? (
-                                                            <tr>
-                                                                <td colSpan={12} className="p-4 text-center text-muted-foreground">
-                                                                    Belum ada data master pelumas. Klik &ldquo;Tambah Jenis Pelumas&rdquo; untuk menambahkan.
-                                                                </td>
-                                                            </tr>
-                                                        ) : (
-                                                            pelumasRows.map((row, idx) => (
-                                                                <tr key={idx} className="hover:bg-muted/10">
-                                                                    <td className="p-2 text-center text-muted-foreground">{idx + 1}</td>
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            value={row.jenis}
-                                                                            onChange={(e) =>
-                                                                                handleUpdatePelumasRow(idx, 'jenis', e.target.value)
-                                                                            }
-                                                                            className="h-7 text-xs"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            value={row.satuan}
-                                                                            onChange={(e) =>
-                                                                                handleUpdatePelumasRow(idx, 'satuan', e.target.value)
-                                                                            }
-                                                                            className="h-7 text-xs"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={row.awal}
-                                                                            onChange={(e) =>
-                                                                                handleUpdatePelumasRow(idx, 'awal', Number(e.target.value) || 0)
-                                                                            }
-                                                                            className="h-7 text-xs font-mono text-right"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={row.penerimaan}
-                                                                            onChange={(e) =>
-                                                                                handleUpdatePelumasRow(idx, 'penerimaan', Number(e.target.value) || 0)
-                                                                            }
-                                                                            className="h-7 text-xs font-mono text-right"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-2 text-right font-mono font-semibold bg-muted/20">
-                                                                        {formatNum(row.stock)}
-                                                                    </td>
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={row.pemakaian}
-                                                                            onChange={(e) =>
-                                                                                handleUpdatePelumasRow(idx, 'pemakaian', Number(e.target.value) || 0)
-                                                                            }
-                                                                            className="h-7 text-xs font-mono text-right"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={row.pengiriman}
-                                                                            onChange={(e) =>
-                                                                                handleUpdatePelumasRow(idx, 'pengiriman', Number(e.target.value) || 0)
-                                                                            }
-                                                                            className="h-7 text-xs font-mono text-right"
-                                                                        />
-                                                                    </td>
-                                                                    <td className="p-2 text-right font-mono font-semibold bg-muted/20">
-                                                                        {formatNum(row.administrasi)}
-                                                                    </td>
-                                                                    <td className="p-2">
-                                                                        <Input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            value={row.fisik_liter}
-                                                                            onChange={(e) =>
-                                                                                handleUpdatePelumasRow(idx, 'fisik_liter', Number(e.target.value) || 0)
-                                                                            }
-                                                                            className="h-7 text-xs font-mono text-right"
-                                                                        />
-                                                                    </td>
-                                                                    <td
-                                                                        className={`p-2 text-right font-mono font-bold ${
-                                                                            row.selisih === 0
-                                                                                ? 'text-emerald-700 dark:text-emerald-400'
-                                                                                : row.selisih > 0
-                                                                                  ? 'text-blue-700 dark:text-blue-400'
-                                                                                  : 'text-amber-700 dark:text-amber-400'
-                                                                        }`}
-                                                                    >
-                                                                        {row.selisih > 0 ? `+${formatNum(row.selisih)}` : formatNum(row.selisih)}
-                                                                    </td>
-                                                                    <td className="p-2 text-center">
-                                                                        <Button
-                                                                            type="button"
-                                                                            size="icon"
-                                                                            variant="ghost"
-                                                                            onClick={() => handleRemovePelumasRow(idx)}
-                                                                            className="size-7 text-destructive hover:bg-destructive/10"
-                                                                        >
-                                                                            <Trash2 className="size-3.5" />
-                                                                        </Button>
-                                                                    </td>
-                                                                </tr>
-                                                            ))
-                                                        )}
-
-                                                        {/* Summary Total Row */}
-                                                        {pelumasRows.length > 0 && (
-                                                            <tr className="bg-muted/60 font-bold border-t-2 border-border text-foreground">
-                                                                <td colSpan={3} className="p-2 text-center">
-                                                                    JUMLAH TOTAL
-                                                                </td>
-                                                                <td className="p-2 text-right font-mono">{formatNum(pelumasTotals.awal)}</td>
-                                                                <td className="p-2 text-right font-mono">{formatNum(pelumasTotals.penerimaan)}</td>
-                                                                <td className="p-2 text-right font-mono bg-muted/50">{formatNum(pelumasTotals.stock)}</td>
-                                                                <td className="p-2 text-right font-mono">{formatNum(pelumasTotals.pemakaian)}</td>
-                                                                <td className="p-2 text-right font-mono">{formatNum(pelumasTotals.pengiriman)}</td>
-                                                                <td className="p-2 text-right font-mono bg-muted/50">{formatNum(pelumasTotals.administrasi)}</td>
-                                                                <td className="p-2 text-right font-mono">{formatNum(pelumasTotals.fisik_liter)}</td>
-                                                                <td className="p-2 text-right font-mono">{formatNum(pelumasTotals.selisih)}</td>
-                                                                <td></td>
-                                                            </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-
-                                            {/* Catatan Selisih Pelumas */}
-                                            <div className="rounded-lg border border-border bg-card p-4 space-y-2 text-xs">
-                                                <Label className="font-semibold text-foreground">
-                                                    Catatan: * Selisih disebabkan karena:
-                                                </Label>
-                                                <textarea
-                                                    rows={3}
-                                                    value={catatan}
-                                                    onChange={(e) => setCatatan(e.target.value)}
-                                                    placeholder="Tuliskan catatan atau penyebab selisih pelumas bila ada..."
-                                                    className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* TAB 2: RICH TEXT HTML EDITOR */}
-                            {activeTab === 'html' && (
-                                <div className="p-4 space-y-3">
-                                    <div className="rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
-                                        Mode Editor Teks (HTML) memungkinkan penyesuaian isi dokumen secara langsung. PDF yang diekspor akan mengikuti teks hasil pengeditan ini jika disimpan pada mode ini.
-                                    </div>
-                                    <div className="rounded-md border border-border bg-card">
-                                        <RichTextEditor
-                                            value={html}
-                                            extraContentStyle={content_styles}
-                                            onChange={setHtml}
-                                            disabled={!can_create}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* TAB 3: SPREADSHEET EXCEL EDITOR */}
-                            {activeTab === 'grid' && (
-                                <div className="space-y-3 p-4">
-                                    <div className="overflow-x-auto rounded-md border border-border bg-white p-4">
-                                        <style>{LETTERHEAD_STYLES}</style>
-                                        <div
-                                            className="ba-letterhead mx-auto max-w-[1000px]"
-                                            dangerouslySetInnerHTML={{ __html: letterhead }}
-                                        />
-                                        <p className="mx-auto max-w-[1000px] pt-1 text-[12px] text-muted-foreground">
-                                            Kop surat (logo + header) di atas ikut tercetak di PDF &amp; Excel. Isi tabel diedit di bawah.
-                                        </p>
-                                    </div>
-                                    <SpreadsheetEditor grid={gridState} onChange={setGridState} />
-                                </div>
-                            )}
-
-                            {/* TAB 4: PRATINJAU PDF */}
-                            {activeTab === 'pdf' && (
-                                <div className="p-4 space-y-3">
-                                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground border-b border-border pb-3">
-                                        <div className="flex items-center gap-2">
-                                            <Printer className="size-4 text-primary" />
-                                            <span>
-                                                Pratinjau ini identik dengan hasil cetak PDF A4 resmi PT PLN Nusantara Power.
-                                            </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => setPreviewKey((k) => k + 1)}
-                                                className="h-7 gap-1 text-xs"
-                                            >
-                                                <RotateCcw className="size-3.5" />
-                                                Segarkan Pratinjau
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => window.open(previewPdfUrl, '_blank')}
-                                                className="h-7 gap-1 text-xs"
-                                            >
-                                                <ExternalLink className="size-3.5" />
-                                                Tab Baru
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={handleDownloadPdf}
-                                                className="h-7 gap-1 text-xs"
-                                            >
-                                                <Download className="size-3.5" />
-                                                Unduh PDF
-                                            </Button>
-                                        </div>
-                                    </div>
-                                    <PdfPreviewFrame
-                                        key={`${previewKey}-${marginTop}-${marginBottom}`}
-                                        title={`Pratinjau PDF ${type.label}`}
-                                        src={previewPdfUrl}
-                                        className="h-[750px] w-full rounded-md border border-border bg-white shadow-xs"
-                                    />
-                                </div>
-                            )}
-
-                            {/* Card Bottom Actions */}
-                            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/10 p-4">
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                    {savedFormat !== null ? (
-                                        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
-                                            <Check className="size-4" />
-                                            Tersimpan pada format: {savedFormat.toUpperCase()}
-                                        </div>
-                                    ) : (
-                                        <span>Perubahan belum disimpan ke server</span>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => router.get(beritaAcara.index().url)}
-                                    >
-                                        Kembali
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleOpenPreview}
-                                        className="gap-1.5"
-                                    >
-                                        <Printer className="size-4" />
-                                        Pratinjau PDF
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        onClick={handleDownloadPdf}
-                                        className="gap-1.5"
-                                    >
-                                        <Download className="size-4" />
-                                        Unduh PDF
-                                    </Button>
-                                    {can_create && (
-                                        <Button
-                                            onClick={() => handleSave()}
-                                            disabled={isSaving}
-                                            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                                        >
-                                            <Save className="size-4" />
-                                            {isSaving ? 'Menyimpan…' : 'Simpan Berita Acara'}
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                {/* Editor Tabs */}
+                <div className="flex items-center gap-1 rounded-md bg-muted/60 p-1">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={activeTab === 'form' ? 'secondary' : 'ghost'}
+                        onClick={() => handleSwitchTab('form')}
+                        className="h-7 px-3 text-xs gap-1.5"
+                    >
+                        <Check className="size-3" />
+                        Formulir
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={activeTab === 'html' ? 'secondary' : 'ghost'}
+                        onClick={() => handleSwitchTab('html')}
+                        className="h-7 px-3 text-xs gap-1.5"
+                    >
+                        <FileCode2 className="size-3" />
+                        Rich Text
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={activeTab === 'grid' ? 'secondary' : 'ghost'}
+                        onClick={() => handleSwitchTab('grid')}
+                        className="h-7 px-3 text-xs gap-1.5"
+                    >
+                        <FileSpreadsheet className="size-3" />
+                        Spreadsheet Grid
+                    </Button>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant={activeTab === 'pdf' ? 'secondary' : 'ghost'}
+                        onClick={() => handleSwitchTab('pdf')}
+                        className="h-7 px-3 text-xs gap-1.5"
+                    >
+                        <Printer className="size-3" />
+                        Pratinjau PDF
+                    </Button>
                 </div>
             </div>
-        </>
+
+            {/* TAB CONTENT 1: FORMULIR */}
+            {activeTab === 'form' && (
+                <div className="space-y-6">
+                    {/* Shared Document Metadata */}
+                    <DocumentMetadataCard
+                        docNumber={docNumber}
+                        setDocNumber={setDocNumber}
+                        docTitle={docTitle}
+                        setDocTitle={setDocTitle}
+                        revision={revision}
+                        setRevision={setRevision}
+                        revisionDate={revisionDate}
+                        setRevisionDate={setRevisionDate}
+                        hari={hari}
+                        setHari={setHari}
+                        tanggalTerbilang={tanggalTerbilang}
+                        setTanggalTerbilang={setTanggalTerbilang}
+                        bulanTerbilang={bulanTerbilang}
+                        setBulanTerbilang={setBulanTerbilang}
+                        tahunTerbilang={tahunTerbilang}
+                        setTahunTerbilang={setTahunTerbilang}
+                        tanggalPenuh={tanggalPenuh}
+                        setTanggalPenuh={setTanggalPenuh}
+                        printPlaceDate={printPlaceDate}
+                        setPrintPlaceDate={setPrintPlaceDate}
+                    />
+
+                    {/* Shared Signatories Card */}
+                    <SignersCard
+                        managerOptions={manager_options}
+                        managerId={managerId}
+                        onManagerChange={handleManagerChange}
+                        managerName={managerName}
+                        setManagerName={setManagerName}
+                        managerTitle={managerTitle}
+                        setManagerTitle={setManagerTitle}
+                        selectedManager={selectedManager}
+                        tlOptions={tl_options}
+                        tlId={tlId}
+                        onTlChange={handleTlChange}
+                        tlName={tlName}
+                        setTlName={setTlName}
+                        tlTitle={tlTitle}
+                        setTlTitle={setTlTitle}
+                        selectedTl={selectedTl}
+                    />
+
+                    {/* Shared Page Margins & Spacing */}
+                    <PageMarginSettingsCard
+                        showSettings={showSettings}
+                        setShowSettings={setShowSettings}
+                        marginTop={marginTop}
+                        setMarginTop={setMarginTop}
+                        marginBottom={marginBottom}
+                        setMarginBottom={setMarginBottom}
+                        marginLeft={marginLeft}
+                        setMarginLeft={setMarginLeft}
+                        marginRight={marginRight}
+                        setMarginRight={setMarginRight}
+                        lineSpacing={lineSpacing}
+                        setLineSpacing={setLineSpacing}
+                    />
+
+                    {/* DOMAIN SPECIFIC SECTIONS */}
+                    {isFeeder ? (
+                        <FeederEditorSection
+                            feederRows={feederRows}
+                            feederTotals={feederTotals}
+                            onAddFeederRow={handleAddFeederRow}
+                            onUpdateFeederName={handleUpdateFeederName}
+                            onUpdateFeederReading={handleUpdateFeederReading}
+                            onUpdateFeederKeterangan={handleUpdateFeederKeterangan}
+                            onRemoveFeederRow={handleRemoveFeederRow}
+                            catatan={catatan}
+                            setCatatan={setCatatan}
+                            attachments={attachments}
+                            isUploading={isUploading}
+                            uploadError={uploadError}
+                            onUploadImages={handleUploadImages}
+                            onUpdateAttachmentCaption={handleUpdateAttachmentCaption}
+                            onRemoveAttachment={handleRemoveAttachment}
+                        />
+                    ) : isFuel ? (
+                        <FuelEditorSection
+                            fuelLabel={form_data.fuel_label}
+                            persediaanAwal={persediaanAwal}
+                            setPersediaanAwal={setPersediaanAwal}
+                            penerimaanRange={penerimaanRange}
+                            setPenerimaanRange={setPenerimaanRange}
+                            penerimaanTotal={penerimaanTotal}
+                            setPenerimaanTotal={setPenerimaanTotal}
+                            jumlahStock={jumlahStock}
+                            pemakaianList={pemakaianList}
+                            pemakaianTotal={pemakaianTotal}
+                            onAddPemakaian={handleAddPemakaian}
+                            onUpdatePemakaian={handleUpdatePemakaian}
+                            onRemovePemakaian={handleRemovePemakaian}
+                            pengirimanTotal={pengirimanTotal}
+                            setPengirimanTotal={setPengirimanTotal}
+                            administrasiTotal={administrasiTotal}
+                            fisikList={fisikList}
+                            fisikTotal={fisikTotal}
+                            onAddFisik={handleAddFisik}
+                            onUpdateFisik={handleUpdateFisik}
+                            onRemoveFisik={handleRemoveFisik}
+                            selisihTotal={selisihTotal}
+                            catatan={catatan}
+                            setCatatan={setCatatan}
+                        />
+                    ) : (
+                        <PelumasEditorSection
+                            pelumasRows={pelumasRows}
+                            pelumasTotals={pelumasTotals}
+                            onAddPelumasRow={handleAddPelumasRow}
+                            onUpdatePelumasRow={handleUpdatePelumasRow}
+                            onRemovePelumasRow={handleRemovePelumasRow}
+                            catatan={catatan}
+                            setCatatan={setCatatan}
+                        />
+                    )}
+                </div>
+            )}
+
+            {/* TAB CONTENT 2: RICH TEXT (HTML) */}
+            {activeTab === 'html' && (
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-3 bg-muted/40 rounded-lg text-xs text-muted-foreground border border-border">
+                        <Info className="size-4 shrink-0 text-primary" />
+                        <span>
+                            Mode Rich Text: Anda mengedit langsung kode HTML layout berita acara. Perubahan pada teks atau format tabel di sini akan langsung disimpan ke dokumen resmi.
+                        </span>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-card p-4">
+                        <RichTextEditor
+                            value={html}
+                            onChange={setHtml}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT 3: SPREADSHEET GRID */}
+            {activeTab === 'grid' && (
+                <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/40 rounded-lg text-xs border border-border">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <Info className="size-4 shrink-0 text-primary" />
+                            <span>
+                                Mode Spreadsheet Grid: Ubah nilai sel angka atau formula secara presisi layaknya Excel / Sheets.
+                            </span>
+                        </div>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                                downloadGridAsXlsx(
+                                    gridState,
+                                    `BA_${type.value}_${unit.name}_${filters.month}_${filters.year}.xlsx`,
+                                )
+                            }
+                            className="h-7 text-xs gap-1.5"
+                        >
+                            <Download className="size-3" />
+                            Ekspor Excel (.xlsx)
+                        </Button>
+                    </div>
+
+                    {letterhead && (
+                        <div className="overflow-hidden rounded-md border border-border bg-card">
+                            <style>{LETTERHEAD_STYLES}</style>
+                            <div
+                                dangerouslySetInnerHTML={{ __html: letterhead }}
+                                className="p-3 bg-white"
+                            />
+                        </div>
+                    )}
+
+                    <div className="rounded-lg border border-border bg-card p-2 overflow-hidden">
+                        <SpreadsheetEditor
+                            grid={gridState}
+                            onChange={setGridState}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT 4: PDF PREVIEW */}
+            {activeTab === 'pdf' && (
+                <div className="space-y-4">
+                    <div className="rounded-lg border border-border bg-card p-2 min-h-[750px]">
+                        <PdfPreviewFrame key={previewKey} src={dynamicPdfUrl} title="Pratinjau PDF" />
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }
-
-BeritaAcaraEditor.layout = {
-    breadcrumbs: [
-        { title: 'Dashboard', href: dashboard() },
-        { title: 'Berita Acara', href: beritaAcara.index() },
-        { title: 'Buat & Edit', href: beritaAcara.index() },
-    ],
-};
-

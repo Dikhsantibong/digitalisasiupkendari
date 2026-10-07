@@ -8,6 +8,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
     publicDir: 'public',
+    build: {
+        emptyOutDir: false,
+    },
     // Pre-bundle ExcelJS (used by the HAR jadwal Excel exports) so the dev
     // server does not hit a mid-session re-optimize when a jadwal page is
     // first opened, which surfaces as "Failed to fetch dynamically imported

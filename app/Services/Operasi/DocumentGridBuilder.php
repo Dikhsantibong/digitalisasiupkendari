@@ -21,9 +21,12 @@ class DocumentGridBuilder
      */
     public function forBeritaAcara(BeritaAcaraType $type, array $data): array
     {
-        return $type->isFuel()
-            ? $this->fuelGrid($data)
-            : $this->lubricantGrid($data);
+        return match ($type) {
+            BeritaAcaraType::Hsd, BeritaAcaraType::Mfo => $this->fuelGrid($data),
+            BeritaAcaraType::Pelumas => $this->lubricantGrid($data),
+            BeritaAcaraType::Feeder => $this->feederGrid($data),
+            BeritaAcaraType::Flowmeter => $this->flowmeterGrid($data),
+        };
     }
 
     /**
@@ -167,6 +170,370 @@ class DocumentGridBuilder
             'name' => 'BA Opname Pelumas',
             'cols' => $cols,
             'col_widths' => [150, 80, 70, 70, 90, 70, 100, 80, 90],
+            'merges' => $merges,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function feederGrid(array $data): array
+    {
+        $cols = 8;
+        $rows = [];
+        $merges = [];
+        $mergeFull = function (int $r) use (&$merges, $cols): void {
+            $merges[] = [$r, 0, $r, $cols - 1];
+        };
+        $push = function (array $row) use (&$rows): int {
+            $rows[] = $row;
+
+            return count($rows) - 1;
+        };
+        $fmt = fn ($v): string => ((float) $v) == 0.0 ? '-' : number_format((float) $v, 2, ',', '.');
+
+        $mergeFull($push([$this->c($data['document']['title'], true, 'c')]));
+        $mergeFull($push([$this->c('NO : '.$data['document']['number'], true, 'l')]));
+        $mergeFull($push([$this->c($this->narrative($data, 'kWh meter tersalur feeder'))]));
+
+        $h1Index = $push([
+            $this->c('NO', true, 'c'),
+            $this->c('KWH FEEDER', true, 'c'),
+            $this->c('TERSALUR KWH', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('KETERANGAN', true, 'c'),
+        ]);
+        $merges[] = [$h1Index, 2, $h1Index, 6];
+
+        $h2Index = $push([
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('AWAL', true, 'c'),
+            $this->c('AKHIR', true, 'c'),
+            $this->c('F. KALI', true, 'c'),
+            $this->c('HASIL', true, 'c'),
+            $this->c('', true, 'c'),
+        ]);
+        $merges[] = [$h1Index, 0, $h2Index, 0];
+        $merges[] = [$h1Index, 1, $h2Index, 1];
+        $merges[] = [$h1Index, 7, $h2Index, 7];
+
+        $feederRows = $data['feeder_rows'] ?? [];
+        $totalExport = 0.0;
+        $totalImport = 0.0;
+
+        foreach ($feederRows as $idx => $item) {
+            $no = (string) ($idx + 1);
+            $feederName = (string) ($item['feeder_name'] ?? ('Feeder '.($idx + 1)));
+            $exp = $item['export'] ?? ['awal' => 0, 'akhir' => 0, 'f_kali' => 1, 'hasil' => 0];
+            $imp = $item['import'] ?? ['awal' => 0, 'akhir' => 0, 'f_kali' => 1, 'hasil' => 0];
+            $ket = (string) ($item['keterangan'] ?? '');
+
+            $totalExport += (float) ($exp['hasil'] ?? 0);
+            $totalImport += (float) ($imp['hasil'] ?? 0);
+
+            $r1 = $push([
+                $this->c($no, false, 'c'),
+                $this->c($feederName, true, 'l'),
+                $this->c('Export', false, 'c'),
+                $this->c(number_format((float) ($exp['awal'] ?? 0), 2, ',', '.'), false, 'r'),
+                $this->c(number_format((float) ($exp['akhir'] ?? 0), 2, ',', '.'), false, 'r'),
+                $this->c(number_format((float) ($exp['f_kali'] ?? 1), 2, ',', '.'), false, 'r'),
+                $this->c($fmt($exp['hasil'] ?? 0), true, 'r'),
+                $this->c($ket, false, 'l'),
+            ]);
+
+            $r2 = $push([
+                $this->c('', false, 'c'),
+                $this->c('', false, 'l'),
+                $this->c('Import', false, 'c'),
+                $this->c(number_format((float) ($imp['awal'] ?? 0), 2, ',', '.'), false, 'r'),
+                $this->c(number_format((float) ($imp['akhir'] ?? 0), 2, ',', '.'), false, 'r'),
+                $this->c(number_format((float) ($imp['f_kali'] ?? 1), 2, ',', '.'), false, 'r'),
+                $this->c($fmt($imp['hasil'] ?? 0), true, 'r'),
+                $this->c('', false, 'l'),
+            ]);
+
+            $merges[] = [$r1, 0, $r2, 0];
+            $merges[] = [$r1, 1, $r2, 1];
+            $merges[] = [$r1, 7, $r2, 7];
+        }
+
+        $sumExp = $push([
+            $this->c('JUMLAH EXPORT', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c($fmt($totalExport), true, 'r'),
+            $this->c('', false, 'l'),
+        ]);
+        $merges[] = [$sumExp, 0, $sumExp, 5];
+
+        $sumImp = $push([
+            $this->c('JUMLAH IMPORT', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c($fmt($totalImport), true, 'r'),
+            $this->c('', false, 'l'),
+        ]);
+        $merges[] = [$sumImp, 0, $sumImp, 5];
+
+        $totUnit = $push([
+            $this->c('TOTAL UNIT PLTD', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c('', true, 'c'),
+            $this->c(number_format($totalExport - $totalImport, 2, ',', '.'), true, 'r'),
+            $this->c('', false, 'l'),
+        ]);
+        $merges[] = [$totUnit, 0, $totUnit, 5];
+
+        $catatanText = 'Catatan: * '.(! empty($data['catatan']) ? $data['catatan'] : '......................................');
+        $mergeFull($push([$this->c($catatanText)]));
+
+        $push([$this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c('', false, 'c', true), $this->c($data['print_place_date'], false, 'c', true), $this->c('', false, 'c', true)]);
+        $push([
+            $this->c('Menyetujui, '.($data['signers']['manajer_title'] ?? 'Manajer'), false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('Membuat, '.($data['signers']['tl_title'] ?? 'TL. Operasi'), false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+        ]);
+        for ($s = 0; $s < 3; $s++) {
+            $push(array_fill(0, $cols, $this->c('', false, 'c', true, 22)));
+        }
+        $push([
+            $this->c($data['signers']['manajer'] ?? '(………………)', true, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c($data['signers']['tl_operasi'] ?? '(………………)', true, 'c', true),
+            $this->c('', false, 'c', true),
+            $this->c('', false, 'c', true),
+        ]);
+
+        return [
+            'name' => 'BA kWh Feeder',
+            'cols' => $cols,
+            'col_widths' => [40, 150, 60, 80, 80, 80, 90, 160],
+            'merges' => $merges,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function flowmeterGrid(array $data): array
+    {
+        $machines = $data['flowmeter_machines'] ?? [];
+        $rowsData = $data['flowmeter_rows'] ?? [];
+        $totalsData = $data['flowmeter_totals'] ?? [];
+        $numMachines = count($machines);
+        $fuelName = $data['fuel_name'] ?? 'HSD';
+
+        // Columns: TGL (1) + Machines (3 each) + TOTAL UNIT (1) + ADM (1) + Real (1) + SELISIH (1)
+        $cols = 1 + ($numMachines * 3) + 4;
+        $colWidths = [45];
+        foreach ($machines as $m) {
+            $colWidths[] = 85; // Awal
+            $colWidths[] = 85; // Akhir
+            $colWidths[] = 75; // Pemakaian
+        }
+        $colWidths[] = 85; // TOTAL UNIT
+        $colWidths[] = 85; // ADM
+        $colWidths[] = 85; // Real
+        $colWidths[] = 85; // SELISIH
+
+        $rows = [];
+        $merges = [];
+        $mergeFull = function (int $r) use (&$merges, $cols): void {
+            $merges[] = [$r, 0, $r, $cols - 1];
+        };
+        $push = function (array $row) use (&$rows): int {
+            $rows[] = $row;
+
+            return count($rows) - 1;
+        };
+        $fmt = fn ($v): string => ((float) $v) == 0.0 ? '-' : number_format((float) $v, 2, ',', '.');
+
+        // Row 0: Title
+        $mergeFull($push([$this->c('STAND FLOW METER '.strtoupper($fuelName), true, 'c')]));
+        // Row 1: Subtitle
+        $mergeFull($push([$this->c('BULAN '.strtoupper($data['period']['label'] ?? ''), true, 'c')]));
+        // Row 2: Empty
+        $mergeFull($push([$this->c('')]));
+
+        // Machine Header Rows
+        // Row 3: Machine Names
+        $r3 = [$this->c('TGL', true, 'c')];
+        foreach ($machines as $m) {
+            $r3[] = $this->c($m['name'], true, 'c');
+            $r3[] = $this->c('', true, 'c');
+            $r3[] = $this->c('', true, 'c');
+        }
+        $unitName = $data['unit']['name'] ?? 'UNIT';
+        $r3[] = $this->c('TOTAL '.$unitName, true, 'c');
+        $r3[] = $this->c('ADM', true, 'c');
+        $r3[] = $this->c('Real', true, 'c');
+        $r3[] = $this->c('SELISIH', true, 'c');
+        $r3Idx = $push($r3);
+
+        // Row 4: Stand Awal Bulan Lalu
+        $r4 = [$this->c('', true, 'c')];
+        foreach ($machines as $m) {
+            $r4[] = $this->c('STAND AWAL BLN LALU', false, 'l');
+            $r4[] = $this->c('', false, 'l');
+            $r4[] = $this->c($fmt($m['stand_awal_bln_lalu'] ?? 0), true, 'r');
+        }
+        $r4[] = $this->c('', true, 'c');
+        $r4[] = $this->c('', true, 'c');
+        $r4[] = $this->c('', true, 'c');
+        $r4[] = $this->c('', true, 'c');
+        $r4Idx = $push($r4);
+
+        // Row 5: Faktor Koreksi
+        $r5 = [$this->c('', true, 'c')];
+        foreach ($machines as $m) {
+            $r5[] = $this->c('FAKTOR KOREKSI', false, 'l');
+            $r5[] = $this->c('', false, 'l');
+            $r5[] = $this->c(number_format((float) ($m['faktor_koreksi'] ?? 1), 7, ',', '.'), true, 'r');
+        }
+        $r5[] = $this->c('', true, 'c');
+        $r5[] = $this->c('', true, 'c');
+        $r5[] = $this->c('', true, 'c');
+        $r5[] = $this->c('', true, 'c');
+        $r5Idx = $push($r5);
+
+        // Row 6: Faktor Kali
+        $r6 = [$this->c('', true, 'c')];
+        foreach ($machines as $m) {
+            $r6[] = $this->c('FAKTOR KALI', false, 'l');
+            $r6[] = $this->c('', false, 'l');
+            $r6[] = $this->c(number_format((float) ($m['faktor_kali'] ?? 1), 1, ',', '.'), true, 'r');
+        }
+        $r6[] = $this->c('', true, 'c');
+        $r6[] = $this->c('', true, 'c');
+        $r6[] = $this->c('', true, 'c');
+        $r6Idx = $push($r6);
+
+        // Row 7: STAND FM / PEMAKAIAN
+        $r7 = [$this->c('', true, 'c')];
+        foreach ($machines as $m) {
+            $r7[] = $this->c('STAND FM', true, 'c');
+            $r7[] = $this->c('', true, 'c');
+            $r7[] = $this->c('PEMAKAIAN', true, 'c');
+        }
+        $r7[] = $this->c('', true, 'c');
+        $r7[] = $this->c('', true, 'c');
+        $r7[] = $this->c('', true, 'c');
+        $r7Idx = $push($r7);
+
+        // Row 8: AWAL / AKHIR / PEMAKAIAN
+        $r8 = [$this->c('', true, 'c')];
+        foreach ($machines as $m) {
+            $r8[] = $this->c('AWAL', true, 'c');
+            $r8[] = $this->c('AKHIR', true, 'c');
+            $r8[] = $this->c('', true, 'c');
+        }
+        $r8[] = $this->c('', true, 'c');
+        $r8[] = $this->c('', true, 'c');
+        $r8[] = $this->c('', true, 'c');
+        $r8Idx = $push($r8);
+
+        // Merges for header:
+        $merges[] = [$r3Idx, 0, $r8Idx, 0];
+        $merges[] = [$r3Idx, $cols - 4, $r8Idx, $cols - 4];
+        $merges[] = [$r3Idx, $cols - 3, $r8Idx, $cols - 3];
+        $merges[] = [$r3Idx, $cols - 2, $r8Idx, $cols - 2];
+        $merges[] = [$r3Idx, $cols - 1, $r8Idx, $cols - 1];
+
+        for ($i = 0; $i < $numMachines; $i++) {
+            $baseCol = 1 + ($i * 3);
+            $merges[] = [$r3Idx, $baseCol, $r3Idx, $baseCol + 2];
+            $merges[] = [$r4Idx, $baseCol, $r4Idx, $baseCol + 1];
+            $merges[] = [$r5Idx, $baseCol, $r5Idx, $baseCol + 1];
+            $merges[] = [$r6Idx, $baseCol, $r6Idx, $baseCol + 1];
+            $merges[] = [$r7Idx, $baseCol, $r7Idx, $baseCol + 1];
+            $merges[] = [$r7Idx, $baseCol + 2, $r8Idx, $baseCol + 2];
+        }
+
+        // Daily Data Rows
+        foreach ($rowsData as $row) {
+            $tgl = (string) ($row['tgl'] ?? '');
+            $r = [$this->c($tgl, false, 'c')];
+            $dayMachs = $row['machines'] ?? [];
+            $totalUnitPemakaian = 0.0;
+
+            foreach ($machines as $m) {
+                $mId = $m['id'];
+                $mDay = $dayMachs[$mId] ?? ['awal' => 0, 'akhir' => 0, 'pemakaian' => 0];
+                $r[] = $this->c($fmt($mDay['awal'] ?? 0), false, 'r');
+                $r[] = $this->c($fmt($mDay['akhir'] ?? 0), false, 'r');
+                $pemakaian = (float) ($mDay['pemakaian'] ?? 0);
+                $r[] = $this->c($fmt($pemakaian), true, 'r');
+                $totalUnitPemakaian += $pemakaian;
+            }
+
+            $adm = (float) ($row['adm'] ?? $totalUnitPemakaian);
+            $real = (float) ($row['real'] ?? 0);
+            $selisih = (float) ($row['selisih'] ?? ($real - $adm));
+
+            $r[] = $this->c($fmt($totalUnitPemakaian), false, 'r');
+            $r[] = $this->c($fmt($adm), false, 'r');
+            $r[] = $this->c($fmt($real), false, 'r');
+            $r[] = $this->c($selisih < 0 ? '('.number_format(abs($selisih), 2, ',', '.').')' : $fmt($selisih), true, 'r');
+
+            $push($r);
+        }
+
+        // Row TOT
+        $totMachs = $totalsData['machines'] ?? [];
+        $rTot = [$this->c('TOT', true, 'c')];
+        $totalAllPemakaian = 0.0;
+
+        foreach ($machines as $m) {
+            $mId = $m['id'];
+            $mTot = $totMachs[$mId] ?? ['awal' => 0, 'akhir' => 0, 'pemakaian' => 0];
+            $rTot[] = $this->c($fmt($mTot['awal'] ?? 0), true, 'r');
+            $rTot[] = $this->c($fmt($mTot['akhir'] ?? 0), true, 'r');
+            $pTot = (float) ($mTot['pemakaian'] ?? 0);
+            $rTot[] = $this->c($fmt($pTot), true, 'r');
+            $totalAllPemakaian += $pTot;
+        }
+
+        $totAdm = (float) ($totalsData['adm'] ?? $totalAllPemakaian);
+        $totReal = (float) ($totalsData['real'] ?? 0);
+        $totSelisih = (float) ($totalsData['selisih'] ?? ($totReal - $totAdm));
+
+        $rTot[] = $this->c($fmt($totalAllPemakaian), true, 'r');
+        $rTot[] = $this->c($fmt($totAdm), true, 'r');
+        $rTot[] = $this->c($fmt($totReal), true, 'r');
+        $rTot[] = $this->c($totSelisih < 0 ? '('.number_format(abs($totSelisih), 2, ',', '.').')' : $fmt($totSelisih), true, 'r');
+        $push($rTot);
+
+        return [
+            'name' => 'Stand Flowmeter '.$fuelName,
+            'cols' => $cols,
+            'col_widths' => $colWidths,
             'merges' => $merges,
             'rows' => $rows,
         ];

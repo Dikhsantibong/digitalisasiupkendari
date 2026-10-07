@@ -59,10 +59,22 @@ export type UnitRow = {
 export type MachineRow = {
     id: number;
     name: string;
+    merk?: string | null;
     type: string | null;
     fuel_type: string | null;
     serial_number: string | null;
+    engine_hp?: string | null;
+    engine_rpm?: number | null;
+    tahun_pembuatan?: number | null;
+    generator_merk?: string | null;
+    generator_type?: string | null;
+    generator_serial_number?: string | null;
+    generator_volt?: number | null;
+    generator_kva?: string | null;
+    generator_cos_phi?: string | null;
     capacity_kw: string | null;
+    kwh_faktor_kali_produksi?: string | null;
+    kwh_faktor_kali_ps?: string | null;
     is_active: boolean;
     unit_id: number;
     unit: string | null;

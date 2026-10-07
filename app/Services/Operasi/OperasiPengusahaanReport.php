@@ -13,6 +13,8 @@ use App\Models\Feeder;
 use App\Models\FuelReceipt;
 use App\Models\LubricantReceipt;
 use App\Models\Machine;
+use App\Models\OperasiPemakaianPelumas;
+use App\Models\OperasiPemakaianPelumasItem;
 use App\Models\OperasiResourcePembangkit;
 use App\Models\Unit;
 use App\Services\K3\K3PengusahaanReport;
@@ -56,6 +58,7 @@ class OperasiPengusahaanReport
             $this->resource($unit, $month, $year),
             $this->beritaAcara($unit, $month, $year),
             $this->pelumas($unit, $month, $year),
+            $this->pemakaianPelumas($unit, $month, $year),
             ...$this->meters($unit, $month, $year),
             $this->perMesin($engines),
             $this->starStop($unit, $month, $year),
@@ -451,6 +454,46 @@ class OperasiPengusahaanReport
         ]], $rows, $receipts->isNotEmpty(), source: 'Penerimaan BBM');
     }
 
+    /**
+     * Pemakaian Pelumas sheet (Pengusahaan Operasi): per jenis pelumas × mesin
+     * per periode, with a total per jenis pelumas.
+     *
+     * @return array<string, mixed>
+     */
+    private function pemakaianPelumas(Unit $unit, int $month, int $year): array
+    {
+        $items = OperasiPemakaianPelumas::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->first()
+            ?->items()->orderBy('lubricant_name')->orderBy('machine_name')->get() ?? collect();
+
+        $rows = [];
+        $no = 0;
+        foreach ($items->groupBy('lubricant_name') as $lubricant => $group) {
+            foreach ($group as $item) {
+                /** @var OperasiPemakaianPelumasItem $item */
+                $rows[] = [
+                    $this->cell((string) ++$no, 'c'),
+                    $this->cell((string) $lubricant),
+                    $this->cell($item->machine_name),
+                    $this->cell($this->num($item->subtotal_p1, 2), 'r'),
+                    $this->cell($this->num($item->subtotal_p2, 2), 'r'),
+                    $this->cell($this->num($item->subtotal_p3, 2), 'r'),
+                    $this->cell($this->num($item->total_liter, 2), 'r'),
+                ];
+            }
+            $rows[] = [
+                ['t' => "Jumlah {$lubricant}", 'a' => 'r', 'b' => true, 'r' => 1, 'c' => 3],
+                $this->cell($this->num($group->sum('subtotal_p1'), 2), 'r', true),
+                $this->cell($this->num($group->sum('subtotal_p2'), 2), 'r', true),
+                $this->cell($this->num($group->sum('subtotal_p3'), 2), 'r', true),
+                $this->cell($this->num($group->sum('total_liter'), 2), 'r', true),
+            ];
+        }
+
+        return $this->section('pemakaian-pelumas', 'Laporan Pemakaian Pelumas', 'portrait', [[
+            $this->h('No', w: '6%'), $this->h('Jenis Pelumas'), $this->h('Mesin', w: '14%'), $this->h('Periode I', w: '12%'), $this->h('Periode II', w: '12%'), $this->h('Periode III', w: '12%'), $this->h('Total', w: '13%'),
+        ]], $rows, $items->isNotEmpty(), source: 'Pemakaian Pelumas');
+    }
+
     /** @return array<string, mixed> */
     private function resource(Unit $unit, int $month, int $year): array
     {
@@ -498,7 +541,7 @@ class OperasiPengusahaanReport
             ];
         }, BeritaAcaraType::cases(), array_keys(BeritaAcaraType::cases()));
 
-        return $this->section('berita-acara', 'Status Berita Acara BBM & Pelumas', 'portrait', [[
+        return $this->section('berita-acara', 'Status Berita Acara (BBM, Pelumas & Feeder)', 'portrait', [[
             $this->h('No', w: '6%'), $this->h('Berita Acara'), $this->h('No. Dokumen', w: '26%'), $this->h('Status', w: '14%'), $this->h('Tgl Disetujui', w: '16%'),
         ]], $rows, $records->isNotEmpty(), 'Dokumen lengkap tiap Berita Acara dicetak dari menu Pengusahaan Operasi → Berita Acara.', source: 'Berita Acara');
     }

@@ -95,6 +95,20 @@ export function MachineForm({ action, machine, options, submitLabel }: Props) {
                             </FormField>
 
                             <FormField
+                                label="Merk"
+                                htmlFor="merk"
+                                hint="Contoh: MAK, DAIHATSU, CATERPILLAR"
+                                error={errors.merk}
+                            >
+                                <Input
+                                    id="merk"
+                                    name="merk"
+                                    defaultValue={machine?.merk ?? ''}
+                                    autoComplete="off"
+                                />
+                            </FormField>
+
+                            <FormField
                                 label="Tipe"
                                 htmlFor="type"
                                 hint="Contoh: 8 M 453 AK"
@@ -137,6 +151,42 @@ export function MachineForm({ action, machine, options, submitLabel }: Props) {
                             </FormField>
 
                             <FormField
+                                label="Faktor Kali kWh Produksi"
+                                htmlFor="kwh_faktor_kali_produksi"
+                                hint="Pengali stand kWh meter produksi (CT/PT). Kosongkan bila 1."
+                                error={errors.kwh_faktor_kali_produksi}
+                            >
+                                <Input
+                                    id="kwh_faktor_kali_produksi"
+                                    name="kwh_faktor_kali_produksi"
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    defaultValue={
+                                        machine?.kwh_faktor_kali_produksi ?? '1'
+                                    }
+                                />
+                            </FormField>
+
+                            <FormField
+                                label="Faktor Kali kWh Pemakaian Sendiri"
+                                htmlFor="kwh_faktor_kali_ps"
+                                hint="Pengali stand kWh meter pemakaian sendiri (PS). Kosongkan bila 1."
+                                error={errors.kwh_faktor_kali_ps}
+                            >
+                                <Input
+                                    id="kwh_faktor_kali_ps"
+                                    name="kwh_faktor_kali_ps"
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    defaultValue={
+                                        machine?.kwh_faktor_kali_ps ?? '1'
+                                    }
+                                />
+                            </FormField>
+
+                            <FormField
                                 label="Status Data"
                                 error={errors.is_active}
                             >
@@ -157,6 +207,155 @@ export function MachineForm({ action, machine, options, submitLabel }: Props) {
                                         Mesin aktif digunakan
                                     </span>
                                 </label>
+                            </FormField>
+                        </div>
+                    </section>
+
+                    <section className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
+                        <div>
+                            <h2 className="text-base font-semibold text-foreground">
+                                Penggerak & Generator
+                            </h2>
+                            <p className="text-[13px] text-muted-foreground">
+                                Data untuk Daftar Inventarisasi Mesin.
+                            </p>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            <FormField
+                                label="HP Penggerak"
+                                htmlFor="engine_hp"
+                                hint="Contoh: 3600 (isi N/A bila tidak diketahui)"
+                                error={errors.engine_hp}
+                            >
+                                <Input
+                                    id="engine_hp"
+                                    name="engine_hp"
+                                    type="text"
+                                    defaultValue={machine?.engine_hp ?? ''}
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="RPM"
+                                htmlFor="engine_rpm"
+                                error={errors.engine_rpm}
+                            >
+                                <Input
+                                    id="engine_rpm"
+                                    name="engine_rpm"
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    defaultValue={machine?.engine_rpm ?? ''}
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="Tahun Pembuatan"
+                                htmlFor="tahun_pembuatan"
+                                error={errors.tahun_pembuatan}
+                            >
+                                <Input
+                                    id="tahun_pembuatan"
+                                    name="tahun_pembuatan"
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    defaultValue={
+                                        machine?.tahun_pembuatan ?? ''
+                                    }
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="Merk Generator"
+                                htmlFor="generator_merk"
+                                hint="Contoh: SIEMENS"
+                                error={errors.generator_merk}
+                            >
+                                <Input
+                                    id="generator_merk"
+                                    name="generator_merk"
+                                    type="text"
+                                    defaultValue={machine?.generator_merk ?? ''}
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="Type Generator"
+                                htmlFor="generator_type"
+                                error={errors.generator_type}
+                            >
+                                <Input
+                                    id="generator_type"
+                                    name="generator_type"
+                                    type="text"
+                                    defaultValue={machine?.generator_type ?? ''}
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="No. Seri Generator"
+                                htmlFor="generator_serial_number"
+                                error={errors.generator_serial_number}
+                            >
+                                <Input
+                                    id="generator_serial_number"
+                                    name="generator_serial_number"
+                                    type="text"
+                                    defaultValue={
+                                        machine?.generator_serial_number ?? ''
+                                    }
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="Tegangan (Volt)"
+                                htmlFor="generator_volt"
+                                error={errors.generator_volt}
+                            >
+                                <Input
+                                    id="generator_volt"
+                                    name="generator_volt"
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    defaultValue={machine?.generator_volt ?? ''}
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="Daya Generator (kVA)"
+                                htmlFor="generator_kva"
+                                error={errors.generator_kva}
+                            >
+                                <Input
+                                    id="generator_kva"
+                                    name="generator_kva"
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    defaultValue={machine?.generator_kva ?? ''}
+                                    autoComplete="off"
+                                />
+                            </FormField>
+                            <FormField
+                                label="Cos φ"
+                                htmlFor="generator_cos_phi"
+                                hint="Contoh: 0,8"
+                                error={errors.generator_cos_phi}
+                            >
+                                <Input
+                                    id="generator_cos_phi"
+                                    name="generator_cos_phi"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    defaultValue={
+                                        machine?.generator_cos_phi ?? ''
+                                    }
+                                    autoComplete="off"
+                                />
                             </FormField>
                         </div>
                     </section>

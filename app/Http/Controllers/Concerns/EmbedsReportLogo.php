@@ -57,6 +57,24 @@ trait EmbedsReportLogo
             );
         }
 
+        // Convert any stored images (signatures, attachments) to base64 data URI for dompdf
+        $html = (string) preg_replace_callback(
+            '#src=(["\'])(?:https?://[^/"\']+)?/storage/([^"\']+)\1#i',
+            function (array $matches): string {
+                $relative = urldecode($matches[2]);
+                $fullPath = storage_path('app/public/'.$relative);
+                if (is_file($fullPath)) {
+                    $mime = mime_content_type($fullPath) ?: 'image/jpeg';
+                    $dataUri = 'data:'.$mime.';base64,'.base64_encode((string) file_get_contents($fullPath));
+
+                    return 'src="'.$dataUri.'"';
+                }
+
+                return $matches[0];
+            },
+            $html,
+        );
+
         return $html;
     }
 }

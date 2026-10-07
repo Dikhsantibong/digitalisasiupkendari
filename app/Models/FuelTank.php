@@ -8,6 +8,7 @@ use Database\Factories\FuelTankFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -17,7 +18,9 @@ use Illuminate\Support\Carbon;
  * @property int $unit_id
  * @property string|null $code
  * @property string $name
+ * @property int|null $bbm_type_id
  * @property TankFuelType $fuel_type
+ * @property-read BbmType|null $bbmType
  * @property string|null $capacity_liter
  * @property bool $is_daily_tank
  * @property int $sort_order
@@ -26,7 +29,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
  */
-#[Fillable(['unit_id', 'code', 'name', 'fuel_type', 'capacity_liter', 'is_daily_tank', 'sort_order', 'is_active'])]
+#[Fillable(['unit_id', 'code', 'name', 'bbm_type_id', 'fuel_type', 'capacity_liter', 'is_daily_tank', 'sort_order', 'is_active'])]
 class FuelTank extends Model
 {
     /** @use HasFactory<FuelTankFactory> */
@@ -42,5 +45,15 @@ class FuelTank extends Model
             'is_daily_tank' => 'boolean',
             'is_active' => 'boolean',
         ];
+    }
+
+    /**
+     * The Jenis BBM (master) this tank holds.
+     *
+     * @return BelongsTo<BbmType, $this>
+     */
+    public function bbmType(): BelongsTo
+    {
+        return $this->belongsTo(BbmType::class);
     }
 }

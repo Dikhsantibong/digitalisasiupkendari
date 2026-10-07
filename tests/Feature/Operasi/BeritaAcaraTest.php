@@ -8,8 +8,10 @@ use App\Enums\RoleName;
 use App\Enums\StockItemType;
 use App\Enums\TankFuelType;
 use App\Models\DailyEngineReport;
+use App\Models\DailyFeederReading;
 use App\Models\DocumentRecord;
 use App\Models\DocumentTemplate;
+use App\Models\Feeder;
 use App\Models\FuelReceipt;
 use App\Models\FuelTank;
 use App\Models\LubricantReceipt;
@@ -21,6 +23,8 @@ use App\Models\Unit;
 use App\Services\Operasi\BeritaAcaraBuilder;
 use App\Services\Operasi\DocumentTemplateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
 
@@ -313,5 +317,130 @@ class BeritaAcaraTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('document_records', 0);
+    }
+
+    public function test_the_feeder_document_computes_export_import_and_totals(): void
+    {
+        $unit = Unit::factory()->create();
+        $feeder1 = Feeder::factory()->forUnit($unit)->create(['name' => 'FEEDER 1', 'sort_order' => 1]);
+        $feeder2 = Feeder::factory()->forUnit($unit)->create(['name' => 'FEEDER 2', 'sort_order' => 2]);
+
+        DailyFeederReading::factory()->create([
+            'unit_id' => $unit->id,
+            'feeder_id' => $feeder1->id,
+            'report_date' => '2026-07-31',
+            'stand_akhir' => 100,
+        ]);
+        DailyFeederReading::factory()->create([
+            'unit_id' => $unit->id,
+            'feeder_id' => $feeder1->id,
+            'report_date' => '2026-08-31',
+            'stand_akhir' => 250,
+        ]);
+
+        $data = app(BeritaAcaraBuilder::class)->build($unit, BeritaAcaraType::Feeder, 8, 2026);
+
+        $this->assertTrue($data['is_feeder']);
+        $this->assertCount(2, $data['feeder_rows']);
+        $this->assertSame(100.0, $data['feeder_rows'][0]['export']['awal']);
+        $this->assertSame(250.0, $data['feeder_rows'][0]['export']['akhir']);
+        $this->assertSame(150.0, $data['feeder_rows'][0]['export']['hasil']);
+        $this->assertSame(150.0, $data['totals']['jumlah_export']);
+        $this->assertSame(0.0, $data['totals']['jumlah_import']);
+        $this->assertSame(150.0, $data['totals']['total_unit']);
+    }
+
+    public function test_saving_a_feeder_berita_acara_stores_feeder_rows_and_attachments(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $feederRows = [
+            [
+                'feeder_id' => 1,
+                'feeder_name' => 'KONDA',
+                'export' => ['awal' => 10, 'akhir' => 20, 'f_kali' => 1, 'hasil' => 10],
+                'import' => ['awal' => 0, 'akhir' => 0, 'f_kali' => 1, 'hasil' => 0],
+                'keterangan' => 'Normal',
+            ],
+        ];
+
+        $attachments = [
+            [
+                'id' => 'att_1',
+                'url' => '/storage/berita-acara/attachments/test.jpg',
+                'caption' => 'Foto kWh Meter Feeder KONDA',
+            ],
+        ];
+
+        $this->actingAs($user)
+            ->post(route('operasi.pengusahaan.berita-acara.store'), [
+                'unit_id' => $unit->id,
+                'type' => BeritaAcaraType::Feeder->value,
+                'month' => 8,
+                'year' => 2026,
+                'format' => 'form',
+                'form_data' => [
+                    'feeder_rows' => $feederRows,
+                    'totals' => ['jumlah_export' => 10, 'jumlah_import' => 0, 'total_unit' => 10],
+                    'attachments' => $attachments,
+                ],
+            ])
+            ->assertRedirect();
+
+        $record = DocumentRecord::query()->where('unit_id', $unit->id)->firstOrFail();
+        $this->assertSame(BeritaAcaraType::Feeder, $record->type);
+        $this->assertEquals($feederRows, $record->snapshot['feeder_rows']);
+        $this->assertEquals($attachments, $record->snapshot['attachments']);
+        $this->assertStringContainsString('KONDA', (string) $record->content_html);
+        $this->assertStringContainsString('Foto kWh Meter Feeder KONDA', (string) $record->content_html);
+    }
+
+    public function test_uploading_and_deleting_attachment(): void
+    {
+        Storage::fake('public');
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $file = UploadedFile::fake()->image('kwh_meter.jpg');
+
+        $response = $this->actingAs($user)
+            ->post(route('operasi.pengusahaan.berita-acara.attachment.upload'), [
+                'unit_id' => $unit->id,
+                'file' => $file,
+                'caption' => 'Dokumentasi Feeder',
+            ])
+            ->assertOk();
+
+        $data = $response->json();
+        $this->assertStringContainsString('berita-acara/attachments/', $data['url']);
+        $this->assertSame('Dokumentasi Feeder', $data['caption']);
+        Storage::disk('public')->assertExists($data['path']);
+
+        // Delete attachment
+        $this->actingAs($user)
+            ->delete(route('operasi.pengusahaan.berita-acara.attachment.destroy'), [
+                'path' => $data['path'],
+            ])
+            ->assertOk();
+
+        Storage::disk('public')->assertMissing($data['path']);
+    }
+
+    public function test_pdf_generation_for_feeder_berita_acara(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $response = $this->actingAs($user)
+            ->get(route('operasi.pengusahaan.berita-acara.pdf', [
+                'type' => BeritaAcaraType::Feeder->value,
+                'unit_id' => $unit->id,
+                'month' => 8,
+                'year' => 2026,
+            ]));
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
     }
 }

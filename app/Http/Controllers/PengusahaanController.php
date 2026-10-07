@@ -9,7 +9,7 @@ use Inertia\Response;
 
 /**
  * Akses 2 — Pengusahaan (Team Leader & Staf) of Operasi, Pemeliharaan and K3:
- * one hub page per menu section (Input, Formulir — no Jadwal) listing
+ * one hub page per menu section (Input, Formulir; no Jadwal) listing
  * the pages registered for it in resources/js/lib/pengusahaan-menus.ts. Each
  * module route file registers `pengusahaan/{section}` with a `module` default.
  * The Laporan Pengusahaan itself is opened only from the module's Laporan
@@ -21,6 +21,11 @@ class PengusahaanController extends Controller
     public const SECTIONS = [
         'input' => 'Input',
         'formulir' => 'Formulir',
+    ];
+
+    /** @var array<string, array<string, string>> module key => section key => label replacing SECTIONS */
+    private const MODULE_SECTIONS = [
+        'operasi' => ['formulir' => 'Berita Acara'],
     ];
 
     /** @var array<string, string> module key => title */
@@ -38,7 +43,7 @@ class PengusahaanController extends Controller
 
         return Inertia::render('pengusahaan/index', [
             'module' => ['key' => $module, 'title' => self::TITLES[$module]],
-            'section' => ['key' => $section, 'title' => self::SECTIONS[$section]],
+            'section' => ['key' => $section, 'title' => self::MODULE_SECTIONS[$module][$section] ?? self::SECTIONS[$section]],
         ]);
     }
 }

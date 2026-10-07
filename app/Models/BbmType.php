@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int $sort_order
  * @property bool $is_active
  */
-#[Fillable(['code', 'name', 'category', 'sort_order', 'is_active'])]
+#[Fillable(['code', 'name', 'material_code', 'category', 'sort_order', 'is_active'])]
 class BbmType extends Model
 {
     /** @use HasFactory<BbmTypeFactory> */

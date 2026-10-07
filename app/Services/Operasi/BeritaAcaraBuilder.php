@@ -3,7 +3,13 @@
 namespace App\Services\Operasi;
 
 use App\Enums\BeritaAcaraType;
+use App\Enums\CalibrationFactorType;
 use App\Enums\StockItemType;
+use App\Models\BbmType;
+use App\Models\CalibrationFactor;
+use App\Models\DailyEngineReport;
+use App\Models\DailyFeederReading;
+use App\Models\Feeder;
 use App\Models\FuelReceipt;
 use App\Models\FuelTank;
 use App\Models\LubricantReceipt;
@@ -35,9 +41,11 @@ class BeritaAcaraBuilder
      */
     public function build(Unit $unit, BeritaAcaraType $type, int $month, int $year): array
     {
-        return $type->isFuel()
-            ? $this->buildFuel($unit, $type, $month, $year)
-            : $this->buildLubricant($unit, $month, $year);
+        return match ($type) {
+            BeritaAcaraType::Hsd, BeritaAcaraType::Mfo => $this->buildFuel($unit, $type, $month, $year),
+            BeritaAcaraType::Pelumas => $this->buildLubricant($unit, $month, $year),
+            BeritaAcaraType::Feeder => $this->buildFeeder($unit, $month, $year),
+        };
     }
 
     /**
@@ -168,6 +176,271 @@ class BeritaAcaraBuilder
             ...$this->commonPayload($unit, BeritaAcaraType::Pelumas, $month, $year),
             'is_fuel' => false,
             'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildFeeder(Unit $unit, int $month, int $year): array
+    {
+        $start = Carbon::create($year, $month, 1)->startOfDay();
+        $end = $start->copy()->endOfMonth();
+
+        $feeders = Feeder::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $feederRows = [];
+        $totalExport = 0.0;
+        $totalImport = 0.0;
+
+        foreach ($feeders as $feeder) {
+            $prevReading = DailyFeederReading::query()
+                ->where('feeder_id', $feeder->id)
+                ->where('report_date', '<', $start->toDateString())
+                ->orderByDesc('report_date')
+                ->value('stand_akhir');
+
+            $lastReading = DailyFeederReading::query()
+                ->where('feeder_id', $feeder->id)
+                ->where('report_date', '>=', $start->toDateString())
+                ->where('report_date', '<=', $end->toDateString().' 23:59:59')
+                ->orderByDesc('report_date')
+                ->value('stand_akhir');
+
+            $awal = (float) ($prevReading ?? 0);
+            $akhir = (float) ($lastReading ?? $awal);
+            $fKali = 1.0;
+            $diff = $akhir - $awal;
+            $exportHasil = round(($diff > 0 ? $diff : 0) * $fKali, 2);
+
+            $feederRows[] = [
+                'feeder_id' => $feeder->id,
+                'feeder_name' => $feeder->name,
+                'export' => [
+                    'awal' => $awal,
+                    'akhir' => $akhir,
+                    'f_kali' => $fKali,
+                    'hasil' => $exportHasil,
+                ],
+                'import' => [
+                    'awal' => 0.0,
+                    'akhir' => 0.0,
+                    'f_kali' => $fKali,
+                    'hasil' => 0.0,
+                ],
+                'keterangan' => '',
+            ];
+
+            $totalExport += $exportHasil;
+        }
+
+        return [
+            ...$this->commonPayload($unit, BeritaAcaraType::Feeder, $month, $year),
+            'is_fuel' => false,
+            'is_feeder' => true,
+            'feeder_rows' => $feederRows,
+            'totals' => [
+                'jumlah_export' => round($totalExport, 2),
+                'jumlah_import' => round($totalImport, 2),
+                'total_unit' => round($totalExport - $totalImport, 2),
+            ],
+            'catatan' => '',
+            'attachments' => [],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function buildFlowmeter(Unit $unit, int $month, int $year, ?string $fuelCode = null): array
+    {
+        $start = Carbon::create($year, $month, 1)->startOfDay();
+        $end = $start->copy()->endOfMonth();
+        $daysInMonth = (int) $start->daysInMonth;
+
+        // 1. Resolve Fuel Name from master data / active unit fuel
+        $availableFuels = BbmType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('code')->get();
+        $tankFuel = FuelTank::query()->where('unit_id', $unit->id)->where('is_active', true)->value('fuel_type');
+
+        $selectedFuel = null;
+        if ($fuelCode) {
+            $selectedFuel = $availableFuels->firstWhere('code', $fuelCode)
+                ?? $availableFuels->firstWhere('code', strtoupper($fuelCode));
+        }
+        if ($selectedFuel === null && $tankFuel) {
+            $selectedFuel = $availableFuels->first(function (BbmType $b) use ($tankFuel) {
+                return strtolower($b->code) === strtolower($tankFuel->value)
+                    || strtolower($b->category ?? '') === strtolower($tankFuel->value);
+            });
+        }
+        if ($selectedFuel === null) {
+            $selectedFuel = $availableFuels->firstWhere('code', 'HSD') ?? $availableFuels->first();
+        }
+
+        $fuelName = $selectedFuel?->code ?? 'HSD';
+        $fuelLabel = $selectedFuel?->name ?? 'High Speed Diesel';
+
+        // 2. Active machines for the unit
+        $machines = Machine::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $flowmeterMachines = [];
+        $runningAkhir = [];
+
+        foreach ($machines as $machine) {
+            // Stand awal bulan lalu (last reading before this month)
+            $prevStand = DailyEngineReport::query()
+                ->where('engine_id', $machine->id)
+                ->where('report_date', '<', $start->toDateString())
+                ->whereNotNull('flowmeter_hsd_stand_akhir')
+                ->orderByDesc('report_date')
+                ->value('flowmeter_hsd_stand_akhir');
+            $standAwalBlnLalu = (float) ($prevStand ?? 0.0);
+
+            // Faktor koreksi from CalibrationFactor or default
+            $cf = CalibrationFactor::query()
+                ->where('unit_id', $unit->id)
+                ->where(function ($q) use ($machine) {
+                    $q->where('engine_id', $machine->id)->orWhereNull('engine_id');
+                })
+                ->where('factor_type', CalibrationFactorType::Hsd->value)
+                ->where('effective_date', '<=', $end->toDateString())
+                ->orderByRaw('engine_id IS NULL')
+                ->orderByDesc('effective_date')
+                ->value('value');
+            $faktorKoreksi = $cf !== null ? (float) $cf : 1.0;
+            $faktorKali = 1.0;
+
+            $flowmeterMachines[] = [
+                'id' => $machine->id,
+                'name' => $machine->name,
+                'stand_awal_bln_lalu' => $standAwalBlnLalu,
+                'faktor_koreksi' => $faktorKoreksi,
+                'faktor_kali' => $faktorKali,
+            ];
+
+            $runningAkhir[$machine->id] = $standAwalBlnLalu;
+        }
+
+        // 3. Preload daily reports for this month
+        $reports = DailyEngineReport::query()
+            ->where('unit_id', $unit->id)
+            ->where('report_date', '>=', $start->toDateString())
+            ->where('report_date', '<=', $end->toDateString().' 23:59:59')
+            ->get()
+            ->groupBy(fn ($r) => $r->engine_id.'|'.(int) $r->report_date->day);
+
+        $flowmeterRows = [];
+        $machineTotals = [];
+        foreach ($machines as $m) {
+            $machineTotals[$m->id] = [
+                'awal' => $runningAkhir[$m->id],
+                'akhir' => 0.0,
+                'pemakaian' => 0.0,
+            ];
+        }
+        $totalAdm = 0.0;
+        $totalReal = 0.0;
+
+        foreach (range(1, $daysInMonth) as $day) {
+            $rowMachines = [];
+            $dailyPemakaianSum = 0.0;
+
+            foreach ($flowmeterMachines as $fmMach) {
+                $mId = $fmMach['id'];
+                $report = $reports->get($mId.'|'.$day)?->first();
+                $akhirRaw = $report?->flowmeter_hsd_stand_akhir;
+                $akhir = $akhirRaw !== null ? (float) $akhirRaw : 0.0;
+
+                // Formula 1: =IF(F17=0; 0; F16)
+                if ($day === 1) {
+                    $awal = $fmMach['stand_awal_bln_lalu'];
+                } else {
+                    $awal = ($akhir == 0.0) ? 0.0 : $runningAkhir[$mId];
+                }
+
+                if ($akhir > 0) {
+                    $runningAkhir[$mId] = $akhir;
+                    $machineTotals[$mId]['akhir'] = $akhir;
+                }
+
+                // Pemakaian = (akhir - awal) * faktor_kali * faktor_koreksi
+                $pemakaian = 0.0;
+                if ($akhir > 0 && $awal > 0 && $akhir >= $awal) {
+                    $diff = $akhir - $awal;
+                    $pemakaian = round($diff * $fmMach['faktor_kali'] * $fmMach['faktor_koreksi'], 2);
+                }
+
+                $rowMachines[$mId] = [
+                    'machine_id' => $mId,
+                    'awal' => round($awal, 2),
+                    'akhir' => round($akhir, 2),
+                    'pemakaian' => round($pemakaian, 2),
+                ];
+
+                $dailyPemakaianSum += $pemakaian;
+                $machineTotals[$mId]['pemakaian'] += $pemakaian;
+            }
+
+            // Formula 2: ADM = =D13+G13+J13+M13+P13 (sum of all machines pemakaian)
+            $adm = round($dailyPemakaianSum, 2);
+            $real = 0.0;
+            // Formula 3: SELISIH = =AP13-AO13 (Real - ADM)
+            $selisih = round($real - $adm, 2);
+
+            $flowmeterRows[] = [
+                'tgl' => $day,
+                'machines' => $rowMachines,
+                'adm' => $adm,
+                'real' => $real,
+                'selisih' => $selisih,
+            ];
+
+            $totalAdm += $adm;
+            $totalReal += $real;
+        }
+
+        // Format machine totals
+        $formattedMachineTotals = [];
+        foreach ($machines as $m) {
+            $formattedMachineTotals[$m->id] = [
+                'awal' => round($machineTotals[$m->id]['awal'], 2),
+                'akhir' => round($machineTotals[$m->id]['akhir'], 2),
+                'pemakaian' => round($machineTotals[$m->id]['pemakaian'], 2),
+            ];
+        }
+
+        $flowmeterTotals = [
+            'machines' => $formattedMachineTotals,
+            'adm' => round($totalAdm, 2),
+            'real' => round($totalReal, 2),
+            'selisih' => round($totalReal - $totalAdm, 2),
+        ];
+
+        $common = $this->commonPayload($unit, BeritaAcaraType::Flowmeter, $month, $year);
+        $common['document']['title'] = 'STAND FLOW METER '.strtoupper($fuelName);
+
+        return [
+            ...$common,
+            'is_fuel' => false,
+            'is_feeder' => false,
+            'is_flowmeter' => true,
+            'fuel_name' => $fuelName,
+            'fuel_label' => $fuelLabel,
+            'available_fuels' => $availableFuels->map(fn (BbmType $b) => ['code' => $b->code, 'name' => $b->name])->all(),
+            'flowmeter_machines' => $flowmeterMachines,
+            'flowmeter_rows' => $flowmeterRows,
+            'flowmeter_totals' => $flowmeterTotals,
+            'catatan' => '',
         ];
     }
 

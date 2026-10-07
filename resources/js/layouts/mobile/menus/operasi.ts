@@ -2,17 +2,13 @@ import {
     AlertOctagon,
     ClipboardCheck,
     Cog,
-    Droplet,
+    Droplets,
     FileCheck,
-    Fuel,
     Gauge,
     Package,
-    Plug,
     ShieldAlert,
     Sparkles,
-    TimerReset,
     Wrench,
-    Zap,
 } from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
 import checklistCommissioningMesin from '@/routes/operasi/input/checklist-commissioning-mesin';
@@ -23,12 +19,9 @@ import patrolCheckMesin from '@/routes/operasi/input/patrol-check-mesin';
 import permitToWork from '@/routes/operasi/input/permit-to-work';
 import program5s5r from '@/routes/operasi/input/program-5s5r';
 import unsafeCondition from '@/routes/operasi/input/unsafe-condition';
-import auxiliary from '@/routes/operasi/pengusahaan/auxiliary';
 import dailyReport from '@/routes/operasi/pengusahaan/daily-report';
-import feeder from '@/routes/operasi/pengusahaan/feeder';
-import fuelReceipt from '@/routes/operasi/pengusahaan/fuel-receipt';
-import resourcePembangkit from '@/routes/operasi/pengusahaan/resource-pembangkit';
-import starStop from '@/routes/operasi/pengusahaan/star-stop';
+import pemakaianPelumas from '@/routes/operasi/pengusahaan/pemakaian-pelumas';
+import standMeter from '@/routes/operasi/pengusahaan/stand-meter';
 
 type Entry = [
     key: string,
@@ -45,53 +38,13 @@ type Entry = [
 const ENTRIES: Entry[] = [
     [
         'daily_report',
-        'Input Harian',
-        'Input Harian',
-        'Produksi kWh, pemakaian sendiri, beban puncak & BBM',
-        Zap,
+        'Ikhtisar Sentral',
+        'Ikhtisar',
+        'Produksi kWh, beban puncak & persediaan BBM/pelumas',
+        Gauge,
         'bg-sky-500/10 text-sky-600 dark:text-sky-400',
         dailyReport.index().url,
         'daily-report',
-    ],
-    [
-        'star_stop',
-        'Star-Stop Mesin',
-        'Star-Stop',
-        'Riwayat start, stop & gangguan mesin',
-        TimerReset,
-        'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
-        starStop.index().url,
-        'star-stop',
-    ],
-    [
-        'feeder',
-        'Feeder',
-        'Feeder',
-        'Beban, tegangan & arus per feeder',
-        Plug,
-        'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-        feeder.index().url,
-        'feeder-readings',
-    ],
-    [
-        'auxiliary',
-        'Pasokan Cadangan',
-        'Pasokan Cadangan',
-        'kWh pasokan cadangan & pemakaian internal',
-        Gauge,
-        'bg-teal-500/10 text-teal-600 dark:text-teal-400',
-        auxiliary.index().url,
-        'auxiliary-readings',
-    ],
-    [
-        'fuel_receipt',
-        'Penerimaan BBM',
-        'Terima BBM',
-        'Penerimaan BBM/pelumas & sounding tangki',
-        Fuel,
-        'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-        fuelReceipt.index().url,
-        'fuel-receipts',
     ],
     [
         'kondisi_abnormal',
@@ -104,14 +57,24 @@ const ENTRIES: Entry[] = [
         'kondisi-abnormal',
     ],
     [
-        'resource_pembangkit',
-        'Resource Pembangkit',
-        'Resource',
-        'Stok, pemakaian & penerimaan BBM harian',
-        Droplet,
-        'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
-        resourcePembangkit.index().url,
-        'resource-pembangkit',
+        'stand_meter',
+        'Stand Flow Meter BBM',
+        'Stand Meter',
+        'Pencatatan stand meter & pemakaian BBM',
+        Gauge,
+        'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        standMeter.index().url,
+        'stand-meter',
+    ],
+    [
+        'pemakaian_pelumas',
+        'Pemakaian Pelumas',
+        'Pelumas',
+        'Pencatatan pemakaian pelumas per mesin',
+        Droplets,
+        'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+        pemakaianPelumas.index().url,
+        'pemakaian-pelumas',
     ],
     [
         'material_peralatan',
@@ -186,7 +149,11 @@ const ENTRIES: Entry[] = [
 ];
 
 /** Pages that moved to Akses 2 — Pengusahaan Operasi (pages/pengusahaan/operasi/{page}). */
-const PENGUSAHAAN_PAGES = ['daily-report', 'star-stop', 'feeder-readings', 'auxiliary-readings', 'fuel-receipts', 'resource-pembangkit'];
+const PENGUSAHAAN_PAGES = [
+    'daily-report',
+    'stand-meter',
+    'pemakaian-pelumas',
+];
 
 export const OPERASI_MENUS: MobileMenu[] = ENTRIES.map(
     ([key, title, short, description, icon, tone, href, page]) => ({
@@ -198,9 +165,13 @@ export const OPERASI_MENUS: MobileMenu[] = ENTRIES.map(
         icon,
         tone,
         href,
-        component: PENGUSAHAAN_PAGES.includes(page) ? `pengusahaan/operasi/${page}/index` : `operasi/input/${page}/index`,
+        component: PENGUSAHAAN_PAGES.includes(page)
+            ? `pengusahaan/operasi/${page}/index`
+            : `operasi/input/${page}/index`,
         permission: `operasi.lapangan.${key}`,
         // TL & Staf reach the Pengusahaan pages from their own hub, the Koordinator the rest.
-        coveredBy: PENGUSAHAAN_PAGES.includes(page) ? 'operasi.pengusahaan.view' : 'operasi.input.view',
+        coveredBy: PENGUSAHAAN_PAGES.includes(page)
+            ? 'operasi.pengusahaan.view'
+            : 'operasi.input.view',
     }),
 );

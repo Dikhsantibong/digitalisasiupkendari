@@ -67,7 +67,8 @@ class OperasiMasterRegistry implements MasterRegistry
                 'fields' => [
                     self::text('code', 'Kode'),
                     self::text('name', 'Nama', required: true),
-                    self::enumSelect('fuel_type', 'Jenis BBM', TankFuelType::cases(), required: true),
+                    self::relation('bbm_type_id', 'Jenis BBM', 'bbm_types', 'name', unitScoped: false, required: true),
+                    self::enumSelect('fuel_type', 'Kelompok BBM (Penerimaan)', TankFuelType::cases(), required: true),
                     self::number('capacity_liter', 'Kapasitas (L)'),
                     self::bool('is_daily_tank', 'Tangki Harian'),
                     self::number('sort_order', 'Urutan'),
@@ -101,13 +102,14 @@ class OperasiMasterRegistry implements MasterRegistry
                 ],
             ],
             'bbm-types' => [
-                'label' => 'Jenis BBM (Global)',
+                'label' => 'Jenis BBM',
                 'model' => BbmType::class,
                 'unit_scoped' => false,
                 'order' => ['sort_order', 'code'],
                 'fields' => [
                     self::text('code', 'Kode', required: true),
                     self::text('name', 'Nama', required: true),
+                    self::text('material_code', 'Kode Material (TUG)'),
                     self::text('category', 'Kategori'),
                     self::number('sort_order', 'Urutan'),
                     self::bool('is_active', 'Aktif'),

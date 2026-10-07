@@ -4,16 +4,19 @@ namespace Tests\Feature\Operasi;
 
 use App\Enums\RoleName;
 use App\Enums\TankFuelType;
+use App\Models\BbmType;
 use App\Models\DailyEngineReport;
 use App\Models\DailyFeederReading;
 use App\Models\Feeder;
 use App\Models\FuelReceipt;
+use App\Models\FuelTank;
 use App\Models\Machine;
 use App\Models\OperasiReportDocument;
 use App\Models\OperasiResourcePembangkit;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\Operasi\OperasiPengusahaanBook;
 use App\Services\Operasi\OperasiPengusahaanDocument;
 use App\Services\Operasi\OperasiPengusahaanReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,7 +51,7 @@ class LaporanPengusahaanTest extends TestCase
     {
         $this->seedInputs();
 
-        $data = app(OperasiPengusahaanDocument::class)->build($this->unit, 8, 2026);
+        $data = app(OperasiPengusahaanDocument::class)->build($this->unit, 8, 2026, $this->tl);
         $sections = collect($data['pengusahaan'])->keyBy('key');
 
         $this->assertSame(1, $sections['rekap']['no']);
@@ -86,7 +89,7 @@ class LaporanPengusahaanTest extends TestCase
                 ->where('can_write', true)
                 ->where('has_saved', false)
                 ->where('document_number', OperasiPengusahaanReport::documentNumber($this->unit, 8, 2026))
-                ->where('content', fn (string $html): bool => str_contains($html, 'Ringkasan Kinerja Pengusahaan Pembangkit') && str_contains($html, 'LAPORAN PENGUSAHAAN PEMBANGKIT'))
+                ->where('content', fn (string $html): bool => str_contains($html, 'DAFTAR ISI') && str_contains($html, 'IKHTISAR SENTRAL') && str_contains($html, 'LAPORAN PENGUSAHAAN PEMBANGKIT'))
                 ->has('grid.rows'));
 
         $this->actingAs($this->tl)
@@ -101,7 +104,37 @@ class LaporanPengusahaanTest extends TestCase
         $this->actingAs($this->tl)
             ->post(route('operasi.laporan.pengusahaan.regenerate'), ['unit_id' => $this->unit->id, 'month' => 8, 'year' => 2026])
             ->assertSessionHasNoErrors();
-        $this->assertStringContainsString('Ringkasan Kinerja Pengusahaan Pembangkit', OperasiReportDocument::query()->where('report_code', 'pengusahaan')->value('content_html'));
+        $this->assertStringContainsString('TUG 9 BBM &amp; PELUMAS', OperasiReportDocument::query()->where('report_code', 'pengusahaan')->value('content_html'));
+    }
+
+    public function test_the_chapters_follow_the_filing_order_and_the_jenis_bbm_of_the_master(): void
+    {
+        $hsd = BbmType::factory()->create(['code' => 'HSD', 'name' => 'Bio Solar', 'sort_order' => 0]);
+        $mfo = BbmType::factory()->create(['code' => 'MFO', 'name' => 'MFO', 'sort_order' => 1]);
+        FuelTank::factory()->create(['unit_id' => $this->unit->id, 'bbm_type_id' => $hsd->id, 'fuel_type' => TankFuelType::Hsd, 'is_active' => true]);
+        FuelTank::factory()->create(['unit_id' => $this->unit->id, 'bbm_type_id' => $mfo->id, 'fuel_type' => TankFuelType::Mfo, 'is_active' => true]);
+        Machine::factory()->forUnit($this->unit)->create(['name' => 'MAK #1', 'is_active' => true]);
+
+        $chapters = app(OperasiPengusahaanBook::class)->chapters($this->unit, 9, 2026, $this->tl);
+        $titles = array_column($chapters, 'title');
+
+        $this->assertSame('IKHTISAR SENTRAL', $titles[0]);
+        $this->assertSame('TUG 9 BBM & PELUMAS', end($titles));
+        $this->assertCount(29, $chapters);
+        // One Rincian BBM and one BBM page per jenis BBM of the unit, in the master order.
+        $this->assertSame(['RINCIAN BBM HSD PLTD UJI', 'RINCIAN BBM MFO PLTD UJI'], array_values(array_filter($titles, fn (string $t): bool => str_starts_with($t, 'RINCIAN BBM'))));
+        $this->assertSame(['BBM (HSD)', 'BBM (MFO)'], array_values(array_filter($titles, fn (string $t): bool => str_starts_with($t, 'BBM ('))));
+
+        $byKey = collect($chapters)->keyBy('key');
+        // Each chapter is the menu's own page, in its own orientation.
+        $this->assertSame('landscape', $byKey['ikhtisar']['parts'][0]['orientation']);
+        $this->assertStringContainsString('IKHTISAR SENTRAL', $byKey['ikhtisar']['parts'][0]['body']);
+        $this->assertStringContainsString('PERINCIAAN BAHAN BAKAR', $byKey['rincian-bbm-mfo']['parts'][0]['body']);
+        $this->assertStringContainsString('(MFO)', $byKey['rincian-bbm-mfo']['parts'][0]['body']);
+        $this->assertCount(2, $byKey['neraca-daya']['parts']);
+        $this->assertCount(2, $byKey['tug-9']['parts']);
+        // A chapter without a menu yet prints a placeholder page.
+        $this->assertStringContainsString('belum memiliki menu', $byKey['indikator']['parts'][0]['body']);
     }
 
     public function test_the_pdf_is_rendered(): void

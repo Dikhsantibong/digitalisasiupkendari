@@ -1,7 +1,16 @@
 import { FileBarChart } from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
 import { PENGUSAHAAN_MENUS, pengusahaanComponent } from '@/lib/pengusahaan-menus';
+import type { PengusahaanMenuGroup } from '@/lib/pengusahaan-menus';
 import operasiLaporan from '@/routes/operasi/laporan';
+
+/** The phone section of each hub sub-heading. */
+const GROUPS: Record<PengusahaanMenuGroup, MobileMenu['group']> = {
+    'Bahan Bakar': 'op-bbm',
+    Pelumas: 'op-pelumas',
+    kWh: 'op-kwh',
+    Rekap: 'op-rekap',
+};
 
 const TONES = [
     'bg-sky-500/10 text-sky-600 dark:text-sky-400',
@@ -24,7 +33,7 @@ export const OPERASI_PENGUSAHAAN_MENUS: MobileMenu[] = [
     ...PENGUSAHAAN_MENUS.filter((menu) => menu.module === 'operasi' && menu.href !== null).map(
         (menu, index): MobileMenu => ({
             key: `operasi-pengusahaan-${pengusahaanComponent(menu)}`,
-            group: menu.section === 'formulir' ? 'op-formulir' : 'op-input',
+            group: menu.section === 'formulir' ? 'op-formulir' : menu.group ? GROUPS[menu.group] : 'op-input',
             title: menu.title,
             description: menu.description,
             icon: menu.icon,

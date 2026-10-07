@@ -1,0 +1,1 @@
+import{i as e,r as t}from"./wayfinder-MrBSeEIB.js";import{n,t as r}from"./jadwal-sheet-page-B4v16qNn.js";var i=e(),a=t();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`jadwal`,`ik`,`Jadwal Pembuatan Instruksi Kerja (IK) Logistik & Gudang`)};export{o as default};

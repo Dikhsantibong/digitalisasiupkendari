@@ -15,9 +15,11 @@ use App\Services\ActivityLogger;
 use App\Services\Operasi\BeritaAcaraBuilder;
 use App\Services\Operasi\DocumentGridBuilder;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -104,6 +106,15 @@ class PengusahaanBeritaAcaraController extends Controller
             }
             if (isset($record->snapshot['rows'])) {
                 $mergedData['rows'] = $record->snapshot['rows'];
+            }
+            if (isset($record->snapshot['feeder_rows'])) {
+                $mergedData['feeder_rows'] = $record->snapshot['feeder_rows'];
+            }
+            if (isset($record->snapshot['totals'])) {
+                $mergedData['totals'] = $record->snapshot['totals'];
+            }
+            if (isset($record->snapshot['attachments'])) {
+                $mergedData['attachments'] = $record->snapshot['attachments'];
             }
         }
 
@@ -217,6 +228,7 @@ class PengusahaanBeritaAcaraController extends Controller
                 ?? $this->renderBody($beritaAcaraType, $this->builder->build($unit, $beritaAcaraType, $month, $year));
         }
 
+        $orientation = 'portrait';
         $pdf = Pdf::loadView('operasi.berita-acara.pdf-shell', [
             'content' => $this->embedAssets($content),
             'margin_top' => $request->input('page_margin_top', 15),
@@ -224,7 +236,7 @@ class PengusahaanBeritaAcaraController extends Controller
             'margin_left' => $request->input('page_margin_left', 15),
             'margin_right' => $request->input('page_margin_right', 15),
             'line_spacing' => $request->input('line_spacing', '1.15'),
-        ])->setPaper('a4');
+        ])->setPaper('a4', $orientation);
         $filename = "BA-{$beritaAcaraType->value}-{$unit->id}-{$month}-{$year}.pdf";
 
         return $request->boolean('download')
@@ -268,6 +280,15 @@ class PengusahaanBeritaAcaraController extends Controller
             }
             if (isset($validated['form_data']['rows'])) {
                 $data['rows'] = $validated['form_data']['rows'];
+            }
+            if (isset($validated['form_data']['feeder_rows'])) {
+                $data['feeder_rows'] = $validated['form_data']['feeder_rows'];
+            }
+            if (isset($validated['form_data']['totals'])) {
+                $data['totals'] = $validated['form_data']['totals'];
+            }
+            if (isset($validated['form_data']['attachments'])) {
+                $data['attachments'] = $validated['form_data']['attachments'];
             }
         }
 
@@ -324,9 +345,11 @@ class PengusahaanBeritaAcaraController extends Controller
      */
     private function renderBody(BeritaAcaraType $type, array $data): string
     {
-        $view = $type->isFuel()
-            ? 'operasi.berita-acara.partials.bbm'
-            : 'operasi.berita-acara.partials.pelumas';
+        $view = match ($type) {
+            BeritaAcaraType::Hsd, BeritaAcaraType::Mfo => 'operasi.berita-acara.partials.bbm',
+            BeritaAcaraType::Pelumas => 'operasi.berita-acara.partials.pelumas',
+            BeritaAcaraType::Feeder => 'operasi.berita-acara.partials.feeder',
+        };
 
         return view($view, ['data' => $data])->render();
     }
@@ -395,5 +418,46 @@ class PengusahaanBeritaAcaraController extends Controller
             'has_signature' => ! empty($e->signature_path),
             'signature_url' => $e->signatureUrl(),
         ])->all();
+    }
+
+    public function uploadAttachment(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite), 403);
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'image', 'max:10240'],
+            'unit_id' => ['required', 'integer', 'exists:units,id'],
+            'caption' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $unit = Unit::query()->findOrFail($validated['unit_id']);
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $file = $request->file('file');
+        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $path = $file->store('berita-acara/attachments', 'public');
+        $url = Storage::url($path);
+
+        return response()->json([
+            'id' => 'att_'.uniqid(),
+            'url' => $url,
+            'path' => $path,
+            'caption' => $validated['caption'] ?: $filename,
+            'file_name' => $file->getClientOriginalName(),
+        ]);
+    }
+
+    public function destroyAttachment(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite), 403);
+
+        $path = $request->input('path');
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

@@ -85,23 +85,42 @@ type Props = {
     moduleActivity: Datum[];
     operasi: {
         kpis: Kpi[];
+        /** kWh netto & PS (MWh) per day, beban tertinggi (MW) as the line. */
         daily: MultiSeries;
-        engine_status: Datum[];
+        /** Jam operasi / siap ops / pemeliharaan / gangguan of every machine. */
+        jam_mesin: Datum[];
         gauges: {
             label: string;
             value: number;
             target: number;
             good: 'up' | 'down';
         }[];
-        fuel_monthly: Datum[];
+        /** Persediaan per jenis BBM of the master (liter). */
+        fuels: {
+            code: string;
+            name: string;
+            awal: number;
+            penerimaan: number;
+            pemakaian: number;
+            sisa: number;
+            fisik: number;
+            selisih: number;
+        }[];
+        /** Pemakaian per jenis BBM, last six months (kL). */
+        fuel_monthly: MultiSeries;
+        /** Pemakaian per jenis pelumas of the master, tambah / ganti (liter). */
+        pelumas: { label: string; tambah: number; ganti: number }[];
         units: ({
             unit: string;
             daya_mampu: number;
             beban_puncak: number;
             produksi: number;
             sfc: number;
+            tara_kalor: number;
             eaf: number;
         } & Status)[];
+        /** Real: completeness of each Pengusahaan Operasi menu this month. */
+        completeness: { label: string; percent: number | null; url: string }[];
     } | null;
     har: {
         kpis: Kpi[];
@@ -430,8 +449,9 @@ export default function Dashboard(props: Props) {
                         <FlaskConical className="mt-0.5 size-4 shrink-0 text-amber-700" />
                         <span>
                             Angka dan grafik pada setiap modul di bawah masih{' '}
-                            <b>data dummy</b> untuk pratinjau tampilan, belum
-                            terhubung ke data transaksi.
+                            <b>data dummy</b> untuk pratinjau tampilan. Jenis
+                            BBM, jenis pelumas, unit dan kelengkapan input sudah
+                            mengikuti data nyata.
                         </span>
                     </p>
                 )}
@@ -440,10 +460,9 @@ export default function Dashboard(props: Props) {
                 {isExecutive && (
                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
                         <Panel
-                            title="Indeks Kinerja Modul"
-                            subtitle="Skor capaian bulan berjalan (0–100)"
+                            title="Kelengkapan Input per Modul"
+                            subtitle="Rata-rata kelengkapan input bulan berjalan (0–100%) — data nyata"
                             className="lg:col-span-8"
-                            action={isDummy ? <DummyTag /> : undefined}
                         >
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
                                 {moduleHealth.map((m) => {
@@ -471,11 +490,20 @@ export default function Dashboard(props: Props) {
                             </div>
                         </Panel>
                         <Panel
-                            title="Aktivitas Input Bulan Ini"
-                            subtitle="Jumlah entri per jenis data"
+                            title="Kelengkapan Input per Grup"
+                            subtitle="Bulan berjalan (%) — data nyata"
                             className="lg:col-span-4"
                         >
-                            <BarList data={moduleActivity.slice(0, 7)} />
+                            {moduleActivity.length === 0 ? (
+                                <p className="py-6 text-center text-[13px] text-muted-foreground">
+                                    Belum ada input yang jatuh tempo bulan ini.
+                                </p>
+                            ) : (
+                                <BarList
+                                    data={moduleActivity.slice(0, 9)}
+                                    format="percent"
+                                />
+                            )}
                         </Panel>
                     </div>
                 )}
@@ -516,26 +544,31 @@ export default function Dashboard(props: Props) {
                         isDummy={isDummy}
                     >
                         <Panel
-                            title="Produksi Energi & Beban Puncak Harian"
-                            subtitle={`Bulan ${periodLabel}`}
+                            title="kWh Netto, Pemakaian Sendiri & Beban Tertinggi"
+                            subtitle={`Harian · ${periodLabel} · dari Stand kWh Harian & Beban Tertinggi`}
                             className="lg:col-span-8"
                         >
                             <BarsChart
                                 data={operasi.daily}
+                                mode="stacked"
                                 lineLast
                                 format="number"
                                 lineFormat="decimal"
-                                colors={['text-chart-1', 'text-chart-4']}
+                                colors={[
+                                    'text-chart-1',
+                                    'text-chart-3',
+                                    'text-chart-4',
+                                ]}
                             />
                         </Panel>
                         <Panel
-                            title="Status Mesin"
-                            subtitle="Kondisi seluruh mesin saat ini"
+                            title="Komposisi Jam Mesin"
+                            subtitle="Jam operasi, siap ops, HAR & gangguan"
                             className="lg:col-span-4"
                         >
                             <Donut
-                                data={operasi.engine_status}
-                                centerLabel="Mesin"
+                                data={operasi.jam_mesin}
+                                centerLabel="Jam"
                                 colors={[
                                     'text-emerald-500',
                                     'text-chart-1',
@@ -545,39 +578,156 @@ export default function Dashboard(props: Props) {
                             />
                         </Panel>
                         <Panel
-                            title="Indikator Kinerja"
-                            subtitle="Terhadap target bulanan"
+                            title="Persediaan Bahan Bakar"
+                            subtitle="Per jenis BBM (Data Master) · liter"
+                            className="lg:col-span-7"
+                        >
+                            <CompactTable
+                                head={[
+                                    { label: 'Jenis BBM' },
+                                    { label: 'Awal', align: 'right' },
+                                    { label: 'Penerimaan', align: 'right' },
+                                    { label: 'Pemakaian', align: 'right' },
+                                    { label: 'Sisa', align: 'right' },
+                                    { label: 'Selisih fisik', align: 'right' },
+                                ]}
+                            >
+                                {operasi.fuels.map((fuel) => (
+                                    <TableRow key={fuel.code}>
+                                        <TableCell className="font-medium">
+                                            {fuel.name}{' '}
+                                            <span className="text-muted-foreground">
+                                                ({fuel.code})
+                                            </span>
+                                        </TableCell>
+                                        {(
+                                            [
+                                                'awal',
+                                                'penerimaan',
+                                                'pemakaian',
+                                                'sisa',
+                                            ] as const
+                                        ).map((field) => (
+                                            <TableCell
+                                                key={field}
+                                                className="text-right tabular-nums"
+                                            >
+                                                {formatValue(fuel[field])}
+                                            </TableCell>
+                                        ))}
+                                        <TableCell
+                                            className={cn(
+                                                'text-right font-medium tabular-nums',
+                                                fuel.selisih < 0
+                                                    ? 'text-red-700'
+                                                    : 'text-emerald-700',
+                                            )}
+                                        >
+                                            {fuel.selisih > 0 ? '+' : ''}
+                                            {formatValue(fuel.selisih)}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </CompactTable>
+                        </Panel>
+                        <Panel
+                            title="Pemakaian BBM per Jenis"
+                            subtitle="6 bulan terakhir (kL)"
                             className="lg:col-span-5"
                         >
-                            <div className="grid grid-cols-3 gap-2">
+                            <BarsChart
+                                data={operasi.fuel_monthly}
+                                mode="stacked"
+                                format="decimal"
+                                height="h-44"
+                            />
+                        </Panel>
+                        <Panel
+                            title="Pelumas Tambah & Ganti"
+                            subtitle="Per jenis pelumas (Data Master) · liter"
+                            className="lg:col-span-5"
+                        >
+                            <BarsChart
+                                data={{
+                                    labels: operasi.pelumas.map((p) => p.label),
+                                    series: [
+                                        {
+                                            name: 'Tambah',
+                                            values: operasi.pelumas.map(
+                                                (p) => p.tambah,
+                                            ),
+                                        },
+                                        {
+                                            name: 'Ganti',
+                                            values: operasi.pelumas.map(
+                                                (p) => p.ganti,
+                                            ),
+                                        },
+                                    ],
+                                }}
+                                mode="stacked"
+                                colors={['text-chart-2', 'text-chart-5']}
+                                height="h-44"
+                            />
+                        </Panel>
+                        <Panel
+                            title="Indikator Kinerja"
+                            subtitle="Data Kinerja Pembangkit Termal · terhadap target"
+                            className="lg:col-span-3"
+                        >
+                            <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
                                 {operasi.gauges.map((g) => (
                                     <Gauge key={g.label} {...g} />
                                 ))}
                             </div>
                         </Panel>
                         <Panel
-                            title="Pemakaian BBM"
-                            subtitle="6 bulan terakhir (kL)"
-                            className="lg:col-span-7"
+                            title="Kelengkapan Input Pengusahaan"
+                            subtitle="Bulan berjalan — data nyata"
+                            className="lg:col-span-4"
                         >
-                            <BarsChart
-                                data={{
-                                    labels: operasi.fuel_monthly.map(
-                                        (d) => d.label,
-                                    ),
-                                    series: [
-                                        {
-                                            name: 'BBM (kL)',
-                                            values: operasi.fuel_monthly.map(
-                                                (d) => d.value,
-                                            ),
-                                        },
-                                    ],
-                                }}
-                                format="decimal"
-                                colors={['text-chart-5']}
-                                height="h-40"
-                            />
+                            {operasi.completeness.length === 0 ? (
+                                <p className="py-6 text-center text-[13px] text-muted-foreground">
+                                    Belum ada input yang jatuh tempo.
+                                </p>
+                            ) : (
+                                <ul className="flex flex-col gap-1.5">
+                                    {operasi.completeness.map((item) => (
+                                        <li key={item.label}>
+                                            <Link
+                                                href={item.url}
+                                                className="grid grid-cols-[1fr_5rem_2.75rem] items-center gap-2 rounded px-1 py-0.5 text-[12px] hover:bg-muted/60"
+                                            >
+                                                <span className="truncate text-foreground">
+                                                    {item.label}
+                                                </span>
+                                                <span className="h-1.5 overflow-hidden rounded-full bg-muted">
+                                                    <span
+                                                        className={cn(
+                                                            'block h-full rounded-full',
+                                                            (item.percent ??
+                                                                0) >= 90
+                                                                ? 'bg-emerald-500'
+                                                                : (item.percent ??
+                                                                        0) >= 50
+                                                                  ? 'bg-amber-500'
+                                                                  : 'bg-rose-500',
+                                                        )}
+                                                        style={{
+                                                            width: `${item.percent ?? 0}%`,
+                                                        }}
+                                                    />
+                                                </span>
+                                                <span className="text-right text-muted-foreground tabular-nums">
+                                                    {item.percent === null
+                                                        ? '—'
+                                                        : `${item.percent}%`}
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </Panel>
                         <Panel
                             title="Kinerja per Unit"
@@ -592,11 +742,21 @@ export default function Dashboard(props: Props) {
                                         align: 'right',
                                     },
                                     {
-                                        label: 'Beban Puncak (MW)',
+                                        label: 'Beban Tertinggi (MW)',
                                         align: 'right',
                                     },
-                                    { label: 'Produksi (MWh)', align: 'right' },
-                                    { label: 'SFC (L/kWh)', align: 'right' },
+                                    {
+                                        label: 'kWh Netto (MWh)',
+                                        align: 'right',
+                                    },
+                                    {
+                                        label: 'SFC Netto (L/kWh)',
+                                        align: 'right',
+                                    },
+                                    {
+                                        label: 'Tara Kalor',
+                                        align: 'right',
+                                    },
                                     { label: 'EAF' },
                                     { label: 'Status' },
                                 ]}
@@ -623,6 +783,9 @@ export default function Dashboard(props: Props) {
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums">
                                             {formatValue(u.sfc, 'decimal3')}
+                                        </TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                            {formatValue(u.tara_kalor)}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">

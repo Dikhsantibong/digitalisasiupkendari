@@ -118,4 +118,25 @@ class AksesPengusahaanTest extends TestCase
         $this->assertStringContainsString('Akses 2', PermissionGroup::PemeliharaanPengusahaan->label());
         $this->assertStringContainsString('Akses 1', PermissionGroup::Pemeliharaan->label());
     }
+
+    public function test_pengusahaan_operasi_has_only_input_and_berita_acara(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $tl = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $this->actingAs($tl)->get(route('operasi.pengusahaan.index', 'input'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('section.title', 'Input'));
+        // Operasi names its Formulir "Berita Acara"; the other modules keep "Formulir".
+        $this->actingAs($tl)->get(route('operasi.pengusahaan.index', 'formulir'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('section.key', 'formulir')->where('section.title', 'Berita Acara'));
+        // kWh and Rekap now live inside Input.
+        $this->actingAs($tl)->get('/operasi/pengusahaan/kwh')->assertNotFound();
+        $this->actingAs($tl)->get('/operasi/pengusahaan/rekap')->assertNotFound();
+
+        $harTl = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $unit);
+        $this->actingAs($harTl)->get(route('har.pengusahaan.index', 'formulir'))
+            ->assertInertia(fn ($page) => $page->where('section.title', 'Formulir'));
+    }
 }

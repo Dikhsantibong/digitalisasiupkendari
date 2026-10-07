@@ -104,4 +104,64 @@ class DailyReportInputTest extends TestCase
 
         $this->assertDatabaseCount('daily_engine_reports', 0);
     }
+
+    public function test_saving_ikhtisar_sentral_and_persediaan_persists_data(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdMfo]);
+        $user = $this->userWithRole(RoleName::TeamLeaderOperasi, $unit);
+
+        $this->actingAs($user)
+            ->post(route('operasi.pengusahaan.daily-report.store'), [
+                'unit_id' => $unit->id,
+                'month' => 9,
+                'year' => 2026,
+                'summary' => [
+                    'kwh_dibangkit' => 3213300.0,
+                    'kwh_pemakaian_sendiri' => 169369.0,
+                    'kwh_disalurkan' => 3043931.0,
+                    'beban_puncak_pagi_kw' => 500.0,
+                    'beban_puncak_malam_kw' => 600.0,
+                    'jam_jalan_perhari' => 24.0,
+                ],
+                'mesins' => [
+                    [
+                        'engine_id' => $engine->id,
+                        'kwh_dibangkit' => 598790.0,
+                        'jam_jalan' => 494.92,
+                        'pemakaian_hsd' => 165800.0,
+                        'pemakaian_mfo' => 0.0,
+                        'sfc' => 0.277,
+                        't_kalor' => 2649.0,
+                        'slc' => 7.685,
+                        'pemakaian_pelumas' => [1 => 4598.0, 2 => 4.0],
+                    ],
+                ],
+                'inventory' => [
+                    'persediaan_awal' => ['hsd' => 583058.0, 'mfo' => 0.0, 'lubricants' => [1 => 2717.0]],
+                    'penerimaan' => ['hsd' => 650000.0, 'mfo' => 0.0, 'lubricants' => [1 => 9405.0]],
+                    'penerimaan_sewa_smp' => ['hsd' => 0.0, 'mfo' => 0.0, 'lubricants' => []],
+                    'pemakaian_non_operasi' => ['hsd' => 0.0, 'mfo' => 0.0, 'lubricants' => []],
+                    'pengiriman' => ['hsd' => 0.0, 'mfo' => 0.0, 'lubricants' => []],
+                ],
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('operasi_ikhtisar_sentrals', [
+            'unit_id' => $unit->id,
+            'month' => 9,
+            'year' => 2026,
+            'kwh_dibangkit' => 3213300.0,
+            'kwh_pemakaian_sendiri' => 169369.0,
+            'kwh_disalurkan' => 3043931.0,
+        ]);
+
+        $this->assertDatabaseHas('operasi_ikhtisar_sentral_mesins', [
+            'unit_id' => $unit->id,
+            'engine_id' => $engine->id,
+            'kwh_dibangkit' => 598790.0,
+            'jam_jalan' => 494.92,
+            'pemakaian_hsd' => 165800.0,
+        ]);
+    }
 }

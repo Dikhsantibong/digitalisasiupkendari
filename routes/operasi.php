@@ -23,12 +23,28 @@ use App\Http\Controllers\Operasi\MeetingShiftController;
 use App\Http\Controllers\Operasi\PatrolCheckMesinController;
 use App\Http\Controllers\Operasi\PembuatanIkController;
 use App\Http\Controllers\Operasi\PengusahaanAuxiliaryReadingController;
+use App\Http\Controllers\Operasi\PengusahaanBaFisikPelumasController;
 use App\Http\Controllers\Operasi\PengusahaanBeritaAcaraController;
 use App\Http\Controllers\Operasi\PengusahaanDailyReportController;
 use App\Http\Controllers\Operasi\PengusahaanFeederReadingController;
 use App\Http\Controllers\Operasi\PengusahaanFuelReceiptController;
+use App\Http\Controllers\Operasi\PengusahaanInventarisController;
+use App\Http\Controllers\Operasi\PengusahaanJamMesinController;
+use App\Http\Controllers\Operasi\PengusahaanJamSiapOpsController;
+use App\Http\Controllers\Operasi\PengusahaanKinerjaController;
+use App\Http\Controllers\Operasi\PengusahaanKinerjaTermalController;
+use App\Http\Controllers\Operasi\PengusahaanKwhController;
+use App\Http\Controllers\Operasi\PengusahaanMesinHarianController;
+use App\Http\Controllers\Operasi\PengusahaanPemakaianBbmController;
+use App\Http\Controllers\Operasi\PengusahaanPemakaianPelumasController;
+use App\Http\Controllers\Operasi\PengusahaanPersediaanController;
 use App\Http\Controllers\Operasi\PengusahaanResourcePembangkitController;
+use App\Http\Controllers\Operasi\PengusahaanRincianBbmController;
+use App\Http\Controllers\Operasi\PengusahaanRincianPelumasController;
+use App\Http\Controllers\Operasi\PengusahaanStandMeterController;
 use App\Http\Controllers\Operasi\PengusahaanStarStopController;
+use App\Http\Controllers\Operasi\PengusahaanTugBbmController;
+use App\Http\Controllers\Operasi\PengusahaanTugPelumasController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
 use App\Http\Controllers\Operasi\Program5s5rInputController;
@@ -149,6 +165,7 @@ Route::middleware(['auth', 'verified'])
         // and Berita Acara. Operators keep their operasi.lapangan.* page permission.
         Route::get('pengusahaan/laporan-harian', [PengusahaanDailyReportController::class, 'index'])->name('pengusahaan.daily-report.index');
         Route::post('pengusahaan/laporan-harian', [PengusahaanDailyReportController::class, 'store'])->name('pengusahaan.daily-report.store');
+        Route::get('pengusahaan/laporan-harian/pdf', [PengusahaanDailyReportController::class, 'pdf'])->name('pengusahaan.daily-report.pdf');
 
         Route::get('pengusahaan/star-stop', [PengusahaanStarStopController::class, 'index'])->name('pengusahaan.star-stop.index');
         Route::post('pengusahaan/star-stop', [PengusahaanStarStopController::class, 'store'])->name('pengusahaan.star-stop.store');
@@ -168,8 +185,102 @@ Route::middleware(['auth', 'verified'])
         Route::post('pengusahaan/resource-pembangkit', [PengusahaanResourcePembangkitController::class, 'store'])->name('pengusahaan.resource-pembangkit.store');
         Route::get('pengusahaan/resource-pembangkit/pdf', [PengusahaanResourcePembangkitController::class, 'pdf'])->name('pengusahaan.resource-pembangkit.pdf');
 
+        Route::get('pengusahaan/stand-meter', [PengusahaanStandMeterController::class, 'index'])->name('pengusahaan.stand-meter.index');
+        Route::post('pengusahaan/stand-meter', [PengusahaanStandMeterController::class, 'store'])->name('pengusahaan.stand-meter.store');
+        Route::get('pengusahaan/stand-meter/pdf', [PengusahaanStandMeterController::class, 'pdf'])->name('pengusahaan.stand-meter.pdf');
+
+        Route::get('pengusahaan/pemakaian-pelumas', [PengusahaanPemakaianPelumasController::class, 'index'])->name('pengusahaan.pemakaian-pelumas.index');
+        Route::post('pengusahaan/pemakaian-pelumas', [PengusahaanPemakaianPelumasController::class, 'store'])->name('pengusahaan.pemakaian-pelumas.store');
+        Route::get('pengusahaan/pemakaian-pelumas/pdf', [PengusahaanPemakaianPelumasController::class, 'pdf'])->name('pengusahaan.pemakaian-pelumas.pdf');
+        Route::get('pengusahaan/pelumas-tambah-ganti', [PengusahaanPemakaianPelumasController::class, 'tambahGanti'])->name('pengusahaan.pelumas-tambah-ganti.index');
+        Route::get('pengusahaan/pelumas-tambah-ganti/pdf', [PengusahaanPemakaianPelumasController::class, 'tambahGantiPdf'])->name('pengusahaan.pelumas-tambah-ganti.pdf');
+
+        Route::get('pengusahaan/tug-pelumas', [PengusahaanTugPelumasController::class, 'index'])->name('pengusahaan.tug-pelumas.index');
+        Route::post('pengusahaan/tug-pelumas', [PengusahaanTugPelumasController::class, 'store'])->name('pengusahaan.tug-pelumas.store');
+        Route::get('pengusahaan/tug-pelumas/pdf', [PengusahaanTugPelumasController::class, 'pdf'])->name('pengusahaan.tug-pelumas.pdf');
+
+        Route::get('pengusahaan/pemakaian-bbm', [PengusahaanPemakaianBbmController::class, 'index'])->name('pengusahaan.pemakaian-bbm.index');
+        Route::post('pengusahaan/pemakaian-bbm', [PengusahaanPemakaianBbmController::class, 'store'])->name('pengusahaan.pemakaian-bbm.store');
+        Route::get('pengusahaan/pemakaian-bbm/pdf', [PengusahaanPemakaianBbmController::class, 'pdf'])->name('pengusahaan.pemakaian-bbm.pdf');
+
+        Route::get('pengusahaan/tug-bbm', [PengusahaanTugBbmController::class, 'index'])->name('pengusahaan.tug-bbm.index');
+        Route::post('pengusahaan/tug-bbm', [PengusahaanTugBbmController::class, 'store'])->name('pengusahaan.tug-bbm.store');
+        Route::get('pengusahaan/tug-bbm/pdf', [PengusahaanTugBbmController::class, 'pdf'])->name('pengusahaan.tug-bbm.pdf');
+
+        // Persediaan Bahan Bakar / Persediaan Pelumas share one controller.
+        foreach (['bbm', 'pelumas'] as $persediaanJenis) {
+            Route::get("pengusahaan/persediaan-{$persediaanJenis}", [PengusahaanPersediaanController::class, 'index'])->defaults('jenis', $persediaanJenis)->name("pengusahaan.persediaan-{$persediaanJenis}.index");
+            Route::post("pengusahaan/persediaan-{$persediaanJenis}", [PengusahaanPersediaanController::class, 'store'])->defaults('jenis', $persediaanJenis)->name("pengusahaan.persediaan-{$persediaanJenis}.store");
+            Route::get("pengusahaan/persediaan-{$persediaanJenis}/pdf", [PengusahaanPersediaanController::class, 'pdf'])->defaults('jenis', $persediaanJenis)->name("pengusahaan.persediaan-{$persediaanJenis}.pdf");
+        }
+
+        Route::get('pengusahaan/ba-fisik-pelumas', [PengusahaanBaFisikPelumasController::class, 'index'])->name('pengusahaan.ba-fisik-pelumas.index');
+        Route::post('pengusahaan/ba-fisik-pelumas', [PengusahaanBaFisikPelumasController::class, 'store'])->name('pengusahaan.ba-fisik-pelumas.store');
+        Route::get('pengusahaan/ba-fisik-pelumas/pdf', [PengusahaanBaFisikPelumasController::class, 'pdf'])->name('pengusahaan.ba-fisik-pelumas.pdf');
+
+        // Perincian & Rekap Bahan Bakar share one controller and one stored record.
+        foreach (['perincian-bbm', 'rekap-bbm'] as $rincianBbm) {
+            Route::get("pengusahaan/{$rincianBbm}", [PengusahaanRincianBbmController::class, 'index'])->defaults('jenis', $rincianBbm)->name("pengusahaan.{$rincianBbm}.index");
+            Route::post("pengusahaan/{$rincianBbm}", [PengusahaanRincianBbmController::class, 'store'])->defaults('jenis', $rincianBbm)->name("pengusahaan.{$rincianBbm}.store");
+            Route::get("pengusahaan/{$rincianBbm}/pdf", [PengusahaanRincianBbmController::class, 'pdf'])->defaults('jenis', $rincianBbm)->name("pengusahaan.{$rincianBbm}.pdf");
+        }
+
+        // Perincian Minyak Pelumas & Rekap Pelumas share one controller.
+        foreach (['perincian-pelumas', 'rekap-pelumas'] as $rincian) {
+            Route::get("pengusahaan/{$rincian}", [PengusahaanRincianPelumasController::class, 'index'])->defaults('jenis', $rincian)->name("pengusahaan.{$rincian}.index");
+            Route::post("pengusahaan/{$rincian}", [PengusahaanRincianPelumasController::class, 'store'])->defaults('jenis', $rincian)->name("pengusahaan.{$rincian}.store");
+            Route::get("pengusahaan/{$rincian}/pdf", [PengusahaanRincianPelumasController::class, 'pdf'])->defaults('jenis', $rincian)->name("pengusahaan.{$rincian}.pdf");
+        }
+
+        // Jam Operasi / Jam Pemeliharaan / Jam Gangguan share one controller; Jam Siap Ops is derived from them.
+        foreach (['operasi', 'pemeliharaan', 'gangguan'] as $jamJenis) {
+            Route::get("pengusahaan/jam-{$jamJenis}", [PengusahaanJamMesinController::class, 'index'])->defaults('jenis', $jamJenis)->name("pengusahaan.jam-{$jamJenis}.index");
+            Route::post("pengusahaan/jam-{$jamJenis}", [PengusahaanJamMesinController::class, 'store'])->defaults('jenis', $jamJenis)->name("pengusahaan.jam-{$jamJenis}.store");
+            Route::get("pengusahaan/jam-{$jamJenis}/pdf", [PengusahaanJamMesinController::class, 'pdf'])->defaults('jenis', $jamJenis)->name("pengusahaan.jam-{$jamJenis}.pdf");
+        }
+        Route::get('pengusahaan/jam-siap-ops', [PengusahaanJamSiapOpsController::class, 'index'])->name('pengusahaan.jam-siap-ops.index');
+        Route::get('pengusahaan/jam-siap-ops/pdf', [PengusahaanJamSiapOpsController::class, 'pdf'])->name('pengusahaan.jam-siap-ops.pdf');
+
+        // Beban Tertinggi, Jumlah Kali Gangguan & Tara Kalor share one controller.
+        foreach (['beban-tinggi', 'kali-gangguan', 'tara-kalor'] as $mesinHarian) {
+            Route::get("pengusahaan/{$mesinHarian}", [PengusahaanMesinHarianController::class, 'index'])->defaults('jenis', $mesinHarian)->name("pengusahaan.{$mesinHarian}.index");
+            Route::post("pengusahaan/{$mesinHarian}", [PengusahaanMesinHarianController::class, 'store'])->defaults('jenis', $mesinHarian)->name("pengusahaan.{$mesinHarian}.store");
+            Route::get("pengusahaan/{$mesinHarian}/pdf", [PengusahaanMesinHarianController::class, 'pdf'])->defaults('jenis', $mesinHarian)->name("pengusahaan.{$mesinHarian}.pdf");
+        }
+
+        // Rekap: filled from the other sheets, editable.
+        Route::get('pengusahaan/kinerja', [PengusahaanKinerjaController::class, 'index'])->name('pengusahaan.kinerja.index');
+        Route::post('pengusahaan/kinerja', [PengusahaanKinerjaController::class, 'store'])->name('pengusahaan.kinerja.store');
+        Route::get('pengusahaan/kinerja/pdf', [PengusahaanKinerjaController::class, 'pdf'])->name('pengusahaan.kinerja.pdf');
+        Route::get('pengusahaan/inventaris-mesin', [PengusahaanInventarisController::class, 'index'])->name('pengusahaan.inventaris-mesin.index');
+        Route::post('pengusahaan/inventaris-mesin', [PengusahaanInventarisController::class, 'store'])->name('pengusahaan.inventaris-mesin.store');
+        Route::get('pengusahaan/inventaris-mesin/pdf', [PengusahaanInventarisController::class, 'pdf'])->name('pengusahaan.inventaris-mesin.pdf');
+        Route::get('pengusahaan/kinerja-termal', [PengusahaanKinerjaTermalController::class, 'index'])->name('pengusahaan.kinerja-termal.index');
+        Route::post('pengusahaan/kinerja-termal', [PengusahaanKinerjaTermalController::class, 'store'])->name('pengusahaan.kinerja-termal.store');
+        Route::get('pengusahaan/kinerja-termal/pdf', [PengusahaanKinerjaTermalController::class, 'pdf'])->name('pengusahaan.kinerja-termal.pdf');
+
+        // kWh: Stand kWh Harian is the input; TP and Energi are read from it.
+        Route::get('pengusahaan/stand-kwh', [PengusahaanKwhController::class, 'harian'])->name('pengusahaan.stand-kwh.index');
+        Route::post('pengusahaan/stand-kwh', [PengusahaanKwhController::class, 'store'])->name('pengusahaan.stand-kwh.store');
+        Route::get('pengusahaan/stand-kwh/pdf', [PengusahaanKwhController::class, 'harianPdf'])->name('pengusahaan.stand-kwh.pdf');
+        Route::get('pengusahaan/kwh-transfer-pricing', [PengusahaanKwhController::class, 'transferPricing'])->name('pengusahaan.kwh-tp.index');
+        Route::get('pengusahaan/kwh-transfer-pricing/pdf', [PengusahaanKwhController::class, 'transferPricingPdf'])->name('pengusahaan.kwh-tp.pdf');
+        Route::get('pengusahaan/kwh-rekap', [PengusahaanKwhController::class, 'rekap'])->name('pengusahaan.kwh-rekap.index');
+        Route::get('pengusahaan/kwh-rekap/pdf', [PengusahaanKwhController::class, 'rekapPdf'])->name('pengusahaan.kwh-rekap.pdf');
+        // SFC (liter ÷ kWh produksi) and SFC Netto (liter ÷ kWh netto).
+        foreach (['sfc', 'sfc-netto'] as $sfc) {
+            Route::get("pengusahaan/{$sfc}", [PengusahaanKwhController::class, 'sfc'])->defaults('jenis', $sfc)->name("pengusahaan.{$sfc}.index");
+            Route::get("pengusahaan/{$sfc}/pdf", [PengusahaanKwhController::class, 'sfcPdf'])->defaults('jenis', $sfc)->name("pengusahaan.{$sfc}.pdf");
+        }
+        foreach (['dibangkit', 'pemakaian-sendiri'] as $energi) {
+            Route::get("pengusahaan/energi-{$energi}", [PengusahaanKwhController::class, 'energi'])->defaults('jenis', $energi)->name("pengusahaan.energi-{$energi}.index");
+            Route::get("pengusahaan/energi-{$energi}/pdf", [PengusahaanKwhController::class, 'energiPdf'])->defaults('jenis', $energi)->name("pengusahaan.energi-{$energi}.pdf");
+        }
+
         Route::get('pengusahaan/berita-acara', [PengusahaanBeritaAcaraController::class, 'index'])->name('pengusahaan.berita-acara.index');
         Route::post('pengusahaan/berita-acara', [PengusahaanBeritaAcaraController::class, 'store'])->name('pengusahaan.berita-acara.store');
+        Route::post('pengusahaan/berita-acara/lampiran', [PengusahaanBeritaAcaraController::class, 'uploadAttachment'])->name('pengusahaan.berita-acara.attachment.upload');
+        Route::delete('pengusahaan/berita-acara/lampiran', [PengusahaanBeritaAcaraController::class, 'destroyAttachment'])->name('pengusahaan.berita-acara.attachment.destroy');
         Route::get('pengusahaan/berita-acara/{type}', [PengusahaanBeritaAcaraController::class, 'show'])->name('pengusahaan.berita-acara.show');
         Route::get('pengusahaan/berita-acara/{type}/preview', [PengusahaanBeritaAcaraController::class, 'preview'])->name('pengusahaan.berita-acara.preview');
         Route::get('pengusahaan/berita-acara/{type}/pdf', [PengusahaanBeritaAcaraController::class, 'pdf'])->name('pengusahaan.berita-acara.pdf');

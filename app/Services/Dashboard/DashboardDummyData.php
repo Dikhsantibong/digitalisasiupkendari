@@ -29,48 +29,85 @@ class DashboardDummyData
     }
 
     /**
+     * Operasi Pengusahaan figures, shaped like the Pengusahaan menus: kWh
+     * produksi / PS / netto (Stand kWh Harian), beban tertinggi, SFC netto &
+     * tara kalor, the jam operasi / HAR / gangguan / siap ops split, the stock
+     * of every jenis BBM and pelumas tambah / ganti. Jenis BBM and pelumas are
+     * the real ones of the master; only the numbers are dummy.
+     *
+     * @param  list<array{code: string, name: string}>  $fuels  jenis BBM of the visible units (master)
+     * @param  list<string>  $lubricants  jenis pelumas of the visible units (master)
      * @return array<string, mixed>
      */
-    public function operasi(): array
+    public function operasi(array $fuels = [], array $lubricants = []): array
     {
         $day = $this->now->day;
         $labels = array_map('strval', range(1, $day));
         $production = array_map(fn (int $d): float => round(410 + 90 * $this->noise('op-prod', $d) + 25 * sin($d / 3), 1), range(1, $day));
+        $ps = array_map(fn (float $mwh, int $d): float => round($mwh * (0.035 + 0.01 * $this->noise('op-ps', $d)), 1), $production, range(1, $day));
+        $netto = array_map(fn (float $mwh, float $own): float => round($mwh - $own, 1), $production, $ps);
         $peak = array_map(fn (int $d): float => round(21 + 4.5 * $this->noise('op-peak', $d) + sin($d / 4), 2), range(1, $day));
+        $fuels = $fuels !== [] ? $fuels : [['code' => 'BBM', 'name' => 'Bahan Bakar']];
+        $months = $this->monthLabels();
 
         return [
             'kpis' => [
-                $this->kpi('produksi', 'Produksi Energi', array_sum($production), 'MWh', 'number', 6.4, 'up', 'op-k1'),
-                $this->kpi('beban', 'Beban Puncak', max($peak), 'MW', 'decimal', 2.1, 'up', 'op-k2'),
-                $this->kpi('sfc', 'SFC Rata-rata', 0.252, 'L/kWh', 'decimal3', -1.8, 'down', 'op-k3'),
-                $this->kpi('eaf', 'EAF', 92.4, '%', 'decimal', 1.2, 'up', 'op-k4'),
-                $this->kpi('bbm', 'Pemakaian BBM', 3184.6, 'kL', 'decimal', 4.9, 'down', 'op-k5'),
+                $this->kpi('netto', 'Produksi kWh Netto', array_sum($netto), 'MWh', 'number', 6.4, 'up', 'op-k1'),
+                $this->kpi('ps', 'Pemakaian Sendiri', round(array_sum($ps) / max(1, array_sum($production)) * 100, 2), '%', 'decimal', -0.8, 'down', 'op-k2'),
+                $this->kpi('beban', 'Beban Tertinggi', max($peak), 'MW', 'decimal', 2.1, 'up', 'op-k3'),
+                $this->kpi('sfc', 'SFC Netto', 0.262, 'L/kWh', 'decimal3', -1.8, 'down', 'op-k4'),
+                $this->kpi('tara_kalor', 'Tara Kalor', 2598, 'kCal/kWh', 'number', -0.6, 'down', 'op-k5'),
             ],
             'daily' => [
                 'labels' => $labels,
                 'series' => [
-                    ['name' => 'Produksi (MWh)', 'values' => $production],
-                    ['name' => 'Beban Puncak (MW)', 'values' => $peak],
+                    ['name' => 'kWh Netto (MWh)', 'values' => $netto],
+                    ['name' => 'Pemakaian Sendiri (MWh)', 'values' => $ps],
+                    ['name' => 'Beban Tertinggi (MW)', 'values' => $peak],
                 ],
             ],
-            'engine_status' => [
-                ['label' => 'Operasi', 'value' => 18],
-                ['label' => 'Standby', 'value' => 7],
-                ['label' => 'Pemeliharaan', 'value' => 3],
-                ['label' => 'Gangguan', 'value' => 1],
+            // Jam Operasi / Jam Pemeliharaan / Jam Gangguan / Jam Siap Ops of every machine this month.
+            'jam_mesin' => [
+                ['label' => 'Operasi', 'value' => 2950],
+                ['label' => 'Siap Operasi', 'value' => 1260],
+                ['label' => 'Pemeliharaan', 'value' => 310],
+                ['label' => 'Gangguan', 'value' => 42],
             ],
             'gauges' => [
                 ['label' => 'EAF', 'value' => 92.4, 'target' => 90, 'good' => 'up'],
                 ['label' => 'EFOR', 'value' => 3.1, 'target' => 5, 'good' => 'down'],
-                ['label' => 'Logsheet Lengkap', 'value' => 87.5, 'target' => 95, 'good' => 'up'],
+                ['label' => 'CF', 'value' => 64.8, 'target' => 60, 'good' => 'up'],
             ],
-            'fuel_monthly' => $this->monthly('op-fuel', 2900, 600),
+            // Persediaan Bahan Bakar per jenis BBM of the master (liter).
+            'fuels' => array_map(function (array $fuel, int $i): array {
+                $awal = round(180000 + 420000 * $this->noise('op-f-awal', $i));
+                $penerimaan = round(150000 + 500000 * $this->noise('op-f-in', $i));
+                $pemakaian = round(($awal + $penerimaan) * (0.55 + 0.25 * $this->noise('op-f-use', $i)));
+                $sisa = $awal + $penerimaan - $pemakaian;
+                $selisih = round(-150 + 300 * $this->noise('op-f-sel', $i));
+
+                return ['code' => $fuel['code'], 'name' => $fuel['name'], 'awal' => $awal, 'penerimaan' => $penerimaan, 'pemakaian' => $pemakaian, 'sisa' => $sisa, 'fisik' => $sisa + $selisih, 'selisih' => $selisih];
+            }, $fuels, array_keys($fuels)),
+            'fuel_monthly' => [
+                'labels' => $months,
+                'series' => array_map(fn (array $fuel, int $i): array => [
+                    'name' => "{$fuel['code']} (kL)",
+                    'values' => array_map(fn (int $m): float => round((2200 - 900 * $i) + 600 * $this->noise("op-fm-{$fuel['code']}", $m), 1), range(0, 5)),
+                ], $fuels, array_keys($fuels)),
+            ],
+            // Pemakaian Pelumas per jenis of the master, split tambah / ganti (liter).
+            'pelumas' => array_map(fn (string $name, int $i): array => [
+                'label' => $name,
+                'tambah' => round(200 + 900 * $this->noise('op-pl-t', $i)),
+                'ganti' => round(($i === 0 ? 3000 : 0) + 600 * $this->noise('op-pl-g', $i)),
+            ], array_slice($lubricants !== [] ? $lubricants : ['Pelumas'], 0, 6), array_keys(array_slice($lubricants !== [] ? $lubricants : ['Pelumas'], 0, 6))),
             'units' => array_map(fn (string $name, int $i): array => [
                 'unit' => $name,
                 'daya_mampu' => round(8 + 10 * $this->noise('op-dm', $i), 1),
                 'beban_puncak' => round(6 + 8 * $this->noise('op-bp', $i), 1),
                 'produksi' => round(1800 + 3200 * $this->noise('op-pr', $i)),
-                'sfc' => round(0.238 + 0.03 * $this->noise('op-sfc', $i), 3),
+                'sfc' => round(0.250 + 0.03 * $this->noise('op-sfc', $i), 3),
+                'tara_kalor' => round(2500 + 300 * $this->noise('op-tk', $i)),
                 'eaf' => round(84 + 14 * $this->noise('op-eaf', $i), 1),
                 ...$this->pickStatus($i, [['Normal', 'success'], ['Normal', 'success'], ['Siaga', 'warning'], ['Normal', 'success'], ['Defisit', 'danger']]),
             ], $this->unitNames, array_keys($this->unitNames)),
@@ -275,62 +312,6 @@ class DashboardDummyData
                 ...$this->pickStatus($i, [['Normal', 'success'], ['Normal', 'success'], ['Waspada', 'warning'], ['Normal', 'success'], ['Alarm', 'danger']]),
             ], $this->unitNames, array_keys($this->unitNames)),
         ];
-    }
-
-    /**
-     * Health score per visible module, for the executive overview rings.
-     *
-     * @param  array<string, bool>  $scope
-     * @return list<array{key: string, label: string, value: float, caption: string}>
-     */
-    public function moduleHealth(array $scope): array
-    {
-        $all = [
-            'operasi' => ['label' => 'Operasi', 'value' => 92.4, 'caption' => 'EAF bulan berjalan'],
-            'har' => ['label' => 'Pemeliharaan', 'value' => 78.6, 'caption' => 'WO selesai'],
-            'k3' => ['label' => 'K3 & Keamanan', 'value' => 88.1, 'caption' => 'Realisasi kegiatan'],
-            'logistik' => ['label' => 'Logistik', 'value' => 84.0, 'caption' => 'Ketersediaan stok'],
-            'pdm' => ['label' => 'PdM', 'value' => 91.8, 'caption' => 'Realisasi prediktif'],
-        ];
-
-        $out = [];
-        foreach ($all as $key => $item) {
-            if ($scope[$key] ?? false) {
-                $out[] = ['key' => $key, ...$item];
-            }
-        }
-
-        return $out;
-    }
-
-    /**
-     * Entries logged this month per module, for the activity bar list.
-     *
-     * @param  array<string, bool>  $scope
-     * @return list<array{label: string, value: int}>
-     */
-    public function moduleActivity(array $scope): array
-    {
-        $all = [
-            'operasi' => [['Input Harian Operasi', 684], ['Logsheet Operator', 552]],
-            'har' => [['Work Order', 83], ['Service Request', 41]],
-            'k3' => [['Inspeksi K3', 64], ['Scan Patroli', 804]],
-            'logistik' => [['Transaksi Material', 237]],
-            'pdm' => [['Pengukuran PdM', 318]],
-        ];
-
-        $out = [];
-        foreach ($all as $key => $items) {
-            if ($scope[$key] ?? false) {
-                foreach ($items as [$label, $value]) {
-                    $out[] = ['label' => $label, 'value' => $value];
-                }
-            }
-        }
-
-        usort($out, fn (array $a, array $b): int => $b['value'] <=> $a['value']);
-
-        return $out;
     }
 
     /**

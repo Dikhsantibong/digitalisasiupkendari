@@ -22,13 +22,13 @@ class OperasiMasterSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * @var list<array{code: string, name: string, category: string}>
+     * @var list<array{code: string, name: string, category: string, material_code: string|null}>
      */
     private const BBM_TYPES = [
-        ['code' => 'HSD', 'name' => 'High Speed Diesel', 'category' => 'HSD'],
-        ['code' => 'B30', 'name' => 'Biosolar B30', 'category' => 'Biodiesel'],
-        ['code' => 'B40', 'name' => 'Biosolar B40', 'category' => 'Biodiesel'],
-        ['code' => 'MFO', 'name' => 'Marine Fuel Oil', 'category' => 'MFO'],
+        ['code' => 'HSD', 'name' => 'High Speed Diesel', 'category' => 'HSD', 'material_code' => '8010001'],
+        ['code' => 'B30', 'name' => 'Biosolar B30', 'category' => 'Biodiesel', 'material_code' => null],
+        ['code' => 'B40', 'name' => 'Biosolar B40', 'category' => 'Biodiesel', 'material_code' => null],
+        ['code' => 'MFO', 'name' => 'Marine Fuel Oil', 'category' => 'MFO', 'material_code' => '8010031'],
     ];
 
     /**
@@ -61,7 +61,7 @@ class OperasiMasterSeeder extends Seeder
         foreach (self::BBM_TYPES as $index => $bbm) {
             BbmType::query()->updateOrCreate(
                 ['code' => $bbm['code']],
-                ['name' => $bbm['name'], 'category' => $bbm['category'], 'sort_order' => $index, 'is_active' => true],
+                ['name' => $bbm['name'], 'category' => $bbm['category'], 'material_code' => $bbm['material_code'], 'sort_order' => $index, 'is_active' => true],
             );
         }
 

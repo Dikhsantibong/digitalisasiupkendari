@@ -66,6 +66,10 @@ class OperasiCalculator
         ];
 
         $usesMfo = $engine->fuel_type?->usesMfo() ?? false;
+        $multipliers = [
+            'produksi' => (float) ($engine->kwh_faktor_kali_produksi ?? 1) ?: 1.0,
+            'ps' => (float) ($engine->kwh_faktor_kali_ps ?? 1) ?: 1.0,
+        ];
 
         // Opening stands for day 1 come from the last reading before this month.
         $previous = $this->closingBefore($engine, Carbon::create($year, $month, 1)->startOfDay());
@@ -89,15 +93,16 @@ class OperasiCalculator
             $row['flowmeter_hsd_stand_awal'] = $previous['flowmeter_hsd_stand_akhir'];
             $row['flowmeter_mfo_stand_awal'] = $usesMfo ? $previous['flowmeter_mfo_stand_akhir'] : null;
 
+            // kWh = (akhir − awal) × faktor koreksi (kalibrasi) × faktor kali meter (Master Mesin).
             $row['kwh_produksi'] = $this->meterDelta(
                 $row['kwh_produksi_stand_akhir'],
                 $row['kwh_produksi_stand_awal'],
-            ) * $factors['kwh'];
+            ) * $factors['kwh'] * $multipliers['produksi'];
 
             $row['kwh_pakai_sendiri'] = $this->meterDelta(
                 $row['kwh_pakai_sendiri_stand_akhir'],
                 $row['kwh_pakai_sendiri_stand_awal'],
-            ) * $factors['kwh'];
+            ) * $factors['kwh'] * $multipliers['ps'];
 
             $row['kwh_netto'] = $row['kwh_produksi'] === null || $row['kwh_pakai_sendiri'] === null
                 ? null

@@ -4,6 +4,7 @@ namespace App\Services\Operasi;
 
 use App\Enums\EmployeePosition;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
@@ -19,13 +20,18 @@ class OperasiPengusahaanDocument
 {
     public function __construct(
         private readonly OperasiPengusahaanReport $report,
+        private readonly OperasiPengusahaanBook $book,
         private readonly ReportSignatories $signatories,
     ) {}
 
     /**
-     * @return array{document: array{number: string, title: string}, report: array<string, mixed>, pengusahaan: list<array<string, mixed>>}
+     * `chapters` are the pages of the text / PDF document (the menus' own
+     * pages, {@see OperasiPengusahaanBook}); `pengusahaan` the generic table
+     * sections of the spreadsheet mode.
+     *
+     * @return array{document: array{number: string, title: string}, report: array<string, mixed>, pengusahaan: list<array<string, mixed>>, chapters: list<array<string, mixed>>}
      */
-    public function build(Unit $unit, int $month, int $year): array
+    public function build(Unit $unit, int $month, int $year, User $user): array
     {
         $unit->loadMissing('serviceUnit');
         $signer = fn (EmployeePosition $position): array => [
@@ -58,6 +64,7 @@ class OperasiPengusahaanDocument
                 ],
             ],
             'pengusahaan' => $this->report->sections($unit, $month, $year),
+            'chapters' => $this->book->chapters($unit, $month, $year, $user),
         ];
     }
 
@@ -69,9 +76,19 @@ class OperasiPengusahaanDocument
         return View::make('operasi.laporan.pengusahaan-body', ['data' => $data])->render();
     }
 
-    public function styles(): string
+    /**
+     * @param  array<string, mixed>  $data  the build() data, whose chapter styles are included
+     */
+    public function styles(array $data = []): string
     {
-        return View::make('operasi.laporan.pengusahaan-styles')->render();
+        $css = [];
+        foreach ($data['chapters'] ?? [] as $chapter) {
+            foreach ($chapter['parts'] as $part) {
+                $css[] = $part['css'];
+            }
+        }
+
+        return View::make('operasi.laporan.pengusahaan-styles', ['chapterCss' => implode(PHP_EOL, $css)])->render();
     }
 
     /**

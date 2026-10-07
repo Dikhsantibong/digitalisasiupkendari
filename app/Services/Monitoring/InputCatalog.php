@@ -71,13 +71,20 @@ class InputCatalog
             $this->entry('operasi', 'operasi_instruksi_kerjas', 'Instruksi Kerja (IK)', 'operasi.input.instruksi-kerja.index', 'date', ['date' => 'tanggal']),
 
             // Operasi — Pengusahaan (TL & Staf Operasi).
-            $this->entry('operasi_pengusahaan', 'daily_engine_reports', 'Input Harian (per mesin)', 'operasi.pengusahaan.daily-report.index', 'daily_engine', ['date' => 'report_date']),
-            $this->entry('operasi_pengusahaan', 'daily_feeder_readings', 'Feeder', 'operasi.pengusahaan.feeder.index', 'daily', ['date' => 'report_date']),
-            $this->entry('operasi_pengusahaan', 'daily_auxiliary_readings', 'Pasokan Cadangan', 'operasi.pengusahaan.auxiliary.index', 'daily', ['date' => 'report_date']),
-            $this->entry('operasi_pengusahaan', 'operasi_resource_pembangkits', 'Resource Pembangkit', 'operasi.pengusahaan.resource-pembangkit.index', 'daily_day', ['day' => 'tanggal']),
-            $this->entry('operasi_pengusahaan', 'engine_status_logs', 'Star-Stop Mesin', 'operasi.pengusahaan.star-stop.index', 'date', ['date' => 'report_date']),
-            $this->entry('operasi_pengusahaan', 'fuel_receipts', 'Penerimaan BBM', 'operasi.pengusahaan.fuel-receipt.index', 'date', ['date' => 'report_date']),
-            $this->entry('operasi_pengusahaan', 'document_records', 'Berita Acara BBM & Pelumas (3 BA)', 'operasi.pengusahaan.berita-acara.index', 'count', ['distinct' => 'type', 'expected' => 3]),
+            $this->entry('operasi_pengusahaan', 'daily_engine_reports', 'Ikhtisar Sentral', 'operasi.pengusahaan.daily-report.index', 'daily_engine', ['date' => 'report_date']),
+            $this->entry('operasi_pengusahaan', 'operasi_stand_meters', 'Stand Flow Meter BBM', 'operasi.pengusahaan.stand-meter.index', 'month'),
+            $this->entry('operasi_pengusahaan', 'operasi_pemakaian_pelumas', 'Pemakaian Pelumas', 'operasi.pengusahaan.pemakaian-pelumas.index', 'month'),
+            $this->entry('operasi_pengusahaan', 'operasi_pemakaian_bbm', 'Pemakaian Bahan Bakar', 'operasi.pengusahaan.pemakaian-bbm.index', 'month'),
+            $this->entry('operasi_pengusahaan', 'operasi_persediaan', 'Persediaan Bahan Bakar', 'operasi.pengusahaan.persediaan-bbm.index', 'month', ['where' => ['jenis' => 'bbm']]),
+            $this->entry('operasi_pengusahaan', 'operasi_persediaan', 'Persediaan Pelumas', 'operasi.pengusahaan.persediaan-pelumas.index', 'month', ['where' => ['jenis' => 'pelumas']]),
+            $this->entry('operasi_pengusahaan', 'operasi_jam_mesin', 'Jam Operasi', 'operasi.pengusahaan.jam-operasi.index', 'month', ['where' => ['jenis' => 'operasi']]),
+            $this->entry('operasi_pengusahaan', 'operasi_jam_mesin', 'Jam Pemeliharaan', 'operasi.pengusahaan.jam-pemeliharaan.index', 'month', ['where' => ['jenis' => 'pemeliharaan']]),
+            $this->entry('operasi_pengusahaan', 'operasi_jam_mesin', 'Jam Gangguan', 'operasi.pengusahaan.jam-gangguan.index', 'month', ['where' => ['jenis' => 'gangguan']]),
+            $this->entry('operasi_pengusahaan', 'operasi_mesin_harian', 'Beban Tertinggi', 'operasi.pengusahaan.beban-tinggi.index', 'month', ['where' => ['jenis' => 'beban-tinggi']]),
+            $this->entry('operasi_pengusahaan', 'operasi_mesin_harian', 'Jumlah Kali Gangguan', 'operasi.pengusahaan.kali-gangguan.index', 'month', ['where' => ['jenis' => 'kali-gangguan']]),
+            $this->entry('operasi_pengusahaan', 'operasi_mesin_harian', 'kWh / kCal (Tara Kalor)', 'operasi.pengusahaan.tara-kalor.index', 'month', ['where' => ['jenis' => 'tara-kalor']]),
+            $this->entry('operasi_pengusahaan', 'operasi_rekaps', 'BA Pemeriksaan Fisik Pelumas', 'operasi.pengusahaan.ba-fisik-pelumas.index', 'month', ['where' => ['jenis' => 'ba-fisik-pelumas']]),
+            $this->entry('operasi_pengusahaan', 'document_records', 'Berita Acara (BBM, Pelumas & Feeder)', 'operasi.pengusahaan.berita-acara.index', 'count', ['distinct' => 'type', 'expected' => 4]),
 
             // Operator.
             $this->entry('operator', 'operator_logsheets', 'Logsheet Operator (per mesin)', 'operator.logsheet.index', 'daily_engine', ['date' => 'log_date']),

@@ -31,7 +31,7 @@ class DocumentTemplateTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_global_scope_lists_the_three_documents_with_defaults(): void
+    public function test_global_scope_lists_the_documents_with_defaults(): void
     {
         $unit = Unit::factory()->create();
 
@@ -41,7 +41,7 @@ class DocumentTemplateTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('operasi/document-template/index')
                 ->where('scope.unit_id', null)
-                ->has('templates', 3)
+                ->has('templates', 4)
                 ->where('templates.0.document_number', BeritaAcaraType::Hsd->defaultDocumentNumber()),
             );
     }

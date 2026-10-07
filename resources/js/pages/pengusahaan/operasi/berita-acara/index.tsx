@@ -5,6 +5,7 @@ import {
     Fuel,
     Plus,
     Printer,
+    Zap,
 } from 'lucide-react';
 import {
     OPERASI_MONTHS,
@@ -111,7 +112,8 @@ export default function BeritaAcaraIndex({ filters, types, options }: Props) {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {types.map((type) => {
                         const isLubricant = type.value === 'pelumas';
-                        const Icon = isLubricant ? Droplet : Fuel;
+                        const isFeeder = type.value === 'feeder';
+                        const Icon = isFeeder ? Zap : isLubricant ? Droplet : Fuel;
 
                         return (
                             <div

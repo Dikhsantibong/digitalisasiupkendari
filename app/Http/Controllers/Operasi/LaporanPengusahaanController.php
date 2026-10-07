@@ -32,7 +32,7 @@ class LaporanPengusahaanController extends Controller
 
     public const REPORT_CODE = 'pengusahaan';
 
-    private const BODY_VERSION = 1;
+    private const BODY_VERSION = 3;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PENGUSAHAAN PEMBANGKIT (OPERASI)';
 
@@ -48,14 +48,14 @@ class LaporanPengusahaanController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiPengusahaanView), 403);
 
         [$unit, $month, $year] = $this->target($request);
-        $data = $this->document->build($unit, $month, $year);
+        $data = $this->document->build($unit, $month, $year, $request->user());
         $record = $this->currentRecord($unit->id, $month, $year);
 
         return Inertia::render('operasi/laporan/pengusahaan', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'document_number' => $data['document']['number'],
             'content' => $record?->content_html ?? $this->document->bodyHtml($data),
-            'content_styles' => $this->document->styles(),
+            'content_styles' => $this->document->styles($data),
             'letterhead' => $this->document->letterhead($data),
             'grid' => $record?->content_grid ?? $this->document->grid($data),
             'format' => $record?->format ?? 'html',
@@ -71,21 +71,17 @@ class LaporanPengusahaanController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiPengusahaanView), 403);
 
         [$unit, $month, $year] = $this->target($request);
-        $data = $this->document->build($unit, $month, $year);
+        $data = $this->document->build($unit, $month, $year, $request->user());
         $record = $this->currentRecord($unit->id, $month, $year);
-        $styles = $this->document->styles();
+        $styles = $this->document->styles($data);
 
         if ($record !== null && $record->format === 'grid' && ! empty($record->content_grid)) {
             $body = $this->embedAssets($this->document->letterhead($data).$this->grids->gridToHtml($record->content_grid));
             $pdf = $merger->render($styles, $body, [['show' => '', 'orientation' => 'landscape']], [], self::FOOTER);
         } else {
+            // Every chapter prints in its own orientation; portrait and landscape pages are merged in order.
             $body = $this->embedAssets($record?->content_html ?? $this->document->bodyHtml($data));
-            // Portrait cover, pengesahan & narrow tables; landscape wide tables.
-            $segments = array_values(array_filter([
-                ['show' => 'seg-cover-info', 'orientation' => 'portrait'],
-                ['show' => 'seg-tables-wide', 'orientation' => 'landscape'],
-            ], fn (array $segment): bool => str_contains($body, $segment['show'])));
-            $pdf = $merger->render($styles, $body, $segments, array_column($segments, 'show'), self::FOOTER);
+            $pdf = $merger->renderSections($styles, $body, 'op-p-section', 'op-p-landscape', self::FOOTER, unnumberedPages: 1);
         }
 
         $disposition = $request->boolean('download') ? 'attachment' : 'inline';
@@ -114,7 +110,7 @@ class LaporanPengusahaanController extends Controller
         abort_unless($user->canAccessUnit($unit), 403);
         [$month, $year] = [(int) $validated['month'], (int) $validated['year']];
 
-        $data = $this->document->build($unit, $month, $year);
+        $data = $this->document->build($unit, $month, $year, $request->user());
         $record = $this->recordFor($unit->id, $month, $year, $user->id);
         $record->document_number = $data['document']['number'];
         $record->format = $validated['format'];
@@ -140,7 +136,7 @@ class LaporanPengusahaanController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite), 403);
 
         [$unit, $month, $year] = $this->target($request);
-        $data = $this->document->build($unit, $month, $year);
+        $data = $this->document->build($unit, $month, $year, $request->user());
 
         $record = $this->recordFor($unit->id, $month, $year, $user->id);
         $record->document_number = $data['document']['number'];

@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -139,6 +140,7 @@ trait ManagesMasterResources
 
         /** @var class-string<Model> $model */
         $model = $definition['model'];
+        $data = $this->withoutEmptyRequiredColumns($data, (new $model)->getTable());
 
         if ($id === null) {
             $model::query()->create($data);
@@ -161,6 +163,21 @@ trait ManagesMasterResources
     /**
      * @param  array<string, mixed>  $definition
      */
+    /**
+     * Drop empty optional fields whose column cannot be null (e.g. an empty
+     * "Urutan"), so the column default applies on create and the stored value
+     * stays on update — instead of a NOT NULL violation.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withoutEmptyRequiredColumns(array $data, string $table): array
+    {
+        $notNullable = collect(Schema::getColumns($table))->reject(fn (array $column): bool => (bool) $column['nullable'])->pluck('name')->all();
+
+        return array_filter($data, fn (mixed $value, string $key): bool => $value !== null || ! in_array($key, $notNullable, true), ARRAY_FILTER_USE_BOTH);
+    }
+
     private function findScopedMaster(array $definition, int $id, User $user): Model
     {
         /** @var class-string<Model> $model */

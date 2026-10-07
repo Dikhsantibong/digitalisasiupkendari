@@ -19,10 +19,22 @@ use Illuminate\Support\Carbon;
  * @property int $id
  * @property int $unit_id
  * @property string $name
+ * @property string|null $merk
  * @property string|null $type
  * @property FuelType|null $fuel_type
  * @property string|null $serial_number
+ * @property string|null $engine_hp
+ * @property int|null $engine_rpm
+ * @property int|null $tahun_pembuatan
+ * @property string|null $generator_merk
+ * @property string|null $generator_type
+ * @property string|null $generator_serial_number
+ * @property int|null $generator_volt
+ * @property string|null $generator_kva
+ * @property string|null $generator_cos_phi
  * @property string|null $capacity_kw
+ * @property string $kwh_faktor_kali_produksi
+ * @property string $kwh_faktor_kali_ps
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -32,10 +44,22 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'unit_id',
     'name',
+    'merk',
     'type',
     'fuel_type',
     'serial_number',
+    'engine_hp',
+    'engine_rpm',
+    'tahun_pembuatan',
+    'generator_merk',
+    'generator_type',
+    'generator_serial_number',
+    'generator_volt',
+    'generator_kva',
+    'generator_cos_phi',
     'capacity_kw',
+    'kwh_faktor_kali_produksi',
+    'kwh_faktor_kali_ps',
     'is_active',
 ])]
 class Machine extends Model
@@ -50,6 +74,13 @@ class Machine extends Model
     {
         return [
             'fuel_type' => FuelType::class,
+            'kwh_faktor_kali_produksi' => 'decimal:4',
+            'kwh_faktor_kali_ps' => 'decimal:4',
+            'engine_rpm' => 'integer',
+            'tahun_pembuatan' => 'integer',
+            'generator_volt' => 'integer',
+            'generator_kva' => 'decimal:2',
+            'generator_cos_phi' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }

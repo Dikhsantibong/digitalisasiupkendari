@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-CmnwgY8m.js";import{n,t as r}from"./jadwal-sheet-page-eboCl9Zl.js";var i=e(),a=t();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`jadwal`,`kegiatan`,`Jadwal Kegiatan Logistik & Gudang`)};export{o as default};
