@@ -14,9 +14,10 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 /**
- * The actions of the Laporan Pembangkit workflow for every report module:
- * Ajukan (pembuat), Verifikasi (Koordinator divisi), Setujui (Team Leader
- * sesuai modul), Sahkan (Manager UL, last) and Tolak (whoever's turn it is).
+ * The actions of the report workflow for every report module: Ajukan
+ * (pembuat), Verifikasi (Koordinator divisi — not in a Laporan Pengusahaan),
+ * Setujui (Team Leader sesuai modul), Sahkan (Manager UL, last) and Tolak
+ * (whoever's turn it is).
  * Each action is authorised by {@see ReportWorkflowService} (write
  * permission + unit scope to ajukan; the signer's own linked employee, in
  * order, for every other step), whatever buttons the page shows.
@@ -37,7 +38,11 @@ class ReportWorkflowController extends Controller
         $workflow = $this->workflows->submit($request->user(), $module, $unit, $month, $year, $validated['note'] ?? null);
         $this->events->reportWorkflow($workflow, 'ajukan', $request->user());
 
-        return $this->done($workflow, "Mengajukan {$module->label()} {$unit->name} periode {$month}/{$year}", 'Laporan diajukan untuk diverifikasi Koordinator.');
+        $next = $module->isPengusahaan()
+            ? "disetujui {$module->teamLeaderPosition()->value}"
+            : 'diverifikasi Koordinator';
+
+        return $this->done($workflow, "Mengajukan {$module->label()} {$unit->name} periode {$month}/{$year}", "Laporan diajukan untuk {$next}.");
     }
 
     public function verify(Request $request, ReportModule $module): RedirectResponse

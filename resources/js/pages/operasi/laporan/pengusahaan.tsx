@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { DocumentEditor } from '@/components/document/document-editor';
 import type { DocumentEditorMode } from '@/components/document/document-editor';
+import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
 import type { DocumentGrid } from '@/lib/spreadsheet';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/operasi/laporan';
@@ -17,6 +18,8 @@ type Props = {
     has_saved: boolean;
     pdf_url: string;
     can_write: boolean;
+    /** Approval: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan. */
+    workflow: ReportWorkflowState;
 };
 
 export default function OperasiLaporanPengusahaan({
@@ -30,6 +33,7 @@ export default function OperasiLaporanPengusahaan({
     has_saved,
     pdf_url,
     can_write,
+    workflow,
 }: Props) {
     const backUrl = laporan.index({ query: filters }).url;
 
@@ -38,7 +42,7 @@ export default function OperasiLaporanPengusahaan({
             <Head title="Dokumen Laporan Pengusahaan Pembangkit Operasi" />
             <DocumentEditor
                 title="Laporan Pengusahaan Pembangkit (Operasi)"
-                description="Laporan terisi otomatis dari seluruh input Pengusahaan Operasi (Input Harian, Star-Stop, Feeder, Pasokan Cadangan, Penerimaan BBM, Resource Pembangkit & Berita Acara). Edit sebagai teks atau spreadsheet, simpan, lalu unduh PDF multi-orientasi (Portrait & Landscape). Dokumen yang sudah disimpan: tekan Muat Ulang dari Data untuk mengambil isi terbaru."
+                description="Laporan terisi otomatis dari menu Pengusahaan Operasi (Ikhtisar Sentral s/d TUG 9), dalam satu PDF portrait & landscape. Simpan, lalu ajukan: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan. Selama proses persetujuan dokumen dikunci."
                 backUrl={backUrl}
                 backLabel="Kembali"
                 numberLabel="No. Dokumen"
@@ -51,6 +55,7 @@ export default function OperasiLaporanPengusahaan({
                 hasSaved={has_saved}
                 pdfUrl={pdf_url}
                 canEdit={can_write}
+                workflow={workflow}
                 baseName={`Laporan-Pengusahaan-Operasi-${filters.unit_id}-${filters.month}-${filters.year}`}
                 xlsxHeaderLines={[
                     { text: 'PT PLN NUSANTARA POWER', bold: true },

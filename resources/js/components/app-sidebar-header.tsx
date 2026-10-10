@@ -1,13 +1,15 @@
 import { usePage } from '@inertiajs/react';
+import { Menu } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '@/components/ui/sidebar';
+import { useSidebar } from '@/components/ui/sidebar';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
@@ -19,11 +21,23 @@ export function AppSidebarHeader({
 }) {
     const { auth } = usePage().props;
     const getInitials = useInitials();
+    const { toggleSidebar, state, isMobile } = useSidebar();
+    const label =
+        isMobile || state === 'collapsed' ? 'Buka menu' : 'Tutup menu';
 
     return (
         <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-4">
             <div className="flex items-center gap-2">
-                <SidebarTrigger className="-ml-1" />
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleSidebar}
+                    aria-label={label}
+                    title={label}
+                    className="-ml-1 size-8"
+                >
+                    <Menu className="size-5" />
+                </Button>
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
             <div className="flex items-center gap-2">

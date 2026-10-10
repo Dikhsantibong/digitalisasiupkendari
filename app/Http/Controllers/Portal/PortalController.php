@@ -299,12 +299,11 @@ class PortalController extends Controller
      */
     private function reportLinks(ReportModule $module, int $unitId, int $month, int $year): array
     {
-        $query = ['unit_id' => $unitId, 'month' => $month, 'year' => $year];
-        [$pdf, $edit] = $module === ReportModule::Operasi
-            ? [fn (array $q): string => route('operasi.laporan.document.pdf', ['report' => 'laporan-operasi-bulanan', ...$q], false), fn (array $q): string => route('operasi.laporan.document.edit', ['report' => 'laporan-operasi-bulanan', ...$q], false)]
-            : [fn (array $q): string => route("{$module->value}.laporan.document.pdf", $q, false), fn (array $q): string => route("{$module->value}.laporan.document.edit", $q, false)];
-
-        return ['view_url' => $pdf($query), 'download_url' => $pdf($query + ['download' => 1]), 'document_url' => $edit($query)];
+        return [
+            'view_url' => $module->pdfUrl($unitId, $month, $year),
+            'download_url' => $module->pdfUrl($unitId, $month, $year, ['download' => 1]),
+            'document_url' => $module->documentUrl($unitId, $month, $year),
+        ];
     }
 
     /**
@@ -366,7 +365,7 @@ class PortalController extends Controller
                 'unit' => $names[$w->unit_id] ?? Unit::query()->whereKey($w->unit_id)->value('name') ?? '-',
                 'title' => $w->module->label(),
                 'period' => Indonesian::monthName($w->month).' '.$w->year,
-                'status' => $w->status->label(),
+                'status' => $w->module->statusLabel($w->status),
                 ...$this->reportLinks($w->module, $w->unit_id, $w->month, $w->year),
             ])->values()->all();
     }

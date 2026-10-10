@@ -1,0 +1,1 @@
+import{c as e,l as t}from"./utils-CO1zRbZx.js";import{n,t as r}from"./formulir-record-page-BQ6Ib3fa.js";var i=t(),a=e();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`kontrol-mingguan`,`Form Kontrol K3 Mingguan`)};export{o as default};

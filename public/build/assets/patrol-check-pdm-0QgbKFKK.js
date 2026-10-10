@@ -1,0 +1,1 @@
+import{c as e,l as t}from"./utils-CO1zRbZx.js";import{n,t as r}from"./form-input-page-DJ8fXOc3.js";var i=t(),a=e();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`patrol-check-pdm`,`Patrol Check Predictive Maintenance (PdM)`)};export{o as default};

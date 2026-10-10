@@ -1,0 +1,1 @@
+import{c as e,l as t}from"./utils-CO1zRbZx.js";import{wt as n}from"./use-mobile-module-kR-sYfuC.js";import{n as r,t as i}from"./tabel-page-CcimycjK.js";var a=t(),o=e();function s(e){let t=(0,a.c)(2),n;return t[0]===e?n=t[1]:(n=(0,o.jsx)(i,{...e}),t[0]=e,t[1]=n),n}s.layout={breadcrumbs:r(`Rekap Laporan Gangguan`,n.index().url)};export{s as default};

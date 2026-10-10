@@ -9,7 +9,8 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReportWorkflowController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+// No landing page: guests go straight to the login page, signed-in users to their dashboard.
+Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');

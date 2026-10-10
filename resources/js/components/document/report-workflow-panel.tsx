@@ -52,7 +52,8 @@ const formatDateTime = (iso: string | null) =>
     iso ? new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 
 /**
- * Status and approval chain of a Laporan Pembangkit — Koordinator divisi
+ * Status and approval chain of a report (a Laporan Pengusahaan skips the
+ * Koordinator: Staf → Team Leader → Manager UL) — Koordinator divisi
  * memeriksa → Team Leader sesuai modul menyetujui → Manager UL mengesahkan —
  * with the actions the current user may take. The buttons come from the backend
  * (`can`), which validates every action again.
@@ -69,11 +70,13 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
     const chain = workflow.steps.filter((step) => step.stage === 'pengesahan');
     const documentSigners = workflow.steps.filter((step) => step.stage === 'tanda_tangan');
     const tlPosition = chain.find((s) => s.sequence === 2)?.position ?? 'Team Leader';
+    /** A Laporan Pengusahaan has no Koordinator: it goes from the Staf straight to the Team Leader. */
+    const hasKoordinator = chain.some((s) => s.sequence === 1);
 
     const dialogs: Record<Action, { title: string; description: string; confirm: string; field: 'note' | 'reason'; required: boolean }> = {
         submit: {
             title: resubmit ? 'Ajukan Kembali Laporan' : 'Ajukan Laporan',
-            description: 'Laporan versi tersimpan akan dikirim untuk diverifikasi dan tidak dapat diubah selama proses berlangsung. Pastikan dokumen sudah disimpan.',
+            description: `Laporan versi tersimpan akan dikirim ${hasKoordinator ? 'untuk diverifikasi Koordinator' : `ke ${tlPosition} untuk disetujui`} dan tidak dapat diubah selama proses berlangsung. Pastikan dokumen sudah disimpan.`,
             confirm: resubmit ? 'Ajukan Kembali' : 'Ajukan',
             field: 'note',
             required: false,
@@ -87,7 +90,7 @@ export function ReportWorkflowPanel({ workflow, target }: { workflow: ReportWork
         },
         approve: {
             title: 'Setujui Laporan',
-            description: `Sebagai ${tlPosition}, Anda menyetujui laporan yang telah diperiksa Koordinator. Laporan diteruskan ke Manager UL untuk disahkan.`,
+            description: `Sebagai ${tlPosition}, Anda menyetujui laporan ${hasKoordinator ? 'yang telah diperiksa Koordinator' : 'yang diajukan Staf'}. Laporan diteruskan ke Manager UL untuk disahkan.`,
             confirm: 'Setujui',
             field: 'note',
             required: false,

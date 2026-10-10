@@ -84,7 +84,8 @@ class PortalAccessTest extends TestCase
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasiUp))->get(route('monitoring.input'))
             ->assertInertia(fn ($page) => $page->where('groups', fn ($groups): bool => collect($groups)->pluck('key')->all() === ['operasi', 'operasi_pengusahaan', 'operator']));
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderK3Up))->get(route('monitoring.laporan'))
-            ->assertInertia(fn ($page) => $page->has('modules', 1)->where('modules.0.key', 'k3'));
+            // The bidang's Laporan Pembangkit and its Laporan Pengusahaan.
+            ->assertInertia(fn ($page) => $page->has('modules', 2)->where('modules.0.key', 'k3')->where('modules.1.key', 'k3-pengusahaan'));
     }
 
     public function test_input_pages_open_read_only_and_other_bidang_stay_closed(): void

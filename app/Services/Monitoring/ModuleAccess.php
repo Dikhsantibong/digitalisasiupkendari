@@ -19,9 +19,9 @@ class ModuleAccess
      * @var array<string, array{0: string, 1: list<PermissionName>, 2: list<string>, 3: list<ReportModule>}>
      */
     public const AREAS = [
-        'operasi' => ['Operasi', [PermissionName::OperasiInputView, PermissionName::OperasiLaporanView, PermissionName::OperasiPengusahaanView, PermissionName::OperatorLogsheetView], ['operasi', 'operasi_pengusahaan', 'operator'], [ReportModule::Operasi]],
-        'pemeliharaan' => ['Pemeliharaan', [PermissionName::HarInputView, PermissionName::HarLaporanView, PermissionName::HarPengusahaanView], ['har', 'har_pengusahaan'], [ReportModule::Har]],
-        'k3' => ['K3 & Lingkungan', [PermissionName::K3InputView, PermissionName::K3LaporanView, PermissionName::K3PengusahaanView], ['k3', 'k3_pengusahaan'], [ReportModule::K3]],
+        'operasi' => ['Operasi', [PermissionName::OperasiInputView, PermissionName::OperasiLaporanView, PermissionName::OperasiPengusahaanView, PermissionName::OperatorLogsheetView], ['operasi', 'operasi_pengusahaan', 'operator'], [ReportModule::Operasi, ReportModule::OperasiPengusahaan]],
+        'pemeliharaan' => ['Pemeliharaan', [PermissionName::HarInputView, PermissionName::HarLaporanView, PermissionName::HarPengusahaanView], ['har', 'har_pengusahaan'], [ReportModule::Har, ReportModule::HarPengusahaan]],
+        'k3' => ['K3 & Lingkungan', [PermissionName::K3InputView, PermissionName::K3LaporanView, PermissionName::K3PengusahaanView], ['k3', 'k3_pengusahaan'], [ReportModule::K3, ReportModule::K3Pengusahaan]],
         'logistik' => ['Logistik & Gudang', [PermissionName::LogistikInputView, PermissionName::LogistikLaporanView], ['logistik'], [ReportModule::Logistik]],
         'pdm' => ['PdM & Maturity Level', [PermissionName::PdmInputView, PermissionName::PdmLaporanView], ['pdm'], [ReportModule::Pdm]],
     ];

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\K3;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Enums\ReportModule;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Controller;
 use App\Models\K3DocumentRecord;
 use App\Models\Unit;
@@ -23,6 +25,7 @@ use Inertia\Response as InertiaResponse;
 class LaporanPengusahaanController extends Controller
 {
     use EmbedsReportLogo;
+    use InteractsWithReportWorkflow;
 
     /** v2 = Lembar Pengesahan removed from the Laporan Pengusahaan K3. */
     private const BODY_VERSION = 2;
@@ -51,6 +54,9 @@ class LaporanPengusahaanController extends Controller
         $data = $this->builder->buildPengusahaan($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
+        // Laporan Pengusahaan approval: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan.
+        $workflow = $this->reportWorkflows()->present($user, ReportModule::K3Pengusahaan, $unit, $month, $year);
+
         return Inertia::render('k3/laporan/pengusahaan', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'document_number' => $data['document']['number'] ?? 'FMKD-314-10.3.3',
@@ -63,7 +69,8 @@ class LaporanPengusahaanController extends Controller
             'pdf_url' => route('k3.laporan.pengusahaan.pdf', [
                 'unit_id' => $unit->id, 'month' => $month, 'year' => $year,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::K3PengusahaanWrite),
+            'can_write' => $user->hasPermissionTo(PermissionName::K3PengusahaanWrite) && ! $user->isReadOnly() && $workflow['editable'],
+            'workflow' => $workflow,
         ]);
     }
 
@@ -125,6 +132,7 @@ class LaporanPengusahaanController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $this->ensureReportEditable(ReportModule::K3Pengusahaan, $unit, $month, $year);
 
         $data = $this->builder->buildPengusahaan($unit, $month, $year);
 
@@ -165,6 +173,7 @@ class LaporanPengusahaanController extends Controller
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
+        $this->ensureReportEditable(ReportModule::K3Pengusahaan, $unit, $month, $year);
 
         $data = $this->builder->buildPengusahaan($unit, $month, $year);
 

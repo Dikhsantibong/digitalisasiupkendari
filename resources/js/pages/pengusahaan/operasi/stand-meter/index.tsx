@@ -1,19 +1,16 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Download, Loader2, Save, SlidersHorizontal } from 'lucide-react';
+import { Download, Eye, Loader2, Save } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
-import { PageHeader } from '@/components/page-header';
-import { StatusBadge } from '@/components/status-badge';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { EmptyState } from '@/components/empty-state';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
+import { PageHeader } from '@/components/page-header';
+import { SummaryCard } from '@/components/summary-card';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 import master from '@/routes/operasi/master';
 import standMeter from '@/routes/operasi/pengusahaan/stand-meter';
 
@@ -65,20 +62,11 @@ type Props = {
     can_manage_master: boolean;
 };
 
-const MONTHS = [
-    { value: 1, label: 'Januari' },
-    { value: 2, label: 'Februari' },
-    { value: 3, label: 'Maret' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'Mei' },
-    { value: 6, label: 'Juni' },
-    { value: 7, label: 'Juli' },
-    { value: 8, label: 'Agustus' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'Oktober' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'Desember' },
-];
+const YEARS = Array.from(
+    { length: 7 },
+    (_, i) => new Date().getFullYear() - 4 + i,
+);
+const groupStart = 'border-l-2 border-l-primary/30';
 
 const formatNum = (v: number | string | undefined | null) => {
     const num = Number(v) || 0;
@@ -355,590 +343,606 @@ export default function StandMeterIndex({
         );
     };
 
-    const pdfUrl = `/operasi/pengusahaan/stand-meter/pdf?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}&fuel=${encodeURIComponent(fuelName)}`;
+    const query = {
+        unit_id: filters.unit_id,
+        month: filters.month,
+        year: filters.year,
+        fuel: fuelName,
+    };
+    const unitTotal = Object.values(computedTotals.machines || {}).reduce(
+        (acc, item) => acc + (Number(item?.pemakaian) || 0),
+        0,
+    );
+    const selisihText = (value: number) =>
+        value < 0
+            ? `(${formatNum(Math.abs(value))})`
+            : value > 0
+              ? `+${formatNum(value)}`
+              : '-';
 
     return (
-        <div className="space-y-6">
+        <>
             <Head title={`Stand Flow Meter BBM ${fuelName} - ${unit.name}`} />
-
-            <PageHeader
-                title={`Stand Flow Meter BBM (${fuelName})`}
-                description="Pencatatan harian stand meter BBM generator, perhitungan pemakaian terkalibrasi, administrasi, dan selisih terhadap realisasi sounding."
-                actions={
-                    <div className="flex flex-wrap items-center gap-2">
-                        <StatusBadge tone={has_saved ? 'success' : 'neutral'}>
-                            {has_saved ? 'Tersimpan' : 'Draft / Baru'}
-                        </StatusBadge>
-                        <a
-                            href={pdfUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-9 gap-1.5 text-xs"
-                            >
-                                <Download className="size-3.5" />
-                                Cetak PDF
+            <div className="flex min-w-0 flex-col gap-4 p-4 md:p-6">
+                <PageHeader
+                    title={`Stand Flow Meter BBM (${fuelName})`}
+                    description={`Pencatatan harian stand meter BBM generator, pemakaian terkalibrasi, administrasi dan selisih terhadap realisasi sounding — ${unit.name}.`}
+                    actions={
+                        <>
+                            <Button variant="outline" asChild>
+                                <a
+                                    href={standMeter.pdf({ query }).url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Eye className="size-4" /> Pratinjau PDF
+                                </a>
                             </Button>
-                        </a>
-                        {can_manage && (
-                            <Button
-                                size="sm"
-                                onClick={handleSave}
-                                disabled={isSaving}
-                                className="h-9 gap-1.5 text-xs"
-                            >
-                                {isSaving ? (
-                                    <Loader2 className="size-3.5 animate-spin" />
-                                ) : (
-                                    <Save className="size-3.5" />
-                                )}
-                                Simpan Data
+                            <Button variant="outline" asChild>
+                                <a
+                                    href={
+                                        standMeter.pdf({
+                                            query: { ...query, download: 1 },
+                                        }).url
+                                    }
+                                >
+                                    <Download className="size-4" /> Unduh
+                                </a>
                             </Button>
-                        )}
-                    </div>
-                }
-            />
+                            {can_manage && (
+                                <Button
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                >
+                                    {isSaving ? (
+                                        <Loader2 className="size-4 animate-spin" />
+                                    ) : (
+                                        <Save className="size-4" />
+                                    )}
+                                    Simpan
+                                </Button>
+                            )}
+                        </>
+                    }
+                />
 
-            {/* Sub-header Filter Toolbar */}
-            <div className="space-y-4 rounded-lg border border-border bg-card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                        {/* Unit Filter */}
-                        <div className="space-y-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">
-                                Unit Pembangkit
-                            </Label>
-                            <Select
-                                value={String(filters.unit_id)}
-                                onValueChange={handleUnitChange}
-                            >
-                                <SelectTrigger className="h-8 w-[180px] text-xs font-semibold">
-                                    <SelectValue placeholder="Pilih Unit" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {units.map((u) => (
-                                        <SelectItem
-                                            key={u.id}
-                                            value={String(u.id)}
-                                            className="text-xs"
-                                        >
-                                            {u.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Month Filter */}
-                        <div className="space-y-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">
-                                Bulan
-                            </Label>
-                            <Select
-                                value={String(filters.month)}
-                                onValueChange={handleMonthChange}
-                            >
-                                <SelectTrigger className="h-8 w-[130px] text-xs font-semibold">
-                                    <SelectValue placeholder="Bulan" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {MONTHS.map((m) => (
-                                        <SelectItem
-                                            key={m.value}
-                                            value={String(m.value)}
-                                            className="text-xs"
-                                        >
-                                            {m.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Year Filter */}
-                        <div className="space-y-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">
-                                Tahun
-                            </Label>
-                            <Select
-                                value={String(filters.year)}
-                                onValueChange={handleYearChange}
-                            >
-                                <SelectTrigger className="h-8 w-[100px] text-xs font-semibold">
-                                    <SelectValue placeholder="Tahun" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {[
-                                        filters.year - 1,
-                                        filters.year,
-                                        filters.year + 1,
-                                    ].map((y) => (
-                                        <SelectItem
-                                            key={y}
-                                            value={String(y)}
-                                            className="text-xs"
-                                        >
-                                            {y}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Fuel Selector */}
-                        <div className="space-y-1">
-                            <Label className="text-[11px] font-semibold text-muted-foreground">
-                                Jenis Bahan Bakar
-                            </Label>
-                            <Select
-                                value={fuelName}
-                                onValueChange={handleFuelChange}
-                            >
-                                <SelectTrigger className="h-8 w-[180px] text-xs font-semibold">
-                                    <SelectValue placeholder="Pilih BBM" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {available_fuels.map((f) => (
-                                        <SelectItem
-                                            key={f.code}
-                                            value={f.code}
-                                            className="text-xs"
-                                        >
-                                            {f.name} ({f.code})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Formula Legend */}
-                <div className="flex flex-wrap items-center gap-2 border-t border-border pt-2 text-xs">
-                    <span className="text-[11px] font-semibold text-muted-foreground">
-                        Rumus Perhitungan:
-                    </span>
-                    <Badge
-                        variant="outline"
-                        className="bg-muted/40 font-mono text-[11px]"
-                    >
-                        Stand Awal = IF(Akhir=0, 0, Akhir Kemarin)
-                    </Badge>
-                    <Badge
-                        variant="outline"
-                        className="bg-muted/40 font-mono text-[11px]"
-                    >
-                        Pemakaian = (Akhir - Awal) × F. Koreksi × F. Kali
-                    </Badge>
-                    <Badge
-                        variant="outline"
-                        className="bg-muted/40 font-mono text-[11px]"
-                    >
-                        ADM = ∑ Pemakaian Seluruh Mesin
-                    </Badge>
-                    <Badge
-                        variant="outline"
-                        className="bg-muted/40 font-mono text-[11px]"
-                    >
-                        Selisih = Real - ADM
-                    </Badge>
-                </div>
-            </div>
-
-            {available_fuels.length === 0 && (
-                <div className="flex flex-wrap items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900">
-                    <span className="flex-1">
-                        Unit ini belum punya jenis BBM di Data Master. Jenis BBM
-                        diambil dari Tangki BBM aktif unit dan BBM mesin (Master
-                        Mesin).
-                    </span>
-                    {can_manage_master && (
-                        <Button size="sm" variant="outline" asChild>
-                            <Link href={master.index('fuel-tanks').url}>
-                                Buka Tangki BBM
-                            </Link>
-                        </Button>
+                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-secondary p-3">
+                    <OperasiSelect
+                        label="Unit"
+                        className="w-52"
+                        value={String(filters.unit_id)}
+                        onChange={handleUnitChange}
+                        options={units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
+                    />
+                    <OperasiSelect
+                        label="Bulan"
+                        className="w-36"
+                        value={String(filters.month)}
+                        onChange={handleMonthChange}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
+                    />
+                    <OperasiSelect
+                        label="Tahun"
+                        className="w-28"
+                        value={String(filters.year)}
+                        onChange={handleYearChange}
+                        options={YEARS.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
+                    />
+                    {available_fuels.length > 0 && (
+                        <OperasiSelect
+                            label="Jenis BBM"
+                            className="w-56"
+                            value={fuelName}
+                            onChange={handleFuelChange}
+                            options={available_fuels.map((f) => ({
+                                value: f.code,
+                                label: `${f.name} (${f.code})`,
+                            }))}
+                        />
                     )}
-                </div>
-            )}
-
-            {/* Section 2: Machine Parameters Configuration Card */}
-            <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                <div className="flex items-center justify-between">
-                    <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <SlidersHorizontal className="size-4 text-primary" />
-                        Parameter Mesin &amp; Stand Awal Bulan Lalu
-                    </h4>
-                    <span className="text-[11px] text-muted-foreground">
-                        {machines.length} Mesin Terdaftar
-                    </span>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    {machines.map((m) => (
-                        <div
-                            key={m.id}
-                            className="space-y-2 rounded-md border border-border bg-muted/20 p-3"
-                        >
-                            <div className="border-b border-border pb-1 text-xs font-semibold text-foreground">
-                                {m.name}
-                            </div>
-                            <div className="space-y-1.5 text-xs">
-                                <div>
-                                    <Label className="text-[11px] text-muted-foreground">
-                                        Stand Awal Bln Lalu
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        step="any"
-                                        value={m.stand_awal_bln_lalu}
-                                        onChange={(e) =>
-                                            handleUpdateMachine(
-                                                m.id,
-                                                'stand_awal_bln_lalu',
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="h-7 text-right font-mono text-xs"
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    <div>
-                                        <Label className="text-[11px] text-muted-foreground">
-                                            F. Koreksi
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            step="0.0000001"
-                                            value={m.faktor_koreksi}
-                                            onChange={(e) =>
-                                                handleUpdateMachine(
-                                                    m.id,
-                                                    'faktor_koreksi',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="h-7 text-right font-mono text-xs"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="text-[11px] text-muted-foreground">
-                                            F. Kali
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            step="0.1"
-                                            value={m.faktor_kali}
-                                            onChange={(e) =>
-                                                handleUpdateMachine(
-                                                    m.id,
-                                                    'faktor_kali',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="h-7 text-right font-mono text-xs"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Section 3: Daily Stand Meter Table */}
-            <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                <div>
-                    <h4 className="text-sm font-semibold text-foreground">
-                        Tabel Stand Meter Harian (1 - {rows.length})
-                    </h4>
-                    <p className="text-[12px] text-muted-foreground">
-                        Masukkan nilai <strong>AKHIR</strong> stand flowmeter
-                        dan <strong>Real</strong> pemakaian fisik. Nilai AWAL,
-                        PEMAKAIAN, TOTAL, ADM, dan SELISIH terhitung otomatis
-                        secara real-time.
+                    <p className="ml-auto self-center text-[13px] text-muted-foreground">
+                        {has_saved ? 'Tersimpan' : 'Belum pernah disimpan'}
                     </p>
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border">
-                    <table className="w-full min-w-[900px] border-collapse text-left text-xs">
-                        <thead className="border-b border-border bg-muted/60 text-[11px] font-semibold text-foreground">
-                            <tr>
-                                <th
-                                    rowSpan={2}
-                                    className="w-10 border-r border-border p-2 text-center"
-                                >
-                                    TGL
-                                </th>
-                                {machines.map((m) => (
-                                    <th
-                                        key={m.id}
-                                        colSpan={3}
-                                        className="border-r border-border bg-muted/40 p-2 text-center font-bold"
-                                    >
-                                        {m.name}
-                                    </th>
-                                ))}
-                                <th
-                                    rowSpan={2}
-                                    className="min-w-[90px] border-r border-border bg-amber-500/10 p-2 text-right font-bold text-amber-900 dark:text-amber-200"
-                                >
-                                    TOTAL {unit.name}
-                                </th>
-                                <th
-                                    rowSpan={2}
-                                    className="min-w-[85px] border-r border-border bg-blue-500/10 p-2 text-right font-bold text-blue-900 dark:text-blue-200"
-                                >
-                                    ADM
-                                </th>
-                                <th
-                                    rowSpan={2}
-                                    className="min-w-[90px] border-r border-border bg-muted/30 p-2 text-right font-bold"
-                                >
-                                    Real
-                                </th>
-                                <th
-                                    rowSpan={2}
-                                    className="min-w-[85px] bg-rose-500/10 p-2 text-right font-bold text-rose-900 dark:text-rose-200"
-                                >
-                                    SELISIH
-                                </th>
-                            </tr>
-                            <tr className="border-t border-border bg-muted/30 text-[10px]">
-                                {machines.map((m) => (
-                                    <React.Fragment key={m.id}>
-                                        <th className="w-[75px] border-r border-border p-1 text-center font-medium">
-                                            AWAL
-                                        </th>
-                                        <th className="w-[85px] border-r border-border p-1 text-center font-medium">
-                                            AKHIR
-                                        </th>
-                                        <th className="w-[85px] border-r border-border bg-amber-400/20 p-1 text-center font-bold text-amber-950 dark:text-amber-100">
-                                            PEMAKAIAN
-                                        </th>
-                                    </React.Fragment>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border font-mono text-xs">
-                            {rows.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={machines.length * 3 + 5}
-                                        className="p-6 text-center font-sans text-muted-foreground"
-                                    >
-                                        Tidak ada data hari untuk bulan ini.
-                                    </td>
-                                </tr>
-                            ) : (
-                                rows.map((row) => {
-                                    const dayMachs = row.machines || {};
-                                    let dailyUnitSum = 0;
-                                    machines.forEach((m) => {
-                                        dailyUnitSum +=
-                                            Number(dayMachs[m.id]?.pemakaian) ||
-                                            0;
-                                    });
-                                    dailyUnitSum =
-                                        Math.round(dailyUnitSum * 100) / 100;
-
-                                    return (
-                                        <tr
-                                            key={row.tgl}
-                                            className="hover:bg-muted/10"
+                {available_fuels.length === 0 ? (
+                    <section className="rounded-md border border-border bg-card">
+                        <EmptyState
+                            title="Belum ada jenis BBM untuk unit ini"
+                            description="Jenis BBM diambil dari Tangki BBM aktif unit (Data Master Operasi → Tangki BBM)."
+                            action={
+                                can_manage_master && (
+                                    <Button variant="outline" asChild>
+                                        <Link
+                                            href={
+                                                master.index('fuel-tanks').url
+                                            }
                                         >
-                                            <td className="border-r border-border p-1.5 text-center font-sans font-bold text-muted-foreground">
-                                                {row.tgl}
-                                            </td>
-                                            {machines.map((m) => {
-                                                const mDay = dayMachs[m.id] || {
-                                                    awal: 0,
-                                                    akhir: 0,
-                                                    pemakaian: 0,
-                                                };
+                                            Buka Tangki BBM
+                                        </Link>
+                                    </Button>
+                                )
+                            }
+                        />
+                    </section>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            <SummaryCard
+                                label="Total pemakaian unit"
+                                value={formatNum(unitTotal)}
+                                unit="Liter"
+                                hint={`${machines.length} mesin`}
+                            />
+                            <SummaryCard
+                                label="Administrasi (ADM)"
+                                value={formatNum(computedTotals.adm)}
+                                unit="Liter"
+                            />
+                            <SummaryCard
+                                label="Realisasi (Real)"
+                                value={formatNum(computedTotals.real)}
+                                unit="Liter"
+                            />
+                            <SummaryCard
+                                label="Selisih (Real − ADM)"
+                                value={selisihText(computedTotals.selisih)}
+                                unit="Liter"
+                            />
+                        </div>
 
-                                                return (
-                                                    <React.Fragment key={m.id}>
-                                                        <td className="border-r border-border p-1.5 text-right text-[11px] text-muted-foreground">
-                                                            {mDay.awal > 0
-                                                                ? formatNum(
-                                                                      mDay.awal,
-                                                                  )
-                                                                : '-'}
-                                                        </td>
-                                                        <td className="border-r border-border p-1">
-                                                            <Input
-                                                                type="number"
-                                                                step="any"
-                                                                value={
-                                                                    mDay.akhir ===
-                                                                    0
-                                                                        ? ''
-                                                                        : mDay.akhir
-                                                                }
-                                                                onChange={(e) =>
-                                                                    handleUpdateCell(
-                                                                        row.tgl,
-                                                                        m.id,
-                                                                        e.target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                placeholder="0"
-                                                                className="h-7 text-right font-mono text-xs"
-                                                            />
-                                                        </td>
-                                                        <td className="border-r border-border bg-amber-400/10 p-1.5 text-right font-semibold text-foreground">
-                                                            {mDay.pemakaian > 0
-                                                                ? formatNum(
-                                                                      mDay.pemakaian,
-                                                                  )
-                                                                : '-'}
-                                                        </td>
-                                                    </React.Fragment>
-                                                );
-                                            })}
-                                            <td className="border-r border-border bg-amber-500/10 p-1.5 text-right font-bold text-foreground">
-                                                {dailyUnitSum > 0
-                                                    ? formatNum(dailyUnitSum)
-                                                    : '-'}
-                                            </td>
-                                            <td className="border-r border-border bg-blue-500/10 p-1.5 text-right font-bold text-foreground">
-                                                {row.adm > 0
-                                                    ? formatNum(row.adm)
-                                                    : '-'}
-                                            </td>
-                                            <td className="border-r border-border p-1">
-                                                <Input
-                                                    type="number"
-                                                    step="any"
-                                                    value={
-                                                        row.real === 0
-                                                            ? ''
-                                                            : row.real
-                                                    }
-                                                    onChange={(e) =>
-                                                        handleUpdateReal(
-                                                            row.tgl,
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    placeholder="0"
-                                                    className="h-7 text-right font-mono text-xs"
-                                                />
-                                            </td>
-                                            <td
-                                                className={`p-1.5 text-right font-bold ${
-                                                    row.selisih < 0
-                                                        ? 'bg-rose-500/10 font-semibold text-destructive'
-                                                        : row.selisih > 0
-                                                          ? 'bg-rose-500/10 text-foreground'
-                                                          : 'text-muted-foreground'
-                                                }`}
-                                            >
-                                                {row.selisih < 0
-                                                    ? `(${formatNum(Math.abs(row.selisih))})`
-                                                    : row.selisih > 0
-                                                      ? `+${formatNum(row.selisih)}`
-                                                      : '-'}
-                                            </td>
+                        <p className="text-[13px] text-muted-foreground">
+                            Pemakaian = (Akhir − Awal) × F. Koreksi × F. Kali ·
+                            Awal = akhir hari sebelumnya (kosong bila akhir hari
+                            ini kosong) · ADM = jumlah pemakaian seluruh mesin ·
+                            Selisih = Real − ADM.
+                        </p>
+
+                        <section className="overflow-hidden rounded-md border border-border bg-card">
+                            <div className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">
+                                Parameter mesin & stand awal bulan lalu
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table
+                                    className="w-full border-collapse text-[13px]"
+                                    data-keep-table
+                                >
+                                    <thead>
+                                        <tr className="bg-secondary text-[12px] text-foreground">
+                                            <th className="border-r border-b border-border px-3 py-2 text-left font-semibold">
+                                                Mesin
+                                            </th>
+                                            <th className="w-48 border-r border-b border-border px-3 py-2 text-right font-semibold">
+                                                Stand awal bulan lalu
+                                            </th>
+                                            <th className="w-36 border-r border-b border-border px-3 py-2 text-right font-semibold">
+                                                F. Koreksi
+                                            </th>
+                                            <th className="w-36 border-b border-border px-3 py-2 text-right font-semibold">
+                                                F. Kali
+                                            </th>
                                         </tr>
-                                    );
-                                })
-                            )}
+                                    </thead>
+                                    <tbody>
+                                        {machines.map((m) => (
+                                            <tr
+                                                key={m.id}
+                                                className="hover:bg-muted/30"
+                                            >
+                                                <td className="border-r border-b border-border px-3 py-1.5 font-medium text-foreground">
+                                                    {m.name}
+                                                </td>
+                                                {(
+                                                    [
+                                                        [
+                                                            'stand_awal_bln_lalu',
+                                                            'any',
+                                                        ],
+                                                        [
+                                                            'faktor_koreksi',
+                                                            '0.0000001',
+                                                        ],
+                                                        ['faktor_kali', '0.1'],
+                                                    ] as const
+                                                ).map(([field, step]) => (
+                                                    <td
+                                                        key={field}
+                                                        className="border-r border-b border-border p-0 last:border-r-0"
+                                                    >
+                                                        <NumberCell
+                                                            value={m[field]}
+                                                            step={step}
+                                                            disabled={
+                                                                !can_manage
+                                                            }
+                                                            label={`${field} ${m.name}`}
+                                                            onChange={(value) =>
+                                                                handleUpdateMachine(
+                                                                    m.id,
+                                                                    field,
+                                                                    value,
+                                                                )
+                                                            }
+                                                        />
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
 
-                            {/* Summary TOT Row */}
-                            {rows.length > 0 && (
-                                <tr className="border-t-2 border-border bg-muted/50 font-bold text-foreground">
-                                    <td className="border-r border-border p-2 text-center font-sans font-bold tracking-wide">
-                                        TOT
-                                    </td>
-                                    {machines.map((m) => {
-                                        const mTot = computedTotals.machines?.[
-                                            m.id
-                                        ] || {
-                                            awal: 0,
-                                            akhir: 0,
-                                            pemakaian: 0,
-                                        };
-
-                                        return (
-                                            <React.Fragment key={m.id}>
-                                                <td className="border-r border-border p-2 text-right text-[11px]">
-                                                    {mTot.awal > 0
-                                                        ? formatNum(mTot.awal)
-                                                        : '-'}
+                        <section className="overflow-hidden rounded-md border border-border bg-card">
+                            <div className="border-b border-border px-4 py-2.5">
+                                <p className="text-sm font-semibold text-foreground">
+                                    Stand meter harian (1 – {rows.length})
+                                </p>
+                                <p className="text-[12px] text-muted-foreground">
+                                    Isi stand <b>AKHIR</b> per mesin dan{' '}
+                                    <b>Real</b> pemakaian fisik; kolom lain
+                                    terhitung otomatis.
+                                </p>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table
+                                    className="w-full border-collapse text-[13px]"
+                                    data-keep-table
+                                >
+                                    <thead>
+                                        <tr className="bg-secondary text-foreground">
+                                            <th
+                                                rowSpan={2}
+                                                className="sticky left-0 z-20 w-14 border-r border-b border-border bg-secondary px-2 py-2 text-center text-[12px] font-semibold"
+                                            >
+                                                TGL
+                                            </th>
+                                            {machines.map((m, index) => (
+                                                <th
+                                                    key={m.id}
+                                                    colSpan={3}
+                                                    className={cn(
+                                                        'border-r border-b border-border px-2 py-2 text-center text-[13px] font-semibold',
+                                                        index > 0 && groupStart,
+                                                    )}
+                                                >
+                                                    {m.name}
+                                                </th>
+                                            ))}
+                                            {[
+                                                `TOTAL ${unit.name.toUpperCase()}`,
+                                                'ADM',
+                                                'REAL',
+                                                'SELISIH',
+                                            ].map((label, index) => (
+                                                <th
+                                                    key={label}
+                                                    rowSpan={2}
+                                                    className={cn(
+                                                        'min-w-28 border-b border-border bg-secondary px-2 py-2 text-center text-[12px] font-semibold',
+                                                        index === 0
+                                                            ? groupStart
+                                                            : 'border-l',
+                                                    )}
+                                                >
+                                                    {label}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                        <tr className="text-[12px] text-muted-foreground">
+                                            {machines.map((m, index) => (
+                                                <React.Fragment key={m.id}>
+                                                    <th
+                                                        className={cn(
+                                                            'min-w-24 border-r border-b border-border px-2 py-1 font-normal',
+                                                            index > 0 &&
+                                                                groupStart,
+                                                        )}
+                                                    >
+                                                        AWAL
+                                                    </th>
+                                                    <th className="min-w-28 border-r border-b border-border px-2 py-1 font-semibold text-foreground">
+                                                        AKHIR
+                                                    </th>
+                                                    <th className="min-w-24 border-r border-b border-border bg-secondary/60 px-2 py-1 font-normal">
+                                                        PEMAKAIAN
+                                                    </th>
+                                                </React.Fragment>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rows.length === 0 && (
+                                            <tr>
+                                                <td
+                                                    colSpan={
+                                                        machines.length * 3 + 5
+                                                    }
+                                                    className="p-6 text-center text-muted-foreground"
+                                                >
+                                                    Tidak ada data hari untuk
+                                                    bulan ini.
                                                 </td>
-                                                <td className="border-r border-border p-2 text-right text-[11px]">
-                                                    {mTot.akhir > 0
-                                                        ? formatNum(mTot.akhir)
-                                                        : '-'}
-                                                </td>
-                                                <td className="border-r border-border bg-amber-400/20 p-2 text-right font-bold text-foreground">
-                                                    {mTot.pemakaian > 0
-                                                        ? formatNum(
-                                                              mTot.pemakaian,
-                                                          )
-                                                        : '-'}
-                                                </td>
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                    <td className="border-r border-border bg-amber-500/20 p-2 text-right font-bold text-foreground">
-                                        {formatNum(
-                                            Object.values(
-                                                computedTotals.machines || {},
-                                            ).reduce(
-                                                (acc, item) =>
-                                                    acc +
-                                                    (Number(item?.pemakaian) ||
-                                                        0),
-                                                0,
-                                            ),
+                                            </tr>
                                         )}
-                                    </td>
-                                    <td className="border-r border-border bg-blue-500/20 p-2 text-right font-bold text-foreground">
-                                        {formatNum(computedTotals.adm)}
-                                    </td>
-                                    <td className="border-r border-border bg-muted/40 p-2 text-right font-bold text-foreground">
-                                        {formatNum(computedTotals.real)}
-                                    </td>
-                                    <td
-                                        className={`bg-rose-500/20 p-2 text-right font-bold ${
-                                            computedTotals.selisih < 0
-                                                ? 'text-destructive'
-                                                : 'text-foreground'
-                                        }`}
-                                    >
-                                        {computedTotals.selisih < 0
-                                            ? `(${formatNum(Math.abs(computedTotals.selisih))})`
-                                            : computedTotals.selisih > 0
-                                              ? `+${formatNum(computedTotals.selisih)}`
-                                              : '0,00'}
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                        {rows.map((row) => {
+                                            const dayMachs = row.machines || {};
+                                            const dailyUnitSum =
+                                                Math.round(
+                                                    machines.reduce(
+                                                        (acc, m) =>
+                                                            acc +
+                                                            (Number(
+                                                                dayMachs[m.id]
+                                                                    ?.pemakaian,
+                                                            ) || 0),
+                                                        0,
+                                                    ) * 100,
+                                                ) / 100;
 
-            {/* Section 4: Catatan Stand Meter */}
-            <div className="space-y-2 rounded-lg border border-border bg-card p-4 text-xs">
-                <Label className="font-semibold text-foreground">
-                    Catatan: * Keterangan atau Catatan Tambahan:
-                </Label>
-                <textarea
-                    rows={3}
-                    value={catatan}
-                    onChange={(e) => setCatatan(e.target.value)}
-                    placeholder="Tuliskan catatan teknis stand meter bila ada (misal: kalibrasi flowmeter, penggantian unit meter, anomali aliran bahan bakar, dsb.)..."
-                    className="w-full rounded-md border border-input bg-background p-2.5 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                />
+                                            return (
+                                                <tr
+                                                    key={row.tgl}
+                                                    className="hover:bg-muted/30"
+                                                >
+                                                    <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
+                                                        {row.tgl}
+                                                    </td>
+                                                    {machines.map(
+                                                        (m, index) => {
+                                                            const mDay =
+                                                                dayMachs[
+                                                                    m.id
+                                                                ] || {
+                                                                    awal: 0,
+                                                                    akhir: 0,
+                                                                    pemakaian: 0,
+                                                                };
+
+                                                            return (
+                                                                <React.Fragment
+                                                                    key={m.id}
+                                                                >
+                                                                    <td
+                                                                        className={cn(
+                                                                            'border-r border-b border-border px-2 text-right text-muted-foreground tabular-nums',
+                                                                            index >
+                                                                                0 &&
+                                                                                groupStart,
+                                                                        )}
+                                                                    >
+                                                                        {mDay.awal >
+                                                                        0
+                                                                            ? formatNum(
+                                                                                  mDay.awal,
+                                                                              )
+                                                                            : '-'}
+                                                                    </td>
+                                                                    <td className="border-r border-b border-border p-0">
+                                                                        <NumberCell
+                                                                            value={
+                                                                                mDay.akhir
+                                                                            }
+                                                                            disabled={
+                                                                                !can_manage
+                                                                            }
+                                                                            label={`Akhir ${m.name} tanggal ${row.tgl}`}
+                                                                            onChange={(
+                                                                                value,
+                                                                            ) =>
+                                                                                handleUpdateCell(
+                                                                                    row.tgl,
+                                                                                    m.id,
+                                                                                    value,
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                    </td>
+                                                                    <td className="border-r border-b border-border bg-secondary/60 px-2 text-right font-medium text-foreground tabular-nums">
+                                                                        {mDay.pemakaian >
+                                                                        0
+                                                                            ? formatNum(
+                                                                                  mDay.pemakaian,
+                                                                              )
+                                                                            : '-'}
+                                                                    </td>
+                                                                </React.Fragment>
+                                                            );
+                                                        },
+                                                    )}
+                                                    <td
+                                                        className={cn(
+                                                            'border-b border-border bg-secondary/60 px-2 text-right font-semibold text-foreground tabular-nums',
+                                                            groupStart,
+                                                        )}
+                                                    >
+                                                        {dailyUnitSum > 0
+                                                            ? formatNum(
+                                                                  dailyUnitSum,
+                                                              )
+                                                            : '-'}
+                                                    </td>
+                                                    <td className="border-b border-l border-border px-2 text-right font-medium tabular-nums">
+                                                        {row.adm > 0
+                                                            ? formatNum(row.adm)
+                                                            : '-'}
+                                                    </td>
+                                                    <td className="border-b border-l border-border p-0">
+                                                        <NumberCell
+                                                            value={row.real}
+                                                            disabled={
+                                                                !can_manage
+                                                            }
+                                                            label={`Real tanggal ${row.tgl}`}
+                                                            onChange={(value) =>
+                                                                handleUpdateReal(
+                                                                    row.tgl,
+                                                                    value,
+                                                                )
+                                                            }
+                                                        />
+                                                    </td>
+                                                    <td
+                                                        className={cn(
+                                                            'border-b border-l border-border px-2 text-right font-medium tabular-nums',
+                                                            row.selisih < 0
+                                                                ? 'text-destructive'
+                                                                : 'text-muted-foreground',
+                                                        )}
+                                                    >
+                                                        {selisihText(
+                                                            row.selisih,
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {rows.length > 0 && (
+                                            <tr className="bg-secondary font-semibold text-foreground">
+                                                <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
+                                                    JMH
+                                                </td>
+                                                {machines.map((m, index) => {
+                                                    const mTot = computedTotals
+                                                        .machines?.[m.id] || {
+                                                        awal: 0,
+                                                        akhir: 0,
+                                                        pemakaian: 0,
+                                                    };
+
+                                                    return (
+                                                        <React.Fragment
+                                                            key={m.id}
+                                                        >
+                                                            <td
+                                                                className={cn(
+                                                                    'border-r border-border px-2 py-1.5 text-right font-normal text-muted-foreground tabular-nums',
+                                                                    index > 0 &&
+                                                                        groupStart,
+                                                                )}
+                                                            >
+                                                                {mTot.awal > 0
+                                                                    ? formatNum(
+                                                                          mTot.awal,
+                                                                      )
+                                                                    : '-'}
+                                                            </td>
+                                                            <td className="border-r border-border px-2 py-1.5 text-right font-normal text-muted-foreground tabular-nums">
+                                                                {mTot.akhir > 0
+                                                                    ? formatNum(
+                                                                          mTot.akhir,
+                                                                      )
+                                                                    : '-'}
+                                                            </td>
+                                                            <td className="border-r border-border px-2 py-1.5 text-right tabular-nums">
+                                                                {mTot.pemakaian >
+                                                                0
+                                                                    ? formatNum(
+                                                                          mTot.pemakaian,
+                                                                      )
+                                                                    : '-'}
+                                                            </td>
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                                <td
+                                                    className={cn(
+                                                        'px-2 py-1.5 text-right text-primary tabular-nums',
+                                                        groupStart,
+                                                    )}
+                                                >
+                                                    {formatNum(unitTotal)}
+                                                </td>
+                                                <td className="border-l border-border px-2 py-1.5 text-right tabular-nums">
+                                                    {formatNum(
+                                                        computedTotals.adm,
+                                                    )}
+                                                </td>
+                                                <td className="border-l border-border px-2 py-1.5 text-right tabular-nums">
+                                                    {formatNum(
+                                                        computedTotals.real,
+                                                    )}
+                                                </td>
+                                                <td
+                                                    className={cn(
+                                                        'border-l border-border px-2 py-1.5 text-right tabular-nums',
+                                                        computedTotals.selisih <
+                                                            0 &&
+                                                            'text-destructive',
+                                                    )}
+                                                >
+                                                    {selisihText(
+                                                        computedTotals.selisih,
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </>
+                )}
+
+                <section className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-4">
+                    <label
+                        htmlFor="catatan"
+                        className="text-sm font-medium text-foreground"
+                    >
+                        Catatan
+                    </label>
+                    <Textarea
+                        id="catatan"
+                        rows={3}
+                        value={catatan}
+                        onChange={(e) => setCatatan(e.target.value)}
+                        readOnly={!can_manage}
+                        placeholder={
+                            can_manage
+                                ? 'Catatan teknis stand meter (kalibrasi flowmeter, penggantian meter, anomali aliran BBM, dsb.)'
+                                : 'Tidak ada catatan'
+                        }
+                    />
+                </section>
             </div>
-        </div>
+        </>
+    );
+}
+
+/** A borderless number cell; an empty cell is 0. */
+function NumberCell({
+    value,
+    onChange,
+    disabled,
+    label,
+    step = 'any',
+}: {
+    value: number;
+    onChange: (value: string) => void;
+    disabled: boolean;
+    label: string;
+    step?: string;
+}) {
+    return (
+        <input
+            type="number"
+            step={step}
+            min={0}
+            aria-label={label}
+            value={value === 0 ? '' : value}
+            placeholder="0"
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+            className="h-7 w-full [appearance:textfield] border-0 bg-transparent px-2 text-right tabular-nums outline-none placeholder:text-muted-foreground/50 focus:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
     );
 }

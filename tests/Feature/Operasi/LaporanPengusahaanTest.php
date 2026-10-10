@@ -133,6 +133,8 @@ class LaporanPengusahaanTest extends TestCase
         $this->assertStringContainsString('(MFO)', $byKey['rincian-bbm-mfo']['parts'][0]['body']);
         $this->assertCount(2, $byKey['neraca-daya']['parts']);
         $this->assertCount(2, $byKey['tug-9']['parts']);
+        // Beban Tinggi is the page of the Beban Tertinggi menu.
+        $this->assertStringContainsString('REKAP BEBAN HARIAN TERTINGGI', $byKey['beban-tinggi']['parts'][0]['body']);
         // A chapter without a menu yet prints a placeholder page.
         $this->assertStringContainsString('belum memiliki menu', $byKey['indikator']['parts'][0]['body']);
     }

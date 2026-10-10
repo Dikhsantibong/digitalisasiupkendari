@@ -182,12 +182,15 @@ class EventNotifier
         $what = $module->label().' '.($workflow->unit?->name ?? '').' · '.Indonesian::monthName($workflow->month).' '.$workflow->year;
         $url = $module === ReportModule::Operasi
             ? route('operasi.laporan.index', ['unit_id' => $workflow->unit_id, 'month' => $workflow->month, 'year' => $workflow->year], false)
-            : route("{$module->value}.laporan.document.edit", ['unit_id' => $workflow->unit_id, 'month' => $workflow->month, 'year' => $workflow->year], false);
+            : $module->documentUrl($workflow->unit_id, $workflow->month, $workflow->year);
         $stamp = Carbon::now()->format('YmdHisv');
         $signer = fn (int $sequence): ?User => $workflow->steps->first(fn (ReportWorkflowStep $s): bool => $s->isPengesahan() && $s->sequence === $sequence)?->employee?->user;
 
         [$next, $nextTitle] = match ($action) {
-            'ajukan' => [$signer(1), 'Laporan menunggu verifikasi Anda'],
+            // The first signer of the chain: the Koordinator, or the Team Leader of a Laporan Pengusahaan.
+            'ajukan', 'ajukan_kembali' => $module->isPengusahaan()
+                ? [$signer(2), 'Laporan menunggu persetujuan Anda']
+                : [$signer(1), 'Laporan menunggu verifikasi Anda'],
             'verifikasi' => [$signer(2), 'Laporan menunggu persetujuan Anda'],
             'setujui' => [$signer(3), 'Laporan menunggu pengesahan Anda'],
             default => [null, null],
@@ -195,7 +198,7 @@ class EventNotifier
 
         if ($next !== null && ! $next->is($actor)) {
             $this->later([$next], fn (User $user): ReminderNotification => new ReminderNotification(
-                NotificationCategory::Laporan, $module->value, $nextTitle, "{$what} — dari {$actor->name}.", $url, "laporan:{$workflow->id}:{$action}:next:{$stamp}",
+                NotificationCategory::Laporan, $module->base()->value, $nextTitle, "{$what} — dari {$actor->name}.", $url, "laporan:{$workflow->id}:{$action}:next:{$stamp}",
             ));
         }
 
@@ -211,7 +214,7 @@ class EventNotifier
         if ($submitterTitle !== null && $submitter !== null && ! $submitter->is($actor)) {
             $body = "{$what} — oleh {$actor->name}".($reason ? ": {$reason}" : '.');
             $this->later([$submitter], fn (User $user): ReminderNotification => new ReminderNotification(
-                NotificationCategory::Laporan, $module->value, $submitterTitle, Str::limit($body, 240), $url, "laporan:{$workflow->id}:{$action}:submitter:{$stamp}",
+                NotificationCategory::Laporan, $module->base()->value, $submitterTitle, Str::limit($body, 240), $url, "laporan:{$workflow->id}:{$action}:submitter:{$stamp}",
             ));
         }
     }

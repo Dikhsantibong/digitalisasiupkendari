@@ -91,7 +91,7 @@ class ReportMonitoring
 
         return [
             'status' => $workflow->status->value,
-            'label' => $workflow->status->label(),
+            'label' => $workflow->module->statusLabel($workflow->status),
             'tone' => $workflow->status->tone(),
             'waiting_for' => $step === null ? null : trim(($step->employee?->name ?? '—').' · '.$step->position),
             'days' => $days,
@@ -131,7 +131,7 @@ class ReportMonitoring
                     'module' => $workflow->module->label(),
                     'unit' => $workflow->unit?->name ?? '-',
                     'period' => Indonesian::monthName($workflow->month).' '.$workflow->year,
-                    'status' => $workflow->status->label(),
+                    'status' => $workflow->module->statusLabel($workflow->status),
                     'waiting_for' => $cell['waiting_for'],
                     'days' => $cell['days'] ?? 0,
                     'url' => $cell['url'],
@@ -225,8 +225,6 @@ class ReportMonitoring
 
     private function url(ReportModule $module, int $unitId, int $month, int $year): string
     {
-        return $module === ReportModule::Operasi
-            ? route('operasi.laporan.document.edit', ['report' => 'laporan-operasi-bulanan', 'unit_id' => $unitId, 'month' => $month, 'year' => $year], false)
-            : route("{$module->value}.laporan.document.edit", ['unit_id' => $unitId, 'month' => $month, 'year' => $year], false);
+        return $module->documentUrl($unitId, $month, $year);
     }
 }

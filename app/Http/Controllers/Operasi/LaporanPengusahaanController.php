@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Enums\ReportModule;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Controller;
 use App\Models\OperasiReportDocument;
 use App\Models\Unit;
@@ -29,10 +31,11 @@ use Inertia\Response as InertiaResponse;
 class LaporanPengusahaanController extends Controller
 {
     use EmbedsReportLogo;
+    use InteractsWithReportWorkflow;
 
     public const REPORT_CODE = 'pengusahaan';
 
-    private const BODY_VERSION = 3;
+    private const BODY_VERSION = 4;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PENGUSAHAAN PEMBANGKIT (OPERASI)';
 
@@ -51,6 +54,9 @@ class LaporanPengusahaanController extends Controller
         $data = $this->document->build($unit, $month, $year, $request->user());
         $record = $this->currentRecord($unit->id, $month, $year);
 
+        // Laporan Pengusahaan approval: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan.
+        $workflow = $this->reportWorkflows()->present($user, ReportModule::OperasiPengusahaan, $unit, $month, $year);
+
         return Inertia::render('operasi/laporan/pengusahaan', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'document_number' => $data['document']['number'],
@@ -61,7 +67,8 @@ class LaporanPengusahaanController extends Controller
             'format' => $record?->format ?? 'html',
             'has_saved' => $record !== null,
             'pdf_url' => route('operasi.laporan.pengusahaan.pdf', ['unit_id' => $unit->id, 'month' => $month, 'year' => $year]),
-            'can_write' => $user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite),
+            'can_write' => $user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite) && ! $user->isReadOnly() && $workflow['editable'],
+            'workflow' => $workflow,
         ]);
     }
 
@@ -109,6 +116,7 @@ class LaporanPengusahaanController extends Controller
         $unit = Unit::query()->findOrFail($validated['unit_id']);
         abort_unless($user->canAccessUnit($unit), 403);
         [$month, $year] = [(int) $validated['month'], (int) $validated['year']];
+        $this->ensureReportEditable(ReportModule::OperasiPengusahaan, $unit, $month, $year);
 
         $data = $this->document->build($unit, $month, $year, $request->user());
         $record = $this->recordFor($unit->id, $month, $year, $user->id);
@@ -136,6 +144,7 @@ class LaporanPengusahaanController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiPengusahaanWrite), 403);
 
         [$unit, $month, $year] = $this->target($request);
+        $this->ensureReportEditable(ReportModule::OperasiPengusahaan, $unit, $month, $year);
         $data = $this->document->build($unit, $month, $year, $request->user());
 
         $record = $this->recordFor($unit->id, $month, $year, $user->id);

@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Har;
 
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
+use App\Enums\ReportModule;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Models\HarDocumentRecord;
@@ -23,6 +25,7 @@ use Inertia\Response;
 class LaporanPengusahaanController extends Controller
 {
     use EmbedsReportLogo;
+    use InteractsWithReportWorkflow;
     use RendersReportPdf;
 
     /** v8 = Lembar Pengesahan removed from the Laporan Pengusahaan Pemeliharaan. */
@@ -50,6 +53,9 @@ class LaporanPengusahaanController extends Controller
         $data = $this->builder->build($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
+        // Laporan Pengusahaan approval: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan.
+        $workflow = $this->reportWorkflows()->present($user, ReportModule::HarPengusahaan, $unit, $month, $year);
+
         return Inertia::render('har/laporan/pengusahaan', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
             'document_number' => $data['document']['number'] ?? 'FMKD-314-10.3.3',
@@ -62,7 +68,8 @@ class LaporanPengusahaanController extends Controller
             'pdf_url' => route('har.laporan.pengusahaan.pdf', [
                 'unit_id' => $unit->id, 'month' => $month, 'year' => $year,
             ]),
-            'can_write' => $user->hasPermissionTo(PermissionName::HarPengusahaanWrite),
+            'can_write' => $user->hasPermissionTo(PermissionName::HarPengusahaanWrite) && ! $user->isReadOnly() && $workflow['editable'],
+            'workflow' => $workflow,
         ]);
     }
 
@@ -110,6 +117,7 @@ class LaporanPengusahaanController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $this->ensureReportEditable(ReportModule::HarPengusahaan, $unit, $month, $year);
 
         $data = $this->builder->build($unit, $month, $year);
         $period = ReportPeriod::query()
@@ -153,6 +161,7 @@ class LaporanPengusahaanController extends Controller
 
         $unit = $this->resolveUnit($request);
         [$month, $year] = [(int) $request->integer('month'), (int) $request->integer('year')];
+        $this->ensureReportEditable(ReportModule::HarPengusahaan, $unit, $month, $year);
 
         $data = $this->builder->build($unit, $month, $year);
         $period = ReportPeriod::query()

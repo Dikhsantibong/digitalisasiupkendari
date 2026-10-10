@@ -27,7 +27,9 @@ use Illuminate\Validation\ValidationException;
  * of the report's divisi, Team Leader sesuai modul and Manager UL of its
  * unit), so no step can be skipped. The signer whose turn it is may instead
  * reject (DITOLAK): the report is editable again and must be diajukan kembali,
- * which re-freezes the signers. The in-report signers (Project Leader + Office;
+ * which re-freezes the signers. A Laporan Pengusahaan has no Koordinator: it
+ * is diajukan by the divisi's Staf and goes straight to the Team Leader
+ * (VERIFIKASI = waiting for the Team Leader), then the Manager UL. The in-report signers (Project Leader + Office;
  * PdM: Koordinator Pemeliharaan + PIC PDM) are frozen too but do not act —
  * their signatures print once the report is FINAL. Every transition is
  * authorised here, never by role name, and written to the audit trail.
@@ -84,7 +86,8 @@ class ReportWorkflowService
             return null;
         }
 
-        if ($step->sequence === 1 && $workflow->submitted_by === $user->id) {
+        // Nobody acts on the first step of a report they submitted themselves.
+        if ($workflow->submitted_by === $user->id && $step->is($workflow->steps->first(fn (ReportWorkflowStep $s): bool => $s->isPengesahan()))) {
             return null;
         }
 
@@ -136,8 +139,11 @@ class ReportWorkflowService
             $from = $workflow->exists ? $workflow->status : ReportStatus::Draft;
             $resubmitted = $from === ReportStatus::Ditolak;
 
+            // The report waits for the first signer of its chain (a Laporan Pengusahaan: the Team Leader).
+            $firstSequence = min(array_column(array_filter($signers, fn (array $s): bool => $s['stage'] === ReportWorkflowStep::STAGE_PENGESAHAN), 'sequence'));
+
             $workflow->fill([
-                'status' => ReportStatus::Diajukan,
+                'status' => ReportStatus::awaitingStep($firstSequence),
                 'submitted_by' => $user->id,
                 'submitted_at' => now(),
                 'verified_by' => null,
@@ -225,7 +231,7 @@ class ReportWorkflowService
         return [
             'module' => $module->value,
             'status' => $status->value,
-            'status_label' => $status->label(),
+            'status_label' => $module->statusLabel($status),
             'status_tone' => $status->tone(),
             'editable' => $status->isEditable(),
             'submitted' => $workflow?->submitted_at ? ['by' => $userName($workflow->submitter), 'at' => $workflow->submitted_at->toIso8601String()] : null,
@@ -246,8 +252,8 @@ class ReportWorkflowService
                 'user' => $log->user_name,
                 'jabatan' => $log->jabatan,
                 'action' => $log->action,
-                'from' => $log->from_status ? ReportStatus::from($log->from_status)->label() : null,
-                'to' => ReportStatus::from($log->to_status)->label(),
+                'from' => $log->from_status ? $module->statusLabel(ReportStatus::from($log->from_status)) : null,
+                'to' => $module->statusLabel(ReportStatus::from($log->to_status)),
                 'note' => $log->note,
                 'at' => $log->created_at?->toIso8601String(),
             ])->reverse()->values()->all() ?? [],
@@ -340,7 +346,7 @@ class ReportWorkflowService
             foreach ($list as $index => $signer) {
                 $signers[] = [
                     'stage' => $stage,
-                    'sequence' => $index + 1,
+                    'sequence' => $signer['sequence'] ?? $index + 1,
                     'caption' => $signer['caption'],
                     'position' => $signer['position'],
                     'employee' => $this->signatories->holder($unit, $signer['position']),

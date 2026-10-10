@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { DocumentEditor } from '@/components/document/document-editor';
 import type { DocumentEditorMode } from '@/components/document/document-editor';
+import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
 import type { DocumentGrid } from '@/lib/spreadsheet';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/k3/laporan';
@@ -17,6 +18,8 @@ type Props = {
     has_saved: boolean;
     pdf_url: string;
     can_write: boolean;
+    /** Approval: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan. */
+    workflow: ReportWorkflowState;
 };
 
 export default function K3LaporanPengusahaan({
@@ -30,6 +33,7 @@ export default function K3LaporanPengusahaan({
     has_saved,
     pdf_url,
     can_write,
+    workflow,
 }: Props) {
     return (
         <>
@@ -49,6 +53,7 @@ export default function K3LaporanPengusahaan({
                 hasSaved={has_saved}
                 pdfUrl={pdf_url}
                 canEdit={can_write}
+                workflow={workflow}
                 baseName={`Laporan-Pengusahaan-K3-${filters.unit_id}-${filters.month}-${filters.year}`}
                 xlsxHeaderLines={[
                     { text: 'PT PLN NUSANTARA POWER', bold: true },
