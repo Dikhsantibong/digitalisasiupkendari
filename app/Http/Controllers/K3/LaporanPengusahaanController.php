@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Enums\ReportModule;
+use App\Http\Controllers\Concerns\DefersReportDocument;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
 use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Controller;
@@ -24,6 +25,7 @@ use Inertia\Response as InertiaResponse;
 
 class LaporanPengusahaanController extends Controller
 {
+    use DefersReportDocument;
     use EmbedsReportLogo;
     use InteractsWithReportWorkflow;
 
@@ -51,7 +53,6 @@ class LaporanPengusahaanController extends Controller
             (int) ($request->integer('year') ?: $now->year),
         ];
 
-        $data = $this->builder->buildPengusahaan($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
         // Laporan Pengusahaan approval: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan.
@@ -59,11 +60,18 @@ class LaporanPengusahaanController extends Controller
 
         return Inertia::render('k3/laporan/pengusahaan', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
-            'document_number' => $data['document']['number'] ?? 'FMKD-314-10.3.3',
-            'content' => $record?->content_html ?? $this->builder->pengusahaanBodyHtml($data),
-            'content_styles' => $this->builder->pengusahaanStyles(),
-            'letterhead' => $this->builder->letterhead($data),
-            'grid' => $record?->content_grid ?? $this->gridBuilder->buildPengusahaan($data),
+            // The document body is built from every input of the month: loaded right after the page opens.
+            ...$this->deferredDocument(function () use ($month, $record, $unit, $year): array {
+                $data = $this->builder->buildPengusahaan($unit, $month, $year);
+
+                return [
+                    'document_number' => $data['document']['number'] ?? 'FMKD-314-10.3.3',
+                    'content' => $record?->content_html ?? $this->builder->pengusahaanBodyHtml($data),
+                    'content_styles' => $this->builder->pengusahaanStyles(),
+                    'letterhead' => $this->builder->letterhead($data),
+                    'grid' => $record?->content_grid ?? $this->gridBuilder->buildPengusahaan($data),
+                ];
+            }),
             'format' => $record?->format ?? 'html',
             'has_saved' => $record !== null,
             'pdf_url' => route('k3.laporan.pengusahaan.pdf', [

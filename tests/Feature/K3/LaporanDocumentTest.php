@@ -53,12 +53,14 @@ class LaporanDocumentTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('k3/laporan/document')
-                ->where('document_number', 'SMT-FM-AK3-00')
                 ->where('format', 'html')
                 ->where('has_saved', false)
                 ->where('can_write', true)
-                ->has('content')
-                ->has('grid'),
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->where('document_number', 'SMT-FM-AK3-00')
+                    ->has('content')
+                    ->has('grid')
+                ),
             );
     }
 

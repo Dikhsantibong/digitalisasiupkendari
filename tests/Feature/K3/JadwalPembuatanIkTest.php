@@ -60,7 +60,7 @@ class JadwalPembuatanIkTest extends TestCase
 
         $this->actingAs($user)->get(route('k3.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('content', fn (string $html): bool => str_contains($html, 'IK Pelaksanaan Evakuasi')));
+            ->assertInertia(fn ($page) => $page->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $html): bool => str_contains($html, 'IK Pelaksanaan Evakuasi'))));
     }
 
     public function test_the_pdf_downloads_and_other_units_are_forbidden(): void

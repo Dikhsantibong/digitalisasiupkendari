@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operasi;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Enums\ReportModule;
+use App\Http\Controllers\Concerns\DefersReportDocument;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
 use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Concerns\RendersReportPdf;
@@ -33,6 +34,7 @@ use Inertia\Response;
  */
 class LaporanDocumentController extends Controller
 {
+    use DefersReportDocument;
     use EmbedsReportLogo;
     use InteractsWithReportWorkflow;
     use RendersReportPdf;
@@ -74,12 +76,7 @@ class LaporanDocumentController extends Controller
 
         [$definition, $unit, $engine, $month, $year] = $this->resolveTarget($request, $report);
 
-        $data = $definition->build($unit, $month, $year, $engine);
-        $documentNumber = $this->documentNumber($unit, $month, $year);
         $record = $this->currentRecord($definition, $unit->id, $engine?->id, $month, $year);
-
-        $grid = $record?->content_grid ?? $this->gridBuilder->forMonthlyReport($data);
-        $letterhead = $this->letterhead($definition, $data);
 
         $workflow = $this->reportWorkflows()->present($user, ReportModule::Operasi, $unit, $month, $year);
 
@@ -91,13 +88,21 @@ class LaporanDocumentController extends Controller
                 'month' => $month,
                 'year' => $year,
             ],
-            'document_number' => $documentNumber,
-            'content' => $record?->content_html !== null
-                ? $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year)
-                : $this->bodyHtml($definition, $data, $documentNumber, $unit, $month, $year),
-            'content_styles' => $this->styles($unit, $month, $year, $data),
-            'letterhead' => $letterhead,
-            'grid' => $grid,
+            // The document body is built from every input of the month: loaded right after the page opens.
+            ...$this->deferredDocument(function () use ($definition, $engine, $month, $record, $unit, $year): array {
+                $data = $definition->build($unit, $month, $year, $engine);
+                $documentNumber = $this->documentNumber($unit, $month, $year);
+
+                return [
+                    'document_number' => $documentNumber,
+                    'content' => $record?->content_html !== null
+                        ? $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year)
+                        : $this->bodyHtml($definition, $data, $documentNumber, $unit, $month, $year),
+                    'content_styles' => $this->styles($unit, $month, $year, $data),
+                    'letterhead' => $this->letterhead($definition, $data),
+                    'grid' => $record?->content_grid ?? $this->gridBuilder->forMonthlyReport($data),
+                ];
+            }),
             'format' => $record?->format ?? 'html',
             'has_saved' => $record !== null,
             'pdf_url' => route('operasi.laporan.document.pdf', [

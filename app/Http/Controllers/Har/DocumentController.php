@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Har;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Enums\ReportModule;
+use App\Http\Controllers\Concerns\DefersReportDocument;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
 use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Controller;
@@ -31,6 +32,7 @@ use Inertia\Response;
  */
 class DocumentController extends Controller
 {
+    use DefersReportDocument;
     use EmbedsReportLogo;
     use InteractsWithReportWorkflow;
 
@@ -79,20 +81,26 @@ class DocumentController extends Controller
             (int) ($request->integer('year') ?: $now->year),
         ];
 
-        $data = $this->builder->build($unit, $month, $year);
         $record = $this->currentRecord($unit->id, $month, $year);
 
         $workflow = $this->reportWorkflows()->present($user, ReportModule::Har, $unit, $month, $year);
 
         return Inertia::render('har/laporan/document', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
-            'document_number' => $data['document']['number'],
-            'content' => $record?->content_html !== null
-                ? $this->withCurrentSignatures($record->content_html, ReportModule::Har, $unit, $month, $year)
-                : $this->builder->bodyHtml($data),
-            'content_styles' => $this->builder->contentStyles($data),
-            'letterhead' => $this->builder->letterhead($data),
-            'grid' => $record?->content_grid ?? $this->gridBuilder->build($data),
+            // The document body is built from every input of the month: loaded right after the page opens.
+            ...$this->deferredDocument(function () use ($month, $record, $unit, $year): array {
+                $data = $this->builder->build($unit, $month, $year);
+
+                return [
+                    'document_number' => $data['document']['number'],
+                    'content' => $record?->content_html !== null
+                        ? $this->withCurrentSignatures($record->content_html, ReportModule::Har, $unit, $month, $year)
+                        : $this->builder->bodyHtml($data),
+                    'content_styles' => $this->builder->contentStyles($data),
+                    'letterhead' => $this->builder->letterhead($data),
+                    'grid' => $record?->content_grid ?? $this->gridBuilder->build($data),
+                ];
+            }),
             'format' => $record?->format ?? 'html',
             'has_saved' => $record !== null,
             'pdf_url' => route('har.laporan.document.pdf', [

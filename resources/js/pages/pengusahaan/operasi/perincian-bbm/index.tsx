@@ -106,7 +106,10 @@ export default function PerincianBbmIndex(props: RincianBbmProps) {
                         ({code})
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[640px] border-collapse text-[13px]">
+                        <table
+                            className="w-full border-collapse text-[13px] sm:min-w-[640px]"
+                            data-keep-table
+                        >
                             <tbody>
                                 <Heading label="Kapasitas tangki penyimpanan" />
                                 {tanks[code].length === 0 && (
@@ -140,9 +143,32 @@ export default function PerincianBbmIndex(props: RincianBbmProps) {
                                     strong
                                 />
                                 <tr className="font-semibold">
-                                    <Cell className="w-14">II</Cell>
-                                    <Cell>Pengembalian (TUG 10)</Cell>
+                                    <Cell className="w-8 sm:w-14">II</Cell>
                                     <Cell>
+                                        Pengembalian (TUG 10)
+                                        <div className="mt-1 sm:hidden">
+                                            <Input
+                                                type="date"
+                                                aria-label="Tanggal pengembalian"
+                                                value={
+                                                    fuel.pengembalian.tanggal
+                                                }
+                                                disabled={!can_write}
+                                                onChange={(e) =>
+                                                    update((current) => ({
+                                                        ...current,
+                                                        pengembalian: {
+                                                            ...current.pengembalian,
+                                                            tanggal:
+                                                                e.target.value,
+                                                        },
+                                                    }))
+                                                }
+                                                className="h-7 w-36 px-2 text-[12px] font-normal"
+                                            />
+                                        </div>
+                                    </Cell>
+                                    <Cell className="max-sm:hidden">
                                         <Input
                                             type="date"
                                             aria-label="Tanggal pengembalian"
@@ -237,9 +263,30 @@ export default function PerincianBbmIndex(props: RincianBbmProps) {
                                     value={sum.pengiriman}
                                 />
                                 <tr>
-                                    <Cell className="w-14">3.</Cell>
-                                    <Cell>Koreksi, Peminjaman</Cell>
+                                    <Cell className="w-8 sm:w-14">3.</Cell>
                                     <Cell>
+                                        Koreksi, Peminjaman
+                                        <div className="mt-1 sm:hidden">
+                                            <input
+                                                aria-label="Keterangan koreksi"
+                                                value={fuel.koreksi.keterangan}
+                                                placeholder="Keterangan"
+                                                disabled={!can_write}
+                                                onChange={(e) =>
+                                                    update((current) => ({
+                                                        ...current,
+                                                        koreksi: {
+                                                            ...current.koreksi,
+                                                            keterangan:
+                                                                e.target.value,
+                                                        },
+                                                    }))
+                                                }
+                                                className="h-7 w-full rounded border border-border bg-background px-2 text-[12px]"
+                                            />
+                                        </div>
+                                    </Cell>
+                                    <Cell className="max-sm:hidden">
                                         <input
                                             aria-label="Keterangan koreksi"
                                             value={fuel.koreksi.keterangan}
@@ -286,7 +333,7 @@ export default function PerincianBbmIndex(props: RincianBbmProps) {
                                     strong
                                 />
                                 <tr className="font-semibold">
-                                    <Cell className="w-14">VI</Cell>
+                                    <Cell className="w-8 sm:w-14">VI</Cell>
                                     <Cell colSpan={2}>
                                         Sisa BBM persediaan akhir (Fisik)
                                     </Cell>
@@ -346,7 +393,7 @@ function Cell({
 function Heading({ no = '', label }: { no?: string; label: string }) {
     return (
         <tr className="bg-muted/30 font-semibold">
-            <Cell className="w-14">{no}</Cell>
+            <Cell className="w-8 sm:w-14">{no}</Cell>
             <Cell colSpan={3}>{label}</Cell>
         </tr>
     );
@@ -379,12 +426,19 @@ function Line({
                 muted && 'text-muted-foreground',
             )}
         >
-            <Cell className="w-14">{no}</Cell>
-            <Cell className={cn(indent && 'pl-8', total && 'pl-16')}>
+            <Cell className="w-8 sm:w-14">{no}</Cell>
+            <Cell className={cn(indent && 'pl-8', total && 'pl-6 sm:pl-16')}>
                 {label}
+                {sub && (
+                    <span className="block text-[11px] font-normal text-muted-foreground sm:hidden">
+                        {sub}
+                    </span>
+                )}
             </Cell>
-            <Cell className="text-[12px] text-muted-foreground">{sub}</Cell>
-            <Cell className="w-44 text-right tabular-nums">
+            <Cell className="text-[12px] text-muted-foreground max-sm:hidden">
+                {sub}
+            </Cell>
+            <Cell className="w-28 text-right tabular-nums sm:w-44">
                 {value === undefined ? '' : `${formatAmount(value)} liter`}
             </Cell>
         </tr>
@@ -405,7 +459,7 @@ function InputCell({
     placeholder?: string;
 }) {
     return (
-        <td className="w-44 border-b border-border p-1">
+        <td className="w-28 border-b border-border p-1 sm:w-44">
             <AmountCell
                 value={value}
                 onChange={onChange}

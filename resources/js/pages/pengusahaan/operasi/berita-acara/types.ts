@@ -1,6 +1,5 @@
 import type { DocumentGrid } from '@/lib/spreadsheet';
 
-export type EditorTab = 'form' | 'html' | 'grid' | 'pdf';
 
 export type SignatoryOption = {
     id: number;
@@ -161,6 +160,7 @@ export const MONTHS = [
 
 export const formatNum = (v: number | string | undefined | null) => {
     const num = Number(v) || 0;
+
     return new Intl.NumberFormat('id-ID', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,

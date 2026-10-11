@@ -233,7 +233,9 @@ class LaporanDocumentStructureTest extends TestCase
             ]))
             ->assertOk()
             ->assertInertia(function (AssertableInertia $page) use (&$content): void {
-                $content = (string) $page->toArray()['props']['content'];
+                $page->loadDeferredProps('document', function (AssertableInertia $page) use (&$content): void {
+                    $content = (string) $page->toArray()['props']['content'];
+                });
             });
 
         return $content;

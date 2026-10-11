@@ -142,8 +142,8 @@ class JadwalSheetTest extends TestCase
         $this->actingAs($user)
             ->get(route('logistik.laporan.document.edit', $period))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'id="part-pemeliharaan"')
-                && str_contains($content, 'JADWAL PEMELIHARAAN LOGISTIK DAN GUDANG')));
+            ->assertInertia(fn ($page) => $page->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'id="part-pemeliharaan"')
+                && str_contains($content, 'JADWAL PEMELIHARAAN LOGISTIK DAN GUDANG'))));
     }
 
     public function test_the_piket_patrol_check_plans_monday_and_friday_moving_holidays_to_the_next_workday(): void

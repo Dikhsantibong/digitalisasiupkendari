@@ -16,6 +16,7 @@ import type {
     Lubricant,
     RincianPageProps,
 } from '@/components/operasi/rincian-pelumas';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import rekap from '@/routes/operasi/pengusahaan/rekap-pelumas';
 
@@ -43,6 +44,8 @@ const split = (lubricants: Lubricant[], amounts: Amounts) =>
  * Mirrors RekapPelumasSheet::totals.
  */
 export default function RekapPelumasIndex(props: Props) {
+    // On the phone the tables become cards (MobileTableCards): one card per row.
+    const compact = useCompactLayout();
     const {
         lubricants,
         machines,
@@ -210,7 +213,7 @@ export default function RekapPelumasIndex(props: Props) {
                 <div className="overflow-x-auto">
                     <table
                         className="w-full border-collapse text-[13px]"
-                        data-keep-table
+                        data-keep-table={compact ? undefined : true}
                     >
                         <thead className="text-[12px]">
                             <tr className="bg-secondary">

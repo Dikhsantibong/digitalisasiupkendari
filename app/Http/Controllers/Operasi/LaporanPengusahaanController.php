@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Operasi;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Enums\ReportModule;
+use App\Http\Controllers\Concerns\DefersReportDocument;
 use App\Http\Controllers\Concerns\EmbedsReportLogo;
 use App\Http\Controllers\Concerns\InteractsWithReportWorkflow;
 use App\Http\Controllers\Controller;
@@ -30,6 +31,7 @@ use Inertia\Response as InertiaResponse;
  */
 class LaporanPengusahaanController extends Controller
 {
+    use DefersReportDocument;
     use EmbedsReportLogo;
     use InteractsWithReportWorkflow;
 
@@ -51,7 +53,6 @@ class LaporanPengusahaanController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperasiPengusahaanView), 403);
 
         [$unit, $month, $year] = $this->target($request);
-        $data = $this->document->build($unit, $month, $year, $request->user());
         $record = $this->currentRecord($unit->id, $month, $year);
 
         // Laporan Pengusahaan approval: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan.
@@ -59,11 +60,18 @@ class LaporanPengusahaanController extends Controller
 
         return Inertia::render('operasi/laporan/pengusahaan', [
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
-            'document_number' => $data['document']['number'],
-            'content' => $record?->content_html ?? $this->document->bodyHtml($data),
-            'content_styles' => $this->document->styles($data),
-            'letterhead' => $this->document->letterhead($data),
-            'grid' => $record?->content_grid ?? $this->document->grid($data),
+            // The document body is built from every input of the month: loaded right after the page opens.
+            ...$this->deferredDocument(function () use ($month, $record, $request, $unit, $year): array {
+                $data = $this->document->build($unit, $month, $year, $request->user());
+
+                return [
+                    'document_number' => $data['document']['number'],
+                    'content' => $record?->content_html ?? $this->document->bodyHtml($data),
+                    'content_styles' => $this->document->styles($data),
+                    'letterhead' => $this->document->letterhead($data),
+                    'grid' => $record?->content_grid ?? $this->document->grid($data),
+                ];
+            }),
             'format' => $record?->format ?? 'html',
             'has_saved' => $record !== null,
             'pdf_url' => route('operasi.laporan.pengusahaan.pdf', ['unit_id' => $unit->id, 'month' => $month, 'year' => $year]),

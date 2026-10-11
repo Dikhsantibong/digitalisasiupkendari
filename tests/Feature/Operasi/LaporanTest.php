@@ -121,10 +121,12 @@ class LaporanTest extends TestCase
                 ->where('report.code', self::REPORT)
                 ->where('format', 'html')
                 ->where('has_saved', false)
-                ->has('content')
-                ->has('grid.rows')
-                ->has('letterhead')
-                ->has('pdf_url'),
+                ->has('pdf_url')
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->has('content')
+                    ->has('grid.rows')
+                    ->has('letterhead')
+                ),
             );
     }
 

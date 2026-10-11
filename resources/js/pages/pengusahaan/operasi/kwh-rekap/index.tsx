@@ -3,12 +3,17 @@ import { Download, Eye } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import {
+    MobileDaySheet,
+    MobileMonthSummary,
+} from '@/components/mobile/day-sheet';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import kwhRekap from '@/routes/operasi/pengusahaan/kwh-rekap';
 import standKwh from '@/routes/operasi/pengusahaan/stand-kwh';
@@ -70,6 +75,7 @@ export default function KwhRekapIndex({
     blocks,
 }: Props) {
     const [shown, setShown] = useState('all');
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Filters>) =>
         router.get(
             kwhRekap.index().url,
@@ -192,153 +198,288 @@ export default function KwhRekapIndex({
                             ))}
                         </div>
 
-                        <section className="overflow-hidden rounded-md border border-border bg-card">
-                            <div className="overflow-x-auto">
-                                <table
-                                    className="w-full border-collapse text-[13px]"
-                                    data-keep-table
-                                >
-                                    <thead className="text-[12px]">
-                                        <tr className="bg-secondary">
-                                            <th className="sticky left-0 z-20 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
-                                                MERK
-                                            </th>
-                                            {shownBlocks.map((block, index) => (
-                                                <Fragment key={block.key}>
-                                                    {groups.map(
-                                                        (group, groupIndex) => (
-                                                            <th
-                                                                key={group.merk}
-                                                                colSpan={
-                                                                    group
-                                                                        .machines
-                                                                        .length
-                                                                }
-                                                                className={cn(
-                                                                    'border-r border-b border-border px-2 py-1.5 font-semibold',
-                                                                    index > 0 &&
-                                                                        groupIndex ===
-                                                                            0 &&
-                                                                        groupStart,
-                                                                )}
-                                                            >
-                                                                {group.merk}
-                                                            </th>
-                                                        ),
-                                                    )}
-                                                    <th
-                                                        rowSpan={3}
-                                                        className="min-w-24 border-r border-b border-border bg-secondary px-2 py-1.5 font-semibold"
-                                                    >
-                                                        JUMLAH
-                                                    </th>
-                                                </Fragment>
-                                            ))}
-                                        </tr>
-                                        {(
-                                            [
-                                                [
-                                                    'TYPE',
-                                                    (m: Machine) =>
-                                                        m.type ?? '-',
-                                                ],
-                                                [
-                                                    'NO. SERI',
-                                                    (m: Machine) =>
-                                                        m.serial_number ?? '-',
-                                                ],
-                                            ] as const
-                                        ).map(([label, value]) => (
-                                            <tr
-                                                key={label}
-                                                className="text-muted-foreground"
-                                            >
-                                                <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
-                                                    {label}
+                        {compact ? (
+                            <MobileDaySheet
+                                days={days}
+                                done={(day) =>
+                                    (blocks[0]?.totals_by_day[day] ?? 0) !== 0
+                                }
+                                sections={shownBlocks.map((block) => ({
+                                    key: block.key,
+                                    title: block.title,
+                                    rows: machines.map((machine) => ({
+                                        key: machine.id,
+                                        label: machine.name,
+                                        sub: machine.merk ?? undefined,
+                                        value: (day: number) => {
+                                            const value =
+                                                block.values[machine.id]?.[
+                                                    day
+                                                ] ?? 0;
+
+                                            return (
+                                                <span
+                                                    className={
+                                                        value < 0
+                                                            ? 'text-destructive'
+                                                            : undefined
+                                                    }
+                                                >
+                                                    {KWH.format(value)}
+                                                </span>
+                                            );
+                                        },
+                                    })),
+                                    total: (day: number) =>
+                                        KWH.format(
+                                            block.totals_by_day[day] ?? 0,
+                                        ),
+                                    totalLabel: 'Jumlah unit',
+                                }))}
+                                monthSummary={
+                                    <MobileMonthSummary
+                                        rows={shownBlocks.map((block) => ({
+                                            key: block.key,
+                                            label: block.title,
+                                            value: `${KWH.format(block.grand_total)} kWh`,
+                                        }))}
+                                    />
+                                }
+                            />
+                        ) : (
+                            <section className="overflow-hidden rounded-md border border-border bg-card">
+                                <div className="overflow-x-auto">
+                                    <table
+                                        className="w-full border-collapse text-[13px]"
+                                        data-keep-table
+                                    >
+                                        <thead className="text-[12px]">
+                                            <tr className="bg-secondary">
+                                                <th className="sticky left-0 z-20 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
+                                                    MERK
                                                 </th>
                                                 {shownBlocks.map(
-                                                    (block, index) =>
-                                                        machines.map(
-                                                            (
-                                                                machine,
-                                                                machineIndex,
-                                                            ) => (
-                                                                <th
-                                                                    key={`${block.key}-${machine.id}`}
-                                                                    className={cn(
-                                                                        'min-w-24 border-r border-b border-border px-2 py-1 font-normal whitespace-nowrap',
-                                                                        index >
-                                                                            0 &&
-                                                                            machineIndex ===
+                                                    (block, index) => (
+                                                        <Fragment
+                                                            key={block.key}
+                                                        >
+                                                            {groups.map(
+                                                                (
+                                                                    group,
+                                                                    groupIndex,
+                                                                ) => (
+                                                                    <th
+                                                                        key={
+                                                                            group.merk
+                                                                        }
+                                                                        colSpan={
+                                                                            group
+                                                                                .machines
+                                                                                .length
+                                                                        }
+                                                                        className={cn(
+                                                                            'border-r border-b border-border px-2 py-1.5 font-semibold',
+                                                                            index >
                                                                                 0 &&
-                                                                            groupStart,
-                                                                    )}
-                                                                >
-                                                                    {value(
-                                                                        machine,
-                                                                    )}
-                                                                </th>
-                                                            ),
-                                                        ),
+                                                                                groupIndex ===
+                                                                                    0 &&
+                                                                                groupStart,
+                                                                        )}
+                                                                    >
+                                                                        {
+                                                                            group.merk
+                                                                        }
+                                                                    </th>
+                                                                ),
+                                                            )}
+                                                            <th
+                                                                rowSpan={3}
+                                                                className="min-w-24 border-r border-b border-border bg-secondary px-2 py-1.5 font-semibold"
+                                                            >
+                                                                JUMLAH
+                                                            </th>
+                                                        </Fragment>
+                                                    ),
                                                 )}
                                             </tr>
-                                        ))}
-                                        <tr>
-                                            <th className="sticky left-0 z-20 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
-                                                TGL
-                                            </th>
-                                            {shownBlocks.map((block, index) => (
-                                                <th
-                                                    key={block.key}
-                                                    colSpan={span}
-                                                    className={cn(
-                                                        'border-r border-b border-border px-2 py-1.5 text-[13px] font-semibold text-foreground uppercase',
-                                                        BAND[block.key],
-                                                        index > 0 && groupStart,
-                                                    )}
+                                            {(
+                                                [
+                                                    [
+                                                        'TYPE',
+                                                        (m: Machine) =>
+                                                            m.type ?? '-',
+                                                    ],
+                                                    [
+                                                        'NO. SERI',
+                                                        (m: Machine) =>
+                                                            m.serial_number ??
+                                                            '-',
+                                                    ],
+                                                ] as const
+                                            ).map(([label, value]) => (
+                                                <tr
+                                                    key={label}
+                                                    className="text-muted-foreground"
                                                 >
-                                                    {block.title}
-                                                </th>
+                                                    <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
+                                                        {label}
+                                                    </th>
+                                                    {shownBlocks.map(
+                                                        (block, index) =>
+                                                            machines.map(
+                                                                (
+                                                                    machine,
+                                                                    machineIndex,
+                                                                ) => (
+                                                                    <th
+                                                                        key={`${block.key}-${machine.id}`}
+                                                                        className={cn(
+                                                                            'min-w-24 border-r border-b border-border px-2 py-1 font-normal whitespace-nowrap',
+                                                                            index >
+                                                                                0 &&
+                                                                                machineIndex ===
+                                                                                    0 &&
+                                                                                groupStart,
+                                                                        )}
+                                                                    >
+                                                                        {value(
+                                                                            machine,
+                                                                        )}
+                                                                    </th>
+                                                                ),
+                                                            ),
+                                                    )}
+                                                </tr>
                                             ))}
-                                        </tr>
-                                        <tr className="bg-secondary/60">
-                                            <th className="sticky left-0 z-20 border-r border-b border-border bg-secondary px-2 py-1" />
-                                            {shownBlocks.map((block, index) => (
-                                                <Fragment key={block.key}>
-                                                    {machines.map(
-                                                        (
-                                                            machine,
-                                                            machineIndex,
-                                                        ) => (
-                                                            <th
-                                                                key={machine.id}
-                                                                className={cn(
-                                                                    'border-r border-b border-border px-2 py-1 font-semibold whitespace-nowrap',
-                                                                    index > 0 &&
-                                                                        machineIndex ===
-                                                                            0 &&
-                                                                        groupStart,
-                                                                )}
-                                                            >
-                                                                {machine.name}
+                                            <tr>
+                                                <th className="sticky left-0 z-20 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
+                                                    TGL
+                                                </th>
+                                                {shownBlocks.map(
+                                                    (block, index) => (
+                                                        <th
+                                                            key={block.key}
+                                                            colSpan={span}
+                                                            className={cn(
+                                                                'border-r border-b border-border px-2 py-1.5 text-[13px] font-semibold text-foreground uppercase',
+                                                                BAND[block.key],
+                                                                index > 0 &&
+                                                                    groupStart,
+                                                            )}
+                                                        >
+                                                            {block.title}
+                                                        </th>
+                                                    ),
+                                                )}
+                                            </tr>
+                                            <tr className="bg-secondary/60">
+                                                <th className="sticky left-0 z-20 border-r border-b border-border bg-secondary px-2 py-1" />
+                                                {shownBlocks.map(
+                                                    (block, index) => (
+                                                        <Fragment
+                                                            key={block.key}
+                                                        >
+                                                            {machines.map(
+                                                                (
+                                                                    machine,
+                                                                    machineIndex,
+                                                                ) => (
+                                                                    <th
+                                                                        key={
+                                                                            machine.id
+                                                                        }
+                                                                        className={cn(
+                                                                            'border-r border-b border-border px-2 py-1 font-semibold whitespace-nowrap',
+                                                                            index >
+                                                                                0 &&
+                                                                                machineIndex ===
+                                                                                    0 &&
+                                                                                groupStart,
+                                                                        )}
+                                                                    >
+                                                                        {
+                                                                            machine.name
+                                                                        }
+                                                                    </th>
+                                                                ),
+                                                            )}
+                                                            <th className="border-r border-b border-border px-2 py-1 font-semibold">
+                                                                Unit
                                                             </th>
+                                                        </Fragment>
+                                                    ),
+                                                )}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {days.map((day) => (
+                                                <tr
+                                                    key={day}
+                                                    className="hover:bg-muted/30"
+                                                >
+                                                    <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
+                                                        {day}
+                                                    </td>
+                                                    {shownBlocks.map(
+                                                        (block, index) => (
+                                                            <Fragment
+                                                                key={block.key}
+                                                            >
+                                                                {machines.map(
+                                                                    (
+                                                                        machine,
+                                                                        machineIndex,
+                                                                    ) => {
+                                                                        const value =
+                                                                            block
+                                                                                .values[
+                                                                                machine
+                                                                                    .id
+                                                                            ]?.[
+                                                                                day
+                                                                            ] ??
+                                                                            0;
+
+                                                                        return (
+                                                                            <td
+                                                                                key={
+                                                                                    machine.id
+                                                                                }
+                                                                                className={cn(
+                                                                                    'border-r border-b border-border px-2 py-1 text-right tabular-nums',
+                                                                                    value <
+                                                                                        0 &&
+                                                                                        'text-destructive',
+                                                                                    index >
+                                                                                        0 &&
+                                                                                        machineIndex ===
+                                                                                            0 &&
+                                                                                        groupStart,
+                                                                                )}
+                                                                            >
+                                                                                {KWH.format(
+                                                                                    value,
+                                                                                )}
+                                                                            </td>
+                                                                        );
+                                                                    },
+                                                                )}
+                                                                <td className="border-r border-b border-border bg-secondary/60 px-2 py-1 text-right font-medium tabular-nums">
+                                                                    {KWH.format(
+                                                                        block
+                                                                            .totals_by_day[
+                                                                            day
+                                                                        ] ?? 0,
+                                                                    )}
+                                                                </td>
+                                                            </Fragment>
                                                         ),
                                                     )}
-                                                    <th className="border-r border-b border-border px-2 py-1 font-semibold">
-                                                        Unit
-                                                    </th>
-                                                </Fragment>
+                                                </tr>
                                             ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {days.map((day) => (
-                                            <tr
-                                                key={day}
-                                                className="hover:bg-muted/30"
-                                            >
-                                                <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
-                                                    {day}
+                                            <tr className="bg-secondary font-semibold">
+                                                <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
+                                                    JMH
                                                 </td>
                                                 {shownBlocks.map(
                                                     (block, index) => (
@@ -349,96 +490,45 @@ export default function KwhRekapIndex({
                                                                 (
                                                                     machine,
                                                                     machineIndex,
-                                                                ) => {
-                                                                    const value =
-                                                                        block
-                                                                            .values[
-                                                                            machine
-                                                                                .id
-                                                                        ]?.[
-                                                                            day
-                                                                        ] ?? 0;
-
-                                                                    return (
-                                                                        <td
-                                                                            key={
-                                                                                machine.id
-                                                                            }
-                                                                            className={cn(
-                                                                                'border-r border-b border-border px-2 py-1 text-right tabular-nums',
-                                                                                value <
+                                                                ) => (
+                                                                    <td
+                                                                        key={
+                                                                            machine.id
+                                                                        }
+                                                                        className={cn(
+                                                                            'border-r border-border px-2 py-1.5 text-right tabular-nums',
+                                                                            index >
+                                                                                0 &&
+                                                                                machineIndex ===
                                                                                     0 &&
-                                                                                    'text-destructive',
-                                                                                index >
-                                                                                    0 &&
-                                                                                    machineIndex ===
-                                                                                        0 &&
-                                                                                    groupStart,
-                                                                            )}
-                                                                        >
-                                                                            {KWH.format(
-                                                                                value,
-                                                                            )}
-                                                                        </td>
-                                                                    );
-                                                                },
+                                                                                groupStart,
+                                                                        )}
+                                                                    >
+                                                                        {KWH.format(
+                                                                            block
+                                                                                .totals_by_machine[
+                                                                                machine
+                                                                                    .id
+                                                                            ] ??
+                                                                                0,
+                                                                        )}
+                                                                    </td>
+                                                                ),
                                                             )}
-                                                            <td className="border-r border-b border-border bg-secondary/60 px-2 py-1 text-right font-medium tabular-nums">
+                                                            <td className="border-r border-border px-2 py-1.5 text-right text-primary tabular-nums">
                                                                 {KWH.format(
-                                                                    block
-                                                                        .totals_by_day[
-                                                                        day
-                                                                    ] ?? 0,
+                                                                    block.grand_total,
                                                                 )}
                                                             </td>
                                                         </Fragment>
                                                     ),
                                                 )}
                                             </tr>
-                                        ))}
-                                        <tr className="bg-secondary font-semibold">
-                                            <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
-                                                JMH
-                                            </td>
-                                            {shownBlocks.map((block, index) => (
-                                                <Fragment key={block.key}>
-                                                    {machines.map(
-                                                        (
-                                                            machine,
-                                                            machineIndex,
-                                                        ) => (
-                                                            <td
-                                                                key={machine.id}
-                                                                className={cn(
-                                                                    'border-r border-border px-2 py-1.5 text-right tabular-nums',
-                                                                    index > 0 &&
-                                                                        machineIndex ===
-                                                                            0 &&
-                                                                        groupStart,
-                                                                )}
-                                                            >
-                                                                {KWH.format(
-                                                                    block
-                                                                        .totals_by_machine[
-                                                                        machine
-                                                                            .id
-                                                                    ] ?? 0,
-                                                                )}
-                                                            </td>
-                                                        ),
-                                                    )}
-                                                    <td className="border-r border-border px-2 py-1.5 text-right text-primary tabular-nums">
-                                                        {KWH.format(
-                                                            block.grand_total,
-                                                        )}
-                                                    </td>
-                                                </Fragment>
-                                            ))}
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
                     </>
                 )}
             </div>

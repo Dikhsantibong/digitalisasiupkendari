@@ -11,7 +11,10 @@ import {
 import { UserMenuContent } from '@/components/user-menu-content';
 import { MobileShellContext } from '@/hooks/use-mobile-module';
 import type { ResolvedMobileModule } from '@/hooks/use-mobile-module';
-import { MOBILE_MENU_GROUPS, mobileGroupHomeLabel } from '@/layouts/mobile/types';
+import {
+    MOBILE_MENU_GROUPS,
+    mobileGroupHomeLabel,
+} from '@/layouts/mobile/types';
 import type { MobileMenu, MobileMenuGroup } from '@/layouts/mobile/types';
 import { cn } from '@/lib/utils';
 import type { Auth } from '@/types';
@@ -100,7 +103,10 @@ function recordUsage(module: string, menu: string): void {
     try {
         const usage = readUsage(module);
         usage[menu] = (usage[menu] ?? 0) + 1;
-        window.localStorage.setItem(`${USAGE_KEY}:${module}`, JSON.stringify(usage));
+        window.localStorage.setItem(
+            `${USAGE_KEY}:${module}`,
+            JSON.stringify(usage),
+        );
     } catch {
         // Storage blocked: quick access simply keeps its defaults.
     }
@@ -110,21 +116,40 @@ function recordUsage(module: string, menu: string): void {
  * The menus of "Akses Cepat": the user's most-opened menus first, then the
  * module's `quick` defaults, then the first menu of each section.
  */
-function quickMenus(menus: MobileMenu[], defaults: string[], usage: Usage): MobileMenu[] {
+function quickMenus(
+    menus: MobileMenu[],
+    defaults: string[],
+    usage: Usage,
+): MobileMenu[] {
     const byKey = new Map(menus.map((menu) => [menu.key, menu]));
     const used = Object.entries(usage)
         .filter(([key, count]) => count > 1 && byKey.has(key))
         .sort((a, b) => b[1] - a[1])
         .map(([key]) => key);
-    const firstOfGroups = MOBILE_MENU_GROUPS.map((group) => menus.find((menu) => menu.group === group.key)?.key).filter(
-        (key): key is string => key !== undefined,
-    );
-    const keys = [...new Set([...used, ...defaults.filter((key) => byKey.has(key)), ...firstOfGroups, ...menus.map((menu) => menu.key)])];
+    const firstOfGroups = MOBILE_MENU_GROUPS.map(
+        (group) => menus.find((menu) => menu.group === group.key)?.key,
+    ).filter((key): key is string => key !== undefined);
+    const keys = [
+        ...new Set([
+            ...used,
+            ...defaults.filter((key) => byKey.has(key)),
+            ...firstOfGroups,
+            ...menus.map((menu) => menu.key),
+        ]),
+    ];
 
-    return keys.slice(0, QUICK_COUNT).map((key) => byKey.get(key) as MobileMenu);
+    return keys
+        .slice(0, QUICK_COUNT)
+        .map((key) => byKey.get(key) as MobileMenu);
 }
 
-function MenuTile({ menu, onOpen }: { menu: MobileMenu; onOpen?: (menu: MobileMenu) => void }) {
+function MenuTile({
+    menu,
+    onOpen,
+}: {
+    menu: MobileMenu;
+    onOpen?: (menu: MobileMenu) => void;
+}) {
     const Icon = menu.icon;
 
     return (
@@ -132,20 +157,31 @@ function MenuTile({ menu, onOpen }: { menu: MobileMenu; onOpen?: (menu: MobileMe
             href={menu.href}
             prefetch
             onClick={() => onOpen?.(menu)}
-            className="flex min-w-0 flex-col items-center gap-2 rounded-xl py-1.5 text-center outline-none transition focus-visible:ring-2 focus-visible:ring-ring active:scale-95 active:bg-muted/70"
+            className="flex min-w-0 flex-col items-center gap-2 rounded-xl py-1.5 text-center transition outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 active:bg-muted/70"
             title={menu.title}
         >
-            <span className={cn('flex size-12 shrink-0 items-center justify-center rounded-2xl', menu.tone)}>
+            <span
+                className={cn(
+                    'flex size-12 shrink-0 items-center justify-center rounded-2xl',
+                    menu.tone,
+                )}
+            >
                 <Icon className="size-[22px]" strokeWidth={1.8} />
             </span>
-            <span className="line-clamp-2 w-full text-[11px] leading-[1.3] max-[370px]:text-[10.5px] font-medium tracking-[-0.01em] hyphens-auto [overflow-wrap:anywhere] text-foreground">
+            <span className="line-clamp-2 w-full text-[11px] leading-[1.3] font-medium tracking-[-0.01em] [overflow-wrap:anywhere] hyphens-auto text-foreground max-[370px]:text-[10.5px]">
                 {menu.short ?? menu.title}
             </span>
         </Link>
     );
 }
 
-function MenuGrid({ menus, onOpen }: { menus: MobileMenu[]; onOpen: (menu: MobileMenu) => void }) {
+function MenuGrid({
+    menus,
+    onOpen,
+}: {
+    menus: MobileMenu[];
+    onOpen: (menu: MobileMenu) => void;
+}) {
     return (
         <div className="grid grid-cols-4 gap-x-0.5 gap-y-3">
             {menus.map((menu) => (
@@ -158,7 +194,9 @@ function MenuGrid({ menus, onOpen }: { menus: MobileMenu[]; onOpen: (menu: Mobil
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
         <section className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-card px-2 pt-3.5 pb-3 max-[370px]:px-1">
-            <h2 className="px-1.5 text-[12px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">{title}</h2>
+            <h2 className="px-1.5 text-[12px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">
+                {title}
+            </h2>
             {children}
         </section>
     );
@@ -177,18 +215,30 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
             MOBILE_MENU_GROUPS.map((group) => ({
                 key: group.key,
                 label: mobileGroupHomeLabel(group),
-                menus: resolved.menus.filter((menu) => menu.group === group.key),
+                menus: resolved.menus.filter(
+                    (menu) => menu.group === group.key,
+                ),
             })).filter((group) => group.menus.length > 0),
         [resolved.menus],
     );
-    const quick = useMemo(() => quickMenus(resolved.menus, resolved.module.quick ?? [], usage), [resolved.menus, resolved.module.quick, usage]);
+    const quick = useMemo(
+        () => quickMenus(resolved.menus, resolved.module.quick ?? [], usage),
+        [resolved.menus, resolved.module.quick, usage],
+    );
     const withFilters = resolved.menus.length >= FILTER_FROM;
     const search = query.trim().toLowerCase();
     const results =
         search === ''
             ? []
-            : resolved.menus.filter((menu) => `${menu.title} ${menu.short ?? ''} ${menu.description}`.toLowerCase().includes(search));
-    const shown = section === 'all' ? sections : sections.filter((group) => group.key === section);
+            : resolved.menus.filter((menu) =>
+                  `${menu.title} ${menu.short ?? ''} ${menu.description}`
+                      .toLowerCase()
+                      .includes(search),
+              );
+    const shown =
+        section === 'all'
+            ? sections
+            : sections.filter((group) => group.key === section);
     const open = (menu: MobileMenu) => recordUsage(moduleKey, menu.key);
 
     return (
@@ -196,7 +246,9 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
             <Head title={resolved.module.title} />
             <header className="flex items-center justify-between gap-3 rounded-2xl bg-linear-to-br from-[#0b6aa2] to-[#085a8c] px-4 py-3.5 text-white shadow-sm">
                 <div className="min-w-0">
-                    <h1 className="truncate text-[18px] leading-tight font-semibold">Halo, {auth.user.name.split(' ')[0]}</h1>
+                    <h1 className="truncate text-[18px] leading-tight font-semibold">
+                        Halo, {auth.user.name.split(' ')[0]}
+                    </h1>
                     <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-white/80">
                         {roleLabel ? `${roleLabel} · ` : ''}
                         {DATE_FORMAT.format(new Date())}
@@ -237,10 +289,18 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
                             </label>
                             {search === '' && sections.length > 1 && (
                                 // Only this strip scrolls sideways; the next chip peeks in as the cue.
-                                <div className="-mx-4 flex gap-2 overflow-x-auto overscroll-x-contain px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                                <div className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto overscroll-x-contain px-4 [&::-webkit-scrollbar]:hidden">
                                     {[
-                                        { key: 'all' as const, label: 'Semua', count: resolved.menus.length },
-                                        ...sections.map((group) => ({ key: group.key, label: group.label, count: group.menus.length })),
+                                        {
+                                            key: 'all' as const,
+                                            label: 'Semua',
+                                            count: resolved.menus.length,
+                                        },
+                                        ...sections.map((group) => ({
+                                            key: group.key,
+                                            label: group.label,
+                                            count: group.menus.length,
+                                        })),
                                     ].map((chip) => (
                                         <button
                                             key={chip.key}
@@ -255,12 +315,22 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
                                             )}
                                         >
                                             {chip.label}
-                                            <span className={cn('text-[12px] tabular-nums', section === chip.key ? 'opacity-80' : 'text-muted-foreground')}>
+                                            <span
+                                                className={cn(
+                                                    'text-[12px] tabular-nums',
+                                                    section === chip.key
+                                                        ? 'opacity-80'
+                                                        : 'text-muted-foreground',
+                                                )}
+                                            >
                                                 {chip.count}
                                             </span>
                                         </button>
                                     ))}
-                                    <span className="w-px shrink-0" aria-hidden />
+                                    <span
+                                        className="w-px shrink-0"
+                                        aria-hidden
+                                    />
                                 </div>
                             )}
                         </div>
@@ -268,9 +338,13 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
 
                     {search !== '' ? (
                         results.length === 0 ? (
-                            <p className="py-6 text-center text-[13px] text-muted-foreground">Tidak ada menu "{query}".</p>
+                            <p className="py-6 text-center text-[13px] text-muted-foreground">
+                                Tidak ada menu "{query}".
+                            </p>
                         ) : (
-                            <Section title={`Hasil pencarian · ${results.length}`}>
+                            <Section
+                                title={`Hasil pencarian · ${results.length}`}
+                            >
                                 <MenuGrid menus={results} onOpen={open} />
                             </Section>
                         )
@@ -283,7 +357,10 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
                             )}
                             {shown.map((group) => (
                                 <Section key={group.key} title={group.label}>
-                                    <MenuGrid menus={group.menus} onOpen={open} />
+                                    <MenuGrid
+                                        menus={group.menus}
+                                        onOpen={open}
+                                    />
                                 </Section>
                             ))}
                         </>
@@ -292,7 +369,11 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
             )}
 
             <div className="mt-1 flex items-center justify-center">
-                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-6 w-auto opacity-60" />
+                <img
+                    src="/logo/sidebar-logo.png"
+                    alt="PLN Nusantara Power"
+                    className="h-6 w-auto opacity-60"
+                />
             </div>
         </div>
     );
@@ -350,16 +431,15 @@ export default function MobileModuleLayout({
                     <>
                         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-2 backdrop-blur">
                             <Link
-                                href={resolved.module.homeHref}
+                                href={resolved.backHref}
                                 className="flex size-10 items-center justify-center rounded-full text-foreground active:bg-muted"
-                                aria-label="Kembali ke menu"
+                                aria-label="Kembali"
                             >
                                 <ArrowLeft className="size-5" />
                             </Link>
                             <div className="min-w-0 flex-1">
                                 <p className="truncate text-[15px] leading-tight font-semibold text-foreground">
-                                    {resolved.current?.title ??
-                                        resolved.module.title}
+                                    {resolved.title}
                                 </p>
                                 <p className="truncate text-[11px] text-muted-foreground">
                                     {MOBILE_MENU_GROUPS.find(

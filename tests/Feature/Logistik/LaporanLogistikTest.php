@@ -60,23 +60,25 @@ class LaporanLogistikTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('logistik/laporan/document')
                 ->where('has_saved', false)
-                ->where('content', function (string $content) use ($keys): bool {
-                    foreach ($keys as $key) {
-                        if (! str_contains($content, 'id="part-'.$key.'"')) {
-                            return false;
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->where('content', function (string $content) use ($keys): bool {
+                        foreach ($keys as $key) {
+                            if (! str_contains($content, 'id="part-'.$key.'"')) {
+                                return false;
+                            }
                         }
-                    }
 
-                    return str_contains($content, 'LEMBAR PENGESAHAN')
-                        && str_contains($content, 'AMIRULLAH')
-                        && str_contains($content, 'RIDWAN BAHUDI')
-                        && strpos($content, 'id="ttd-pengesahan"') < strpos($content, 'id="sec-3"')
-                        && strpos($content, 'id="ttd-laporan"') > strpos($content, 'id="sec-ttd"')
-                        && str_contains($content, 'Kendari, 31 Agustus 2026')
-                        && str_contains($content, 'Ketersediaan stok material khusus')
-                        && strpos($content, 'id="sec-2"') < strpos($content, 'id="sec-3"');
-                })
-                ->has('grid.rows'),
+                        return str_contains($content, 'LEMBAR PENGESAHAN')
+                            && str_contains($content, 'AMIRULLAH')
+                            && str_contains($content, 'RIDWAN BAHUDI')
+                            && strpos($content, 'id="ttd-pengesahan"') < strpos($content, 'id="sec-3"')
+                            && strpos($content, 'id="ttd-laporan"') > strpos($content, 'id="sec-ttd"')
+                            && str_contains($content, 'Kendari, 31 Agustus 2026')
+                            && str_contains($content, 'Ketersediaan stok material khusus')
+                            && strpos($content, 'id="sec-2"') < strpos($content, 'id="sec-3"');
+                    })
+                    ->has('grid.rows')
+                ),
             );
     }
 
@@ -107,7 +109,9 @@ class LaporanLogistikTest extends TestCase
             ->get(route('logistik.laporan.document.edit', $period))
             ->assertOk()
             ->assertInertia(function ($page) use (&$props): void {
-                $props = $page->toArray()['props'];
+                $page->loadDeferredProps('document', function ($page) use (&$props): void {
+                    $props = $page->toArray()['props'];
+                });
             });
         $content = $props['content'];
         $section = function (string $id) use ($content): string {

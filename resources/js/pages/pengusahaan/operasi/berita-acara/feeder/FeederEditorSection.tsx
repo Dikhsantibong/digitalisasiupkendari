@@ -1,4 +1,3 @@
-import React from 'react';
 import {
     ImagePlus,
     Loader2,
@@ -6,16 +5,18 @@ import {
     Trash2,
     Upload,
 } from 'lucide-react';
+import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    formatNum,
-    type AttachmentItem,
-    type FeederRow,
-    type FeederTotals,
+    formatNum
+    
+    
+    
 } from '../types';
+import type {AttachmentItem, FeederRow, FeederTotals} from '../types';
 
 type Props = {
     feederRows: FeederRow[];

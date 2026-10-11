@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import dailyReport from '@/routes/operasi/pengusahaan/daily-report';
 
@@ -194,6 +195,8 @@ export default function IkhtisarSentralIndex({
     options,
     can_write,
 }: Props) {
+    // On the phone the tables become cards (MobileTableCards): one card per row.
+    const compact = useCompactLayout();
     const initial = useMemo(
         () => flatten(ikhtisar, machines, lubricants, fuels),
         [ikhtisar, machines, lubricants, fuels],
@@ -508,7 +511,7 @@ export default function IkhtisarSentralIndex({
                 <Panel title="Ringkasan sentral">
                     <table
                         className="w-full border-collapse text-[13px]"
-                        data-keep-table
+                        data-keep-table={compact ? undefined : true}
                     >
                         <thead>
                             <tr className="border-b border-border bg-secondary text-left text-[12px] text-muted-foreground">
@@ -593,7 +596,7 @@ export default function IkhtisarSentralIndex({
                     ) : (
                         <table
                             className="w-full border-collapse text-[13px]"
-                            data-keep-table
+                            data-keep-table={compact ? undefined : true}
                         >
                             <thead>
                                 <tr className="bg-secondary text-[12px] text-foreground">
@@ -757,7 +760,7 @@ export default function IkhtisarSentralIndex({
                     ) : (
                         <table
                             className="w-full border-collapse text-[13px]"
-                            data-keep-table
+                            data-keep-table={compact ? undefined : true}
                         >
                             <thead>
                                 <tr className="bg-secondary text-[12px] whitespace-nowrap text-muted-foreground">

@@ -3,6 +3,11 @@ import { Download, Eye, Loader2, Save } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import {
+    MobileDaySheet,
+    MobileMonthSummary,
+} from '@/components/mobile/day-sheet';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -10,6 +15,7 @@ import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import master from '@/routes/operasi/master';
 import standMeter from '@/routes/operasi/pengusahaan/stand-meter';
@@ -96,6 +102,7 @@ export default function StandMeterIndex({
     const [rows, setRows] = useState<DailyStandRow[]>(initialReadings);
     const [catatan, setCatatan] = useState<string>(initialCatatan);
     const [isSaving, setIsSaving] = useState(false);
+    const compact = useCompactLayout();
 
     // Recalculation Engine implementing:
     // 1. =IF(F17=0; 0; F16) (Stand Awal = Akhir Kemarin jika mesin operasi)
@@ -363,7 +370,12 @@ export default function StandMeterIndex({
     return (
         <>
             <Head title={`Stand Flow Meter BBM ${fuelName} - ${unit.name}`} />
-            <div className="flex min-w-0 flex-col gap-4 p-4 md:p-6">
+            <div
+                className={cn(
+                    'flex min-w-0 flex-col gap-4 p-4 md:p-6',
+                    compact && can_manage && 'pb-28',
+                )}
+            >
                 <PageHeader
                     title={`Stand Flow Meter BBM (${fuelName})`}
                     description={`Pencatatan harian stand meter BBM generator, pemakaian terkalibrasi, administrasi dan selisih terhadap realisasi sounding — ${unit.name}.`}
@@ -507,64 +519,52 @@ export default function StandMeterIndex({
                             Selisih = Real − ADM.
                         </p>
 
-                        <section className="overflow-hidden rounded-md border border-border bg-card">
-                            <div className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">
-                                Parameter mesin & stand awal bulan lalu
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table
-                                    className="w-full border-collapse text-[13px]"
-                                    data-keep-table
-                                >
-                                    <thead>
-                                        <tr className="bg-secondary text-[12px] text-foreground">
-                                            <th className="border-r border-b border-border px-3 py-2 text-left font-semibold">
-                                                Mesin
-                                            </th>
-                                            <th className="w-48 border-r border-b border-border px-3 py-2 text-right font-semibold">
-                                                Stand awal bulan lalu
-                                            </th>
-                                            <th className="w-36 border-r border-b border-border px-3 py-2 text-right font-semibold">
-                                                F. Koreksi
-                                            </th>
-                                            <th className="w-36 border-b border-border px-3 py-2 text-right font-semibold">
-                                                F. Kali
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {machines.map((m) => (
-                                            <tr
-                                                key={m.id}
-                                                className="hover:bg-muted/30"
-                                            >
-                                                <td className="border-r border-b border-border px-3 py-1.5 font-medium text-foreground">
-                                                    {m.name}
-                                                </td>
-                                                {(
+                        {compact ? (
+                            <section className="flex flex-col gap-2">
+                                <p className="text-sm font-semibold text-foreground">
+                                    Parameter mesin & stand awal bulan lalu
+                                </p>
+                                {machines.map((m) => (
+                                    <div
+                                        key={m.id}
+                                        className="rounded-xl border border-border bg-card p-3"
+                                    >
+                                        <p className="mb-2 text-[13px] font-semibold text-foreground">
+                                            {m.name}
+                                        </p>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {(
+                                                [
                                                     [
-                                                        [
-                                                            'stand_awal_bln_lalu',
-                                                            'any',
-                                                        ],
-                                                        [
-                                                            'faktor_koreksi',
-                                                            '0.0000001',
-                                                        ],
-                                                        ['faktor_kali', '0.1'],
-                                                    ] as const
-                                                ).map(([field, step]) => (
-                                                    <td
-                                                        key={field}
-                                                        className="border-r border-b border-border p-0 last:border-r-0"
-                                                    >
+                                                        'stand_awal_bln_lalu',
+                                                        'any',
+                                                        'Stand awal',
+                                                    ],
+                                                    [
+                                                        'faktor_koreksi',
+                                                        '0.0000001',
+                                                        'F. Koreksi',
+                                                    ],
+                                                    [
+                                                        'faktor_kali',
+                                                        '0.1',
+                                                        'F. Kali',
+                                                    ],
+                                                ] as const
+                                            ).map(([field, step, label]) => (
+                                                <label
+                                                    key={field}
+                                                    className="flex flex-col gap-1 text-[11px] text-muted-foreground"
+                                                >
+                                                    {label}
+                                                    <span className="rounded-md border border-border bg-background">
                                                         <NumberCell
                                                             value={m[field]}
                                                             step={step}
                                                             disabled={
                                                                 !can_manage
                                                             }
-                                                            label={`${field} ${m.name}`}
+                                                            label={`${label} ${m.name}`}
                                                             onChange={(value) =>
                                                                 handleUpdateMachine(
                                                                     m.id,
@@ -573,134 +573,541 @@ export default function StandMeterIndex({
                                                                 )
                                                             }
                                                         />
-                                                    </td>
-                                                ))}
+                                                    </span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
+                        ) : (
+                            <section className="overflow-hidden rounded-md border border-border bg-card">
+                                <div className="border-b border-border px-4 py-2.5 text-sm font-semibold text-foreground">
+                                    Parameter mesin & stand awal bulan lalu
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table
+                                        className="w-full border-collapse text-[13px]"
+                                        data-keep-table
+                                    >
+                                        <thead>
+                                            <tr className="bg-secondary text-[12px] text-foreground">
+                                                <th className="border-r border-b border-border px-3 py-2 text-left font-semibold">
+                                                    Mesin
+                                                </th>
+                                                <th className="w-48 border-r border-b border-border px-3 py-2 text-right font-semibold">
+                                                    Stand awal bulan lalu
+                                                </th>
+                                                <th className="w-36 border-r border-b border-border px-3 py-2 text-right font-semibold">
+                                                    F. Koreksi
+                                                </th>
+                                                <th className="w-36 border-b border-border px-3 py-2 text-right font-semibold">
+                                                    F. Kali
+                                                </th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
-
-                        <section className="overflow-hidden rounded-md border border-border bg-card">
-                            <div className="border-b border-border px-4 py-2.5">
-                                <p className="text-sm font-semibold text-foreground">
-                                    Stand meter harian (1 – {rows.length})
-                                </p>
-                                <p className="text-[12px] text-muted-foreground">
-                                    Isi stand <b>AKHIR</b> per mesin dan{' '}
-                                    <b>Real</b> pemakaian fisik; kolom lain
-                                    terhitung otomatis.
-                                </p>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table
-                                    className="w-full border-collapse text-[13px]"
-                                    data-keep-table
-                                >
-                                    <thead>
-                                        <tr className="bg-secondary text-foreground">
-                                            <th
-                                                rowSpan={2}
-                                                className="sticky left-0 z-20 w-14 border-r border-b border-border bg-secondary px-2 py-2 text-center text-[12px] font-semibold"
-                                            >
-                                                TGL
-                                            </th>
-                                            {machines.map((m, index) => (
-                                                <th
+                                        </thead>
+                                        <tbody>
+                                            {machines.map((m) => (
+                                                <tr
                                                     key={m.id}
-                                                    colSpan={3}
-                                                    className={cn(
-                                                        'border-r border-b border-border px-2 py-2 text-center text-[13px] font-semibold',
-                                                        index > 0 && groupStart,
-                                                    )}
+                                                    className="hover:bg-muted/30"
                                                 >
-                                                    {m.name}
-                                                </th>
+                                                    <td className="border-r border-b border-border px-3 py-1.5 font-medium text-foreground">
+                                                        {m.name}
+                                                    </td>
+                                                    {(
+                                                        [
+                                                            [
+                                                                'stand_awal_bln_lalu',
+                                                                'any',
+                                                            ],
+                                                            [
+                                                                'faktor_koreksi',
+                                                                '0.0000001',
+                                                            ],
+                                                            [
+                                                                'faktor_kali',
+                                                                '0.1',
+                                                            ],
+                                                        ] as const
+                                                    ).map(([field, step]) => (
+                                                        <td
+                                                            key={field}
+                                                            className="border-r border-b border-border p-0 last:border-r-0"
+                                                        >
+                                                            <NumberCell
+                                                                value={m[field]}
+                                                                step={step}
+                                                                disabled={
+                                                                    !can_manage
+                                                                }
+                                                                label={`${field} ${m.name}`}
+                                                                onChange={(
+                                                                    value,
+                                                                ) =>
+                                                                    handleUpdateMachine(
+                                                                        m.id,
+                                                                        field,
+                                                                        value,
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                    ))}
+                                                </tr>
                                             ))}
-                                            {[
-                                                `TOTAL ${unit.name.toUpperCase()}`,
-                                                'ADM',
-                                                'REAL',
-                                                'SELISIH',
-                                            ].map((label, index) => (
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
+
+                        {compact ? (
+                            <MobileDaySheet
+                                days={rows.map((row) => row.tgl)}
+                                done={(day) =>
+                                    machines.some(
+                                        (m) =>
+                                            (rows.find((r) => r.tgl === day)
+                                                ?.machines?.[m.id]?.akhir ??
+                                                0) > 0,
+                                    )
+                                }
+                                sections={[
+                                    {
+                                        key: 'mesin',
+                                        title: 'Stand AKHIR per mesin',
+                                        rows: machines.map((m) => ({
+                                            key: m.id,
+                                            label: m.name,
+                                            value: (day: number) => {
+                                                const mDay = rows.find(
+                                                    (r) => r.tgl === day,
+                                                )?.machines?.[m.id];
+
+                                                return (
+                                                    <div className="flex w-36 flex-col items-end gap-0.5">
+                                                        <span className="w-full rounded-md border border-border bg-background">
+                                                            <NumberCell
+                                                                value={
+                                                                    mDay?.akhir ??
+                                                                    0
+                                                                }
+                                                                disabled={
+                                                                    !can_manage
+                                                                }
+                                                                label={`Akhir ${m.name} tanggal ${day}`}
+                                                                onChange={(
+                                                                    value,
+                                                                ) =>
+                                                                    handleUpdateCell(
+                                                                        day,
+                                                                        m.id,
+                                                                        value,
+                                                                    )
+                                                                }
+                                                            />
+                                                        </span>
+                                                        <span className="text-[11px] text-muted-foreground">
+                                                            Awal{' '}
+                                                            {mDay?.awal
+                                                                ? formatNum(
+                                                                      mDay.awal,
+                                                                  )
+                                                                : '-'}{' '}
+                                                            · Pakai{' '}
+                                                            <b className="text-foreground">
+                                                                {mDay?.pemakaian
+                                                                    ? formatNum(
+                                                                          mDay.pemakaian,
+                                                                      )
+                                                                    : '-'}
+                                                            </b>
+                                                        </span>
+                                                    </div>
+                                                );
+                                            },
+                                        })),
+                                        total: (day: number) => {
+                                            const row = rows.find(
+                                                (r) => r.tgl === day,
+                                            );
+
+                                            return formatNum(
+                                                machines.reduce(
+                                                    (acc, m) =>
+                                                        acc +
+                                                        (Number(
+                                                            row?.machines?.[
+                                                                m.id
+                                                            ]?.pemakaian,
+                                                        ) || 0),
+                                                    0,
+                                                ),
+                                            );
+                                        },
+                                        totalLabel: `Total ${unit.name}`,
+                                    },
+                                    {
+                                        key: 'real',
+                                        title: 'Realisasi & selisih',
+                                        rows: [
+                                            {
+                                                key: 'real',
+                                                label: 'Real (sounding)',
+                                                value: (day: number) => (
+                                                    <span className="block w-36 rounded-md border border-border bg-background">
+                                                        <NumberCell
+                                                            value={
+                                                                rows.find(
+                                                                    (r) =>
+                                                                        r.tgl ===
+                                                                        day,
+                                                                )?.real ?? 0
+                                                            }
+                                                            disabled={
+                                                                !can_manage
+                                                            }
+                                                            label={`Real tanggal ${day}`}
+                                                            onChange={(value) =>
+                                                                handleUpdateReal(
+                                                                    day,
+                                                                    value,
+                                                                )
+                                                            }
+                                                        />
+                                                    </span>
+                                                ),
+                                            },
+                                            {
+                                                key: 'adm',
+                                                label: 'ADM',
+                                                value: (day: number) =>
+                                                    formatNum(
+                                                        rows.find(
+                                                            (r) =>
+                                                                r.tgl === day,
+                                                        )?.adm ?? 0,
+                                                    ),
+                                            },
+                                            {
+                                                key: 'selisih',
+                                                label: 'Selisih (Real − ADM)',
+                                                value: (day: number) => {
+                                                    const selisih =
+                                                        rows.find(
+                                                            (r) =>
+                                                                r.tgl === day,
+                                                        )?.selisih ?? 0;
+
+                                                    return (
+                                                        <b
+                                                            className={
+                                                                selisih < 0
+                                                                    ? 'text-destructive'
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            {selisihText(
+                                                                selisih,
+                                                            )}
+                                                        </b>
+                                                    );
+                                                },
+                                            },
+                                        ],
+                                    },
+                                ]}
+                                monthSummary={
+                                    <MobileMonthSummary
+                                        rows={[
+                                            ...machines.map((m) => ({
+                                                key: m.id,
+                                                label: m.name,
+                                                value: formatNum(
+                                                    computedTotals.machines?.[
+                                                        m.id
+                                                    ]?.pemakaian ?? 0,
+                                                ),
+                                            })),
+                                            {
+                                                key: 'total',
+                                                label: `Total ${unit.name}`,
+                                                value: formatNum(unitTotal),
+                                                strong: true,
+                                            },
+                                            {
+                                                key: 'adm',
+                                                label: 'ADM',
+                                                value: formatNum(
+                                                    computedTotals.adm,
+                                                ),
+                                            },
+                                            {
+                                                key: 'real',
+                                                label: 'Real',
+                                                value: formatNum(
+                                                    computedTotals.real,
+                                                ),
+                                            },
+                                            {
+                                                key: 'selisih',
+                                                label: 'Selisih',
+                                                value: selisihText(
+                                                    computedTotals.selisih,
+                                                ),
+                                            },
+                                        ]}
+                                    />
+                                }
+                            />
+                        ) : (
+                            <section className="overflow-hidden rounded-md border border-border bg-card">
+                                <div className="border-b border-border px-4 py-2.5">
+                                    <p className="text-sm font-semibold text-foreground">
+                                        Stand meter harian (1 – {rows.length})
+                                    </p>
+                                    <p className="text-[12px] text-muted-foreground">
+                                        Isi stand <b>AKHIR</b> per mesin dan{' '}
+                                        <b>Real</b> pemakaian fisik; kolom lain
+                                        terhitung otomatis.
+                                    </p>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table
+                                        className="w-full border-collapse text-[13px]"
+                                        data-keep-table
+                                    >
+                                        <thead>
+                                            <tr className="bg-secondary text-foreground">
                                                 <th
-                                                    key={label}
                                                     rowSpan={2}
-                                                    className={cn(
-                                                        'min-w-28 border-b border-border bg-secondary px-2 py-2 text-center text-[12px] font-semibold',
-                                                        index === 0
-                                                            ? groupStart
-                                                            : 'border-l',
-                                                    )}
+                                                    className="sticky left-0 z-20 w-14 border-r border-b border-border bg-secondary px-2 py-2 text-center text-[12px] font-semibold"
                                                 >
-                                                    {label}
+                                                    TGL
                                                 </th>
-                                            ))}
-                                        </tr>
-                                        <tr className="text-[12px] text-muted-foreground">
-                                            {machines.map((m, index) => (
-                                                <React.Fragment key={m.id}>
+                                                {machines.map((m, index) => (
                                                     <th
+                                                        key={m.id}
+                                                        colSpan={3}
                                                         className={cn(
-                                                            'min-w-24 border-r border-b border-border px-2 py-1 font-normal',
+                                                            'border-r border-b border-border px-2 py-2 text-center text-[13px] font-semibold',
                                                             index > 0 &&
                                                                 groupStart,
                                                         )}
                                                     >
-                                                        AWAL
+                                                        {m.name}
                                                     </th>
-                                                    <th className="min-w-28 border-r border-b border-border px-2 py-1 font-semibold text-foreground">
-                                                        AKHIR
+                                                ))}
+                                                {[
+                                                    `TOTAL ${unit.name.toUpperCase()}`,
+                                                    'ADM',
+                                                    'REAL',
+                                                    'SELISIH',
+                                                ].map((label, index) => (
+                                                    <th
+                                                        key={label}
+                                                        rowSpan={2}
+                                                        className={cn(
+                                                            'min-w-28 border-b border-border bg-secondary px-2 py-2 text-center text-[12px] font-semibold',
+                                                            index === 0
+                                                                ? groupStart
+                                                                : 'border-l',
+                                                        )}
+                                                    >
+                                                        {label}
                                                     </th>
-                                                    <th className="min-w-24 border-r border-b border-border bg-secondary/60 px-2 py-1 font-normal">
-                                                        PEMAKAIAN
-                                                    </th>
-                                                </React.Fragment>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {rows.length === 0 && (
-                                            <tr>
-                                                <td
-                                                    colSpan={
-                                                        machines.length * 3 + 5
-                                                    }
-                                                    className="p-6 text-center text-muted-foreground"
-                                                >
-                                                    Tidak ada data hari untuk
-                                                    bulan ini.
-                                                </td>
+                                                ))}
                                             </tr>
-                                        )}
-                                        {rows.map((row) => {
-                                            const dayMachs = row.machines || {};
-                                            const dailyUnitSum =
-                                                Math.round(
-                                                    machines.reduce(
-                                                        (acc, m) =>
-                                                            acc +
-                                                            (Number(
-                                                                dayMachs[m.id]
-                                                                    ?.pemakaian,
-                                                            ) || 0),
-                                                        0,
-                                                    ) * 100,
-                                                ) / 100;
+                                            <tr className="text-[12px] text-muted-foreground">
+                                                {machines.map((m, index) => (
+                                                    <React.Fragment key={m.id}>
+                                                        <th
+                                                            className={cn(
+                                                                'min-w-24 border-r border-b border-border px-2 py-1 font-normal',
+                                                                index > 0 &&
+                                                                    groupStart,
+                                                            )}
+                                                        >
+                                                            AWAL
+                                                        </th>
+                                                        <th className="min-w-28 border-r border-b border-border px-2 py-1 font-semibold text-foreground">
+                                                            AKHIR
+                                                        </th>
+                                                        <th className="min-w-24 border-r border-b border-border bg-secondary/60 px-2 py-1 font-normal">
+                                                            PEMAKAIAN
+                                                        </th>
+                                                    </React.Fragment>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {rows.length === 0 && (
+                                                <tr>
+                                                    <td
+                                                        colSpan={
+                                                            machines.length *
+                                                                3 +
+                                                            5
+                                                        }
+                                                        className="p-6 text-center text-muted-foreground"
+                                                    >
+                                                        Tidak ada data hari
+                                                        untuk bulan ini.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {rows.map((row) => {
+                                                const dayMachs =
+                                                    row.machines || {};
+                                                const dailyUnitSum =
+                                                    Math.round(
+                                                        machines.reduce(
+                                                            (acc, m) =>
+                                                                acc +
+                                                                (Number(
+                                                                    dayMachs[
+                                                                        m.id
+                                                                    ]
+                                                                        ?.pemakaian,
+                                                                ) || 0),
+                                                            0,
+                                                        ) * 100,
+                                                    ) / 100;
 
-                                            return (
-                                                <tr
-                                                    key={row.tgl}
-                                                    className="hover:bg-muted/30"
-                                                >
-                                                    <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
-                                                        {row.tgl}
+                                                return (
+                                                    <tr
+                                                        key={row.tgl}
+                                                        className="hover:bg-muted/30"
+                                                    >
+                                                        <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
+                                                            {row.tgl}
+                                                        </td>
+                                                        {machines.map(
+                                                            (m, index) => {
+                                                                const mDay =
+                                                                    dayMachs[
+                                                                        m.id
+                                                                    ] || {
+                                                                        awal: 0,
+                                                                        akhir: 0,
+                                                                        pemakaian: 0,
+                                                                    };
+
+                                                                return (
+                                                                    <React.Fragment
+                                                                        key={
+                                                                            m.id
+                                                                        }
+                                                                    >
+                                                                        <td
+                                                                            className={cn(
+                                                                                'border-r border-b border-border px-2 text-right text-muted-foreground tabular-nums',
+                                                                                index >
+                                                                                    0 &&
+                                                                                    groupStart,
+                                                                            )}
+                                                                        >
+                                                                            {mDay.awal >
+                                                                            0
+                                                                                ? formatNum(
+                                                                                      mDay.awal,
+                                                                                  )
+                                                                                : '-'}
+                                                                        </td>
+                                                                        <td className="border-r border-b border-border p-0">
+                                                                            <NumberCell
+                                                                                value={
+                                                                                    mDay.akhir
+                                                                                }
+                                                                                disabled={
+                                                                                    !can_manage
+                                                                                }
+                                                                                label={`Akhir ${m.name} tanggal ${row.tgl}`}
+                                                                                onChange={(
+                                                                                    value,
+                                                                                ) =>
+                                                                                    handleUpdateCell(
+                                                                                        row.tgl,
+                                                                                        m.id,
+                                                                                        value,
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                        </td>
+                                                                        <td className="border-r border-b border-border bg-secondary/60 px-2 text-right font-medium text-foreground tabular-nums">
+                                                                            {mDay.pemakaian >
+                                                                            0
+                                                                                ? formatNum(
+                                                                                      mDay.pemakaian,
+                                                                                  )
+                                                                                : '-'}
+                                                                        </td>
+                                                                    </React.Fragment>
+                                                                );
+                                                            },
+                                                        )}
+                                                        <td
+                                                            className={cn(
+                                                                'border-b border-border bg-secondary/60 px-2 text-right font-semibold text-foreground tabular-nums',
+                                                                groupStart,
+                                                            )}
+                                                        >
+                                                            {dailyUnitSum > 0
+                                                                ? formatNum(
+                                                                      dailyUnitSum,
+                                                                  )
+                                                                : '-'}
+                                                        </td>
+                                                        <td className="border-b border-l border-border px-2 text-right font-medium tabular-nums">
+                                                            {row.adm > 0
+                                                                ? formatNum(
+                                                                      row.adm,
+                                                                  )
+                                                                : '-'}
+                                                        </td>
+                                                        <td className="border-b border-l border-border p-0">
+                                                            <NumberCell
+                                                                value={row.real}
+                                                                disabled={
+                                                                    !can_manage
+                                                                }
+                                                                label={`Real tanggal ${row.tgl}`}
+                                                                onChange={(
+                                                                    value,
+                                                                ) =>
+                                                                    handleUpdateReal(
+                                                                        row.tgl,
+                                                                        value,
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td
+                                                            className={cn(
+                                                                'border-b border-l border-border px-2 text-right font-medium tabular-nums',
+                                                                row.selisih < 0
+                                                                    ? 'text-destructive'
+                                                                    : 'text-muted-foreground',
+                                                            )}
+                                                        >
+                                                            {selisihText(
+                                                                row.selisih,
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {rows.length > 0 && (
+                                                <tr className="bg-secondary font-semibold text-foreground">
+                                                    <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
+                                                        JMH
                                                     </td>
                                                     {machines.map(
                                                         (m, index) => {
-                                                            const mDay =
-                                                                dayMachs[
+                                                            const mTot =
+                                                                computedTotals
+                                                                    .machines?.[
                                                                     m.id
                                                                 ] || {
                                                                     awal: 0,
@@ -714,44 +1121,32 @@ export default function StandMeterIndex({
                                                                 >
                                                                     <td
                                                                         className={cn(
-                                                                            'border-r border-b border-border px-2 text-right text-muted-foreground tabular-nums',
+                                                                            'border-r border-border px-2 py-1.5 text-right font-normal text-muted-foreground tabular-nums',
                                                                             index >
                                                                                 0 &&
                                                                                 groupStart,
                                                                         )}
                                                                     >
-                                                                        {mDay.awal >
+                                                                        {mTot.awal >
                                                                         0
                                                                             ? formatNum(
-                                                                                  mDay.awal,
+                                                                                  mTot.awal,
                                                                               )
                                                                             : '-'}
                                                                     </td>
-                                                                    <td className="border-r border-b border-border p-0">
-                                                                        <NumberCell
-                                                                            value={
-                                                                                mDay.akhir
-                                                                            }
-                                                                            disabled={
-                                                                                !can_manage
-                                                                            }
-                                                                            label={`Akhir ${m.name} tanggal ${row.tgl}`}
-                                                                            onChange={(
-                                                                                value,
-                                                                            ) =>
-                                                                                handleUpdateCell(
-                                                                                    row.tgl,
-                                                                                    m.id,
-                                                                                    value,
-                                                                                )
-                                                                            }
-                                                                        />
-                                                                    </td>
-                                                                    <td className="border-r border-b border-border bg-secondary/60 px-2 text-right font-medium text-foreground tabular-nums">
-                                                                        {mDay.pemakaian >
+                                                                    <td className="border-r border-border px-2 py-1.5 text-right font-normal text-muted-foreground tabular-nums">
+                                                                        {mTot.akhir >
                                                                         0
                                                                             ? formatNum(
-                                                                                  mDay.pemakaian,
+                                                                                  mTot.akhir,
+                                                                              )
+                                                                            : '-'}
+                                                                    </td>
+                                                                    <td className="border-r border-border px-2 py-1.5 text-right tabular-nums">
+                                                                        {mTot.pemakaian >
+                                                                        0
+                                                                            ? formatNum(
+                                                                                  mTot.pemakaian,
                                                                               )
                                                                             : '-'}
                                                                     </td>
@@ -761,135 +1156,41 @@ export default function StandMeterIndex({
                                                     )}
                                                     <td
                                                         className={cn(
-                                                            'border-b border-border bg-secondary/60 px-2 text-right font-semibold text-foreground tabular-nums',
+                                                            'px-2 py-1.5 text-right text-primary tabular-nums',
                                                             groupStart,
                                                         )}
                                                     >
-                                                        {dailyUnitSum > 0
-                                                            ? formatNum(
-                                                                  dailyUnitSum,
-                                                              )
-                                                            : '-'}
+                                                        {formatNum(unitTotal)}
                                                     </td>
-                                                    <td className="border-b border-l border-border px-2 text-right font-medium tabular-nums">
-                                                        {row.adm > 0
-                                                            ? formatNum(row.adm)
-                                                            : '-'}
+                                                    <td className="border-l border-border px-2 py-1.5 text-right tabular-nums">
+                                                        {formatNum(
+                                                            computedTotals.adm,
+                                                        )}
                                                     </td>
-                                                    <td className="border-b border-l border-border p-0">
-                                                        <NumberCell
-                                                            value={row.real}
-                                                            disabled={
-                                                                !can_manage
-                                                            }
-                                                            label={`Real tanggal ${row.tgl}`}
-                                                            onChange={(value) =>
-                                                                handleUpdateReal(
-                                                                    row.tgl,
-                                                                    value,
-                                                                )
-                                                            }
-                                                        />
+                                                    <td className="border-l border-border px-2 py-1.5 text-right tabular-nums">
+                                                        {formatNum(
+                                                            computedTotals.real,
+                                                        )}
                                                     </td>
                                                     <td
                                                         className={cn(
-                                                            'border-b border-l border-border px-2 text-right font-medium tabular-nums',
-                                                            row.selisih < 0
-                                                                ? 'text-destructive'
-                                                                : 'text-muted-foreground',
+                                                            'border-l border-border px-2 py-1.5 text-right tabular-nums',
+                                                            computedTotals.selisih <
+                                                                0 &&
+                                                                'text-destructive',
                                                         )}
                                                     >
                                                         {selisihText(
-                                                            row.selisih,
+                                                            computedTotals.selisih,
                                                         )}
                                                     </td>
                                                 </tr>
-                                            );
-                                        })}
-                                        {rows.length > 0 && (
-                                            <tr className="bg-secondary font-semibold text-foreground">
-                                                <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
-                                                    JMH
-                                                </td>
-                                                {machines.map((m, index) => {
-                                                    const mTot = computedTotals
-                                                        .machines?.[m.id] || {
-                                                        awal: 0,
-                                                        akhir: 0,
-                                                        pemakaian: 0,
-                                                    };
-
-                                                    return (
-                                                        <React.Fragment
-                                                            key={m.id}
-                                                        >
-                                                            <td
-                                                                className={cn(
-                                                                    'border-r border-border px-2 py-1.5 text-right font-normal text-muted-foreground tabular-nums',
-                                                                    index > 0 &&
-                                                                        groupStart,
-                                                                )}
-                                                            >
-                                                                {mTot.awal > 0
-                                                                    ? formatNum(
-                                                                          mTot.awal,
-                                                                      )
-                                                                    : '-'}
-                                                            </td>
-                                                            <td className="border-r border-border px-2 py-1.5 text-right font-normal text-muted-foreground tabular-nums">
-                                                                {mTot.akhir > 0
-                                                                    ? formatNum(
-                                                                          mTot.akhir,
-                                                                      )
-                                                                    : '-'}
-                                                            </td>
-                                                            <td className="border-r border-border px-2 py-1.5 text-right tabular-nums">
-                                                                {mTot.pemakaian >
-                                                                0
-                                                                    ? formatNum(
-                                                                          mTot.pemakaian,
-                                                                      )
-                                                                    : '-'}
-                                                            </td>
-                                                        </React.Fragment>
-                                                    );
-                                                })}
-                                                <td
-                                                    className={cn(
-                                                        'px-2 py-1.5 text-right text-primary tabular-nums',
-                                                        groupStart,
-                                                    )}
-                                                >
-                                                    {formatNum(unitTotal)}
-                                                </td>
-                                                <td className="border-l border-border px-2 py-1.5 text-right tabular-nums">
-                                                    {formatNum(
-                                                        computedTotals.adm,
-                                                    )}
-                                                </td>
-                                                <td className="border-l border-border px-2 py-1.5 text-right tabular-nums">
-                                                    {formatNum(
-                                                        computedTotals.real,
-                                                    )}
-                                                </td>
-                                                <td
-                                                    className={cn(
-                                                        'border-l border-border px-2 py-1.5 text-right tabular-nums',
-                                                        computedTotals.selisih <
-                                                            0 &&
-                                                            'text-destructive',
-                                                    )}
-                                                >
-                                                    {selisihText(
-                                                        computedTotals.selisih,
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
                     </>
                 )}
 
@@ -914,6 +1215,18 @@ export default function StandMeterIndex({
                     />
                 </section>
             </div>
+            {compact && can_manage && (
+                <StickyActionBar>
+                    <Button onClick={handleSave} disabled={isSaving}>
+                        {isSaving ? (
+                            <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                            <Save className="size-4" />
+                        )}
+                        Simpan
+                    </Button>
+                </StickyActionBar>
+            )}
         </>
     );
 }

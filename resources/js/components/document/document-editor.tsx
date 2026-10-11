@@ -1,18 +1,42 @@
 import { router, usePage } from '@inertiajs/react';
-import { ArrowLeft, Download, ExternalLink, FileSpreadsheet, FileText, Printer, RotateCcw, Save } from 'lucide-react';
-import { useState } from 'react';
+import {
+    ArrowLeft,
+    Download,
+    ExternalLink,
+    FileSpreadsheet,
+    FileText,
+    Loader2,
+    PenLine,
+    Printer,
+    RotateCcw,
+    Save,
+} from 'lucide-react';
+import { lazy, Suspense, useRef, useState } from 'react';
+import { DocumentReadView } from '@/components/document/document-read-view';
 import { ReportWorkflowPanel } from '@/components/document/report-workflow-panel';
 import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
-import { RichTextEditor } from '@/components/rich-text-editor';
-import { SpreadsheetEditor } from '@/components/spreadsheet-editor';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useInMobileShell } from '@/hooks/use-mobile-module';
 import { downloadGridAsXlsx } from '@/lib/spreadsheet';
 import type { DocumentGrid, GridCell } from '@/lib/spreadsheet';
 import type { Auth } from '@/types';
+
+// The editors are big (TinyMCE, x-data-spreadsheet): only downloaded when a mode needs them.
+const RichTextEditor = lazy(() =>
+    import('@/components/rich-text-editor').then((module) => ({
+        default: module.RichTextEditor,
+    })),
+);
+const SpreadsheetEditor = lazy(() =>
+    import('@/components/spreadsheet-editor').then((module) => ({
+        default: module.SpreadsheetEditor,
+    })),
+);
 
 export type DocumentEditorMode = 'html' | 'grid';
 
@@ -25,11 +49,12 @@ export type DocumentEditorProps = {
     backUrl: string;
     backLabel: string;
     numberLabel: string;
-    documentNumber: string;
-    content: string;
-    contentStyles: string;
-    letterhead: string;
-    grid: DocumentGrid;
+    /** The document props are deferred by the server: undefined until they have loaded. */
+    documentNumber?: string;
+    content?: string;
+    contentStyles?: string;
+    letterhead?: string;
+    grid?: DocumentGrid;
     format: DocumentEditorMode;
     hasSaved: boolean;
     pdfUrl: string;
@@ -57,13 +82,104 @@ const LETTERHEAD_STYLES = `
 .doc-letterhead .har-hr, .doc-letterhead .ba-hr { border: none; border-top: 1px solid #000; margin-top: 8px; }
 `;
 
+/** The props once the deferred document has loaded. */
+type LoadedDocumentEditorProps = Omit<
+    DocumentEditorProps,
+    'documentNumber' | 'content' | 'contentStyles' | 'letterhead' | 'grid'
+> & {
+    documentNumber: string;
+    content: string;
+    contentStyles: string;
+    letterhead: string;
+    grid: DocumentGrid;
+};
+
+function isLoaded(
+    props: DocumentEditorProps,
+): props is LoadedDocumentEditorProps {
+    return (
+        props.documentNumber !== undefined &&
+        props.content !== undefined &&
+        props.contentStyles !== undefined &&
+        props.letterhead !== undefined &&
+        props.grid !== undefined
+    );
+}
+
+/**
+ * The page opens at once; the document body (deferred on the server, built
+ * from every input of the month) shows a skeleton until it has loaded.
+ */
+export function DocumentEditor(props: DocumentEditorProps) {
+    if (isLoaded(props)) {
+        return <LoadedDocumentEditor {...props} />;
+    }
+
+    return <DocumentEditorLoading {...props} />;
+}
+
+function DocumentEditorLoading({
+    title,
+    description,
+    backUrl,
+    backLabel,
+    workflow,
+    saveExtra,
+}: DocumentEditorProps) {
+    const inMobileShell = useInMobileShell();
+
+    return (
+        <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+            <PageHeader
+                title={title}
+                description={description}
+                actions={
+                    !inMobileShell && (
+                        <Button
+                            variant="secondary"
+                            onClick={() => router.get(backUrl)}
+                        >
+                            <ArrowLeft className="size-4" />
+                            {backLabel}
+                        </Button>
+                    )
+                }
+            />
+            {workflow && (
+                <ReportWorkflowPanel workflow={workflow} target={saveExtra} />
+            )}
+            <div className="flex items-center gap-2 rounded-md border border-border bg-card p-3 text-[13px] text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Menyusun dokumen dari data bulan ini...
+            </div>
+            <div className="flex flex-col gap-3 rounded-md border border-border bg-card p-6">
+                <Skeleton className="mx-auto h-6 w-2/3" />
+                <Skeleton className="mx-auto h-4 w-1/2" />
+                <Skeleton className="mt-4 h-40 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-40 w-full" />
+            </div>
+        </div>
+    );
+}
+
+function EditorLoading() {
+    return (
+        <div className="flex min-h-[320px] items-center justify-center gap-2 text-[13px] text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Memuat editor...
+        </div>
+    );
+}
+
 /**
  * The shared dual-mode document editor: edit as rich text (Word-like, exported
  * to PDF) or as a spreadsheet (Excel-like, exported to .xlsx and PDF). Owns the
  * mode toggle, save state, and export actions; each module supplies its content,
  * letterhead, routes, and labels.
  */
-export function DocumentEditor({
+function LoadedDocumentEditor({
     title,
     description,
     backUrl,
@@ -84,21 +200,42 @@ export function DocumentEditor({
     regenerateUrl,
     workflow,
     canEdit: canEditProp,
-}: DocumentEditorProps) {
+}: LoadedDocumentEditorProps) {
+    const inMobileShell = useInMobileShell();
     const isMobile = useIsMobile();
     // A view-only account (kantor induk UP Kendari) never gets editing controls; the server refuses changes anyway.
-    const readOnly = (usePage().props.auth as Auth | undefined)?.readOnly ?? false;
+    const readOnly =
+        (usePage().props.auth as Auth | undefined)?.readOnly ?? false;
     const canEdit = canEditProp && !readOnly;
-    const [mode, setMode] = useState<ViewMode>(format);
+    const [mode, setModeState] = useState<ViewMode>(format);
     const [html, setHtml] = useState(content);
+    // Text mode opens as a light read view; TinyMCE is only loaded to edit.
+    const [editingText, setEditingText] = useState(false);
+    const readEditorHtml = useRef<(() => string) | null>(null);
     const [gridState, setGridState] = useState<DocumentGrid>(grid);
     const [saving, setSaving] = useState(false);
     const [regenerating, setRegenerating] = useState(false);
-    const [savedFormat, setSavedFormat] = useState<DocumentEditorMode | null>(hasSaved ? format : null);
+    const [savedFormat, setSavedFormat] = useState<DocumentEditorMode | null>(
+        hasSaved ? format : null,
+    );
     // Bumped whenever the preview should refetch (on open, and after each save).
     const [previewKey, setPreviewKey] = useState(0);
 
     const editMode: DocumentEditorMode = mode === 'grid' ? 'grid' : 'html';
+
+    /** The text as edited: read from TinyMCE (uncontrolled, see RichTextEditor `contentRef`). */
+    const currentHtml = (): string => readEditorHtml.current?.() ?? html;
+
+    /** Leaving the text editor keeps what was typed. */
+    const setMode = (next: ViewMode) => {
+        if (mode === 'html' && editingText && next !== 'html') {
+            setHtml(currentHtml());
+            readEditorHtml.current = null;
+            setEditingText(false);
+        }
+
+        setModeState(next);
+    };
 
     const openPreview = () => {
         setPreviewKey((k) => k + 1);
@@ -107,17 +244,25 @@ export function DocumentEditor({
 
     const save = () => {
         setSaving(true);
+        const savedHtml = editMode === 'html' ? currentHtml() : undefined;
         router.post(
             saveUrl,
             {
                 ...saveExtra,
                 format: editMode,
-                content_html: editMode === 'html' ? html : undefined,
+                content_html: savedHtml,
                 content_grid: editMode === 'grid' ? gridState : undefined,
             },
             {
                 preserveScroll: true,
+                // Keep the open editor; the (deferred) document is not rebuilt after a save.
+                preserveState: true,
+                only: ['workflow', 'has_saved', 'format', 'can_write'],
                 onSuccess: () => {
+                    if (savedHtml !== undefined) {
+                        setHtml(savedHtml);
+                    }
+
                     setSavedFormat(editMode);
                     setPreviewKey((k) => k + 1);
                 },
@@ -131,7 +276,11 @@ export function DocumentEditor({
             return;
         }
 
-        if (!window.confirm('Muat ulang dokumen dari data & template terbaru? Perubahan manual yang tersimpan akan ditimpa.')) {
+        if (
+            !window.confirm(
+                'Muat ulang dokumen dari data & template terbaru? Perubahan manual yang tersimpan akan ditimpa.',
+            )
+        ) {
             return;
         }
 
@@ -156,12 +305,19 @@ export function DocumentEditor({
     const downloadXlsx = () => {
         const cols = gridState.cols;
         const header: GridCell[][] = [
-            ...xlsxHeaderLines.map((line): GridCell[] => [{ t: line.text, b: line.bold, a: 'c' }]),
+            ...xlsxHeaderLines.map((line): GridCell[] => [
+                { t: line.text, b: line.bold, a: 'c' },
+            ]),
             [{ t: `${numberLabel}: ${documentNumber}` }],
         ];
         const offset = header.length;
         const shifted = (gridState.merges ?? []).map(
-            ([r1, c1, r2, c2]): [number, number, number, number] => [r1 + offset, c1, r2 + offset, c2],
+            ([r1, c1, r2, c2]): [number, number, number, number] => [
+                r1 + offset,
+                c1,
+                r2 + offset,
+                c2,
+            ],
         );
         const headerMerges = header.map(
             (_, i): [number, number, number, number] => [i, 0, i, cols - 1],
@@ -183,10 +339,16 @@ export function DocumentEditor({
                 description={description}
                 actions={
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="secondary" onClick={() => router.get(backUrl)}>
-                            <ArrowLeft className="size-4" />
-                            {backLabel}
-                        </Button>
+                        {/* In the phone shell the top bar's back arrow does this. */}
+                        {!inMobileShell && (
+                            <Button
+                                variant="secondary"
+                                onClick={() => router.get(backUrl)}
+                            >
+                                <ArrowLeft className="size-4" />
+                                {backLabel}
+                            </Button>
+                        )}
                         {mode === 'grid' && (
                             <Button variant="secondary" onClick={downloadXlsx}>
                                 <FileSpreadsheet className="size-4" />
@@ -198,9 +360,15 @@ export function DocumentEditor({
                             Unduh PDF
                         </Button>
                         {canEdit && regenerateUrl && (
-                            <Button variant="secondary" onClick={regenerate} disabled={regenerating}>
+                            <Button
+                                variant="secondary"
+                                onClick={regenerate}
+                                disabled={regenerating}
+                            >
                                 <RotateCcw className="size-4" />
-                                {regenerating ? 'Memuat…' : 'Muat Ulang dari Data'}
+                                {regenerating
+                                    ? 'Memuat…'
+                                    : 'Muat Ulang dari Data'}
                             </Button>
                         )}
                         {canEdit && mode !== 'pdf' && (
@@ -213,7 +381,9 @@ export function DocumentEditor({
                 }
             />
 
-            {workflow && <ReportWorkflowPanel workflow={workflow} target={saveExtra} />}
+            {workflow && (
+                <ReportWorkflowPanel workflow={workflow} target={saveExtra} />
+            )}
 
             <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card p-3 text-[13px]">
                 <div className="grid w-full grid-cols-3 overflow-hidden rounded-md border border-border sm:flex sm:w-auto">
@@ -250,13 +420,19 @@ export function DocumentEditor({
                 )}
                 {pdfMismatch && mode !== 'pdf' && (
                     <span className="text-amber-600">
-                        PDF mengikuti versi tersimpan ({savedFormat === 'grid' ? 'Excel' : 'Teks'}). Simpan mode ini agar PDF ikut berubah.
+                        PDF mengikuti versi tersimpan (
+                        {savedFormat === 'grid' ? 'Excel' : 'Teks'}). Simpan
+                        mode ini agar PDF ikut berubah.
                     </span>
                 )}
                 {mode === 'pdf' && (
                     <span className="text-muted-foreground">
-                        Pratinjau ini identik dengan hasil cetak/unduh PDF. Menampilkan versi terakhir yang disimpan
-                        {savedFormat === null ? ' (belum ada — menampilkan hasil bawaan)' : ''}; simpan dulu agar perubahan ikut tampil.
+                        Pratinjau ini identik dengan hasil cetak/unduh PDF.
+                        Menampilkan versi terakhir yang disimpan
+                        {savedFormat === null
+                            ? ' (belum ada — menampilkan hasil bawaan)'
+                            : ''}
+                        ; simpan dulu agar perubahan ikut tampil.
                     </span>
                 )}
             </div>
@@ -269,7 +445,8 @@ export function DocumentEditor({
                         dangerouslySetInnerHTML={{ __html: letterhead }}
                     />
                     <p className="mx-auto max-w-[1000px] pt-1 text-[12px] text-muted-foreground">
-                        Kop surat (logo + header) di atas ikut tercetak di PDF & Excel. Isi tabel diedit di bawah.
+                        Kop surat (logo + header) di atas ikut tercetak di PDF &
+                        Excel. Isi tabel diedit di bawah.
                     </p>
                 </div>
             )}
@@ -280,9 +457,13 @@ export function DocumentEditor({
                         <FileText className="size-6" />
                     </span>
                     <div>
-                        <p className="text-sm font-semibold text-foreground">Pratinjau PDF di HP</p>
+                        <p className="text-sm font-semibold text-foreground">
+                            Pratinjau PDF di HP
+                        </p>
                         <p className="mt-1 text-[13px] text-muted-foreground">
-                            Browser HP tidak dapat menampilkan PDF di dalam halaman. Buka PDF di penampil browser, atau unduh dokumennya.
+                            Browser HP tidak dapat menampilkan PDF di dalam
+                            halaman. Buka PDF di penampil browser, atau unduh
+                            dokumennya.
                         </p>
                     </div>
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
@@ -305,17 +486,46 @@ export function DocumentEditor({
                 />
             ) : (
                 <div className="rounded-md border border-border bg-card p-1 md:p-2">
-                    {mode === 'html' ? (
-                        <RichTextEditor
-                            value={html}
-                            extraContentStyle={contentStyles}
-                            onChange={setHtml}
-                            disabled={!canEdit}
-                            autoGrow
-                            fitPage
-                        />
+                    {mode === 'html' && canEdit && editingText ? (
+                        <Suspense fallback={<EditorLoading />}>
+                            <RichTextEditor
+                                value={html}
+                                extraContentStyle={contentStyles}
+                                onChange={setHtml}
+                                contentRef={readEditorHtml}
+                                autoGrow
+                                fitPage
+                            />
+                        </Suspense>
+                    ) : mode === 'html' ? (
+                        <>
+                            {canEdit && (
+                                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-2 pt-1 pb-2 text-[12px] text-muted-foreground">
+                                    <span>
+                                        Tampilan baca. Klik Edit Teks untuk
+                                        mengubah isi dokumen.
+                                    </span>
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setEditingText(true)}
+                                    >
+                                        <PenLine className="size-4" />
+                                        Edit Teks
+                                    </Button>
+                                </div>
+                            )}
+                            <DocumentReadView
+                                html={html}
+                                contentStyles={contentStyles}
+                            />
+                        </>
                     ) : (
-                        <SpreadsheetEditor grid={gridState} onChange={setGridState} />
+                        <Suspense fallback={<EditorLoading />}>
+                            <SpreadsheetEditor
+                                grid={gridState}
+                                onChange={setGridState}
+                            />
+                        </Suspense>
                     )}
                 </div>
             )}

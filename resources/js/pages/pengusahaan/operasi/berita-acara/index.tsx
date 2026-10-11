@@ -16,8 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
-import beritaAcara from '@/routes/operasi/pengusahaan/berita-acara';
 import documentTemplate from '@/routes/operasi/document-template';
+import beritaAcara from '@/routes/operasi/pengusahaan/berita-acara';
 import type { IdName } from '@/types';
 
 type DocType = { value: string; label: string; title: string };
@@ -61,9 +61,6 @@ export default function BeritaAcaraIndex({ filters, types, options }: Props) {
             year: filters.year,
         });
     };
-
-    const selectedUnitName =
-        options.units.find((u) => u.id === filters.unit_id)?.name ?? 'Unit Pembangkit';
 
     return (
         <>

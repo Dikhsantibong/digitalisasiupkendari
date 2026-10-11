@@ -42,8 +42,10 @@ class LaporanPengusahaanDocumentTest extends TestCase
                 ->where('format', 'html')
                 ->where('has_saved', false)
                 ->where('can_write', true)
-                ->has('content')
-                ->has('grid'),
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->has('content')
+                    ->has('grid')
+                ),
             );
     }
 
@@ -121,7 +123,7 @@ class LaporanPengusahaanDocumentTest extends TestCase
         $this->actingAs($tl)
             ->get(route('k3.laporan.pengusahaan.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
-            ->assertInertia(function ($page): void {
+            ->assertInertia(fn ($page) => $page->loadDeferredProps('document', function ($page): void {
                 $content = (string) $page->toArray()['props']['content'];
                 $gridText = json_encode($page->toArray()['props']['grid']);
 
@@ -134,7 +136,7 @@ class LaporanPengusahaanDocumentTest extends TestCase
                 $this->assertStringContainsString('Kunjungan audit SMK3', (string) $gridText);
                 // The Akses 1 sections are gone.
                 $this->assertStringNotContainsString('Resume Kinerja', $content);
-            });
+            }));
     }
 
     /**

@@ -2,12 +2,17 @@ import { Head, router } from '@inertiajs/react';
 import { Download, Eye } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import {
+    MobileDaySheet,
+    MobileMonthSummary,
+} from '@/components/mobile/day-sheet';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import pemakaianBbm from '@/routes/operasi/pengusahaan/pemakaian-bbm';
 import standKwh from '@/routes/operasi/pengusahaan/stand-kwh';
 import type { RouteQueryOptions } from '@/wayfinder';
@@ -77,6 +82,7 @@ export function SfcPage({
     });
     const format = (value: number | undefined) =>
         !value ? '-' : number.format(value);
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Filters>) =>
         router.get(
             routes.index().url,
@@ -198,125 +204,174 @@ export function SfcPage({
                             ))}
                         </div>
 
-                        <section className="overflow-hidden rounded-md border border-border bg-card">
-                            <div className="overflow-x-auto">
-                                <table
-                                    className="w-full border-collapse text-[13px]"
-                                    data-keep-table
-                                >
-                                    <thead className="text-[12px]">
-                                        <tr className="bg-secondary">
-                                            <th className="sticky left-0 z-20 w-24 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
-                                                MERK
-                                            </th>
-                                            {groups.map((group) => (
-                                                <th
-                                                    key={group.merk}
-                                                    colSpan={
-                                                        group.machines.length
-                                                    }
-                                                    className="border-r border-b border-border px-2 py-1.5 font-semibold"
-                                                >
-                                                    {group.merk}
+                        {compact ? (
+                            <MobileDaySheet
+                                days={days}
+                                done={(day) => (totals_by_day[day] ?? 0) > 0}
+                                sections={groups.map((group) => ({
+                                    key: group.merk,
+                                    title: group.merk,
+                                    rows: group.machines.map((machine) => ({
+                                        key: machine.id,
+                                        label: machine.name,
+                                        sub: [
+                                            machine.type,
+                                            machine.serial_number,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · '),
+                                        value: (day: number) =>
+                                            format(values[machine.id]?.[day]),
+                                    })),
+                                }))}
+                                monthSummary={
+                                    <MobileMonthSummary
+                                        title="SFC per hari & bulan ini (JMH)"
+                                        rows={[
+                                            ...machines.map((machine) => ({
+                                                key: machine.id,
+                                                label: machine.name,
+                                                value: format(
+                                                    totals_by_machine[
+                                                        machine.id
+                                                    ],
+                                                ),
+                                            })),
+                                            {
+                                                key: 'unit',
+                                                label: `${title} unit`,
+                                                value: format(grand_total),
+                                                strong: true,
+                                            },
+                                        ]}
+                                    />
+                                }
+                            />
+                        ) : (
+                            <section className="overflow-hidden rounded-md border border-border bg-card">
+                                <div className="overflow-x-auto">
+                                    <table
+                                        className="w-full border-collapse text-[13px]"
+                                        data-keep-table
+                                    >
+                                        <thead className="text-[12px]">
+                                            <tr className="bg-secondary">
+                                                <th className="sticky left-0 z-20 w-24 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
+                                                    MERK
                                                 </th>
-                                            ))}
-                                            <th
-                                                rowSpan={4}
-                                                className="min-w-24 border-b border-border bg-secondary px-2 py-1.5 font-semibold"
-                                            >
-                                                TOTAL
-                                            </th>
-                                        </tr>
-                                        {(
-                                            [
-                                                [
-                                                    'TYPE',
-                                                    (m: Machine) =>
-                                                        m.type ?? '-',
-                                                ],
-                                                [
-                                                    'NO. SERI',
-                                                    (m: Machine) =>
-                                                        m.serial_number ?? '-',
-                                                ],
-                                                [
-                                                    'UNIT',
-                                                    (m: Machine) => m.name,
-                                                ],
-                                            ] as const
-                                        ).map(([label, value]) => (
-                                            <tr
-                                                key={label}
-                                                className={
-                                                    label === 'UNIT'
-                                                        ? 'text-foreground'
-                                                        : 'text-muted-foreground'
-                                                }
-                                            >
-                                                <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
-                                                    {label}
-                                                </th>
-                                                {machines.map((machine) => (
+                                                {groups.map((group) => (
                                                     <th
-                                                        key={machine.id}
-                                                        className="min-w-24 border-r border-b border-border px-2 py-1 font-normal whitespace-nowrap"
+                                                        key={group.merk}
+                                                        colSpan={
+                                                            group.machines
+                                                                .length
+                                                        }
+                                                        className="border-r border-b border-border px-2 py-1.5 font-semibold"
                                                     >
-                                                        {value(machine)}
+                                                        {group.merk}
                                                     </th>
                                                 ))}
+                                                <th
+                                                    rowSpan={4}
+                                                    className="min-w-24 border-b border-border bg-secondary px-2 py-1.5 font-semibold"
+                                                >
+                                                    TOTAL
+                                                </th>
                                             </tr>
-                                        ))}
-                                    </thead>
-                                    <tbody>
-                                        {days.map((day) => (
-                                            <tr
-                                                key={day}
-                                                className="hover:bg-muted/30"
-                                            >
-                                                <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
-                                                    {day}
+                                            {(
+                                                [
+                                                    [
+                                                        'TYPE',
+                                                        (m: Machine) =>
+                                                            m.type ?? '-',
+                                                    ],
+                                                    [
+                                                        'NO. SERI',
+                                                        (m: Machine) =>
+                                                            m.serial_number ??
+                                                            '-',
+                                                    ],
+                                                    [
+                                                        'UNIT',
+                                                        (m: Machine) => m.name,
+                                                    ],
+                                                ] as const
+                                            ).map(([label, value]) => (
+                                                <tr
+                                                    key={label}
+                                                    className={
+                                                        label === 'UNIT'
+                                                            ? 'text-foreground'
+                                                            : 'text-muted-foreground'
+                                                    }
+                                                >
+                                                    <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
+                                                        {label}
+                                                    </th>
+                                                    {machines.map((machine) => (
+                                                        <th
+                                                            key={machine.id}
+                                                            className="min-w-24 border-r border-b border-border px-2 py-1 font-normal whitespace-nowrap"
+                                                        >
+                                                            {value(machine)}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </thead>
+                                        <tbody>
+                                            {days.map((day) => (
+                                                <tr
+                                                    key={day}
+                                                    className="hover:bg-muted/30"
+                                                >
+                                                    <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
+                                                        {day}
+                                                    </td>
+                                                    {machines.map((machine) => (
+                                                        <td
+                                                            key={machine.id}
+                                                            className="border-r border-b border-border px-2 py-1 text-right tabular-nums"
+                                                        >
+                                                            {format(
+                                                                values[
+                                                                    machine.id
+                                                                ]?.[day],
+                                                            )}
+                                                        </td>
+                                                    ))}
+                                                    <td className="border-b border-border bg-secondary/60 px-2 py-1 text-right font-medium tabular-nums">
+                                                        {format(
+                                                            totals_by_day[day],
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-secondary font-semibold">
+                                                <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
+                                                    JMH
                                                 </td>
                                                 {machines.map((machine) => (
                                                     <td
                                                         key={machine.id}
-                                                        className="border-r border-b border-border px-2 py-1 text-right tabular-nums"
+                                                        className="border-r border-border px-2 py-1.5 text-right tabular-nums"
                                                     >
                                                         {format(
-                                                            values[
+                                                            totals_by_machine[
                                                                 machine.id
-                                                            ]?.[day],
+                                                            ],
                                                         )}
                                                     </td>
                                                 ))}
-                                                <td className="border-b border-border bg-secondary/60 px-2 py-1 text-right font-medium tabular-nums">
-                                                    {format(totals_by_day[day])}
+                                                <td className="px-2 py-1.5 text-right text-primary tabular-nums">
+                                                    {format(grand_total)}
                                                 </td>
                                             </tr>
-                                        ))}
-                                        <tr className="bg-secondary font-semibold">
-                                            <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
-                                                JMH
-                                            </td>
-                                            {machines.map((machine) => (
-                                                <td
-                                                    key={machine.id}
-                                                    className="border-r border-border px-2 py-1.5 text-right tabular-nums"
-                                                >
-                                                    {format(
-                                                        totals_by_machine[
-                                                            machine.id
-                                                        ],
-                                                    )}
-                                                </td>
-                                            ))}
-                                            <td className="px-2 py-1.5 text-right text-primary tabular-nums">
-                                                {format(grand_total)}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
 
                         <p className="text-[13px] text-muted-foreground">
                             {title} = pemakaian {fuelLabel} (menu Pemakaian

@@ -3,12 +3,17 @@ import { Download, Eye } from 'lucide-react';
 import { Fragment } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import {
+    MobileDaySheet,
+    MobileMonthSummary,
+} from '@/components/mobile/day-sheet';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import standKwh from '@/routes/operasi/pengusahaan/stand-kwh';
 import type { RouteQueryOptions } from '@/wayfinder';
@@ -76,6 +81,7 @@ export function EnergiPage({
     description: string;
     routes: { index: Url; pdf: Url };
 }) {
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Filters>) =>
         router.get(
             routes.index().url,
@@ -196,179 +202,270 @@ export function EnergiPage({
                             ))}
                         </div>
 
-                        <section className="overflow-hidden rounded-md border border-border bg-card">
-                            <div className="overflow-x-auto">
-                                <table
-                                    className="w-full border-collapse text-[13px]"
-                                    data-keep-table
-                                >
-                                    <thead>
-                                        <tr className="bg-secondary text-[12px] text-foreground">
-                                            <th className="sticky left-0 z-20 w-24 border-r border-b border-border bg-secondary px-2 py-2 text-left font-semibold">
-                                                MERK
-                                            </th>
-                                            {groups.map((group) => (
-                                                <Fragment key={group.merk}>
-                                                    <th
-                                                        colSpan={
-                                                            group.machines
-                                                                .length
-                                                        }
-                                                        className="border-r border-b border-border px-2 py-2 text-center font-semibold tracking-[0.2em]"
-                                                    >
-                                                        {group.merk}
-                                                    </th>
-                                                    <th
-                                                        rowSpan={4}
-                                                        className="min-w-24 border-r border-b border-border bg-secondary px-2 py-2 text-center font-semibold"
-                                                    >
-                                                        JUMLAH {group.merk}
-                                                    </th>
-                                                </Fragment>
-                                            ))}
-                                            <th
-                                                rowSpan={4}
-                                                className="min-w-28 border-b border-border bg-secondary px-2 py-2 text-center font-semibold"
-                                            >
-                                                TOTAL KWH
-                                            </th>
-                                        </tr>
-                                        {(
-                                            [
-                                                [
-                                                    'TYPE',
-                                                    (m: Machine) =>
-                                                        m.type ?? '-',
-                                                ],
-                                                [
-                                                    'NO. SERI',
-                                                    (m: Machine) =>
-                                                        m.serial_number ?? '-',
-                                                ],
-                                                [
-                                                    'UNIT',
-                                                    (m: Machine) => m.name,
-                                                ],
-                                            ] as const
-                                        ).map(([label, value]) => (
-                                            <tr
-                                                key={label}
-                                                className="text-[12px] text-muted-foreground"
-                                            >
-                                                <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
-                                                    {label}
-                                                </th>
-                                                {groups.map((group) =>
-                                                    group.machines.map(
-                                                        (machine) => (
-                                                            <th
-                                                                key={machine.id}
-                                                                className={cn(
-                                                                    'min-w-24 border-r border-b border-border px-2 py-1 text-center whitespace-nowrap',
-                                                                    label ===
-                                                                        'UNIT'
-                                                                        ? 'font-semibold text-foreground'
-                                                                        : 'font-normal',
-                                                                )}
-                                                            >
-                                                                {value(machine)}
-                                                            </th>
+                        {compact ? (
+                            <MobileDaySheet
+                                days={days}
+                                done={(day) => (totals_by_day[day] ?? 0) !== 0}
+                                sections={[
+                                    ...groups.map((group, index) => ({
+                                        key: group.merk,
+                                        title: `${group.merk} (${ROMAN[index] ?? index + 1})`,
+                                        rows: group.machines.map((machine) => ({
+                                            key: machine.id,
+                                            label: machine.name,
+                                            sub: [
+                                                machine.type,
+                                                machine.serial_number,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(' · '),
+                                            value: (day: number) =>
+                                                format(
+                                                    values[machine.id]?.[day] ??
+                                                        0,
+                                                ),
+                                        })),
+                                        total: (day: number) =>
+                                            format(
+                                                group.totals_by_day[day] ?? 0,
+                                            ),
+                                        totalLabel: `Jumlah ${group.merk}`,
+                                    })),
+                                    {
+                                        key: 'total',
+                                        title: `Total ${unit.name}`,
+                                        rows: [
+                                            {
+                                                key: 'total',
+                                                label: 'Total kWh',
+                                                value: (day: number) => (
+                                                    <b>
+                                                        {format(
+                                                            totals_by_day[
+                                                                day
+                                                            ] ?? 0,
+                                                        )}
+                                                    </b>
+                                                ),
+                                            },
+                                        ],
+                                    },
+                                ]}
+                                monthSummary={
+                                    <MobileMonthSummary
+                                        rows={[
+                                            ...groups.flatMap((group) =>
+                                                group.machines.map(
+                                                    (machine) => ({
+                                                        key: machine.id,
+                                                        label: machine.name,
+                                                        value: format(
+                                                            totals_by_machine[
+                                                                machine.id
+                                                            ] ?? 0,
                                                         ),
-                                                    ),
-                                                )}
+                                                    }),
+                                                ),
+                                            ),
+                                            {
+                                                key: 'total',
+                                                label: `Total ${unit.name}`,
+                                                value: KWH.format(grand_total),
+                                                strong: true,
+                                            },
+                                        ]}
+                                    />
+                                }
+                            />
+                        ) : (
+                            <section className="overflow-hidden rounded-md border border-border bg-card">
+                                <div className="overflow-x-auto">
+                                    <table
+                                        className="w-full border-collapse text-[13px]"
+                                        data-keep-table
+                                    >
+                                        <thead>
+                                            <tr className="bg-secondary text-[12px] text-foreground">
+                                                <th className="sticky left-0 z-20 w-24 border-r border-b border-border bg-secondary px-2 py-2 text-left font-semibold">
+                                                    MERK
+                                                </th>
+                                                {groups.map((group) => (
+                                                    <Fragment key={group.merk}>
+                                                        <th
+                                                            colSpan={
+                                                                group.machines
+                                                                    .length
+                                                            }
+                                                            className="border-r border-b border-border px-2 py-2 text-center font-semibold tracking-[0.2em]"
+                                                        >
+                                                            {group.merk}
+                                                        </th>
+                                                        <th
+                                                            rowSpan={4}
+                                                            className="min-w-24 border-r border-b border-border bg-secondary px-2 py-2 text-center font-semibold"
+                                                        >
+                                                            JUMLAH {group.merk}
+                                                        </th>
+                                                    </Fragment>
+                                                ))}
+                                                <th
+                                                    rowSpan={4}
+                                                    className="min-w-28 border-b border-border bg-secondary px-2 py-2 text-center font-semibold"
+                                                >
+                                                    TOTAL KWH
+                                                </th>
                                             </tr>
-                                        ))}
-                                    </thead>
-                                    <tbody>
-                                        {days.map((day) => (
-                                            <tr
-                                                key={day}
-                                                className="hover:bg-muted/30"
-                                            >
-                                                <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
-                                                    {day}
+                                            {(
+                                                [
+                                                    [
+                                                        'TYPE',
+                                                        (m: Machine) =>
+                                                            m.type ?? '-',
+                                                    ],
+                                                    [
+                                                        'NO. SERI',
+                                                        (m: Machine) =>
+                                                            m.serial_number ??
+                                                            '-',
+                                                    ],
+                                                    [
+                                                        'UNIT',
+                                                        (m: Machine) => m.name,
+                                                    ],
+                                                ] as const
+                                            ).map(([label, value]) => (
+                                                <tr
+                                                    key={label}
+                                                    className="text-[12px] text-muted-foreground"
+                                                >
+                                                    <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
+                                                        {label}
+                                                    </th>
+                                                    {groups.map((group) =>
+                                                        group.machines.map(
+                                                            (machine) => (
+                                                                <th
+                                                                    key={
+                                                                        machine.id
+                                                                    }
+                                                                    className={cn(
+                                                                        'min-w-24 border-r border-b border-border px-2 py-1 text-center whitespace-nowrap',
+                                                                        label ===
+                                                                            'UNIT'
+                                                                            ? 'font-semibold text-foreground'
+                                                                            : 'font-normal',
+                                                                    )}
+                                                                >
+                                                                    {value(
+                                                                        machine,
+                                                                    )}
+                                                                </th>
+                                                            ),
+                                                        ),
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </thead>
+                                        <tbody>
+                                            {days.map((day) => (
+                                                <tr
+                                                    key={day}
+                                                    className="hover:bg-muted/30"
+                                                >
+                                                    <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
+                                                        {day}
+                                                    </td>
+                                                    {groups.map((group) => (
+                                                        <Fragment
+                                                            key={group.merk}
+                                                        >
+                                                            {group.machines.map(
+                                                                (machine) => {
+                                                                    const value =
+                                                                        values[
+                                                                            machine
+                                                                                .id
+                                                                        ]?.[
+                                                                            day
+                                                                        ] ?? 0;
+
+                                                                    return (
+                                                                        <td
+                                                                            key={
+                                                                                machine.id
+                                                                            }
+                                                                            className={cn(
+                                                                                'border-r border-b border-border px-2 py-1 text-right tabular-nums',
+                                                                                value <
+                                                                                    0 &&
+                                                                                    'font-semibold text-red-700',
+                                                                            )}
+                                                                        >
+                                                                            {format(
+                                                                                value,
+                                                                            )}
+                                                                        </td>
+                                                                    );
+                                                                },
+                                                            )}
+                                                            <td className="border-r border-b border-border bg-secondary/60 px-2 text-right font-medium tabular-nums">
+                                                                {format(
+                                                                    group
+                                                                        .totals_by_day[
+                                                                        day
+                                                                    ] ?? 0,
+                                                                )}
+                                                            </td>
+                                                        </Fragment>
+                                                    ))}
+                                                    <td className="border-b border-border bg-secondary/60 px-2 text-right font-semibold tabular-nums">
+                                                        {format(
+                                                            totals_by_day[
+                                                                day
+                                                            ] ?? 0,
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-secondary font-semibold">
+                                                <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
+                                                    JMH
                                                 </td>
                                                 {groups.map((group) => (
                                                     <Fragment key={group.merk}>
                                                         {group.machines.map(
-                                                            (machine) => {
-                                                                const value =
-                                                                    values[
-                                                                        machine
-                                                                            .id
-                                                                    ]?.[day] ??
-                                                                    0;
-
-                                                                return (
-                                                                    <td
-                                                                        key={
-                                                                            machine.id
-                                                                        }
-                                                                        className={cn(
-                                                                            'border-r border-b border-border px-2 py-1 text-right tabular-nums',
-                                                                            value <
-                                                                                0 &&
-                                                                                'font-semibold text-red-700',
-                                                                        )}
-                                                                    >
-                                                                        {format(
-                                                                            value,
-                                                                        )}
-                                                                    </td>
-                                                                );
-                                                            },
+                                                            (machine) => (
+                                                                <td
+                                                                    key={
+                                                                        machine.id
+                                                                    }
+                                                                    className="border-r border-border px-2 py-1.5 text-right tabular-nums"
+                                                                >
+                                                                    {format(
+                                                                        totals_by_machine[
+                                                                            machine
+                                                                                .id
+                                                                        ] ?? 0,
+                                                                    )}
+                                                                </td>
+                                                            ),
                                                         )}
-                                                        <td className="border-r border-b border-border bg-secondary/60 px-2 text-right font-medium tabular-nums">
+                                                        <td className="border-r border-border px-2 py-1.5 text-right tabular-nums">
                                                             {format(
-                                                                group
-                                                                    .totals_by_day[
-                                                                    day
-                                                                ] ?? 0,
+                                                                group.total,
                                                             )}
                                                         </td>
                                                     </Fragment>
                                                 ))}
-                                                <td className="border-b border-border bg-secondary/60 px-2 text-right font-semibold tabular-nums">
-                                                    {format(
-                                                        totals_by_day[day] ?? 0,
-                                                    )}
+                                                <td className="px-2 py-1.5 text-right text-primary tabular-nums">
+                                                    {format(grand_total)}
                                                 </td>
                                             </tr>
-                                        ))}
-                                        <tr className="bg-secondary font-semibold">
-                                            <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
-                                                JMH
-                                            </td>
-                                            {groups.map((group) => (
-                                                <Fragment key={group.merk}>
-                                                    {group.machines.map(
-                                                        (machine) => (
-                                                            <td
-                                                                key={machine.id}
-                                                                className="border-r border-border px-2 py-1.5 text-right tabular-nums"
-                                                            >
-                                                                {format(
-                                                                    totals_by_machine[
-                                                                        machine
-                                                                            .id
-                                                                    ] ?? 0,
-                                                                )}
-                                                            </td>
-                                                        ),
-                                                    )}
-                                                    <td className="border-r border-border px-2 py-1.5 text-right tabular-nums">
-                                                        {format(group.total)}
-                                                    </td>
-                                                </Fragment>
-                                            ))}
-                                            <td className="px-2 py-1.5 text-right text-primary tabular-nums">
-                                                {format(grand_total)}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
                     </>
                 )}
             </div>

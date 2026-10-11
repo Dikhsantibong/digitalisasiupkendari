@@ -50,21 +50,23 @@ class LaporanPdmTest extends TestCase
                 ->component('pdm/laporan/document')
                 ->where('has_saved', false)
                 ->where('format', 'html')
-                ->where('content', function (string $content): bool {
-                    foreach (['jadwal-harian', 'jadwal-patrol-check', 'jadwal-5s5r', 'jadwal-meeting', 'kesiapan-apd', 'sample-monitoring', 'permit-to-work', 'checklist-5s5r', 'air-pendingin', 'kontrol-material', 'realisasi-prediktif'] as $key) {
-                        if (! str_contains($content, 'id="part-'.$key.'"')) {
-                            return false;
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->where('content', function (string $content): bool {
+                        foreach (['jadwal-harian', 'jadwal-patrol-check', 'jadwal-5s5r', 'jadwal-meeting', 'kesiapan-apd', 'sample-monitoring', 'permit-to-work', 'checklist-5s5r', 'air-pendingin', 'kontrol-material', 'realisasi-prediktif'] as $key) {
+                            if (! str_contains($content, 'id="part-'.$key.'"')) {
+                                return false;
+                            }
                         }
-                    }
 
-                    return str_contains($content, 'LEMBAR PENGESAHAN')
-                        && str_contains($content, 'ZHEJIANG #1')
-                        && ! str_contains($content, 'k3-no-data')
-                        && ! str_contains($content, 'data:image/png;base64');
-                })
-                ->where('content_styles', fn (string $styles): bool => str_contains($styles, '.pdm-v-pdm-input-sample-monitoring-pdf')
-                    && ! str_contains($styles, '@page { size: A4 landscape'))
-                ->has('grid.rows'),
+                        return str_contains($content, 'LEMBAR PENGESAHAN')
+                            && str_contains($content, 'ZHEJIANG #1')
+                            && ! str_contains($content, 'k3-no-data')
+                            && ! str_contains($content, 'data:image/png;base64');
+                    })
+                    ->where('content_styles', fn (string $styles): bool => str_contains($styles, '.pdm-v-pdm-input-sample-monitoring-pdf')
+                        && ! str_contains($styles, '@page { size: A4 landscape'))
+                    ->has('grid.rows')
+                ),
             );
     }
 
@@ -75,7 +77,7 @@ class LaporanPdmTest extends TestCase
 
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
             ->get(route('pdm.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
-            ->assertInertia(fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'Gudang Sampel Poasia')));
+            ->assertInertia(fn ($page) => $page->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'Gudang Sampel Poasia'))));
     }
 
     public function test_the_edited_document_is_saved_and_can_be_regenerated(): void
@@ -93,7 +95,7 @@ class LaporanPdmTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('pdm.laporan.document.edit', $period))
-            ->assertInertia(fn ($page) => $page->where('has_saved', true)->where('content', '<div class="pdm-section"><p>Catatan edit manual</p></div>'));
+            ->assertInertia(fn ($page) => $page->where('has_saved', true)->loadDeferredProps('document', fn ($page) => $page->where('content', '<div class="pdm-section"><p>Catatan edit manual</p></div>')));
 
         $this->actingAs($user)->post(route('pdm.laporan.document.regenerate'), $period)->assertRedirect();
 
@@ -171,7 +173,9 @@ class LaporanPdmTest extends TestCase
         $this->actingAs($user)
             ->get(route('pdm.laporan.document.edit', $period))
             ->assertInertia(function ($page) use (&$props): void {
-                $props = $page->toArray()['props'];
+                $page->loadDeferredProps('document', function ($page) use (&$props): void {
+                    $props = $page->toArray()['props'];
+                });
             });
         $content = $props['content'];
 
@@ -201,7 +205,9 @@ class LaporanPdmTest extends TestCase
 
         $content = '';
         $response->assertInertia(function ($page) use (&$content): void {
-            $content = $page->toArray()['props']['content'];
+            $page->loadDeferredProps('document', function ($page) use (&$content): void {
+                $content = $page->toArray()['props']['content'];
+            });
         });
 
         $sections = preg_split('/(?=<div class="pdm-section)/', $content, -1, PREG_SPLIT_NO_EMPTY);

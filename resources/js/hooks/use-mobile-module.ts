@@ -27,9 +27,46 @@ export type ResolvedMobileModule = {
     menus: MobileMenu[];
     /** The current page is the module's home (render the card menu). */
     isHome: boolean;
-    /** The menu matching the current page, when there is one. */
+    /** The menu matching the current page — or, on a sub-page, the menu it was opened from. */
     current: MobileMenu | null;
+    /** Top bar title: the menu's title, or the sub-page's own (e.g. "Laporan Pengusahaan"). */
+    title: string;
+    /** Where the top bar's back arrow goes: the module home, or the parent menu of a sub-page. */
+    backHref: string;
 };
+
+/**
+ * Titles of pages opened from a menu page in the same folder (document
+ * editors, previews …), shown in the shell's top bar.
+ */
+const SUB_PAGE_TITLES: Record<string, string> = {
+    document: 'Dokumen Laporan',
+    pengusahaan: 'Laporan Pengusahaan',
+    monthly: 'Laporan Bulanan',
+    spreadsheet: 'Spreadsheet Laporan',
+    editor: 'Isi Berita Acara',
+    preview: 'Pratinjau Berita Acara',
+};
+
+/**
+ * The menu a sub-page belongs to: the menu whose page sits in the same folder
+ * as `{folder}/index` (e.g. operasi/laporan/pengusahaan → operasi/laporan/index,
+ * pengusahaan/operasi/berita-acara/editor → …/berita-acara/index).
+ */
+function parentMenuOf(
+    component: string,
+    menus: MobileMenu[],
+): MobileMenu | null {
+    const slash = component.lastIndexOf('/');
+
+    if (slash < 0 || component.endsWith('/index')) {
+        return null;
+    }
+
+    const index = `${component.slice(0, slash)}/index`;
+
+    return menus.find((menu) => menu.component === index) ?? null;
+}
 
 /**
  * The mobile module whose shell would wrap the current page on a phone: for a
@@ -57,14 +94,30 @@ export function useMobileModuleCandidate(): ResolvedMobileModule | null {
         }
 
         const menus = module.menus.filter((menu) => allowed(menu.permission));
-        const current =
-            menus.find((menu) => menu.component === page.component) ??
-            SHELL_PAGES.find((menu) => menu.component === page.component) ??
+        const menu =
+            menus.find((item) => item.component === page.component) ??
+            SHELL_PAGES.find((item) => item.component === page.component) ??
             null;
+        // A page opened from a menu page (document editor, preview …) stays in the shell; back returns to that menu.
+        const parent = menu ? null : parentMenuOf(page.component, menus);
+        const current = menu ?? parent;
         const isHome = module.homeComponents.includes(page.component);
 
         if (isHome || current) {
-            return { module, menus, isHome, current };
+            const subPage = page.component.slice(
+                page.component.lastIndexOf('/') + 1,
+            );
+
+            return {
+                module,
+                menus,
+                isHome,
+                current,
+                title: parent
+                    ? (SUB_PAGE_TITLES[subPage] ?? parent.title)
+                    : (current?.title ?? module.title),
+                backHref: parent ? parent.href : module.homeHref,
+            };
         }
     }
 

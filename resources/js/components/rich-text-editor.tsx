@@ -1,5 +1,6 @@
 import { Editor } from '@tinymce/tinymce-react';
 // Type only (erased at build), so it does not affect the side-effect import order below.
+import type { MutableRefObject } from 'react';
 import type { Editor as TinyMceEditor } from 'tinymce';
 // Self-hosted TinyMCE (GPL) — no API key, no CDN. Import order matters: core first.
 import 'tinymce/tinymce.min.js';
@@ -51,7 +52,9 @@ function fitPageToWidth(editor: TinyMceEditor): void {
     body.style.width = `${PAGE_WIDTH_PX}px`;
     // Scale the A4 page (with the body's own margins) to the width; a table wider
     // than the page (e.g. a 31-day jadwal) scrolls sideways inside the editor.
-    const margins = parseFloat(getComputedStyle(body).marginLeft) + parseFloat(getComputedStyle(body).marginRight);
+    const margins =
+        parseFloat(getComputedStyle(body).marginLeft) +
+        parseFloat(getComputedStyle(body).marginRight);
     const needed = body.getBoundingClientRect().width + margins;
     body.style.zoom = String(Math.min(1, available / needed));
     doc.documentElement.style.overflowX = 'auto';
@@ -70,6 +73,7 @@ export function RichTextEditor({
     extraContentStyle = '',
     autoGrow = false,
     fitPage = false,
+    contentRef,
 }: {
     value: string;
     onChange: (html: string) => void;
@@ -80,12 +84,26 @@ export function RichTextEditor({
     autoGrow?: boolean;
     /** A printable document: on narrow screens show it as a scaled A4 page (see {@link fitPageToWidth}). */
     fitPage?: boolean;
+    /**
+     * A long document: the editor is uncontrolled (`value` is only the start)
+     * and the HTML is read through this ref when needed — serialising the whole
+     * document on every keystroke makes typing in a large report lag.
+     */
+    contentRef?: MutableRefObject<(() => string) | null>;
 }) {
+    const content = contentRef
+        ? {
+              initialValue: value,
+              onInit: (_event: unknown, editor: TinyMceEditor) => {
+                  contentRef.current = () => editor.getContent();
+              },
+          }
+        : { value, onEditorChange: (html: string) => onChange(html) };
+
     return (
         <Editor
             licenseKey="gpl"
-            value={value}
-            onEditorChange={(html) => onChange(html)}
+            {...content}
             disabled={disabled}
             init={{
                 skin: false,

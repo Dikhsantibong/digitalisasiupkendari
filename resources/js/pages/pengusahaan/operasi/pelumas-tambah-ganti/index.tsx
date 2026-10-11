@@ -3,12 +3,17 @@ import { Download, Eye } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState } from '@/components/empty-state';
 import {
+    MobileDaySheet,
+    MobileMonthSummary,
+} from '@/components/mobile/day-sheet';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import tambahGanti from '@/routes/operasi/pengusahaan/pelumas-tambah-ganti';
 import pemakaianPelumas from '@/routes/operasi/pengusahaan/pemakaian-pelumas';
 
@@ -68,6 +73,7 @@ export default function PelumasTambahGantiIndex({
 }: Props) {
     const [jenis, setJenis] = useState<Jenis>('tambah');
     const [lubricant, setLubricant] = useState('all');
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Filters>) =>
         router.get(
             tambahGanti.index().url,
@@ -236,134 +242,187 @@ export default function PelumasTambahGantiIndex({
                             />
                         </div>
 
-                        <section className="overflow-hidden rounded-md border border-border bg-card">
-                            <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm font-semibold">
-                                PEMAKAIAN PELUMAS {jenis.toUpperCase()} (LTR)
-                                {shown.length === 1 && (
-                                    <span className="font-normal text-muted-foreground">
-                                        {shown[0].name}
-                                    </span>
-                                )}
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table
-                                    className="w-full border-collapse text-[13px]"
-                                    data-keep-table
-                                >
-                                    <thead className="text-[12px]">
-                                        <tr className="bg-secondary">
-                                            <th className="sticky left-0 z-20 w-24 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
-                                                MERK
-                                            </th>
-                                            {groups.map((group) => (
-                                                <th
-                                                    key={group.merk}
-                                                    colSpan={
-                                                        group.machines.length
-                                                    }
-                                                    className="border-r border-b border-border px-2 py-1.5 font-semibold"
-                                                >
-                                                    {group.merk}
+                        {compact ? (
+                            <MobileDaySheet
+                                days={days}
+                                done={(day) => dayTotal(day) > 0}
+                                sections={groups.map((group) => ({
+                                    key: group.merk,
+                                    title: `${group.merk} · pelumas ${jenis}`,
+                                    rows: group.machines.map((machine) => ({
+                                        key: machine.id,
+                                        label: machine.name,
+                                        sub: [
+                                            machine.type,
+                                            machine.serial_number,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(' · '),
+                                        value: (day: number) =>
+                                            format(value(machine.id, day)),
+                                    })),
+                                    total: (day: number) =>
+                                        format(
+                                            group.machines.reduce(
+                                                (sum, m) =>
+                                                    sum + value(m.id, day),
+                                                0,
+                                            ),
+                                        ),
+                                }))}
+                                monthSummary={
+                                    <MobileMonthSummary
+                                        rows={[
+                                            ...machines.map((machine) => ({
+                                                key: machine.id,
+                                                label: machine.name,
+                                                value: format(
+                                                    machineTotal(machine.id),
+                                                ),
+                                            })),
+                                            {
+                                                key: 'total',
+                                                label: `Total pelumas ${jenis}`,
+                                                value: `${format(grandOf(source))} L`,
+                                                strong: true,
+                                            },
+                                        ]}
+                                    />
+                                }
+                            />
+                        ) : (
+                            <section className="overflow-hidden rounded-md border border-border bg-card">
+                                <div className="flex items-center justify-between border-b border-border px-4 py-2 text-sm font-semibold">
+                                    PEMAKAIAN PELUMAS {jenis.toUpperCase()}{' '}
+                                    (LTR)
+                                    {shown.length === 1 && (
+                                        <span className="font-normal text-muted-foreground">
+                                            {shown[0].name}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table
+                                        className="w-full border-collapse text-[13px]"
+                                        data-keep-table
+                                    >
+                                        <thead className="text-[12px]">
+                                            <tr className="bg-secondary">
+                                                <th className="sticky left-0 z-20 w-24 border-r border-b border-border bg-secondary px-2 py-1.5 text-left font-semibold">
+                                                    MERK
                                                 </th>
-                                            ))}
-                                            <th
-                                                rowSpan={4}
-                                                className="min-w-24 border-b border-border bg-secondary px-2 py-1.5 font-semibold"
-                                            >
-                                                TOTAL
-                                            </th>
-                                        </tr>
-                                        {(
-                                            [
-                                                [
-                                                    'TYPE',
-                                                    (m: Machine) =>
-                                                        m.type ?? '-',
-                                                ],
-                                                [
-                                                    'NO. SERI',
-                                                    (m: Machine) =>
-                                                        m.serial_number ?? '-',
-                                                ],
-                                                [
-                                                    'UNIT',
-                                                    (m: Machine) => m.name,
-                                                ],
-                                            ] as const
-                                        ).map(([label, text]) => (
-                                            <tr
-                                                key={label}
-                                                className={
-                                                    label === 'UNIT'
-                                                        ? 'text-foreground'
-                                                        : 'text-muted-foreground'
-                                                }
-                                            >
-                                                <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
-                                                    {label}
-                                                </th>
-                                                {machines.map((machine) => (
+                                                {groups.map((group) => (
                                                     <th
-                                                        key={machine.id}
-                                                        className="min-w-24 border-r border-b border-border px-2 py-1 font-normal whitespace-nowrap"
+                                                        key={group.merk}
+                                                        colSpan={
+                                                            group.machines
+                                                                .length
+                                                        }
+                                                        className="border-r border-b border-border px-2 py-1.5 font-semibold"
                                                     >
-                                                        {text(machine)}
+                                                        {group.merk}
                                                     </th>
                                                 ))}
+                                                <th
+                                                    rowSpan={4}
+                                                    className="min-w-24 border-b border-border bg-secondary px-2 py-1.5 font-semibold"
+                                                >
+                                                    TOTAL
+                                                </th>
                                             </tr>
-                                        ))}
-                                    </thead>
-                                    <tbody>
-                                        {days.map((day) => (
-                                            <tr
-                                                key={day}
-                                                className="hover:bg-muted/30"
-                                            >
-                                                <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
-                                                    {day}
+                                            {(
+                                                [
+                                                    [
+                                                        'TYPE',
+                                                        (m: Machine) =>
+                                                            m.type ?? '-',
+                                                    ],
+                                                    [
+                                                        'NO. SERI',
+                                                        (m: Machine) =>
+                                                            m.serial_number ??
+                                                            '-',
+                                                    ],
+                                                    [
+                                                        'UNIT',
+                                                        (m: Machine) => m.name,
+                                                    ],
+                                                ] as const
+                                            ).map(([label, text]) => (
+                                                <tr
+                                                    key={label}
+                                                    className={
+                                                        label === 'UNIT'
+                                                            ? 'text-foreground'
+                                                            : 'text-muted-foreground'
+                                                    }
+                                                >
+                                                    <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
+                                                        {label}
+                                                    </th>
+                                                    {machines.map((machine) => (
+                                                        <th
+                                                            key={machine.id}
+                                                            className="min-w-24 border-r border-b border-border px-2 py-1 font-normal whitespace-nowrap"
+                                                        >
+                                                            {text(machine)}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </thead>
+                                        <tbody>
+                                            {days.map((day) => (
+                                                <tr
+                                                    key={day}
+                                                    className="hover:bg-muted/30"
+                                                >
+                                                    <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
+                                                        {day}
+                                                    </td>
+                                                    {machines.map((machine) => (
+                                                        <td
+                                                            key={machine.id}
+                                                            className="border-r border-b border-border px-2 py-1 text-right tabular-nums"
+                                                        >
+                                                            {format(
+                                                                value(
+                                                                    machine.id,
+                                                                    day,
+                                                                ),
+                                                            )}
+                                                        </td>
+                                                    ))}
+                                                    <td className="border-b border-border bg-secondary/60 px-2 py-1 text-right font-medium tabular-nums">
+                                                        {format(dayTotal(day))}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            <tr className="bg-secondary font-semibold">
+                                                <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
+                                                    JMH
                                                 </td>
                                                 {machines.map((machine) => (
                                                     <td
                                                         key={machine.id}
-                                                        className="border-r border-b border-border px-2 py-1 text-right tabular-nums"
+                                                        className="border-r border-border px-2 py-1.5 text-right tabular-nums"
                                                     >
                                                         {format(
-                                                            value(
+                                                            machineTotal(
                                                                 machine.id,
-                                                                day,
                                                             ),
                                                         )}
                                                     </td>
                                                 ))}
-                                                <td className="border-b border-border bg-secondary/60 px-2 py-1 text-right font-medium tabular-nums">
-                                                    {format(dayTotal(day))}
+                                                <td className="px-2 py-1.5 text-right text-primary tabular-nums">
+                                                    {format(grandOf(source))}
                                                 </td>
                                             </tr>
-                                        ))}
-                                        <tr className="bg-secondary font-semibold">
-                                            <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
-                                                JMH
-                                            </td>
-                                            {machines.map((machine) => (
-                                                <td
-                                                    key={machine.id}
-                                                    className="border-r border-border px-2 py-1.5 text-right tabular-nums"
-                                                >
-                                                    {format(
-                                                        machineTotal(
-                                                            machine.id,
-                                                        ),
-                                                    )}
-                                                </td>
-                                            ))}
-                                            <td className="px-2 py-1.5 text-right text-primary tabular-nums">
-                                                {format(grandOf(source))}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </section>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </section>
+                        )}
                     </>
                 )}
             </div>

@@ -88,9 +88,14 @@ class LaporanPengusahaanTest extends TestCase
                 ->component('operasi/laporan/pengusahaan')
                 ->where('can_write', true)
                 ->where('has_saved', false)
-                ->where('document_number', OperasiPengusahaanReport::documentNumber($this->unit, 8, 2026))
-                ->where('content', fn (string $html): bool => str_contains($html, 'DAFTAR ISI') && str_contains($html, 'IKHTISAR SENTRAL') && str_contains($html, 'LAPORAN PENGUSAHAAN PEMBANGKIT'))
-                ->has('grid.rows'));
+                // The page opens at once; the document body loads right after (deferred).
+                ->missing('content')
+                ->missing('grid')
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->where('document_number', OperasiPengusahaanReport::documentNumber($this->unit, 8, 2026))
+                    ->where('content', fn (string $html): bool => str_contains($html, 'DAFTAR ISI') && str_contains($html, 'IKHTISAR SENTRAL') && str_contains($html, 'LAPORAN PENGUSAHAAN PEMBANGKIT'))
+                    ->has('grid.rows')
+                ));
 
         $this->actingAs($this->tl)
             ->post(route('operasi.laporan.pengusahaan.store'), ['unit_id' => $this->unit->id, 'month' => 8, 'year' => 2026, 'format' => 'html', 'content_html' => '<p>Isi diedit TL</p>'])
@@ -99,7 +104,7 @@ class LaporanPengusahaanTest extends TestCase
         $this->assertDatabaseHas('operasi_report_documents', ['unit_id' => $this->unit->id, 'report_code' => 'pengusahaan', 'month' => 8, 'year' => 2026, 'engine_id' => null]);
         $this->actingAs($this->tl)
             ->get(route('operasi.laporan.pengusahaan.edit', ['unit_id' => $this->unit->id, 'month' => 8, 'year' => 2026]))
-            ->assertInertia(fn ($page) => $page->where('has_saved', true)->where('content', '<p>Isi diedit TL</p>'));
+            ->assertInertia(fn ($page) => $page->where('has_saved', true)->loadDeferredProps('document', fn ($page) => $page->where('content', '<p>Isi diedit TL</p>')));
 
         $this->actingAs($this->tl)
             ->post(route('operasi.laporan.pengusahaan.regenerate'), ['unit_id' => $this->unit->id, 'month' => 8, 'year' => 2026])

@@ -107,10 +107,10 @@ class DokumenIkTest extends TestCase
 
         $this->actingAs($user)->get(route('k3.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('content', fn (string $html): bool => str_contains($html, 'INSTRUKSI KERJA PELAKSANAAN EVAKUASI')
+            ->assertInertia(fn ($page) => $page->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $html): bool => str_contains($html, 'INSTRUKSI KERJA PELAKSANAAN EVAKUASI')
                 && str_contains($html, 'DOKUMEN IK K3 LINGKUNGAN PEMBANGKIT')
                 && str_contains($html, 'Tim yang telah ditunjuk sebagai pelaksana evakuasi')
-                && str_contains($html, 'Terlampir (1 IK)')));
+                && str_contains($html, 'Terlampir (1 IK)'))));
 
         $this->actingAs($user)->get(route('k3.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))->assertOk();
     }

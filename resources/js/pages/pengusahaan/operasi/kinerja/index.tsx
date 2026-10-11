@@ -18,6 +18,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import kinerja from '@/routes/operasi/pengusahaan/kinerja';
 
@@ -150,6 +151,8 @@ export default function KinerjaIndex({
     saved_at,
     can_write,
 }: Props) {
+    // On the phone the tables become cards (MobileTableCards): one card per row.
+    const compact = useCompactLayout();
     const [values, setValues] = useState(() => initial(rows));
     const [note, setNote] = useState(catatan);
     const [saving, setSaving] = useState(false);
@@ -358,7 +361,7 @@ export default function KinerjaIndex({
                             <div className="overflow-x-auto">
                                 <table
                                     className="w-full border-collapse text-[13px]"
-                                    data-keep-table
+                                    data-keep-table={compact ? undefined : true}
                                 >
                                     <thead>
                                         <tr className="border-b border-border bg-secondary text-left text-[12px] whitespace-nowrap text-muted-foreground">

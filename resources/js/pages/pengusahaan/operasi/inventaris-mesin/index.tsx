@@ -10,6 +10,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import machines from '@/routes/admin/machines';
 import inventaris from '@/routes/operasi/pengusahaan/inventaris-mesin';
@@ -96,6 +97,8 @@ export default function InventarisMesinIndex({
     can_write,
     can_manage_machines,
 }: Props) {
+    // On the phone the tables become cards (MobileTableCards): one card per row.
+    const compact = useCompactLayout();
     const [values, setValues] = useState(() => initial(rows));
     const [saving, setSaving] = useState(false);
     const dirty = JSON.stringify(values) !== JSON.stringify(initial(rows));
@@ -316,7 +319,7 @@ export default function InventarisMesinIndex({
                             <div className="overflow-x-auto">
                                 <table
                                     className="w-full border-collapse text-[13px]"
-                                    data-keep-table
+                                    data-keep-table={compact ? undefined : true}
                                 >
                                     <thead>
                                         <tr className="bg-secondary text-[12px] text-foreground">

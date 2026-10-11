@@ -394,7 +394,7 @@ class ReportWorkflowTest extends TestCase
 
         $this->actingAs($this->makers['pdm'])
             ->get(route('pdm.laporan.document.edit', $this->target()))
-            ->assertInertia(fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'PIA PIC PDM') && str_contains($content, 'AMIR KOORDINATOR HAR') && ! str_contains($content, 'HERWIN PROJECT LEADER')));
+            ->assertInertia(fn ($page) => $page->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'PIA PIC PDM') && str_contains($content, 'AMIR KOORDINATOR HAR') && ! str_contains($content, 'HERWIN PROJECT LEADER'))));
     }
 
     // Halaman pengesahan: Memeriksa → Menyetujui → Mengesahkan
@@ -553,8 +553,10 @@ class ReportWorkflowTest extends TestCase
         $content = '';
         $this->actingAs($this->makers['har'])
             ->get(route('har.laporan.document.edit', $this->target()))
-            ->assertInertia(function ($page) use (&$content) {
-                $content = $page->toArray()['props']['content'];
+            ->assertInertia(function ($page) use (&$content): void {
+                $page->loadDeferredProps('document', function ($page) use (&$content): void {
+                    $content = $page->toArray()['props']['content'];
+                });
             });
 
         return $content;

@@ -14,6 +14,7 @@ import {
     formatAmount,
     toNumber,
 } from '@/components/operasi/rincian-pelumas';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import rekap from '@/routes/operasi/pengusahaan/rekap-bbm';
 
@@ -24,6 +25,8 @@ import rekap from '@/routes/operasi/pengusahaan/rekap-bbm';
  * typed-in record with Perincian Bahan Bakar.
  */
 export default function RekapBbmIndex(props: RincianBbmProps) {
+    // On the phone the tables become cards (MobileTableCards): one card per row.
+    const compact = useCompactLayout();
     const { fuels, machines, auto, lain_labels, filters, catatan, can_write } =
         props;
     const initial = useMemo(() => toBbmForm(props), [props]);
@@ -128,7 +131,7 @@ export default function RekapBbmIndex(props: RincianBbmProps) {
                 <div className="overflow-x-auto">
                     <table
                         className="w-full border-collapse text-[13px]"
-                        data-keep-table
+                        data-keep-table={compact ? undefined : true}
                     >
                         <thead className="text-[12px]">
                             <tr className="bg-secondary">

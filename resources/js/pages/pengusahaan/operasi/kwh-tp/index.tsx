@@ -9,6 +9,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import kwhTp from '@/routes/operasi/pengusahaan/kwh-tp';
 import standKwh from '@/routes/operasi/pengusahaan/stand-kwh';
@@ -66,6 +67,8 @@ export default function KwhTransferPricingIndex({
     total_produksi,
     total_ps,
 }: Props) {
+    // On the phone the tables become cards (MobileTableCards): one card per row.
+    const compact = useCompactLayout();
     const [tab, setTab] = useState<'produksi' | 'ps'>('produksi');
     const visit = (patch: Partial<Filters>) =>
         router.get(
@@ -171,7 +174,10 @@ export default function KwhTransferPricingIndex({
                     />
                 </div>
 
-                <nav className="flex gap-2" aria-label="Halaman">
+                <nav
+                    className="grid grid-cols-2 gap-2 sm:flex"
+                    aria-label="Halaman"
+                >
                     {(
                         [
                             ['produksi', 'Hal 1/2 · Mesin Pembangkit'],
@@ -184,7 +190,7 @@ export default function KwhTransferPricingIndex({
                             onClick={() => setTab(key)}
                             aria-current={tab === key ? 'true' : undefined}
                             className={cn(
-                                'h-9 rounded-md border px-4 text-[13px] font-medium whitespace-nowrap',
+                                'min-h-9 rounded-md border px-3 py-1.5 text-[13px] font-medium sm:h-9 sm:px-4 sm:py-0 sm:whitespace-nowrap',
                                 tab === key
                                     ? 'border-primary bg-primary/10 text-primary'
                                     : 'border-border bg-card text-foreground hover:bg-muted',
@@ -205,7 +211,7 @@ export default function KwhTransferPricingIndex({
                         <div className="overflow-x-auto">
                             <table
                                 className="w-full border-collapse text-[13px]"
-                                data-keep-table
+                                data-keep-table={compact ? undefined : true}
                             >
                                 <thead>
                                     <tr className="border-b border-border bg-secondary text-left text-[12px] whitespace-nowrap text-muted-foreground">

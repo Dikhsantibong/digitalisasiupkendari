@@ -1,0 +1,1 @@
+var e=e=>{let t=Number(e)||0;return new Intl.NumberFormat(`id-ID`,{minimumFractionDigits:2,maximumFractionDigits:2}).format(t)};export{e as t};

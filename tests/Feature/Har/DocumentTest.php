@@ -171,12 +171,14 @@ class DocumentTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('har/laporan/document')
-                ->where('document_number', 'FMKD-314-10.3.3')
                 ->where('format', 'html')
                 ->where('has_saved', false)
                 ->where('can_write', true)
-                ->has('content')
-                ->has('grid'),
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->where('document_number', 'FMKD-314-10.3.3')
+                    ->has('content')
+                    ->has('grid')
+                ),
             );
     }
 
@@ -216,7 +218,9 @@ class DocumentTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->where('has_saved', true)
-                ->where('content', '<p>Versi tersimpan</p>'),
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->where('content', '<p>Versi tersimpan</p>')
+                ),
             );
     }
 
@@ -317,17 +321,19 @@ class DocumentTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('har/laporan/pengusahaan')
-                ->where('document_number', 'FMKD-314-10.3.3')
                 ->where('format', 'html')
                 ->where('has_saved', false)
                 ->where('can_write', true)
-                // The shared Laporan Pengusahaan cover (as K3 & Operasi) with its photo.
-                ->where('content', fn (string $html) => str_contains($html, 'pc-cover')
-                    && str_contains($html, '/background/bg-login.jpeg')
-                    && str_contains($html, '/logo/sidebar-logo.png')
-                    && str_contains($html, '/logo/k3.png')
-                )
-                ->has('grid'),
+                ->loadDeferredProps('document', fn ($page) => $page
+                    ->where('document_number', 'FMKD-314-10.3.3')
+                    // The shared Laporan Pengusahaan cover (as K3 & Operasi) with its photo.
+                    ->where('content', fn (string $html) => str_contains($html, 'pc-cover')
+                        && str_contains($html, '/background/bg-login.jpeg')
+                        && str_contains($html, '/logo/sidebar-logo.png')
+                        && str_contains($html, '/logo/k3.png')
+                    )
+                    ->has('grid')
+                ),
             );
     }
 
