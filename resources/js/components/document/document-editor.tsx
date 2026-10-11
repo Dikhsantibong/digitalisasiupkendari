@@ -15,6 +15,7 @@ import { lazy, Suspense, useRef, useState } from 'react';
 import { DocumentReadView } from '@/components/document/document-read-view';
 import { ReportWorkflowPanel } from '@/components/document/report-workflow-panel';
 import type { ReportWorkflowState } from '@/components/document/report-workflow-panel';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { StatusBadge } from '@/components/status-badge';
@@ -24,6 +25,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useInMobileShell } from '@/hooks/use-mobile-module';
 import { downloadGridAsXlsx } from '@/lib/spreadsheet';
 import type { DocumentGrid, GridCell } from '@/lib/spreadsheet';
+import { cn } from '@/lib/utils';
 import type { Auth } from '@/types';
 
 // The editors are big (TinyMCE, x-data-spreadsheet): only downloaded when a mode needs them.
@@ -331,14 +333,27 @@ function LoadedDocumentEditor({
     };
 
     const pdfMismatch = savedFormat !== null && savedFormat !== mode;
+    const showSave = canEdit && mode !== 'pdf';
+    // Phones: Simpan stays at hand in a bar pinned to the bottom of the screen.
+    const saveButton = showSave && (
+        <Button onClick={save} disabled={saving}>
+            <Save className="size-4" />
+            {saving ? 'Menyimpan…' : 'Simpan'}
+        </Button>
+    );
 
     return (
-        <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+        <div
+            className={cn(
+                'flex flex-1 flex-col gap-4 p-4 md:p-6',
+                isMobile && showSave && 'pb-28',
+            )}
+        >
             <PageHeader
                 title={title}
                 description={description}
                 actions={
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                         {/* In the phone shell the top bar's back arrow does this. */}
                         {!inMobileShell && (
                             <Button
@@ -371,15 +386,14 @@ function LoadedDocumentEditor({
                                     : 'Muat Ulang dari Data'}
                             </Button>
                         )}
-                        {canEdit && mode !== 'pdf' && (
-                            <Button onClick={save} disabled={saving}>
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
+                        {!isMobile && saveButton}
                     </div>
                 }
             />
+
+            {isMobile && saveButton && (
+                <StickyActionBar>{saveButton}</StickyActionBar>
+            )}
 
             {workflow && (
                 <ReportWorkflowPanel workflow={workflow} target={saveExtra} />

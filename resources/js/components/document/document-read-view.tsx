@@ -54,7 +54,13 @@ export function DocumentReadView({
     const srcDoc =`<!doctype html><html><head><meta charset="utf-8"><style>${contentCss}
         body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 12px; color: #000; margin: 12px; }
         table { border-collapse: collapse; }
-        ${contentStyles}</style></head><body>${html}</body></html>`;
+        ${contentStyles}
+        /* The read view: each section a white sheet with space between, like the printed pages. */
+        html { background: #e5e7eb; }
+        body { background: transparent; }
+        body > * { position: relative; overflow: hidden; background: #fff; padding: 28px; margin: 0 0 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); box-sizing: border-box; }
+        body > .page-break, body > br, body > style { display: none; }
+        </style></head><body>${html}</body></html>`;
 
     return (
         <iframe
