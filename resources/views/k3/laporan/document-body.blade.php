@@ -35,6 +35,7 @@
     $emergency = $report['emergency'] ?? [];
     $unsafeConditions = $report['unsafe_conditions'] ?? [];
     $jadwal5s5r = $report['jadwal_5s5r'] ?? [];
+    $program5s5r = $report['program_5s5r'] ?? [];
     $certificates = $report['certificates'] ?? [];
     $patrol = $report['patrol'] ?? [];
     $patrolTotal = collect($patrol)->sum('total');
@@ -634,27 +635,31 @@
     @if(empty($unsafeConditions) && ! ($inputs['accidents']['has_data'] ?? false))
         @include('k3.laporan.partials.formulir-table', ['rows' => $formulir['temuan'] ?? [], 'note' => $jadwalNote, 'message' => 'Belum ada laporan unsafe action / unsafe condition maupun kecelakaan kerja pada periode ini.'])
     @elseif(! empty($unsafeConditions))
-        <div class="k3x-caption">A. Temuan Unsafe Action &amp; Unsafe Condition</div>
+        <div class="k3x-caption">A. Temuan Unsafe Action &amp; Unsafe Condition (K3 dan seluruh divisi)</div>
         <table class="report-table">
             <thead>
                 <tr>
                     <th style="width: 30px;">No</th>
+                    <th style="width: 85px;">Sumber</th>
                     <th style="width: 100px;">Kategori</th>
                     <th>Uraian Temuan</th>
-                    <th style="width: 120px;">Lokasi</th>
+                    <th style="width: 110px;">Lokasi</th>
                     <th>Tindak Lanjut Perbaikan</th>
                     <th>Rekomendasi</th>
+                    <th style="width: 55px;">Status</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($unsafeConditions as $idx => $uc)
                     <tr>
                         <td class="text-center">{{ $idx + 1 }}</td>
+                        <td>{{ $uc['sumber'] ?? '—' }}</td>
                         <td class="font-bold">{{ $uc['kategori'] ?? '—' }}</td>
                         <td>{{ $uc['temuan'] ?? '—' }}</td>
                         <td>{{ $uc['lokasi'] ?? '—' }}</td>
                         <td>{{ $uc['tindak_lanjut'] ?? '—' }}</td>
                         <td>{{ $uc['rekomendasi'] ?? '—' }}</td>
+                        <td class="text-center">{{ $uc['keterangan'] ?? '—' }}</td>
                     </tr>
                 @endforeach
             </tbody>
@@ -682,6 +687,7 @@
 
     <div class="k3-sub-title">17. Jadwal Program 5S 5R K3L KIT</div>
 
+    <div class="k3x-caption">A. Jadwal Program 5S 5R</div>
     @if(empty($jadwal5s5r))
         @include('k3.laporan.partials.no-data', ['message' => 'Belum ada jadwal program 5S 5R pada periode ini.'])
     @else
@@ -708,6 +714,54 @@
             </tbody>
         </table>
     @endif
+    <div class="k3x-caption">B. Pelaksanaan 5S5R Seluruh Divisi</div>
+    <div class="k3x-note">Sumber data: input 5S5R tiap divisi (Operasi, Pemeliharaan, PdM, Logistik &amp; Gudang) — Rekap 5S5R modul K3.</div>
+    <table class="report-table">
+        <thead>
+            <tr>
+                <th style="width: 30px;">No</th>
+                <th style="width: 110px;">Divisi</th>
+                <th>Program</th>
+                <th style="width: 70px;">Rencana</th>
+                <th style="width: 70px;">Realisasi</th>
+                <th style="width: 70px;">Kinerja</th>
+                <th>Catatan</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach($program5s5r as $pIdx => $program)
+                @if(! $program['saved'])
+                    <tr>
+                        <td class="text-center">{{ $pIdx + 1 }}</td>
+                        <td class="font-bold">{{ $program['sumber'] }}</td>
+                        <td colspan="5" style="color: #b91c1c;">Belum ada input 5S5R ({{ $program['judul'] }}) pada periode ini.</td>
+                    </tr>
+                @else
+                    @foreach($program['rows'] as $rIdx => $row)
+                        <tr>
+                            {{-- No rowspan in the body: dompdf breaks it across pages. --}}
+                            <td class="text-center">{{ $rIdx === 0 ? $pIdx + 1 : '' }}</td>
+                            <td class="font-bold">{{ $rIdx === 0 ? $program['sumber'] : '' }}</td>
+                            <td>{{ $row['program'] }}</td>
+                            <td class="text-center">{{ $row['rencana'] }}</td>
+                            <td class="text-center">{{ $row['realisasi'] }}</td>
+                            <td class="text-center">{{ $row['kinerja'] }}</td>
+                            <td>{{ $row['catatan'] ?? '' }}</td>
+                        </tr>
+                    @endforeach
+                    <tr>
+                        <td></td>
+                        <td></td>
+                        <td class="font-bold">Total</td>
+                        <td class="text-center font-bold">{{ $program['total']['rencana'] }}</td>
+                        <td class="text-center font-bold">{{ $program['total']['realisasi'] }}</td>
+                        <td class="text-center font-bold">{{ $program['total']['kinerja'] }}</td>
+                        <td>{{ count($program['temuan']) > 0 ? implode('; ', $program['temuan']) : '' }}</td>
+                    </tr>
+                @endif
+            @endforeach
+        </tbody>
+    </table>
 </div>
 
 <div class="page-break"></div>

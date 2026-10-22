@@ -14,6 +14,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $unit_id
+ * @property string|null $source division that reported it: operasi | har (null: saved before the column)
  * @property int $year
  * @property int $month
  * @property string $periode
@@ -35,6 +36,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'unit_id',
+    'source',
     'year',
     'month',
     'periode',

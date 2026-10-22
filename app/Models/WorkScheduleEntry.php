@@ -19,12 +19,13 @@ use Illuminate\Support\Carbon;
  * @property int|null $attendance_code_id
  * @property string|null $regu
  * @property string|null $note
+ * @property int|null $attendance_request_id the approved Pengajuan Absensi that set this cell
  * @property-read WorkSchedule $schedule
  * @property-read Employee $employee
  * @property-read AttendanceCode|null $attendanceCode
  */
 #[Fillable([
-    'work_schedule_id', 'employee_id', 'work_date', 'attendance_code_id', 'regu', 'note',
+    'work_schedule_id', 'employee_id', 'work_date', 'attendance_code_id', 'regu', 'note', 'attendance_request_id',
 ])]
 class WorkScheduleEntry extends Model
 {

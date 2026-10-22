@@ -1,37 +1,28 @@
 import { Link } from '@inertiajs/react';
 import {
+    BarChart3,
     Building2,
     CalendarRange,
     ClipboardCheck,
-    ClipboardList,
     Fingerprint,
+    FilePen,
     Cog,
     Database,
     Factory,
     FileBarChart,
     FileCheck2,
-    Flame,
-    FileCog,
-    Fuel,
     Gauge,
     HardHat,
     History,
-    Image,
     LayoutGrid,
     MapPin,
     NotebookPen,
-    Plug,
-    ScrollText,
     ShieldCheck,
-    Siren,
     SquarePen,
-    TimerReset,
     UserCheck,
     UserCog,
     Users,
-    Wallet,
     Wrench,
-    Zap,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 
@@ -72,12 +63,10 @@ import k3Input from '@/routes/k3/input';
 import k3Jadwal from '@/routes/k3/jadwal';
 import k3Laporan from '@/routes/k3/laporan';
 import k3Master from '@/routes/k3/master';
-import k3Monitoring from '@/routes/k3/monitoring';
 import logistikInput from '@/routes/logistik/input';
 import logistikJadwal from '@/routes/logistik/jadwal';
 import logistikLaporan from '@/routes/logistik/laporan';
 import monitoringRoutes from '@/routes/monitoring';
-import documentTemplate from '@/routes/operasi/document-template';
 import operasiInput from '@/routes/operasi/input';
 import operasiJadwal from '@/routes/operasi/jadwal';
 import laporan from '@/routes/operasi/laporan';
@@ -85,7 +74,9 @@ import master from '@/routes/operasi/master';
 import absensi from '@/routes/operator/absensi';
 import logsheet from '@/routes/operator/logsheet';
 import mutasiOperator from '@/routes/operator/mutasi';
+import pengajuan from '@/routes/operator/pengajuan';
 import presensi from '@/routes/operator/presensi';
+import resumeOperator from '@/routes/operator/resume';
 import pdmInput from '@/routes/pdm/input';
 import pdmJadwal from '@/routes/pdm/jadwal';
 import pdmLaporan from '@/routes/pdm/laporan';
@@ -210,6 +201,16 @@ export function AppSidebar() {
                     title: 'Jadwal Shift',
                     href: absensi.index(),
                     icon: CalendarRange,
+                },
+                (can('operator.presensi') || can('operator.absensi.view')) && {
+                    title: 'Pengajuan Absensi',
+                    href: pengajuan.index(),
+                    icon: FilePen,
+                },
+                (can('operator.presensi') || can('operator.absensi.view')) && {
+                    title: 'Resume Statistik',
+                    href: resumeOperator.index(),
+                    icon: BarChart3,
                 },
             ].filter(Boolean) as NavGroup['items'],
         },

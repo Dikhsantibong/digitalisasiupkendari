@@ -5,7 +5,7 @@
     <title>Laporan Kondisi Abnormal dan Gangguan Pembangkit - {{ $unit->name }} - {{ $monthName }} {{ $year }}</title>
     <style>
         @page {
-            size: A4 portrait;
+            size: A4 landscape;
             margin: 7mm;
         }
         * {
@@ -112,6 +112,7 @@
         .font-bold {
             font-weight: bold;
         }
+        .muted { color: #444; font-size: 6.5px; }
         .note-box {
             margin-top: 6px;
             font-size: 7.5px;
@@ -156,16 +157,24 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 28px;">NO</th>
-                <th rowspan="2" style="width: 250px;">URAIAN KONDISI</th>
-                <th rowspan="2" style="width: 75px;">TANGGAL</th>
-                <th colspan="4">STATUS</th>
+                <th rowspan="2" style="width: 20px;">NO</th>
+                <th rowspan="2" style="width: 125px;">INDIKASI / URAIAN KONDISI</th>
+                <th rowspan="2" style="width: 46px;">TANGGAL</th>
+                <th colspan="4">STATUS &amp; DURASI (JAM)</th>
+                <th rowspan="2" style="width: 85px;">PARAMETER TERKAIT</th>
+                <th colspan="{{ count($tindakPendek) }}">TINDAK LANJUT JANGKA PENDEK</th>
+                <th rowspan="2" style="width: 95px;">TINDAK LANJUT JANGKA PANJANG</th>
+                <th rowspan="2" style="width: 90px;">DAMPAK TERHADAP SISTEM</th>
+                <th rowspan="2" style="width: 90px;">DAMPAK TERHADAP PEMBANGKIT</th>
             </tr>
             <tr>
-                <th style="width: 55px;">ABNORMAL</th>
-                <th style="width: 55px;">DURASI</th>
-                <th style="width: 55px;">GANGGUAN</th>
-                <th style="width: 55px;">DURASI</th>
+                <th style="width: 36px;">ABNORMAL</th>
+                <th style="width: 30px;">DURASI</th>
+                <th style="width: 36px;">GANGGUAN</th>
+                <th style="width: 30px;">DURASI</th>
+                @foreach($tindakPendek as $label)
+                    <th style="width: {{ $loop->last ? 70 : 24 }}px;">{{ strtoupper($label) }}</th>
+                @endforeach
             </tr>
         </thead>
         <tbody>
@@ -178,6 +187,18 @@
                     <td class="text-center">{{ $row['durasi_abnormal'] }}</td>
                     <td class="text-center font-bold">{{ $row['is_gangguan'] }}</td>
                     <td class="text-center">{{ $row['durasi_gangguan'] }}</td>
+                    <td>{{ $row['parameter_terkait'] }}</td>
+                    @foreach(array_keys($tindakPendek) as $key)
+                        @if($loop->last)
+                            {{-- Lainnya: the tick plus the keterangan of the short-term follow-up. --}}
+                            <td>@if($row[$key])<span class="font-bold">&#10003;</span> @endif{{ $row['tl_pendek_keterangan'] }}</td>
+                        @else
+                            <td class="text-center font-bold">{{ $row[$key] ? '✓' : '' }}</td>
+                        @endif
+                    @endforeach
+                    <td>{{ $row['tl_panjang'] }}</td>
+                    <td>{{ $row['dampak_sistem'] }}</td>
+                    <td>{{ $row['dampak_pembangkit'] }}</td>
                 </tr>
             @endforeach
             <tr style="background-color: #f9f9f9;" class="font-bold">
@@ -186,13 +207,19 @@
                 <td class="text-center">{{ $totalAbnormalDurasi > 0 ? $totalAbnormalDurasi : 0 }}</td>
                 <td class="text-center">{{ $totalGangguanCount }}</td>
                 <td class="text-center">{{ $totalGangguanDurasi > 0 ? $totalGangguanDurasi : 0 }}</td>
+                <td></td>
+                @foreach(array_keys($tindakPendek) as $key)
+                    <td class="text-center">{{ $totalTindakPendek[$key] ?? 0 }}</td>
+                @endforeach
+                <td colspan="3"></td>
             </tr>
         </tbody>
     </table>
 
     <div class="note-box">
         NOTE : 1. KOLOM ABNORMAL DAN GANGGUAN DI ISI ANGKA 1<br>
-        2. KOLOM DURASI DI ISI JAM
+        2. KOLOM DURASI DI ISI JAM<br>
+        3. TINDAK LANJUT JANGKA PENDEK: SR = SERVICE REQUEST, FLM = FIRST LINE MAINTENANCE, LAINNYA = TULISKAN KETERANGANNYA
     </div>
 
 </body>

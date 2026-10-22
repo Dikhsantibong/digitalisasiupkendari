@@ -7,6 +7,8 @@ use App\Http\Controllers\Operasi\FlmMonitoringController;
 use App\Models\OperasiFlmMonitoring;
 use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 use setasign\Fpdi\PdfParser\StreamReader;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -64,6 +66,84 @@ class FlmMonitoringInputTest extends TestCase
         $this->actingAs($user)
             ->get(route('operasi.input.flm-monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertInertia(fn ($page) => $page->where('has_saved', true)->where('rows.0.mesin', 'Fuel Transfer Pump')->has('rows', FlmMonitoringController::MIN_ROWS));
+    }
+
+    public function test_the_kondisi_awal_and_akhir_photos_are_stored_kept_replaced_and_removed(): void
+    {
+        Storage::fake('public');
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::Operator, $unit);
+        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
+        $finding = ['mesin' => 'Fuel Transfer Pump', 'tanggal' => '2026-08-20', 'masalah' => 'Bocor BBM', 'status' => 'open'];
+
+        // The operator (field input) uploads both photos.
+        $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), $period + ['rows' => [
+            $finding + ['foto_awal_file' => UploadedFile::fake()->image('awal.jpg'), 'foto_akhir_file' => UploadedFile::fake()->image('akhir.jpg')],
+        ]])->assertSessionHasNoErrors();
+
+        $row = OperasiFlmMonitoring::query()->firstOrFail();
+        $this->assertStringStartsWith("operasi-flm/{$unit->id}/", $row->foto_awal);
+        $this->assertStringStartsWith("operasi-flm/{$unit->id}/", $row->foto_akhir);
+        Storage::disk('public')->assertExists([$row->foto_awal, $row->foto_akhir]);
+        [$awal, $akhir] = [$row->foto_awal, $row->foto_akhir];
+
+        $this->actingAs($user)->get(route('operasi.input.flm-monitoring.index', $period))
+            ->assertInertia(fn ($page) => $page
+                ->where('rows.0.foto_awal', $awal)
+                ->where('rows.0.foto_awal_url', fn (?string $url): bool => $url !== null && str_contains($url, $awal))
+                ->where('rows.1.foto_awal', null));
+
+        // Saved again: the kept awal stays, the akhir is replaced (its old file deleted).
+        $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), $period + ['rows' => [
+            $finding + ['foto_awal' => $awal, 'foto_akhir' => $akhir, 'foto_akhir_file' => UploadedFile::fake()->image('akhir-baru.jpg')],
+        ]])->assertSessionHasNoErrors();
+
+        $row = OperasiFlmMonitoring::query()->firstOrFail();
+        $this->assertSame($awal, $row->foto_awal);
+        $this->assertNotSame($akhir, $row->foto_akhir);
+        Storage::disk('public')->assertExists([$awal, $row->foto_akhir]);
+        Storage::disk('public')->assertMissing($akhir);
+
+        // A path outside the unit's FLM folder is never taken over; removing a photo deletes it.
+        $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), $period + ['rows' => [
+            $finding + ['foto_awal' => 'logistik/lain/1/bukan-miliknya.jpg', 'foto_akhir' => $row->foto_akhir],
+        ]])->assertSessionHasNoErrors();
+
+        $this->assertNull(OperasiFlmMonitoring::query()->firstOrFail()->foto_awal);
+        Storage::disk('public')->assertMissing($awal);
+    }
+
+    public function test_a_finding_with_only_a_photo_is_kept_and_a_non_image_is_rejected(): void
+    {
+        Storage::fake('public');
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
+
+        $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), $period + ['rows' => [
+            ['status' => 'open', 'foto_awal_file' => UploadedFile::fake()->image('awal.jpg')],
+        ]])->assertSessionHasNoErrors();
+        $this->assertSame(1, OperasiFlmMonitoring::query()->count());
+
+        $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), $period + ['rows' => [
+            ['mesin' => 'Pompa', 'status' => 'open', 'foto_akhir_file' => UploadedFile::fake()->create('catatan.pdf', 10, 'application/pdf')],
+        ]])->assertSessionHasErrors('rows.0.foto_akhir_file');
+    }
+
+    public function test_the_photos_are_printed_in_the_pdf(): void
+    {
+        Storage::fake('public');
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $path = UploadedFile::fake()->image('awal.png')->store("operasi-flm/{$unit->id}", 'public');
+        OperasiFlmMonitoring::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 8, 'no_urut' => 1, 'mesin' => 'Pompa', 'foto_awal' => $path]);
+
+        [$view, $data] = app(FlmMonitoringController::class)->pdfView($unit, 8, 2026);
+        $html = view($view, $data)->render();
+
+        $this->assertSame(['foto_awal' => 'Kondisi Awal', 'foto_akhir' => 'Kondisi Akhir'], $data['photos']);
+        $this->assertStringContainsString('Eviden', $html);
+        $this->assertStringContainsString('data:image/png;base64,', $data['rows'][0]['foto_awal_url']);
+        $this->assertNull($data['rows'][0]['foto_akhir_url']);
     }
 
     public function test_an_unknown_kondisi_awal_is_rejected(): void

@@ -56,8 +56,11 @@ class DocumentController extends Controller
      *       points are filled from the jadwal rows that record that work;
      * v13 = always render full table layout for Daftar Monitoring Sertifikasi Peralatan (poin 19)
      *       with standard equipment baseline and K3 logo on Kop header.
+     * v15 = poin 15 lists the K3 own Kondisi K3 findings and those of Operasi,
+     *       Pemeliharaan & Logistik (Sumber, Status); poin 17 adds the 5S5R
+     *       pelaksanaan of every division (K3DivisionFeed).
      */
-    private const BODY_VERSION = 14;
+    private const BODY_VERSION = 15;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN K3 LINGKUNGAN PEMBANGKIT';
 

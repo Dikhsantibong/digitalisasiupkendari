@@ -22,6 +22,8 @@ use Illuminate\Support\Carbon;
  * @property string|null $masalah
  * @property list<string>|null $kondisi_awal keys of OperasiFlmMonitoring::KONDISI_AWAL
  * @property string|null $kondisi_akhir
+ * @property string|null $foto_awal eviden photo of the kondisi awal (public disk path)
+ * @property string|null $foto_akhir eviden photo of the kondisi akhir (public disk path)
  * @property string|null $catatan
  * @property string $status open|close
  * @property int|null $input_by
@@ -29,7 +31,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
  */
-#[Fillable(['unit_id', 'year', 'month', 'no_urut', 'mesin', 'tanggal', 'masalah', 'kondisi_awal', 'kondisi_akhir', 'catatan', 'status', 'input_by'])]
+#[Fillable(['unit_id', 'year', 'month', 'no_urut', 'mesin', 'tanggal', 'masalah', 'kondisi_awal', 'kondisi_akhir', 'foto_awal', 'foto_akhir', 'catatan', 'status', 'input_by'])]
 class OperasiFlmMonitoring extends Model
 {
     /** @use HasFactory<OperasiFlmMonitoringFactory> */

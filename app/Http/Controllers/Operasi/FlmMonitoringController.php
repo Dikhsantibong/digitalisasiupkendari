@@ -16,8 +16,10 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,7 +28,8 @@ use Inertia\Response;
  * Input Operasi "Monitoring FLM": the first line maintenance findings of a
  * unit & month — mesin/peralatan, tanggal, masalah awal, kondisi awal actions
  * (bersihkan, lumasi, kencangkan, perbaikan koneksi, lainnya), kondisi akhir,
- * catatan FLM and status Open/Close. At least {@see self::MIN_ROWS} numbered
+ * catatan FLM and status Open/Close, with an eviden photo of the kondisi
+ * awal and of the kondisi akhir. At least {@see self::MIN_ROWS} numbered
  * rows, like the paper form. PDF A4 landscape; Excel from the page.
  */
 class FlmMonitoringController extends Controller
@@ -35,6 +38,9 @@ class FlmMonitoringController extends Controller
     use RendersReportPdf;
 
     public const MIN_ROWS = 10;
+
+    /** The eviden photo columns => label. */
+    public const PHOTOS = ['foto_awal' => 'Kondisi Awal', 'foto_akhir' => 'Kondisi Akhir'];
 
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
@@ -74,6 +80,11 @@ class FlmMonitoringController extends Controller
             'rows.*.kondisi_akhir' => ['nullable', 'string', 'max:255'],
             'rows.*.catatan' => ['nullable', 'string', 'max:255'],
             'rows.*.status' => ['required', Rule::in(['open', 'close'])],
+            // A kept photo is its stored path; a new one is uploaded as {column}_file.
+            'rows.*.foto_awal' => ['nullable', 'string', 'max:255'],
+            'rows.*.foto_akhir' => ['nullable', 'string', 'max:255'],
+            'rows.*.foto_awal_file' => ['nullable', 'image', 'max:5120'],
+            'rows.*.foto_akhir_file' => ['nullable', 'image', 'max:5120'],
         ]);
 
         $unit = Unit::query()->findOrFail($validated['unit_id']);
@@ -81,15 +92,28 @@ class FlmMonitoringController extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
 
-        DB::transaction(function () use ($validated, $unit, $month, $year, $user): void {
+        $folder = "operasi-flm/{$unit->id}";
+        $previousPhotos = $this->saved($unit, $month, $year)
+            ->flatMap(fn (OperasiFlmMonitoring $r): array => array_filter([$r->foto_awal, $r->foto_akhir]))->all();
+        $keptPhotos = [];
+
+        DB::transaction(function () use ($validated, $request, $unit, $month, $year, $user, $folder, &$keptPhotos): void {
             OperasiFlmMonitoring::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
 
             $number = 0;
-            foreach ($validated['rows'] as $row) {
+            foreach ($validated['rows'] as $index => $row) {
                 $text = fn (string $key): ?string => trim((string) ($row[$key] ?? '')) ?: null;
-                if ($text('mesin') === null && $text('masalah') === null && empty($row['tanggal'])) {
+                $photos = [];
+                foreach (array_keys(self::PHOTOS) as $column) {
+                    $upload = $request->file("rows.{$index}.{$column}_file");
+                    $kept = is_string($row[$column] ?? null) && str_starts_with($row[$column], $folder.'/') ? $row[$column] : null;
+                    $photos[$column] = $upload instanceof UploadedFile ? $upload->store($folder, 'public') : $kept;
+                }
+
+                if ($text('mesin') === null && $text('masalah') === null && empty($row['tanggal']) && array_filter($photos) === []) {
                     continue;
                 }
+                $keptPhotos = [...$keptPhotos, ...array_filter($photos)];
 
                 OperasiFlmMonitoring::query()->create([
                     'unit_id' => $unit->id,
@@ -101,12 +125,17 @@ class FlmMonitoringController extends Controller
                     'masalah' => $text('masalah'),
                     'kondisi_awal' => array_values(array_unique((array) ($row['kondisi_awal'] ?? []))),
                     'kondisi_akhir' => $text('kondisi_akhir'),
+                    'foto_awal' => $photos['foto_awal'],
+                    'foto_akhir' => $photos['foto_akhir'],
                     'catatan' => $text('catatan'),
                     'status' => $row['status'],
                     'input_by' => $user->id,
                 ]);
             }
         });
+
+        // Photos removed or replaced in this save are deleted from the disk.
+        Storage::disk('public')->delete(array_values(array_diff($previousPhotos, $keptPhotos)));
 
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan Monitoring FLM {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
 
@@ -133,18 +162,20 @@ class FlmMonitoringController extends Controller
         return ['operasi.input.flm-monitoring-pdf', [
             'unit' => $unit,
             'periodLabel' => strtoupper(Indonesian::monthName($month).' '.$year),
-            'rows' => $this->rows($unit, $month, $year),
+            'rows' => $this->rows($unit, $month, $year, embedPhotos: true),
             'kondisiAwal' => OperasiFlmMonitoring::KONDISI_AWAL,
+            'photos' => self::PHOTOS,
             ...JadwalPdf::logos(),
         ]];
     }
 
     /**
      * Saved findings followed by blank numbered rows up to {@see self::MIN_ROWS}.
+     * Photos come as their path and a URL (embedded as data URI for the PDF).
      *
-     * @return list<array{no_urut: int, mesin: string, tanggal: string|null, masalah: string, kondisi_awal: list<string>, kondisi_akhir: string, catatan: string, status: string}>
+     * @return list<array{no_urut: int, mesin: string, tanggal: string|null, masalah: string, kondisi_awal: list<string>, kondisi_akhir: string, foto_awal: string|null, foto_awal_url: string|null, foto_akhir: string|null, foto_akhir_url: string|null, catatan: string, status: string}>
      */
-    private function rows(Unit $unit, int $month, int $year): array
+    private function rows(Unit $unit, int $month, int $year, bool $embedPhotos = false): array
     {
         $rows = $this->saved($unit, $month, $year)->map(fn (OperasiFlmMonitoring $r): array => [
             'no_urut' => $r->no_urut,
@@ -153,15 +184,31 @@ class FlmMonitoringController extends Controller
             'masalah' => (string) ($r->masalah ?? ''),
             'kondisi_awal' => array_values((array) ($r->kondisi_awal ?? [])),
             'kondisi_akhir' => (string) ($r->kondisi_akhir ?? ''),
+            'foto_awal' => $r->foto_awal,
+            'foto_awal_url' => $this->photoUrl($r->foto_awal, $embedPhotos),
+            'foto_akhir' => $r->foto_akhir,
+            'foto_akhir_url' => $this->photoUrl($r->foto_akhir, $embedPhotos),
             'catatan' => (string) ($r->catatan ?? ''),
             'status' => $r->status,
         ])->all();
 
         for ($n = count($rows) + 1; $n <= self::MIN_ROWS; $n++) {
-            $rows[] = ['no_urut' => $n, 'mesin' => '', 'tanggal' => null, 'masalah' => '', 'kondisi_awal' => [], 'kondisi_akhir' => '', 'catatan' => '', 'status' => 'open'];
+            $rows[] = ['no_urut' => $n, 'mesin' => '', 'tanggal' => null, 'masalah' => '', 'kondisi_awal' => [], 'kondisi_akhir' => '', 'foto_awal' => null, 'foto_awal_url' => null, 'foto_akhir' => null, 'foto_akhir_url' => null, 'catatan' => '', 'status' => 'open'];
         }
 
         return $rows;
+    }
+
+    private function photoUrl(?string $path, bool $embed): ?string
+    {
+        $disk = Storage::disk('public');
+        if ($path === null || ! $disk->exists($path)) {
+            return null;
+        }
+
+        return $embed
+            ? 'data:'.($disk->mimeType($path) ?: 'image/jpeg').';base64,'.base64_encode((string) $disk->get($path))
+            : $disk->url($path);
     }
 
     /**

@@ -23,6 +23,7 @@ import {
     ShieldCheck,
     SignpostBig,
     Siren,
+    Sparkles,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { MobileMenu, MobileMenuGroup } from '@/layouts/mobile/types';
@@ -43,6 +44,7 @@ import k3KesiapanApd from '@/routes/k3/input/kesiapan-apd';
 import k3KondisiK3 from '@/routes/k3/input/kondisi-k3';
 import k3Patrol from '@/routes/k3/input/patrol';
 import k3Rambu from '@/routes/k3/input/rambu';
+import k3Rekap5s5r from '@/routes/k3/input/rekap-5s5r';
 import k3TimeFrame from '@/routes/k3/input/time-frame';
 import k3Laporan from '@/routes/k3/laporan';
 import k3Monitoring from '@/routes/k3/monitoring';
@@ -107,6 +109,7 @@ export const K3_PROJECT_MENUS: MobileMenu[] = [
         ['certificates', 'Sertifikasi Peralatan', 'Sertifikasi', ScrollText, k3Certificate.index().url, 'k3/input/certificate/index'],
         ['attachments', 'Lampiran K3', 'Lampiran', Image, k3Attachment.index().url, 'k3/input/attachment/index'],
         ['kondisi-k3', 'Kondisi K3 (Unsafe Action & Condition)', 'Kondisi K3', AlertTriangle, k3KondisiK3.index().url, 'k3/input/kondisi-k3/index'],
+        ['rekap-5s5r', 'Rekap 5S5R Seluruh Divisi', 'Rekap 5S5R', Sparkles, k3Rekap5s5r.index().url, 'k3/input/rekap-5s5r/index'],
     ]),
     ...section('k3p-formulir', 'k3.input.view', 'Formulir K3 & Keamanan', [
         ['sarana-prasarana', 'Formulir Atribut, Peralatan, Administrasi & Sarana Prasarana', 'Sarana Prasarana', ShieldCheck, '/k3/formulir/sarana-prasarana', 'k3/formulir/sarana-prasarana/index'],

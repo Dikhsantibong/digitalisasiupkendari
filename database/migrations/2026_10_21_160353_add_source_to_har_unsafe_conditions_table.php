@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * The Operasi and HAR Unsafe Action & Condition pages share one table; the
+     * division that reported a finding (operasi | har) labels it in the K3
+     * module. Rows saved before this column stay null (Operasi / Pemeliharaan).
+     */
+    public function up(): void
+    {
+        Schema::table('har_unsafe_conditions', function (Blueprint $table): void {
+            $table->string('source', 20)->nullable()->after('unit_id');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('har_unsafe_conditions', function (Blueprint $table): void {
+            $table->dropColumn('source');
+        });
+    }
+};

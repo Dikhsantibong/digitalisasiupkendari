@@ -56,6 +56,7 @@ use App\Http\Controllers\K3\PengusahaanPatrolSecurityController;
 use App\Http\Controllers\K3\PengusahaanPemeriksaanP3kController;
 use App\Http\Controllers\K3\PengusahaanTimeFrameController;
 use App\Http\Controllers\K3\RambuInspectionController;
+use App\Http\Controllers\K3\Rekap5s5rController;
 use App\Http\Controllers\K3\TimeFrameController;
 use App\Http\Controllers\PengusahaanController;
 use App\Support\K3FormulirRegistry;
@@ -139,6 +140,9 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/kondisi-k3', [KondisiK3Controller::class, 'index'])->name('input.kondisi-k3.index');
         Route::post('input/kondisi-k3', [KondisiK3Controller::class, 'store'])->name('input.kondisi-k3.store');
         Route::post('input/kondisi-k3/upload', [KondisiK3Controller::class, 'upload'])->name('input.kondisi-k3.upload');
+
+        // Read-only: the 5S5R inputs of Operasi, Pemeliharaan, PdM and Logistik & Gudang.
+        Route::get('input/rekap-5s5r', [Rekap5s5rController::class, 'index'])->name('input.rekap-5s5r.index');
 
         Route::get('input/apd-inventory', [ApdInventoryController::class, 'index'])->name('input.apd-inventory.index');
         Route::post('input/apd-inventory', [ApdInventoryController::class, 'store'])->name('input.apd-inventory.store');

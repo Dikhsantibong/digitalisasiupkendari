@@ -2,13 +2,14 @@ import { Head, router } from '@inertiajs/react';
 import {
     AlertOctagon,
     AlertTriangle,
+    ChevronDown,
     Clock,
     Download,
     Plus,
     Save,
     Trash2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -23,6 +24,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { Textarea } from '@/components/ui/textarea';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
@@ -38,7 +40,81 @@ type AbnormalRow = {
     durasi_abnormal: number;
     is_gangguan: number;
     durasi_gangguan: number;
+    parameter_terkait: string;
+    /** Tindak lanjut jangka pendek: 1 = ticked. */
+    tl_pendek_sr: number;
+    tl_pendek_flm: number;
+    tl_pendek_lainnya: number;
+    tl_pendek_keterangan: string;
+    tl_panjang: string;
+    dampak_sistem: string;
+    dampak_pembangkit: string;
 };
+
+type TindakKey = 'tl_pendek_sr' | 'tl_pendek_flm' | 'tl_pendek_lainnya';
+
+/** The detail fields of a finding (follow-up & impact), shown under its row. */
+const DETAIL_TEXTS: {
+    key:
+        | 'parameter_terkait'
+        | 'tl_pendek_keterangan'
+        | 'tl_panjang'
+        | 'dampak_sistem'
+        | 'dampak_pembangkit';
+    label: string;
+    placeholder: string;
+}[] = [
+    {
+        key: 'parameter_terkait',
+        label: 'Parameter terkait',
+        placeholder: 'Mis. temperatur exhaust 520 °C, tekanan LO 2,1 bar…',
+    },
+    {
+        key: 'tl_pendek_keterangan',
+        label: 'Keterangan jangka pendek',
+        placeholder: 'No. SR, tindakan FLM, atau tindakan lainnya…',
+    },
+    {
+        key: 'tl_panjang',
+        label: 'Tindak lanjut jangka panjang',
+        placeholder: 'Rencana perbaikan permanen, penggantian part, overhaul…',
+    },
+    {
+        key: 'dampak_sistem',
+        label: 'Dampak terhadap sistem',
+        placeholder: 'Mis. defisit daya, pemadaman bergilir, beban dialihkan…',
+    },
+    {
+        key: 'dampak_pembangkit',
+        label: 'Dampak terhadap pembangkit',
+        placeholder: 'Mis. derating, mesin standby, unit trip…',
+    },
+];
+
+const blankRow = (no: number): AbnormalRow => ({
+    no_urut: no,
+    uraian_kondisi: '',
+    tanggal: '',
+    is_abnormal: 0,
+    durasi_abnormal: 0,
+    is_gangguan: 0,
+    durasi_gangguan: 0,
+    parameter_terkait: '',
+    tl_pendek_sr: 0,
+    tl_pendek_flm: 0,
+    tl_pendek_lainnya: 0,
+    tl_pendek_keterangan: '',
+    tl_panjang: '',
+    dampak_sistem: '',
+    dampak_pembangkit: '',
+});
+
+/** Whether a row has any follow-up or impact filled in. */
+const hasDetail = (row: AbnormalRow) =>
+    row.tl_pendek_sr === 1 ||
+    row.tl_pendek_flm === 1 ||
+    row.tl_pendek_lainnya === 1 ||
+    DETAIL_TEXTS.some(({ key }) => row[key].trim() !== '');
 
 type Props = {
     filters: { unit_id: number; month: number; year: number };
@@ -52,6 +128,8 @@ type Props = {
     options: {
         units: IdName[];
         years: number[];
+        /** Tindak lanjut jangka pendek column => label (SR, FLM, Lainnya). */
+        tindak_pendek: Record<TindakKey, string>;
     };
     can_write: boolean;
 };
@@ -80,12 +158,21 @@ export default function KondisiAbnormalInput({
     const [rows, setRows] = useState<AbnormalRow[]>(initialRows);
     const [saving, setSaving] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const [openDetail, setOpenDetail] = useState<number | null>(null);
     const compact = useCompactLayout();
+    const tindak = Object.entries(options.tindak_pendek) as [
+        TindakKey,
+        string,
+    ][];
 
-    useEffect(() => {
+    // New rows from the server (another period, or after a save): start over from them.
+    const [syncedRows, setSyncedRows] = useState(initialRows);
+
+    if (syncedRows !== initialRows) {
+        setSyncedRows(initialRows);
         setRows(initialRows);
         setIsDirty(false);
-    }, [initialRows]);
+    }
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -110,32 +197,15 @@ export default function KondisiAbnormalInput({
     };
 
     const handleAddRow = () => {
-        const nextNo = rows.length + 1;
-        setRows([
-            ...rows,
-            {
-                no_urut: nextNo,
-                uraian_kondisi: '',
-                tanggal: '',
-                is_abnormal: 0,
-                durasi_abnormal: 0,
-                is_gangguan: 0,
-                durasi_gangguan: 0,
-            },
-        ]);
+        setRows([...rows, blankRow(rows.length + 1)]);
         setIsDirty(true);
     };
 
     const handleClearRow = (index: number) => {
         const updated = [...rows];
         updated[index] = {
-            ...updated[index],
-            uraian_kondisi: '',
-            tanggal: '',
-            is_abnormal: 0,
-            durasi_abnormal: 0,
-            is_gangguan: 0,
-            durasi_gangguan: 0,
+            ...blankRow(updated[index].no_urut),
+            id: updated[index].id,
         };
         setRows(updated);
         setIsDirty(true);
@@ -372,10 +442,10 @@ export default function KondisiAbnormalInput({
                                 fields={[
                                     {
                                         key: 'uraian_kondisi',
-                                        label: 'Uraian kondisi',
+                                        label: 'Indikasi / uraian kondisi',
                                         type: 'textarea',
                                         placeholder:
-                                            'Uraian kondisi abnormal / gangguan…',
+                                            'Indikasi kondisi abnormal / gangguan…',
                                     },
                                     {
                                         key: 'tanggal',
@@ -408,6 +478,51 @@ export default function KondisiAbnormalInput({
                                         group: 'Status',
                                         hidden: (row) => row.is_gangguan !== 1,
                                     },
+                                    {
+                                        key: 'parameter_terkait',
+                                        label: 'Parameter terkait',
+                                        type: 'textarea',
+                                        placeholder:
+                                            DETAIL_TEXTS[0].placeholder,
+                                    },
+                                    ...tindak.map(([key, label]) => ({
+                                        key,
+                                        label,
+                                        type: 'check' as const,
+                                        group: 'Tindak lanjut jangka pendek',
+                                    })),
+                                    {
+                                        key: 'tl_pendek_keterangan',
+                                        label: 'Keterangan jangka pendek',
+                                        type: 'textarea',
+                                        group: 'Tindak lanjut jangka pendek',
+                                        placeholder:
+                                            DETAIL_TEXTS[1].placeholder,
+                                    },
+                                    {
+                                        key: 'tl_panjang',
+                                        label: 'Tindak lanjut jangka panjang',
+                                        type: 'textarea',
+                                        group: 'Tindak lanjut jangka panjang',
+                                        placeholder:
+                                            DETAIL_TEXTS[2].placeholder,
+                                    },
+                                    {
+                                        key: 'dampak_sistem',
+                                        label: 'Dampak terhadap sistem',
+                                        type: 'textarea',
+                                        group: 'Dampak',
+                                        placeholder:
+                                            DETAIL_TEXTS[3].placeholder,
+                                    },
+                                    {
+                                        key: 'dampak_pembangkit',
+                                        label: 'Dampak terhadap pembangkit',
+                                        type: 'textarea',
+                                        group: 'Dampak',
+                                        placeholder:
+                                            DETAIL_TEXTS[4].placeholder,
+                                    },
                                 ]}
                             />
                         </div>
@@ -426,7 +541,7 @@ export default function KondisiAbnormalInput({
                                             rowSpan={2}
                                             className="min-w-[280px] border-r border-border font-bold text-foreground"
                                         >
-                                            URAIAN KONDISI
+                                            INDIKASI / URAIAN KONDISI
                                         </TableHead>
                                         <TableHead
                                             rowSpan={2}
@@ -439,6 +554,13 @@ export default function KondisiAbnormalInput({
                                             className="border-b border-border text-center font-bold text-foreground"
                                         >
                                             STATUS
+                                        </TableHead>
+                                        <TableHead
+                                            rowSpan={2}
+                                            className="min-w-[220px] border-l border-border text-center font-bold text-foreground"
+                                        >
+                                            PARAMETER, TINDAK LANJUT &amp;
+                                            DAMPAK
                                         </TableHead>
                                         {can_write && (
                                             <TableHead
@@ -466,197 +588,374 @@ export default function KondisiAbnormalInput({
                                 </TableHeader>
                                 <TableBody>
                                     {rows.map((row, index) => (
-                                        <TableRow
-                                            key={row.no_urut}
-                                            className="hover:bg-muted/40"
-                                        >
-                                            <TableCell className="border-r border-border text-center font-bold text-muted-foreground">
-                                                {row.no_urut}
-                                            </TableCell>
-                                            <TableCell className="border-r border-border p-2">
-                                                {can_write ? (
-                                                    <Input
-                                                        type="text"
-                                                        value={
-                                                            row.uraian_kondisi
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleRowChange(
-                                                                index,
-                                                                'uraian_kondisi',
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        className="h-8 text-xs"
-                                                        placeholder="Uraian kondisi abnormal / gangguan..."
-                                                    />
-                                                ) : (
-                                                    <span className="text-xs">
-                                                        {row.uraian_kondisi ||
-                                                            '-'}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="border-r border-border p-2 text-center">
-                                                {can_write ? (
-                                                    <Input
-                                                        type="date"
-                                                        value={row.tanggal}
-                                                        onChange={(e) =>
-                                                            handleRowChange(
-                                                                index,
-                                                                'tanggal',
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        className="h-8 text-center text-xs"
-                                                    />
-                                                ) : (
-                                                    <span className="text-xs">
-                                                        {row.tanggal || '-'}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="border-r border-border p-2 text-center">
-                                                {can_write ? (
-                                                    <div className="flex items-center justify-center">
-                                                        <Checkbox
-                                                            checked={
-                                                                row.is_abnormal ===
-                                                                1
-                                                            }
-                                                            onCheckedChange={(
-                                                                checked,
-                                                            ) =>
-                                                                handleRowChange(
-                                                                    index,
-                                                                    'is_abnormal',
-                                                                    checked
-                                                                        ? 1
-                                                                        : 0,
-                                                                )
-                                                            }
-                                                            aria-label="Abnormal"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs font-bold">
-                                                        {row.is_abnormal === 1
-                                                            ? '1'
-                                                            : ''}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="border-r border-border p-2 text-center">
-                                                {can_write ? (
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.1"
-                                                        value={
-                                                            row.durasi_abnormal ||
-                                                            ''
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleRowChange(
-                                                                index,
-                                                                'durasi_abnormal',
-                                                                parseFloat(
-                                                                    e.target
-                                                                        .value,
-                                                                ) || 0,
-                                                            )
-                                                        }
-                                                        className="h-8 text-center font-mono text-xs"
-                                                        placeholder="0"
-                                                    />
-                                                ) : (
-                                                    <span className="font-mono text-xs">
-                                                        {row.durasi_abnormal > 0
-                                                            ? row.durasi_abnormal
-                                                            : ''}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="border-r border-border p-2 text-center">
-                                                {can_write ? (
-                                                    <div className="flex items-center justify-center">
-                                                        <Checkbox
-                                                            checked={
-                                                                row.is_gangguan ===
-                                                                1
-                                                            }
-                                                            onCheckedChange={(
-                                                                checked,
-                                                            ) =>
-                                                                handleRowChange(
-                                                                    index,
-                                                                    'is_gangguan',
-                                                                    checked
-                                                                        ? 1
-                                                                        : 0,
-                                                                )
-                                                            }
-                                                            aria-label="Gangguan"
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs font-bold">
-                                                        {row.is_gangguan === 1
-                                                            ? '1'
-                                                            : ''}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="p-2 text-center">
-                                                {can_write ? (
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.1"
-                                                        value={
-                                                            row.durasi_gangguan ||
-                                                            ''
-                                                        }
-                                                        onChange={(e) =>
-                                                            handleRowChange(
-                                                                index,
-                                                                'durasi_gangguan',
-                                                                parseFloat(
-                                                                    e.target
-                                                                        .value,
-                                                                ) || 0,
-                                                            )
-                                                        }
-                                                        className="h-8 text-center font-mono text-xs"
-                                                        placeholder="0"
-                                                    />
-                                                ) : (
-                                                    <span className="font-mono text-xs">
-                                                        {row.durasi_gangguan > 0
-                                                            ? row.durasi_gangguan
-                                                            : ''}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            {can_write && (
-                                                <TableCell className="border-l border-border p-1 text-center">
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="size-7 text-muted-foreground hover:text-destructive"
-                                                        onClick={() =>
-                                                            handleClearRow(
-                                                                index,
-                                                            )
-                                                        }
-                                                        title="Kosongkan Baris"
-                                                    >
-                                                        <Trash2 className="size-3.5" />
-                                                    </Button>
+                                        <Fragment key={row.no_urut}>
+                                            <TableRow className="hover:bg-muted/40">
+                                                <TableCell className="border-r border-border text-center font-bold text-muted-foreground">
+                                                    {row.no_urut}
                                                 </TableCell>
+                                                <TableCell className="border-r border-border p-2">
+                                                    {can_write ? (
+                                                        <Input
+                                                            type="text"
+                                                            value={
+                                                                row.uraian_kondisi
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleRowChange(
+                                                                    index,
+                                                                    'uraian_kondisi',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="h-8 text-xs"
+                                                            placeholder="Uraian kondisi abnormal / gangguan..."
+                                                        />
+                                                    ) : (
+                                                        <span className="text-xs">
+                                                            {row.uraian_kondisi ||
+                                                                '-'}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="border-r border-border p-2 text-center">
+                                                    {can_write ? (
+                                                        <Input
+                                                            type="date"
+                                                            value={row.tanggal}
+                                                            onChange={(e) =>
+                                                                handleRowChange(
+                                                                    index,
+                                                                    'tanggal',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="h-8 text-center text-xs"
+                                                        />
+                                                    ) : (
+                                                        <span className="text-xs">
+                                                            {row.tanggal || '-'}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="border-r border-border p-2 text-center">
+                                                    {can_write ? (
+                                                        <div className="flex items-center justify-center">
+                                                            <Checkbox
+                                                                checked={
+                                                                    row.is_abnormal ===
+                                                                    1
+                                                                }
+                                                                onCheckedChange={(
+                                                                    checked,
+                                                                ) =>
+                                                                    handleRowChange(
+                                                                        index,
+                                                                        'is_abnormal',
+                                                                        checked
+                                                                            ? 1
+                                                                            : 0,
+                                                                    )
+                                                                }
+                                                                aria-label="Abnormal"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-bold">
+                                                            {row.is_abnormal ===
+                                                            1
+                                                                ? '1'
+                                                                : ''}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="border-r border-border p-2 text-center">
+                                                    {can_write ? (
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.1"
+                                                            value={
+                                                                row.durasi_abnormal ||
+                                                                ''
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleRowChange(
+                                                                    index,
+                                                                    'durasi_abnormal',
+                                                                    parseFloat(
+                                                                        e.target
+                                                                            .value,
+                                                                    ) || 0,
+                                                                )
+                                                            }
+                                                            className="h-8 text-center font-mono text-xs"
+                                                            placeholder="0"
+                                                        />
+                                                    ) : (
+                                                        <span className="font-mono text-xs">
+                                                            {row.durasi_abnormal >
+                                                            0
+                                                                ? row.durasi_abnormal
+                                                                : ''}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="border-r border-border p-2 text-center">
+                                                    {can_write ? (
+                                                        <div className="flex items-center justify-center">
+                                                            <Checkbox
+                                                                checked={
+                                                                    row.is_gangguan ===
+                                                                    1
+                                                                }
+                                                                onCheckedChange={(
+                                                                    checked,
+                                                                ) =>
+                                                                    handleRowChange(
+                                                                        index,
+                                                                        'is_gangguan',
+                                                                        checked
+                                                                            ? 1
+                                                                            : 0,
+                                                                    )
+                                                                }
+                                                                aria-label="Gangguan"
+                                                            />
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs font-bold">
+                                                            {row.is_gangguan ===
+                                                            1
+                                                                ? '1'
+                                                                : ''}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="p-2 text-center">
+                                                    {can_write ? (
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.1"
+                                                            value={
+                                                                row.durasi_gangguan ||
+                                                                ''
+                                                            }
+                                                            onChange={(e) =>
+                                                                handleRowChange(
+                                                                    index,
+                                                                    'durasi_gangguan',
+                                                                    parseFloat(
+                                                                        e.target
+                                                                            .value,
+                                                                    ) || 0,
+                                                                )
+                                                            }
+                                                            className="h-8 text-center font-mono text-xs"
+                                                            placeholder="0"
+                                                        />
+                                                    ) : (
+                                                        <span className="font-mono text-xs">
+                                                            {row.durasi_gangguan >
+                                                            0
+                                                                ? row.durasi_gangguan
+                                                                : ''}
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="border-l border-border p-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setOpenDetail(
+                                                                openDetail ===
+                                                                    index
+                                                                    ? null
+                                                                    : index,
+                                                            )
+                                                        }
+                                                        aria-expanded={
+                                                            openDetail === index
+                                                        }
+                                                        className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-left text-xs hover:bg-muted"
+                                                    >
+                                                        <span className="flex min-w-0 flex-wrap gap-1">
+                                                            {tindak
+                                                                .filter(
+                                                                    ([key]) =>
+                                                                        row[
+                                                                            key
+                                                                        ] === 1,
+                                                                )
+                                                                .map(
+                                                                    ([
+                                                                        key,
+                                                                        label,
+                                                                    ]) => (
+                                                                        <span
+                                                                            key={
+                                                                                key
+                                                                            }
+                                                                            className="rounded bg-primary/10 px-1.5 py-0.5 text-[10.5px] font-semibold text-primary"
+                                                                        >
+                                                                            {
+                                                                                label
+                                                                            }
+                                                                        </span>
+                                                                    ),
+                                                                )}
+                                                            {hasDetail(row) ? (
+                                                                <span className="truncate text-muted-foreground">
+                                                                    {row.parameter_terkait ||
+                                                                        row.tl_panjang ||
+                                                                        row.dampak_sistem ||
+                                                                        row.dampak_pembangkit ||
+                                                                        row.tl_pendek_keterangan}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">
+                                                                    {can_write
+                                                                        ? 'Isi detail'
+                                                                        : '-'}
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                        <ChevronDown
+                                                            className={`size-3.5 shrink-0 text-muted-foreground transition ${openDetail === index ? 'rotate-180' : ''}`}
+                                                        />
+                                                    </button>
+                                                </TableCell>
+                                                {can_write && (
+                                                    <TableCell className="border-l border-border p-1 text-center">
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="size-7 text-muted-foreground hover:text-destructive"
+                                                            onClick={() =>
+                                                                handleClearRow(
+                                                                    index,
+                                                                )
+                                                            }
+                                                            title="Kosongkan Baris"
+                                                        >
+                                                            <Trash2 className="size-3.5" />
+                                                        </Button>
+                                                    </TableCell>
+                                                )}
+                                            </TableRow>
+                                            {openDetail === index && (
+                                                <TableRow className="bg-muted/20 hover:bg-muted/20">
+                                                    <TableCell
+                                                        colSpan={
+                                                            can_write ? 9 : 8
+                                                        }
+                                                        className="p-3"
+                                                    >
+                                                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                                            <div className="flex flex-col gap-1.5 text-xs">
+                                                                <span className="font-semibold text-foreground">
+                                                                    Tindak
+                                                                    lanjut
+                                                                    jangka
+                                                                    pendek
+                                                                </span>
+                                                                <div className="flex flex-wrap gap-3">
+                                                                    {tindak.map(
+                                                                        ([
+                                                                            key,
+                                                                            label,
+                                                                        ]) => (
+                                                                            <label
+                                                                                key={
+                                                                                    key
+                                                                                }
+                                                                                className="flex items-center gap-1.5"
+                                                                            >
+                                                                                <Checkbox
+                                                                                    checked={
+                                                                                        row[
+                                                                                            key
+                                                                                        ] ===
+                                                                                        1
+                                                                                    }
+                                                                                    onCheckedChange={(
+                                                                                        checked,
+                                                                                    ) =>
+                                                                                        handleRowChange(
+                                                                                            index,
+                                                                                            key,
+                                                                                            checked
+                                                                                                ? 1
+                                                                                                : 0,
+                                                                                        )
+                                                                                    }
+                                                                                    disabled={
+                                                                                        !can_write
+                                                                                    }
+                                                                                />
+                                                                                {
+                                                                                    label
+                                                                                }
+                                                                            </label>
+                                                                        ),
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            {DETAIL_TEXTS.map(
+                                                                ({
+                                                                    key,
+                                                                    label,
+                                                                    placeholder,
+                                                                }) => (
+                                                                    <label
+                                                                        key={
+                                                                            key
+                                                                        }
+                                                                        className="flex flex-col gap-1 text-xs"
+                                                                    >
+                                                                        <span className="font-semibold text-foreground">
+                                                                            {
+                                                                                label
+                                                                            }
+                                                                        </span>
+                                                                        <Textarea
+                                                                            value={
+                                                                                row[
+                                                                                    key
+                                                                                ]
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                handleRowChange(
+                                                                                    index,
+                                                                                    key,
+                                                                                    e
+                                                                                        .target
+                                                                                        .value,
+                                                                                )
+                                                                            }
+                                                                            rows={
+                                                                                2
+                                                                            }
+                                                                            placeholder={
+                                                                                placeholder
+                                                                            }
+                                                                            disabled={
+                                                                                !can_write
+                                                                            }
+                                                                            className="text-xs"
+                                                                        />
+                                                                    </label>
+                                                                ),
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
                                             )}
-                                        </TableRow>
+                                        </Fragment>
                                     ))}
                                     <TableRow className="bg-[#ea7315]/20 font-bold hover:bg-[#ea7315]/20">
                                         <TableCell
@@ -681,6 +980,14 @@ export default function KondisiAbnormalInput({
                                                 ? totalGangguanDurasi.toFixed(1)
                                                 : 0}
                                         </TableCell>
+                                        <TableCell className="border-l border-border text-xs font-semibold">
+                                            {tindak
+                                                .map(
+                                                    ([key, label]) =>
+                                                        `${label}: ${rows.filter((row) => row[key] === 1).length}`,
+                                                )
+                                                .join(' · ')}
+                                        </TableCell>
                                         {can_write && (
                                             <TableCell className="border-l border-border" />
                                         )}
@@ -702,6 +1009,11 @@ export default function KondisiAbnormalInput({
                                     ANGKA 1
                                 </li>
                                 <li>KOLOM DURASI DI ISI JAM</li>
+                                <li>
+                                    TINDAK LANJUT JANGKA PENDEK: SR (SERVICE
+                                    REQUEST), FLM, ATAU LAINNYA (TULIS
+                                    KETERANGANNYA)
+                                </li>
                             </ol>
                         </div>
                         {can_write && (

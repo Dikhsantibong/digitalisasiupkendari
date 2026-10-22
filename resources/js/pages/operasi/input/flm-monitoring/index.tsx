@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { EvidencePhotoField } from '@/components/operasi/evidence-photo-field';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -13,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { usePermissions } from '@/hooks/use-permissions';
-import { downloadFlmMonitoringWorkbook } from '@/lib/operasi-flm-excel';
+import { downloadFlmMonitoringWorkbook, FLM_PHOTOS } from '@/lib/operasi-flm-excel';
 import type { FlmMonitoringRow } from '@/lib/operasi-flm-excel';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
@@ -35,7 +36,22 @@ const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-
 const th = 'border border-slate-400 p-1';
 const td = 'border border-border';
 
-const blankRow = (no: number): FlmMonitoringRow => ({ no_urut: no, mesin: '', tanggal: null, masalah: '', kondisi_awal: [], kondisi_akhir: '', catatan: '', status: 'open' });
+const blankRow = (no: number): FlmMonitoringRow => ({
+    no_urut: no,
+    mesin: '',
+    tanggal: null,
+    masalah: '',
+    kondisi_awal: [],
+    kondisi_akhir: '',
+    foto_awal: null,
+    foto_awal_url: null,
+    foto_akhir: null,
+    foto_akhir_url: null,
+    catatan: '',
+    status: 'open',
+});
+
+type PhotoColumn = (typeof FLM_PHOTOS)[number][0];
 
 /** "20 Agustus 2026". */
 const formatDate = (date: string) => {
@@ -46,7 +62,8 @@ const formatDate = (date: string) => {
 
 /**
  * Input Operasi "Monitoring FLM": first line maintenance findings per unit &
- * month with the kondisi awal actions, kondisi akhir, catatan and status.
+ * month with the kondisi awal actions, kondisi akhir, catatan, status and an
+ * eviden photo of the kondisi awal and of the kondisi akhir.
  */
 export default function OperasiFlmMonitoringInput({ unit, filters, options, rows: initialRows, has_saved, can_write }: Props) {
     const [rows, setRows] = useState<FlmMonitoringRow[]>(initialRows);
@@ -74,6 +91,10 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
         setDirty(true);
     };
 
+    /** A new photo replaces the saved one; removing clears both. */
+    const pickPhoto = (index: number, column: PhotoColumn, file: File) => update(index, { [`${column}_file`]: file });
+    const removePhoto = (index: number, column: PhotoColumn) => update(index, { [column]: null, [`${column}_url`]: null, [`${column}_file`]: null });
+
     const toggleKondisi = (index: number, key: string, checked: boolean) => {
         const list = rows[index].kondisi_awal;
         update(index, { kondisi_awal: checked ? [...list, key] : list.filter((k) => k !== key) });
@@ -85,8 +106,32 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
         setSaving(true);
         router.post(
             flmMonitoring.store().url,
-            { ...query, rows: rows.map(({ mesin, tanggal, masalah, kondisi_awal, kondisi_akhir, catatan, status }) => ({ mesin, tanggal, masalah, kondisi_awal, kondisi_akhir, catatan, status })) },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            {
+                ...query,
+                rows: rows.map(({ mesin, tanggal, masalah, kondisi_awal, kondisi_akhir, catatan, status, foto_awal, foto_akhir, foto_awal_file, foto_akhir_file }) => ({
+                    mesin,
+                    tanggal,
+                    masalah,
+                    kondisi_awal,
+                    kondisi_akhir,
+                    catatan,
+                    status,
+                    // The saved photo path is kept; a chosen file is uploaded (the request becomes multipart).
+                    foto_awal: foto_awal ?? null,
+                    foto_akhir: foto_akhir ?? null,
+                    ...(foto_awal_file ? { foto_awal_file } : {}),
+                    ...(foto_akhir_file ? { foto_akhir_file } : {}),
+                })),
+            },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    // Take the saved rows (with the stored photo paths & URLs) back from the server.
+                    setRows((page.props as unknown as Props).rows);
+                    setDirty(false);
+                },
+                onFinish: () => setSaving(false),
+            },
         );
     };
 
@@ -184,6 +229,21 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                                             Kondisi akhir
                                             <Input value={row.kondisi_akhir} onChange={(e) => update(index, { kondisi_akhir: e.target.value })} placeholder="Ditadah / Backlog" disabled={!can_write} />
                                         </label>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {FLM_PHOTOS.map(([column, label]) => (
+                                                <div key={column} className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                    Foto {label.toLowerCase()}
+                                                    <EvidencePhotoField
+                                                        label={label}
+                                                        url={row[`${column}_url`] ?? null}
+                                                        file={row[`${column}_file`] ?? null}
+                                                        onPick={(file) => pickPhoto(index, column, file)}
+                                                        onRemove={() => removePhoto(index, column)}
+                                                        disabled={!can_write}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
                                         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                             Catatan FLM
                                             <Textarea value={row.catatan} onChange={(e) => update(index, { catatan: e.target.value })} rows={2} disabled={!can_write} />
@@ -309,7 +369,7 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                 </div>
 
                 <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[1200px] border-collapse text-xs">
+                    <table className="w-full min-w-[1400px] border-collapse text-xs">
                         <thead className="bg-[#9dd9f3] text-center text-[11px] font-semibold text-slate-900">
                             <tr>
                                 <th rowSpan={2} className={`${th} w-10`}>No</th>
@@ -320,11 +380,15 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                                 <th rowSpan={2} className={`${th} min-w-28`}>Kondisi Akhir</th>
                                 <th rowSpan={2} className={`${th} min-w-48`}>Catatan FLM</th>
                                 <th rowSpan={2} className={`${th} w-24`}>Status</th>
+                                <th colSpan={FLM_PHOTOS.length} className={th}>Eviden</th>
                                 {can_write && <th rowSpan={2} className={`${th} w-9`} />}
                             </tr>
                             <tr>
                                 {kondisi.map(([key, label]) => (
                                     <th key={key} className={`${th} w-20 text-[10px]`}>{label}</th>
+                                ))}
+                                {FLM_PHOTOS.map(([column, label]) => (
+                                    <th key={column} className={`${th} w-24 text-[10px]`}>{label}</th>
                                 ))}
                             </tr>
                         </thead>
@@ -366,6 +430,21 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                                             disabled={!can_write}
                                         />
                                     </td>
+                                    {FLM_PHOTOS.map(([column, label]) => (
+                                        <td key={column} className={`${td} p-1`}>
+                                            <div className="flex justify-center">
+                                                <EvidencePhotoField
+                                                    label={label}
+                                                    url={row[`${column}_url`] ?? null}
+                                                    file={row[`${column}_file`] ?? null}
+                                                    onPick={(file) => pickPhoto(index, column, file)}
+                                                    onRemove={() => removePhoto(index, column)}
+                                                    disabled={!can_write}
+                                                    size="sm"
+                                                />
+                                            </div>
+                                        </td>
+                                    ))}
                                     {can_write && (
                                         <td className={`${td} p-0 text-center`}>
                                             <Button

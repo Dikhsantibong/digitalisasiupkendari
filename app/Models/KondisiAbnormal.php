@@ -23,6 +23,14 @@ use Illuminate\Support\Carbon;
  * @property string $durasi_abnormal
  * @property int $is_gangguan
  * @property string $durasi_gangguan
+ * @property string|null $parameter_terkait
+ * @property bool $tl_pendek_sr tindak lanjut jangka pendek: Service Request
+ * @property bool $tl_pendek_flm tindak lanjut jangka pendek: FLM
+ * @property bool $tl_pendek_lainnya tindak lanjut jangka pendek: lainnya
+ * @property string|null $tl_pendek_keterangan
+ * @property string|null $tl_panjang tindak lanjut jangka panjang
+ * @property string|null $dampak_sistem
+ * @property string|null $dampak_pembangkit
  * @property int|null $input_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
@@ -40,6 +48,14 @@ use Illuminate\Support\Carbon;
     'durasi_abnormal',
     'is_gangguan',
     'durasi_gangguan',
+    'parameter_terkait',
+    'tl_pendek_sr',
+    'tl_pendek_flm',
+    'tl_pendek_lainnya',
+    'tl_pendek_keterangan',
+    'tl_panjang',
+    'dampak_sistem',
+    'dampak_pembangkit',
     'input_by',
 ])]
 class KondisiAbnormal extends Model
@@ -63,6 +79,9 @@ class KondisiAbnormal extends Model
             'durasi_abnormal' => 'decimal:2',
             'is_gangguan' => 'integer',
             'durasi_gangguan' => 'decimal:2',
+            'tl_pendek_sr' => 'boolean',
+            'tl_pendek_flm' => 'boolean',
+            'tl_pendek_lainnya' => 'boolean',
         ];
     }
 

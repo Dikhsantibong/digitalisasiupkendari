@@ -2,10 +2,12 @@
 
 namespace App\Services\Notifications;
 
+use App\Enums\AttendanceRequestStatus;
 use App\Enums\NotificationCategory;
 use App\Enums\PermissionName;
 use App\Enums\ReportModule;
 use App\Models\AccidentReport;
+use App\Models\AttendanceRequest;
 use App\Models\HarUnsafeCondition;
 use App\Models\KondisiAbnormal;
 use App\Models\ReportWorkflow;
@@ -14,6 +16,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Notifications\ReminderNotification;
 use App\Support\Indonesian;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -25,7 +28,8 @@ use function Illuminate\Support\defer;
  * save is never slowed down:
  * - kejadian: kondisi abnormal / gangguan, unsafe action & condition, kecelakaan;
  * - pekerjaan: Work Order & Service Request baru or with a new status;
- * - laporan: each step of the Laporan Pembangkit workflow.
+ * - laporan: each step of the Laporan Pembangkit workflow;
+ * - absensi: each step of a Pengajuan Absensi (izin / sakit / cuti / tukar shift).
  *
  * Recipients are resolved from permissions and unit scope (never role names),
  * the person who did it is never notified, and each link is only given to a
@@ -80,7 +84,155 @@ class EventNotifier
             Str::title(strtolower($finding->kategori)).' baru · '.($finding->unit?->name ?? 'Unit'),
             Str::limit($finding->temuan.($finding->lokasi ? " — {$finding->lokasi}" : ''), 220),
             route("{$module}.input.unsafe-condition.index", ['unit_id' => $finding->unit_id, 'month' => $finding->month, 'year' => $finding->year], false),
-            [$view, $field, $laporan], "kejadian:unsafe:{$finding->id}");
+            [$view, $field, $laporan], "kejadian:unsafe:{$finding->id}",
+            // The finding also lands in the K3 module: K3 staff open it from Kondisi K3.
+            $this->k3KondisiLink($finding->unit_id, $finding->month, $finding->year));
+    }
+
+    /**
+     * New Unsafe Action & Condition temuan saved in the Logistik & Gudang form:
+     * one summary for Logistik & Gudang and for K3, where the findings land.
+     *
+     * @param  list<string>  $temuan  the temuan text of the rows that are new in this save
+     */
+    public function logistikUnsafeFound(Unit $unit, int $month, int $year, array $temuan, User $actor): void
+    {
+        if ($temuan === []) {
+            return;
+        }
+
+        $count = count($temuan);
+        $this->toAudience($unit->id, [PermissionName::LogistikInputView, PermissionName::LogistikLaporanView, PermissionName::K3InputView, PermissionName::K3PengusahaanView], $actor,
+            NotificationCategory::Kejadian, 'logistik',
+            ($count === 1 ? 'Temuan unsafe baru' : "{$count} temuan unsafe baru").' · '.$unit->name.' (Logistik & Gudang)',
+            Str::limit(implode('; ', $temuan), 220),
+            route('logistik.input.form.index', ['form' => 'unsafe', 'unit_id' => $unit->id, 'month' => $month, 'year' => $year], false),
+            [PermissionName::LogistikInputView, PermissionName::LogistikLaporanView],
+            'kejadian:logistik-unsafe:'.$unit->id.':'.$year.'-'.$month.':'.md5(implode('|', $temuan)),
+            $this->k3KondisiLink($unit->id, $month, $year));
+    }
+
+    /**
+     * A new Pengajuan Absensi: a tukar shift goes to the pengganti first; any
+     * other request (or a tukar shift whose pengganti has no account) to the
+     * approvers of the unit (operator.absensi.write).
+     */
+    public function attendanceRequestSubmitted(AttendanceRequest $request, User $actor): void
+    {
+        $request->loadMissing(['employee', 'substitute.user', 'unit']);
+
+        if ($request->status === AttendanceRequestStatus::MenungguPengganti && $request->substitute?->user !== null) {
+            $this->later([$request->substitute->user], fn (User $user): ReminderNotification => new ReminderNotification(
+                NotificationCategory::Absensi, 'operator',
+                'Permintaan tukar shift dari '.$request->employee->name,
+                Str::limit($this->attendanceSummary($request).' — mohon konfirmasi bersedia menggantikan.', 220),
+                route('operator.pengajuan.index', [], false),
+                "absensi:pengajuan:{$request->id}:pengganti",
+            ));
+
+            return;
+        }
+
+        $this->toApprovers($request, $actor, 'Pengajuan '.strtolower($request->type->label()).' · '.$request->employee->name, "absensi:pengajuan:{$request->id}:persetujuan");
+    }
+
+    /**
+     * The pengganti answered a tukar shift: when accepted the approvers decide
+     * next; either way the employee who asked is told.
+     */
+    public function attendanceSubstituteResponded(AttendanceRequest $request, bool $accepted, User $actor): void
+    {
+        $request->loadMissing(['employee.user', 'substitute', 'unit']);
+
+        if ($accepted) {
+            $this->toApprovers($request, $actor, 'Tukar shift disetujui pengganti · '.$request->employee->name, "absensi:pengajuan:{$request->id}:persetujuan");
+        }
+
+        $this->toRequester($request, $actor,
+            $accepted ? "{$request->substitute?->name} bersedia menggantikan shift Anda" : "{$request->substitute?->name} tidak bersedia menggantikan shift Anda",
+            $accepted ? 'Menunggu persetujuan atasan. '.$this->attendanceSummary($request) : $this->attendanceSummary($request).($request->substitute_note ? " — {$request->substitute_note}" : ''),
+            "absensi:pengajuan:{$request->id}:jawaban-pengganti");
+    }
+
+    /**
+     * The approver decided (or cancelled an approval): tell the employee and
+     * the pengganti.
+     */
+    public function attendanceRequestDecided(AttendanceRequest $request, User $actor): void
+    {
+        $request->loadMissing(['employee.user', 'substitute.user', 'unit']);
+        $title = "Pengajuan {$request->type->label()} {$request->status->label()}";
+        $body = Str::limit($this->attendanceSummary($request).($request->decision_note ? " — {$request->decision_note}" : ''), 220);
+        $key = "absensi:pengajuan:{$request->id}:{$request->status->value}";
+
+        $this->toRequester($request, $actor, $title, $body, $key);
+
+        $substitute = $request->substitute?->user;
+        if ($substitute !== null && ! $substitute->is($actor)) {
+            $this->later([$substitute], fn (User $user): ReminderNotification => new ReminderNotification(
+                NotificationCategory::Absensi, 'operator', "Tukar shift {$request->employee->name} {$request->status->label()}", $body,
+                route('operator.pengajuan.index', [], false), $key.':pengganti',
+            ));
+        }
+    }
+
+    private function toApprovers(AttendanceRequest $request, User $actor, string $title, string $key): void
+    {
+        // Never the employee who asked: nobody approves their own request.
+        $recipients = $this->audience($request->unit_id, [PermissionName::OperatorAbsensiWrite], $actor)
+            ->reject(fn (User $user): bool => $user->id === $request->employee?->user_id)
+            ->values();
+
+        $this->later($recipients, fn (User $user): ReminderNotification => new ReminderNotification(
+            NotificationCategory::Absensi, 'operator', $title,
+            Str::limit($this->attendanceSummary($request), 220),
+            route('operator.pengajuan.index', ['unit_id' => $request->unit_id], false),
+            $key,
+        ));
+    }
+
+    private function toRequester(AttendanceRequest $request, User $actor, string $title, string $body, string $key): void
+    {
+        $requester = $request->employee?->user;
+        if ($requester === null || $requester->is($actor)) {
+            return;
+        }
+
+        $this->later([$requester], fn (User $user): ReminderNotification => new ReminderNotification(
+            NotificationCategory::Absensi, 'operator', $title, Str::limit($body, 220),
+            route('operator.pengajuan.index', [], false), $key,
+        ));
+    }
+
+    /** "Sakit 12–14 Agu 2026: demam" / "Tukar shift 12 Agu 2026 (P) dengan Budi". */
+    private function attendanceSummary(AttendanceRequest $request): string
+    {
+        $date = fn (CarbonInterface $d): string => $d->locale('id')->isoFormat('D MMM YYYY');
+        $range = $request->start_date->isSameDay($request->end_date)
+            ? $date($request->start_date)
+            : $request->start_date->locale('id')->isoFormat('D MMM').' – '.$date($request->end_date);
+
+        if ($request->type->needsSubstitute()) {
+            return "Tukar shift {$range} dengan {$request->substitute?->name}"
+                .($request->swap_date !== null ? ', dibalas '.$date($request->swap_date) : '')
+                .": {$request->reason}";
+        }
+
+        return "{$request->type->label()} {$range}: {$request->reason}";
+    }
+
+    /**
+     * The K3 Kondisi K3 page of the period, for recipients who cannot open the
+     * division's own page.
+     *
+     * @return array{0: string, 1: list<PermissionName>}
+     */
+    private function k3KondisiLink(int $unitId, int $month, int $year): array
+    {
+        return [
+            route('k3.input.kondisi-k3.index', ['unit_id' => $unitId, 'month' => $month, 'year' => $year], false),
+            [PermissionName::K3InputView, PermissionName::K3LaporanView],
+        ];
     }
 
     /**
@@ -225,14 +377,16 @@ class EventNotifier
      *
      * @param  list<PermissionName>  $audience
      * @param  list<PermissionName>  $canOpen
+     * @param  array{0: string, 1: list<PermissionName>}|null  $fallback  another page (url, may-open permissions) for recipients who cannot open $url
      */
-    private function toAudience(int $unitId, array $audience, User $actor, NotificationCategory $category, string $module, string $title, string $body, string $url, array $canOpen, string $key): void
+    private function toAudience(int $unitId, array $audience, User $actor, NotificationCategory $category, string $module, string $title, string $body, string $url, array $canOpen, string $key, ?array $fallback = null): void
     {
         $recipients = $this->audience($unitId, $audience, $actor);
+        $may = fn (User $user, array $permissions): bool => collect($permissions)->contains(fn (PermissionName $p): bool => $user->hasPermissionTo($p));
 
         $this->later($recipients, fn (User $user): ReminderNotification => new ReminderNotification(
             $category, $module, $title, $body,
-            collect($canOpen)->contains(fn (PermissionName $p): bool => $user->hasPermissionTo($p)) ? $url : null,
+            $may($user, $canOpen) ? $url : ($fallback !== null && $may($user, $fallback[1]) ? $fallback[0] : null),
             $key,
         ));
     }

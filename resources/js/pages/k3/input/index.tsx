@@ -12,12 +12,11 @@ import {
     Gauge,
     HardHat,
     Image,
-    PackageCheck,
     ScrollText,
     ShieldCheck,
     SignpostBig,
     Siren,
-    Wrench,
+    Sparkles,
 } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -26,8 +25,8 @@ import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import k3Accident from '@/routes/k3/input/accident';
 import k3AirLimbah from '@/routes/k3/input/air-limbah';
-import k3ApdInventory from '@/routes/k3/input/apd-inventory';
 import k3AparCheck from '@/routes/k3/input/apar-check';
+import k3ApdInventory from '@/routes/k3/input/apd-inventory';
 import k3Attachment from '@/routes/k3/input/attachment';
 import k3Cctv from '@/routes/k3/input/cctv';
 import k3Certificate from '@/routes/k3/input/certificate';
@@ -41,6 +40,7 @@ import k3KesiapanApd from '@/routes/k3/input/kesiapan-apd';
 import k3KondisiK3 from '@/routes/k3/input/kondisi-k3';
 import k3Patrol from '@/routes/k3/input/patrol';
 import k3Rambu from '@/routes/k3/input/rambu';
+import k3Rekap5s5r from '@/routes/k3/input/rekap-5s5r';
 import k3TimeFrame from '@/routes/k3/input/time-frame';
 import k3Monitoring from '@/routes/k3/monitoring';
 
@@ -189,10 +189,17 @@ const INPUT_MENUS: InputCard[] = [
     },
     {
         title: 'Kondisi K3 (Unsafe Action & Unsafe Condition)',
-        description: 'Identifikasi, pelaporan, dan tindak lanjut temuan tindakan tidak aman dan kondisi berbahaya.',
+        description: 'Identifikasi, pelaporan, dan tindak lanjut temuan tindakan tidak aman dan kondisi berbahaya — termasuk temuan yang diinput Operasi, Pemeliharaan, dan Logistik & Gudang.',
         icon: AlertTriangle,
         url: k3KondisiK3.index().url,
         buttonLabel: 'Buka Kondisi K3',
+    },
+    {
+        title: 'Rekap 5S5R Seluruh Divisi',
+        description: 'Pelaksanaan 5S5R (Ringkas, Rapi, Resik, Rawat, Rajin) yang diinput Operasi, Pemeliharaan, PdM, dan Logistik & Gudang — terisi otomatis.',
+        icon: Sparkles,
+        url: k3Rekap5s5r.index().url,
+        buttonLabel: 'Buka Rekap 5S5R',
     },
 ];
 
@@ -210,6 +217,7 @@ export default function K3InputIndex() {
                     {INPUT_MENUS.map((item) => {
                         const Icon = item.icon;
                         const isAvailable = item.isAvailable ?? true;
+
                         return (
                             <div
                                 key={item.title}

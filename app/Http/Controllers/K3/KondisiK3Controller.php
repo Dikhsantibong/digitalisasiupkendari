@@ -9,6 +9,7 @@ use App\Models\K3KondisiK3;
 use App\Models\K3KondisiK3Meta;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\K3\K3DivisionFeed;
 use App\Support\K3KondisiK3Form;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,7 +27,7 @@ class KondisiK3Controller extends Controller
 {
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request, K3DivisionFeed $divisions): Response
     {
         $user = $request->user();
         abort_unless(
@@ -76,6 +77,9 @@ class KondisiK3Controller extends Controller
             $hasSaved = true;
         }
 
+        // Findings reported by Operasi, Pemeliharaan and Logistik & Gudang — read-only here.
+        $divisionFindings = $divisions->unsafeFindings($unit, $month, $year, $user);
+
         $meta = K3KondisiK3Meta::query()
             ->where('unit_id', $unit->id)
             ->where('year', $year)
@@ -97,6 +101,8 @@ class KondisiK3Controller extends Controller
             ],
             'has_saved' => $hasSaved,
             'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite),
+            'division_findings' => $divisionFindings,
+            'division_summary' => K3DivisionFeed::summary($divisionFindings),
         ]);
     }
 

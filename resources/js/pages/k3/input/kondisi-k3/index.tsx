@@ -3,10 +3,8 @@ import {
     AlertCircle,
     AlertTriangle,
     CheckCircle2,
-    Clock,
     Eye,
     FileText,
-    Image as ImageIcon,
     Plus,
     Printer,
     RotateCcw,
@@ -18,16 +16,13 @@ import {
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { DivisionFindings } from '@/components/k3/division-findings';
+import type { DivisionFinding, DivisionSummary } from '@/components/k3/division-findings';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import {
     Dialog,
     DialogContent,
@@ -82,6 +77,9 @@ type Props = {
     };
     has_saved: boolean;
     can_write: boolean;
+    /** Findings of Operasi, Pemeliharaan and Logistik & Gudang (read-only). */
+    division_findings: DivisionFinding[];
+    division_summary: DivisionSummary;
 };
 
 const hydrate = (rows: ServerRow[]): Row[] =>
@@ -95,6 +93,8 @@ export default function K3KondisiK3Page({
     meta: initialMeta,
     has_saved,
     can_write,
+    division_findings,
+    division_summary,
 }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initialRows));
     const [catatan, setCatatan] = useState<string>(initialMeta?.catatan ?? '');
@@ -106,6 +106,7 @@ export default function K3KondisiK3Page({
     // Sync when filters change
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSig, setLastSig] = useState(signature);
+
     if (lastSig !== signature) {
         setLastSig(signature);
         setRows(hydrate(initialRows));
@@ -167,7 +168,10 @@ export default function K3KondisiK3Page({
     };
 
     const save = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -709,6 +713,12 @@ export default function K3KondisiK3Page({
                     </div>
                 </Card>
 
+                <DivisionFindings
+                    findings={division_findings}
+                    summary={division_summary}
+                    onPreview={setPreviewImage}
+                />
+
                 {/* Catatan Tambahan (No Signature block) */}
                 <Card className="gap-2 p-4 py-4">
                     <div className="flex items-center gap-2">
@@ -808,7 +818,10 @@ function EvidenCell({
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+
+        if (!file) {
+return;
+}
 
         setUploading(true);
         const formData = new FormData();
@@ -840,6 +853,7 @@ function EvidenCell({
             toast.error(`Gagal mengunggah foto ${label}. Pastikan format gambar sesuai (maks 10MB).`);
         } finally {
             setUploading(false);
+
             if (fileRef.current) {
                 fileRef.current.value = '';
             }

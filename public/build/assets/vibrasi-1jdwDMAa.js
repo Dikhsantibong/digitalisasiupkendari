@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-DGUYArqF.js";import{n,t as r}from"./form-input-page-E8RVZ1dl.js";var i=e(),a=t();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`vibrasi`,`Laporan Pengukuran Vibrasi Mesin & Generator`)};export{o as default};

@@ -14,7 +14,6 @@ use App\Models\Employee;
 use App\Models\EquipmentCertificate;
 use App\Models\FireExtinguisher;
 use App\Models\FireExtinguisherCheck;
-use App\Models\HarUnsafeCondition;
 use App\Models\Holiday;
 use App\Models\Inspection;
 use App\Models\K3ActivityPlan;
@@ -31,6 +30,7 @@ use App\Models\K3HydrantInspection;
 use App\Models\K3InstruksiKerja;
 use App\Models\K3JadwalPembuatanIk;
 use App\Models\K3KegiatanRutin;
+use App\Models\K3KondisiK3;
 use App\Models\K3MetodePengujianPeralatan;
 use App\Models\K3MetodePengujianPeralatanMeta;
 use App\Models\K3PatrolCheckJadwal;
@@ -52,7 +52,10 @@ use Illuminate\Support\Facades\Storage;
  */
 class K3ReportBuilder
 {
-    public function __construct(private readonly K3MonitoringService $monitoring) {}
+    public function __construct(
+        private readonly K3MonitoringService $monitoring,
+        private readonly K3DivisionFeed $divisions,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -94,8 +97,9 @@ class K3ReportBuilder
             'fire_alarm' => $this->fireAlarmInspections($unit->id, $month, $year),
             'rambu' => $this->rambuInspections($unit->id, $month, $year),
             'emergency' => $this->emergency($unit->id, $month, $year),
-            'unsafe_conditions' => $this->unsafeConditions($unit->id, $month, $year),
+            'unsafe_conditions' => $this->unsafeConditions($unit, $month, $year),
             'jadwal_5s5r' => $this->jadwal5s5r($unit->id, $month, $year),
+            'program_5s5r' => $this->divisions->program5s5r($unit, $month, $year),
             'certificates' => $this->certificates($unit),
             'apd_inventory' => $this->apdInventory($unit->id, $month, $year),
             'instruksi_kerja' => $this->instruksiKerja($unit->id, $month, $year),
@@ -850,24 +854,42 @@ class K3ReportBuilder
     }
 
     /**
-     * @return list<array{kategori: string, temuan: string, kondisi: string|null, lokasi: string|null, tindak_lanjut: string|null, rekomendasi: string|null, keterangan: string|null}>
+     * Every Unsafe Action & Unsafe Condition finding of the unit: the K3 own
+     * (Kondisi K3) first, then those reported by Operasi, Pemeliharaan and
+     * Logistik & Gudang ({@see K3DivisionFeed}).
+     *
+     * @return list<array{sumber: string, kategori: string, temuan: string, kondisi: string|null, lokasi: string|null, tindak_lanjut: string|null, rekomendasi: string|null, keterangan: string|null}>
      */
-    private function unsafeConditions(int $unitId, int $month, int $year): array
+    private function unsafeConditions(Unit $unit, int $month, int $year): array
     {
-        return HarUnsafeCondition::query()
-            ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
-            ->orderBy('sort_order')
+        $own = K3KondisiK3::query()
+            ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
+            ->orderBy('sort_order')->orderBy('id')
             ->get()
-            ->map(fn (HarUnsafeCondition $u): array => [
-                'kategori' => $u->kategori,
-                'temuan' => $u->temuan,
-                'kondisi' => $u->kondisi,
-                'lokasi' => $u->lokasi,
-                'tindak_lanjut' => $u->tindak_lanjut,
-                'rekomendasi' => $u->rekomendasi,
-                'keterangan' => $u->keterangan,
-            ])
-            ->all();
+            ->map(fn (K3KondisiK3 $k): array => [
+                'sumber' => 'K3',
+                'kategori' => $k->kategori,
+                'temuan' => $k->temuan,
+                'kondisi' => $k->kondisi,
+                'lokasi' => $k->lokasi,
+                'tindak_lanjut' => $k->tindak_lanjut,
+                'rekomendasi' => $k->rekomendasi,
+                'keterangan' => $k->keterangan,
+            ]);
+
+        $divisions = collect($this->divisions->unsafeFindings($unit, $month, $year))
+            ->map(fn (array $finding): array => [
+                'sumber' => $finding['sumber'],
+                'kategori' => $finding['kategori'],
+                'temuan' => $finding['temuan'],
+                'kondisi' => $finding['kondisi'],
+                'lokasi' => $finding['lokasi'],
+                'tindak_lanjut' => $finding['tindak_lanjut'],
+                'rekomendasi' => $finding['rekomendasi'],
+                'keterangan' => $finding['status'] ?? $finding['keterangan'],
+            ]);
+
+        return $own->concat($divisions)->values()->all();
     }
 
     /**

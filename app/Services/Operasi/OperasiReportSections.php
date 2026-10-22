@@ -335,7 +335,8 @@ class OperasiReportSections
         $records = KondisiAbnormal::query()
             ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
             ->orderBy('no_urut')->get()
-            ->filter(fn (KondisiAbnormal $k): bool => trim((string) $k->uraian_kondisi) !== '' || $k->is_abnormal || $k->is_gangguan);
+            ->filter(fn (KondisiAbnormal $k): bool => trim((string) $k->uraian_kondisi) !== '' || $k->is_abnormal || $k->is_gangguan
+                || trim((string) $k->parameter_terkait) !== '' || trim((string) $k->tl_panjang) !== '');
 
         return [
             'rows' => $records->values()->map(fn (KondisiAbnormal $k, int $index): array => [
@@ -346,6 +347,12 @@ class OperasiReportSections
                 'durasi_abnormal' => (float) $k->durasi_abnormal,
                 'is_gangguan' => (int) $k->is_gangguan === 1,
                 'durasi_gangguan' => (float) $k->durasi_gangguan,
+                'parameter_terkait' => $k->parameter_terkait,
+                'tindak_lanjut_pendek' => collect(['SR' => $k->tl_pendek_sr, 'FLM' => $k->tl_pendek_flm, 'Lainnya' => $k->tl_pendek_lainnya])->filter()->keys()->all(),
+                'tindak_lanjut_pendek_keterangan' => $k->tl_pendek_keterangan,
+                'tindak_lanjut_panjang' => $k->tl_panjang,
+                'dampak_sistem' => $k->dampak_sistem,
+                'dampak_pembangkit' => $k->dampak_pembangkit,
             ])->all(),
             'totals' => [
                 'abnormal' => $records->filter(fn (KondisiAbnormal $k): bool => (int) $k->is_abnormal === 1)->count(),

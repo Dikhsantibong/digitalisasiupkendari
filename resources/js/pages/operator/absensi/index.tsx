@@ -51,6 +51,8 @@ type Employee = {
     cells: Record<string, string>;
     /** Presensi (absen masuk / pulang) per day of the month. */
     presence: Record<string, Presence>;
+    /** Cells set by an approved Pengajuan Absensi (izin / sakit / cuti / tukar shift), per day. */
+    notes?: Record<string, string>;
 };
 
 type Section = { key: string; label: string; employees: Employee[] };
@@ -859,6 +861,11 @@ function AbsensiSheet({
                                                                         .presence?.[
                                                                         d.day
                                                                     ];
+                                                                const note =
+                                                                    employee
+                                                                        .notes?.[
+                                                                        d.day
+                                                                    ];
 
                                                                 return (
                                                                     <td
@@ -896,6 +903,7 @@ function AbsensiSheet({
                                                                             code,
                                                                             status,
                                                                             presence,
+                                                                            note,
                                                                         )}
                                                                         className={cn(
                                                                             'relative h-7 border border-border p-0 text-center text-[10px] font-bold',
@@ -917,6 +925,10 @@ function AbsensiSheet({
                                                                     >
                                                                         {code ??
                                                                             ''}
+                                                                        {note && (
+                                                                            // Set by an approved pengajuan (izin / sakit / cuti / tukar shift).
+                                                                            <span className="absolute top-0 left-0 size-0 border-t-[6px] border-r-[6px] border-t-violet-600 border-r-transparent" />
+                                                                        )}
                                                                         {status && (
                                                                             <StatusMark
                                                                                 status={
@@ -1375,12 +1387,18 @@ function AbsensiMobile({
                                 const percent = percentOf(employee.id);
                                 const status = statusOf(employee.id, day.day);
                                 const presence = employee.presence?.[day.day];
+                                const note = employee.notes?.[day.day];
 
                                 return (
                                     <div
                                         key={employee.id}
                                         className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
                                     >
+                                        {note && (
+                                            <p className="-mb-1 rounded-md bg-violet-500/10 px-2 py-1 text-[11.5px] text-violet-700 dark:text-violet-400">
+                                                {note}
+                                            </p>
+                                        )}
                                         <div className="flex items-start justify-between gap-2">
                                             <div className="min-w-0">
                                                 <p className="truncate text-[14px] font-semibold text-foreground">
@@ -1537,8 +1555,13 @@ function cellTitle(
     code: string | undefined,
     status: AttendanceStatus | undefined,
     presence: Presence | undefined,
+    note?: string,
 ): string {
     const parts = [code ? `Jadwal: ${code}` : 'Tidak dijadwalkan'];
+
+    if (note) {
+        parts.push(note);
+    }
 
     if (status) {
         parts.push(STATUS_META[status].label);

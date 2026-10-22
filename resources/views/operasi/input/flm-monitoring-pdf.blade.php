@@ -7,6 +7,7 @@
      * @var string $periodLabel
      * @var list<array{no_urut: int, mesin: string, tanggal: string|null, masalah: string, kondisi_awal: list<string>, kondisi_akhir: string, catatan: string, status: string}> $rows
      * @var array<string, string> $kondisiAwal
+     * @var array<string, string> $photos eviden column => label
      * @var string|null $logoLeft
      * @var string|null $logoRight
      */
@@ -32,6 +33,7 @@
         table.grid td { height: 16px; }
         .c { text-align: center; }
         .b { font-weight: bold; }
+        .eviden img { max-width: 64px; max-height: 48px; }
     </style>
 </head>
 <body>
@@ -54,17 +56,21 @@
         <thead>
             <tr>
                 <th rowspan="2" style="width: 22px;">No</th>
-                <th rowspan="2" style="width: 120px;">Mesin / Peralatan</th>
+                <th rowspan="2" style="width: 110px;">Mesin / Peralatan</th>
                 <th rowspan="2" style="width: 90px;">Tanggal</th>
-                <th rowspan="2" style="width: 160px;">Masalah Awal yg ditemukan</th>
+                <th rowspan="2" style="width: 140px;">Masalah Awal yg ditemukan</th>
                 <th colspan="{{ count($kondisiAwal) }}">Kondisi Awal</th>
                 <th rowspan="2" style="width: 80px;">Kondisi Akhir</th>
-                <th rowspan="2" style="width: 150px;">Catatan FLM</th>
+                <th rowspan="2" style="width: 130px;">Catatan FLM</th>
                 <th rowspan="2" style="width: 42px;">Status</th>
+                <th colspan="{{ count($photos) }}">Eviden</th>
             </tr>
             <tr>
                 @foreach($kondisiAwal as $label)
                     <th style="width: 58px;">{{ $label }}</th>
+                @endforeach
+                @foreach($photos as $label)
+                    <th style="width: 70px;">{{ $label }}</th>
                 @endforeach
             </tr>
         </thead>
@@ -82,6 +88,9 @@
                     <td class="c">{{ $row['kondisi_akhir'] }}</td>
                     <td>{{ $row['catatan'] }}</td>
                     <td class="c b">{{ $filled ? strtoupper($row['status']) : '' }}</td>
+                    @foreach(array_keys($photos) as $column)
+                        <td class="c eviden">@if($row[$column.'_url'] ?? null)<img src="{{ $row[$column.'_url'] }}" alt="{{ $photos[$column] }}">@endif</td>
+                    @endforeach
                 </tr>
             @endforeach
         </tbody>

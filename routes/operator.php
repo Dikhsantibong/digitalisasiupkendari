@@ -3,7 +3,9 @@
 use App\Http\Controllers\Operator\AbsensiController;
 use App\Http\Controllers\Operator\LogsheetController;
 use App\Http\Controllers\Operator\MutasiController;
+use App\Http\Controllers\Operator\PengajuanController;
 use App\Http\Controllers\Operator\PresensiController;
+use App\Http\Controllers\Operator\ResumeController;
 use App\Services\Operasi\LogsheetAggregator;
 use Illuminate\Support\Facades\Route;
 
@@ -36,4 +38,16 @@ Route::middleware(['auth', 'verified'])
         Route::get('presensi', [PresensiController::class, 'index'])->name('presensi.index');
         Route::post('presensi/masuk', [PresensiController::class, 'checkIn'])->name('presensi.check-in');
         Route::post('presensi/pulang', [PresensiController::class, 'checkOut'])->name('presensi.check-out');
+
+        // Pengajuan Absensi: izin, sakit, cuti & tukar shift (pengganti → persetujuan → Jadwal Shift).
+        Route::get('pengajuan', [PengajuanController::class, 'index'])->name('pengajuan.index');
+        Route::post('pengajuan', [PengajuanController::class, 'store'])->name('pengajuan.store');
+        Route::post('pengajuan/{attendanceRequest}/jawab', [PengajuanController::class, 'respond'])->name('pengajuan.respond');
+        Route::post('pengajuan/{attendanceRequest}/setujui', [PengajuanController::class, 'approve'])->name('pengajuan.approve');
+        Route::post('pengajuan/{attendanceRequest}/tolak', [PengajuanController::class, 'reject'])->name('pengajuan.reject');
+        Route::post('pengajuan/{attendanceRequest}/batal', [PengajuanController::class, 'cancel'])->name('pengajuan.cancel');
+        Route::get('pengajuan/{attendanceRequest}/lampiran', [PengajuanController::class, 'attachment'])->name('pengajuan.attachment');
+
+        // Resume Statistik: realisasi shift harian & pekerjaan per operator.
+        Route::get('resume', [ResumeController::class, 'index'])->name('resume.index');
     });

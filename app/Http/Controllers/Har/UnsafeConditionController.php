@@ -138,6 +138,7 @@ class UnsafeConditionController extends Controller
 
         $finding = HarUnsafeCondition::query()->create([
             'unit_id' => $unit->id,
+            'source' => 'har',
             'year' => (int) $validated['year'],
             'month' => (int) $validated['month'],
             'periode' => $validated['periode'],

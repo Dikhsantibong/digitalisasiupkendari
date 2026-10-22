@@ -10,10 +10,12 @@ use App\Http\Controllers\Controller;
 use App\Models\LogistikFormRow;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
 use App\Support\LogistikForms\LogistikForm;
 use App\Support\LogistikForms\LogistikForms;
+use App\Support\LogistikForms\UnsafeForm;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,7 +60,7 @@ class FormController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $form): RedirectResponse
+    public function store(Request $request, string $form, EventNotifier $events): RedirectResponse
     {
         $definition = $this->definition($form);
         [$unit, $month, $year] = $this->logistikWriteTarget($request);
@@ -85,6 +87,10 @@ class FormController extends Controller
         }
         $validated = $request->validate($rules);
 
+        // Unsafe Action & Condition temuan also land in the K3 module: tell K3 about the new ones.
+        $unsafe = $definition instanceof UnsafeForm;
+        $previous = $unsafe ? $this->unsafeKeys($definition, $unit, $month, $year) : [];
+
         DB::transaction(function () use ($validated, $request, $definition, $unit, $month, $year): void {
             $this->query($definition, $unit, $month, $year)->delete();
 
@@ -106,6 +112,16 @@ class FormController extends Controller
                 ]);
             }
         });
+
+        if ($unsafe) {
+            $new = [];
+            foreach ($this->unsafeKeys($definition, $unit, $month, $year) as $key => $temuan) {
+                if (! array_key_exists($key, $previous)) {
+                    $new[] = $temuan;
+                }
+            }
+            $events->logistikUnsafeFound($unit, $month, $year, $new, $request->user());
+        }
 
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan {$definition->title()} {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
 
@@ -148,6 +164,26 @@ class FormController extends Controller
         abort_if($definition === null, 404);
 
         return $definition;
+    }
+
+    /**
+     * The saved unsafe temuan of the period keyed by kategori, temuan and
+     * lokasi — what tells a new temuan from one saved before (rows are
+     * re-created on every save).
+     *
+     * @return array<string, string> key => temuan
+     */
+    private function unsafeKeys(LogistikForm $definition, Unit $unit, int $month, int $year): array
+    {
+        $keys = [];
+        foreach ($this->query($definition, $unit, $month, $year)->get() as $row) {
+            $temuan = trim((string) ($row->data['temuan'] ?? ''));
+            if ($temuan !== '') {
+                $keys[md5(strtolower(implode('|', [$row->data['kategori'] ?? '', $temuan, trim((string) ($row->data['lokasi'] ?? ''))])))] = $temuan;
+            }
+        }
+
+        return $keys;
     }
 
     /**

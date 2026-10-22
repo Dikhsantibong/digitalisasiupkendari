@@ -75,10 +75,15 @@ class AbsensiController extends Controller
             ->get()->flatMap->entries;
 
         $cells = [];
+        $notes = [];
         foreach ($entries as $entry) {
             $code = $codeById->get($entry->attendance_code_id)?->code;
             if ($code !== null) {
                 $cells[$entry->employee_id][(int) $entry->work_date->day] = $code;
+            }
+            // Cells set by an approved Pengajuan Absensi (izin / sakit / cuti / tukar shift).
+            if ($entry->attendance_request_id !== null && $entry->note !== null) {
+                $notes[$entry->employee_id][(int) $entry->work_date->day] = $entry->note;
             }
         }
 
@@ -121,6 +126,7 @@ class AbsensiController extends Controller
                 'regu' => $e->regu,
                 'is_shift_leader' => $e->is_shift_leader,
                 'cells' => $cells[$e->id] ?? (object) [],
+                'notes' => $notes[$e->id] ?? (object) [],
                 'presence' => $presence[$e->id] ?? (object) [],
             ])->all(),
         ];
@@ -239,8 +245,9 @@ class AbsensiController extends Controller
     /**
      * Fill the whole month from the patterns: operators follow their regu
      * rotation (continuing from last month where possible), Non Shift staff get
-     * office hours. Absence codes already entered (Cuti, Sakit, Izin, Alpha) are
-     * kept; everything stays editable afterwards.
+     * office hours. Absence codes already entered (Cuti, Sakit, Izin, Alpha) and
+     * the cells set by an approved Pengajuan Absensi (izin / sakit / cuti /
+     * tukar shift) are kept; everything stays editable afterwards.
      */
     public function generate(Request $request): RedirectResponse
     {
@@ -266,7 +273,9 @@ class AbsensiController extends Controller
                 $schedule->generated_at = now();
                 $schedule->save();
 
-                $kept = $schedule->entries()->whereIn('attendance_code_id', $absenceIds)->get()
+                $kept = $schedule->entries()
+                    ->where(fn ($query) => $query->whereIn('attendance_code_id', $absenceIds)->orWhereNotNull('attendance_request_id'))
+                    ->get()
                     ->map(fn ($entry): string => $entry->employee_id.':'.$entry->work_date->day)->flip();
                 $rows = [];
 
@@ -295,7 +304,7 @@ class AbsensiController extends Controller
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal terisi otomatis. Cuti/Sakit/Izin/Alpha tetap dipertahankan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal terisi otomatis. Cuti/Sakit/Izin/Alpha dan hasil pengajuan (tukar shift) tetap dipertahankan.']);
 
         return back();
     }
@@ -347,6 +356,11 @@ class AbsensiController extends Controller
             $entry = $existing->get($row['employee_id'].':'.$row['day']);
 
             if ($entry !== null) {
+                // Editing a cell set by an approved pengajuan by hand releases it from that pengajuan.
+                if ($entry->attendance_request_id !== null && $entry->attendance_code_id !== $row['attendance_code_id']) {
+                    $attributes += ['note' => null, 'attendance_request_id' => null];
+                }
+
                 $entry->update($attributes);
 
                 continue;

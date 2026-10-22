@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { applyStyle, buildDocumentHeader, downloadWorkbook, mergeCells, SPECS } from '@/lib/jadwal-excel';
+import { applyStyle, buildDocumentHeader, downloadWorkbook, loadImageBase64, mergeCells, SPECS } from '@/lib/jadwal-excel';
 import type { StyleSpec } from '@/lib/jadwal-excel';
 
 /**
@@ -14,9 +14,23 @@ export type FlmMonitoringRow = {
     masalah: string;
     kondisi_awal: string[];
     kondisi_akhir: string;
+    /** Eviden photos: the stored path (kept on save) and its URL. */
+    foto_awal?: string | null;
+    foto_awal_url?: string | null;
+    foto_akhir?: string | null;
+    foto_akhir_url?: string | null;
+    /** A newly chosen photo, uploaded on save. */
+    foto_awal_file?: File | null;
+    foto_akhir_file?: File | null;
     catatan: string;
     status: 'open' | 'close';
 };
+
+/** The eviden photo columns, as in the PDF. */
+export const FLM_PHOTOS = [
+    ['foto_awal', 'Kondisi Awal'],
+    ['foto_akhir', 'Kondisi Akhir'],
+] as const;
 
 const CELL: StyleSpec = { align: 'center', valign: 'center', border: true, wrap: true };
 const CELL_LEFT: StyleSpec = { align: 'left', valign: 'center', border: true, wrap: true };
@@ -33,6 +47,9 @@ const put = (sheet: ExcelJS.Worksheet, row: number, col: number, value: string |
 
 export const isFilled = (row: FlmMonitoringRow) => row.mesin.trim() !== '' || row.masalah.trim() !== '' || !!row.tanggal;
 
+/** jpeg | png for ExcelJS, from a data URI or file name. */
+const imageExtension = (url: string): 'jpeg' | 'png' | 'gif' => (/png/i.test(url) ? 'png' : /gif/i.test(url) ? 'gif' : 'jpeg');
+
 export async function downloadFlmMonitoringWorkbook(unitName: string, periodLabel: string, kondisiAwal: Record<string, string>, rows: FlmMonitoringRow[], formatDate: (date: string) => string, filename: string) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Monitoring FLM', {
@@ -41,8 +58,8 @@ export async function downloadFlmMonitoringWorkbook(unitName: string, periodLabe
     });
 
     const kondisi = Object.entries(kondisiAwal);
-    const totalCols = 4 + kondisi.length + 3;
-    const colWidths = [5, 24, 18, 32, ...kondisi.map(() => 12), 16, 30, 9];
+    const totalCols = 4 + kondisi.length + 3 + FLM_PHOTOS.length;
+    const colWidths = [5, 24, 18, 32, ...kondisi.map(() => 12), 16, 30, 9, ...FLM_PHOTOS.map(() => 16)];
     colWidths.forEach((width, i) => (worksheet.getColumn(i + 1).width = width));
 
     await buildDocumentHeader({ workbook, worksheet }, {
@@ -73,6 +90,16 @@ export async function downloadFlmMonitoringWorkbook(unitName: string, periodLabe
         put(worksheet, top + 1, col, '', HEADER);
         mergeCells(worksheet, top - 1, col - 1, top, col - 1);
     });
+    const photoCol = 8 + kondisi.length;
+    put(worksheet, top, photoCol, 'Eviden', HEADER);
+    mergeCells(worksheet, top - 1, photoCol - 1, top - 1, photoCol - 1 + FLM_PHOTOS.length - 1);
+    FLM_PHOTOS.forEach(([, label], i) => {
+        if (i > 0) {
+            applyStyle(worksheet.getRow(top).getCell(photoCol + i), HEADER);
+        }
+
+        put(worksheet, top + 1, photoCol + i, label, HEADER);
+    });
 
     let r = top + 2;
 
@@ -85,6 +112,25 @@ export async function downloadFlmMonitoringWorkbook(unitName: string, periodLabe
         put(worksheet, r, 5 + kondisi.length, row.kondisi_akhir, CELL);
         put(worksheet, r, 6 + kondisi.length, row.catatan, CELL_LEFT);
         put(worksheet, r, 7 + kondisi.length, isFilled(row) ? row.status.toUpperCase() : '', { ...CELL, bold: true });
+
+        let hasPhoto = false;
+
+        for (const [i, [column]] of FLM_PHOTOS.entries()) {
+            put(worksheet, r, photoCol + i, '', CELL);
+            const url = row[`${column}_url`];
+            const base64 = url ? await loadImageBase64(url) : null;
+
+            if (url && base64) {
+                const id = workbook.addImage({ base64, extension: imageExtension(url) });
+                worksheet.addImage(id, { tl: { col: photoCol - 1 + i + 0.1, row: r - 1 + 0.1 }, ext: { width: 96, height: 64 } });
+                hasPhoto = true;
+            }
+        }
+
+        if (hasPhoto) {
+            worksheet.getRow(r).height = 54;
+        }
+
         r++;
     }
 
