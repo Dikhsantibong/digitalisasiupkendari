@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\ActivityEvent;
 use App\Enums\RoleName;
+use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
 use App\Enums\UnitType;
 use App\Models\ActivityLog;
@@ -126,6 +127,36 @@ class UnitManagementTest extends TestCase
             'event' => ActivityEvent::Created->value,
             'unit_id' => $unit->id,
         ]);
+    }
+
+    public function test_the_contract_is_chosen_from_11_kit_or_6_kit_filtered_and_optional(): void
+    {
+        $superAdmin = $this->userWithRole(RoleName::SuperAdmin);
+        $payload = fn (array $extra): array => [
+            'code' => 'pltd-kontrak', 'name' => 'PLTD Kontrak', 'type' => UnitType::Pltd->value,
+            'status' => UnitStatus::Operating->value, 'is_active' => '1', ...$extra,
+        ];
+
+        $this->actingAs($superAdmin)->post(route('admin.units.store'), $payload(['contract' => 'kit_11']))
+            ->assertRedirect(route('admin.units.index'));
+        $unit = Unit::query()->where('code', 'PLTD-KONTRAK')->firstOrFail();
+        $this->assertSame(UnitContract::Kit11, $unit->contract);
+
+        // Changed to 6 KIT, then cleared (not set yet); anything else is rejected.
+        $this->actingAs($superAdmin)->put(route('admin.units.update', $unit), $payload(['contract' => 'kit_6']))->assertSessionHasNoErrors();
+        $this->assertSame(UnitContract::Kit6, $unit->refresh()->contract);
+        $this->actingAs($superAdmin)->put(route('admin.units.update', $unit), $payload(['contract' => '']))->assertSessionHasNoErrors();
+        $this->assertNull($unit->refresh()->contract);
+        $this->actingAs($superAdmin)->put(route('admin.units.update', $unit), $payload(['contract' => 'kit_9']))->assertSessionHasErrors('contract');
+
+        Unit::factory()->create(['contract' => UnitContract::Kit6, 'name' => 'PLTD Enam']);
+        $this->actingAs($superAdmin)->get(route('admin.units.index', ['contract' => 'kit_6']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('units.data', 1)
+                ->where('units.data.0.contract', 'kit_6')
+                ->where('units.data.0.contract_label', '6 KIT')
+                ->where('options.contracts', [['value' => 'kit_11', 'label' => '11 KIT'], ['value' => 'kit_6', 'label' => '6 KIT']]));
     }
 
     public function test_creating_a_unit_requires_a_unique_code(): void

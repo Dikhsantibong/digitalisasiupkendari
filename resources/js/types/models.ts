@@ -44,6 +44,9 @@ export type UnitRow = {
     name: string;
     type: string;
     type_label: string;
+    /** Kontrak: kit_11 | kit_6, null when not set yet. */
+    contract: string | null;
+    contract_label: string | null;
     status: string;
     status_label: string;
     status_tone: Tone;

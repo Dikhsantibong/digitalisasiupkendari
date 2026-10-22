@@ -11,6 +11,7 @@ type Props = {
     options: {
         serviceUnits: IdName[];
         types: Option[];
+        contracts: Option[];
         statuses: Option[];
     };
 };

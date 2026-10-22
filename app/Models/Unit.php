@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
 use App\Enums\UnitType;
 use Database\Factories\UnitFactory;
@@ -22,6 +23,7 @@ use Illuminate\Support\Carbon;
  * @property string $name
  * @property string $slug
  * @property UnitType $type
+ * @property UnitContract|null $contract kontrak 11 KIT / 6 KIT
  * @property string|null $installed_capacity_mw
  * @property string|null $location
  * @property string|null $latitude
@@ -39,6 +41,7 @@ use Illuminate\Support\Carbon;
     'name',
     'slug',
     'type',
+    'contract',
     'installed_capacity_mw',
     'location',
     'latitude',
@@ -59,6 +62,7 @@ class Unit extends Model
     {
         return [
             'type' => UnitType::class,
+            'contract' => UnitContract::class,
             'status' => UnitStatus::class,
             'is_active' => 'boolean',
             'attendance_radius_m' => 'integer',

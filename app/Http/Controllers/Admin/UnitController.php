@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ActivityEvent;
+use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
 use App\Enums\UnitType;
 use App\Http\Controllers\Controller;
@@ -37,6 +38,7 @@ class UnitController extends Controller
                 });
             })
             ->when($request->input('type'), fn ($query, $type) => $query->where('type', $type))
+            ->when($request->input('contract'), fn ($query, $contract) => $query->where('contract', $contract))
             ->when($request->input('status'), fn ($query, $status) => $query->where('status', $status))
             ->when($request->input('service_unit_id'), fn ($query, $id) => $query->where('service_unit_id', $id))
             ->orderBy('name')
@@ -45,7 +47,7 @@ class UnitController extends Controller
 
         return Inertia::render('admin/units/index', [
             'units' => $units->through(fn (Unit $unit): array => $this->presentUnit($unit)),
-            'filters' => $request->only(['search', 'type', 'status', 'service_unit_id']),
+            'filters' => $request->only(['search', 'type', 'contract', 'status', 'service_unit_id']),
             'options' => $this->options($request),
         ]);
     }
@@ -176,6 +178,8 @@ class UnitController extends Controller
             'name' => $unit->name,
             'type' => $unit->type->value,
             'type_label' => $unit->type->label(),
+            'contract' => $unit->contract?->value,
+            'contract_label' => $unit->contract?->label(),
             'status' => $unit->status->value,
             'status_label' => $unit->status->label(),
             'status_tone' => $unit->status->tone(),
@@ -208,6 +212,9 @@ class UnitController extends Controller
                     'label' => $type->label(),
                     'description' => $type->description(),
                 ])
+                ->all(),
+            'contracts' => collect(UnitContract::cases())
+                ->map(fn (UnitContract $contract): array => ['value' => $contract->value, 'label' => $contract->label()])
                 ->all(),
             'statuses' => collect(UnitStatus::cases())
                 ->map(fn (UnitStatus $status): array => [

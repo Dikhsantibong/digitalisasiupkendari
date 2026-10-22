@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { Building2, HardHat, Lock, Mail, Wrench, Zap } from 'lucide-react';
 import InputError from '@/components/input-error';
+import { InstallAppLink } from '@/components/install-app-link';
 import PasswordInput from '@/components/password-input';
 import TextLink from '@/components/text-link';
 import { Button } from '@/components/ui/button';
@@ -262,6 +263,8 @@ export default function Login({ status, canResetPassword }: Props) {
                                 </>
                             )}
                         </Form>
+
+                        <InstallAppLink />
 
                         <p className="mt-5 rounded-md border border-border bg-secondary px-3 py-2 text-[13px] text-muted-foreground">
                             Akses terbatas untuk pengguna terdaftar PT PLN

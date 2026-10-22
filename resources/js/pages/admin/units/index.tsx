@@ -29,12 +29,14 @@ type Props = {
     filters: {
         search?: string;
         type?: string;
+        contract?: string;
         status?: string;
         service_unit_id?: string;
     };
     options: {
         serviceUnits: IdName[];
         types: Option[];
+        contracts: Option[];
         statuses: Option[];
     };
 };
@@ -46,6 +48,7 @@ export default function UnitsIndex({ units: page, filters, options }: Props) {
         {
             search: filters.search,
             type: filters.type,
+            contract: filters.contract,
             status: filters.status,
             service_unit_id: filters.service_unit_id,
         },
@@ -100,6 +103,13 @@ export default function UnitsIndex({ units: page, filters, options }: Props) {
                             options={options.types}
                         />
                         <FilterSelect
+                            value={values.contract}
+                            onChange={(value) => setFilter('contract', value)}
+                            placeholder="Kontrak"
+                            allLabel="Semua Kontrak"
+                            options={options.contracts}
+                        />
+                        <FilterSelect
                             value={values.status}
                             onChange={(value) => setFilter('status', value)}
                             placeholder="Status"
@@ -135,6 +145,7 @@ export default function UnitsIndex({ units: page, filters, options }: Props) {
                                     <TableHead>Unit</TableHead>
                                     <TableHead>Unit Layanan</TableHead>
                                     <TableHead>Tipe</TableHead>
+                                    <TableHead>Kontrak</TableHead>
                                     <TableHead>Lokasi</TableHead>
                                     <TableHead className="text-right">
                                         Jumlah Mesin
@@ -167,6 +178,9 @@ export default function UnitsIndex({ units: page, filters, options }: Props) {
                                         </TableCell>
                                         <TableCell>{unit.type_label}</TableCell>
                                         <TableCell className="text-muted-foreground">
+                                            {unit.contract_label ?? '—'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground">
                                             {unit.location ?? '—'}
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums">
@@ -190,7 +204,9 @@ export default function UnitsIndex({ units: page, filters, options }: Props) {
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right tabular-nums">
-                                            {formatNumber(unit.machines_capacity)}
+                                            {formatNumber(
+                                                unit.machines_capacity,
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <StatusBadge

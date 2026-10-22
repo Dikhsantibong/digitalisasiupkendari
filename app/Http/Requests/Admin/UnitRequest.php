@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
 use App\Enums\UnitType;
 use App\Models\Unit;
@@ -33,6 +34,7 @@ class UnitRequest extends FormRequest
             'code' => ['required', 'string', 'max:32', Rule::unique('units', 'code')->ignore($id)],
             'name' => ['required', 'string', 'max:120'],
             'type' => ['required', Rule::enum(UnitType::class)],
+            'contract' => ['nullable', Rule::enum(UnitContract::class)],
             'status' => ['required', Rule::enum(UnitStatus::class)],
             'installed_capacity_mw' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'location' => ['nullable', 'string', 'max:160'],
@@ -62,6 +64,7 @@ class UnitRequest extends FormRequest
             'code' => 'kode',
             'name' => 'nama',
             'type' => 'tipe',
+            'contract' => 'kontrak',
             'status' => 'status',
             'installed_capacity_mw' => 'kapasitas terpasang',
             'location' => 'lokasi',

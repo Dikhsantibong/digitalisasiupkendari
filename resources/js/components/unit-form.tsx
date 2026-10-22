@@ -20,12 +20,14 @@ type Props = {
     options: {
         serviceUnits: IdName[];
         types: Option[];
+        contracts: Option[];
         statuses: Option[];
     };
     submitLabel: string;
 };
 
 const NO_SERVICE_UNIT = 'none';
+const NO_CONTRACT = 'none';
 
 export function UnitForm({ action, unit, options, submitLabel }: Props) {
     return (
@@ -37,6 +39,7 @@ export function UnitForm({ action, unit, options, submitLabel }: Props) {
                     data.service_unit_id === NO_SERVICE_UNIT
                         ? ''
                         : data.service_unit_id,
+                contract: data.contract === NO_CONTRACT ? '' : data.contract,
             })}
             className="flex flex-col gap-6"
         >
@@ -105,6 +108,34 @@ export function UnitForm({ action, unit, options, submitLabel }: Props) {
                                                         — {type.description}
                                                     </span>
                                                 )}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormField>
+
+                            <FormField
+                                label="Kontrak"
+                                hint="Paket kontrak unit, untuk pembagian tanggung jawab."
+                                error={errors.contract}
+                            >
+                                <Select
+                                    name="contract"
+                                    defaultValue={unit?.contract ?? NO_CONTRACT}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Pilih kontrak" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={NO_CONTRACT}>
+                                            Belum ditentukan
+                                        </SelectItem>
+                                        {options.contracts.map((contract) => (
+                                            <SelectItem
+                                                key={contract.value}
+                                                value={contract.value}
+                                            >
+                                                {contract.label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

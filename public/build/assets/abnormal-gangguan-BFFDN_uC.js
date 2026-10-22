@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-DGUYArqF.js";import{Jn as n}from"./app-BFWhQRFR.js";import{n as r,t as i}from"./tabel-page-DCA6sS97.js";var a=e(),o=t();function s(e){let t=(0,a.c)(2),n;return t[0]===e?n=t[1]:(n=(0,o.jsx)(i,{...e}),t[0]=e,t[1]=n),n}s.layout={breadcrumbs:r(`Laporan Kondisi Abnormal dan Gangguan`,n.index().url)};export{s as default};

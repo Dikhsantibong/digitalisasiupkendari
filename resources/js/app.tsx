@@ -5,6 +5,8 @@ import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/app-layout';
 import AuthLayout from '@/layouts/auth-layout';
 import SettingsLayout from '@/layouts/settings/layout';
+// Captures the PWA install prompt early, before the login page offers it.
+import '@/lib/install-prompt';
 import { registerServiceWorker } from '@/lib/notifications';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
