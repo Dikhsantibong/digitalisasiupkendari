@@ -355,6 +355,7 @@ enum RoleName: string
                 PermissionName::OperatorPresensi,
                 PermissionName::OperasiLaporanView,
                 ...PermissionName::operasiLapangan(),
+                PermissionName::OperasiPengusahaanInput,
                 // Akses 1 — the Project Leader reads (and signs "Mengetahui")
                 // every Laporan Project.
                 PermissionName::HarLaporanView,
@@ -386,6 +387,8 @@ enum RoleName: string
                 PermissionName::OperasiLapanganChecklistCommissioning,
                 PermissionName::OperasiLapanganUnsafeCondition,
                 PermissionName::OperasiLapanganProgram5s5r,
+                // The operators fill the Pengusahaan Operasi inputs too (not the Berita Acara / Laporan Pengusahaan).
+                PermissionName::OperasiPengusahaanInput,
             ],
 
             // Field maintenance staff (divisi Pemeliharaan): absen plus every HAR

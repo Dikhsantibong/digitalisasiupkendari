@@ -11,6 +11,7 @@ import { PDM_MENUS } from '@/layouts/mobile/menus/pdm';
 import { PEMELIHARAAN_MENUS } from '@/layouts/mobile/menus/pemeliharaan';
 import { UMUM_MENUS } from '@/layouts/mobile/menus/umum';
 import type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
+import { OPERATOR_PENGUSAHAAN_INPUT } from '@/lib/pengusahaan-menus';
 import { dashboard } from '@/routes';
 
 export type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
@@ -27,6 +28,25 @@ export type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
  *   shown only to users holding its permission, which a Super Admin grants or
  *   withdraws per role in Role & Akses.
  */
+/**
+ * The operators' Operasi cards: the field inputs, then the Pengusahaan
+ * Operasi inputs (operasi.pengusahaan.input — not the Berita Acara nor the
+ * Laporan). A Pengusahaan page already among the field inputs (Input Harian,
+ * Stand Meter, Pemakaian Pelumas) is listed once, open to either permission.
+ */
+const OPERATOR_OPERASI_MENUS: MobileMenu[] = (() => {
+    const pengusahaan = OPERASI_PENGUSAHAAN_MENUS.filter((menu) => menu.group !== 'op-formulir' && menu.group !== 'op-laporan');
+    const shared = new Set(pengusahaan.map((menu) => menu.component));
+    const toList = (permission: string | string[]) => (Array.isArray(permission) ? permission : [permission]);
+
+    return [
+        ...OPERASI_MENUS.map((menu) =>
+            shared.has(menu.component) ? { ...menu, permission: [...toList(menu.permission), OPERATOR_PENGUSAHAAN_INPUT] } : menu,
+        ),
+        ...pengusahaan.filter((menu) => !OPERASI_MENUS.some((field) => field.component === menu.component)),
+    ];
+})();
+
 export const MOBILE_MODULES: MobileModule[] = [
     {
         key: 'operator',
@@ -36,7 +56,8 @@ export const MOBILE_MODULES: MobileModule[] = [
         roles: ['operator', 'project_leader_operasi', 'harmes', 'harlist'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
-        menus: [...UMUM_MENUS, ...OPERASI_MENUS, ...PEMELIHARAAN_MENUS, ...LAPORAN_PROJECT_MENUS],
+        // The operators also fill the Pengusahaan Operasi inputs (not the Berita Acara / Laporan Pengusahaan).
+        menus: [...UMUM_MENUS, ...OPERATOR_OPERASI_MENUS, ...PEMELIHARAAN_MENUS, ...LAPORAN_PROJECT_MENUS],
     },
     {
         // Akses 1 — Laporan Project Operasi on a phone: Koordinator Operasi.

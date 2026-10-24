@@ -17,6 +17,18 @@ trait AuthorizesFieldInput
     protected function allowsFieldInput(User $user, PermissionName $modulePermission, ?PermissionName $pagePermission = null): bool
     {
         return $user->hasPermissionTo($modulePermission)
-            || ($pagePermission !== null && $user->hasPermissionTo($pagePermission));
+            || ($pagePermission !== null && $user->hasPermissionTo($pagePermission))
+            || ($this->isPengusahaanOperasi($modulePermission) && $user->hasPermissionTo(PermissionName::OperasiPengusahaanInput));
+    }
+
+    /**
+     * The Pengusahaan Operasi input pages (gated here with the TL/Staf
+     * permission) are also filled by the operators, who hold
+     * operasi.pengusahaan.input. The Berita Acara and the Laporan Pengusahaan
+     * check the TL/Staf permission directly, so they stay with TL & Staf.
+     */
+    private function isPengusahaanOperasi(PermissionName $permission): bool
+    {
+        return $permission === PermissionName::OperasiPengusahaanView || $permission === PermissionName::OperasiPengusahaanWrite;
     }
 }

@@ -117,6 +117,9 @@ import operasiPengusahaanTaraKalor from '@/routes/operasi/pengusahaan/tara-kalor
 import operasiPengusahaanTugBbm from '@/routes/operasi/pengusahaan/tug-bbm';
 import operasiPengusahaanTugPelumas from '@/routes/operasi/pengusahaan/tug-pelumas';
 
+/** The operators' permission to fill the Pengusahaan Operasi inputs. */
+export const OPERATOR_PENGUSAHAAN_INPUT = 'operasi.pengusahaan.input';
+
 /**
  * Akses 2 — Pengusahaan (Team Leader & Staf) of Operasi, Pemeliharaan & K3.
  *
@@ -139,13 +142,15 @@ export type PengusahaanSectionKey = 'input' | 'formulir';
 export const PENGUSAHAAN_MODULES: {
     key: PengusahaanModuleKey;
     title: string;
-    permission: string;
+    /** Any one of these opens the module's Pengusahaan menus. */
+    permission: string | string[];
     hub: (section: PengusahaanSectionKey) => string;
 }[] = [
     {
         key: 'operasi',
         title: 'Operasi',
-        permission: 'operasi.pengusahaan.view',
+        // The operators fill the Pengusahaan Operasi inputs too (operasi.pengusahaan.input).
+        permission: ['operasi.pengusahaan.view', OPERATOR_PENGUSAHAAN_INPUT],
         hub: (section) => operasiPengusahaan.index(section).url,
     },
     {
@@ -212,8 +217,8 @@ export type PengusahaanMenu = {
     icon: LucideIcon;
     /** Page URL; null while the page is still being built (shown disabled). */
     href: string | null;
-    /** Shown only to users holding this permission (Role & Akses). */
-    permission: string;
+    /** Shown only to users holding this permission, or one of these (Role & Akses). */
+    permission: string | string[];
     /** A sub-heading inside the section's hub (Operasi Input); none = the section's main list. */
     group?: PengusahaanMenuGroup;
     /**
@@ -231,7 +236,7 @@ export function pengusahaanComponent(menu: PengusahaanMenu): string {
     );
 }
 
-export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = [
+const MENUS: PengusahaanMenu[] = [
     {
         module: 'operasi',
         section: 'input',
@@ -994,3 +999,13 @@ export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = [
         permission: 'har.pengusahaan.view',
     },
 ];
+
+/**
+ * Every Akses 2 page. The Pengusahaan Operasi Input pages are also open to the
+ * operators (operasi.pengusahaan.input); the Berita Acara stays with TL & Staf.
+ */
+export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = MENUS.map((menu) =>
+    menu.module === 'operasi' && menu.section === 'input' && menu.permission === 'operasi.pengusahaan.view'
+        ? { ...menu, permission: ['operasi.pengusahaan.view', OPERATOR_PENGUSAHAAN_INPUT] }
+        : menu,
+);

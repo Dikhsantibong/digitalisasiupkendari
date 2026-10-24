@@ -99,7 +99,8 @@ export function AppSidebar() {
         const suffix = can(akses1Permission) ? ' Pengusahaan' : '';
 
         // A section shows only when the module has pages in it; Operasi names its Formulir "Berita Acara".
-        return PENGUSAHAAN_SECTIONS.filter((section) => PENGUSAHAAN_MENUS.some((menu) => menu.module === key && menu.section === section.key)).map((section) => ({
+        // (only the sections with a page the user may open: the operators get Input, not Berita Acara).
+        return PENGUSAHAAN_SECTIONS.filter((section) => PENGUSAHAAN_MENUS.some((menu) => menu.module === key && menu.section === section.key && can(menu.permission))).map((section) => ({
             title: pengusahaanSection(section.key, key).title + suffix,
             href: module.hub(section.key),
             icon: pengusahaanSection(section.key, key).icon,

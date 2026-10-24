@@ -43,8 +43,9 @@ class LogsheetTest extends TestCase
     {
         $user = $this->userWithRole(RoleName::Operator, Unit::factory()->create());
 
-        // Pengusahaan Operasi belongs to TL & Staf Operasi: closed to the operator.
-        $this->actingAs($user)->get(route('operasi.pengusahaan.daily-report.index'))->assertForbidden();
+        // The operator fills the Pengusahaan Operasi inputs too; the Berita Acara stays with TL & Staf.
+        $this->actingAs($user)->get(route('operasi.pengusahaan.daily-report.index'))->assertOk();
+        $this->actingAs($user)->get(route('operasi.pengusahaan.berita-acara.index'))->assertForbidden();
 
         $this->actingAs($user)->get(route('operasi.input.kondisi-abnormal.index'))->assertOk();
 

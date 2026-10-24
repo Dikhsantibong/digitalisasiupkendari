@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PermissionName;
 use App\Enums\ReportModule;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -39,7 +40,9 @@ class PengusahaanController extends Controller
     {
         $module = (string) $request->route('module');
         $permission = ReportModule::from($module)->pengusahaanPermission();
-        abort_unless($permission !== null && $request->user()->hasPermissionTo($permission), 403);
+        // The operators open the Pengusahaan Operasi Input hub (not the Berita Acara).
+        $operatorInput = $module === 'operasi' && $section === 'input' && $request->user()->hasPermissionTo(PermissionName::OperasiPengusahaanInput);
+        abort_unless($permission !== null && ($request->user()->hasPermissionTo($permission) || $operatorInput), 403);
 
         return Inertia::render('pengusahaan/index', [
             'module' => ['key' => $module, 'title' => self::TITLES[$module]],

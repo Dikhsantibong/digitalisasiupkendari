@@ -170,11 +170,9 @@ class FieldRoleTest extends TestCase
                 $this->actingAs($user)->get(route("operasi.input.{$page}.index", $query))->assertOk();
             }
 
-            // The daily inputs moved to Pengusahaan Operasi (Akses 2 — TL & Staf): closed to
-            // the operator, the Project Leader still reaches them through its page permission.
+            // The Pengusahaan Operasi inputs are filled by the operators too (operasi.pengusahaan.input).
             foreach (['daily-report', 'star-stop', 'feeder', 'auxiliary', 'fuel-receipt', 'resource-pembangkit'] as $page) {
-                $response = $this->actingAs($user)->get(route("operasi.pengusahaan.{$page}.index", $query));
-                $role === RoleName::Operator ? $response->assertForbidden() : $response->assertOk();
+                $this->actingAs($user)->get(route("operasi.pengusahaan.{$page}.index", $query))->assertOk();
             }
 
             // The Koordinator's hub stays closed, and the HAR pages belong to Harmes / Harlist

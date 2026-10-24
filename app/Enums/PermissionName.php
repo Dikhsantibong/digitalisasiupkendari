@@ -71,6 +71,9 @@ enum PermissionName: string
     // the Laporan Pengusahaan Pembangkit of the module.
     case OperasiPengusahaanView = 'operasi.pengusahaan.view';
     case OperasiPengusahaanWrite = 'operasi.pengusahaan.write';
+    // The operators (every unit, containerized or not) fill the Pengusahaan
+    // Operasi daily inputs too — not the Berita Acara nor the Laporan Pengusahaan.
+    case OperasiPengusahaanInput = 'operasi.pengusahaan.input';
 
     // Operasi input pages opened to shift operators, one per page (see operasiLapangan()).
     case OperasiLapanganDailyReport = 'operasi.lapangan.daily_report';
@@ -243,7 +246,8 @@ enum PermissionName: string
             self::OperasiMasterManage => PermissionGroup::Operasi,
 
             self::OperasiPengusahaanView,
-            self::OperasiPengusahaanWrite => PermissionGroup::OperasiPengusahaan,
+            self::OperasiPengusahaanWrite,
+            self::OperasiPengusahaanInput => PermissionGroup::OperasiPengusahaan,
 
             self::OperasiLapanganDailyReport,
             self::OperasiLapanganStarStop,
@@ -418,6 +422,7 @@ enum PermissionName: string
             self::OperasiMasterManage => 'Mengelola master data operasi',
             self::OperasiPengusahaanView => 'Membuka menu & Laporan Pengusahaan operasi',
             self::OperasiPengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan operasi',
+            self::OperasiPengusahaanInput => 'Mengisi input Pengusahaan operasi (operator; tanpa Berita Acara & Laporan Pengusahaan)',
             self::OperasiLapanganDailyReport => 'Input lapangan: Input Harian',
             self::OperasiLapanganStarStop => 'Input lapangan: Star-Stop Mesin',
             self::OperasiLapanganFeeder => 'Input lapangan: Feeder',
