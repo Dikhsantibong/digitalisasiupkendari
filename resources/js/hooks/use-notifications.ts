@@ -1,6 +1,11 @@
 import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
-import { fetchFeed, markAllRead, markRead, syncPushSubscription } from '@/lib/notifications';
+import {
+    fetchFeed,
+    markAllRead,
+    markRead,
+    syncPushSubscription,
+} from '@/lib/notifications';
 import type { AppNotification } from '@/lib/notifications';
 
 /** How often an open, visible tab refreshes the bell. */
@@ -12,6 +17,10 @@ const POLL_MS = 60_000;
  * it becomes visible again, and right away when a push arrives.
  */
 export function useNotifications() {
+    const impersonating = Boolean(
+        (usePage().props.auth as { impersonator?: unknown } | undefined)
+            ?.impersonator,
+    );
     const shared = usePage().props.notifications;
     const [unread, setUnread] = useState(shared?.unread ?? 0);
     const [items, setItems] = useState<AppNotification[] | null>(null);
@@ -40,8 +49,11 @@ export function useNotifications() {
     }, []);
 
     useEffect(() => {
-        // Re-link this device's push subscription to the signed-in account (no prompt).
-        void syncPushSubscription();
+        // Re-link this device's push subscription to the signed-in account (no prompt) —
+        // never while a Super Admin works as another user (Pindah Akun; the server refuses it too).
+        if (!impersonating) {
+            void syncPushSubscription();
+        }
 
         const tick = () => {
             if (document.visibilityState === 'visible') {
@@ -63,10 +75,15 @@ export function useNotifications() {
             document.removeEventListener('visibilitychange', tick);
             navigator.serviceWorker?.removeEventListener('message', onMessage);
         };
-    }, [refresh]);
+    }, [refresh, impersonating]);
 
     const read = useCallback(async (id: string) => {
-        setItems((current) => current?.map((item) => (item.id === id ? { ...item, read: true } : item)) ?? null);
+        setItems(
+            (current) =>
+                current?.map((item) =>
+                    item.id === id ? { ...item, read: true } : item,
+                ) ?? null,
+        );
 
         try {
             setUnread((await markRead(id)).unread);
@@ -76,7 +93,10 @@ export function useNotifications() {
     }, []);
 
     const readAll = useCallback(async () => {
-        setItems((current) => current?.map((item) => ({ ...item, read: true })) ?? null);
+        setItems(
+            (current) =>
+                current?.map((item) => ({ ...item, read: true })) ?? null,
+        );
 
         try {
             setUnread((await markAllRead()).unread);

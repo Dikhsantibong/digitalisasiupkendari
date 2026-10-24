@@ -38,6 +38,12 @@ class ActivityLogger
                 : Unit::query()->whereKey($unitId)->value('service_unit_id');
         }
 
+        // Saved while a Super Admin works as this user (Pindah Akun): keep who really did it.
+        $impersonator = Request::hasSession() ? (Request::session()->get(Impersonation::SESSION_KEY)['admin_id'] ?? null) : null;
+        if ($impersonator !== null) {
+            $properties['impersonated_by'] = $impersonator;
+        }
+
         return ActivityLog::query()->create([
             'user_id' => Auth::id(),
             'event' => $event,

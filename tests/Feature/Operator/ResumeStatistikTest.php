@@ -65,9 +65,9 @@ class ResumeStatistikTest extends TestCase
         $this->actingAs($this->userA)->post(route('operasi.input.flm-monitoring.store'), $this->period + ['rows' => [
             ['mesin' => 'Pompa BBM', 'tanggal' => '2026-08-03', 'masalah' => 'Bocor', 'status' => 'open'],
         ]])->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($this->userA)->post(route('operasi.input.kondisi-abnormal.store'), $this->period + ['rows' => [
-            ['no_urut' => 1, 'uraian_kondisi' => 'Exhaust tinggi', 'tanggal' => '2026-08-03', 'is_abnormal' => 1, 'durasi_abnormal' => 1],
-        ]])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->userA)->post(route('operasi.input.kondisi-abnormal.store'), [
+            'unit_id' => $this->unit->id, 'tanggal' => '2026-08-03', 'jenis' => 'abnormal', 'durasi' => 1, 'uraian_kondisi' => 'Exhaust tinggi',
+        ])->assertRedirect()->assertSessionHasNoErrors();
         $this->travelTo('2026-08-20 09:00:00');
 
         // An approved tukar shift: A worked for B on the 10th.

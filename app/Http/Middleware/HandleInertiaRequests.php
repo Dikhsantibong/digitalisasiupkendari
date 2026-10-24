@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AccessControl;
+use App\Services\Impersonation;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -52,6 +53,9 @@ class HandleInertiaRequests extends Middleware
                 // Portal Pemantauan layout & view-only mode (kantor induk UP Kendari, Manager UL).
                 'usesPortal' => $user?->usesPortal() ?? false,
                 'readOnly' => $user?->isReadOnly() ?? false,
+                // Pindah Akun: the Super Admin behind a "masuk sebagai" session, and whether one may start.
+                'impersonator' => $this->impersonator($request),
+                'canImpersonate' => ($user?->isSuperAdmin() ?? false) && ! app(Impersonation::class)->isActive($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             // The bell's first count; it then refreshes itself from notifications.feed.
@@ -60,6 +64,17 @@ class HandleInertiaRequests extends Middleware
                 'push_public_key' => config('webpush.vapid.public_key'),
             ],
         ];
+    }
+
+    /**
+     * @return array{id: int, name: string, minutes_left: int}|null
+     */
+    private function impersonator(Request $request): ?array
+    {
+        $impersonation = app(Impersonation::class);
+        $admin = $impersonation->impersonator($request);
+
+        return $admin === null ? null : ['id' => $admin->id, 'name' => $admin->name, 'minutes_left' => $impersonation->minutesLeft($request)];
     }
 
     /**

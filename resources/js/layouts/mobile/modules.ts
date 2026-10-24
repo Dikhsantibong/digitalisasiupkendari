@@ -28,22 +28,52 @@ export type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
  *   shown only to users holding its permission, which a Super Admin grants or
  *   withdraws per role in Role & Akses.
  */
+/** The Pengusahaan Operasi section of the field roles' phone menu, kept apart from their regular inputs. */
+const PENGUSAHAAN_GROUP: Partial<
+    Record<MobileMenu['group'], MobileMenu['group']>
+> = {
+    'op-input': 'opu-input',
+    'op-bbm': 'opu-bbm',
+    'op-pelumas': 'opu-pelumas',
+    'op-kwh': 'opu-kwh',
+    'op-rekap': 'opu-rekap',
+};
+
 /**
- * The operators' Operasi cards: the field inputs, then the Pengusahaan
- * Operasi inputs (operasi.pengusahaan.input — not the Berita Acara nor the
- * Laporan). A Pengusahaan page already among the field inputs (Input Harian,
- * Stand Meter, Pemakaian Pelumas) is listed once, open to either permission.
+ * The operators' & Project Leader's Operasi cards, in two parts on the phone:
+ * - "Input Operasi (Laporan Project)": the field inputs (operasi.lapangan.*);
+ * - "Pengusahaan · …": the Pengusahaan Operasi inputs (operasi.pengusahaan.input —
+ *   not the Berita Acara nor the Laporan). The Pengusahaan pages that are also
+ *   field inputs (Input Harian, Stand Meter, Pemakaian Pelumas) sit here once,
+ *   open to either permission.
  */
 const OPERATOR_OPERASI_MENUS: MobileMenu[] = (() => {
-    const pengusahaan = OPERASI_PENGUSAHAAN_MENUS.filter((menu) => menu.group !== 'op-formulir' && menu.group !== 'op-laporan');
+    const toList = (permission: string | string[]) =>
+        Array.isArray(permission) ? permission : [permission];
+    const fieldOf = (component: string) =>
+        OPERASI_MENUS.find((menu) => menu.component === component);
+    const pengusahaan = OPERASI_PENGUSAHAAN_MENUS.filter(
+        (menu) => PENGUSAHAAN_GROUP[menu.group] !== undefined,
+    ).map((menu): MobileMenu => {
+        const field = fieldOf(menu.component);
+
+        return {
+            ...menu,
+            key: `operator-${menu.key}`,
+            group: PENGUSAHAAN_GROUP[menu.group] as MobileMenu['group'],
+            permission: [
+                ...(field ? toList(field.permission) : []),
+                OPERATOR_PENGUSAHAAN_INPUT,
+            ],
+            // Desktop: a field input page keeps its sidebar place for the roles without the Pengusahaan hub.
+            ...(field?.coveredBy ? { coveredBy: field.coveredBy } : {}),
+        };
+    });
     const shared = new Set(pengusahaan.map((menu) => menu.component));
-    const toList = (permission: string | string[]) => (Array.isArray(permission) ? permission : [permission]);
 
     return [
-        ...OPERASI_MENUS.map((menu) =>
-            shared.has(menu.component) ? { ...menu, permission: [...toList(menu.permission), OPERATOR_PENGUSAHAAN_INPUT] } : menu,
-        ),
-        ...pengusahaan.filter((menu) => !OPERASI_MENUS.some((field) => field.component === menu.component)),
+        ...OPERASI_MENUS.filter((menu) => !shared.has(menu.component)),
+        ...pengusahaan,
     ];
 })();
 
@@ -57,7 +87,12 @@ export const MOBILE_MODULES: MobileModule[] = [
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         // The operators also fill the Pengusahaan Operasi inputs (not the Berita Acara / Laporan Pengusahaan).
-        menus: [...UMUM_MENUS, ...OPERATOR_OPERASI_MENUS, ...PEMELIHARAAN_MENUS, ...LAPORAN_PROJECT_MENUS],
+        menus: [
+            ...UMUM_MENUS,
+            ...OPERATOR_OPERASI_MENUS,
+            ...PEMELIHARAAN_MENUS,
+            ...LAPORAN_PROJECT_MENUS,
+        ],
     },
     {
         // Akses 1 — Laporan Project Operasi on a phone: Koordinator Operasi.
@@ -69,7 +104,12 @@ export const MOBILE_MODULES: MobileModule[] = [
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         menus: OPERASI_PROJECT_MENUS,
-        quick: ['opp-jadwal-flm', 'opp-jadwal-program-5s-5r', 'opp-operasi-kondisi_abnormal', 'opp-operasi-permit_to_work'],
+        quick: [
+            'opp-jadwal-flm',
+            'opp-jadwal-program-5s-5r',
+            'opp-operasi-kondisi_abnormal',
+            'opp-operasi-permit_to_work',
+        ],
     },
     {
         // Akses 2 — Pengusahaan Operasi on a phone: TL & Staf Operasi (Manager UL keeps the full app).

@@ -356,6 +356,8 @@ enum RoleName: string
                 PermissionName::OperasiLaporanView,
                 ...PermissionName::operasiLapangan(),
                 PermissionName::OperasiPengusahaanInput,
+                // Prepares the Material & Peralatan list the operators check.
+                PermissionName::OperasiMaterialPeralatanKelola,
                 // Akses 1 — the Project Leader reads (and signs "Mengetahui")
                 // every Laporan Project.
                 PermissionName::HarLaporanView,

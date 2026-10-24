@@ -63,11 +63,14 @@ export default function UnitShow({ unit, assignments, activity }: Props) {
                     }
                 />
 
-                <section className="grid gap-4 rounded-md border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-5">
+                <section className="grid gap-4 rounded-md border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">
                     <Detail label="Status Operasi">
                         <StatusBadge tone={unit.status_tone}>
                             {unit.status_label}
                         </StatusBadge>
+                    </Detail>
+                    <Detail label="Input Pengusahaan Operator">
+                        {unit.operator_pengusahaan ? 'Aktif' : 'Tidak aktif'}
                     </Detail>
                     <Detail label="Kontrak">
                         {unit.contract_label ?? 'Belum ditentukan'}

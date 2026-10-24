@@ -4,6 +4,7 @@ namespace Tests\Feature\Notifications;
 
 use App\Enums\RoleName;
 use App\Models\HarUnsafeCondition;
+use App\Models\KondisiAbnormal;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
@@ -48,8 +49,11 @@ class EventNotificationsTest extends TestCase
         $this->assertSame([], $this->titles($koordinatorK3));
         $this->assertSame([], $this->titles($tlElsewhere));
 
-        // Saving the same month again does not repeat it.
-        $this->saveAbnormal($koordinator, ['is_abnormal' => 1, 'uraian_kondisi' => 'Suhu exhaust tinggi', 'durasi_abnormal' => 2]);
+        // Editing the report (the durasi) without changing its jenis does not repeat it.
+        $record = KondisiAbnormal::query()->firstOrFail();
+        $this->actingAs($koordinator)->put(route('operasi.input.kondisi-abnormal.update', $record), [
+            'unit_id' => $this->unit->id, 'tanggal' => '2026-10-03', 'jenis' => 'abnormal', 'durasi' => 2, 'uraian_kondisi' => 'Suhu exhaust tinggi',
+        ])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertCount(1, $this->titles($tlOperasi));
     }
 
@@ -169,9 +173,10 @@ class EventNotificationsTest extends TestCase
     private function saveAbnormal(User $user, array $row): void
     {
         $this->actingAs($user)->post(route('operasi.input.kondisi-abnormal.store'), [
-            'unit_id' => $this->unit->id, 'month' => 10, 'year' => 2026,
-            'rows' => [['no_urut' => 1, 'tanggal' => '2026-10-03'] + $row],
-        ])->assertSessionHasNoErrors();
+            'unit_id' => $this->unit->id, 'tanggal' => '2026-10-03',
+            'jenis' => ($row['is_gangguan'] ?? 0) === 1 ? 'gangguan' : 'abnormal',
+            'uraian_kondisi' => $row['uraian_kondisi'] ?? 'Kondisi',
+        ])->assertRedirect()->assertSessionHasNoErrors();
     }
 
     /**

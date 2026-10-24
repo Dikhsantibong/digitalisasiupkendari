@@ -21,11 +21,15 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Laporan Kondisi Abnormal & Gangguan Pembangkit (Operasi input): per finding
- * the indikasi (uraian kondisi), tanggal, abnormal / gangguan with their
- * durasi, the related parameter, the short-term follow-up (SR, FLM, lainnya),
- * the long-term follow-up and the impact on the system and on the plant. The
- * same rows feed the PDF rekap and the Laporan Operasi Pembangkit.
+ * Laporan Kondisi Abnormal & Gangguan Pembangkit (Operasi input). One record
+ * per kejadian: the operator adds it with its tanggal (several a day are
+ * fine), jenis (abnormal / gangguan) & durasi, the indikasi, the related
+ * parameter, the short-term follow-up (SR, FLM, lainnya), the long-term
+ * follow-up and the impact on the system and on the plant. The page shows
+ * the month's rekap; the same records feed the PDF and the Laporan Operasi.
+ *
+ * Writers: operasi.input.write (Koordinator — every record of the unit) and
+ * the operators' field permission (their own records).
  */
 class KondisiAbnormalController extends Controller
 {
@@ -38,10 +42,11 @@ class KondisiAbnormalController extends Controller
         'tl_pendek_lainnya' => 'Lainnya',
     ];
 
+    /** Jenis kejadian => label. */
+    public const JENIS = ['abnormal' => 'Abnormal', 'gangguan' => 'Gangguan'];
+
     /** Free-text follow-up & impact columns. */
     private const TEXT_FIELDS = ['parameter_terkait', 'tl_pendek_keterangan', 'tl_panjang', 'dampak_sistem', 'dampak_pembangkit'];
-
-    private const MIN_ROWS = 30;
 
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
@@ -51,119 +56,94 @@ class KondisiAbnormalController extends Controller
         abort_unless($this->canView($user), 403);
 
         [$units, $unit, $month, $year] = $this->target($request);
-        $sheet = $this->sheet($unit, $month, $year);
+        $records = $this->records($unit, $month, $year);
 
         return Inertia::render('operasi/input/kondisi-abnormal/index', [
-            'filters' => [
-                'unit_id' => $unit->id,
-                'month' => $month,
-                'year' => $year,
-            ],
-            'rows' => $sheet['rows'],
-            'summary' => $sheet['summary'],
+            'unit' => ['id' => $unit->id, 'name' => $unit->name],
+            'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
+            'entries' => $records->values()->map(fn (KondisiAbnormal $record, int $index): array => [
+                ...$this->present($record, $index + 1),
+                'input_by' => $record->inputUser?->name,
+                'can_edit' => $this->canEdit($user, $record),
+            ])->all(),
+            'summary' => $this->summary($records),
+            'rekap_harian' => $this->daily($records),
             'options' => [
                 'units' => $units->all(),
                 'years' => range($year - 3, $year + 1),
                 'tindak_pendek' => self::TINDAK_PENDEK,
+                'jenis' => self::JENIS,
             ],
-            'can_write' => $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganKondisiAbnormal),
+            'can_write' => $this->canWrite($user),
+            'today' => Carbon::now('Asia/Makassar')->toDateString(),
         ]);
     }
 
     public function store(Request $request, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganKondisiAbnormal), 403);
+        abort_unless($this->canWrite($user), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
 
-        $validated = $request->validate([
-            'unit_id' => ['required', 'integer'],
-            'month' => ['required', 'integer', 'between:1,12'],
-            'year' => ['required', 'integer', 'between:2000,2100'],
-            'rows' => ['required', 'array'],
-            'rows.*.no_urut' => ['required', 'integer', 'min:1'],
-            'rows.*.uraian_kondisi' => ['nullable', 'string'],
-            'rows.*.tanggal' => ['nullable', 'date'],
-            'rows.*.is_abnormal' => ['nullable', 'integer', 'in:0,1'],
-            'rows.*.durasi_abnormal' => ['nullable', 'numeric', 'min:0'],
-            'rows.*.is_gangguan' => ['nullable', 'integer', 'in:0,1'],
-            'rows.*.durasi_gangguan' => ['nullable', 'numeric', 'min:0'],
-            'rows.*.parameter_terkait' => ['nullable', 'string', 'max:2000'],
-            'rows.*.tl_pendek_sr' => ['nullable', 'boolean'],
-            'rows.*.tl_pendek_flm' => ['nullable', 'boolean'],
-            'rows.*.tl_pendek_lainnya' => ['nullable', 'boolean'],
-            'rows.*.tl_pendek_keterangan' => ['nullable', 'string', 'max:2000'],
-            'rows.*.tl_panjang' => ['nullable', 'string', 'max:2000'],
-            'rows.*.dampak_sistem' => ['nullable', 'string', 'max:2000'],
-            'rows.*.dampak_pembangkit' => ['nullable', 'string', 'max:2000'],
+        $values = $this->values($request);
+        $date = Carbon::parse($values['tanggal']);
+
+        $record = KondisiAbnormal::query()->create([
+            'unit_id' => $unit->id,
+            'year' => $date->year,
+            'month' => $date->month,
+            'no_urut' => $this->nextNumber($unit->id, $date->year, $date->month),
+            ...$values,
+            'input_by' => $user->id,
         ]);
 
-        $flagged = [];
+        $events->kondisiAbnormal($unit, [$record], $user);
+        $this->activityLogger->log(ActivityEvent::Created, "Melaporkan kondisi {$this->jenisOf($record)} {$unit->name} tanggal {$date->format('d/m/Y')}", $record, unit: $unit->id);
 
-        foreach ($validated['rows'] as $row) {
-            $text = fn (string $key): ?string => trim((string) ($row[$key] ?? '')) ?: null;
-            $tindak = collect(self::TINDAK_PENDEK)->keys()->mapWithKeys(fn (string $key): array => [$key => (bool) ($row[$key] ?? false)])->all();
-            $texts = collect(self::TEXT_FIELDS)->mapWithKeys(fn (string $key): array => [$key => $text($key)])->all();
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan '.$this->jenisOf($record).' tersimpan.']);
 
-            $hasData = $text('uraian_kondisi') !== null ||
-                ! empty($row['tanggal']) ||
-                ! empty($row['is_abnormal']) ||
-                ! empty($row['durasi_abnormal']) ||
-                ! empty($row['is_gangguan']) ||
-                ! empty($row['durasi_gangguan']) ||
-                in_array(true, $tindak, true) ||
-                array_filter($texts) !== [];
+        return redirect()->route('operasi.input.kondisi-abnormal.index', ['unit_id' => $unit->id, 'month' => $date->month, 'year' => $date->year]);
+    }
 
-            if (! $hasData) {
-                KondisiAbnormal::query()
-                    ->where('unit_id', $unit->id)
-                    ->where('year', (int) $validated['year'])
-                    ->where('month', (int) $validated['month'])
-                    ->where('no_urut', (int) $row['no_urut'])
-                    ->delete();
+    public function update(Request $request, KondisiAbnormal $kondisiAbnormal, EventNotifier $events): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($this->canEdit($user, $kondisiAbnormal), 403);
 
-                continue;
-            }
+        $values = $this->values($request);
+        $date = Carbon::parse($values['tanggal']);
+        $moved = $date->year !== $kondisiAbnormal->year || $date->month !== $kondisiAbnormal->month;
 
-            $record = KondisiAbnormal::query()->updateOrCreate(
-                [
-                    'unit_id' => $unit->id,
-                    'year' => (int) $validated['year'],
-                    'month' => (int) $validated['month'],
-                    'no_urut' => (int) $row['no_urut'],
-                ],
-                [
-                    'uraian_kondisi' => $row['uraian_kondisi'] ?? null,
-                    'tanggal' => ! empty($row['tanggal']) ? Carbon::parse($row['tanggal'])->toDateString() : null,
-                    'is_abnormal' => (int) ($row['is_abnormal'] ?? 0),
-                    'durasi_abnormal' => (float) ($row['durasi_abnormal'] ?? 0),
-                    'is_gangguan' => (int) ($row['is_gangguan'] ?? 0),
-                    'durasi_gangguan' => (float) ($row['durasi_gangguan'] ?? 0),
-                    ...$tindak,
-                    ...$texts,
-                    'input_by' => $user->id,
-                ]
-            );
-
-            if ($record->wasRecentlyCreated || $record->wasChanged(['is_abnormal', 'is_gangguan'])) {
-                $flagged[] = $record;
-            }
+        $kondisiAbnormal->fill([...$values, 'year' => $date->year, 'month' => $date->month]);
+        if ($moved) {
+            $kondisiAbnormal->no_urut = $this->nextNumber($kondisiAbnormal->unit_id, $date->year, $date->month);
         }
+        $kondisiAbnormal->save();
 
-        $events->kondisiAbnormal($unit, $flagged, $user);
+        if ($kondisiAbnormal->wasChanged(['is_abnormal', 'is_gangguan'])) {
+            $events->kondisiAbnormal($kondisiAbnormal->unit, [$kondisiAbnormal], $user);
+        }
+        $this->activityLogger->log(ActivityEvent::Updated, "Mengubah laporan kondisi {$this->jenisOf($kondisiAbnormal)} #{$kondisiAbnormal->id}", $kondisiAbnormal, unit: $kondisiAbnormal->unit_id);
 
-        $this->activityLogger->log(
-            ActivityEvent::Created,
-            "Menyimpan laporan kondisi abnormal dan gangguan pembangkit {$unit->name}",
-            $unit,
-            unit: $unit->id,
-        );
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan diperbarui.']);
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan kondisi abnormal & gangguan berhasil disimpan.']);
+        return redirect()->route('operasi.input.kondisi-abnormal.index', ['unit_id' => $kondisiAbnormal->unit_id, 'month' => $date->month, 'year' => $date->year]);
+    }
 
-        return back();
+    public function destroy(Request $request, KondisiAbnormal $kondisiAbnormal): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($this->canEdit($user, $kondisiAbnormal), 403);
+
+        $period = ['unit_id' => $kondisiAbnormal->unit_id, 'month' => $kondisiAbnormal->month, 'year' => $kondisiAbnormal->year];
+        $kondisiAbnormal->delete();
+
+        $this->activityLogger->log(ActivityEvent::Deleted, "Menghapus laporan kondisi abnormal/gangguan #{$kondisiAbnormal->id}", unit: $period['unit_id']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan dihapus.']);
+
+        return redirect()->route('operasi.input.kondisi-abnormal.index', $period);
     }
 
     public function pdf(Request $request): HttpResponse
@@ -182,13 +162,14 @@ class KondisiAbnormalController extends Controller
 
     /**
      * The PDF view and its data for one unit & period — shared by the PDF and
-     * the Laporan Operasi Pembangkit document.
+     * the Laporan Operasi Pembangkit document: the month's records in date order.
      *
      * @return array{0: string, 1: array<string, mixed>}
      */
     public function pdfView(Unit $unit, int $month, int $year): array
     {
-        $sheet = $this->sheet($unit, $month, $year);
+        $records = $this->records($unit, $month, $year);
+        $summary = $this->summary($records);
 
         $monthNames = [
             1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
@@ -206,83 +187,173 @@ class KondisiAbnormalController extends Controller
             'month' => $month,
             'year' => $year,
             'monthName' => $monthNames[$month] ?? '',
-            'rows' => array_map(fn (array $row): array => [
-                ...$row,
-                'tanggal' => $row['tanggal'] !== '' ? Carbon::parse($row['tanggal'])->format('d/m/Y') : '',
-                'is_abnormal' => $row['is_abnormal'] === 1 ? '1' : '',
-                'durasi_abnormal' => $row['durasi_abnormal'] > 0 ? $row['durasi_abnormal'] : '',
-                'is_gangguan' => $row['is_gangguan'] === 1 ? '1' : '',
-                'durasi_gangguan' => $row['durasi_gangguan'] > 0 ? $row['durasi_gangguan'] : '',
-            ], $sheet['rows']),
+            'rows' => $records->values()->map(function (KondisiAbnormal $record, int $index): array {
+                $row = $this->present($record, $index + 1);
+
+                return [
+                    ...$row,
+                    'no_urut' => $row['no'],
+                    'tanggal' => $row['tanggal'] !== '' ? Carbon::parse($row['tanggal'])->format('d/m/Y') : '',
+                    'is_abnormal' => $row['is_abnormal'] === 1 ? '1' : '',
+                    'durasi_abnormal' => $row['durasi_abnormal'] > 0 ? $row['durasi_abnormal'] : '',
+                    'is_gangguan' => $row['is_gangguan'] === 1 ? '1' : '',
+                    'durasi_gangguan' => $row['durasi_gangguan'] > 0 ? $row['durasi_gangguan'] : '',
+                ];
+            })->all(),
             'tindakPendek' => self::TINDAK_PENDEK,
-            'totalAbnormalCount' => $sheet['summary']['total_abnormal_count'],
-            'totalAbnormalDurasi' => $sheet['summary']['total_abnormal_durasi'],
-            'totalGangguanCount' => $sheet['summary']['total_gangguan_count'],
-            'totalGangguanDurasi' => $sheet['summary']['total_gangguan_durasi'],
-            'totalTindakPendek' => $sheet['summary']['tindak_pendek'],
+            'totalAbnormalCount' => $summary['total_abnormal_count'],
+            'totalAbnormalDurasi' => $summary['total_abnormal_durasi'],
+            'totalGangguanCount' => $summary['total_gangguan_count'],
+            'totalGangguanDurasi' => $summary['total_gangguan_durasi'],
+            'totalTindakPendek' => $summary['tindak_pendek'],
             'logoLeft' => $logoLeft,
             'logoRight' => $logoRight,
         ]];
     }
 
     /**
-     * The numbered rows (at least {@see self::MIN_ROWS}) and the totals.
+     * The validated values of one record: jenis + durasi go to the matching
+     * abnormal / gangguan columns.
      *
-     * @return array{rows: list<array<string, mixed>>, summary: array{total_abnormal_count: int, total_abnormal_durasi: float, total_gangguan_count: int, total_gangguan_durasi: float, tindak_pendek: array<string, int>}}
+     * @return array<string, mixed>
      */
-    private function sheet(Unit $unit, int $month, int $year): array
+    private function values(Request $request): array
     {
-        $records = KondisiAbnormal::query()
+        $validated = $request->validate([
+            'unit_id' => ['required', 'integer'],
+            'tanggal' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            'jenis' => ['required', 'in:abnormal,gangguan'],
+            'durasi' => ['nullable', 'numeric', 'min:0', 'max:744'],
+            'uraian_kondisi' => ['required', 'string', 'max:2000'],
+            'parameter_terkait' => ['nullable', 'string', 'max:2000'],
+            'tl_pendek_sr' => ['nullable', 'boolean'],
+            'tl_pendek_flm' => ['nullable', 'boolean'],
+            'tl_pendek_lainnya' => ['nullable', 'boolean'],
+            'tl_pendek_keterangan' => ['nullable', 'string', 'max:2000'],
+            'tl_panjang' => ['nullable', 'string', 'max:2000'],
+            'dampak_sistem' => ['nullable', 'string', 'max:2000'],
+            'dampak_pembangkit' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $abnormal = $validated['jenis'] === 'abnormal';
+        $durasi = (float) ($validated['durasi'] ?? 0);
+
+        return [
+            'tanggal' => $validated['tanggal'],
+            'uraian_kondisi' => trim($validated['uraian_kondisi']),
+            'is_abnormal' => $abnormal ? 1 : 0,
+            'durasi_abnormal' => $abnormal ? $durasi : 0,
+            'is_gangguan' => $abnormal ? 0 : 1,
+            'durasi_gangguan' => $abnormal ? 0 : $durasi,
+            ...collect(self::TINDAK_PENDEK)->keys()->mapWithKeys(fn (string $key): array => [$key => (bool) ($validated[$key] ?? false)])->all(),
+            ...collect(self::TEXT_FIELDS)->mapWithKeys(fn (string $key): array => [$key => trim((string) ($validated[$key] ?? '')) ?: null])->all(),
+        ];
+    }
+
+    /**
+     * @return Collection<int, KondisiAbnormal>
+     */
+    private function records(Unit $unit, int $month, int $year): Collection
+    {
+        return KondisiAbnormal::query()
+            ->with('inputUser:id,name')
             ->where('unit_id', $unit->id)
             ->where('year', $year)
             ->where('month', $month)
-            ->orderBy('no_urut')
-            ->get()
-            ->keyBy('no_urut');
+            ->orderBy('tanggal')
+            ->orderBy('id')
+            ->get();
+    }
 
-        $summary = [
-            'total_abnormal_count' => 0,
-            'total_abnormal_durasi' => 0.0,
-            'total_gangguan_count' => 0,
-            'total_gangguan_durasi' => 0.0,
-            'tindak_pendek' => array_fill_keys(array_keys(self::TINDAK_PENDEK), 0),
+    /**
+     * @return array<string, mixed>
+     */
+    private function present(KondisiAbnormal $record, int $number): array
+    {
+        $row = [
+            'id' => $record->id,
+            'no' => $number,
+            'tanggal' => $record->tanggal?->format('Y-m-d') ?? '',
+            'jenis' => (int) $record->is_gangguan === 1 && (int) $record->is_abnormal !== 1 ? 'gangguan' : 'abnormal',
+            'uraian_kondisi' => (string) ($record->uraian_kondisi ?? ''),
+            'is_abnormal' => (int) $record->is_abnormal,
+            'durasi_abnormal' => (float) $record->durasi_abnormal,
+            'is_gangguan' => (int) $record->is_gangguan,
+            'durasi_gangguan' => (float) $record->durasi_gangguan,
         ];
-        $rows = [];
-
-        for ($i = 1, $count = max(self::MIN_ROWS, $records->keys()->max() ?? self::MIN_ROWS); $i <= $count; $i++) {
-            $rec = $records->get($i);
-            $row = [
-                'id' => $rec?->id,
-                'no_urut' => $i,
-                'uraian_kondisi' => $rec?->uraian_kondisi ?? '',
-                'tanggal' => $rec?->tanggal?->format('Y-m-d') ?? '',
-                'is_abnormal' => $rec ? (int) $rec->is_abnormal : 0,
-                'durasi_abnormal' => $rec ? (float) $rec->durasi_abnormal : 0,
-                'is_gangguan' => $rec ? (int) $rec->is_gangguan : 0,
-                'durasi_gangguan' => $rec ? (float) $rec->durasi_gangguan : 0,
-            ];
-            foreach (array_keys(self::TINDAK_PENDEK) as $key) {
-                $row[$key] = $rec !== null && $rec->{$key} ? 1 : 0;
-                $summary['tindak_pendek'][$key] += $row[$key];
-            }
-            foreach (self::TEXT_FIELDS as $key) {
-                $row[$key] = (string) ($rec?->{$key} ?? '');
-            }
-
-            $summary['total_abnormal_count'] += $row['is_abnormal'] === 1 ? 1 : 0;
-            $summary['total_abnormal_durasi'] += $row['durasi_abnormal'];
-            $summary['total_gangguan_count'] += $row['is_gangguan'] === 1 ? 1 : 0;
-            $summary['total_gangguan_durasi'] += $row['durasi_gangguan'];
-            $rows[] = $row;
+        $row['durasi'] = $row['durasi_abnormal'] + $row['durasi_gangguan'];
+        foreach (array_keys(self::TINDAK_PENDEK) as $key) {
+            $row[$key] = $record->{$key} ? 1 : 0;
+        }
+        foreach (self::TEXT_FIELDS as $key) {
+            $row[$key] = (string) ($record->{$key} ?? '');
         }
 
-        return ['rows' => $rows, 'summary' => $summary];
+        return $row;
+    }
+
+    /**
+     * @param  Collection<int, KondisiAbnormal>  $records
+     * @return array{total_abnormal_count: int, total_abnormal_durasi: float, total_gangguan_count: int, total_gangguan_durasi: float, tindak_pendek: array<string, int>}
+     */
+    private function summary(Collection $records): array
+    {
+        return [
+            'total_abnormal_count' => $records->filter(fn (KondisiAbnormal $r): bool => (int) $r->is_abnormal === 1)->count(),
+            'total_abnormal_durasi' => (float) $records->sum(fn (KondisiAbnormal $r): float => (float) $r->durasi_abnormal),
+            'total_gangguan_count' => $records->filter(fn (KondisiAbnormal $r): bool => (int) $r->is_gangguan === 1)->count(),
+            'total_gangguan_durasi' => (float) $records->sum(fn (KondisiAbnormal $r): float => (float) $r->durasi_gangguan),
+            'tindak_pendek' => collect(self::TINDAK_PENDEK)->keys()
+                ->mapWithKeys(fn (string $key): array => [$key => $records->filter(fn (KondisiAbnormal $r): bool => (bool) $r->{$key})->count()])->all(),
+        ];
+    }
+
+    /**
+     * The rekap per tanggal: how many abnormal / gangguan and their durasi.
+     *
+     * @param  Collection<int, KondisiAbnormal>  $records
+     * @return list<array{tanggal: string, abnormal: int, durasi_abnormal: float, gangguan: int, durasi_gangguan: float}>
+     */
+    private function daily(Collection $records): array
+    {
+        return $records->filter(fn (KondisiAbnormal $r): bool => $r->tanggal !== null)
+            ->groupBy(fn (KondisiAbnormal $r): string => $r->tanggal->format('Y-m-d'))
+            ->map(fn (Collection $day, string $date): array => [
+                'tanggal' => $date,
+                'abnormal' => $day->filter(fn (KondisiAbnormal $r): bool => (int) $r->is_abnormal === 1)->count(),
+                'durasi_abnormal' => (float) $day->sum(fn (KondisiAbnormal $r): float => (float) $r->durasi_abnormal),
+                'gangguan' => $day->filter(fn (KondisiAbnormal $r): bool => (int) $r->is_gangguan === 1)->count(),
+                'durasi_gangguan' => (float) $day->sum(fn (KondisiAbnormal $r): float => (float) $r->durasi_gangguan),
+            ])->values()->all();
+    }
+
+    private function nextNumber(int $unitId, int $year, int $month): int
+    {
+        return (int) KondisiAbnormal::query()->where('unit_id', $unitId)->where('year', $year)->where('month', $month)->max('no_urut') + 1;
+    }
+
+    private function jenisOf(KondisiAbnormal $record): string
+    {
+        return (int) $record->is_gangguan === 1 ? 'gangguan' : 'abnormal';
     }
 
     private function canView(User $user): bool
     {
         return $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganKondisiAbnormal)
             || $user->hasPermissionTo(PermissionName::OperasiLaporanView);
+    }
+
+    private function canWrite(User $user): bool
+    {
+        return $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganKondisiAbnormal) && ! $user->isReadOnly();
+    }
+
+    /** The Koordinator edits every record of the unit; an operator only their own. */
+    private function canEdit(User $user, KondisiAbnormal $record): bool
+    {
+        return $this->canWrite($user)
+            && $user->canAccessUnit($record->unit_id)
+            && ($user->hasPermissionTo(PermissionName::OperasiInputWrite) || $record->input_by === $user->id);
     }
 
     /**

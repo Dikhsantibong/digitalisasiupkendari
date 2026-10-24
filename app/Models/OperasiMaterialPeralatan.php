@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MaterialKelengkapan;
 use App\Models\Concerns\BelongsToUnit;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,12 +32,17 @@ use Illuminate\Support\Carbon;
  * @property string $ilt
  * @property string $rop
  * @property string $roq
+ * @property MaterialKelengkapan|null $kelengkapan
+ * @property string|null $uraian_kondisi
+ * @property int|null $checked_by
+ * @property Carbon|null $checked_at
  * @property int $sort_order
  * @property int|null $input_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
  * @property-read User|null $inputUser
+ * @property-read User|null $checker
  */
 #[Fillable([
     'unit_id',
@@ -57,6 +63,10 @@ use Illuminate\Support\Carbon;
     'ilt',
     'rop',
     'roq',
+    'kelengkapan',
+    'uraian_kondisi',
+    'checked_by',
+    'checked_at',
     'sort_order',
     'input_by',
 ])]
@@ -86,6 +96,9 @@ class OperasiMaterialPeralatan extends Model
             'rop' => 'decimal:2',
             'roq' => 'decimal:2',
             'sort_order' => 'integer',
+            'kelengkapan' => MaterialKelengkapan::class,
+            'checked_by' => 'integer',
+            'checked_at' => 'datetime',
         ];
     }
 
@@ -95,5 +108,15 @@ class OperasiMaterialPeralatan extends Model
     public function inputUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'input_by');
+    }
+
+    /**
+     * The operator who last checked the item's kelengkapan.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function checker(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'checked_by');
     }
 }

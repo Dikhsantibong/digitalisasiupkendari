@@ -160,11 +160,13 @@
                 <th style="width: 30px;">ILT</th>
                 <th style="width: 30px;">ROP</th>
                 <th style="width: 30px;">RoQ</th>
+                <th style="width: 50px;">Kelengkapan</th>
+                <th style="width: 120px;">Kondisi</th>
             </tr>
         </thead>
         <tbody>
             <tr class="section-row">
-                <td colspan="14">A. PERALATAN</td>
+                <td colspan="16">A. PERALATAN</td>
             </tr>
             @forelse($peralatan as $item)
                 <tr>
@@ -182,15 +184,17 @@
                     <td class="text-center">{{ $item->ilt > 0 ? $item->ilt : '' }}</td>
                     <td class="text-center">{{ $item->rop > 0 ? $item->rop : '' }}</td>
                     <td class="text-center">{{ $item->roq > 0 ? $item->roq : '' }}</td>
+                    <td class="text-center">{{ $item->kelengkapan?->label() ?? '-' }}</td>
+                    <td>{{ $item->kelengkapan === null ? '-' : ($item->kelengkapan->isNormal() ? 'Normal' : 'Tidak normal: '.$item->uraian_kondisi) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="14" class="text-center" style="padding: 10px;">Belum ada data peralatan.</td>
+                    <td colspan="16" class="text-center" style="padding: 10px;">Belum ada data peralatan.</td>
                 </tr>
             @endforelse
 
             <tr class="section-row">
-                <td colspan="14">B. MATERIAL</td>
+                <td colspan="16">B. MATERIAL</td>
             </tr>
             @forelse($material as $item)
                 <tr>
@@ -208,10 +212,12 @@
                     <td class="text-center">{{ $item->ilt > 0 ? $item->ilt : '3' }}</td>
                     <td class="text-center">{{ $item->rop > 0 ? $item->rop : '2' }}</td>
                     <td class="text-center">{{ $item->roq > 0 ? $item->roq : '2' }}</td>
+                    <td class="text-center">{{ $item->kelengkapan?->label() ?? '-' }}</td>
+                    <td>{{ $item->kelengkapan === null ? '-' : ($item->kelengkapan->isNormal() ? 'Normal' : 'Tidak normal: '.$item->uraian_kondisi) }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="14" class="text-center" style="padding: 10px;">Belum ada data material.</td>
+                    <td colspan="16" class="text-center" style="padding: 10px;">Belum ada data material.</td>
                 </tr>
             @endforelse
         </tbody>

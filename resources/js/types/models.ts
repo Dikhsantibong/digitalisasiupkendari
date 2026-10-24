@@ -53,6 +53,8 @@ export type UnitRow = {
     installed_capacity_mw: string | null;
     location: string | null;
     is_active: boolean;
+    /** Operators of the unit fill the Pengusahaan Operasi inputs (off for containerized units). */
+    operator_pengusahaan?: boolean;
     service_unit_id: number | null;
     service_unit: string | null;
     machines_count?: number | null;

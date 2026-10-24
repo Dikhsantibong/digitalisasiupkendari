@@ -1,6 +1,7 @@
-import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { LogIn, LogOut, Settings, Users } from 'lucide-react';
 import type { MouseEvent } from 'react';
+import { stopImpersonation } from '@/components/impersonation/impersonation-banner';
 import {
     DropdownMenuGroup,
     DropdownMenuItem,
@@ -9,10 +10,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
+import { openAccountSwitcher } from '@/lib/impersonation';
 import { detachPushForLogout } from '@/lib/notifications';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
-import type { User } from '@/types';
+import type { Auth, User } from '@/types';
 
 type Props = {
     user: User;
@@ -22,6 +24,7 @@ type Props = {
 
 export function UserMenuContent({ user, showSettings = true }: Props) {
     const cleanup = useMobileNavigation();
+    const auth = usePage().props.auth as Auth | undefined;
 
     // Unlink this device's push first (needs the session), then log out.
     const handleLogout = (event: MouseEvent) => {
@@ -56,6 +59,31 @@ export function UserMenuContent({ user, showSettings = true }: Props) {
                             </Link>
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
+                </>
+            )}
+            {(auth?.canImpersonate || auth?.impersonator) && (
+                <>
+                    <DropdownMenuSeparator />
+                    {auth?.impersonator ? (
+                        <DropdownMenuItem
+                            className="cursor-pointer"
+                            onSelect={() => stopImpersonation()}
+                        >
+                            <LogIn className="mr-2" />
+                            Kembali ke Super Admin
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem
+                            className="cursor-pointer"
+                            onSelect={() => openAccountSwitcher()}
+                        >
+                            <Users className="mr-2" />
+                            Pindah Akun
+                            <span className="ml-auto text-[11px] text-muted-foreground">
+                                Ctrl+Shift+K
+                            </span>
+                        </DropdownMenuItem>
+                    )}
                 </>
             )}
             <DropdownMenuSeparator />

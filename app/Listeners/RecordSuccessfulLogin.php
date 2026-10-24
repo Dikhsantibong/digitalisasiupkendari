@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Enums\ActivityEvent;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\Impersonation;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Request;
 
@@ -20,7 +21,8 @@ class RecordSuccessfulLogin
     {
         $user = $event->user;
 
-        if (! $user instanceof User) {
+        // A Super Admin switching accounts (Pindah Akun) is not a sign in of that user.
+        if (! $user instanceof User || (Request::hasSession() && Request::session()->get(Impersonation::SWITCHING_KEY))) {
             return;
         }
 

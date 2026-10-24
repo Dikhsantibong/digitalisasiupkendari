@@ -146,8 +146,10 @@ Route::middleware(['auth', 'verified'])
 
         Route::get('input/unsafe-condition', [UnsafeConditionController::class, 'index'])->name('input.unsafe-condition.index');
         Route::post('input/unsafe-condition', [UnsafeConditionController::class, 'store'])->name('input.unsafe-condition.store');
-        Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])->name('input.unsafe-condition.update');
-        Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])->name('input.unsafe-condition.destroy');
+        // The whole month's sheet at once (Tambah Baris + Simpan).
+        Route::post('input/unsafe-condition/simpan', [UnsafeConditionController::class, 'sync'])->name('input.unsafe-condition.sync');
+        Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])->whereNumber('unsafeCondition')->name('input.unsafe-condition.update');
+        Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])->whereNumber('unsafeCondition')->name('input.unsafe-condition.destroy');
         Route::get('input/unsafe-condition/pdf', [UnsafeConditionController::class, 'pdf'])->name('input.unsafe-condition.pdf');
 
         // Tabel input bebas (App\Support\HarTabel): Rekap Laporan Gangguan & Laporan Kondisi Abnormal dan Gangguan.

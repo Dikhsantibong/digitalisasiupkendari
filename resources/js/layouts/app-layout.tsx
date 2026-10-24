@@ -1,4 +1,6 @@
 import { usePage } from '@inertiajs/react';
+import { AccountSwitcher } from '@/components/impersonation/account-switcher';
+import { ImpersonationBanner } from '@/components/impersonation/impersonation-banner';
 import { MobileTableCards } from '@/components/mobile/table-cards';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileModuleCandidate } from '@/hooks/use-mobile-module';
@@ -10,9 +12,24 @@ import PortalLayout from '@/layouts/portal/portal-layout';
 import type { Auth, BreadcrumbItem } from '@/types';
 
 /** Pages whose hand-built input tables become cards on a phone (MobileTableCards). */
-const TABLE_CARD_PAGES = /^(k3|pengusahaan\/(k3|har|operasi)|operasi\/(jadwal|input)|har\/(jadwal|input|formulir)|pdm\/(jadwal|input)|logistik\/(jadwal|input))\//;
+const TABLE_CARD_PAGES =
+    /^(k3|pengusahaan\/(k3|har|operasi)|operasi\/(jadwal|input)|har\/(jadwal|input|formulir)|pdm\/(jadwal|input)|logistik\/(jadwal|input))\//;
 
-export default function AppLayout({
+export default function AppLayout(props: {
+    breadcrumbs?: BreadcrumbItem[];
+    children: React.ReactNode;
+}) {
+    // Pindah Akun: the banner while working as another user, and the Super Admin's switcher.
+    return (
+        <>
+            <ImpersonationBanner />
+            <AccountSwitcher />
+            <AppLayoutContent {...props} />
+        </>
+    );
+}
+
+function AppLayoutContent({
     breadcrumbs = [],
     children,
 }: {
@@ -25,7 +42,9 @@ export default function AppLayout({
     const isMobile = useIsMobile();
     const { component, props } = usePage();
     const page = (
-        <MobileTableCards enabled={isMobile && TABLE_CARD_PAGES.test(component)}>
+        <MobileTableCards
+            enabled={isMobile && TABLE_CARD_PAGES.test(component)}
+        >
             {children}
         </MobileTableCards>
     );

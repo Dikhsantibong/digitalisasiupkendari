@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Middleware\EnsureOperatorPengusahaanUnit;
 use App\Http\Middleware\EnsureReadOnlyAccess;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\HandleAppearance;
+use App\Http\Middleware\HandleImpersonation;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -24,7 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
             EnsureUserIsActive::class,
+            HandleImpersonation::class,
             EnsureReadOnlyAccess::class,
+            EnsureOperatorPengusahaanUnit::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

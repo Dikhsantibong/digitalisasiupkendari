@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { Pencil, Plus } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { LogIn, Pencil, Plus } from 'lucide-react';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { DataPagination } from '@/components/data-pagination';
@@ -19,9 +19,10 @@ import {
 import { useIndexFilters } from '@/hooks/use-index-filters';
 import { usePermissions } from '@/hooks/use-permissions';
 import { formatDateTime } from '@/lib/format';
+import { openAccountSwitcher } from '@/lib/impersonation';
 import { dashboard } from '@/routes';
 import users from '@/routes/admin/users';
-import type { IdName, Paginated, UserRow } from '@/types';
+import type { Auth, IdName, Paginated, UserRow } from '@/types';
 
 type Props = {
     users: Paginated<UserRow>;
@@ -39,6 +40,10 @@ type Props = {
 
 export default function UsersIndex({ users: page, filters, options }: Props) {
     const { can } = usePermissions();
+    // Pindah Akun (Super Admin): open the switcher with this user chosen; the server checks the rest.
+    const auth = usePage().props.auth as Auth | undefined;
+    const canImpersonate = auth?.canImpersonate ?? false;
+    const authUserId = auth?.user.id;
     const { values, setFilter, setSearch, reset, isFiltered } = useIndexFilters(
         users.index().url,
         {
@@ -210,6 +215,27 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-1">
+                                                {canImpersonate &&
+                                                    user.is_active &&
+                                                    user.id !== authUserId && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                openAccountSwitcher(
+                                                                    {
+                                                                        id: user.id,
+                                                                        name: user.name,
+                                                                        email: user.email,
+                                                                    },
+                                                                )
+                                                            }
+                                                            aria-label={`Masuk sebagai ${user.name}`}
+                                                            title="Masuk sebagai pengguna ini"
+                                                        >
+                                                            <LogIn className="size-4" />
+                                                        </Button>
+                                                    )}
                                                 {can('user.update') && (
                                                     <Button
                                                         variant="ghost"

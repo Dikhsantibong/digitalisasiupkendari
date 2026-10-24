@@ -66,6 +66,9 @@ enum PermissionName: string
     case OperasiLaporanView = 'operasi.laporan.view';
     case OperasiMasterViewAny = 'operasi.master.view_any';
     case OperasiMasterManage = 'operasi.master.manage';
+    // Prepares the Material & Peralatan list and stock (the Project Leader;
+    // operasi.input.write does too). Operators only check each item.
+    case OperasiMaterialPeralatanKelola = 'operasi.material_peralatan.kelola';
 
     // Akses 2 — Pengusahaan (Team Leader & Staf): the Pengusahaan menus and
     // the Laporan Pengusahaan Pembangkit of the module.
@@ -243,7 +246,8 @@ enum PermissionName: string
             self::OperasiInputWrite,
             self::OperasiLaporanView,
             self::OperasiMasterViewAny,
-            self::OperasiMasterManage => PermissionGroup::Operasi,
+            self::OperasiMasterManage,
+            self::OperasiMaterialPeralatanKelola => PermissionGroup::Operasi,
 
             self::OperasiPengusahaanView,
             self::OperasiPengusahaanWrite,
@@ -420,6 +424,7 @@ enum PermissionName: string
             self::OperasiLaporanView => 'Melihat & mencetak laporan operasi',
             self::OperasiMasterViewAny => 'Melihat master data operasi',
             self::OperasiMasterManage => 'Mengelola master data operasi',
+            self::OperasiMaterialPeralatanKelola => 'Menyusun daftar & stok Material & Peralatan (operator hanya mengecek kelengkapan)',
             self::OperasiPengusahaanView => 'Membuka menu & Laporan Pengusahaan operasi',
             self::OperasiPengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan operasi',
             self::OperasiPengusahaanInput => 'Mengisi input Pengusahaan operasi (operator; tanpa Berita Acara & Laporan Pengusahaan)',
@@ -430,7 +435,7 @@ enum PermissionName: string
             self::OperasiLapanganFuelReceipt => 'Input lapangan: Penerimaan BBM',
             self::OperasiLapanganKondisiAbnormal => 'Input lapangan: Kondisi Abnormal & Gangguan',
             self::OperasiLapanganResourcePembangkit => 'Input lapangan: Resource Pembangkit',
-            self::OperasiLapanganMaterialPeralatan => 'Input lapangan: Material & Peralatan',
+            self::OperasiLapanganMaterialPeralatan => 'Input lapangan: Material & Peralatan (cek kelengkapan)',
             self::OperasiLapanganPermitToWork => 'Input lapangan: Permit to Work (PTW)',
             self::OperasiLapanganFlmMonitoring => 'Input lapangan: Monitoring FLM',
             self::OperasiLapanganPatrolCheckMesin => 'Input lapangan: Patrol Check Mesin',

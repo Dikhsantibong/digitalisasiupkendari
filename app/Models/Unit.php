@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string $slug
  * @property UnitType $type
  * @property UnitContract|null $contract kontrak 11 KIT / 6 KIT
+ * @property bool $operator_pengusahaan the operators fill the Pengusahaan Operasi inputs (off for containerized units)
  * @property string|null $installed_capacity_mw
  * @property string|null $location
  * @property string|null $latitude
@@ -42,6 +43,7 @@ use Illuminate\Support\Carbon;
     'slug',
     'type',
     'contract',
+    'operator_pengusahaan',
     'installed_capacity_mw',
     'location',
     'latitude',
@@ -65,6 +67,7 @@ class Unit extends Model
             'contract' => UnitContract::class,
             'status' => UnitStatus::class,
             'is_active' => 'boolean',
+            'operator_pengusahaan' => 'boolean',
             'attendance_radius_m' => 'integer',
         ];
     }

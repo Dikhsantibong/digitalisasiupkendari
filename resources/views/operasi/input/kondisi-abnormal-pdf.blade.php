@@ -178,7 +178,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($rows as $row)
+            @forelse($rows as $row)
                 <tr>
                     <td class="text-center font-bold">{{ $row['no_urut'] }}</td>
                     <td>{{ $row['uraian_kondisi'] }}</td>
@@ -200,7 +200,11 @@
                     <td>{{ $row['dampak_sistem'] }}</td>
                     <td>{{ $row['dampak_pembangkit'] }}</td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="{{ 10 + count($tindakPendek) }}" class="text-center">Belum ada laporan kondisi abnormal / gangguan pada periode ini.</td>
+                </tr>
+            @endforelse
             <tr style="background-color: #f9f9f9;" class="font-bold">
                 <td colspan="3" class="text-center font-bold">TOTAL</td>
                 <td class="text-center">{{ $totalAbnormalCount }}</td>

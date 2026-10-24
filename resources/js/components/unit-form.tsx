@@ -267,6 +267,42 @@ export function UnitForm({ action, unit, options, submitLabel }: Props) {
                         </div>
                     </section>
 
+                    <section className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
+                        <div>
+                            <h2 className="text-base font-semibold text-foreground">
+                                Hak Akses Unit
+                            </h2>
+                            <p className="text-[13px] text-muted-foreground">
+                                Mengatur menu yang dibuka untuk peran lapangan
+                                di unit ini. Izin per peran tetap diatur di Role
+                                &amp; Akses.
+                            </p>
+                        </div>
+                        <FormField
+                            label="Input Pengusahaan Operasi oleh Operator"
+                            hint="Matikan untuk unit containerized: operator & project leader unit ini tidak membuka input Pengusahaan Operasi (TL & Staf tidak terpengaruh)."
+                            error={errors.operator_pengusahaan}
+                        >
+                            <label className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+                                <input
+                                    type="hidden"
+                                    name="operator_pengusahaan"
+                                    value="0"
+                                />
+                                <Checkbox
+                                    name="operator_pengusahaan"
+                                    value="1"
+                                    defaultChecked={
+                                        unit?.operator_pengusahaan ?? true
+                                    }
+                                />
+                                <span className="text-[13px]">
+                                    Operator mengisi input Pengusahaan Operasi
+                                </span>
+                            </label>
+                        </FormField>
+                    </section>
+
                     <div className="flex items-center justify-end gap-2">
                         <Button variant="secondary" asChild>
                             <Link href={units.index()}>Batal</Link>

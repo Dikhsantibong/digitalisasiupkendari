@@ -21,6 +21,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/** | .ai/rules/js.md |
 | app/Services/K3/** | .ai/rules/k3.md |
 | app/Http/Controllers/Logistik/** | .ai/rules/logistik.md |
+| app/Http/Middleware/** | .ai/rules/middleware.md |
 | resources/js/layouts/mobile/** | .ai/rules/mobile.md |
 | app/Models/** | .ai/rules/models.md |
 | app/Services/Monitoring/** | .ai/rules/monitoring.md |
@@ -31,3 +32,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Pdm/** | .ai/rules/pdm.md |
 | resources/js/pages/pengusahaan/** | .ai/rules/pengusahaan.md |
 | app/Services/Reports/** | .ai/rules/reports.md |
+| app/Services/Impersonation.php, app/Services/UnsafeConditionSync.php | .ai/rules/services.md |

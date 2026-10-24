@@ -103,6 +103,10 @@ Route::middleware(['auth', 'verified'])
             ->name('input.kondisi-abnormal.index');
         Route::post('input/kondisi-abnormal', [KondisiAbnormalController::class, 'store'])
             ->name('input.kondisi-abnormal.store');
+        Route::put('input/kondisi-abnormal/{kondisiAbnormal}', [KondisiAbnormalController::class, 'update'])
+            ->name('input.kondisi-abnormal.update');
+        Route::delete('input/kondisi-abnormal/{kondisiAbnormal}', [KondisiAbnormalController::class, 'destroy'])
+            ->name('input.kondisi-abnormal.destroy');
         Route::get('input/kondisi-abnormal/pdf', [KondisiAbnormalController::class, 'pdf'])
             ->name('input.kondisi-abnormal.pdf');
 
@@ -110,6 +114,9 @@ Route::middleware(['auth', 'verified'])
             ->name('input.material-peralatan.index');
         Route::post('input/material-peralatan', [MaterialPeralatanController::class, 'store'])
             ->name('input.material-peralatan.store');
+        // The operator's kelengkapan check of the listed items.
+        Route::post('input/material-peralatan/cek', [MaterialPeralatanController::class, 'check'])
+            ->name('input.material-peralatan.check');
         Route::delete('input/material-peralatan/{materialPeralatan}', [MaterialPeralatanController::class, 'destroy'])
             ->name('input.material-peralatan.destroy');
         Route::get('input/material-peralatan/pdf', [MaterialPeralatanController::class, 'pdf'])
@@ -147,10 +154,13 @@ Route::middleware(['auth', 'verified'])
             ->name('input.unsafe-condition.index');
         Route::post('input/unsafe-condition', [UnsafeConditionController::class, 'store'])
             ->name('input.unsafe-condition.store');
+        // The whole month's sheet at once (Tambah Baris + Simpan).
+        Route::post('input/unsafe-condition/simpan', [UnsafeConditionController::class, 'sync'])
+            ->name('input.unsafe-condition.sync');
         Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])
-            ->name('input.unsafe-condition.update');
+            ->whereNumber('unsafeCondition')->name('input.unsafe-condition.update');
         Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])
-            ->name('input.unsafe-condition.destroy');
+            ->whereNumber('unsafeCondition')->name('input.unsafe-condition.destroy');
         Route::get('input/unsafe-condition/pdf', [UnsafeConditionController::class, 'pdf'])
             ->name('input.unsafe-condition.pdf');
 

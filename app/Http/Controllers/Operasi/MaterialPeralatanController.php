@@ -3,17 +3,21 @@
 namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
+use App\Enums\MaterialKelengkapan;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\OperasiMaterialPeralatan;
 use App\Models\Unit;
+use App\Models\User;
 use App\Services\ActivityLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -187,16 +191,22 @@ class MaterialPeralatanController extends Controller
                 ->get();
         }
 
-        $peralatan = $records->where('kategori', 'PERALATAN')->values()->all();
-        $material = $records->where('kategori', 'MATERIAL')->values()->all();
+        $records->load('checker:id,name');
+        $present = fn (OperasiMaterialPeralatan $r): array => [
+            ...$r->makeHidden('checker')->toArray(),
+            'kelengkapan' => $r->kelengkapan?->value,
+            'checked_by_name' => $r->checker?->name,
+            'checked_at' => $r->checked_at?->translatedFormat('d M Y H:i'),
+        ];
 
-        $totalPeralatanCount = count($peralatan);
-        $totalMaterialCount = count($material);
+        $peralatan = $records->where('kategori', 'PERALATAN')->map($present)->values()->all();
+        $material = $records->where('kategori', 'MATERIAL')->map($present)->values()->all();
+
         $totalNilaiStok = $records->sum(fn ($r) => (float) $r->stok_akhir * (float) $r->harga_satuan);
         $lowStockCount = $records->filter(fn ($r) => (float) $r->rop > 0 && (float) $r->stok_akhir <= (float) $r->rop)->count();
 
-        $canWrite = $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan) ||
-            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan);
+        $canManage = $this->canManage($user);
+        $canCheck = $this->canCheck($user);
 
         return Inertia::render('operasi/input/material-peralatan/index', [
             'filters' => [
@@ -207,27 +217,33 @@ class MaterialPeralatanController extends Controller
             'peralatan' => $peralatan,
             'material' => $material,
             'summary' => [
-                'total_peralatan' => $totalPeralatanCount,
-                'total_material' => $totalMaterialCount,
+                'total_peralatan' => count($peralatan),
+                'total_material' => count($material),
                 'total_nilai_stok' => $totalNilaiStok,
                 'low_stock_count' => $lowStockCount,
+                'checked_count' => $records->whereNotNull('kelengkapan')->count(),
+                'tidak_normal_count' => $records->filter(fn (OperasiMaterialPeralatan $r): bool => $r->kelengkapan !== null && ! $r->kelengkapan->isNormal())->count(),
             ],
             'options' => [
                 'units' => $units->all(),
                 'years' => range($year - 3, $year + 1),
+                'kelengkapan' => MaterialKelengkapan::options(),
             ],
-            'can_write' => $canWrite,
+            // The Koordinator / Project Leader prepares the list & stock; operators check each item.
+            'can_manage' => $canManage,
+            'can_check' => $canCheck,
+            'can_write' => $canManage || $canCheck,
         ]);
     }
 
+    /**
+     * The Koordinator / Project Leader saves the whole sheet: the items, their
+     * stock and (optionally) their kelengkapan.
+     */
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless(
-            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan) ||
-            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan),
-            403
-        );
+        abort_unless($this->canManage($user), 403);
 
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
@@ -253,59 +269,61 @@ class MaterialPeralatanController extends Controller
             'items.*.rop' => ['nullable', 'numeric', 'min:0'],
             'items.*.roq' => ['nullable', 'numeric', 'min:0'],
             'items.*.sort_order' => ['nullable', 'integer'],
-        ]);
+            ...$this->checkRules(),
+        ], $this->checkMessages());
+
+        $existing = OperasiMaterialPeralatan::query()
+            ->where('unit_id', $unit->id)
+            ->whereIn('id', collect($validated['items'])->pluck('id')->filter()->map(fn ($id): int => (int) $id)->all())
+            ->get()
+            ->keyBy('id');
 
         foreach ($validated['items'] as $index => $item) {
             $stokAwal = (float) ($item['stok_awal'] ?? 0);
             $masuk = (float) ($item['masuk'] ?? 0);
             $keluar = (float) ($item['keluar'] ?? 0);
-            $stokAkhir = max(0, $stokAwal + $masuk - $keluar);
+
+            $values = [
+                'kategori' => $item['kategori'],
+                'kode_material' => $item['kode_material'] ?? null,
+                'stok_code' => $item['stok_code'] ?? null,
+                'nama_item' => $item['nama_item'],
+                'stok_awal' => $stokAwal,
+                'masuk' => $masuk,
+                'keluar' => $keluar,
+                'stok_akhir' => max(0, $stokAwal + $masuk - $keluar),
+                'satuan' => $item['satuan'] ?? null,
+                'harga_satuan' => (float) ($item['harga_satuan'] ?? 0),
+                'pemakaian_rata_rata' => (float) ($item['pemakaian_rata_rata'] ?? 0),
+                'safety_stock' => (float) ($item['safety_stock'] ?? 0),
+                'ilt' => (float) ($item['ilt'] ?? 0),
+                'rop' => (float) ($item['rop'] ?? 0),
+                'roq' => (float) ($item['roq'] ?? 0),
+                'sort_order' => (int) ($item['sort_order'] ?? $index + 1),
+            ];
 
             if (! empty($item['id'])) {
-                OperasiMaterialPeralatan::query()
-                    ->where('id', (int) $item['id'])
-                    ->where('unit_id', $unit->id)
-                    ->update([
-                        'kategori' => $item['kategori'],
-                        'kode_material' => $item['kode_material'] ?? null,
-                        'stok_code' => $item['stok_code'] ?? null,
-                        'nama_item' => $item['nama_item'],
-                        'stok_awal' => $stokAwal,
-                        'masuk' => $masuk,
-                        'keluar' => $keluar,
-                        'stok_akhir' => $stokAkhir,
-                        'satuan' => $item['satuan'] ?? null,
-                        'harga_satuan' => (float) ($item['harga_satuan'] ?? 0),
-                        'pemakaian_rata_rata' => (float) ($item['pemakaian_rata_rata'] ?? 0),
-                        'safety_stock' => (float) ($item['safety_stock'] ?? 0),
-                        'ilt' => (float) ($item['ilt'] ?? 0),
-                        'rop' => (float) ($item['rop'] ?? 0),
-                        'roq' => (float) ($item['roq'] ?? 0),
-                        'sort_order' => (int) ($item['sort_order'] ?? $index + 1),
-                    ]);
+                $record = $existing->get((int) $item['id']);
+                if ($record === null) {
+                    continue;
+                }
+
+                $record->fill($values);
+                // A payload without the kelengkapan keys (an older page) leaves the check as it is.
+                if (array_key_exists('kelengkapan', $item)) {
+                    $this->applyCheck($record, $item, $user);
+                }
+                $record->save();
             } else {
-                OperasiMaterialPeralatan::query()->create([
+                $record = new OperasiMaterialPeralatan([
+                    ...$values,
                     'unit_id' => $unit->id,
                     'year' => (int) $validated['year'],
                     'month' => (int) $validated['month'],
-                    'kategori' => $item['kategori'],
-                    'kode_material' => $item['kode_material'] ?? null,
-                    'stok_code' => $item['stok_code'] ?? null,
-                    'nama_item' => $item['nama_item'],
-                    'stok_awal' => $stokAwal,
-                    'masuk' => $masuk,
-                    'keluar' => $keluar,
-                    'stok_akhir' => $stokAkhir,
-                    'satuan' => $item['satuan'] ?? null,
-                    'harga_satuan' => (float) ($item['harga_satuan'] ?? 0),
-                    'pemakaian_rata_rata' => (float) ($item['pemakaian_rata_rata'] ?? 0),
-                    'safety_stock' => (float) ($item['safety_stock'] ?? 0),
-                    'ilt' => (float) ($item['ilt'] ?? 0),
-                    'rop' => (float) ($item['rop'] ?? 0),
-                    'roq' => (float) ($item['roq'] ?? 0),
-                    'sort_order' => (int) ($item['sort_order'] ?? $index + 1),
                     'input_by' => $user->id,
                 ]);
+                $this->applyCheck($record, $item, $user);
+                $record->save();
             }
         }
 
@@ -321,14 +339,70 @@ class MaterialPeralatanController extends Controller
         return back();
     }
 
+    /**
+     * The operator's check of the items the Koordinator / Project Leader
+     * listed: only the kelengkapan and the uraian of an abnormal condition.
+     */
+    public function check(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($this->canCheck($user), 403);
+
+        $unit = Unit::query()->findOrFail($request->integer('unit_id'));
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $validated = $request->validate([
+            'unit_id' => ['required', 'integer'],
+            'month' => ['required', 'integer', 'between:1,12'],
+            'year' => ['required', 'integer', 'between:2000,2100'],
+            'items' => ['required', 'array', 'max:500'],
+            'items.*.id' => ['required', 'integer'],
+            ...$this->checkRules(),
+        ], $this->checkMessages());
+
+        $records = OperasiMaterialPeralatan::query()
+            ->where('unit_id', $unit->id)
+            ->where('year', (int) $validated['year'])
+            ->where('month', (int) $validated['month'])
+            ->get()
+            ->keyBy('id');
+
+        foreach ($validated['items'] as $index => $item) {
+            if (! $records->has((int) $item['id'])) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.id" => 'Item ini tidak ada di unit & bulan tersebut. Muat ulang halaman.',
+                ]);
+            }
+        }
+
+        $changed = 0;
+        foreach ($validated['items'] as $item) {
+            $record = $records->get((int) $item['id']);
+            $this->applyCheck($record, $item, $user);
+            if ($record->isDirty()) {
+                $record->save();
+                $changed++;
+            }
+        }
+
+        $abnormal = $records->filter(fn (OperasiMaterialPeralatan $r): bool => $r->kelengkapan !== null && ! $r->kelengkapan->isNormal())->count();
+
+        $this->activityLogger->log(
+            ActivityEvent::Updated,
+            "Mengecek kelengkapan material & peralatan {$unit->name} {$validated['month']}/{$validated['year']}: {$changed} item diperbarui, {$abnormal} tidak normal",
+            $unit,
+            unit: $unit->id,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Pengecekan tersimpan ({$changed} item diperbarui)."]);
+
+        return back();
+    }
+
     public function destroy(Request $request, OperasiMaterialPeralatan $materialPeralatan): RedirectResponse
     {
         $user = $request->user();
-        abort_unless(
-            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan) ||
-            $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan),
-            403
-        );
+        abort_unless($this->canManage($user), 403);
         abort_unless($user->canAccessUnit($materialPeralatan->unit_id), 403);
 
         $materialPeralatan->delete();
@@ -416,5 +490,71 @@ class MaterialPeralatanController extends Controller
             'logoLeft' => $logoLeft,
             'logoRight' => $logoRight,
         ]];
+    }
+
+    /**
+     * Prepares the list & stock: the Koordinator (operasi.input.write) or the
+     * Project Leader (operasi.material_peralatan.kelola).
+     */
+    private function canManage(User $user): bool
+    {
+        return $user->hasPermissionTo(PermissionName::OperasiInputWrite)
+            || $user->hasPermissionTo(PermissionName::OperasiMaterialPeralatanKelola);
+    }
+
+    /**
+     * Checks each item's kelengkapan: whoever manages, and the operators
+     * (operasi.lapangan.material_peralatan).
+     */
+    private function canCheck(User $user): bool
+    {
+        return $this->canManage($user)
+            || $this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganMaterialPeralatan);
+    }
+
+    /**
+     * Lengkap means normal (no uraian); tidak lengkap / tidak ada needs the uraian.
+     *
+     * @return array<string, list<mixed>>
+     */
+    private function checkRules(): array
+    {
+        return [
+            'items.*.kelengkapan' => ['nullable', Rule::enum(MaterialKelengkapan::class)],
+            'items.*.uraian_kondisi' => [
+                'nullable', 'string', 'max:2000',
+                'required_if:items.*.kelengkapan,'.MaterialKelengkapan::TidakLengkap->value.','.MaterialKelengkapan::TidakAda->value,
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function checkMessages(): array
+    {
+        return [
+            'items.*.uraian_kondisi.required_if' => 'Uraian kondisi wajib diisi bila item tidak lengkap / tidak ada.',
+        ];
+    }
+
+    /**
+     * Sets the item's kelengkapan & uraian (cleared when lengkap or unchecked)
+     * and who checked it, when the check changes.
+     *
+     * @param  array<string, mixed>  $item
+     */
+    private function applyCheck(OperasiMaterialPeralatan $record, array $item, User $user): void
+    {
+        $kelengkapan = MaterialKelengkapan::tryFrom((string) ($item['kelengkapan'] ?? ''));
+        $uraian = $kelengkapan === null || $kelengkapan->isNormal() ? null : (trim((string) ($item['uraian_kondisi'] ?? '')) ?: null);
+
+        $record->kelengkapan = $kelengkapan;
+        $record->uraian_kondisi = $uraian;
+
+        if ($record->isDirty(['kelengkapan', 'uraian_kondisi'])) {
+            $record->checked_by = $kelengkapan === null ? null : $user->id;
+            $record->checked_at = $kelengkapan === null ? null : now();
+        }
     }
 }

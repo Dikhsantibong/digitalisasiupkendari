@@ -7,7 +7,33 @@ import type { LucideIcon } from 'lucide-react';
  */
 export const MOBILE_MENU_GROUPS = [
     { key: 'umum', label: 'Umum' },
-    { key: 'operasi', label: 'Input Operasi' },
+    // The field roles' phone menu: the regular inputs (Laporan Project) apart from the Pengusahaan ones.
+    {
+        key: 'operasi',
+        label: 'Input Operasi',
+        home: 'Input Operasi (Laporan Project)',
+    },
+    {
+        key: 'opu-input',
+        label: 'Input Pengusahaan Operasi',
+        home: 'Pengusahaan · Input Harian',
+    },
+    {
+        key: 'opu-bbm',
+        label: 'Pengusahaan · Bahan Bakar',
+        home: 'Pengusahaan · Bahan Bakar',
+    },
+    {
+        key: 'opu-pelumas',
+        label: 'Pengusahaan · Pelumas',
+        home: 'Pengusahaan · Pelumas',
+    },
+    { key: 'opu-kwh', label: 'Pengusahaan · kWh', home: 'Pengusahaan · kWh' },
+    {
+        key: 'opu-rekap',
+        label: 'Pengusahaan · Rekap',
+        home: 'Pengusahaan · Rekap',
+    },
     { key: 'op-jadwal', label: 'Jadwal Operasi', home: 'Jadwal' },
     { key: 'op-input', label: 'Input Operasi' },
     { key: 'op-bbm', label: 'Bahan Bakar Operasi', home: 'Bahan Bakar' },
@@ -39,7 +65,9 @@ export const MOBILE_MENU_GROUPS = [
 export type MobileMenuGroup = (typeof MOBILE_MENU_GROUPS)[number]['key'];
 
 /** Heading of a section on the phone home. */
-export function mobileGroupHomeLabel(group: (typeof MOBILE_MENU_GROUPS)[number]): string {
+export function mobileGroupHomeLabel(
+    group: (typeof MOBILE_MENU_GROUPS)[number],
+): string {
     return 'home' in group ? group.home : group.label;
 }
 

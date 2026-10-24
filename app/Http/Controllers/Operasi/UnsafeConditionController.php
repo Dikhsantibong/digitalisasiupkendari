@@ -10,6 +10,7 @@ use App\Models\HarUnsafeCondition;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Services\Notifications\EventNotifier;
+use App\Services\UnsafeConditionSync;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -171,6 +172,25 @@ class UnsafeConditionController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan temuan berhasil disimpan.']);
+
+        return back();
+    }
+
+    /**
+     * Save the month's sheet at once: rows edited in place, new rows and the
+     * deleted ones ({@see UnsafeConditionSync}).
+     */
+    public function sync(Request $request, UnsafeConditionSync $sheet): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($this->allowsFieldInput($user, PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganUnsafeCondition), 403);
+
+        $unit = Unit::query()->findOrFail($request->integer('unit_id'));
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $result = $sheet->save($request, $unit, 'operasi', $user);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Tersimpan: {$result['created']} temuan baru, {$result['updated']} diperbarui, {$result['deleted']} dihapus."]);
 
         return back();
     }

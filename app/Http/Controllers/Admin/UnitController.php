@@ -186,6 +186,7 @@ class UnitController extends Controller
             'installed_capacity_mw' => $unit->installed_capacity_mw,
             'location' => $unit->location,
             'is_active' => $unit->is_active,
+            'operator_pengusahaan' => $unit->operator_pengusahaan,
             'service_unit_id' => $unit->service_unit_id,
             'service_unit' => $unit->relationLoaded('serviceUnit') ? $unit->serviceUnit?->name : null,
             'machines_count' => $unit->machines_count ?? null,

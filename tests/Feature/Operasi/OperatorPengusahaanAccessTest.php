@@ -103,4 +103,41 @@ class OperatorPengusahaanAccessTest extends TestCase
         $this->actingAs($tl)->get(route('operasi.pengusahaan.berita-acara.index', $this->period()))->assertOk();
         $this->actingAs($tl)->get(route('operasi.pengusahaan.index', ['section' => 'formulir']))->assertOk();
     }
+
+    public function test_a_containerized_unit_closes_the_pengusahaan_inputs_to_its_operators_and_super_admin_can_change_it(): void
+    {
+        $container = Unit::factory()->forServiceUnit($this->unit->serviceUnit)->create(['name' => 'PLTD Poasia Containerized', 'code' => 'PLTD-POASIA-CONT', 'is_active' => true, 'operator_pengusahaan' => false]);
+        $period = ['unit_id' => $container->id, 'month' => 9, 'year' => 2026];
+        $operator = $this->userWithRole(RoleName::Operator, $container);
+
+        // No unit of theirs allows it: the permission is not even offered (menus hidden) and the pages refuse.
+        $this->assertFalse($operator->hasPermissionTo('operasi.pengusahaan.input'));
+        $this->actingAs($operator)->get(route('operasi.pengusahaan.tara-kalor.index', $period))->assertForbidden();
+        $this->actingAs($operator)->get(route('operasi.pengusahaan.index', ['section' => 'input']))->assertForbidden();
+        $this->actingAs($operator)->get(route('dashboard'))->assertInertia(fn ($page) => $page->where('auth.permissions', fn ($names): bool => ! collect($names)->contains('operasi.pengusahaan.input')));
+
+        // A user of both units: open for PLTD Poasia, closed for the containerized one.
+        $both = $this->userWithRole(RoleName::Operator, $this->unit);
+        $both->assignRole(RoleName::Operator, $container);
+        $both = $both->fresh();
+        $this->actingAs($both)->get(route('operasi.pengusahaan.tara-kalor.index', $this->period()))->assertOk();
+        $this->actingAs($both)->get(route('operasi.pengusahaan.tara-kalor.index', $period))->assertForbidden();
+        $this->actingAs($both)->post(route('operasi.pengusahaan.tara-kalor.store'), $period + ['readings' => []])->assertForbidden();
+
+        // TL Operasi of the containerized unit is not affected.
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $container))->get(route('operasi.pengusahaan.tara-kalor.index', $period))->assertOk();
+
+        // Super Admin switches it on in Master Unit: the operator gets the inputs.
+        $admin = $this->userWithRole(RoleName::SuperAdmin);
+        $this->actingAs($admin)->put(route('admin.units.update', $container), [
+            'code' => $container->code, 'name' => $container->name, 'type' => $container->type->value, 'status' => $container->status->value,
+            'is_active' => '1', 'operator_pengusahaan' => '1',
+        ])->assertSessionHasNoErrors();
+        $this->assertTrue($container->fresh()->operator_pengusahaan);
+
+        $operator = $operator->fresh();
+        $operator->forgetAccessCache();
+        $this->assertTrue($operator->hasPermissionTo('operasi.pengusahaan.input'));
+        $this->actingAs($operator)->get(route('operasi.pengusahaan.tara-kalor.index', $period))->assertOk();
+    }
 }

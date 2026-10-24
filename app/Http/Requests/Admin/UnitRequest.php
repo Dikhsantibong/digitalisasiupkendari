@@ -39,6 +39,7 @@ class UnitRequest extends FormRequest
             'installed_capacity_mw' => ['nullable', 'numeric', 'min:0', 'max:99999.99'],
             'location' => ['nullable', 'string', 'max:160'],
             'is_active' => ['required', 'boolean'],
+            'operator_pengusahaan' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -69,6 +70,7 @@ class UnitRequest extends FormRequest
             'installed_capacity_mw' => 'kapasitas terpasang',
             'location' => 'lokasi',
             'is_active' => 'status aktif',
+            'operator_pengusahaan' => 'input pengusahaan oleh operator',
         ];
     }
 }

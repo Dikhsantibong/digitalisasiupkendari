@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\AttendanceLocationController;
 use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\ImpersonationController;
 use App\Http\Controllers\Admin\MachineController;
 use App\Http\Controllers\Admin\ReportSignerController;
 use App\Http\Controllers\Admin\RoleAssignmentController;
@@ -31,6 +32,12 @@ Route::middleware(['auth', 'verified'])
 
         Route::resource('users', UserController::class);
 
+        // Pindah Akun (Super Admin "masuk sebagai"): the rules live in App\Services\Impersonation.
+        Route::get('pindah-akun/pengguna', [ImpersonationController::class, 'users'])
+            ->middleware('throttle:60,1')->name('impersonation.users');
+        Route::post('pindah-akun/{user}', [ImpersonationController::class, 'start'])
+            ->middleware('throttle:10,1')->name('impersonation.start');
+
         Route::post('users/{user}/assignments', [RoleAssignmentController::class, 'store'])
             ->name('users.assignments.store');
         Route::delete('users/{user}/assignments/{assignment}', [RoleAssignmentController::class, 'destroy'])
@@ -48,3 +55,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('lokasi-absensi', [AttendanceLocationController::class, 'index'])->name('attendance-locations.index');
         Route::put('lokasi-absensi/{unit}', [AttendanceLocationController::class, 'update'])->name('attendance-locations.update');
     });
+
+// Back to the Super Admin from a "masuk sebagai" session (any signed-in user holding one).
+Route::post('pindah-akun/kembali', [ImpersonationController::class, 'stop'])
+    ->middleware(['auth', 'throttle:30,1'])->name('impersonation.stop');

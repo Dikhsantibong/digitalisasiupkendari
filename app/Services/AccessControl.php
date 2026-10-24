@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PermissionName;
 use App\Enums\RoleName;
 use App\Enums\RoleScope;
 use App\Models\Permission;
@@ -162,11 +163,20 @@ class AccessControl
             return collect();
         }
 
-        return Permission::query()
+        $names = Permission::query()
             ->whereHas('roles', fn ($query) => $query->whereIn('roles.id', $roleIds))
             ->pluck('name')
             ->unique()
             ->values();
+
+        // The operators' Pengusahaan Operasi inputs need a unit where Master Unit
+        // allows them (units.operator_pengusahaan — off for the containerized units).
+        $input = PermissionName::OperasiPengusahaanInput->value;
+        if ($names->contains($input) && ! Unit::query()->whereIn('id', $this->accessibleUnitIds($user))->where('operator_pengusahaan', true)->exists()) {
+            $names = $names->reject(fn (string $name): bool => $name === $input)->values();
+        }
+
+        return $names;
     }
 
     /**
