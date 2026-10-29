@@ -5,10 +5,12 @@ namespace Tests\Feature\Operasi;
 use App\Enums\RoleName;
 use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Models\KondisiAbnormal;
+use App\Models\Machine;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Operasi\OperasiReportSections;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
 
@@ -176,6 +178,107 @@ class KondisiAbnormalInputTest extends TestCase
             ->get(route('operasi.input.kondisi-abnormal.pdf', $this->period))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_the_desktop_sheet_adds_edits_and_deletes_rows_in_one_save(): void
+    {
+        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $colleague = $this->userWithRole(RoleName::Operator, $this->unit);
+        $this->report($operator, ['tanggal' => '2026-08-03', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Trip lama']);
+        $this->report($operator, ['tanggal' => '2026-08-04', 'jenis' => 'abnormal', 'uraian_kondisi' => 'Dihapus']);
+        $this->report($colleague, ['tanggal' => '2026-08-05', 'jenis' => 'abnormal', 'uraian_kondisi' => 'Milik rekan']);
+        [$kept, $removed, $others] = KondisiAbnormal::query()->orderBy('id')->get()->all();
+
+        $this->sync($operator, [
+            'rows' => [
+                ['id' => $kept->id, 'tanggal' => '2026-08-03', 'jenis' => 'abnormal', 'durasi' => 2, 'uraian_kondisi' => 'Trip diperbaiki', 'tl_pendek_flm' => true, 'dampak_pembangkit' => 'Derating'],
+                ['tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'durasi' => 1.5, 'uraian_kondisi' => 'Mesin #2 trip', 'tl_pendek_sr' => true],
+                ['tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'durasi' => '', 'uraian_kondisi' => 'Mesin #2 trip lagi'],
+                // A blank new row is skipped.
+                ['tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'durasi' => '', 'uraian_kondisi' => ''],
+            ],
+            'deleted_ids' => [$removed->id],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $kept->refresh();
+        $this->assertSame(['Trip diperbaiki', 1, 0, 'Derating'], [$kept->uraian_kondisi, (int) $kept->is_abnormal, (int) $kept->is_gangguan, $kept->dampak_pembangkit]);
+        $this->assertTrue($kept->tl_pendek_flm);
+        $this->assertModelMissing($removed);
+        $this->assertSame('Milik rekan', $others->fresh()->uraian_kondisi);
+        $new = KondisiAbnormal::query()->where('tanggal', 'like', '2026-08-12%')->orderBy('id')->get();
+        $this->assertCount(2, $new);
+        $this->assertSame([$operator->id, $operator->id], $new->pluck('input_by')->all());
+        $this->assertEquals(1.5, (float) $new[0]->durasi_gangguan);
+        $this->assertSame(4, KondisiAbnormal::query()->count());
+    }
+
+    public function test_a_gangguan_records_its_hours_mesin_and_peralatan(): void
+    {
+        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $mesin = Machine::factory()->create(['unit_id' => $this->unit->id, 'name' => 'CUMMINS #1']);
+        $otherUnitMesin = Machine::factory()->create();
+
+        // The durasi is the hours between jam mulai and selesai (past midnight too); a typed durasi is ignored.
+        $this->report($operator, ['tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Trip', 'durasi' => 9,
+            'jam_mulai' => '22:30', 'jam_selesai' => '01:15', 'machine_id' => $mesin->id, 'peralatan' => 'Cylinder head']);
+        $record = KondisiAbnormal::query()->sole();
+        $this->assertSame(['22:30', '01:15', $mesin->id, 'Cylinder head'], [$record->jam_mulai, $record->jam_selesai, $record->machine_id, $record->peralatan]);
+        $this->assertEquals(2.75, (float) $record->durasi_gangguan);
+
+        // An abnormal report keeps none of it.
+        $this->sync($operator, ['rows' => [['id' => $record->id, 'tanggal' => '2026-08-12', 'jenis' => 'abnormal', 'durasi' => 1, 'uraian_kondisi' => 'Trip',
+            'jam_mulai' => '08:00', 'jam_selesai' => '09:00', 'machine_id' => $mesin->id, 'peralatan' => 'Cylinder head']]])->assertSessionHasNoErrors();
+        $record->refresh();
+        $this->assertSame([null, null, null, null], [$record->jam_mulai, $record->jam_selesai, $record->machine_id, $record->peralatan]);
+        $this->assertEquals(1, (float) $record->durasi_abnormal);
+
+        $row = ['tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Trip'];
+        $this->sync($operator, ['rows' => [['machine_id' => $otherUnitMesin->id] + $row]])->assertSessionHasErrors('rows.0.machine_id');
+        $this->sync($operator, ['rows' => [['jam_mulai' => '25:00'] + $row]])->assertSessionHasErrors('rows.0.jam_mulai');
+
+        $this->sync($operator, ['rows' => [['jam_mulai' => '08:00', 'jam_selesai' => '10:30', 'machine_id' => $mesin->id, 'peralatan' => 'Turbocharger'] + $row]])->assertSessionHasNoErrors();
+        $this->actingAs($operator)->get(route('operasi.input.kondisi-abnormal.index', $this->period))
+            ->assertInertia(fn ($page) => $page
+                ->where('options.machines', [['id' => $mesin->id, 'name' => 'CUMMINS #1']])
+                ->where('entries.1.mesin', 'CUMMINS #1')
+                ->where('entries.1.durasi', 2.5)
+                ->where('entries.1.jam_mulai', '08:00'));
+
+        [$view, $data] = app(KondisiAbnormalController::class)->pdfView($this->unit, 8, 2026);
+        $html = view($view, $data)->render();
+        $this->assertStringContainsString('CUMMINS #1 · Turbocharger', $html);
+        $this->assertStringContainsString('08:00–10:30', $html);
+    }
+
+    public function test_the_desktop_sheet_is_validated_and_guarded(): void
+    {
+        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $colleague = $this->userWithRole(RoleName::Operator, $this->unit);
+        $this->report($colleague, ['tanggal' => '2026-08-05', 'jenis' => 'abnormal', 'uraian_kondisi' => 'Milik rekan']);
+        $others = KondisiAbnormal::query()->sole();
+        $row = ['tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Trip'];
+
+        $this->sync($operator, ['rows' => [['tanggal' => '2026-09-01'] + $row]])->assertSessionHasErrors('rows.0.tanggal');
+        $this->sync($operator, ['rows' => [['jenis' => 'rusak'] + $row]])->assertSessionHasErrors('rows.0.jenis');
+        $this->sync($operator, ['rows' => [['durasi' => 800] + $row]])->assertSessionHasErrors('rows.0.durasi');
+        $this->sync($operator, ['rows' => [['id' => $others->id, 'uraian_kondisi' => ''] + $row]])->assertSessionHasErrors('rows.0.uraian_kondisi');
+        // An operator cannot change or delete a colleague's report.
+        $this->sync($operator, ['rows' => [['id' => $others->id, 'uraian_kondisi' => 'Diambil alih'] + $row]])->assertForbidden();
+        $this->sync($operator, ['rows' => [], 'deleted_ids' => [$others->id]])->assertForbidden();
+        $this->sync($this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit), ['rows' => [$row]])->assertForbidden();
+        $this->assertSame(1, KondisiAbnormal::query()->count());
+
+        // The Koordinator edits every report.
+        $this->sync($this->userWithRole(RoleName::KoordinatorOperasi, $this->unit), ['rows' => [['id' => $others->id, 'uraian_kondisi' => 'Dikoreksi'] + $row]])->assertSessionHasNoErrors();
+        $this->assertSame('Dikoreksi', $others->fresh()->uraian_kondisi);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function sync(User $user, array $data): TestResponse
+    {
+        return $this->actingAs($user)->post(route('operasi.input.kondisi-abnormal.sync'), $this->period + $data);
     }
 
     /**

@@ -156,15 +156,6 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
             <>
                 <Head title={`Jadwal Program 5S 5R Pemeliharaan - ${unit.name}`} />
                 <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
-                    <PageHeader title="Program 5S 5R" description={`${unit.name} · ${periodLabel}`} />
-
-                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <div className="col-span-2">
-                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(value) => visit({ unit_id: Number(value) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
-                        </div>
-                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(value) => visit({ month: Number(value) })} options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))} className="w-full" />
-                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(value) => visit({ year: Number(value) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
-                    </div>
 
                     <DayStrip
                         items={weeks.map((w) => ({ key: String(w.minggu), label: `M${w.minggu}`, sub: 'Minggu', done: w.rows.some((r) => r.saved) }))}

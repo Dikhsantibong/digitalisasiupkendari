@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { usePermissions } from '@/hooks/use-permissions';
-import { downloadOperasi5s5rWorkbook, type Operasi5s5rExportWeek } from '@/lib/operasi-5s5r-excel';
+import { downloadOperasi5s5rWorkbook  } from '@/lib/operasi-5s5r-excel';
+import type {Operasi5s5rExportWeek} from '@/lib/operasi-5s5r-excel';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
 import program5s5rRoutes from '@/routes/operasi/input/program-5s5r';
@@ -147,6 +148,7 @@ export default function OperasiProgram5s5rInput({ unit, filters, options, weeks:
 
     const handleExportExcel = async () => {
         setExportingExcel(true);
+
         try {
             const exportWeeks: Operasi5s5rExportWeek[] = weeks.map((w) => ({
                 minggu: w.minggu,
@@ -189,33 +191,6 @@ export default function OperasiProgram5s5rInput({ unit, filters, options, weeks:
             <>
                 <Head title={`Jadwal Program 5S 5R Pengoperasian KIT - ${unit.name}`} />
                 <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
-                    <PageHeader title="Program 5S 5R Pengoperasian KIT" description={`${unit.name} · ${periodLabel}`} />
-
-                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <div className="col-span-2">
-                            <OperasiSelect
-                                label="Unit"
-                                value={String(filters.unit_id)}
-                                onChange={(value) => visit({ unit_id: Number(value) })}
-                                options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                                className="w-full"
-                            />
-                        </div>
-                        <OperasiSelect
-                            label="Bulan"
-                            value={String(filters.month)}
-                            onChange={(value) => visit({ month: Number(value) })}
-                            options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
-                            className="w-full"
-                        />
-                        <OperasiSelect
-                            label="Tahun"
-                            value={String(filters.year)}
-                            onChange={(value) => visit({ year: Number(value) })}
-                            options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                            className="w-full"
-                        />
-                    </div>
 
                     <DayStrip
                         items={weeks.map((w) => ({

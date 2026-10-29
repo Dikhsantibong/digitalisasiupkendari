@@ -8,21 +8,13 @@ import {
     Save,
     Trash2,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
 import permitToWorkRoutes from '@/routes/operasi/input/permit-to-work';
@@ -67,6 +59,12 @@ const MONTHS = [
     'Desember',
 ];
 
+/** Spreadsheet grid of the desktop table (black lines, yellow headers like the other input sheets). */
+const xlTh = 'border border-black bg-yellow-200 px-1.5 py-1.5 text-center text-[11px] font-bold text-black uppercase dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
+const xlTd = 'h-8 border border-black p-0 dark:border-white/60';
+const xlInput =
+    'h-8 w-full bg-transparent px-2 text-xs outline-none focus:bg-yellow-50 focus:ring-2 focus:ring-primary focus:ring-inset dark:focus:bg-yellow-950/40';
+
 export default function PermitToWorkInput({
     filters,
     rows: initialRows,
@@ -78,10 +76,14 @@ export default function PermitToWorkInput({
     const [isDirty, setIsDirty] = useState(false);
     const compact = useCompactLayout();
 
-    useEffect(() => {
+    // Take the saved rows again whenever the server sends new ones (save / other period).
+    const [syncedRows, setSyncedRows] = useState(initialRows);
+
+    if (syncedRows !== initialRows) {
+        setSyncedRows(initialRows);
         setRows(initialRows);
         setIsDirty(false);
-    }, [initialRows]);
+    }
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -361,213 +363,100 @@ export default function PermitToWorkInput({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="bg-[#ea7315]/15 hover:bg-[#ea7315]/15">
-                                        <TableHead
-                                            rowSpan={2}
-                                            className="w-14 border-r border-border text-center font-bold text-foreground"
-                                        >
-                                            NO
-                                        </TableHead>
-                                        <TableHead
-                                            rowSpan={2}
-                                            className="min-w-[320px] border-r border-border font-bold text-foreground"
-                                        >
-                                            URAIAN
-                                        </TableHead>
-                                        <TableHead
-                                            rowSpan={2}
-                                            className="w-40 border-r border-border text-center font-bold text-foreground"
-                                        >
-                                            TANGGAL
-                                        </TableHead>
-                                        <TableHead
-                                            colSpan={2}
-                                            className="border-b border-border text-center font-bold text-foreground"
-                                        >
-                                            STATUS
-                                        </TableHead>
-                                        {can_write && (
-                                            <TableHead
-                                                rowSpan={2}
-                                                className="w-14 border-l border-border text-center font-bold text-foreground"
-                                            >
-                                                AKSI
-                                            </TableHead>
-                                        )}
-                                    </TableRow>
-                                    <TableRow className="bg-[#ea7315]/15 hover:bg-[#ea7315]/15">
-                                        <TableHead className="w-28 border-r border-border text-center font-bold text-foreground">
-                                            OPEN
-                                        </TableHead>
-                                        <TableHead className="w-28 text-center font-bold text-foreground">
-                                            CLOSE
-                                        </TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
+                            <table className="w-full border-collapse border-2 border-black text-xs dark:border-white">
+                                <thead>
+                                    <tr>
+                                        <th rowSpan={2} className={cn(xlTh, 'w-14')}>NO</th>
+                                        <th rowSpan={2} className={cn(xlTh, 'min-w-[320px] text-left')}>URAIAN</th>
+                                        <th rowSpan={2} className={cn(xlTh, 'w-40')}>TANGGAL</th>
+                                        <th colSpan={2} className={xlTh}>STATUS</th>
+                                        {can_write && <th rowSpan={2} className={cn(xlTh, 'w-12')} />}
+                                    </tr>
+                                    <tr>
+                                        <th className={cn(xlTh, 'w-28 bg-yellow-100 dark:bg-yellow-900')}>OPEN</th>
+                                        <th className={cn(xlTh, 'w-28 bg-yellow-100 dark:bg-yellow-900')}>CLOSE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
                                     {rows.map((row, index) => {
-                                        const hasData =
-                                            row.uraian.trim() !== '' ||
-                                            row.tanggal !== '';
-                                        const isOpen =
-                                            hasData && row.status === 'open';
-                                        const isClose =
-                                            hasData && row.status === 'close';
+                                        const hasData = row.uraian.trim() !== '' || row.tanggal !== '';
 
                                         return (
-                                            <TableRow
-                                                key={row.no_urut}
-                                                className="hover:bg-muted/40"
-                                            >
-                                                <TableCell className="border-r border-border text-center font-bold text-muted-foreground">
-                                                    {row.no_urut}
-                                                </TableCell>
-                                                <TableCell className="border-r border-border p-2">
+                                            <tr key={row.no_urut} className="hover:bg-muted/30">
+                                                <td className={cn(xlTd, 'text-center font-bold text-muted-foreground')}>{row.no_urut}</td>
+                                                <td className={xlTd}>
                                                     {can_write ? (
-                                                        <Input
+                                                        <input
                                                             type="text"
                                                             value={row.uraian}
-                                                            onChange={(e) =>
-                                                                handleRowChange(
-                                                                    index,
-                                                                    'uraian',
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="h-8 text-xs"
+                                                            onChange={(e) => handleRowChange(index, 'uraian', e.target.value)}
+                                                            className={xlInput}
                                                             placeholder="Uraian pekerjaan PTW..."
+                                                            aria-label={`Uraian baris ${row.no_urut}`}
                                                         />
                                                     ) : (
-                                                        <span className="text-xs">
-                                                            {row.uraian || '-'}
-                                                        </span>
+                                                        <span className="block px-2">{row.uraian || '-'}</span>
                                                     )}
-                                                </TableCell>
-                                                <TableCell className="border-r border-border p-2 text-center">
+                                                </td>
+                                                <td className={xlTd}>
                                                     {can_write ? (
-                                                        <Input
+                                                        <input
                                                             type="date"
                                                             value={row.tanggal}
-                                                            onChange={(e) =>
-                                                                handleRowChange(
-                                                                    index,
-                                                                    'tanggal',
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="h-8 text-center text-xs"
+                                                            onChange={(e) => handleRowChange(index, 'tanggal', e.target.value)}
+                                                            className={cn(xlInput, 'text-center')}
+                                                            aria-label={`Tanggal baris ${row.no_urut}`}
                                                         />
                                                     ) : (
-                                                        <span className="text-xs">
-                                                            {row.tanggal || '-'}
-                                                        </span>
+                                                        <span className="block px-2 text-center">{row.tanggal || '-'}</span>
                                                     )}
-                                                </TableCell>
-                                                <TableCell className="border-r border-border p-2 text-center">
-                                                    {can_write ? (
-                                                        <label className="inline-flex cursor-pointer items-center gap-1.5">
-                                                            <input
-                                                                type="radio"
-                                                                name={`status-${row.no_urut}`}
-                                                                checked={
-                                                                    row.status ===
-                                                                    'open'
-                                                                }
-                                                                onChange={() =>
-                                                                    handleRowChange(
-                                                                        index,
-                                                                        'status',
-                                                                        'open',
-                                                                    )
-                                                                }
-                                                                className="size-4 cursor-pointer accent-amber-500"
-                                                            />
-                                                            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">
-                                                                {isOpen
-                                                                    ? '✓'
-                                                                    : ''}
-                                                            </span>
-                                                        </label>
-                                                    ) : (
-                                                        <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                                                            {isOpen ? '✓' : ''}
-                                                        </span>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="p-2 text-center">
-                                                    {can_write ? (
-                                                        <label className="inline-flex cursor-pointer items-center gap-1.5">
-                                                            <input
-                                                                type="radio"
-                                                                name={`status-${row.no_urut}`}
-                                                                checked={
-                                                                    row.status ===
-                                                                    'close'
-                                                                }
-                                                                onChange={() =>
-                                                                    handleRowChange(
-                                                                        index,
-                                                                        'status',
-                                                                        'close',
-                                                                    )
-                                                                }
-                                                                className="size-4 cursor-pointer accent-emerald-500"
-                                                            />
-                                                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                                                                {isClose
-                                                                    ? '✓'
-                                                                    : ''}
-                                                            </span>
-                                                        </label>
-                                                    ) : (
-                                                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                                                            {isClose ? '✓' : ''}
-                                                        </span>
-                                                    )}
-                                                </TableCell>
+                                                </td>
+                                                {(['open', 'close'] as const).map((status) => {
+                                                    const ticked = hasData && row.status === status;
+
+                                                    return (
+                                                        <td
+                                                            key={status}
+                                                            onClick={can_write ? () => handleRowChange(index, 'status', status) : undefined}
+                                                            className={cn(
+                                                                xlTd,
+                                                                'text-center text-base font-bold',
+                                                                can_write && 'cursor-pointer hover:bg-yellow-50 dark:hover:bg-yellow-950/40',
+                                                                ticked && (status === 'open' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300'),
+                                                            )}
+                                                            title={can_write ? `Klik untuk tandai ${status.toUpperCase()}` : undefined}
+                                                            role={can_write ? 'checkbox' : undefined}
+                                                            aria-checked={can_write ? ticked : undefined}
+                                                            aria-label={`${status.toUpperCase()} baris ${row.no_urut}`}
+                                                        >
+                                                            {ticked ? '✓' : ''}
+                                                        </td>
+                                                    );
+                                                })}
                                                 {can_write && (
-                                                    <TableCell className="border-l border-border p-1 text-center">
+                                                    <td className={cn(xlTd, 'text-center')}>
                                                         <Button
                                                             size="icon"
                                                             variant="ghost"
                                                             className="size-7 text-muted-foreground hover:text-destructive"
-                                                            onClick={() =>
-                                                                handleClearRow(
-                                                                    index,
-                                                                )
-                                                            }
+                                                            onClick={() => handleClearRow(index)}
                                                             title="Kosongkan Baris"
                                                         >
                                                             <Trash2 className="size-3.5" />
                                                         </Button>
-                                                    </TableCell>
+                                                    </td>
                                                 )}
-                                            </TableRow>
+                                            </tr>
                                         );
                                     })}
-                                    <TableRow className="bg-[#ea7315]/20 font-bold hover:bg-[#ea7315]/20">
-                                        <TableCell
-                                            colSpan={3}
-                                            className="border-r border-border text-center font-bold"
-                                        >
-                                            TOTAL
-                                        </TableCell>
-                                        <TableCell className="border-r border-border text-center font-bold text-amber-600 dark:text-amber-400">
-                                            {totalOpen}
-                                        </TableCell>
-                                        <TableCell className="text-center font-bold text-emerald-600 dark:text-emerald-400">
-                                            {totalClose}
-                                        </TableCell>
-                                        {can_write && (
-                                            <TableCell className="border-l border-border" />
-                                        )}
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
+                                    <tr className="bg-yellow-200 font-bold text-black dark:bg-yellow-800 dark:text-yellow-50">
+                                        <td colSpan={3} className={cn(xlTd, 'text-center')}>TOTAL</td>
+                                        <td className={cn(xlTd, 'text-center text-amber-700 dark:text-amber-200')}>{totalOpen}</td>
+                                        <td className={cn(xlTd, 'text-center text-emerald-700 dark:text-emerald-200')}>{totalClose}</td>
+                                        {can_write && <td className={xlTd} />}
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     )}
 

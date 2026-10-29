@@ -56,6 +56,7 @@ const put = (
 ) => {
     const cell = sheet.getRow(row).getCell(col);
     cell.value = value ?? '';
+
     if (spec) {
         applyStyle(cell, spec);
     }
@@ -69,6 +70,7 @@ export async function downloadUnsafeConditionWorkbook(
         total: number;
         unsafe_action_count: number;
         unsafe_condition_count: number;
+        nearmiss_count?: number;
     },
     filename: string,
 ) {
@@ -131,6 +133,7 @@ export async function downloadUnsafeConditionWorkbook(
 
     // Load logos
     const pln = await loadImageBase64('/logo/sidebar-logo.png');
+
     if (pln) {
         const id = workbook.addImage({ base64: pln, extension: 'png' });
         worksheet.addImage(id, {
@@ -140,6 +143,7 @@ export async function downloadUnsafeConditionWorkbook(
     }
 
     const mkp = await loadImageBase64('/logo/mkp.jpg');
+
     if (mkp) {
         const id = workbook.addImage({ base64: mkp, extension: 'jpeg' });
         worksheet.addImage(id, {
@@ -180,6 +184,7 @@ export async function downloadUnsafeConditionWorkbook(
     worksheet.getRow(5).height = 22;
 
     let r = 6;
+
     if (rows.length === 0) {
         put(worksheet, r, 1, 'Tidak ada data temuan unsafe action / condition pada periode ini.', CELL_CENTER);
         mergeCells(worksheet, r - 1, 0, r - 1, 10);
@@ -229,12 +234,19 @@ export async function downloadUnsafeConditionWorkbook(
     mergeCells(worksheet, summaryStartRow + 1, 1, summaryStartRow + 1, 2);
     put(worksheet, summaryStartRow + 2, 4, summary.unsafe_condition_count, { ...CELL_CENTER, bold: true });
 
-    // Row 3: Total
-    put(worksheet, summaryStartRow + 3, 1, '', { ...CELL_CENTER, fill: 'F5F5F5' });
-    put(worksheet, summaryStartRow + 3, 2, 'TOTAL TEMUAN:', { ...CELL_CENTER, bold: true, align: 'right', fill: 'F5F5F5' });
-    put(worksheet, summaryStartRow + 3, 3, '', { ...CELL_CENTER, fill: 'F5F5F5' });
-    mergeCells(worksheet, summaryStartRow + 2, 0, summaryStartRow + 2, 2);
-    put(worksheet, summaryStartRow + 3, 4, summary.total, { ...CELL_CENTER, bold: true, fill: 'F5F5F5' });
+    // Row 3: Nearmiss
+    put(worksheet, summaryStartRow + 3, 1, 3, CELL_CENTER);
+    put(worksheet, summaryStartRow + 3, 2, 'NEARMISS', CELL_LEFT);
+    put(worksheet, summaryStartRow + 3, 3, '', CELL_LEFT);
+    mergeCells(worksheet, summaryStartRow + 2, 1, summaryStartRow + 2, 2);
+    put(worksheet, summaryStartRow + 3, 4, summary.nearmiss_count ?? 0, { ...CELL_CENTER, bold: true });
+
+    // Row 4: Total
+    put(worksheet, summaryStartRow + 4, 1, '', { ...CELL_CENTER, fill: 'F5F5F5' });
+    put(worksheet, summaryStartRow + 4, 2, 'TOTAL TEMUAN:', { ...CELL_CENTER, bold: true, align: 'right', fill: 'F5F5F5' });
+    put(worksheet, summaryStartRow + 4, 3, '', { ...CELL_CENTER, fill: 'F5F5F5' });
+    mergeCells(worksheet, summaryStartRow + 3, 0, summaryStartRow + 3, 2);
+    put(worksheet, summaryStartRow + 4, 4, summary.total, { ...CELL_CENTER, bold: true, fill: 'F5F5F5' });
 
     await downloadWorkbook(workbook, filename);
 }

@@ -7,6 +7,7 @@ use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
 use App\Models\KondisiAbnormal;
+use App\Models\Machine;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ActivityLogger;
@@ -17,6 +18,10 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -73,6 +78,8 @@ class KondisiAbnormalController extends Controller
                 'years' => range($year - 3, $year + 1),
                 'tindak_pendek' => self::TINDAK_PENDEK,
                 'jenis' => self::JENIS,
+                'machines' => Machine::query()->where('unit_id', $unit->id)->orderBy('name')->get(['id', 'name'])
+                    ->map(fn (Machine $m): array => ['id' => $m->id, 'name' => $m->name])->all(),
             ],
             'can_write' => $this->canWrite($user),
             'today' => Carbon::now('Asia/Makassar')->toDateString(),
@@ -130,6 +137,118 @@ class KondisiAbnormalController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan diperbarui.']);
 
         return redirect()->route('operasi.input.kondisi-abnormal.index', ['unit_id' => $kondisiAbnormal->unit_id, 'month' => $date->month, 'year' => $date->year]);
+    }
+
+    /**
+     * The desktop sheet saved at once, like a spreadsheet: rows with an id are
+     * updated (only the ones the user may edit), rows without one are new
+     * reports (blank rows are skipped), `deleted_ids` are removed. Every row's
+     * tanggal must fall in the month shown.
+     */
+    public function sync(Request $request, EventNotifier $events): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($this->canWrite($user), 403);
+
+        $unit = Unit::query()->findOrFail($request->integer('unit_id'));
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $request->validate([
+            'month' => ['required', 'integer', 'between:1,12'],
+            'year' => ['required', 'integer', 'between:2000,2100'],
+            'rows' => ['present', 'array', 'max:500'],
+            'rows.*.id' => ['nullable', 'integer'],
+            'deleted_ids' => ['nullable', 'array'],
+            'deleted_ids.*' => ['integer'],
+        ]);
+        $month = $request->integer('month');
+        $year = $request->integer('year');
+        $first = Carbon::create($year, $month, 1)->toDateString();
+        $last = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
+
+        $rows = (array) $request->input('rows', []);
+        ksort($rows);
+        // A new row left empty (no uraian) is not a report.
+        $rows = array_filter($rows, fn ($row, $index): bool => is_array($row) && (! empty($row['id']) || trim((string) ($row['uraian_kondisi'] ?? '')) !== ''), ARRAY_FILTER_USE_BOTH);
+
+        $validated = Validator::make(['rows' => $rows], [
+            ...collect($this->rowRules($unit->id))->mapWithKeys(fn (array $rules, string $key): array => ["rows.*.{$key}" => $rules])->all(),
+            'rows.*.tanggal' => ['required', 'date_format:Y-m-d', "after_or_equal:{$first}", "before_or_equal:{$last}"],
+        ], [
+            'rows.*.tanggal.after_or_equal' => 'Tanggal baris harus di bulan yang ditampilkan.',
+            'rows.*.tanggal.before_or_equal' => 'Tanggal baris harus di bulan yang ditampilkan.',
+            'rows.*.uraian_kondisi.required' => 'Indikasi / uraian kondisi wajib diisi.',
+        ])->validate();
+
+        $existing = KondisiAbnormal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->get()->keyBy('id');
+        foreach (array_keys($rows) as $index) {
+            $id = (int) ($rows[$index]['id'] ?? 0);
+            if ($id === 0) {
+                continue;
+            }
+            $record = $existing->get($id);
+            if ($record === null) {
+                throw ValidationException::withMessages(["rows.{$index}.id" => 'Laporan ini tidak ada di unit & bulan tersebut. Muat ulang halaman.']);
+            }
+            abort_unless($this->canEdit($user, $record), 403);
+        }
+        $deletedIds = collect($request->input('deleted_ids', []))->map(fn ($id): int => (int) $id)->unique();
+        foreach ($deletedIds as $id) {
+            $record = $existing->get($id);
+            abort_if($record !== null && ! $this->canEdit($user, $record), 403);
+        }
+
+        $announce = [];
+        $counts = ['created' => 0, 'updated' => 0, 'deleted' => 0];
+
+        DB::transaction(function () use ($rows, $validated, $existing, $deletedIds, $unit, $year, $month, $user, &$announce, &$counts): void {
+            $number = $this->nextNumber($unit->id, $year, $month);
+
+            foreach (array_keys($rows) as $index) {
+                $values = $this->normalize($validated['rows'][$index]);
+                $id = (int) ($rows[$index]['id'] ?? 0);
+
+                if ($id !== 0) {
+                    $record = $existing->get($id);
+                    $record->fill($values);
+                    if ($record->isDirty()) {
+                        $record->save();
+                        $counts['updated']++;
+                        if ($record->wasChanged(['is_abnormal', 'is_gangguan'])) {
+                            $announce[] = $record;
+                        }
+                    }
+
+                    continue;
+                }
+
+                $announce[] = KondisiAbnormal::query()->create([
+                    'unit_id' => $unit->id,
+                    'year' => $year,
+                    'month' => $month,
+                    'no_urut' => $number++,
+                    ...$values,
+                    'input_by' => $user->id,
+                ]);
+                $counts['created']++;
+            }
+
+            foreach ($deletedIds as $id) {
+                if ($existing->has($id) && ! collect($rows)->contains(fn (array $row): bool => (int) ($row['id'] ?? 0) === $id)) {
+                    $existing->get($id)->delete();
+                    $counts['deleted']++;
+                }
+            }
+        });
+
+        if ($announce !== []) {
+            $events->kondisiAbnormal($unit, $announce, $user);
+        }
+        $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan lembar kondisi abnormal & gangguan {$unit->name} {$month}/{$year}: {$counts['created']} baru, {$counts['updated']} diubah, {$counts['deleted']} dihapus", $unit, unit: $unit->id);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => "Tersimpan: {$counts['created']} laporan baru, {$counts['updated']} diubah, {$counts['deleted']} dihapus."]);
+
+        return redirect()->route('operasi.input.kondisi-abnormal.index', ['unit_id' => $unit->id, 'month' => $month, 'year' => $year]);
     }
 
     public function destroy(Request $request, KondisiAbnormal $kondisiAbnormal): RedirectResponse
@@ -219,9 +338,26 @@ class KondisiAbnormalController extends Controller
      */
     private function values(Request $request): array
     {
-        $validated = $request->validate([
+        return $this->normalize($request->validate([
             'unit_id' => ['required', 'integer'],
             'tanggal' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
+            ...$this->rowRules($request->integer('unit_id')),
+        ]));
+    }
+
+    /**
+     * The rules of one report's fields (the dialog and each sheet row).
+     *
+     * @return array<string, list<mixed>>
+     */
+    private function rowRules(int $unitId): array
+    {
+        return [
+            // Gangguan only: when it started & ended (its durasi), the mesin and the failed peralatan.
+            'jam_mulai' => ['nullable', 'date_format:H:i'],
+            'jam_selesai' => ['nullable', 'date_format:H:i'],
+            'machine_id' => ['nullable', 'integer', Rule::exists('machines', 'id')->where('unit_id', $unitId)],
+            'peralatan' => ['nullable', 'string', 'max:255'],
             'jenis' => ['required', 'in:abnormal,gangguan'],
             'durasi' => ['nullable', 'numeric', 'min:0', 'max:744'],
             'uraian_kondisi' => ['required', 'string', 'max:2000'],
@@ -233,12 +369,28 @@ class KondisiAbnormalController extends Controller
             'tl_panjang' => ['nullable', 'string', 'max:2000'],
             'dampak_sistem' => ['nullable', 'string', 'max:2000'],
             'dampak_pembangkit' => ['nullable', 'string', 'max:2000'],
-        ]);
+        ];
+    }
 
+    /**
+     * Jenis + durasi go to the matching abnormal / gangguan columns.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalize(array $validated): array
+    {
         $abnormal = $validated['jenis'] === 'abnormal';
-        $durasi = (float) ($validated['durasi'] ?? 0);
+        $mulai = $abnormal ? null : ($validated['jam_mulai'] ?? null);
+        $selesai = $abnormal ? null : ($validated['jam_selesai'] ?? null);
+        // A gangguan with both times lasts the hours between them (past midnight when it ends earlier).
+        $durasi = $mulai !== null && $selesai !== null ? self::hoursBetween($mulai, $selesai) : (float) ($validated['durasi'] ?? 0);
 
         return [
+            'jam_mulai' => $mulai,
+            'jam_selesai' => $selesai,
+            'machine_id' => $abnormal ? null : ($validated['machine_id'] ?? null),
+            'peralatan' => $abnormal ? null : (trim((string) ($validated['peralatan'] ?? '')) ?: null),
             'tanggal' => $validated['tanggal'],
             'uraian_kondisi' => trim($validated['uraian_kondisi']),
             'is_abnormal' => $abnormal ? 1 : 0,
@@ -256,7 +408,7 @@ class KondisiAbnormalController extends Controller
     private function records(Unit $unit, int $month, int $year): Collection
     {
         return KondisiAbnormal::query()
-            ->with('inputUser:id,name')
+            ->with(['inputUser:id,name', 'machine:id,name'])
             ->where('unit_id', $unit->id)
             ->where('year', $year)
             ->where('month', $month)
@@ -282,6 +434,11 @@ class KondisiAbnormalController extends Controller
             'durasi_gangguan' => (float) $record->durasi_gangguan,
         ];
         $row['durasi'] = $row['durasi_abnormal'] + $row['durasi_gangguan'];
+        $row['jam_mulai'] = (string) ($record->jam_mulai ?? '');
+        $row['jam_selesai'] = (string) ($record->jam_selesai ?? '');
+        $row['machine_id'] = $record->machine_id;
+        $row['mesin'] = (string) ($record->machine?->name ?? '');
+        $row['peralatan'] = (string) ($record->peralatan ?? '');
         foreach (array_keys(self::TINDAK_PENDEK) as $key) {
             $row[$key] = $record->{$key} ? 1 : 0;
         }
@@ -325,6 +482,21 @@ class KondisiAbnormalController extends Controller
                 'gangguan' => $day->filter(fn (KondisiAbnormal $r): bool => (int) $r->is_gangguan === 1)->count(),
                 'durasi_gangguan' => (float) $day->sum(fn (KondisiAbnormal $r): float => (float) $r->durasi_gangguan),
             ])->values()->all();
+    }
+
+    /**
+     * Hours from "HH:MM" to "HH:MM"; an end at or before the start is the next day.
+     */
+    public static function hoursBetween(string $start, string $end): float
+    {
+        [$sh, $sm] = array_map('intval', explode(':', $start));
+        [$eh, $em] = array_map('intval', explode(':', $end));
+        $minutes = ($eh * 60 + $em) - ($sh * 60 + $sm);
+        if ($minutes <= 0) {
+            $minutes += 24 * 60;
+        }
+
+        return round($minutes / 60, 2);
     }
 
     private function nextNumber(int $unitId, int $year, int $month): int

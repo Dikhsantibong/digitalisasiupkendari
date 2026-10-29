@@ -31,11 +31,16 @@ use Illuminate\Support\Carbon;
  * @property string|null $tl_panjang tindak lanjut jangka panjang
  * @property string|null $dampak_sistem
  * @property string|null $dampak_pembangkit
+ * @property string|null $jam_mulai gangguan only, "HH:MM"
+ * @property string|null $jam_selesai gangguan only, "HH:MM"
+ * @property int|null $machine_id the mesin that had the gangguan
+ * @property string|null $peralatan the failed part, e.g. cylinder head
  * @property int|null $input_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
  * @property-read User|null $inputUser
+ * @property-read Machine|null $machine
  */
 #[Fillable([
     'unit_id',
@@ -48,6 +53,10 @@ use Illuminate\Support\Carbon;
     'durasi_abnormal',
     'is_gangguan',
     'durasi_gangguan',
+    'jam_mulai',
+    'jam_selesai',
+    'machine_id',
+    'peralatan',
     'parameter_terkait',
     'tl_pendek_sr',
     'tl_pendek_flm',
@@ -79,6 +88,7 @@ class KondisiAbnormal extends Model
             'durasi_abnormal' => 'decimal:2',
             'is_gangguan' => 'integer',
             'durasi_gangguan' => 'decimal:2',
+            'machine_id' => 'integer',
             'tl_pendek_sr' => 'boolean',
             'tl_pendek_flm' => 'boolean',
             'tl_pendek_lainnya' => 'boolean',
@@ -91,5 +101,13 @@ class KondisiAbnormal extends Model
     public function inputUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'input_by');
+    }
+
+    /**
+     * @return BelongsTo<Machine, $this>
+     */
+    public function machine(): BelongsTo
+    {
+        return $this->belongsTo(Machine::class);
     }
 }

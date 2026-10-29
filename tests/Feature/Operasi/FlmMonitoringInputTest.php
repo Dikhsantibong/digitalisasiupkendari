@@ -25,7 +25,7 @@ class FlmMonitoringInputTest extends TestCase
         $this->seedAccessControl();
     }
 
-    public function test_the_page_shows_the_numbered_blank_rows(): void
+    public function test_an_empty_month_starts_with_one_blank_row(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
@@ -34,8 +34,8 @@ class FlmMonitoringInputTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('operasi/input/flm-monitoring/index')
-                ->has('rows', FlmMonitoringController::MIN_ROWS)
-                ->where('rows.9.no_urut', 10)
+                ->has('rows', 1)
+                ->where('rows.0.no_urut', 1)
                 ->where('options.kondisi_awal', OperasiFlmMonitoring::KONDISI_AWAL)
                 ->where('has_saved', false)
                 ->where('can_write', true),
@@ -65,7 +65,21 @@ class FlmMonitoringInputTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('operasi.input.flm-monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
-            ->assertInertia(fn ($page) => $page->where('has_saved', true)->where('rows.0.mesin', 'Fuel Transfer Pump')->has('rows', FlmMonitoringController::MIN_ROWS));
+            ->assertInertia(fn ($page) => $page->where('has_saved', true)->where('rows.0.mesin', 'Fuel Transfer Pump')->has('rows', 2));
+
+        // A row deleted and saved stays gone: the page adds no blank rows back.
+        $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), [
+            'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
+            'rows' => [['mesin' => 'Muffler Cummins #6', 'tanggal' => '2026-08-28', 'masalah' => 'Sisi kanan miring', 'kondisi_awal' => [], 'status' => 'open']],
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($user)
+            ->get(route('operasi.input.flm-monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
+            ->assertInertia(fn ($page) => $page->has('rows', 1)->where('rows.0.mesin', 'Muffler Cummins #6'));
+
+        // Deleting every row empties the month.
+        $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => []])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(0, OperasiFlmMonitoring::query()->where('unit_id', $unit->id)->count());
     }
 
     public function test_the_kondisi_awal_and_akhir_photos_are_stored_kept_replaced_and_removed(): void
@@ -91,7 +105,7 @@ class FlmMonitoringInputTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->where('rows.0.foto_awal', $awal)
                 ->where('rows.0.foto_awal_url', fn (?string $url): bool => $url !== null && str_contains($url, $awal))
-                ->where('rows.1.foto_awal', null));
+                ->has('rows', 1));
 
         // Saved again: the kept awal stays, the akhir is replaced (its old file deleted).
         $this->actingAs($user)->post(route('operasi.input.flm-monitoring.store'), $period + ['rows' => [

@@ -70,7 +70,7 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
-    const [openRow, setOpenRow] = useState<number | null>(initialRows.length > 0 ? null : 0);
+    const [openRow, setOpenRow] = useState<number | null>(has_saved ? null : 0);
     const compact = useCompactLayout();
     const { can } = usePermissions();
 
@@ -152,17 +152,6 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
             <>
                 <Head title="Monitoring FLM" />
                 <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
-                    <PageHeader title="Monitoring FLM" description={`${unit.name} · ${periodLabel}`} />
-
-                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <div className="col-span-2">
-                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(value) => visit({ unit_id: Number(value) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
-                        </div>
-                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(value) => visit({ month: Number(value) })} options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))} className="w-full" />
-                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(value) => visit({ year: Number(value) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
-                    </div>
-
-                    <p className="px-0.5 text-[12px] text-muted-foreground">Temuan tanpa mesin, tanggal &amp; masalah tidak ikut disimpan.</p>
 
                     {rows.length === 0 && (
                         <p className="rounded-xl border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">Belum ada temuan FLM untuk periode ini.</p>
@@ -202,7 +191,7 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                                             <Textarea value={row.masalah} onChange={(e) => update(index, { masalah: e.target.value })} rows={2} disabled={!can_write} />
                                         </label>
                                         <div className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                            Kondisi awal (tindakan)
+                                            Tindakan
                                             <div className="flex flex-wrap gap-1.5">
                                                 {kondisi.map(([key, label]) => {
                                                     const active = row.kondisi_awal.includes(key);
@@ -376,7 +365,7 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                                 <th rowSpan={2} className={`${th} min-w-40`}>Mesin / Peralatan</th>
                                 <th rowSpan={2} className={`${th} w-36`}>Tanggal</th>
                                 <th rowSpan={2} className={`${th} min-w-52`}>Masalah Awal yg ditemukan</th>
-                                <th colSpan={kondisi.length} className={th}>Kondisi Awal</th>
+                                <th colSpan={kondisi.length} className={th}>Tindakan</th>
                                 <th rowSpan={2} className={`${th} min-w-28`}>Kondisi Akhir</th>
                                 <th rowSpan={2} className={`${th} min-w-48`}>Catatan FLM</th>
                                 <th rowSpan={2} className={`${th} w-24`}>Status</th>

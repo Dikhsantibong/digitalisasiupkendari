@@ -10,7 +10,7 @@ import {
     RotateCcw,
     Save,
 } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
@@ -19,7 +19,6 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
-import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -708,69 +707,25 @@ return SPECS.label;
                 <div
                     className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}
                 >
-                    <PageHeader
-                        title="Patrol Check Mesin"
-                        description={`${unit.name} · ${filters.nama_mesin || 'Pilih mesin'} · ${periodLabel}`}
+                    <OperasiSelect
+                        label="Mesin"
+                        value={filters.nama_mesin}
+                        onChange={(value) => {
+                            const matched = options.machines.find(
+                                (m) => m.name === value,
+                            );
+                            visit({
+                                nama_mesin: value,
+                                machine_id: matched ? matched.id : null,
+                            });
+                        }}
+                        options={options.machines.map((m) => ({
+                            value: m.name,
+                            label: m.name,
+                        }))}
+                        className="w-full"
                     />
 
-                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <div className="col-span-2">
-                            <OperasiSelect
-                                label="Unit"
-                                value={String(filters.unit_id)}
-                                onChange={(value) =>
-                                    visit({ unit_id: Number(value) })
-                                }
-                                options={options.units.map((u) => ({
-                                    value: String(u.id),
-                                    label: u.name,
-                                }))}
-                                className="w-full"
-                            />
-                        </div>
-                        <div className="col-span-2">
-                            <OperasiSelect
-                                label="Mesin"
-                                value={filters.nama_mesin}
-                                onChange={(value) => {
-                                    const matched = options.machines.find(
-                                        (m) => m.name === value,
-                                    );
-                                    visit({
-                                        nama_mesin: value,
-                                        machine_id: matched ? matched.id : null,
-                                    });
-                                }}
-                                options={options.machines.map((m) => ({
-                                    value: m.name,
-                                    label: m.name,
-                                }))}
-                                className="w-full"
-                            />
-                        </div>
-                        <OperasiSelect
-                            label="Bulan"
-                            value={String(filters.month)}
-                            onChange={(value) =>
-                                visit({ month: Number(value) })
-                            }
-                            options={OPERASI_MONTHS.map((label, index) => ({
-                                value: String(index + 1),
-                                label,
-                            }))}
-                            className="w-full"
-                        />
-                        <OperasiSelect
-                            label="Tahun"
-                            value={String(filters.year)}
-                            onChange={(value) => visit({ year: Number(value) })}
-                            options={options.years.map((y) => ({
-                                value: String(y),
-                                label: String(y),
-                            }))}
-                            className="w-full"
-                        />
-                    </div>
 
                     <DayStrip
                         items={daysInfo.map((d) => ({
@@ -804,9 +759,6 @@ return SPECS.label;
                                     </Button>
                                 )}
                             </div>
-                            <p className="-mt-1 px-0.5 text-[12px] text-muted-foreground">
-                                N = Normal · T = Tidak normal
-                            </p>
 
                             {systems.map((group) => (
                                 <div

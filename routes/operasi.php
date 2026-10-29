@@ -103,6 +103,9 @@ Route::middleware(['auth', 'verified'])
             ->name('input.kondisi-abnormal.index');
         Route::post('input/kondisi-abnormal', [KondisiAbnormalController::class, 'store'])
             ->name('input.kondisi-abnormal.store');
+        // The desktop sheet (Tambah Baris + Simpan).
+        Route::post('input/kondisi-abnormal/simpan', [KondisiAbnormalController::class, 'sync'])
+            ->name('input.kondisi-abnormal.sync');
         Route::put('input/kondisi-abnormal/{kondisiAbnormal}', [KondisiAbnormalController::class, 'update'])
             ->name('input.kondisi-abnormal.update');
         Route::delete('input/kondisi-abnormal/{kondisiAbnormal}', [KondisiAbnormalController::class, 'destroy'])

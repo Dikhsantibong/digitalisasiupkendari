@@ -4,6 +4,7 @@ namespace Tests\Feature\Operator;
 
 use App\Enums\LogsheetStatus;
 use App\Enums\RoleName;
+use App\Models\Employee;
 use App\Models\LogsheetParameter;
 use App\Models\Machine;
 use App\Models\OperatorLogsheet;
@@ -106,6 +107,52 @@ class LogsheetTest extends TestCase
 
         $this->assertSame(2, $logsheet->fresh()->readings()->count());
         $this->assertEqualsWithDelta(260.0, (float) $logsheet->readings()->where('time_slot', '01:00')->value('value'), 0.0001);
+    }
+
+    public function test_the_desktop_sheet_saves_several_hours_at_once(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = $this->engineForUnit($unit);
+        $load = LogsheetParameter::query()->where('code', 'LOAD')->value('id');
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10'];
+
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), $period + ['time_slot' => '03:00', 'values' => ['p_'.$load => '100']]);
+
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['shift' => 'B', 'sheet' => [
+            '01:00' => ['p_'.$load => '250'],
+            '02:00' => ['p_'.$load => '300'],
+        ]])->assertRedirect()->assertSessionHasNoErrors();
+
+        $logsheet = OperatorLogsheet::query()->where('engine_id', $engine->id)->sole();
+        $this->assertSame('B', $logsheet->shift);
+        // The hours sent are saved; an hour not sent (03:00) is kept.
+        $this->assertSame(3, $logsheet->readings()->count());
+
+        // Clearing an hour's cells empties that hour.
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['02:00' => ['p_'.$load => '']]])->assertSessionHasNoErrors();
+        $this->assertSame(2, $logsheet->readings()->count());
+
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['01:00' => ['p_'.$load => 'abc']]])
+            ->assertSessionHasErrors('sheet.01:00.p_'.$load);
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['25:00' => ['p_'.$load => '1']]])->assertStatus(422);
+        $this->actingAs($this->userWithRole(RoleName::SiteLeader, $unit))->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['01:00' => []]])->assertForbidden();
+    }
+
+    public function test_a_new_sheet_takes_the_operators_regu_as_its_shift(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = $this->engineForUnit($unit);
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        Employee::factory()->create(['user_id' => $operator->id, 'unit_id' => $unit->id, 'regu' => 'b', 'is_active' => true]);
+        $query = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10'];
+
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $query))
+            ->assertInertia(fn ($page) => $page->where('header.shift', 'B'));
+
+        // An account without an employee record (or a regu outside A–D) picks the shift itself.
+        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))->get(route('operator.logsheet.index', $query))
+            ->assertInertia(fn ($page) => $page->where('header.shift', null));
     }
 
     public function test_operator_only_sees_machines_of_their_own_unit(): void

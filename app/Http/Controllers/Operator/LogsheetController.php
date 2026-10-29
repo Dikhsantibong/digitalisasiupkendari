@@ -7,10 +7,13 @@ use App\Enums\LogsheetStatus;
 use App\Enums\PermissionName;
 use App\Enums\PlantType;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\LogsheetParameter;
 use App\Models\Machine;
 use App\Models\OperatorLogsheet;
 use App\Models\Unit;
+use App\Models\User;
+use App\Models\WorkScheduleEntry;
 use App\Services\ActivityLogger;
 use App\Services\Operasi\LogsheetAggregator;
 use App\Support\Indonesian;
@@ -81,7 +84,8 @@ class LogsheetController extends Controller
             'filters' => ['unit_id' => $unit->id, 'engine_id' => $engine?->id, 'log_date' => $logDate],
             'stats' => $engine === null ? [] : $this->dayStats($parameters, $logsheet, count(self::SLOTS)),
             'header' => [
-                'shift' => $logsheet?->shift,
+                // A new sheet takes the operator's regu that day, so the phone needs no Shift picker.
+                'shift' => $logsheet?->shift ?? $this->reguOf($user, $logDate),
                 'status' => ($logsheet?->status ?? LogsheetStatus::Draft)->value,
             ],
             'parameters' => $parameters->map(fn (LogsheetParameter $p): array => [
@@ -157,6 +161,68 @@ class LogsheetController extends Controller
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => "Data jam {$validated['time_slot']} disimpan."]);
+
+        return back();
+    }
+
+    /**
+     * The desktop sheet saved like a spreadsheet: every hour the operator
+     * changed (`sheet` = time slot => parameter key => value) in one save.
+     * Each sent hour replaces that hour's readings; other hours stay as they are.
+     */
+    public function storeSheet(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetWrite), 403);
+
+        [$unit, $engine] = $this->resolveTarget($request);
+
+        $validated = $request->validate([
+            'log_date' => ['required', 'date'],
+            'shift' => ['nullable', Rule::in(self::SHIFTS)],
+            'sheet' => ['required', 'array', 'max:'.count(self::SLOTS)],
+            'sheet.*' => ['array'],
+            'sheet.*.*' => ['nullable', 'numeric', 'min:0'],
+        ], [
+            'sheet.*.*.numeric' => 'Isian harus berupa angka.',
+            'sheet.*.*.min' => 'Isian tidak boleh negatif.',
+        ]);
+
+        $slots = array_keys($validated['sheet']);
+        $unknown = array_diff($slots, self::SLOTS);
+        abort_if($unknown !== [], 422, 'Jam tidak dikenal.');
+
+        $logDate = Carbon::parse($validated['log_date'])->toDateString();
+        $logsheet = $this->findOrNewSheet($engine->id, $logDate);
+        $validParameterIds = array_flip(LogsheetParameter::query()->where('is_active', true)->pluck('id')->all());
+
+        DB::transaction(function () use ($logsheet, $validated, $unit, $engine, $user, $validParameterIds, $slots): void {
+            $logsheet->fill(['unit_id' => $unit->id, 'engine_id' => $engine->id, 'input_by' => $user->id]);
+            if (array_key_exists('shift', $validated)) {
+                $logsheet->shift = $validated['shift'];
+            }
+            $logsheet->save();
+
+            $logsheet->readings()->whereIn('time_slot', $slots)->delete();
+            foreach ($validated['sheet'] as $slot => $values) {
+                foreach ($values as $key => $value) {
+                    $parameterId = (int) str_replace('p_', '', (string) $key);
+                    if ($value === null || $value === '' || ! isset($validParameterIds[$parameterId])) {
+                        continue;
+                    }
+                    $logsheet->readings()->create(['time_slot' => $slot, 'parameter_id' => $parameterId, 'value' => $value]);
+                }
+            }
+        });
+
+        $this->activityLogger->log(
+            ActivityEvent::Updated,
+            "Menyimpan logsheet {$engine->name} {$logDate} jam ".implode(', ', $slots),
+            $logsheet,
+            unit: $unit->id,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Logsheet tersimpan ('.count($slots).' jam).']);
 
         return back();
     }
@@ -293,5 +359,22 @@ class LogsheetController extends Controller
         return OperatorLogsheet::query()
             ->where('engine_id', $engineId)->whereDate('log_date', $logDate)->first()
             ?? new OperatorLogsheet(['engine_id' => $engineId, 'log_date' => $logDate]);
+    }
+
+    /**
+     * The operator's regu (shift A–D) on a date: the Jadwal Shift entry's regu,
+     * else the employee's own regu; null when it is not one of the shifts.
+     */
+    private function reguOf(User $user, string $date): ?string
+    {
+        $employee = Employee::query()->where('user_id', $user->id)->where('is_active', true)->first();
+        if ($employee === null) {
+            return null;
+        }
+
+        $regu = WorkScheduleEntry::query()->where('employee_id', $employee->id)->whereDate('work_date', $date)->value('regu') ?? $employee->regu;
+        $regu = strtoupper(trim((string) $regu));
+
+        return in_array($regu, self::SHIFTS, true) ? $regu : null;
     }
 }

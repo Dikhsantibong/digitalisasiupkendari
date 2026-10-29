@@ -158,6 +158,23 @@ class MaterialPeralatanCheckTest extends TestCase
         $this->assertSame([MaterialKelengkapan::Lengkap, $koordinator->id, $koordinator->id], [$new->kelengkapan, $new->checked_by, $new->input_by]);
     }
 
+    public function test_a_row_is_added_to_and_moved_between_groups(): void
+    {
+        $koordinator = $this->userWithRole(RoleName::KoordinatorOperasi, $this->unit);
+        [$tang] = $this->items(['Tang Kombinasi']);
+        $row = ['stok_awal' => 1, 'satuan' => 'Unit'];
+
+        $this->actingAs($koordinator)->post(route('operasi.input.material-peralatan.store'), $this->period + ['items' => [
+            ['nama_item' => 'Kunci Inggris', 'kategori' => 'PERALATAN'] + $row,
+            ['id' => $tang->id, 'nama_item' => 'Tang Kombinasi', 'kategori' => 'MATERIAL'] + $row,
+        ]])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertSame('MATERIAL', $tang->fresh()->kategori);
+        $this->assertSame('PERALATAN', OperasiMaterialPeralatan::query()->where('nama_item', 'Kunci Inggris')->sole()->kategori);
+        $this->actingAs($koordinator)->get(route('operasi.input.material-peralatan.index', $this->period))
+            ->assertInertia(fn ($page) => $page->where('peralatan.0.nama_item', 'Kunci Inggris')->where('material.0.nama_item', 'Tang Kombinasi'));
+    }
+
     public function test_the_pdf_and_the_laporan_show_the_check(): void
     {
         [$toolkit, $tang, $bor] = $this->items(['Toolkit Mekanik', 'Tang Kombinasi', 'Bor Listrik']);

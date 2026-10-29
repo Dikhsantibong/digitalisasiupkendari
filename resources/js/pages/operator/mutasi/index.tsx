@@ -132,6 +132,22 @@ const STATUS_MESIN_TONE: Record<string, string> = {
     gangguan: 'border-rose-600 bg-rose-600 text-white',
 };
 
+/** Shift tabs: Pagi kuning, Sore oranye, Malam biru gelap — the chosen one filled. */
+const SHIFT_TONE: Record<string, { active: string; idle: string }> = {
+    pagi: {
+        active: 'border-amber-500 bg-amber-400 text-amber-950',
+        idle: 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+    },
+    sore: {
+        active: 'border-orange-600 bg-orange-500 text-white',
+        idle: 'border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-300',
+    },
+    malam: {
+        active: 'border-indigo-800 bg-indigo-700 text-white',
+        idle: 'border-indigo-300 bg-indigo-50 text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300',
+    },
+};
+
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const MONTHS = [
     'Jan',
@@ -325,6 +341,14 @@ function MutasiForm({
         }
     };
 
+    const shiftRow = (sh: Props['options']['shifts'][number] | undefined) =>
+        sh ? (
+            <span className="flex items-center justify-between gap-2">
+                <span>Pukul; {sh.jam.toLowerCase()}</span>
+                <span className="font-bold">( {sh.value === filters.shift ? '✓' : '\u00a0\u00a0'} )</span>
+            </span>
+        ) : null;
+
     const canHandOver =
         !!reguPenyerah && (!!paraf || !!mutasi.paraf_penyerah_url);
 
@@ -405,7 +429,7 @@ function MutasiForm({
                     </label>
                     <div className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted-foreground">
                         Shift
-                        <div className="grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                        <div className="grid grid-cols-3 gap-1.5">
                             {options.shifts.map((s) => (
                                 <button
                                     key={s.value}
@@ -415,10 +439,10 @@ function MutasiForm({
                                         go({ shift: s.value })
                                     }
                                     className={cn(
-                                        'flex min-w-0 flex-col items-center rounded-md px-2 py-1.5 transition',
+                                        'flex min-w-0 flex-col items-center rounded-md border px-2 py-1.5 transition',
                                         filters.shift === s.value
-                                            ? 'bg-background text-foreground shadow-sm'
-                                            : 'text-muted-foreground',
+                                            ? (SHIFT_TONE[s.value]?.active ?? 'bg-background text-foreground') + ' shadow-sm'
+                                            : (SHIFT_TONE[s.value]?.idle ?? 'border-transparent text-muted-foreground'),
                                     )}
                                 >
                                     <span className="text-sm font-semibold">
@@ -468,6 +492,8 @@ function MutasiForm({
                     )}
                 </div>
 
+                {compact ? (
+                <>
                 {/* 1. Mesin */}
                 <Section
                     icon={<Fuel className="size-4" />}
@@ -991,6 +1017,385 @@ function MutasiForm({
                     </Section>
                 </div>
 
+                </>
+                ) : (
+                <>
+                {/* Desktop: the paper form's layout, filled straight in its cells. */}
+                <div className="overflow-x-auto rounded-md border border-border bg-white p-4 text-black dark:bg-card dark:text-foreground">
+                    <div className="min-w-[1100px]">
+                        <div className="mb-3 grid grid-cols-[160px_1fr_160px] items-center gap-3">
+                            <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-10 w-auto object-contain" />
+                            <h2 className="text-center text-lg font-bold tracking-wide uppercase">Lembar Mutasi Operator {unit.name}</h2>
+                            <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="ml-auto h-10 w-auto object-contain" />
+                        </div>
+
+                        {/* Mesin · tangki · lain-lain, with Catatan on the right */}
+                        <div className="grid grid-cols-[1fr_260px] border-2 border-black dark:border-white">
+                            <div className="border-r-2 border-black dark:border-white">
+                                <table className="w-full border-collapse text-xs">
+                                    <thead>
+                                        <tr>
+                                            <th rowSpan={2} className={cn(paperTh, 'w-44')}>MESIN</th>
+                                            <th rowSpan={2} className={paperTh}>Level tangki bahan bakar (Liter)</th>
+                                            <th rowSpan={2} className={paperTh}>Tambah bahan bakar (Liter)</th>
+                                            <th colSpan={options.pelumas.length} className={paperTh}>Level pelumas Mesin/RA (✓)</th>
+                                        </tr>
+                                        <tr>
+                                            {options.pelumas.map((level) => (
+                                                <th key={level} className={cn(paperTh, 'w-20 uppercase')}>{PELUMAS_LABEL[level] ?? level}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {mesin.length === 0 && (
+                                            <tr>
+                                                <td colSpan={3 + options.pelumas.length} className={cn(paperTd, 'p-3 text-center text-muted-foreground')}>Belum ada mesin aktif pada unit ini.</td>
+                                            </tr>
+                                        )}
+                                        {mesin.map((m, i) => (
+                                            <tr key={`${m.machine_id}-${i}`}>
+                                                <td className={cn(paperTd, 'px-2 font-semibold uppercase')}>{m.nama}</td>
+                                                <td className={paperTd}>
+                                                    <PaperFuel value={m.level_bbm} onChange={(v) => setMesinField(i, { level_bbm: v })} disabled={locked} />
+                                                </td>
+                                                <td className={paperTd}>
+                                                    <PaperFuel value={m.tambah_bbm} onChange={(v) => setMesinField(i, { tambah_bbm: v })} disabled={locked} />
+                                                </td>
+                                                {options.pelumas.map((level) => (
+                                                    <td key={level} className={paperTd}>
+                                                        <PaperTick
+                                                            checked={m.pelumas === level}
+                                                            onClick={() => setMesinField(i, { pelumas: m.pelumas === level ? null : level })}
+                                                            disabled={locked}
+                                                            label={`Pelumas ${PELUMAS_LABEL[level] ?? level} ${m.nama}`}
+                                                        />
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+
+                                <div className="grid grid-cols-[1fr_1.4fr] border-t-2 border-black dark:border-white">
+                                    <table className="w-full border-collapse border-r-2 border-black text-xs dark:border-white">
+                                        <thead>
+                                            <tr>
+                                                <th className={paperTh}>Tangki Bulanan (25KL)</th>
+                                                <th className={paperTh}>Level BBM (CM)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {tangki.map((t, i) => (
+                                                <tr key={i}>
+                                                    <td className={paperTd}>
+                                                        <input
+                                                            value={t.nama ?? ''}
+                                                            onChange={(e) => {
+                                                                setTangki((rows) => rows.map((r, j) => (j === i ? { ...r, nama: e.target.value } : r)));
+                                                                touch();
+                                                            }}
+                                                            disabled={locked}
+                                                            className={cn(paperInput, 'text-lg font-bold')}
+                                                            aria-label="Tangki"
+                                                        />
+                                                    </td>
+                                                    <td className={paperTd}>
+                                                        <div className="flex items-center">
+                                                            <input
+                                                                inputMode="decimal"
+                                                                value={t.level_cm ?? ''}
+                                                                onChange={(e) => {
+                                                                    setTangki((rows) => rows.map((r, j) => (j === i ? { ...r, level_cm: e.target.value } : r)));
+                                                                    touch();
+                                                                }}
+                                                                disabled={locked}
+                                                                placeholder="cm"
+                                                                className={cn(paperInput, 'text-lg')}
+                                                                aria-label="Level BBM (cm)"
+                                                            />
+                                                            {!locked && tangki.length > 1 && (
+                                                                <PaperRemove
+                                                                    label="Hapus tangki"
+                                                                    onClick={() => {
+                                                                        setTangki((rows) => rows.filter((_, j) => j !== i));
+                                                                        touch();
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {!locked && (
+                                                <tr>
+                                                    <td colSpan={2} className={paperTd}>
+                                                        <PaperAdd
+                                                            label="Tambah tangki"
+                                                            onClick={() => {
+                                                                setTangki((rows) => [...rows, { nama: String(rows.length + 1), level_cm: null }]);
+                                                                touch();
+                                                            }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+
+                                    <table className="w-full border-collapse text-xs">
+                                        <thead>
+                                            <tr>
+                                                <th className={cn(paperTh, 'text-left')}>Lain-Lain :</th>
+                                                <th className={cn(paperTh, 'w-16')}>ada (✓)</th>
+                                                <th className={cn(paperTh, 'w-20')}>jumlah</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {peralatan.map((a, i) => (
+                                                <tr key={i}>
+                                                    <td className={paperTd}>
+                                                        <div className="flex items-center gap-1 pl-1.5">
+                                                            <span className="tabular-nums">{i + 1},</span>
+                                                            <input
+                                                                value={a.nama ?? ''}
+                                                                onChange={(e) => {
+                                                                    setPeralatan((rows) => rows.map((r, j) => (j === i ? { ...r, nama: e.target.value } : r)));
+                                                                    touch();
+                                                                }}
+                                                                disabled={locked}
+                                                                placeholder="Nama peralatan"
+                                                                className={cn(paperInput, 'text-left')}
+                                                            />
+                                                            {!locked && (
+                                                                <PaperRemove
+                                                                    label="Hapus peralatan"
+                                                                    onClick={() => {
+                                                                        setPeralatan((rows) => rows.filter((_, j) => j !== i));
+                                                                        touch();
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className={paperTd}>
+                                                        <PaperTick
+                                                            checked={a.ada}
+                                                            onClick={() => {
+                                                                setPeralatan((rows) => rows.map((r, j) => (j === i ? { ...r, ada: !r.ada } : r)));
+                                                                touch();
+                                                            }}
+                                                            disabled={locked}
+                                                            label={`Ada ${a.nama ?? ''}`}
+                                                        />
+                                                    </td>
+                                                    <td className={paperTd}>
+                                                        <input
+                                                            type="number"
+                                                            inputMode="numeric"
+                                                            min={0}
+                                                            value={a.jumlah ?? ''}
+                                                            onChange={(e) => {
+                                                                setPeralatan((rows) =>
+                                                                    rows.map((r, j) => (j === i ? { ...r, jumlah: e.target.value === '' ? null : Number(e.target.value) } : r)),
+                                                                );
+                                                                touch();
+                                                            }}
+                                                            disabled={locked}
+                                                            className={paperInput}
+                                                            aria-label="Jumlah"
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {!locked && (
+                                                <tr>
+                                                    <td colSpan={3} className={paperTd}>
+                                                        <PaperAdd
+                                                            label="Tambah peralatan"
+                                                            onClick={() => {
+                                                                setPeralatan((rows) => [...rows, { nama: '', ada: false, jumlah: null }]);
+                                                                touch();
+                                                            }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col">
+                                <div className={cn(paperTh, 'border-0 border-b border-black')}>Catatan</div>
+                                <textarea
+                                    value={catatan}
+                                    onChange={(e) => {
+                                        setCatatan(e.target.value);
+                                        touch();
+                                    }}
+                                    disabled={locked}
+                                    className="min-h-40 flex-1 resize-none bg-[repeating-linear-gradient(transparent,transparent_27px,#94a3b8_28px)] bg-transparent p-2 text-xs leading-7 outline-none focus:bg-yellow-50/60 dark:focus:bg-yellow-950/30"
+                                    aria-label="Catatan"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Gangguan feeder / start-stop */}
+                        <div className="mt-3 border-2 border-black dark:border-white">
+                            <div className={cn(paperTh, 'border-0 border-b border-black text-left')}>Gangguan feeder/star-stop Mesin ;</div>
+                            <table className="w-full border-collapse text-xs">
+                                <thead>
+                                    <tr>
+                                        <th className={cn(paperTh, 'w-24')}>Jam</th>
+                                        <th className={cn(paperTh, 'text-left')}>Uraian</th>
+                                        {!locked && <th className={cn(paperTh, 'w-9')} />}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {kejadian.length === 0 && (
+                                        <tr>
+                                            <td colSpan={locked ? 2 : 3} className={cn(paperTd, 'p-3 text-center text-muted-foreground')}>Belum ada kejadian dicatat.</td>
+                                        </tr>
+                                    )}
+                                    {kejadian.map((k, i) => (
+                                        <tr key={i}>
+                                            <td className={cn(paperTd, errors[`kejadian.${i}.jam`] && 'bg-destructive/10')} title={errors[`kejadian.${i}.jam`]}>
+                                                <input
+                                                    type="time"
+                                                    value={k.jam ?? ''}
+                                                    onChange={(e) => {
+                                                        setKejadian((rows) => rows.map((r, j) => (j === i ? { ...r, jam: e.target.value || null } : r)));
+                                                        touch();
+                                                    }}
+                                                    disabled={locked}
+                                                    className={paperInput}
+                                                    aria-label="Jam"
+                                                />
+                                            </td>
+                                            <td className={paperTd}>
+                                                <input
+                                                    value={k.uraian}
+                                                    onChange={(e) => {
+                                                        setKejadian((rows) => rows.map((r, j) => (j === i ? { ...r, uraian: e.target.value } : r)));
+                                                        touch();
+                                                    }}
+                                                    disabled={locked}
+                                                    placeholder="Uraian kejadian (terima tugas, start/stop mesin, pompa, …)"
+                                                    className={cn(paperInput, 'text-left')}
+                                                    aria-label="Uraian kejadian"
+                                                />
+                                            </td>
+                                            {!locked && (
+                                                <td className={cn(paperTd, 'text-center')}>
+                                                    <PaperRemove
+                                                        label="Hapus kejadian"
+                                                        onClick={() => {
+                                                            setKejadian((rows) => rows.filter((_, j) => j !== i));
+                                                            touch();
+                                                        }}
+                                                    />
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                    {!locked && (
+                                        <tr>
+                                            <td colSpan={3} className={paperTd}>
+                                                <PaperAdd
+                                                    label="Tambah baris (jam sekarang)"
+                                                    onClick={() => {
+                                                        setKejadian((rows) => [...rows, { jam: nowHm(), uraian: '' }]);
+                                                        touch();
+                                                    }}
+                                                />
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Gangguan mesin · mesin operasi / standby */}
+                        <div className="mt-3 grid grid-cols-[1fr_420px] border-2 border-black dark:border-white">
+                            <div className="flex flex-col border-r-2 border-black dark:border-white">
+                                <div className={cn(paperTh, 'border-0 border-b border-black text-left')}>Gangguan Mesin ;</div>
+                                <textarea
+                                    value={gangguan}
+                                    onChange={(e) => {
+                                        setGangguan(e.target.value);
+                                        touch();
+                                    }}
+                                    disabled={locked}
+                                    placeholder="mis. CM 7 kebocoran pada sisi lube hose"
+                                    className="min-h-28 flex-1 resize-none bg-[repeating-linear-gradient(transparent,transparent_27px,#94a3b8_28px)] bg-transparent p-2 text-xs leading-7 outline-none focus:bg-yellow-50/60 dark:focus:bg-yellow-950/30"
+                                    aria-label="Gangguan mesin"
+                                />
+                            </div>
+                            <table className="w-full border-collapse text-xs">
+                                <thead>
+                                    <tr>
+                                        <th className={cn(paperTh, 'text-left')}>Mesin</th>
+                                        {options.status_mesin.map((st) => (
+                                            <th key={st} className={cn(paperTh, 'w-24')}>Mesin {STATUS_MESIN_LABEL[st] ?? st}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {mesin.map((m, i) => (
+                                        <tr key={`${m.machine_id}-${i}`}>
+                                            <td className={cn(paperTd, 'px-2')}>
+                                                {i + 1}, <span className="font-semibold uppercase">{m.nama}</span>
+                                            </td>
+                                            {options.status_mesin.map((st) => (
+                                                <td key={st} className={paperTd}>
+                                                    <PaperTick
+                                                        checked={m.status === st}
+                                                        onClick={() => setMesinField(i, { status: m.status === st ? null : st })}
+                                                        disabled={locked}
+                                                        label={`${STATUS_MESIN_LABEL[st] ?? st} ${m.nama}`}
+                                                    />
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Regu penyerah · tanggal & pukul · regu penerima (paraf di bagian Serah Terima) */}
+                        <table className="mt-3 w-full border-collapse border-2 border-black text-xs dark:border-white">
+                            <thead>
+                                <tr>
+                                    <th colSpan={2} className={paperTh}>REGU PENYERAH</th>
+                                    <th className={cn(paperTh, 'text-left')}>Tanggal : {dateLabel(filters.tanggal)}</th>
+                                    <th colSpan={2} className={paperTh}>REGU PENERIMA</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-28 text-center text-2xl font-bold')}>{reguPenyerah || '–'}</td>
+                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-40 text-center')}>
+                                        {mutasi.paraf_penyerah_url ? <img src={mutasi.paraf_penyerah_url} alt="Paraf penyerah" className="mx-auto h-12 object-contain" /> : <span className="text-muted-foreground">Paraf</span>}
+                                    </td>
+                                    <td className={cn(paperTd, 'px-2')}>{shiftRow(options.shifts[0])}</td>
+                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-28 text-center text-2xl font-bold')}>{mutasi.regu_penerima || '–'}</td>
+                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-40 text-center')}>
+                                        {mutasi.paraf_penerima_url ? <img src={mutasi.paraf_penerima_url} alt="Paraf penerima" className="mx-auto h-12 object-contain" /> : <span className="text-muted-foreground">Paraf</span>}
+                                    </td>
+                                </tr>
+                                {options.shifts.slice(1).map((sh) => (
+                                    <tr key={sh.value}>
+                                        <td className={cn(paperTd, 'px-2')}>{shiftRow(sh)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                </>
+                )}
+
                 {/* 7. Serah terima */}
                 <Section
                     icon={<Handshake className="size-4" />}
@@ -1238,6 +1643,78 @@ function MutasiForm({
                 </StickyActionBar>
             )}
         </>
+    );
+}
+
+/** The paper form's grid cells (black lines, yellow headers like the logsheet). */
+const paperTh = 'border border-black bg-yellow-200 px-1.5 py-1 text-center text-[11px] font-bold text-black dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
+const paperTd = 'h-8 border border-black p-0 dark:border-white/60';
+const paperInput =
+    'h-8 w-full min-w-0 bg-transparent px-1.5 text-center text-xs outline-none focus:bg-yellow-50 focus:ring-2 focus:ring-primary focus:ring-inset disabled:cursor-not-allowed dark:focus:bg-yellow-950/40';
+
+/** A cell ticked (✓) with one click, like the boxes on the paper form. */
+function PaperTick({ checked, onClick, disabled, label }: { checked: boolean; onClick: () => void; disabled: boolean; label: string }) {
+    return (
+        <button
+            type="button"
+            role="checkbox"
+            aria-checked={checked}
+            aria-label={label}
+            onClick={onClick}
+            disabled={disabled}
+            className={cn(
+                'flex h-8 w-full items-center justify-center text-base font-bold transition hover:bg-yellow-50 disabled:cursor-not-allowed dark:hover:bg-yellow-950/40',
+                checked ? 'text-emerald-700 dark:text-emerald-400' : 'text-transparent hover:text-muted-foreground/40',
+            )}
+        >
+            ✓
+        </button>
+    );
+}
+
+/** Liters typed in the cell, or ✓ when only checked. */
+function PaperFuel({ value, onChange, disabled }: { value: string | null; onChange: (value: string | null) => void; disabled: boolean }) {
+    const checked = value === '✓';
+
+    return (
+        <div className="flex items-center">
+            <input
+                inputMode="decimal"
+                value={checked ? '✓' : (value ?? '')}
+                onChange={(e) => onChange(e.target.value.replace('✓', '') || null)}
+                disabled={disabled || checked}
+                placeholder="Liter"
+                className={cn(paperInput, checked && 'font-bold text-emerald-700 dark:text-emerald-400')}
+                aria-label="Liter"
+            />
+            <button
+                type="button"
+                onClick={() => onChange(checked ? null : '✓')}
+                disabled={disabled}
+                title="Tandai ✓ (sudah dicek)"
+                aria-label="Tandai sudah dicek"
+                className={cn('h-8 w-7 shrink-0 border-l border-black/30 text-xs font-bold', checked ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-muted')}
+            >
+                ✓
+            </button>
+        </div>
+    );
+}
+
+function PaperAdd({ label, onClick }: { label: string; onClick: () => void }) {
+    return (
+        <button type="button" onClick={onClick} className="flex h-8 w-full items-center gap-1 px-2 text-xs text-primary hover:bg-muted/60">
+            <Plus className="size-3.5" />
+            {label}
+        </button>
+    );
+}
+
+function PaperRemove({ label, onClick }: { label: string; onClick: () => void }) {
+    return (
+        <button type="button" onClick={onClick} title={label} aria-label={label} className="flex size-7 shrink-0 items-center justify-center text-muted-foreground hover:text-destructive">
+            <X className="size-3.5" />
+        </button>
     );
 }
 

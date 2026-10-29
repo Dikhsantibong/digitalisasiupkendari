@@ -29,6 +29,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/Operasi/** | .ai/rules/operasi.md |
 | resources/js/pages/operator/** | .ai/rules/operator.md |
 | resources/js/pages/k3/** | .ai/rules/pages-k3.md |
+| resources/js/pages/** | .ai/rules/pages.md |
 | app/Http/Controllers/Pdm/** | .ai/rules/pdm.md |
 | resources/js/pages/pengusahaan/** | .ai/rules/pengusahaan.md |
 | app/Services/Reports/** | .ai/rules/reports.md |

@@ -106,6 +106,14 @@ const MATERIAL_FIELDS: RowField<MaterialItem>[] = [
     { key: 'roq', label: 'RoQ', type: 'number', group: 'Perencanaan' },
 ];
 
+/** Spreadsheet grid of the desktop table (black lines, yellow headers like the other input sheets). */
+const xlTh = 'h-auto border border-black bg-yellow-200 px-1.5 py-1.5 text-center text-[11px] font-bold whitespace-normal text-black uppercase dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
+const xlTd = 'h-8 border border-black p-0 dark:border-white/60';
+const xlInput =
+    'h-8 rounded-none border-0 bg-transparent px-1.5 text-xs shadow-none focus:bg-yellow-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40';
+
+const GROUP_LABEL: Record<Kategori, string> = { PERALATAN: 'A. Peralatan', MATERIAL: 'B. Material' };
+
 const KELENGKAPAN: Kelengkapan[] = ['lengkap', 'tidak_lengkap', 'tidak_ada'];
 
 const kelengkapanTone = (value: string) =>
@@ -249,6 +257,19 @@ export default function MaterialPeralatanInput({
         setIsDirty(true);
     };
 
+    /** Moves a row to the other group (it lands at the end of that group). */
+    const moveToGroup = (from: Kategori, index: number, to: Kategori) => {
+        if (from === to) {
+            return;
+        }
+
+        const item = (from === 'PERALATAN' ? peralatan : material)[index];
+        setList(from, (list) => list.filter((_, i) => i !== index));
+        setList(to, (list) => [...list, { ...item, kategori: to }]);
+    };
+
+    const [newRowGroup, setNewRowGroup] = useState<Kategori>('MATERIAL');
+
     const handleAddItem = (category: Kategori) =>
         setList(category, (list) => [
             ...list,
@@ -370,7 +391,11 @@ export default function MaterialPeralatanInput({
 
     // The operator checks first; the list & stock (prepared by the Koordinator / PL) are shown read-only.
     const mobileFields: RowField<MaterialItem>[] = can_manage
-        ? [...MATERIAL_FIELDS, ...checkFields]
+        ? [
+              { key: 'kategori', label: 'Grup', type: 'select', options: ['PERALATAN', 'MATERIAL'], optionLabels: GROUP_LABEL },
+              ...MATERIAL_FIELDS,
+              ...checkFields,
+          ]
         : [
               ...checkFields,
               ...MATERIAL_FIELDS.map((field) => ({ ...field, type: 'display' as const, group: field.group ?? 'Data item' })),
@@ -381,6 +406,10 @@ export default function MaterialPeralatanInput({
             setKelengkapan(category, index, String(value ?? ''));
         } else if (key === 'uraian_kondisi') {
             updateItem(category, index, { uraian_kondisi: String(value ?? '') });
+        } else if (key === 'kategori') {
+            if (value) {
+                moveToGroup(category, index, value as Kategori);
+            }
         } else if (can_manage) {
             handleCellChange(category, index, key, String(value ?? ''));
         }
@@ -421,7 +450,7 @@ export default function MaterialPeralatanInput({
     );
 
     const numberCell = (category: Kategori, index: number, item: MaterialItem, field: NumericField, className = '') => (
-        <TableCell className="p-1.5 text-right">
+        <TableCell className={cn(xlTd, 'text-right')}>
             {can_manage ? (
                 <Input
                     type="number"
@@ -429,26 +458,26 @@ export default function MaterialPeralatanInput({
                     step="any"
                     value={item[field] || ''}
                     onChange={(e) => handleCellChange(category, index, field, e.target.value)}
-                    className={cn('h-7 text-right font-mono text-xs', className)}
+                    className={cn(xlInput, 'text-right font-mono', className)}
                 />
             ) : (
-                <span className={cn('font-mono text-xs', className)}>{Number(item[field]) ? item[field] : '-'}</span>
+                <span className={cn('block px-1.5 font-mono text-xs', className)}>{Number(item[field]) ? item[field] : '-'}</span>
             )}
         </TableCell>
     );
 
     const textCell = (category: Kategori, index: number, item: MaterialItem, field: 'kode_material' | 'stok_code' | 'nama_item' | 'satuan', className = '', placeholder?: string) => (
-        <TableCell className="p-1.5">
+        <TableCell className={xlTd}>
             {can_manage ? (
                 <Input
                     type="text"
                     value={item[field] ?? ''}
                     onChange={(e) => handleCellChange(category, index, field, e.target.value)}
-                    className={cn('h-7 text-xs', className)}
+                    className={cn(xlInput, className)}
                     placeholder={placeholder}
                 />
             ) : (
-                <span className={cn('text-xs', className)}>{item[field]}</span>
+                <span className={cn('block px-1.5 text-xs', className)}>{item[field]}</span>
             )}
         </TableCell>
     );
@@ -464,7 +493,7 @@ export default function MaterialPeralatanInput({
                 {numberCell(category, index, item, 'stok_awal')}
                 {numberCell(category, index, item, 'masuk', 'text-primary')}
                 {numberCell(category, index, item, 'keluar', 'text-amber-600 dark:text-amber-400')}
-                <TableCell className="p-1.5 text-center font-bold">
+                <TableCell className={cn(xlTd, 'text-center font-bold')}>
                     <span className="inline-block rounded bg-rose-50 px-2 py-0.5 font-mono text-xs text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
                         {item.stok_akhir}
                     </span>
@@ -476,7 +505,7 @@ export default function MaterialPeralatanInput({
                 {numberCell(category, index, item, 'ilt')}
                 {numberCell(category, index, item, 'rop')}
                 {numberCell(category, index, item, 'roq')}
-                <TableCell className="border-l border-border p-0">
+                <TableCell className={xlTd}>
                     {can_check ? (
                         <PdmCellSelect
                             value={item.kelengkapan ? options.kelengkapan[item.kelengkapan] : ''}
@@ -502,7 +531,7 @@ export default function MaterialPeralatanInput({
                         </span>
                     )}
                 </TableCell>
-                <TableCell className={cn('p-1', error && 'bg-destructive/5')} title={item.checked_by_name ? `Dicek ${item.checked_by_name} · ${item.checked_at}` : undefined}>
+                <TableCell className={cn(xlTd, error && 'bg-destructive/10')} title={item.checked_by_name ? `Dicek ${item.checked_by_name} · ${item.checked_at}` : undefined}>
                     {item.kelengkapan === null ? (
                         <span className="block px-1 text-center text-xs text-muted-foreground">Belum dicek</span>
                     ) : item.kelengkapan === 'lengkap' ? (
@@ -512,7 +541,7 @@ export default function MaterialPeralatanInput({
                             value={item.uraian_kondisi ?? ''}
                             onChange={(e) => updateItem(category, index, { uraian_kondisi: e.target.value })}
                             placeholder="Uraian kondisi tidak normal…"
-                            className={cn('h-7 text-xs', error ? 'border-destructive' : 'border-amber-400')}
+                            className={cn(xlInput, 'bg-amber-50 dark:bg-amber-950/30', error && 'ring-2 ring-destructive ring-inset')}
                             aria-invalid={Boolean(error)}
                         />
                     ) : (
@@ -520,7 +549,23 @@ export default function MaterialPeralatanInput({
                     )}
                 </TableCell>
                 {can_manage && (
-                    <TableCell className="p-1 text-center">
+                    <TableCell className={xlTd}>
+                        <PdmCellSelect
+                            value={GROUP_LABEL[category]}
+                            onChange={(label) => {
+                                const target = (Object.keys(GROUP_LABEL) as Kategori[]).find((key) => GROUP_LABEL[key] === label);
+
+                                if (target) {
+                                    moveToGroup(category, index, target);
+                                }
+                            }}
+                            options={Object.values(GROUP_LABEL)}
+                            className="h-8 justify-center"
+                        />
+                    </TableCell>
+                )}
+                {can_manage && (
+                    <TableCell className={cn(xlTd, 'text-center')}>
                         <Button
                             size="icon"
                             variant="ghost"
@@ -538,7 +583,7 @@ export default function MaterialPeralatanInput({
 
     const sectionRow = (category: Kategori, title: string) => (
         <TableRow className="bg-[#d4edda] font-bold hover:bg-[#d4edda] dark:bg-emerald-950/40">
-            <TableCell colSpan={can_manage ? 17 : 16} className="py-2 text-emerald-900 dark:text-emerald-300">
+            <TableCell colSpan={can_manage ? 18 : 16} className={cn(xlTd, 'px-2 py-1.5 text-emerald-900 dark:text-emerald-300')}>
                 <div className="flex items-center justify-between">
                     <span>{title}</span>
                     {can_manage && (
@@ -561,7 +606,8 @@ export default function MaterialPeralatanInput({
     return (
         <>
             <Head title="Input Material & Peralatan" />
-            <div className={cn('flex flex-1 flex-col gap-5 p-4 md:p-6', compact && canSave && 'pb-28')}>
+            <div className={cn('flex flex-1 flex-col p-4 md:p-6', compact ? 'gap-3' : 'gap-5', compact && canSave && 'pb-28')}>
+                {!compact && (
                 <PageHeader
                     title="Laporan Material dan Peralatan"
                     description={
@@ -590,9 +636,11 @@ export default function MaterialPeralatanInput({
                         </div>
                     }
                 />
+                )}
 
                 {/* Filters */}
-                <div className="grid grid-cols-2 items-end gap-3 rounded-lg border border-border bg-card p-3 shadow-xs sm:flex sm:flex-wrap [&>*:first-child]:col-span-2">
+                {!compact && (
+                <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-card p-3 shadow-xs">
                     <OperasiSelect
                         label="Unit"
                         value={String(filters.unit_id)}
@@ -615,8 +663,15 @@ export default function MaterialPeralatanInput({
                         className={compact ? 'w-full' : undefined}
                     />
                 </div>
+                )}
 
                 {/* KPI Cards */}
+                {compact ? (
+                    <p className="px-0.5 text-[12px] text-muted-foreground">
+                        Dicek {checkedCount} / {allItems.length} item
+                        {abnormalCount > 0 && <span className="text-rose-600"> · {abnormalCount} tidak normal</span>}
+                    </p>
+                ) : (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                     <Kpi label="Item Peralatan" icon={<Wrench className="size-4 text-primary" />} note="Bagian A. Peralatan">
                         <div className="text-2xl font-bold text-foreground">{peralatan.length}</div>
@@ -639,10 +694,11 @@ export default function MaterialPeralatanInput({
                         </div>
                     </Kpi>
                 </div>
+                )}
 
                 {/* Main Table */}
                 <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-[#ea7315]/10 px-4 py-2.5">
+                    <div className={cn('flex flex-wrap items-center justify-between gap-2 border-b border-border bg-[#ea7315]/10 px-4 py-2.5', compact && 'hidden')}>
                         <div className="flex items-center gap-2">
                             <Package className="size-4 text-[#ea7315]" />
                             <span className="text-xs font-bold tracking-wider text-foreground uppercase">Laporan Material dan Peralatan</span>
@@ -659,26 +715,27 @@ export default function MaterialPeralatanInput({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <Table>
+                            <Table className="border-collapse border-2 border-black text-xs dark:border-white">
                                 <TableHeader>
-                                    <TableRow className="bg-[#ea7315]/15 hover:bg-[#ea7315]/15">
-                                        <TableHead className="w-28 text-center font-bold text-foreground">Kode Material</TableHead>
-                                        <TableHead className="w-24 text-center font-bold text-foreground">stok Code</TableHead>
-                                        <TableHead className="min-w-[220px] font-bold text-foreground">Nama Material/Consumable</TableHead>
-                                        <TableHead className="w-24 text-right font-bold text-foreground">Stok Awal</TableHead>
-                                        <TableHead className="w-24 text-right font-bold text-foreground">Material Masuk</TableHead>
-                                        <TableHead className="w-24 text-right font-bold text-foreground">material Keluar</TableHead>
-                                        <TableHead className="w-24 text-right font-bold text-foreground">Stok Akhir</TableHead>
-                                        <TableHead className="w-20 text-center font-bold text-foreground">Satuan</TableHead>
-                                        <TableHead className="w-28 text-right font-bold text-foreground">HARGA SATUAN</TableHead>
-                                        <TableHead className="w-24 text-right font-bold text-foreground">PEMAKAIAN RATA-RATA</TableHead>
-                                        <TableHead className="w-24 text-right font-bold text-foreground">SAFETY STOCK</TableHead>
-                                        <TableHead className="w-16 text-center font-bold text-foreground">ILT</TableHead>
-                                        <TableHead className="w-16 text-center font-bold text-foreground">ROP</TableHead>
-                                        <TableHead className="w-16 text-center font-bold text-foreground">RoQ</TableHead>
-                                        <TableHead className="w-32 border-l border-border bg-primary/10 text-center font-bold text-foreground">KELENGKAPAN</TableHead>
-                                        <TableHead className="min-w-[220px] bg-primary/10 text-center font-bold text-foreground">KONDISI</TableHead>
-                                        {can_manage && <TableHead className="w-12 text-center font-bold text-foreground">AKSI</TableHead>}
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className={cn(xlTh, 'w-28')}>Kode Material</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-24')}>stok Code</TableHead>
+                                        <TableHead className={cn(xlTh, 'min-w-[220px]')}>Nama Material/Consumable</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-24')}>Stok Awal</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-24')}>Material Masuk</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-24')}>material Keluar</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-24')}>Stok Akhir</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-20')}>Satuan</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-28')}>HARGA SATUAN</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-24')}>PEMAKAIAN RATA-RATA</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-24')}>SAFETY STOCK</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-16')}>ILT</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-16')}>ROP</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-16')}>RoQ</TableHead>
+                                        <TableHead className={cn(xlTh, 'w-32')}>KELENGKAPAN</TableHead>
+                                        <TableHead className={cn(xlTh, 'min-w-[220px]')}>KONDISI</TableHead>
+                                        {can_manage && <TableHead className={cn(xlTh, 'w-32')}>GRUP</TableHead>}
+                                        {can_manage && <TableHead className={cn(xlTh, 'w-12')}>AKSI</TableHead>}
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -692,7 +749,21 @@ export default function MaterialPeralatanInput({
                     )}
 
                     {canSave && !compact && (
-                        <div className="flex items-center justify-between border-t border-border bg-card p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border bg-card p-3">
+                            {can_manage && (
+                                <div className="flex items-center gap-2">
+                                    <PdmCellSelect
+                                        value={GROUP_LABEL[newRowGroup]}
+                                        onChange={(label) => setNewRowGroup(label === GROUP_LABEL.PERALATAN ? 'PERALATAN' : 'MATERIAL')}
+                                        options={Object.values(GROUP_LABEL)}
+                                        className="h-8 w-36 rounded-md border border-input"
+                                    />
+                                    <Button variant="outline" size="sm" className="gap-1.5" onClick={() => handleAddItem(newRowGroup)}>
+                                        <Plus className="size-4" />
+                                        Tambah Baris
+                                    </Button>
+                                </div>
+                            )}
                             <span className="text-xs text-muted-foreground">
                                 * Stok Akhir = Stok Awal + Material Masuk - Material Keluar · Kelengkapan Lengkap = kondisi Normal
                             </span>

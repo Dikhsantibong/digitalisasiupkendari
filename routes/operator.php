@@ -23,6 +23,7 @@ Route::middleware(['auth', 'verified'])
     ->group(function (): void {
         Route::get('logsheet', [LogsheetController::class, 'index'])->name('logsheet.index');
         Route::post('logsheet', [LogsheetController::class, 'store'])->name('logsheet.store');
+        Route::post('logsheet/lembar', [LogsheetController::class, 'storeSheet'])->name('logsheet.sheet');
         Route::get('logsheet/pdf', [LogsheetController::class, 'pdf'])->name('logsheet.pdf');
 
         Route::get('absensi', [AbsensiController::class, 'index'])->name('absensi.index');

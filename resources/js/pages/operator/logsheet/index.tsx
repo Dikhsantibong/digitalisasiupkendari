@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { CheckCircle2, Circle, FileDown, FileSpreadsheet, Pencil, Plus } from 'lucide-react';
+import { CheckCircle2, Circle, FileDown, FileSpreadsheet, Plus, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -14,14 +14,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { downloadLogsheetWorkbook } from '@/lib/operator-logsheet-excel';
 import { cn } from '@/lib/utils';
@@ -52,6 +44,18 @@ type Group = { name: string; members: Parameter[]; hasSub: boolean };
 
 const toStr = (v: number | string | null | undefined) => (v === null || v === undefined ? '' : String(v));
 
+/** Spreadsheet cells of the logsheet (same grid as the Patrol Check sheet). */
+const sheetTh = 'border border-black bg-yellow-300 px-1.5 py-1 text-[11px] font-bold text-black uppercase dark:border-white dark:bg-yellow-700 dark:text-yellow-50';
+const sheetSubTh = 'bg-yellow-200 text-[10px] dark:bg-yellow-800';
+const sheetJamTh = 'bg-yellow-400 dark:bg-yellow-600';
+const sheetTd = 'h-7 border border-black px-1.5 py-0.5 dark:border-white/60';
+const sheetInput =
+    'h-7 w-full min-w-12 border-0 bg-transparent px-1 text-center text-xs tabular-nums outline-none focus:bg-sky-50 focus:ring-2 focus:ring-primary focus:ring-inset dark:focus:bg-sky-950';
+
+/** Every hour's values as text, keyed by time slot then parameter key. */
+const gridOf = (rows: Row[], parameters: Parameter[]): Record<string, Record<string, string>> =>
+    Object.fromEntries(rows.map((row) => [row.time_slot, Object.fromEntries(parameters.map((p) => [`p_${p.id}`, toStr(row.values[`p_${p.id}`])]))]));
+
 export default function LogsheetInput({ filters, stats, header, parameters, rows, slots, shifts, options, can_write, is_submitted }: Props) {
     const [shift, setShift] = useState(header.shift ?? '');
     const [open, setOpen] = useState(false);
@@ -59,6 +63,40 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     const [form, setForm] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
     const compact = useCompactLayout();
+    // Desktop: typed straight into the table; only the hours changed are sent on Simpan.
+    const [grid, setGrid] = useState(() => gridOf(rows, parameters));
+    const [dirtySlots, setDirtySlots] = useState<string[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const setCell = (slotValue: string, key: string, value: string) => {
+        setGrid((current) => ({ ...current, [slotValue]: { ...current[slotValue], [key]: value } }));
+        setDirtySlots((current) => (current.includes(slotValue) ? current : [...current, slotValue]));
+    };
+
+    const saveGrid = () => {
+        setSaving(true);
+        setErrors({});
+        router.post(
+            logsheet.sheet().url,
+            {
+                unit_id: filters.unit_id,
+                engine_id: filters.engine_id,
+                log_date: filters.log_date,
+                shift: shift || null,
+                sheet: Object.fromEntries(dirtySlots.map((slotValue) => [slotValue, grid[slotValue]])),
+            },
+            {
+                preserveScroll: true,
+                onSuccess: (page) => {
+                    const props = page.props as unknown as Props;
+                    setGrid(gridOf(props.rows, props.parameters));
+                    setDirtySlots([]);
+                },
+                onError: (errs) => setErrors(errs),
+                onFinish: () => setSaving(false),
+            },
+        );
+    };
 
     const groups = useMemo<Group[]>(() => {
         const out: Group[] = [];
@@ -88,11 +126,11 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     const bearingParam = useMemo(() => parameters.find((p) => p.name === BEARING) ?? null, [parameters]);
 
     const visit = (patch: Partial<Props['filters']>) => {
-        router.get(
-            logsheet.index().url,
-            { ...filters, ...patch },
-            { preserveState: true, preserveScroll: true, replace: true },
-        );
+        if (dirtySlots.length > 0 && !window.confirm('Isian yang belum disimpan akan hilang. Lanjutkan?')) {
+            return;
+        }
+
+        router.get(logsheet.index().url, { ...filters, ...patch }, { preserveScroll: true, replace: true });
     };
 
     // Build the form values for a given time slot from whatever is already saved
@@ -166,23 +204,26 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     return (
         <>
             <Head title="Logsheet Operator" />
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+            <div className={cn('flex flex-1 flex-col gap-4 p-4 md:p-6', compact && 'gap-3 pb-28')}>
+                {!compact && (
                 <PageHeader
                     title="Logsheet Operator"
-                    description="Pembacaan parameter mesin per jam. Satu lembar per mesin per hari. Klik Isi Data untuk menambah/mengubah data pada jam tertentu."
+                    description="Pembacaan parameter mesin per jam. Satu lembar per mesin per hari. Ketik langsung di tabel, lalu tekan Simpan."
                     actions={
-                        compact && can_write && !noEngine ? undefined : can_write && !noEngine ? (
-                            <div className="flex flex-wrap gap-2">
-                                <Button onClick={() => openFor()}>
-                                    <Plus className="size-4" />
-                                    Isi Data
+                        can_write && !noEngine ? (
+                            <div className="flex flex-wrap items-center gap-3">
+                                {dirtySlots.length > 0 && <span className="text-[13px] text-amber-600">{dirtySlots.length} jam belum disimpan</span>}
+                                <Button onClick={saveGrid} disabled={saving || dirtySlots.length === 0}>
+                                    <Save className="size-4" />
+                                    {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>
                             </div>
                         ) : undefined
                     }
                 />
+                )}
 
-                {!noEngine && (
+                {!noEngine && !compact && (
                     <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={() => window.open(logsheet.pdf({ query: { unit_id: filters.unit_id, engine_id: filters.engine_id, log_date: filters.log_date } }).url, '_blank')} className="gap-1.5">
                             <FileDown className="size-4 text-rose-600" />
@@ -195,7 +236,16 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     </div>
                 )}
 
-                <div className={cn('rounded-md border border-border bg-card p-3', compact ? 'grid grid-cols-2 gap-3' : 'flex flex-wrap items-end gap-3')}>
+                {compact ? (
+                    <OperasiSelect
+                        label="Mesin"
+                        value={filters.engine_id ? String(filters.engine_id) : ''}
+                        onChange={(value) => visit({ engine_id: Number(value) })}
+                        options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))}
+                        className="w-full"
+                    />
+                ) : (
+                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
                     <OperasiSelect
                         label="Unit"
                         value={String(filters.unit_id)}
@@ -230,8 +280,9 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                         </Select>
                     </label>
                 </div>
+                )}
 
-                {!noEngine && stats.length > 0 && (
+                {!noEngine && !compact && stats.length > 0 && (
                     <div className={compact ? 'grid grid-cols-2 gap-3' : 'grid gap-4 sm:grid-cols-2 lg:grid-cols-4'}>
                         {stats.map((stat) => (
                             <SummaryCard key={stat.label} label={stat.label} value={stat.value} unit={stat.unit} hint={stat.hint} />
@@ -245,7 +296,12 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     </div>
                 ) : compact ? (
                     <div className="flex flex-col gap-2">
-                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">Jam Pembacaan</p>
+                        <p className="flex items-center justify-between text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            Jam Pembacaan
+                            <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 normal-case dark:text-emerald-400">
+                                {rows.filter((r) => r.filled).length}/{rows.length} jam terisi
+                            </span>
+                        </p>
                         <div className="grid grid-cols-2 gap-2">
                             {rows.map((row) => {
                                 const filled = filledCount(row);
@@ -257,15 +313,33 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                         disabled={!can_write}
                                         onClick={() => openFor(row)}
                                         className={cn(
-                                            'flex items-center gap-2.5 rounded-xl border bg-card p-3 text-left transition active:scale-[0.98] disabled:active:scale-100',
-                                            row.filled ? 'border-emerald-500/40' : 'border-border',
+                                            'relative flex items-center gap-2.5 rounded-xl border p-3 text-left transition active:scale-[0.98] disabled:active:scale-100',
+                                            row.filled
+                                                ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
+                                                : 'border-border bg-card',
                                         )}
                                     >
-                                        {row.filled ? <CheckCircle2 className="size-5 shrink-0 text-emerald-500" /> : <Circle className="size-5 shrink-0 text-muted-foreground/50" />}
+                                        {row.filled ? (
+                                            <CheckCircle2 className="size-6 shrink-0 fill-emerald-600 text-white" />
+                                        ) : (
+                                            <Circle className="size-6 shrink-0 text-muted-foreground/40" />
+                                        )}
                                         <span className="min-w-0">
-                                            <span className="block text-[15px] font-semibold text-foreground tabular-nums">{row.time_slot}</span>
-                                            <span className="block text-[11px] text-muted-foreground">
-                                                {filled}/{parameters.length} parameter
+                                            <span
+                                                className={cn(
+                                                    'block text-[15px] font-semibold tabular-nums',
+                                                    row.filled ? 'text-emerald-800 dark:text-emerald-300' : 'text-foreground',
+                                                )}
+                                            >
+                                                {row.time_slot}
+                                            </span>
+                                            <span
+                                                className={cn(
+                                                    'block text-[11px]',
+                                                    row.filled ? 'font-medium text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
+                                                )}
+                                            >
+                                                {row.filled ? `Sudah diisi · ${filled}/${parameters.length}` : 'Belum diisi'}
                                             </span>
                                         </span>
                                     </button>
@@ -275,76 +349,118 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     </div>
                 ) : (
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead rowSpan={2} className="border-r border-border text-center align-middle">Jam</TableHead>
+                        {/* Spreadsheet look like the Patrol Check sheet: black grid, sticky JAM column, compact cells. */}
+                        <table className="w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                            <thead>
+                                <tr>
+                                    <th rowSpan={2} className={cn(sheetTh, sheetJamTh, 'sticky left-0 z-20 w-16 min-w-16')}>
+                                        JAM
+                                    </th>
                                     {mainGroups.map((g) =>
                                         g.hasSub ? (
-                                            <TableHead key={g.name} colSpan={g.members.length} className="border-r border-border text-center">
+                                            <th key={g.name} colSpan={g.members.length} className={sheetTh}>
                                                 {g.name}
-                                            </TableHead>
+                                            </th>
                                         ) : (
-                                            <TableHead key={g.name} rowSpan={2} className="border-r border-border text-center align-middle whitespace-nowrap">
-                                                {g.members[0].unit_of_measure ? `${g.name} (${g.members[0].unit_of_measure})` : g.name}
-                                            </TableHead>
+                                            <th key={g.name} rowSpan={2} className={cn(sheetTh, 'min-w-20 whitespace-nowrap')}>
+                                                {g.name}
+                                                {g.members[0].unit_of_measure && (
+                                                    <span className="block text-[10px] font-medium normal-case">({g.members[0].unit_of_measure})</span>
+                                                )}
+                                            </th>
                                         ),
                                     )}
-                                    {can_write && <TableHead rowSpan={2} className="text-center align-middle">Aksi</TableHead>}
-                                </TableRow>
-                                <TableRow>
+                                </tr>
+                                <tr>
                                     {mainGroups
                                         .filter((g) => g.hasSub)
-                                        .flatMap((g) => g.members.map((m) => (
-                                            <TableHead key={m.id} className="border-r border-border text-center whitespace-nowrap">
-                                                {m.sub_channel}
-                                            </TableHead>
-                                        )))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {rows.map((row) => (
-                                    <TableRow key={row.time_slot} className={row.filled ? undefined : 'text-muted-foreground'}>
-                                        <TableCell className="border-r border-border text-center font-medium">{row.time_slot}</TableCell>
-                                        {mainParameters.map((p) => (
-                                            <TableCell key={p.id} className="border-r border-border text-center tabular-nums">
-                                                {toStr(row.values[`p_${p.id}`])}
-                                            </TableCell>
-                                        ))}
-                                        {can_write && (
-                                            <TableCell className="text-center">
-                                                <Button variant="ghost" size="sm" onClick={() => openFor(row)} aria-label={`Isi jam ${row.time_slot}`}>
-                                                    <Pencil className="size-4" />
-                                                </Button>
-                                            </TableCell>
+                                        .flatMap((g) =>
+                                            g.members.map((m) => (
+                                                <th key={m.id} className={cn(sheetTh, sheetSubTh, 'min-w-12 whitespace-nowrap')}>
+                                                    {m.sub_channel}
+                                                </th>
+                                            )),
                                         )}
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row) => {
+                                    const filledNow = Object.values(grid[row.time_slot] ?? {}).some((value) => value !== '');
+
+                                    return (
+                                        <tr key={row.time_slot} className="group hover:bg-muted/40">
+                                            <td
+                                                className={cn(
+                                                    sheetTd,
+                                                    'sticky left-0 z-10 font-semibold tabular-nums',
+                                                    filledNow ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-50 dark:bg-card',
+                                                )}
+                                            >
+                                                {row.time_slot}
+                                                {dirtySlots.includes(row.time_slot) && <span className="ml-0.5 text-amber-600">•</span>}
+                                            </td>
+                                            {mainParameters.map((p) => {
+                                                const key = `p_${p.id}`;
+                                                const error = errors[`sheet.${row.time_slot}.${key}`];
+
+                                                return (
+                                                    <td key={p.id} className={cn(sheetTd, 'p-0', error && 'bg-destructive/10')} title={error}>
+                                                        {can_write ? (
+                                                            <input
+                                                                inputMode="decimal"
+                                                                value={grid[row.time_slot]?.[key] ?? ''}
+                                                                onChange={(e) => setCell(row.time_slot, key, e.target.value.replace(',', '.'))}
+                                                                aria-label={`${p.label} jam ${row.time_slot}`}
+                                                                className={sheetInput}
+                                                            />
+                                                        ) : (
+                                                            <span className="block px-1.5 tabular-nums">{toStr(row.values[key])}</span>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
 
                 {!noEngine && !compact && bearingParam && (
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
-                        <div className="border-b border-border bg-muted/40 px-3 py-2 text-[13px] font-semibold text-foreground">
-                            BEARING GENERATOR TEMPERATUR{bearingParam.unit_of_measure ? ` (${bearingParam.unit_of_measure})` : ''}
-                        </div>
-                        <table className="w-full border-collapse text-[13px]">
-                            <tbody>
-                                <tr className="bg-muted/40">
-                                    <th className="whitespace-nowrap border border-border px-2 py-1 text-center font-medium">JAM</th>
+                        <table className="w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                            <thead>
+                                <tr>
+                                    <th colSpan={rows.length + 1} className={cn(sheetTh, 'text-left')}>
+                                        BEARING GENERATOR TEMPERATUR{bearingParam.unit_of_measure ? ` (${bearingParam.unit_of_measure})` : ''}
+                                    </th>
+                                </tr>
+                                <tr>
+                                    <th className={cn(sheetTh, sheetJamTh, 'sticky left-0 z-20 w-16 min-w-16')}>JAM</th>
                                     {rows.map((row) => (
-                                        <th key={row.time_slot} className="whitespace-nowrap border border-border px-2 py-1 text-center font-medium">
+                                        <th key={row.time_slot} className={cn(sheetTh, sheetSubTh, 'min-w-12')}>
                                             {row.time_slot}
                                         </th>
                                     ))}
                                 </tr>
+                            </thead>
+                            <tbody>
                                 <tr>
-                                    <td className="whitespace-nowrap border border-border px-2 py-1 text-center font-medium">Suhu</td>
+                                    <td className={cn(sheetTd, 'sticky left-0 z-10 bg-card font-semibold')}>Suhu</td>
                                     {rows.map((row) => (
-                                        <td key={row.time_slot} className="border border-border px-2 py-1 text-center tabular-nums">
-                                            {toStr(row.values[`p_${bearingParam.id}`])}
+                                        <td key={row.time_slot} className={cn(sheetTd, 'p-0')}>
+                                            {can_write ? (
+                                                <input
+                                                    inputMode="decimal"
+                                                    value={grid[row.time_slot]?.[`p_${bearingParam.id}`] ?? ''}
+                                                    onChange={(e) => setCell(row.time_slot, `p_${bearingParam.id}`, e.target.value.replace(',', '.'))}
+                                                    aria-label={`Bearing jam ${row.time_slot}`}
+                                                    className={sheetInput}
+                                                />
+                                            ) : (
+                                                <span className="block px-1.5 tabular-nums">{toStr(row.values[`p_${bearingParam.id}`])}</span>
+                                            )}
                                         </td>
                                     ))}
                                 </tr>
@@ -363,7 +479,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 </div>
             )}
 
-            {can_write && (
+            {can_write && compact && (
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
                         <DialogTitle>Isi Data Logsheet</DialogTitle>

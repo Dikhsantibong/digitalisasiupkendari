@@ -30,7 +30,8 @@ use Illuminate\Validation\ValidationException;
  */
 class UnsafeConditionSync
 {
-    public const KATEGORI = ['UNSAFE ACTION', 'UNSAFE CONDITION'];
+    /** Kategori temuan; NEARMISS = kejadian hampir celaka. */
+    public const KATEGORI = ['UNSAFE ACTION', 'UNSAFE CONDITION', 'NEARMISS'];
 
     /** The photo columns of a finding. */
     private const PHOTOS = ['foto_sebelum', 'foto_sesudah'];

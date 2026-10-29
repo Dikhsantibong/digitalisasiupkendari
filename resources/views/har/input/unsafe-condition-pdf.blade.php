@@ -228,9 +228,14 @@
                 <td>UNSAFE CONDITION</td>
                 <td class="text-center font-bold" style="width: 50px;">{{ $unsafeConditionCount }}</td>
             </tr>
+            <tr>
+                <td class="text-center">3</td>
+                <td>NEARMISS</td>
+                <td class="text-center font-bold" style="width: 50px;">{{ $nearmissCount ?? 0 }}</td>
+            </tr>
             <tr style="background-color: #f5f5f5;">
                 <td colspan="2" style="font-weight: bold; text-align: right;">TOTAL TEMUAN:</td>
-                <td class="text-center font-bold">{{ $unsafeActionCount + $unsafeConditionCount }}</td>
+                <td class="text-center font-bold">{{ $unsafeActionCount + $unsafeConditionCount + ($nearmissCount ?? 0) }}</td>
             </tr>
         </tbody>
     </table>

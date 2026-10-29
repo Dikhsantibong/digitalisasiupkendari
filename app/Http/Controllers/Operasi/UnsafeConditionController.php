@@ -72,6 +72,7 @@ class UnsafeConditionController extends Controller
 
         $unsafeActionCount = $records->where('kategori', 'UNSAFE ACTION')->count();
         $unsafeConditionCount = $records->where('kategori', 'UNSAFE CONDITION')->count();
+        $nearmissCount = $records->where('kategori', 'NEARMISS')->count();
         $openCount = $records->filter(fn (HarUnsafeCondition $r) => strtolower($r->keterangan) === 'open')->count();
         $closeCount = $records->filter(fn (HarUnsafeCondition $r) => strtolower($r->keterangan) === 'close')->count();
 
@@ -92,6 +93,7 @@ class UnsafeConditionController extends Controller
                 'total' => count($rows),
                 'unsafe_action_count' => $unsafeActionCount,
                 'unsafe_condition_count' => $unsafeConditionCount,
+                'nearmiss_count' => $nearmissCount,
                 'open_count' => $openCount,
                 'close_count' => $closeCount,
             ],
@@ -116,7 +118,7 @@ class UnsafeConditionController extends Controller
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'between:2000,2100'],
             'periode' => ['required', 'string', 'max:50'],
-            'kategori' => ['required', 'string', Rule::in(['UNSAFE ACTION', 'UNSAFE CONDITION'])],
+            'kategori' => ['required', 'string', Rule::in(UnsafeConditionSync::KATEGORI)],
             'temuan' => ['required', 'string'],
             'kondisi' => ['nullable', 'string', 'max:255'],
             'tindak_lanjut' => ['nullable', 'string'],
@@ -203,7 +205,7 @@ class UnsafeConditionController extends Controller
 
         $validated = $request->validate([
             'periode' => ['required', 'string', 'max:50'],
-            'kategori' => ['required', 'string', Rule::in(['UNSAFE ACTION', 'UNSAFE CONDITION'])],
+            'kategori' => ['required', 'string', Rule::in(UnsafeConditionSync::KATEGORI)],
             'temuan' => ['required', 'string'],
             'kondisi' => ['nullable', 'string', 'max:255'],
             'tindak_lanjut' => ['nullable', 'string'],
@@ -340,6 +342,7 @@ class UnsafeConditionController extends Controller
 
         $unsafeActionCount = $records->where('kategori', 'UNSAFE ACTION')->count();
         $unsafeConditionCount = $records->where('kategori', 'UNSAFE CONDITION')->count();
+        $nearmissCount = $records->where('kategori', 'NEARMISS')->count();
 
         $monthNames = [
             1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
@@ -361,6 +364,7 @@ class UnsafeConditionController extends Controller
             'rows' => $rows,
             'unsafeActionCount' => $unsafeActionCount,
             'unsafeConditionCount' => $unsafeConditionCount,
+            'nearmissCount' => $nearmissCount,
             'logoLeft' => $logoLeft,
             'logoRight' => $logoRight,
         ])->setPaper('a4', 'landscape');

@@ -75,7 +75,7 @@ export async function downloadFlmMonitoringWorkbook(unitName: string, periodLabe
         put(worksheet, top + 1, i + 1, '', HEADER);
         mergeCells(worksheet, top - 1, i, top, i);
     });
-    put(worksheet, top, 5, 'Kondisi Awal', HEADER);
+    put(worksheet, top, 5, 'Tindakan', HEADER);
     mergeCells(worksheet, top - 1, 4, top - 1, 4 + kondisi.length - 1);
     kondisi.forEach(([, label], i) => {
         if (i > 0) {

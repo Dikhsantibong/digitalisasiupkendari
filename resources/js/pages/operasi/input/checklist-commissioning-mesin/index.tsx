@@ -37,9 +37,8 @@ import {
     paintSheet,
     setColWidths,
     SPECS,
-    XLSX_COLORS,
 } from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
 import checklistCommissioningMesin from '@/routes/operasi/input/checklist-commissioning-mesin';
@@ -142,6 +141,10 @@ const PRINT_CSS = `
     }
 }
 `;
+
+/** A cell typed into like a spreadsheet (no box of its own). */
+const xlInput =
+    'h-8 rounded-none border-0 bg-transparent px-2 text-xs font-normal shadow-none focus:bg-yellow-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40';
 
 export default function OperasiChecklistCommissioningMesinIndex({
     unit,
@@ -772,7 +775,7 @@ return SPECS.label;
                         <div className="overflow-x-auto">
                             <table className="print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                                 <thead>
-                                    <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
+                                    <tr className="print-orange-header bg-yellow-200 font-bold text-black dark:bg-yellow-800 dark:text-yellow-50">
                                         <th
                                             rowSpan={2}
                                             className="border border-black px-2 py-1.5 text-[11px] dark:border-white"
@@ -807,7 +810,7 @@ return SPECS.label;
                                             AKSI
                                         </th>
                                     </tr>
-                                    <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
+                                    <tr className="print-orange-header bg-yellow-200 font-bold text-black dark:bg-yellow-800 dark:text-yellow-50">
                                         <th
                                             className="border border-black px-1.5 py-1 text-[10px] dark:border-white"
                                             style={{ width: '50px' }}
@@ -870,7 +873,7 @@ return SPECS.label;
                                                     key={`row-${r.no}-${rIdx}`}
                                                 >
                                                     {isNewSection && (
-                                                        <tr className="print-section-header bg-muted/60 font-bold text-foreground">
+                                                        <tr className="print-section-header bg-[#d4edda] font-bold text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
                                                             <td
                                                                 colSpan={10}
                                                                 className="border border-black px-3 py-1.5 text-left text-xs font-bold uppercase dark:border-white"
@@ -884,7 +887,7 @@ return SPECS.label;
                                                         <td className="border border-black px-1 py-1 font-medium dark:border-white">
                                                             {r.no}
                                                         </td>
-                                                        <td className="border border-black px-2 py-1 text-left font-medium dark:border-white">
+                                                        <td className="border border-black p-0 text-left font-medium dark:border-white">
                                                             {can_write ? (
                                                                 <Input
                                                                     value={
@@ -901,10 +904,10 @@ return SPECS.label;
                                                                                 .value,
                                                                         )
                                                                     }
-                                                                    className="h-7 text-xs font-normal"
+                                                                    className={xlInput}
                                                                 />
                                                             ) : (
-                                                                <span>
+                                                                <span className="block px-2">
                                                                     {r.kegiatan}
                                                                 </span>
                                                             )}
@@ -944,7 +947,7 @@ return SPECS.label;
                                                         )}
 
                                                         {/* PIC */}
-                                                        <td className="border border-black p-1 dark:border-white">
+                                                        <td className="border border-black p-0 dark:border-white">
                                                             {can_write ? (
                                                                 <Input
                                                                     value={
@@ -963,7 +966,7 @@ return SPECS.label;
                                                                         )
                                                                     }
                                                                     placeholder="Nama PIC"
-                                                                    className="h-7 text-center text-xs"
+                                                                    className={cn(xlInput, 'text-center')}
                                                                 />
                                                             ) : (
                                                                 <span>
@@ -973,7 +976,7 @@ return SPECS.label;
                                                         </td>
 
                                                         {/* Paraf */}
-                                                        <td className="border border-black p-1 dark:border-white">
+                                                        <td className="border border-black p-0 dark:border-white">
                                                             {can_write ? (
                                                                 <Input
                                                                     value={
@@ -992,7 +995,7 @@ return SPECS.label;
                                                                         )
                                                                     }
                                                                     placeholder="Paraf"
-                                                                    className="h-7 text-center text-xs"
+                                                                    className={cn(xlInput, 'text-center')}
                                                                 />
                                                             ) : (
                                                                 <span>
@@ -1026,7 +1029,7 @@ return SPECS.label;
                                     })()}
 
                                     {/* CATATAN Section */}
-                                    <tr className="print-section-header bg-muted/60 font-bold text-foreground">
+                                    <tr className="print-section-header bg-[#d4edda] font-bold text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300">
                                         <td
                                             colSpan={10}
                                             className="border border-black px-3 py-1.5 text-left text-xs font-bold uppercase dark:border-white"
@@ -1039,8 +1042,8 @@ return SPECS.label;
                         </div>
                     )}
 
-                    {/* Catatan Box */}
-                    <div className="mt-2 space-y-1">
+                    {/* Catatan Box: the sheet's last row */}
+                    <div className="-mt-px border-2 border-t border-black dark:border-white">
                         {can_write ? (
                             <Textarea
                                 value={catatan}
@@ -1049,10 +1052,10 @@ return SPECS.label;
                                     setDirty(true);
                                 }}
                                 placeholder="disesuaikan dengan kondisi peralatan unit/sentral kit"
-                                className="min-h-16 text-xs"
+                                className="min-h-16 rounded-none border-0 text-xs shadow-none focus:bg-yellow-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40"
                             />
                         ) : (
-                            <div className="rounded-md border border-border bg-muted/10 p-3 text-xs text-muted-foreground">
+                            <div className="p-3 text-xs text-muted-foreground">
                                 {catatan || '-'}
                             </div>
                         )}

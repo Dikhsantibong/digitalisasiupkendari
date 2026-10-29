@@ -309,6 +309,7 @@ class K3DivisionFeed
         return match (true) {
             str_contains($value, 'ACTION') => 'Unsafe Action',
             str_contains($value, 'CONDITION') => 'Unsafe Condition',
+            str_contains($value, 'NEAR') => 'Nearmiss',
             default => $value === '' ? 'Unsafe Condition' : ucwords(strtolower($value)),
         };
     }

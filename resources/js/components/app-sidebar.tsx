@@ -23,8 +23,12 @@ import {
     UserCog,
     Users,
     Wrench,
+    Pin,
+    PinOff,
 } from 'lucide-react';
+import { useRef } from 'react';
 import AppLogo from '@/components/app-logo';
+import { useSidebarPin } from '@/components/app-shell';
 
 import { NavCollapsible } from '@/components/nav-collapsible';
 import { NavMain } from '@/components/nav-main';
@@ -37,12 +41,14 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    useSidebar,
 } from '@/components/ui/sidebar';
 import { usePermissions } from '@/hooks/use-permissions';
 import { FIELD_MENUS } from '@/layouts/mobile/modules';
 import { MOBILE_MENU_GROUPS } from '@/layouts/mobile/types';
 import { PENGUSAHAAN_MENUS, PENGUSAHAAN_MODULES, PENGUSAHAAN_SECTIONS, pengusahaanSection } from '@/lib/pengusahaan-menus';
 import type { PengusahaanModuleKey } from '@/lib/pengusahaan-menus';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import activityLogs from '@/routes/admin/activity-logs';
 import attendanceLocations from '@/routes/admin/attendance-locations';
@@ -84,6 +90,22 @@ import type { NavGroup } from '@/types';
 
 export function AppSidebar() {
     const { can, isSuperAdmin } = usePermissions();
+    const { pinned, togglePinned, setPeek } = useSidebarPin();
+    const { open: peeking } = useSidebar();
+    const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    /** Unlocked: open while the cursor is on the sidebar, fold back shortly after it leaves. */
+    const hover = (inside: boolean) => {
+        if (pinned) {
+            return;
+        }
+
+        if (hoverTimer.current) {
+            clearTimeout(hoverTimer.current);
+        }
+
+        hoverTimer.current = setTimeout(() => setPeek(inside), inside ? 120 : 250);
+    };
 
     // Akses 2 — Pengusahaan (TL & Staf) menus of a module, listed inside the
     // module's own group before its Laporan (registry: lib/pengusahaan-menus.ts,
@@ -375,17 +397,38 @@ export function AppSidebar() {
     ].filter((group) => group.items.length > 0);
 
     return (
-        <Sidebar collapsible="icon">
+        <>
+        <Sidebar
+            collapsible="offcanvas"
+            onMouseEnter={() => hover(true)}
+            onMouseLeave={() => hover(false)}
+        >
             <SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+                <div className="flex items-center gap-1">
+                    <SidebarMenu className="min-w-0 flex-1">
+                        <SidebarMenuItem>
+                            <SidebarMenuButton size="lg" asChild>
+                                <Link href={dashboard()} prefetch>
+                                    <AppLogo />
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                    {/* Lock the sidebar open, or let it hide when the cursor leaves it. */}
+                    <button
+                        type="button"
+                        onClick={togglePinned}
+                        className={cn(
+                            'flex size-8 shrink-0 items-center justify-center rounded-md transition hover:bg-sidebar-accent',
+                            pinned ? 'text-sidebar-foreground' : 'text-sidebar-foreground/60',
+                        )}
+                        title={pinned ? 'Sidebar dikunci. Klik agar tersembunyi otomatis saat kursor keluar.' : 'Kunci sidebar agar selalu tampil'}
+                        aria-label={pinned ? 'Lepas kunci sidebar' : 'Kunci sidebar'}
+                        aria-pressed={pinned}
+                    >
+                        {pinned ? <Pin className="size-4 fill-current" /> : <PinOff className="size-4" />}
+                    </button>
+                </div>
             </SidebarHeader>
 
             <SidebarContent>
@@ -411,5 +454,20 @@ export function AppSidebar() {
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
+
+        {/* Hidden sidebar: the "Portal Saya" tab on the left edge opens it on hover / tap. */}
+        {!pinned && !peeking && (
+            <button
+                type="button"
+                onMouseEnter={() => hover(true)}
+                onClick={() => setPeek(true)}
+                className="fixed top-1/2 left-0 z-40 hidden -translate-y-1/2 flex-col items-center gap-1.5 rounded-r-lg bg-sidebar px-1.5 py-3 text-sidebar-foreground shadow-lg transition hover:pl-2.5 md:flex"
+                aria-label="Buka menu Portal Saya"
+            >
+                <LayoutGrid className="size-4" />
+                <span className="text-[11px] font-semibold tracking-wide [writing-mode:vertical-rl] rotate-180">Portal Saya</span>
+            </button>
+        )}
+        </>
     );
 }

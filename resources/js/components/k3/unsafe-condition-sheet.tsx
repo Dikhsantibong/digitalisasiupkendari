@@ -44,6 +44,7 @@ export type UnsafeConditionSheetProps = {
         total: number;
         unsafe_action_count: number;
         unsafe_condition_count: number;
+        nearmiss_count: number;
         open_count: number;
         close_count: number;
     };
@@ -62,7 +63,7 @@ type SheetRow = Omit<UnsafeConditionRow, 'id'> & {
 type PhotoColumn = 'foto_sebelum' | 'foto_sesudah';
 
 const PERIODE_OPTIONS = ['MINGGU KE - 1', 'MINGGU KE - 2', 'MINGGU KE - 3', 'MINGGU KE - 4', 'MINGGU KE - 5'];
-const KATEGORI = ['UNSAFE ACTION', 'UNSAFE CONDITION'];
+const KATEGORI = ['UNSAFE ACTION', 'UNSAFE CONDITION', 'NEARMISS'];
 const PHOTOS: [PhotoColumn, string][] = [
     ['foto_sebelum', 'Sebelum'],
     ['foto_sesudah', 'Sesudah'],
@@ -93,7 +94,17 @@ const blankRow = (): SheetRow => ({
 });
 
 const kategoriTone = (kategori: string) =>
-    kategori === 'UNSAFE ACTION' ? 'border-amber-500 bg-amber-500 text-white' : 'border-rose-600 bg-rose-600 text-white';
+    kategori === 'UNSAFE ACTION'
+        ? 'border-amber-500 bg-amber-500 text-white'
+        : kategori === 'NEARMISS'
+          ? 'border-sky-600 bg-sky-600 text-white'
+          : 'border-rose-600 bg-rose-600 text-white';
+const kategoriText = (kategori: string) =>
+    kategori === 'UNSAFE ACTION'
+        ? 'text-amber-600 dark:text-amber-400'
+        : kategori === 'NEARMISS'
+          ? 'text-sky-600 dark:text-sky-400'
+          : 'text-rose-600 dark:text-rose-400';
 const statusTone = (status: string) => (status === 'CLOSE' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-amber-500 bg-amber-500 text-white');
 
 /**
@@ -255,7 +266,7 @@ export function UnsafeConditionSheet({
     );
 
     const kpis = (
-        <div className="no-print grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="no-print grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Kpi label="Total Temuan" icon={<ShieldAlert className="size-4 text-primary" />} note="Periode terpilih">
                 <span className="text-2xl font-bold text-foreground">{summary.total}</span>
             </Kpi>
@@ -264,6 +275,9 @@ export function UnsafeConditionSheet({
             </Kpi>
             <Kpi label="Unsafe Condition" icon={<AlertTriangle className="size-4 text-rose-500" />} note="Kondisi berbahaya">
                 <span className="text-2xl font-bold text-rose-600 dark:text-rose-400">{summary.unsafe_condition_count}</span>
+            </Kpi>
+            <Kpi label="Nearmiss" icon={<AlertTriangle className="size-4 text-sky-500" />} note="Hampir celaka">
+                <span className="text-2xl font-bold text-sky-600 dark:text-sky-400">{summary.nearmiss_count ?? 0}</span>
             </Kpi>
             <Kpi
                 label="Status Temuan"
@@ -293,7 +307,6 @@ export function UnsafeConditionSheet({
                 <div className={cn('flex flex-col gap-3 p-4', can_write && 'pb-28')}>
                     <PageHeader title="Unsafe Action & Condition" description={`${unit.name} · ${periodLabel}`} />
 
-                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3 [&>*:first-child]:col-span-2">{filterSelects}</div>
 
                     {kpis}
 
@@ -525,7 +538,7 @@ export function UnsafeConditionSheet({
                                                     value={row.kategori}
                                                     onChange={(value) => update(index, { kategori: value || 'UNSAFE CONDITION' })}
                                                     options={KATEGORI}
-                                                    className={cn('h-8 justify-center font-semibold', row.kategori === 'UNSAFE ACTION' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400')}
+                                                    className={cn('h-8 justify-center font-semibold', kategoriText(row.kategori))}
                                                     disabled={!can_write}
                                                 />
                                             </td>
@@ -611,6 +624,11 @@ export function UnsafeConditionSheet({
                                     <td className={cn(td, 'p-2 text-center')}>2</td>
                                     <td className={cn(td, 'p-2 font-medium')}>UNSAFE CONDITION</td>
                                     <td className={cn(td, 'p-2 text-center font-bold text-rose-600 dark:text-rose-400')}>{summary.unsafe_condition_count}</td>
+                                </tr>
+                                <tr>
+                                    <td className={cn(td, 'p-2 text-center')}>3</td>
+                                    <td className={cn(td, 'p-2 font-medium')}>NEARMISS</td>
+                                    <td className={cn(td, 'p-2 text-center font-bold text-sky-600 dark:text-sky-400')}>{summary.nearmiss_count ?? 0}</td>
                                 </tr>
                                 <tr className="bg-muted/50 font-bold">
                                     <td colSpan={2} className={cn(td, 'p-2 text-right')}>TOTAL TEMUAN:</td>

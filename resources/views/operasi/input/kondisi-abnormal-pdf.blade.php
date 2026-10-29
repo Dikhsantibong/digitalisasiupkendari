@@ -181,12 +181,12 @@
             @forelse($rows as $row)
                 <tr>
                     <td class="text-center font-bold">{{ $row['no_urut'] }}</td>
-                    <td>{{ $row['uraian_kondisi'] }}</td>
+                    <td>{{ $row['uraian_kondisi'] }}@if($row['mesin'] !== '' || $row['peralatan'] !== '')<br><span style="font-size: 7px;">{{ collect([$row['mesin'], $row['peralatan']])->filter()->implode(' · ') }}</span>@endif</td>
                     <td class="text-center">{{ $row['tanggal'] }}</td>
                     <td class="text-center font-bold">{{ $row['is_abnormal'] }}</td>
                     <td class="text-center">{{ $row['durasi_abnormal'] }}</td>
                     <td class="text-center font-bold">{{ $row['is_gangguan'] }}</td>
-                    <td class="text-center">{{ $row['durasi_gangguan'] }}</td>
+                    <td class="text-center">{{ $row['durasi_gangguan'] }}@if($row['jam_mulai'] !== '' && $row['jam_selesai'] !== '')<br><span style="font-size: 7px;">{{ $row['jam_mulai'] }}–{{ $row['jam_selesai'] }}</span>@endif</td>
                     <td>{{ $row['parameter_terkait'] }}</td>
                     @foreach(array_keys($tindakPendek) as $key)
                         @if($loop->last)

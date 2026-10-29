@@ -56,7 +56,8 @@ class FlmMonitoringController extends Controller
                 'years' => range(Carbon::now()->year - 3, Carbon::now()->year + 1),
                 'kondisi_awal' => OperasiFlmMonitoring::KONDISI_AWAL,
             ],
-            'rows' => $this->rows($unit, $month, $year),
+            // Only the saved findings (one blank row on an empty month): a row deleted and saved stays gone.
+            'rows' => $this->rows($unit, $month, $year, minRows: 1),
             'has_saved' => $this->saved($unit, $month, $year)->isNotEmpty(),
             'can_write' => $this->allowsFieldInput($request->user(), PermissionName::OperasiInputWrite, PermissionName::OperasiLapanganFlmMonitoring),
         ]);
@@ -162,7 +163,7 @@ class FlmMonitoringController extends Controller
         return ['operasi.input.flm-monitoring-pdf', [
             'unit' => $unit,
             'periodLabel' => strtoupper(Indonesian::monthName($month).' '.$year),
-            'rows' => $this->rows($unit, $month, $year, embedPhotos: true),
+            'rows' => $this->rows($unit, $month, $year, self::MIN_ROWS, embedPhotos: true),
             'kondisiAwal' => OperasiFlmMonitoring::KONDISI_AWAL,
             'photos' => self::PHOTOS,
             ...JadwalPdf::logos(),
@@ -170,12 +171,13 @@ class FlmMonitoringController extends Controller
     }
 
     /**
-     * Saved findings followed by blank numbered rows up to {@see self::MIN_ROWS}.
+     * Saved findings followed by blank numbered rows up to $minRows (the PDF
+     * keeps {@see self::MIN_ROWS} like the paper form).
      * Photos come as their path and a URL (embedded as data URI for the PDF).
      *
      * @return list<array{no_urut: int, mesin: string, tanggal: string|null, masalah: string, kondisi_awal: list<string>, kondisi_akhir: string, foto_awal: string|null, foto_awal_url: string|null, foto_akhir: string|null, foto_akhir_url: string|null, catatan: string, status: string}>
      */
-    private function rows(Unit $unit, int $month, int $year, bool $embedPhotos = false): array
+    private function rows(Unit $unit, int $month, int $year, int $minRows, bool $embedPhotos = false): array
     {
         $rows = $this->saved($unit, $month, $year)->map(fn (OperasiFlmMonitoring $r): array => [
             'no_urut' => $r->no_urut,
@@ -192,7 +194,7 @@ class FlmMonitoringController extends Controller
             'status' => $r->status,
         ])->all();
 
-        for ($n = count($rows) + 1; $n <= self::MIN_ROWS; $n++) {
+        for ($n = count($rows) + 1; $n <= $minRows; $n++) {
             $rows[] = ['no_urut' => $n, 'mesin' => '', 'tanggal' => null, 'masalah' => '', 'kondisi_awal' => [], 'kondisi_akhir' => '', 'foto_awal' => null, 'foto_awal_url' => null, 'foto_akhir' => null, 'foto_akhir_url' => null, 'catatan' => '', 'status' => 'open'];
         }
 

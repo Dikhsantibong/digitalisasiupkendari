@@ -59,7 +59,7 @@
                 <th rowspan="2" style="width: 110px;">Mesin / Peralatan</th>
                 <th rowspan="2" style="width: 90px;">Tanggal</th>
                 <th rowspan="2" style="width: 140px;">Masalah Awal yg ditemukan</th>
-                <th colspan="{{ count($kondisiAwal) }}">Kondisi Awal</th>
+                <th colspan="{{ count($kondisiAwal) }}">Tindakan</th>
                 <th rowspan="2" style="width: 80px;">Kondisi Akhir</th>
                 <th rowspan="2" style="width: 130px;">Catatan FLM</th>
                 <th rowspan="2" style="width: 42px;">Status</th>
