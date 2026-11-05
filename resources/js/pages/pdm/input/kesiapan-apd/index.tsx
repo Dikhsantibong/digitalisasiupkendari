@@ -289,8 +289,8 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                         onRemove={removeRow}
                     />
                 ) : (
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[1150px] border-collapse text-xs">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full min-w-[1150px] border-collapse text-xs">
                         <thead className="bg-sky-500/90 text-center text-[11px] font-semibold text-slate-900">
                             <tr>
                                 <th rowSpan={2} className="w-9 border border-slate-400 p-1">No</th>

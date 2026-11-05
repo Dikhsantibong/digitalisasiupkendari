@@ -7,6 +7,7 @@ import type { DayValueField } from '@/components/mobile/day-values-form';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout, useInMobileShell } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
@@ -219,19 +220,12 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
         return (
             <td key={day.day} className={cn(cell, 'h-6 min-w-7 text-[10px] font-bold', day.is_red && RED)}>
                 {editable && can_write ? (
-                    <select
+                    <PdmCellSelect
                         value={value}
-                        onChange={(e) => setDay(row.engine_id, 'days', day.day, e.target.value)}
-                        className="h-6 w-full cursor-pointer appearance-none bg-transparent text-center text-[10px] font-bold focus:bg-background focus:outline-none"
-                        aria-label={`${row.name} ${plan} tanggal ${day.day}`}
-                    >
-                        <option value="" />
-                        {HAR_CODES.map((code) => (
-                            <option key={code} value={code}>
-                                {code}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={(next) => setDay(row.engine_id, 'days', day.day, next)}
+                        options={[...HAR_CODES]}
+                        className="h-6 justify-center px-0 text-[10px] font-bold [&>svg]:hidden"
+                    />
                 ) : (
                     value
                 )}
@@ -279,7 +273,7 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
     );
 
     const harTable = (
-        <table className="w-full border-collapse text-[11px]">
+        <table className="excel-sheet w-full border-collapse text-[11px]">
             <thead>
                 <tr className="font-bold">
                     <th rowSpan={2} className={cn(labelCell, 'w-40 text-center')}>
@@ -367,7 +361,7 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
     );
 
     const markTable = (
-        <table className="w-full border-collapse text-[11px]">
+        <table className="excel-sheet w-full border-collapse text-[11px]">
             <thead>
                 <tr className="font-bold">
                     <th rowSpan={2} className={cn(labelCell, 'w-36 bg-neutral-400 text-center dark:bg-neutral-600')}>

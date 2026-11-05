@@ -29,6 +29,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -252,18 +253,17 @@ export default function OperatorPengajuan({
 
                 <Card className="grid grid-cols-2 gap-3 p-3 py-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end">
                     {sees_all && options.units.length > 1 && (
-                        <div className="col-span-2 sm:col-span-1">
-                            <OperasiSelect
-                                label="Unit"
-                                value={String(filters.unit_id)}
-                                onChange={(v) => visit({ unit_id: Number(v) })}
-                                options={options.units.map((u) => ({
-                                    value: String(u.id),
-                                    label: u.name,
-                                }))}
-                                className="w-full sm:w-56"
-                            />
-                        </div>
+                        <OperasiSelect
+                            label="Unit"
+                            value={String(filters.unit_id)}
+                            onChange={(v) => visit({ unit_id: Number(v) })}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            className="w-full sm:w-56"
+                            labelClassName="col-span-2 sm:col-span-1"
+                        />
                     )}
                     <OperasiSelect
                         label="Bulan"
@@ -347,47 +347,26 @@ export default function OperatorPengajuan({
                                     </label>
                                     <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                         Rekan pengganti
-                                        <select
-                                            value={
-                                                form.data.substitute_employee_id
-                                            }
-                                            onChange={(e) =>
-                                                form.setData(
-                                                    'substitute_employee_id',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            className="h-9 w-full min-w-0 rounded-md border border-input bg-background px-2 text-sm text-foreground"
+                                        <Select
+                                            value={form.data.substitute_employee_id ? String(form.data.substitute_employee_id) : undefined}
+                                            onValueChange={(value) => form.setData('substitute_employee_id', value)}
                                         >
-                                            <option value="">
-                                                Pilih rekan…
-                                            </option>
-                                            {colleagues.map((c) => {
-                                                const code =
-                                                    c.codes[
-                                                        form.data.start_date
-                                                    ];
+                                            <SelectTrigger className="h-10 w-full min-w-0 text-sm text-foreground" aria-label="Rekan pengganti">
+                                                <SelectValue placeholder="Pilih rekan…" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {colleagues.map((c) => {
+                                                    const code = c.codes[form.data.start_date];
 
-                                                return (
-                                                    <option
-                                                        key={c.id}
-                                                        value={c.id}
-                                                        disabled={isWorking(
-                                                            code,
-                                                        )}
-                                                    >
-                                                        {c.name}
-                                                        {c.regu
-                                                            ? ` · Regu ${c.regu}`
-                                                            : ''}{' '}
-                                                        —{' '}
-                                                        {isWorking(code)
-                                                            ? `bertugas ${code}`
-                                                            : 'tersedia'}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
+                                                    return (
+                                                        <SelectItem key={c.id} value={String(c.id)} disabled={isWorking(code)}>
+                                                            {c.name}
+                                                            {c.regu ? ` · Regu ${c.regu}` : ''} — {isWorking(code) ? `bertugas ${code}` : 'tersedia'}
+                                                        </SelectItem>
+                                                    );
+                                                })}
+                                            </SelectContent>
+                                        </Select>
                                         <InputError
                                             message={
                                                 form.errors

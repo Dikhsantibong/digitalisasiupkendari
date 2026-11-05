@@ -404,7 +404,7 @@ return;
 
                     {/* Table */}
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1600px] border-collapse text-xs">
+                        <table className="excel-sheet w-full min-w-[1600px] border-collapse text-xs">
                             <thead>
                                 <tr className="bg-amber-100/60 text-slate-800 dark:bg-amber-950/40 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:font-bold">
                                     <th rowSpan={2} className="w-12">

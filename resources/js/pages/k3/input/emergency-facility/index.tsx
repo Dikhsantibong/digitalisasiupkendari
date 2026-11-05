@@ -161,8 +161,8 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
                         })}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto rounded-md border border-border bg-card">
-                        <table className="w-full border-collapse text-xs">
+                    <div className="overflow-x-auto bg-card">
+                        <table className="excel-sheet w-full border-collapse text-xs">
                             <thead className="bg-muted/50">
                                 <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
                                     <th className="w-10">No</th>

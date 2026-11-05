@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Enums\UnitType;
-use App\Models\Employee;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -15,7 +14,7 @@ use Illuminate\Support\Str;
  * units beneath them, and master employees (pegawai) for each unit & service unit.
  *
  * Units whose parent UL has not been confirmed are seeded without one; see the
- * open questions in concept.md.
+ * open questions in PRD.md §15.
  */
 class OrganizationSeeder extends Seeder
 {

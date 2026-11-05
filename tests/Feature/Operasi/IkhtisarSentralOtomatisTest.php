@@ -15,6 +15,7 @@ use App\Models\ServiceUnit;
 use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithAccessControl;
+use Tests\Concerns\RecordsLogsheetLoad;
 use Tests\TestCase;
 
 /**
@@ -24,7 +25,7 @@ use Tests\TestCase;
  */
 class IkhtisarSentralOtomatisTest extends TestCase
 {
-    use InteractsWithAccessControl, RefreshDatabase;
+    use InteractsWithAccessControl, RecordsLogsheetLoad, RefreshDatabase;
 
     public function test_the_figures_follow_the_other_sheets_and_corrections_are_kept(): void
     {
@@ -42,7 +43,7 @@ class IkhtisarSentralOtomatisTest extends TestCase
             'stands' => [$mak->id => ['1' => ['produksi' => 21000, 'ps' => 1100]]],
         ])->assertSessionHasNoErrors();
         $this->actingAs($tl)->post(route('operasi.pengusahaan.jam-operasi.store'), $period + ['readings' => [$mak->id => ['1' => 20]]]);
-        $this->actingAs($tl)->post(route('operasi.pengusahaan.beban-tinggi.store'), $period + ['readings' => [$mak->id => ['1' => 1500]]]);
+        $this->logsheetLoad($mak, '2026-09-01', [1200, 1500, 1300]);
         $this->actingAs($tl)->post(route('operasi.pengusahaan.pemakaian-bbm.store'), $period + ['readings' => ["HSD_{$mak->id}" => ['1' => 5000]]]);
         $this->actingAs($tl)->post(route('operasi.pengusahaan.pemakaian-pelumas.store'), $period + ['readings' => ["{$oli->id}_{$mak->id}" => ['1' => 20]]]);
         FuelReceipt::factory()->create(['unit_id' => $unit->id, 'report_date' => '2026-09-10', 'fuel_type' => TankFuelType::Hsd, 'volume_liter' => 8000]);

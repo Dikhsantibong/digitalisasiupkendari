@@ -126,6 +126,7 @@ enum PermissionName: string
     case HarLapanganProgram5s5r = 'har.lapangan.program_5s5r';
     case HarLapanganPatrolCheckPemeliharaan = 'har.lapangan.patrol_check_pemeliharaan';
     case HarLapanganPatrolCheckParameter = 'har.lapangan.patrol_check_parameter';
+    case HarLapanganMaterialPeralatan = 'har.lapangan.material_peralatan';
     case HarLapanganPrelubeTest = 'har.lapangan.prelube_test';
     case HarLapanganHydrotest = 'har.lapangan.hydrotest';
     case HarLapanganTimingInjectionPump = 'har.lapangan.timing_injection_pump';
@@ -297,6 +298,7 @@ enum PermissionName: string
             self::HarLapanganProgram5s5r,
             self::HarLapanganPatrolCheckPemeliharaan,
             self::HarLapanganPatrolCheckParameter,
+            self::HarLapanganMaterialPeralatan,
             self::HarLapanganPrelubeTest,
             self::HarLapanganHydrotest,
             self::HarLapanganTimingInjectionPump,
@@ -469,6 +471,7 @@ enum PermissionName: string
             self::HarLapanganProgram5s5r => 'Input lapangan: Jadwal Program 5S 5R Pemeliharaan',
             self::HarLapanganPatrolCheckPemeliharaan => 'Input lapangan: Laporan Patrol Check Pemeliharaan',
             self::HarLapanganPatrolCheckParameter => 'Input lapangan: Patrol Check Parameter Mesin',
+            self::HarLapanganMaterialPeralatan => 'Input lapangan: Cek kelengkapan Material & Peralatan',
             self::HarLapanganPrelubeTest => 'Input lapangan: Formulir Checklist Prelube Test',
             self::HarLapanganHydrotest => 'Input lapangan: Formulir Checklist Hydrotest',
             self::HarLapanganTimingInjectionPump => 'Input lapangan: Formulir Timing Injection Pump',
@@ -536,6 +539,17 @@ enum PermissionName: string
             self::NotifikasiPekerjaan => 'Menerima notifikasi Work Order & Service Request baru / berubah status',
             self::NotifikasiLaporan => 'Menerima notifikasi alur persetujuan Laporan Pembangkit',
         };
+    }
+
+    /**
+     * Read access to the Master Data pages (Unit Pembangkit, Master Mesin,
+     * Master Pegawai), withheld from the operators.
+     *
+     * @return list<self>
+     */
+    public static function masterDataView(): array
+    {
+        return [self::UnitViewAny, self::UnitView, self::MachineViewAny, self::MachineView, self::EmployeeViewAny, self::EmployeeView];
     }
 
     /**

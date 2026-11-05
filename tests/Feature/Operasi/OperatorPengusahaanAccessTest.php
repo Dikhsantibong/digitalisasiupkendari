@@ -42,20 +42,33 @@ class OperatorPengusahaanAccessTest extends TestCase
         return ['unit_id' => $this->unit->id, 'month' => 9, 'year' => 2026];
     }
 
-    public function test_the_operator_and_the_project_leader_hold_the_pengusahaan_input_permission_only(): void
+    public function test_only_the_project_leader_holds_the_pengusahaan_input_permission(): void
     {
-        foreach ([RoleName::Operator, RoleName::ProjectLeaderOperasi] as $role) {
-            $user = $this->userWithRole($role, $this->unit);
+        $leader = $this->userWithRole(RoleName::ProjectLeaderOperasi, $this->unit);
+        $this->assertTrue($leader->hasPermissionTo('operasi.pengusahaan.input'));
+        $this->assertFalse($leader->hasPermissionTo('operasi.pengusahaan.view'));
+        $this->assertFalse($leader->hasPermissionTo('operasi.pengusahaan.write'));
 
-            $this->assertTrue($user->hasPermissionTo('operasi.pengusahaan.input'), $role->value);
-            $this->assertFalse($user->hasPermissionTo('operasi.pengusahaan.view'), $role->value);
-            $this->assertFalse($user->hasPermissionTo('operasi.pengusahaan.write'), $role->value);
+        // Operators fill the core Operator menus and Input Operasi only — no Pengusahaan for now.
+        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $this->assertFalse($operator->hasPermissionTo('operasi.pengusahaan.input'));
+        $this->actingAs($operator)->get(route('operasi.pengusahaan.tara-kalor.index', $this->period()))->assertForbidden();
+        $this->actingAs($operator)->get(route('operasi.pengusahaan.jam-pembangkit.index', $this->period()))->assertForbidden();
+        $this->actingAs($operator)->get(route('operasi.pengusahaan.index', ['section' => 'input']))->assertForbidden();
+        $this->actingAs($operator)->post(route('operasi.pengusahaan.tara-kalor.store'), $this->period() + ['readings' => []])->assertForbidden();
+        $this->actingAs($operator)->get(route('operasi.input.unsafe-condition.index', $this->period()))->assertOk();
+        $this->actingAs($operator)->get(route('operator.start-stop.index', $this->period()))->assertOk();
+
+        // No Master Data for the operator, not even read-only; the Project Leader keeps the view.
+        foreach (['admin.units.index', 'admin.machines.index', 'admin.employees.index'] as $page) {
+            $this->actingAs($operator)->get(route($page))->assertForbidden();
+            $this->actingAs($leader)->get(route($page))->assertOk();
         }
     }
 
     public function test_the_operator_opens_every_pengusahaan_operasi_input_page(): void
     {
-        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $operator = $this->userWithRole(RoleName::ProjectLeaderOperasi, $this->unit);
         $pages = collect(Route::getRoutes()->getRoutesByName())
             ->keys()
             ->filter(fn (string $name): bool => str_starts_with($name, 'operasi.pengusahaan.') && str_ends_with($name, '.index')
@@ -75,7 +88,7 @@ class OperatorPengusahaanAccessTest extends TestCase
 
     public function test_the_operator_saves_a_pengusahaan_input(): void
     {
-        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $operator = $this->userWithRole(RoleName::ProjectLeaderOperasi, $this->unit);
         $machine = Machine::query()->firstOrFail();
 
         $this->actingAs($operator)->post(route('operasi.pengusahaan.tara-kalor.store'), $this->period() + [
@@ -87,7 +100,7 @@ class OperatorPengusahaanAccessTest extends TestCase
 
     public function test_the_berita_acara_and_the_laporan_pengusahaan_stay_with_tl_and_staf(): void
     {
-        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $operator = $this->userWithRole(RoleName::ProjectLeaderOperasi, $this->unit);
 
         $this->actingAs($operator)->get(route('operasi.pengusahaan.index', ['section' => 'formulir']))->assertForbidden();
         $this->actingAs($operator)->get(route('operasi.pengusahaan.berita-acara.index', $this->period()))->assertForbidden();
@@ -95,7 +108,7 @@ class OperatorPengusahaanAccessTest extends TestCase
         $this->actingAs($operator)->post(route('operasi.laporan.pengusahaan.store'), $this->period() + ['format' => 'html', 'content_html' => '<p>x</p>'])->assertForbidden();
 
         // An operator of another unit cannot fill this unit's inputs.
-        $elsewhere = $this->userWithRole(RoleName::Operator, Unit::factory()->create(['is_active' => true]));
+        $elsewhere = $this->userWithRole(RoleName::ProjectLeaderOperasi, Unit::factory()->create(['is_active' => true]));
         $this->actingAs($elsewhere)->post(route('operasi.pengusahaan.tara-kalor.store'), $this->period() + ['readings' => []])->assertForbidden();
 
         // TL Operasi keeps everything.
@@ -108,7 +121,7 @@ class OperatorPengusahaanAccessTest extends TestCase
     {
         $container = Unit::factory()->forServiceUnit($this->unit->serviceUnit)->create(['name' => 'PLTD Poasia Containerized', 'code' => 'PLTD-POASIA-CONT', 'is_active' => true, 'operator_pengusahaan' => false]);
         $period = ['unit_id' => $container->id, 'month' => 9, 'year' => 2026];
-        $operator = $this->userWithRole(RoleName::Operator, $container);
+        $operator = $this->userWithRole(RoleName::ProjectLeaderOperasi, $container);
 
         // No unit of theirs allows it: the permission is not even offered (menus hidden) and the pages refuse.
         $this->assertFalse($operator->hasPermissionTo('operasi.pengusahaan.input'));
@@ -117,8 +130,8 @@ class OperatorPengusahaanAccessTest extends TestCase
         $this->actingAs($operator)->get(route('dashboard'))->assertInertia(fn ($page) => $page->where('auth.permissions', fn ($names): bool => ! collect($names)->contains('operasi.pengusahaan.input')));
 
         // A user of both units: open for PLTD Poasia, closed for the containerized one.
-        $both = $this->userWithRole(RoleName::Operator, $this->unit);
-        $both->assignRole(RoleName::Operator, $container);
+        $both = $this->userWithRole(RoleName::ProjectLeaderOperasi, $this->unit);
+        $both->assignRole(RoleName::ProjectLeaderOperasi, $container);
         $both = $both->fresh();
         $this->actingAs($both)->get(route('operasi.pengusahaan.tara-kalor.index', $this->period()))->assertOk();
         $this->actingAs($both)->get(route('operasi.pengusahaan.tara-kalor.index', $period))->assertForbidden();

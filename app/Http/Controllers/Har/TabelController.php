@@ -43,6 +43,7 @@ class TabelController extends Controller
         $this->authorizeView($user, $definition);
         [$units, $unit, $month, $year] = $this->target($request);
         $rows = $this->rows($definition, $unit, $month, $year);
+        $linked = $definition->linkedRows($unit, $month, $year);
 
         return Inertia::render("har/input/{$definition->key()}/index", [
             'tabel' => $definition->toArray(),
@@ -54,7 +55,9 @@ class TabelController extends Controller
                 'years' => range((int) now()->year - 3, (int) now()->year + 1),
             ],
             'rows' => $rows,
-            'summary' => $rows !== [] ? $definition->summary($rows) : null,
+            // Read-only rows of another module, shown before the HAR rows.
+            'linked_rows' => $linked,
+            'summary' => [...$linked, ...$rows] !== [] ? $definition->summary([...$linked, ...$rows]) : null,
             'urls' => [
                 'index' => route("har.input.{$definition->key()}.index"),
                 'store' => route("har.input.{$definition->key()}.store"),
@@ -123,13 +126,14 @@ class TabelController extends Controller
     }
 
     /**
-     * The PDF view & data of one month — reusable by the Laporan HAR.
+     * The PDF view & data of one month — reusable by the Laporan HAR. The rows
+     * linked from another module come first.
      *
      * @return array{0: string, 1: array<string, mixed>}
      */
     public function pdfView(HarTabel $definition, Unit $unit, int $month, int $year): array
     {
-        $rows = $this->rows($definition, $unit, $month, $year);
+        $rows = [...$definition->linkedRows($unit, $month, $year), ...$this->rows($definition, $unit, $month, $year)];
 
         return ['har.tabel.pdf', [
             'tabel' => $definition,

@@ -52,11 +52,11 @@ type Props = {
     can_write: boolean;
 };
 
-const th = 'border border-slate-400 p-1';
-const td = 'border border-border';
-const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
+const th = 'border border-black p-1 dark:border-white/60';
+const td = 'h-8 border border-black dark:border-white/60';
+const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 dark:focus:bg-yellow-950/40';
 const cellTextarea =
-    'block min-h-16 w-full resize-y rounded-none border-0 bg-transparent px-1 py-1 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none';
+    'block min-h-16 w-full resize-y rounded-none border-0 bg-transparent px-1 py-1 text-xs focus:bg-yellow-50 focus-visible:ring-0 focus-visible:outline-none dark:focus:bg-yellow-950/40';
 
 /**
  * Input Jadwal Program 5S 5R Pemeliharaan: per minggu lima program (Ringkas …
@@ -367,9 +367,9 @@ export default function HarProgram5s5rInput({ unit, filters, options, weeks: ini
                     Isi kondisi, centang tindakan, pilih progres, lalu unggah foto eviden per minggu. Baris yang tidak diisi tidak disimpan dan tidak dicetak sebagai hasil.
                 </p>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[1400px] border-collapse text-xs">
-                        <thead className="bg-slate-100 text-center text-[11px] font-semibold text-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                <div className="overflow-x-auto bg-card">
+                    <table className="w-full min-w-[1400px] border-collapse border-2 border-black text-xs dark:border-white">
+                        <thead className="bg-yellow-200 text-center text-[11px] font-bold text-black uppercase dark:bg-yellow-800 dark:text-yellow-50">
                             <tr>
                                 <th className={th} colSpan={3}>Program Kerja 5S 5R</th>
                                 <th className={`${th} w-32`} rowSpan={2}>PIC</th>

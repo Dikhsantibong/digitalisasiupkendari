@@ -156,23 +156,22 @@ export default function OperatorResume({
 
                 <Card className="grid grid-cols-2 gap-3 p-3 py-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end">
                     {sees_all && options.units.length > 1 && (
-                        <div className="col-span-2 sm:col-span-1">
-                            <OperasiSelect
-                                label="Unit"
-                                value={String(filters.unit_id)}
-                                onChange={(v) =>
-                                    visit({
-                                        unit_id: Number(v),
-                                        employee_id: null,
-                                    })
-                                }
-                                options={options.units.map((u) => ({
-                                    value: String(u.id),
-                                    label: u.name,
-                                }))}
-                                className="w-full sm:w-56"
-                            />
-                        </div>
+                        <OperasiSelect
+                            label="Unit"
+                            value={String(filters.unit_id)}
+                            onChange={(v) =>
+                                visit({
+                                    unit_id: Number(v),
+                                    employee_id: null,
+                                })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            className="w-full sm:w-56"
+                            labelClassName="col-span-2 sm:col-span-1"
+                        />
                     )}
                     <OperasiSelect
                         label="Bulan"

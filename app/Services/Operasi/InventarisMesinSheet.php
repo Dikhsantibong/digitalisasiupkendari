@@ -34,8 +34,7 @@ class InventarisMesinSheet
         $refs = array_map(fn (Machine $m): array => ['id' => $m->id, 'capacity_kw' => $m->capacity_kw === null ? null : (float) $m->capacity_kw], $machines->all());
         $mampu = $this->mesin->dayaMampu($unit, $month, $year, $refs);
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
-        $bebanSheet = $this->mesin->record($unit, MesinHarianJenis::BebanTinggi, $month, $year);
-        $beban = $this->mesin->summarize(MesinHarianJenis::BebanTinggi, $this->mesin->sanitize(MesinHarianJenis::BebanTinggi, $bebanSheet?->readings ?? [], $refs, $daysInMonth), $refs, $daysInMonth)['by_machine'];
+        $beban = $this->mesin->summarize(MesinHarianJenis::BebanTinggi, $this->mesin->bebanTertinggi($unit, $month, $year, $refs), $refs, $daysInMonth)['by_machine'];
         $overrides = $this->record($unit, $month, $year)?->overrides ?? [];
 
         $rows = $machines->values()->map(function (Machine $machine, int $index) use ($mampu, $beban, $overrides): array {

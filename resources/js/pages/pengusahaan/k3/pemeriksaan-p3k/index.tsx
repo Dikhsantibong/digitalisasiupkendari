@@ -640,7 +640,7 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
 
                 {/* Table Content */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="p3k-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet p3k-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
                         <thead>
                             <tr className="bg-muted/40 font-bold uppercase text-foreground">
                                 <th className="w-10 border border-black px-1.5 py-1.5 text-center dark:border-border">

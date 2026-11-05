@@ -4,16 +4,15 @@ namespace Tests\Feature\Operasi;
 
 use App\Enums\MesinHarianJenis;
 use App\Enums\RoleName;
-use App\Enums\StatusCodeCategory;
-use App\Models\EngineStatusLog;
 use App\Models\Machine;
 use App\Models\OperasiMesinHarian;
+use App\Models\OperatorStartStop;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
-use App\Models\UnitStatusCode;
 use App\Services\Operasi\MesinHarianSheet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithAccessControl;
+use Tests\Concerns\RecordsLogsheetLoad;
 use Tests\TestCase;
 
 /**
@@ -22,7 +21,7 @@ use Tests\TestCase;
  */
 class MesinHarianTest extends TestCase
 {
-    use InteractsWithAccessControl, RefreshDatabase;
+    use InteractsWithAccessControl, RecordsLogsheetLoad, RefreshDatabase;
 
     private Unit $unit;
 
@@ -54,10 +53,23 @@ class MesinHarianTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('pengusahaan/operasi/beban-tinggi/index')->where("daya_mampu.{$this->mak1->id}", 2544));
 
+        // The values come from the operators' logsheet: the highest LOAD of each day.
+        $this->logsheetLoad($this->mak1, '2026-09-01', [1200, 1500, 900]);
+        $this->logsheetLoad($this->mak1, '2026-09-02', [1450]);
+        $this->logsheetLoad($this->mak3, '2026-09-01', [1800]);
+        $this->logsheetLoad($this->mak3, '2026-09-02', [1600, 1700]);
+
+        // Typed readings are ignored; daya mampu & catatan are still saved.
         $this->actingAs($tl)->post(route('operasi.pengusahaan.beban-tinggi.store'), $this->period([
-            'readings' => [$this->mak1->id => ['1' => 1500, '2' => 1450], $this->mak3->id => ['1' => 1800, '2' => 1700]],
+            'readings' => [$this->mak1->id => ['1' => 99]],
             'daya_mampu' => [$this->mak1->id => 1500, $this->mak3->id => 1800],
         ]))->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->actingAs($tl)->get(route('operasi.pengusahaan.beban-tinggi.index', $this->period()))
+            ->assertInertia(fn ($page) => $page
+                ->where('from_logsheet', true)
+                ->where("readings.{$this->mak1->id}.1", 1500)
+                ->where("readings.{$this->mak3->id}.2", 1700));
 
         $record = OperasiMesinHarian::query()->where('jenis', MesinHarianJenis::BebanTinggi)->sole();
         $this->assertEquals([$this->mak1->id => 1500, $this->mak3->id => 1800], $record->params['daya_mampu']);
@@ -72,27 +84,27 @@ class MesinHarianTest extends TestCase
         $this->assertSame(3300.0, $summary['total']);
     }
 
-    public function test_jumlah_kali_gangguan_counts_whole_numbers_and_reads_star_stop(): void
+    public function test_jumlah_kali_gangguan_comes_from_the_start_stop_engine_gangguan_stops(): void
     {
-        $code = UnitStatusCode::factory()->create(['category' => StatusCodeCategory::Gangguan, 'label' => 'Trip tanpa indikasi']);
-        EngineStatusLog::factory()->create(['unit_id' => $this->unit->id, 'engine_id' => $this->mak1->id, 'report_date' => '2026-09-11', 'status_code_id' => $code->id, 'start_datetime' => '2026-09-11 13:34:00', 'stop_datetime' => '2026-09-11 14:00:00', 'duration_minutes' => 26, 'keterangan' => null]);
-        EngineStatusLog::factory()->create(['unit_id' => $this->unit->id, 'engine_id' => $this->mak1->id, 'report_date' => '2026-09-11', 'status_code_id' => $code->id, 'start_datetime' => '2026-09-11 15:07:00', 'stop_datetime' => '2026-09-11 16:55:00', 'duration_minutes' => 108]);
+        OperatorStartStop::factory()->gangguan()->count(2)->create(['engine_id' => $this->mak1->id, 'unit_id' => $this->unit->id, 'tanggal' => '2026-09-11']);
+        OperatorStartStop::factory()->create(['engine_id' => $this->mak1->id, 'unit_id' => $this->unit->id, 'tanggal' => '2026-09-12']);
         $tl = $this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit);
 
         $this->actingAs($tl)->get(route('operasi.pengusahaan.kali-gangguan.index', $this->period()))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('pengusahaan/operasi/kali-gangguan/index')
-                ->where("star_stop.{$this->mak1->id}.11", 2)
-                ->has('star_stop_notes', 2)
-                ->where('star_stop_notes.0', 'Tgl 11/09 MAK #1 jam 13:34 Trip tanpa indikasi, jam 14:00 start kembali')
+                ->where('from_start_stop', true)
+                ->where("readings.{$this->mak1->id}.11", 2)
+                ->missing("readings.{$this->mak1->id}.12")
                 ->where('daya_mampu', null));
 
-        $this->actingAs($tl)->post(route('operasi.pengusahaan.kali-gangguan.store'), $this->period(['readings' => [$this->mak1->id => ['11' => 1.5]]]))
-            ->assertSessionHasErrors('readings.*.*');
-        $this->actingAs($tl)->post(route('operasi.pengusahaan.kali-gangguan.store'), $this->period(['readings' => [$this->mak1->id => ['11' => 2]], 'catatan' => '1. Tgl 11 MAK #1 trip']))
+        // Typed counts are ignored; the catatan is saved.
+        $this->actingAs($tl)->post(route('operasi.pengusahaan.kali-gangguan.store'), $this->period(['readings' => [$this->mak1->id => ['11' => 7]], 'catatan' => '1. Tgl 11 MAK #1 trip']))
             ->assertSessionHasNoErrors();
-        $this->assertSame(2.0, (float) OperasiMesinHarian::query()->where('jenis', MesinHarianJenis::KaliGangguan)->sole()->readings[$this->mak1->id][11]);
+        $record = OperasiMesinHarian::query()->where('jenis', MesinHarianJenis::KaliGangguan)->sole();
+        $this->assertSame(2.0, (float) $record->readings[$this->mak1->id][11]);
+        $this->assertSame('1. Tgl 11 MAK #1 trip', $record->catatan);
     }
 
     public function test_tara_kalor_is_typed_in_and_averaged_over_the_filled_cells(): void

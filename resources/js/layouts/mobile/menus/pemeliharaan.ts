@@ -13,6 +13,7 @@ import {
     Image,
     MessageSquare,
     NotebookPen,
+    Package,
     Ruler,
     ShieldAlert,
     Siren,
@@ -32,6 +33,7 @@ import activity from '@/routes/har/input/activity';
 import attachment from '@/routes/har/input/attachment';
 import rekapGangguan from '@/routes/har/input/laporan-gangguan';
 import harLembar from '@/routes/har/input/lembar';
+import materialPeralatan from '@/routes/har/input/material-peralatan';
 import patrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import program5s5r from '@/routes/har/input/program-5s5r';
 import serviceRequest from '@/routes/har/input/service-request';
@@ -163,6 +165,16 @@ const INPUT: Entry[] = [
         'bg-orange-500/10 text-orange-600 dark:text-orange-400',
         patrolCheckParameter.index().url,
         'har/input/patrol-check-parameter/index',
+    ],
+    [
+        'material_peralatan',
+        'Material & Peralatan',
+        'Material',
+        'Cek kelengkapan peralatan & material',
+        Package,
+        'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        materialPeralatan.index().url,
+        'har/input/material-peralatan/index',
     ],
 ];
 

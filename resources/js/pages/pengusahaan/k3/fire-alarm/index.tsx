@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -533,7 +534,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
 
                 {/* Table Content */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="fa-table w-full border-collapse border border-black text-[11px] dark:border-border">
+                    <table className="excel-sheet fa-table w-full border-collapse border border-black text-[11px] dark:border-border">
                         <thead>
                             <tr className="bg-muted/40 font-bold uppercase text-foreground">
                                 <th className="w-12 border border-black px-2 py-2 text-center dark:border-border">
@@ -604,17 +605,12 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                     {/* Kondisi */}
                                     <td className="border border-black px-2 py-2 text-center dark:border-border">
                                         {can_write ? (
-                                            <select
+                                            <PdmCellSelect
                                                 value={item.kondisi}
-                                                onChange={(e) =>
-                                                    updateItem(item._key, 'kondisi', e.target.value)
-                                                }
-                                                className="w-full bg-transparent text-center font-medium focus:outline-none"
-                                            >
-                                                <option value="Baik">Baik</option>
-                                                <option value="Rusak">Rusak</option>
-                                                <option value="Perlu Perbaikan">Perlu Perbaikan</option>
-                                            </select>
+                                                onChange={(value) => updateItem(item._key, 'kondisi', value)}
+                                                options={['Baik', 'Rusak', 'Perlu Perbaikan']}
+                                                className="h-8 justify-center font-medium"
+                                            />
                                         ) : (
                                             <span>{item.kondisi}</span>
                                         )}
@@ -623,19 +619,12 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                     {/* Panel Indikator */}
                                     <td className="border border-black px-2 py-2 text-center dark:border-border">
                                         {can_write ? (
-                                            <select
+                                            <PdmCellSelect
                                                 value={item.panel_indikator}
-                                                onChange={(e) =>
-                                                    updateItem(item._key, 'panel_indikator', e.target.value)
-                                                }
-                                                className="w-full bg-transparent text-center font-medium focus:outline-none"
-                                            >
-                                                <option value="Baik">Baik</option>
-                                                <option value="Normal">Normal</option>
-                                                <option value="Alarm">Alarm</option>
-                                                <option value="Trouble">Trouble</option>
-                                                <option value="Rusak">Rusak</option>
-                                            </select>
+                                                onChange={(value) => updateItem(item._key, 'panel_indikator', value)}
+                                                options={['Baik', 'Normal', 'Alarm', 'Trouble', 'Rusak']}
+                                                className="h-8 justify-center font-medium"
+                                            />
                                         ) : (
                                             <span>{item.panel_indikator}</span>
                                         )}

@@ -571,7 +571,7 @@ export default function OperasiJadwalBlackstartIndex({
                         </div>
                     ) : (
                     <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                        <table className="excel-sheet print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
                                 <tr className="print-orange-header bg-[#ed7d31] text-black font-bold">
                                     <th rowSpan={2} className="border border-black px-2 py-1.5 text-[11px] dark:border-white" style={{ width: '30px' }}>
@@ -784,7 +784,7 @@ export default function OperasiJadwalBlackstartIndex({
 
                     {/* Table 2: Recap Kinerja Bawah Kiri (matching reference) */}
                     <div className="mt-6 w-full max-w-lg">
-                        <table className="print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                        <table className="excel-sheet print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
                                 <tr className="print-orange-header bg-[#ed7d31] text-black font-bold">
                                     <th className="border border-black px-2 py-1 text-[11px] dark:border-white" style={{ width: '35px' }}>

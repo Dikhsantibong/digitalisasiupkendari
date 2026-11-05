@@ -13,22 +13,11 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
-import {
-    buildDocumentHeader,
-    createSheet,
-    downloadWorkbook,
-    mergeCells,
-    paintSheet,
-    setColWidths,
-    SPECS,
-    XLSX_COLORS,
-} from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
+import { ChoiceChips } from '@/components/mobile/choice-chips';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
-import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +30,19 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
+    buildDocumentHeader,
+    createSheet,
+    downloadWorkbook,
+    mergeCells,
+    paintSheet,
+    setColWidths,
+    SPECS,
+    XLSX_COLORS,
+} from '@/lib/jadwal-excel';
 import jadwal from '@/routes/operasi/jadwal';
 import commissioningTest from '@/routes/operasi/jadwal/commissioning-test';
 import type { IdName } from '@/types';
@@ -185,11 +186,18 @@ export default function HarJadwalCommissioningTestPage({
 
     // Toggle status column
     const toggleStatus = (rowIndex: number, statusVal: string) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r, idx) => {
-                if (idx !== rowIndex) return r;
+                if (idx !== rowIndex) {
+return r;
+}
+
                 const newStatus = r.status === statusVal ? null : statusVal;
+
                 return { ...r, status: newStatus };
             }),
         );
@@ -202,7 +210,10 @@ export default function HarJadwalCommissioningTestPage({
         field: keyof CommissioningRow,
         value: string,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r, idx) =>
                 idx === rowIndex ? { ...r, [field]: value } : r,
@@ -213,10 +224,13 @@ export default function HarJadwalCommissioningTestPage({
 
     // Add activity
     const handleAddRow = () => {
-        if (!newKegiatan.trim()) return;
+        if (!newKegiatan.trim()) {
+return;
+}
 
         setRows((prev) => {
             const sectionItems = prev.filter((r) => r.section === newSection);
+
             return [
                 ...prev,
                 {
@@ -237,7 +251,10 @@ export default function HarJadwalCommissioningTestPage({
 
     // Remove row
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.filter((_, idx) => idx !== rowIndex));
         setDirty(true);
     };
@@ -251,7 +268,10 @@ export default function HarJadwalCommissioningTestPage({
 
     // Save
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -293,9 +313,11 @@ export default function HarJadwalCommissioningTestPage({
 
         rows.forEach((r, originalIndex) => {
             const sec = r.section || 'PERSIAPAN';
+
             if (!secMap.has(sec)) {
                 secMap.set(sec, []);
             }
+
             secMap.get(sec)!.push({ row: r, originalIndex });
         });
 
@@ -397,6 +419,7 @@ export default function HarJadwalCommissioningTestPage({
             if (r < 4) {
                 return null; // document header is drawn separately
             }
+
             if (r === headerTop || r === headerBottom) {
                 return SPECS.headerOrange;
             }
@@ -409,20 +432,24 @@ export default function HarJadwalCommissioningTestPage({
                 if (c === 1) {
                     return SPECS.cellLeft;
                 }
+
                 if (c >= 2 && c <= 6) {
                     return String(headerRows[r]?.[c] ?? '') === '✓'
                         ? checkCell
                         : SPECS.cell;
                 }
+
                 if (c === 7) {
                     return SPECS.cellLeft;
                 }
+
                 return SPECS.cell;
             }
 
             if (r === catatanHeaderIdx) {
                 return c === 0 ? SPECS.category : null;
             }
+
             if (r === catatanTextIdx) {
                 return c === 0 ? SPECS.cellLeft : null;
             }
@@ -690,11 +717,20 @@ export default function HarJadwalCommissioningTestPage({
                                             <div className="grid grid-cols-2 gap-2">
                                                 <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                                     PIC
-                                                    <select value={row.pic} onChange={(e) => updateField(originalIndex, 'pic', e.target.value)} disabled={!can_write} className="h-10 rounded-md border border-input bg-transparent px-2 text-sm text-foreground">
-                                                        <option value="">—</option>
-                                                        {row.pic && !employees.includes(row.pic) && <option value={row.pic}>{row.pic}</option>}
-                                                        {employees.map((name) => <option key={name} value={name}>{name}</option>)}
-                                                    </select>
+                                                    <Select value={row.pic || '__none__'} onValueChange={(value) => updateField(originalIndex, 'pic', value === '__none__' ? '' : value)} disabled={!can_write}>
+                                                        <SelectTrigger className="h-10 w-full text-sm text-foreground">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="__none__" className="text-muted-foreground">—</SelectItem>
+                                                            {row.pic && !employees.includes(row.pic) && <SelectItem value={row.pic}>{row.pic}</SelectItem>}
+                                                            {employees.map((name) => (
+                                                                <SelectItem key={name} value={name}>
+                                                                    {name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </label>
                                                 <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                                     Paraf
@@ -708,7 +744,7 @@ export default function HarJadwalCommissioningTestPage({
                         </div>
                     ) : (
                     <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse text-xs">
+                        <table className="excel-sheet print-table w-full border-collapse text-xs">
                             <thead className="print-orange-header bg-[#ed7d31] text-black">
                                 <tr>
                                     <th
@@ -1004,20 +1040,16 @@ export default function HarJadwalCommissioningTestPage({
                             <Label htmlFor="section-select">
                                 Bagian / Kategori
                             </Label>
-                            <select
-                                id="section-select"
-                                value={newSection}
-                                onChange={(e) => setNewSection(e.target.value)}
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                            >
-                                <option value="PERSIAPAN">PERSIAPAN</option>
-                                <option value="PARAREL GENERATOR">
-                                    PARAREL GENERATOR
-                                </option>
-                                <option value="PENGUJIAN LAINNYA">
-                                    PENGUJIAN LAINNYA
-                                </option>
-                            </select>
+                            <Select value={newSection} onValueChange={(value) => setNewSection(value)}>
+                                <SelectTrigger className="h-9 w-full text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="PERSIAPAN">PERSIAPAN</SelectItem>
+                                    <SelectItem value="PARAREL GENERATOR">PARAREL GENERATOR</SelectItem>
+                                    <SelectItem value="PENGUJIAN LAINNYA">PENGUJIAN LAINNYA</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="grid gap-1.5">

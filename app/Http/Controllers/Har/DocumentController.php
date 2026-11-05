@@ -58,7 +58,7 @@ class DocumentController extends Controller
      * Patrol Check, 5S5R), Daftar Isi page numbers;
      * v21 = Patrol Check Parameter Mesin (per mesin) added after the Patrol Check.
      */
-    private const BODY_VERSION = 21;
+    private const BODY_VERSION = 22;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PEMELIHARAAN PEMBANGKIT';
 

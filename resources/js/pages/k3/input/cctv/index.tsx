@@ -8,6 +8,7 @@ import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-selec
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
@@ -44,13 +45,24 @@ export default function CctvInput({ unit, filters, rows: initial, options, can_w
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [sig, setSig] = useState(signature);
-    if (sig !== signature) { setSig(signature); setRows(initial.map(toRow)); setDirty(false); }
+
+    if (sig !== signature) {
+ setSig(signature); setRows(initial.map(toRow)); setDirty(false); 
+}
 
     const visit = (patch: Partial<Props['filters']>) => router.get(cctv.index().url, { ...filters, ...patch }, { preserveState: true, preserveScroll: true, replace: true });
-    const update = (i: number, k: keyof Row, v: string) => { setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r))); setDirty(true); };
-    const addRow = () => { setRows((p) => [...p, empty()]); setDirty(true); };
-    const removeRow = (i: number) => { setRows((p) => p.filter((_, idx) => idx !== i)); setDirty(true); };
-    const save = () => { setSaving(true); router.post(cctv.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); };
+    const update = (i: number, k: keyof Row, v: string) => {
+ setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r))); setDirty(true); 
+};
+    const addRow = () => {
+ setRows((p) => [...p, empty()]); setDirty(true); 
+};
+    const removeRow = (i: number) => {
+ setRows((p) => p.filter((_, idx) => idx !== i)); setDirty(true); 
+};
+    const save = () => {
+ setSaving(true); router.post(cctv.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
+};
 
     const cell = (i: number, k: keyof Row, type = 'text', placeholder = '') =>
         can_write ? <Input type={type} value={rows[i][k] as string} onChange={(e) => update(i, k, e.target.value)} className="h-8 text-xs" placeholder={placeholder} /> : <span className="text-xs">{(rows[i][k] as string) || '-'}</span>;
@@ -103,8 +115,8 @@ export default function CctvInput({ unit, filters, rows: initial, options, can_w
                         removeLabel="Hapus CCTV"
                     />
                 ) : (
-                    <div className="overflow-x-auto rounded-md border border-border bg-card">
-                        <table className="w-full border-collapse text-xs">
+                    <div className="overflow-x-auto bg-card">
+                        <table className="excel-sheet w-full border-collapse text-xs">
                             <thead className="bg-muted/50">
                                 <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
                                     <th className="w-10">No</th><th className="w-32">Tanggal</th><th>No CCTV</th><th className="text-left">Titik Lokasi CCTV</th><th>Status</th><th>Foto Terpasang (URL)</th><th>Foto Tampilan (URL)</th><th className="text-left">Keterangan</th>{can_write && <th className="w-12">Aksi</th>}
@@ -121,11 +133,16 @@ export default function CctvInput({ unit, filters, rows: initial, options, can_w
                                         <td className="min-w-[200px]">{cell(i, 'titik_lokasi')}</td>
                                         <td className="min-w-[90px]">
                                             {can_write ? (
-                                                <select value={rows[i].status} onChange={(e) => update(i, 'status', e.target.value)} className="h-8 w-full rounded-md border border-input bg-transparent px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                                                    <option value="on">ON</option>
-                                                    <option value="off">OFF</option>
-                                                    <option value="rusak">RUSAK</option>
-                                                </select>
+                                                <Select value={rows[i].status} onValueChange={(value) => update(i, 'status', value)}>
+                                                    <SelectTrigger className="h-8 w-full text-xs">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="on" className="text-xs">ON</SelectItem>
+                                                        <SelectItem value="off" className="text-xs">OFF</SelectItem>
+                                                        <SelectItem value="rusak" className="text-xs">RUSAK</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             ) : (
                                                 <span className="text-xs uppercase">{rows[i].status}</span>
                                             )}

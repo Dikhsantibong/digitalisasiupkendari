@@ -429,7 +429,7 @@ function SectionTable({
 
     return (
         <div className={`overflow-x-auto border border-border ${showSectionRows || !sections[0].label ? 'rounded-md' : 'rounded-b-md'}`}>
-            <table className="w-full border-collapse text-xs" style={{ minWidth: `${Math.max(760, columns.length * 125)}px` }}>
+            <table className="excel-sheet w-full border-collapse text-xs" style={{ minWidth: `${Math.max(760, columns.length * 125)}px` }}>
                 <thead>
                     <tr className="bg-sky-100/70 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:font-semibold">
                         <th rowSpan={hasGroup ? 2 : 1} className="w-10">No</th>

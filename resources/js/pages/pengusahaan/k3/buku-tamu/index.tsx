@@ -585,7 +585,7 @@ return;
 
                 {/* VISITOR LOG TABLE */}
                 <div className="mt-3 overflow-x-auto">
-                    <table className="buku-tamu-table w-full border-collapse border-2 border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet buku-tamu-table w-full border-collapse border-2 border-black text-[10px] dark:border-border sm:text-[11px]">
                         <thead>
                             <tr className="bg-muted/40 font-bold uppercase text-foreground">
                                 <th rowSpan={2} className="w-10 border border-black px-1.5 py-2 text-center dark:border-border">

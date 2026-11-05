@@ -7,11 +7,13 @@ use App\Http\Controllers\Har\DailyMeetingController;
 use App\Http\Controllers\Har\LaporanGangguanController;
 use App\Http\Controllers\Har\LembarController;
 use App\Http\Controllers\Har\LogbookMutasiController;
+use App\Http\Controllers\Har\MaterialPeralatanController;
 use App\Http\Controllers\Har\PatrolCheckParameterController;
 use App\Http\Controllers\Har\Program5s5rController;
 use App\Http\Controllers\Har\TabelController;
 use App\Models\HarLaporanGangguan;
 use App\Models\HarLembarRow;
+use App\Models\HarMaterialPeralatan;
 use App\Models\HarProgram5s5rItem;
 use App\Models\HarTabelRow;
 use App\Models\Machine;
@@ -194,7 +196,8 @@ class HarDocumentBuilder
                 'key' => 'tabel-'.$tabel->key(),
                 'title' => $tabel->title(),
                 'orientation' => $tabel->orientation(),
-                'saved' => HarTabelRow::query()->where(['unit_id' => $unit->id, 'tabel' => $tabel->key(), 'year' => $year, 'month' => $month])->exists(),
+                'saved' => HarTabelRow::query()->where(['unit_id' => $unit->id, 'tabel' => $tabel->key(), 'year' => $year, 'month' => $month])->exists()
+                    || $tabel->linkedRows($unit, $month, $year) !== [],
                 'view' => fn (): array => $tabels->pdfView($tabel, $unit, $month, $year),
             ];
         }
@@ -228,6 +231,15 @@ class HarDocumentBuilder
             'orientation' => 'landscape',
             'saved' => HarProgram5s5rItem::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->exists(),
             'view' => fn (): array => app(Program5s5rController::class)->pdfView($unit, $month, $year),
+        ];
+
+        $sources[] = [
+            'group' => 'input',
+            'key' => 'material-peralatan',
+            'title' => 'Laporan Material dan Peralatan',
+            'orientation' => 'landscape',
+            'saved' => HarMaterialPeralatan::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->exists(),
+            'view' => fn (): array => app(MaterialPeralatanController::class)->pdfView($unit, $month, $year),
         ];
 
         return $sources;

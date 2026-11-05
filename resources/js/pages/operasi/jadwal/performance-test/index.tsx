@@ -808,7 +808,7 @@ export default function JadwalPerformanceTestIndex({
                         </div>
                     ) : (
                     <div className="overflow-x-auto">
-                        <table className="print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                        <table className="excel-sheet print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
                                 <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
                                     <th
@@ -1148,7 +1148,7 @@ export default function JadwalPerformanceTestIndex({
 
                     {/* Table 2: Recap Table Bawah Kiri (matching reference) */}
                     <div className="mt-6 w-full max-w-md">
-                        <table className="print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                        <table className="excel-sheet print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
                                 <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
                                     <th

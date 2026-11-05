@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import {
     buildDocumentHeader,
@@ -882,7 +883,7 @@ return { ...SPECS.cell, fill: baseBg };
                             />
                         </div>
                     ) : (
-                    <table className="w-full min-w-[1550px] border-collapse text-xs">
+                    <table className="excel-sheet w-full min-w-[1550px] border-collapse text-xs">
                         <thead>
                             <tr className="border-b border-border bg-muted/60 text-muted-foreground">
                                 <th rowSpan={2} className="w-10 min-w-10 border-r border-border px-2 py-2 text-center font-bold">
@@ -1153,29 +1154,31 @@ return { ...SPECS.cell, fill: baseBg };
                     <div className="space-y-3 py-2 text-xs">
                         <div>
                             <Label className="text-xs">Kelompok Kategori</Label>
-                            <select
-                                value={newCategory}
-                                onChange={(e) => setNewCategory(e.target.value)}
-                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="I. HARMES">I. HARMES (Pemeliharaan Mesin)</option>
-                                <option value="II. HARLIS">II. HARLIS (Pemeliharaan Listrik)</option>
-                            </select>
+                            <Select value={newCategory} onValueChange={(value) => setNewCategory(value)}>
+                                <SelectTrigger className="mt-1 h-9 w-full text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="I. HARMES" className="text-xs">I. HARMES (Pemeliharaan Mesin)</SelectItem>
+                                    <SelectItem value="II. HARLIS" className="text-xs">II. HARLIS (Pemeliharaan Listrik)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div>
                             <Label className="text-xs">Pilih dari Pegawai Unit (Opsional)</Label>
-                            <select
-                                value={newEmployeeId}
-                                onChange={(e) => handleSelectEmployeeAdd(e.target.value)}
-                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="">-- Ketik Nama Manual / Pilih Pegawai --</option>
-                                {options.employees.map((emp) => (
-                                    <option key={emp.id} value={emp.id}>
-                                        {emp.name} ({emp.position || 'Pegawai'})
-                                    </option>
-                                ))}
-                            </select>
+                            <Select value={newEmployeeId ? String(newEmployeeId) : '__none__'} onValueChange={(value) => handleSelectEmployeeAdd(value === '__none__' ? '' : value)}>
+                                <SelectTrigger className="mt-1 h-9 w-full text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__" className="text-xs text-muted-foreground">-- Ketik Nama Manual / Pilih Pegawai --</SelectItem>
+                                    {options.employees.map((emp) => (
+                                        <SelectItem key={emp.id} value={String(emp.id)} className="text-xs">
+                                            {emp.name} ({emp.position || 'Pegawai'})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div>
                             <Label className="text-xs">Nama Personil</Label>
@@ -1230,31 +1233,31 @@ return { ...SPECS.cell, fill: baseBg };
                     <div className="space-y-3 py-2 text-xs">
                         <div>
                             <Label className="text-xs">Kelompok Kategori</Label>
-                            <select
-                                value={editForm.kategori}
-                                onChange={(e) =>
-                                    setEditForm((prev) => ({ ...prev, kategori: e.target.value }))
-                                }
-                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="I. HARMES">I. HARMES (Pemeliharaan Mesin)</option>
-                                <option value="II. HARLIS">II. HARLIS (Pemeliharaan Listrik)</option>
-                            </select>
+                            <Select value={editForm.kategori} onValueChange={(value) => setEditForm((prev) => ({ ...prev, kategori: value }))}>
+                                <SelectTrigger className="mt-1 h-9 w-full text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="I. HARMES" className="text-xs">I. HARMES (Pemeliharaan Mesin)</SelectItem>
+                                    <SelectItem value="II. HARLIS" className="text-xs">II. HARLIS (Pemeliharaan Listrik)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div>
                             <Label className="text-xs">Pilih dari Pegawai Unit (Opsional)</Label>
-                            <select
-                                value={editForm.employee_id ? String(editForm.employee_id) : ''}
-                                onChange={(e) => handleSelectEmployeeEdit(e.target.value)}
-                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="">-- Ketik Nama Manual / Pilih Pegawai --</option>
-                                {options.employees.map((emp) => (
-                                    <option key={emp.id} value={emp.id}>
-                                        {emp.name} ({emp.position || 'Pegawai'})
-                                    </option>
-                                ))}
-                            </select>
+                            <Select value={editForm.employee_id ? String(editForm.employee_id) : '__none__'} onValueChange={(value) => handleSelectEmployeeEdit(value === '__none__' ? '' : value)}>
+                                <SelectTrigger className="mt-1 h-9 w-full text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__" className="text-xs text-muted-foreground">-- Ketik Nama Manual / Pilih Pegawai --</SelectItem>
+                                    {options.employees.map((emp) => (
+                                        <SelectItem key={emp.id} value={String(emp.id)} className="text-xs">
+                                            {emp.name} ({emp.position || 'Pegawai'})
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
                             <div className="col-span-1">

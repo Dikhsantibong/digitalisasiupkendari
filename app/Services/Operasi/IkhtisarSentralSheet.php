@@ -90,8 +90,7 @@ class IkhtisarSentralSheet
 
         $auto['summary.kwh_pemakaian_sendiri'] = round($ps, 2);
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
-        $bebanSheet = $this->mesin->record($unit, MesinHarianJenis::BebanTinggi, $month, $year);
-        $auto['summary.beban_puncak_malam_kw'] = $this->mesin->summarize(MesinHarianJenis::BebanTinggi, $this->mesin->sanitize(MesinHarianJenis::BebanTinggi, $bebanSheet?->readings ?? [], $refs, $daysInMonth), $refs, $daysInMonth)['total'];
+        $auto['summary.beban_puncak_malam_kw'] = $this->mesin->summarize(MesinHarianJenis::BebanTinggi, $this->mesin->bebanTertinggi($unit, $month, $year, $refs), $refs, $daysInMonth)['total'];
 
         $start = Carbon::create($year, $month, 1);
         $fuel = FuelReceipt::query()->where('unit_id', $unit->id)->whereBetween('report_date', [$start->toDateString(), $start->copy()->endOfMonth()->toDateString()])->get(['fuel_type', 'volume_liter']);

@@ -34,51 +34,58 @@ type Props = {
 function getHeaderCellClass(level: number, startCol: number): string {
     // Col 0..3: TGL, PIC, JAM, LOAD (KW)
     if (startCol <= 3) {
-        return 'border border-slate-300 bg-slate-200/90 text-slate-800 dark:border-slate-700 dark:bg-slate-800/90 dark:text-slate-100 font-bold';
+        return 'border border-black bg-slate-200/90 text-slate-800 dark:border-white/60 dark:bg-slate-800/90 dark:text-slate-100 font-bold';
     }
 
     // Col 4..9: ENGINE (Coolant, LO temp, T/C, LO press)
     if (startCol >= 4 && startCol <= 9) {
         if (level === 0) {
-            return 'border border-amber-300 bg-amber-200/90 text-amber-950 font-bold dark:border-amber-800 dark:bg-amber-900/60 dark:text-amber-100';
+            return 'border border-black bg-amber-200/90 text-amber-950 font-bold dark:border-white/60 dark:bg-amber-900/60 dark:text-amber-100';
         }
+
         if (level === 1) {
-            return 'border border-amber-200 bg-amber-100/90 text-amber-900 font-semibold dark:border-amber-900/70 dark:bg-amber-950/50 dark:text-amber-200';
+            return 'border border-black bg-amber-100/90 text-amber-900 font-semibold dark:border-white/60 dark:bg-amber-950/50 dark:text-amber-200';
         }
+
         if (level === 2) {
-            return 'border border-amber-200/80 bg-amber-50 text-amber-900 font-medium dark:border-amber-900/60 dark:bg-amber-950/35 dark:text-amber-200';
+            return 'border border-black bg-amber-50 text-amber-900 font-medium dark:border-white/60 dark:bg-amber-950/35 dark:text-amber-200';
         }
-        return 'border border-amber-200/60 bg-amber-50/70 text-amber-900 font-medium dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300';
+
+        return 'border border-black bg-amber-50/70 text-amber-900 font-medium dark:border-white/60 dark:bg-amber-950/20 dark:text-amber-300';
     }
 
     // Col 10..21: GENERATOR (Bearing, Winding, Ampere, Voltage, Cos Phi, Kvar)
     if (startCol >= 10 && startCol <= 21) {
         if (level === 0) {
-            return 'border border-sky-300 bg-sky-200/90 text-sky-950 font-bold dark:border-sky-800 dark:bg-sky-900/60 dark:text-sky-100';
+            return 'border border-black bg-sky-200/90 text-sky-950 font-bold dark:border-white/60 dark:bg-sky-900/60 dark:text-sky-100';
         }
+
         if (level === 1) {
-            return 'border border-sky-200 bg-sky-100/90 text-sky-900 font-semibold dark:border-sky-900/70 dark:bg-sky-950/50 dark:text-sky-200';
+            return 'border border-black bg-sky-100/90 text-sky-900 font-semibold dark:border-white/60 dark:bg-sky-950/50 dark:text-sky-200';
         }
+
         if (level === 2) {
-            return 'border border-sky-200/80 bg-sky-50 text-sky-900 font-medium dark:border-sky-900/60 dark:bg-sky-950/35 dark:text-sky-200';
+            return 'border border-black bg-sky-50 text-sky-900 font-medium dark:border-white/60 dark:bg-sky-950/35 dark:text-sky-200';
         }
-        return 'border border-sky-200/60 bg-sky-50/70 text-sky-900 font-medium dark:border-sky-900/50 dark:bg-sky-950/20 dark:text-sky-300';
+
+        return 'border border-black bg-sky-50/70 text-sky-900 font-medium dark:border-white/60 dark:bg-sky-950/20 dark:text-sky-300';
     }
 
     // Col 22..23: TRAFO (Oil Level, Temp)
     if (startCol >= 22 && startCol <= 23) {
         if (level === 0) {
-            return 'border border-emerald-300 bg-emerald-200/90 text-emerald-950 font-bold dark:border-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-100';
+            return 'border border-black bg-emerald-200/90 text-emerald-950 font-bold dark:border-white/60 dark:bg-emerald-900/60 dark:text-emerald-100';
         }
-        return 'border border-emerald-200 bg-emerald-100/90 text-emerald-900 font-semibold dark:border-emerald-900/70 dark:bg-emerald-950/50 dark:text-emerald-200';
+
+        return 'border border-black bg-emerald-100/90 text-emerald-900 font-semibold dark:border-white/60 dark:bg-emerald-950/50 dark:text-emerald-200';
     }
 
     // Col 24: VOLT. BATTERY (VDC)
-    return 'border border-violet-300 bg-violet-200/90 text-violet-950 font-bold dark:border-violet-800 dark:bg-violet-900/60 dark:text-violet-100';
+    return 'border border-black bg-violet-200/90 text-violet-950 font-bold dark:border-white/60 dark:bg-violet-900/60 dark:text-violet-100';
 }
 
 const cellInput =
-    'h-7 w-full min-w-0 bg-transparent px-1 text-center text-xs outline-none focus:bg-background focus:ring-1 focus:ring-primary disabled:cursor-not-allowed';
+    'h-8 w-full min-w-0 bg-transparent px-1 text-center text-xs outline-none focus:bg-yellow-50 focus:ring-0 disabled:cursor-not-allowed dark:focus:bg-yellow-950/40';
 
 /**
  * Patrol Check Parameter Mesin — pembacaan harian per mesin (engine,
@@ -109,11 +116,14 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
 
         return sheet.header_rows.map((cells, level) => {
             let col = 0;
+
             return cells.map((cell) => {
                 while (col < totalCols && occupied[level]?.[col]) {
                     col++;
                 }
+
                 const startCol = col;
+
                 for (let r = level; r < level + cell.rowspan; r++) {
                     for (let c = col; c < col + cell.colspan; c++) {
                         if (occupied[r]) {
@@ -121,7 +131,9 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                         }
                     }
                 }
+
                 col += cell.colspan;
+
                 return {
                     ...cell,
                     startCol,
@@ -194,9 +206,7 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                     <PageHeader title={sheet.title} description={`${unit.name} · ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}${machineName ? ` · ${machineName}` : ''}`} />
 
                     <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <div className="col-span-2">
-                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v), machine_id: null })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
-                        </div>
+                        <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v), machine_id: null })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" labelClassName="col-span-2" />
                         <div className="col-span-2">
                             <OperasiSelect label="Mesin" value={String(filters.machine_id ?? '')} onChange={(v) => visit({ machine_id: Number(v) })} options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))} className="w-full" />
                         </div>
@@ -341,8 +351,8 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
 
                 <p className="text-xs text-red-600">Baris merah = akhir pekan / hari libur. Kolom angka menerima desimal koma atau titik.</p>
 
-                <div className="overflow-x-auto rounded-md border border-border">
-                    <table className="w-full min-w-[1400px] table-fixed border-collapse text-xs">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1400px] table-fixed border-collapse border-2 border-black text-xs dark:border-white">
                         <colgroup>
                             {sheet.widths.map((width, index) => (
                                 <col key={index} style={{ width: `${width}%` }} />
@@ -367,11 +377,11 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                         <tbody>
                             {days.map((day) => (
                                 <tr key={day.key} className={day.is_red ? 'bg-red-500/25' : ''}>
-                                    <td className="border border-border text-center font-semibold" title={day.sub ?? undefined}>
+                                    <td className="h-8 border border-black text-center font-semibold dark:border-white/60" title={day.sub ?? undefined}>
                                         {day.label}
                                     </td>
                                     {sheet.columns.map((column) => (
-                                        <td key={column.key} className={`border border-border p-0 ${errors[`readings.${day.label}.${column.key}`] ? 'bg-destructive/20' : ''}`}>
+                                        <td key={column.key} className={`h-8 border border-black p-0 dark:border-white/60 ${errors[`readings.${day.label}.${column.key}`] ? 'bg-destructive/20' : ''}`}>
                                             <input
                                                 type="text"
                                                 inputMode={column.type === 'number' ? 'decimal' : 'text'}

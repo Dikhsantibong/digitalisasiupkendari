@@ -86,8 +86,8 @@ export function FeederEditorSection({
                     </Button>
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border">
-                    <table className="w-full text-xs text-left border-collapse">
+                <div className="overflow-x-auto">
+                    <table className="excel-sheet w-full text-xs text-left border-collapse">
                         <thead className="bg-muted/60 text-foreground font-semibold border-b border-border text-[11px]">
                             <tr>
                                 <th rowSpan={2} className="p-2 w-10 text-center border-r border-border">NO</th>

@@ -573,7 +573,7 @@ export default function PengusahaanPatrolSecurityPage(props: Props) {
                     </div>
                 ) : (
                     <div className="mt-3 overflow-x-auto">
-                        <table className="patrol-table w-full border-collapse border border-black text-[9px] dark:border-border sm:text-[10px]">
+                        <table className="excel-sheet patrol-table w-full border-collapse border border-black text-[9px] dark:border-border sm:text-[10px]">
                             <thead>
                                 <tr className="bg-muted/40 font-bold uppercase text-foreground">
                                     <th rowSpan={2} className="w-16 min-w-[55px] border border-black px-1 py-1 text-center dark:border-border">

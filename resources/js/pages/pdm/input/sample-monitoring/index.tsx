@@ -172,8 +172,8 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
                         onRemove={(index) => removeRow(key, index)}
                     />
                 ) : (
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[1150px] border-collapse text-xs">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full min-w-[1150px] border-collapse text-xs">
                         <thead className="bg-[#1f4e79]/10 text-center text-[11px] font-semibold">
                             <tr>
                                 <th className="w-9 border border-border p-1">No</th>
@@ -263,8 +263,8 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
 
                 <div className="flex flex-col gap-2">
                     <div className="rounded-sm bg-[#1f4e79] px-3 py-1.5 text-xs font-semibold text-white">C. REKAP MONITORING</div>
-                    <div className="overflow-x-auto rounded-md border border-border bg-card">
-                        <table className="w-full min-w-[1000px] border-collapse text-xs">
+                    <div className="overflow-x-auto bg-card">
+                        <table className="excel-sheet w-full min-w-[1000px] border-collapse text-xs">
                             <thead className="bg-[#1f4e79]/10 text-center text-[11px] font-semibold">
                                 <tr>
                                     {['No', 'Jenis Sample', 'Target Pengiriman', 'Jumlah Terkirim', 'Jumlah Belum Terkirim', 'Jumlah Hasil Diterima', 'Jumlah Menunggu', 'Jumlah Perlu Tindak Lanjut', 'Status Monitoring', 'Keterangan'].map((label) => (

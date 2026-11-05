@@ -34,9 +34,9 @@ export type LogistikJadwalSheetPageProps = {
     can_write: boolean;
 };
 
-const cellInput = 'h-7 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
-const th = 'border border-slate-400 p-1';
-const td = 'border border-border';
+const cellInput = 'h-7 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 dark:focus:bg-yellow-950/40';
+const th = 'border border-black p-1 dark:border-white/60';
+const td = 'border border-black dark:border-white/60';
 
 /** Kegiatan & IK cells cycle empty → rencana → realisasi; patrol cells cycle empty → N → T. */
 const NEXT_CODE: Record<string, Record<string, string>> = {
@@ -236,8 +236,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
     );
 
     const renderKegiatan = () => (
-        <table className="w-full min-w-[1400px] border-collapse text-xs">
-            <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+        <table className="excel-sheet w-full min-w-[1400px] border-collapse text-xs">
+            <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                 <tr>
                     <th rowSpan={2} className={`${th} w-10`}>No</th>
                     <th rowSpan={2} className={`${th} min-w-52`}>{sheet.row_label}</th>
@@ -300,8 +300,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
     );
 
     const renderPelaksana = () => (
-        <table className="w-full min-w-[1400px] border-collapse text-xs">
-            <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+        <table className="excel-sheet w-full min-w-[1400px] border-collapse text-xs">
+            <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                 <tr>
                     <th rowSpan={3} className={`${th} min-w-48`}>{sheet.row_label}</th>
                     <th rowSpan={3} className={`${th} w-24`}>RENCANA / REALISASI</th>
@@ -375,8 +375,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
     );
 
     const renderShift = () => (
-        <table className="w-full min-w-[1500px] border-collapse text-xs">
-            <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+        <table className="excel-sheet w-full min-w-[1500px] border-collapse text-xs">
+            <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                 <tr>
                     <th rowSpan={3} className={`${th} w-10`}>NO</th>
                     <th rowSpan={3} className={`${th} min-w-40`}>PIC</th>
@@ -438,8 +438,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
 
         return (
             <div className="flex flex-col gap-3">
-                <table className="w-full min-w-[1100px] border-collapse text-xs">
-                    <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+                <table className="excel-sheet w-full min-w-[1100px] border-collapse text-xs">
+                    <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                         <tr>
                             <th rowSpan={2} className={`${th} w-10`}>NO</th>
                             <th rowSpan={2} className={`${th} min-w-64`}>INSTRUKSI KERJA</th>
@@ -474,8 +474,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                         </tr>
                     </tbody>
                 </table>
-                <table className="w-80 border-collapse text-xs">
-                    <thead className="bg-[#5bc8f5] text-[11px] font-semibold text-slate-900">
+                <table className="excel-sheet w-80 border-collapse text-xs">
+                    <thead className="bg-yellow-200 text-[11px] font-semibold text-slate-900">
                         <tr>
                             <th className={th}>IK</th>
                             <th className={`${th} w-16`}>NILAI</th>
@@ -503,8 +503,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
         const sum = (key: 'normal' | 'tidak_normal' | 'rencana' | 'realisasi') => summaries.reduce((total, s) => total + s[key], 0);
 
         return (
-            <table className="w-full min-w-[1500px] border-collapse text-xs">
-                <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+            <table className="excel-sheet w-full min-w-[1500px] border-collapse text-xs">
+                <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                     <tr>
                         <th rowSpan={2} className={`${th} w-10`}>NO</th>
                         <th rowSpan={2} className={`${th} min-w-56`}>{sheet.row_label}</th>
@@ -558,8 +558,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
     };
 
     const renderAplikasi = () => (
-        <table className="w-full min-w-[1300px] border-collapse text-xs">
-            <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+        <table className="excel-sheet w-full min-w-[1300px] border-collapse text-xs">
+            <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                 <tr>
                     <th rowSpan={2} className={`${th} w-10`}>No</th>
                     <th rowSpan={2} className={`${th} min-w-44`}>{sheet.row_label}</th>
@@ -654,8 +654,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
 
         return (
             <div className="flex flex-col gap-4 p-3">
-                <table className="w-96 border-collapse text-xs">
-                    <thead className="bg-[#5bc8f5] text-[11px] font-semibold text-slate-900">
+                <table className="excel-sheet w-96 border-collapse text-xs">
+                    <thead className="bg-yellow-200 text-[11px] font-semibold text-slate-900">
                         <tr>
                             <th className={`${th} w-10`}>NO</th>
                             <th className={th}>A. IDENTITAS</th>
@@ -690,8 +690,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                                 </Button>
                             )}
                         </div>
-                        <table className="w-full min-w-[1300px] border-collapse text-xs">
-                            <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+                        <table className="excel-sheet w-full min-w-[1300px] border-collapse text-xs">
+                            <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                                 <tr>
                                     <th rowSpan={2} className={`${th} w-10`}>No</th>
                                     <th rowSpan={2} className={`${th} min-w-56`}>{sheet.row_label}</th>
@@ -731,8 +731,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                     </div>
                 ))}
 
-                <table className="w-[28rem] border-collapse text-xs">
-                    <thead className="bg-[#5bc8f5] text-[11px] font-semibold text-slate-900">
+                <table className="excel-sheet w-[28rem] border-collapse text-xs">
+                    <thead className="bg-yellow-200 text-[11px] font-semibold text-slate-900">
                         <tr>
                             <th className={th}>AKUMULATIF</th>
                             <th className={`${th} w-20`}>RENCANA</th>
@@ -762,8 +762,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
     };
 
     const renderMaturity = () => (
-        <table className="w-full min-w-[760px] border-collapse text-sm">
-            <thead className="bg-[#5bc8f5] text-center text-[12px] font-semibold text-slate-900">
+        <table className="excel-sheet w-full min-w-[760px] border-collapse text-sm">
+            <thead className="bg-yellow-200 text-center text-[12px] font-semibold text-slate-900">
                 <tr>
                     <th className={`${th} w-16`}>NO</th>
                     <th className={th}>{sheet.row_label}</th>

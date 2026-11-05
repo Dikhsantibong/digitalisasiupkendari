@@ -8,6 +8,7 @@ import {
     FileText,
     Image,
     NotebookPen,
+    Package,
     ShieldAlert,
     ShieldCheck,
     Sparkles,
@@ -22,6 +23,7 @@ import harAttachment from '@/routes/har/input/attachment';
 import harInstruksiKerja from '@/routes/har/input/instruksi-kerja';
 import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
 import harInputLembar from '@/routes/har/input/lembar';
+import harMaterialPeralatan from '@/routes/har/input/material-peralatan';
 import harPatrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import harProgram5s5r from '@/routes/har/input/program-5s5r';
 import harServiceRequest from '@/routes/har/input/service-request';
@@ -124,6 +126,14 @@ const INPUT_MENUS: InputCard[] = [
         icon: Gauge,
         url: harPatrolCheckParameter.index().url,
         buttonLabel: 'Buka Input Parameter Mesin',
+    },
+    {
+        title: 'Material & Peralatan',
+        description:
+            'Daftar & stok peralatan dan material pemeliharaan (disusun Koordinator), dicek kelengkapannya oleh Harmes / Harlist: Lengkap, Tidak Lengkap atau Tidak Ada.',
+        icon: Package,
+        url: harMaterialPeralatan.index().url,
+        buttonLabel: 'Buka Input Material & Peralatan',
     },
 ];
 

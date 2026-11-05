@@ -1,19 +1,20 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, CheckCheck, Download, FileSpreadsheet, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
-import { buildDocumentHeader, createSheet, downloadWorkbook, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
 import { monthTimelineDays, TimelineField } from '@/components/mobile/timeline-form';
+import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import { buildDocumentHeader, createSheet, downloadWorkbook, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import meeting from '@/routes/operasi/jadwal/meeting-shift';
@@ -49,21 +50,80 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
 
     const sig = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [last, setLast] = useState(sig);
-    if (last !== sig) { setLast(sig); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); }
+
+    if (last !== sig) {
+ setLast(sig); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); 
+}
 
     const monthName = useMemo(() => OPERASI_MONTHS[filters.month - 1] ?? '', [filters.month]);
     const days = useMemo(() => Array.from({ length: days_in_month }, (_, i) => i + 1), [days_in_month]);
 
     const visit = (p: Partial<Props['filters']>) => router.get(meeting.index().url, { ...filters, ...p }, { preserveState: true, preserveScroll: true, replace: true });
-    const setDay = (key: number, day: number, v: string) => { setRows((p) => p.map((r) => { if (r._key !== key) return r; const d = { ...r.days }; if (v.trim() === '') delete d[String(day)]; else d[String(day)] = v; return { ...r, days: d }; })); setDirty(true); };
-    const toggleMark = (key: number, day: number) => { if (!can_write) return; setRows((p) => p.map((r) => { if (r._key !== key) return r; const d = { ...r.days }; if (d[String(day)]) delete d[String(day)]; else d[String(day)] = '1'; return { ...r, days: d }; })); setDirty(true); };
-    const setMeta = (key: number, f: 'label' | 'target', v: string) => { setRows((p) => p.map((r) => (r._key === key ? { ...r, [f]: f === 'target' ? Math.max(0, parseInt(v, 10) || 0) : v } : r))); setDirty(true); };
-    const addRow = () => { setRows((p) => [...p, { _key: nextKey, id: null, label: form.label || 'Kegiatan', row_type: form.row_type, days: {}, target: Number(form.target) || 0 }]); setNextKey((k) => k + 1); setDirty(true); setIsAddOpen(false); setForm({ label: '', row_type: 'mark', target: 0 }); };
-    const remove = (key: number) => { setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); };
-    const markAll = () => { if (!can_write) return; setRows((p) => p.map((r) => (r.row_type === 'mark' ? { ...r, days: Object.fromEntries(days.map((d) => [String(d), '1'])) } : r))); setDirty(true); };
-    const reset = () => { setRows(hydrate(initial)); setDirty(false); };
+    const setDay = (key: number, day: number, v: string) => {
+ setRows((p) => p.map((r) => {
+ if (r._key !== key) {
+return r;
+}
+
+ const d = { ...r.days };
+
+ if (v.trim() === '') {
+delete d[String(day)];
+} else {
+d[String(day)] = v;
+}
+
+ return { ...r, days: d }; 
+})); setDirty(true); 
+};
+    const toggleMark = (key: number, day: number) => {
+ if (!can_write) {
+return;
+}
+
+ setRows((p) => p.map((r) => {
+ if (r._key !== key) {
+return r;
+}
+
+ const d = { ...r.days };
+
+ if (d[String(day)]) {
+delete d[String(day)];
+} else {
+d[String(day)] = '1';
+}
+
+ return { ...r, days: d }; 
+})); setDirty(true); 
+};
+    const setMeta = (key: number, f: 'label' | 'target', v: string) => {
+ setRows((p) => p.map((r) => (r._key === key ? { ...r, [f]: f === 'target' ? Math.max(0, parseInt(v, 10) || 0) : v } : r))); setDirty(true); 
+};
+    const addRow = () => {
+ setRows((p) => [...p, { _key: nextKey, id: null, label: form.label || 'Kegiatan', row_type: form.row_type, days: {}, target: Number(form.target) || 0 }]); setNextKey((k) => k + 1); setDirty(true); setIsAddOpen(false); setForm({ label: '', row_type: 'mark', target: 0 }); 
+};
+    const remove = (key: number) => {
+ setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
+};
+    const markAll = () => {
+ if (!can_write) {
+return;
+}
+
+ setRows((p) => p.map((r) => (r.row_type === 'mark' ? { ...r, days: Object.fromEntries(days.map((d) => [String(d), '1'])) } : r))); setDirty(true); 
+};
+    const reset = () => {
+ setRows(hydrate(initial)); setDirty(false); 
+};
     const realisasiOf = (r: Row) => Object.values(r.days).filter((v) => String(v).trim() !== '').length;
-    const save = () => { if (!can_write) return; setSaving(true); router.post(meeting.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows: rows.map((r) => ({ id: r.id, label: r.label, row_type: r.row_type, days: r.days, target: r.target })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); };
+    const save = () => {
+ if (!can_write) {
+return;
+}
+
+ setSaving(true); router.post(meeting.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows: rows.map((r) => ({ id: r.id, label: r.label, row_type: r.row_type, days: r.days, target: r.target })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
+};
 
     const handleExcel = async () => {
         const H: (string | number)[][] = [[], [], [], []];
@@ -72,16 +132,32 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
             const isShift = r.row_type === 'shift';
             const re = realisasiOf(r);
             const kin = r.target > 0 ? Math.round((re / r.target) * 100) : 0;
-            H.push([r.label, ...days.map((d) => { const v = r.days[String(d)] ?? ''; return isShift ? v : (v !== '' ? 1 : ''); }), isShift ? '' : r.target, isShift ? '' : r.target, isShift ? '' : re, isShift ? '' : `${kin}%`]);
+            H.push([r.label, ...days.map((d) => {
+ const v = r.days[String(d)] ?? '';
+
+ return isShift ? v : (v !== '' ? 1 : ''); 
+}), isShift ? '' : r.target, isShift ? '' : r.target, isShift ? '' : re, isShift ? '' : `${kin}%`]);
         });
         const { workbook, worksheet: ws } = createSheet('Meeting_Shift', H);
         const dayStart = 1; const dayEnd = days.length; const totalCols = 1 + days.length + 4;
         const done: StyleSpec = { fill: XLSX_COLORS.slate, bold: true, align: 'center', valign: 'center', border: true };
         paintSheet(ws, H.length, totalCols, (r, c) => {
-            if (r < 4) return null;
-            if (r === 4) return SPECS.headerOrange;
-            if (c === 0) return SPECS.cellLeft;
-            if (c >= dayStart && c <= dayEnd) return H[r]?.[c] === 1 ? done : SPECS.cell;
+            if (r < 4) {
+return null;
+}
+
+            if (r === 4) {
+return SPECS.headerOrange;
+}
+
+            if (c === 0) {
+return SPECS.cellLeft;
+}
+
+            if (c >= dayStart && c <= dayEnd) {
+return H[r]?.[c] === 1 ? done : SPECS.cell;
+}
+
             return { ...SPECS.cell, bold: true };
         });
         const colWidths = [30, ...Array(days.length).fill(3.2), 9, 8, 9, 11];
@@ -121,7 +197,9 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                     <div className="border-b border-border p-3">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT</div>
@@ -129,7 +207,9 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                                 <div className="text-[11px] font-bold text-foreground uppercase">JADWAL MEETING SHIFT PEMBANGKIT — {monthName.toUpperCase()} {filters.year}</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                         </div>
                     </div>
@@ -162,7 +242,7 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                         </div>
                     ) : (
                     <div className="overflow-x-auto">
-                    <table className="p-table w-full border-collapse text-xs">
+                    <table className="excel-sheet p-table w-full border-collapse text-xs">
                         <thead>
                             <tr>
                                 <th rowSpan={2} className={`${th} min-w-48 text-left`}>Hari / Tanggal</th>
@@ -180,6 +260,7 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                                 const isShift = r.row_type === 'shift';
                                 const re = realisasiOf(r);
                                 const kin = r.target > 0 ? Math.round((re / r.target) * 100) : 0;
+
                                 return (
                                     <tr key={r._key} className="hover:bg-muted/10">
                                         <td className={`border border-black p-1 text-left ${isShift ? 'bg-muted/20 font-semibold' : ''}`}>
@@ -187,10 +268,13 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                                         </td>
                                         {days.map((d) => {
                                             const val = r.days[String(d)] ?? '';
+
                                             if (isShift) {
                                                 return <td key={d} className="border border-black p-0 text-center">{can_write ? <input maxLength={2} value={val} onChange={(e) => setDay(r._key, d, e.target.value.toUpperCase())} className="h-6 w-7 bg-transparent text-center text-[10px] font-semibold uppercase focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary" /> : <span className="text-[10px] font-semibold">{val}</span>}</td>;
                                             }
+
                                             const on = val !== '';
+
                                             return <td key={d} onClick={() => toggleMark(r._key, d)} className={`border border-black text-center text-[11px] font-bold select-none ${on ? 'p-done bg-slate-300 dark:bg-slate-600' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>{on ? '1' : ''}</td>;
                                         })}
                                         <td className="border border-black p-1 text-center font-bold">{isShift ? '' : r.target}</td>
@@ -213,10 +297,15 @@ export default function MeetingShiftPage({ unit, filters, options, days_in_month
                     <DialogHeader><DialogTitle>Tambah Baris Meeting Shift</DialogTitle></DialogHeader>
                     <div className="grid gap-3 py-2 text-sm">
                         <div className="grid gap-1.5"><Label>Tipe</Label>
-                            <select value={form.row_type} onChange={(e) => setForm((f) => ({ ...f, row_type: e.target.value as RowType }))} className="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
-                                <option value="mark">Kegiatan (klik isi 1)</option>
-                                <option value="shift">Jadwal shift (huruf)</option>
-                            </select>
+                            <Select value={form.row_type} onValueChange={(value) => setForm((f) => ({ ...f, row_type: value as RowType }))}>
+                                <SelectTrigger className="h-9 w-full text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="mark">Kegiatan (klik isi 1)</SelectItem>
+                                    <SelectItem value="shift">Jadwal shift (huruf)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="grid gap-1.5"><Label>Uraian</Label><Input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} placeholder="mis. Serah Terima Tugas (PAGI)" /></div>
                         <div className="grid gap-1.5"><Label>Target</Label><Input type="number" min="0" value={form.target} onChange={(e) => setForm((f) => ({ ...f, target: Number(e.target.value) }))} /></div>

@@ -63,8 +63,7 @@ class KinerjaTermalSheet
         $liters = $this->litersByMachine($unit, $month, $year);
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
         $refs = array_map(fn (array $row): array => ['id' => $row['machine']['id']], $kinerja);
-        $gangguanSheet = $this->mesin->record($unit, MesinHarianJenis::KaliGangguan, $month, $year);
-        $kali = $this->mesin->summarize(MesinHarianJenis::KaliGangguan, $this->mesin->sanitize(MesinHarianJenis::KaliGangguan, $gangguanSheet?->readings ?? [], $refs, $daysInMonth), $refs, $daysInMonth)['by_machine'];
+        $kali = $this->mesin->summarize(MesinHarianJenis::KaliGangguan, $this->mesin->kaliGangguan($unit, $month, $year, $refs), $refs, $daysInMonth)['by_machine'];
         $overrides = $this->record($unit, $month, $year)?->overrides ?? [];
 
         $rows = array_map(function (array $row) use ($jamPeriode, $produksi, $liters, $kali, $overrides): array {

@@ -15,6 +15,7 @@ export function PdmCellSelect({
     disabled = false,
     placeholder = '',
     className,
+    ariaLabel,
 }: {
     value: string;
     onChange: (value: string) => void;
@@ -22,12 +23,14 @@ export function PdmCellSelect({
     disabled?: boolean;
     placeholder?: string;
     className?: string;
+    ariaLabel?: string;
 }) {
     const choices = value !== '' && !options.includes(value) ? [value, ...options] : options;
 
     return (
         <Select value={value === '' ? EMPTY : value} onValueChange={(next) => onChange(next === EMPTY ? '' : next)} disabled={disabled}>
             <SelectTrigger
+                aria-label={ariaLabel}
                 size="sm"
                 className={cn(
                     'h-7 w-full min-w-0 gap-1 rounded-none border-0 bg-transparent px-1 text-[11px] shadow-none focus-visible:ring-1 data-[size=sm]:h-7 dark:bg-transparent [&_svg:not([class*=size-])]:size-3',

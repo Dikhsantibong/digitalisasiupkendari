@@ -435,7 +435,7 @@ export default function K3KesiapanApdPage({
 
                     {/* Inspection Matrix Table */}
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1550px] border-collapse text-xs">
+                        <table className="excel-sheet w-full min-w-[1550px] border-collapse text-xs">
                             <thead>
                                 <tr className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:font-bold">
                                     <th rowSpan={2} className="w-12">

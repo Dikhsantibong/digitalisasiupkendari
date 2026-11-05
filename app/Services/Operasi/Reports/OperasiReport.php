@@ -7,7 +7,7 @@ use App\Models\Unit;
 
 /**
  * A registered operasi report. Reports are described by a definition rather than
- * a bespoke controller (concept.md prinsip #3): the registry lists them and one
+ * a bespoke controller (PRD.md §2 prinsip #8): the registry lists them and one
  * controller renders any of them from the data this contract returns.
  */
 interface OperasiReport

@@ -5,13 +5,17 @@ namespace App\Services\Operasi;
 use App\Enums\MesinHarianJenis;
 use App\Enums\StatusCodeCategory;
 use App\Models\EngineStatusLog;
+use App\Models\LogsheetParameter;
 use App\Models\Machine;
 use App\Models\OperasiMesinHarian;
+use App\Models\OperatorLogsheetReading;
+use App\Models\OperatorStartStop;
 use App\Models\Unit;
 use Illuminate\Support\Carbon;
 
 /**
- * Beban Tertinggi (the highest load of the day, kW) and Jumlah Kali Gangguan
+ * Beban Tertinggi (the highest load of the day, kW, taken from the operators'
+ * logsheet LOAD) and Jumlah Kali Gangguan
  * (the number of disturbances of the day) per mesin. Beban Tertinggi keeps a
  * daya mampu per machine (carried from the previous month, else the machine's
  * capacity) and takes the maximum; Jumlah Kali Gangguan sums and can be taken
@@ -121,6 +125,116 @@ class MesinHarianSheet
                 'average' => $average($cells),
             }, 2),
         ];
+    }
+
+    /**
+     * Beban Tertinggi per mesin per tanggal: the highest LOAD (kW) of the
+     * operators' logsheet that day. A day without a logsheet keeps the value
+     * saved on the sheet before (months typed in by hand stay as they were).
+     *
+     * @param  list<array{id: int}>  $machines
+     * @return array<int, array<int, float>>
+     */
+    public function bebanTertinggi(Unit $unit, int $month, int $year, array $machines): array
+    {
+        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+        $saved = $this->sanitize(MesinHarianJenis::BebanTinggi, $this->record($unit, MesinHarianJenis::BebanTinggi, $month, $year)?->readings ?? [], $machines, $daysInMonth);
+        $fromLogsheet = $this->bebanFromLogsheet($unit, $month, $year, $machines);
+
+        foreach ($fromLogsheet as $machineId => $days) {
+            foreach ($days as $day => $value) {
+                $saved[$machineId][$day] = $value;
+            }
+            ksort($saved[$machineId]);
+        }
+
+        return $saved;
+    }
+
+    /**
+     * The highest LOAD (kW) reading of each machine's logsheet per day.
+     *
+     * @param  list<array{id: int}>  $machines
+     * @return array<int, array<int, float>>
+     */
+    public function bebanFromLogsheet(Unit $unit, int $month, int $year, array $machines): array
+    {
+        $loadId = LogsheetParameter::query()->where('code', 'LOAD')->value('id');
+        if ($loadId === null || $machines === []) {
+            return [];
+        }
+
+        $rows = OperatorLogsheetReading::query()
+            ->join('operator_logsheets', 'operator_logsheets.id', '=', 'operator_logsheet_readings.logsheet_id')
+            ->where('operator_logsheets.unit_id', $unit->id)
+            ->whereIn('operator_logsheets.engine_id', array_column($machines, 'id'))
+            ->whereYear('operator_logsheets.log_date', $year)
+            ->whereMonth('operator_logsheets.log_date', $month)
+            ->where('operator_logsheet_readings.parameter_id', $loadId)
+            ->whereNotNull('operator_logsheet_readings.value')
+            ->get(['operator_logsheets.engine_id', 'operator_logsheets.log_date', 'operator_logsheet_readings.value']);
+
+        $max = [];
+        foreach ($rows as $row) {
+            $day = (int) Carbon::parse($row->log_date)->day;
+            $value = (float) $row->value;
+            if ($value > ($max[$row->engine_id][$day] ?? 0)) {
+                $max[$row->engine_id][$day] = $value;
+            }
+        }
+
+        return $this->sanitize(MesinHarianJenis::BebanTinggi, $max, $machines, Carbon::create($year, $month, 1)->daysInMonth);
+    }
+
+    /**
+     * Jumlah Kali Gangguan per mesin per tanggal: the stops recorded as
+     * gangguan in Start Stop Engine (modul Operator). A day with no Start Stop
+     * entry for the machine keeps the value saved on the sheet before.
+     *
+     * @param  list<array{id: int}>  $machines
+     * @return array<int, array<int, float>>
+     */
+    public function kaliGangguan(Unit $unit, int $month, int $year, array $machines): array
+    {
+        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+        $readings = $this->sanitize(MesinHarianJenis::KaliGangguan, $this->record($unit, MesinHarianJenis::KaliGangguan, $month, $year)?->readings ?? [], $machines, $daysInMonth);
+
+        $runs = OperatorStartStop::query()
+            ->where('unit_id', $unit->id)
+            ->whereIn('engine_id', array_column($machines, 'id'))
+            ->whereYear('tanggal', $year)
+            ->whereMonth('tanggal', $month)
+            ->get(['engine_id', 'tanggal', 'penyebab_stop']);
+
+        foreach ($runs->groupBy(fn (OperatorStartStop $run): string => $run->engine_id.'|'.$run->tanggal->day) as $group) {
+            $first = $group->first();
+            $count = $group->where('penyebab_stop', 'gangguan')->count();
+            if ($count > 0) {
+                $readings[$first->engine_id][$first->tanggal->day] = (float) $count;
+                ksort($readings[$first->engine_id]);
+            } else {
+                unset($readings[$first->engine_id][$first->tanggal->day]);
+            }
+        }
+
+        return array_filter($readings);
+    }
+
+    /**
+     * The readings of a sheet as every page and report must show them: Beban
+     * Tertinggi from the logsheet, Jumlah Kali Gangguan from Start Stop
+     * Engine, Tara Kalor as typed in.
+     *
+     * @param  list<array{id: int}>  $machines
+     * @return array<int, array<int, float>>
+     */
+    public function readingsOf(MesinHarianJenis $jenis, Unit $unit, int $month, int $year, array $machines): array
+    {
+        return match ($jenis) {
+            MesinHarianJenis::BebanTinggi => $this->bebanTertinggi($unit, $month, $year, $machines),
+            MesinHarianJenis::KaliGangguan => $this->kaliGangguan($unit, $month, $year, $machines),
+            default => $this->sanitize($jenis, $this->record($unit, $jenis, $month, $year)?->readings ?? [], $machines, Carbon::create($year, $month, 1)->daysInMonth),
+        };
     }
 
     /**

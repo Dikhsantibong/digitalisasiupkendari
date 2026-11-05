@@ -203,7 +203,7 @@ export default function BaFisikPelumasIndex(props: Props) {
             <section className="overflow-hidden rounded-md border border-border bg-card">
                 <div className="overflow-x-auto">
                     <table
-                        className="w-full border-collapse text-[13px]"
+                        className="excel-sheet w-full border-collapse text-[13px]"
                         data-keep-table={compact ? undefined : true}
                     >
                         <thead className="text-[12px]">

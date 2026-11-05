@@ -372,7 +372,8 @@ enum RoleName: string
             ],
 
             self::Operator => [
-                ...$this->operatorBasePermissions(),
+                // No Master Data (unit, mesin, pegawai) for the operator, not even read-only (user, 2026-10-30).
+                ...array_filter($this->operatorBasePermissions(), fn (PermissionName $permission): bool => ! in_array($permission, PermissionName::masterDataView(), true)),
                 // The operator sees the shift schedule they belong to (read-only).
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorPresensi,
@@ -389,8 +390,8 @@ enum RoleName: string
                 PermissionName::OperasiLapanganChecklistCommissioning,
                 PermissionName::OperasiLapanganUnsafeCondition,
                 PermissionName::OperasiLapanganProgram5s5r,
-                // The operators fill the Pengusahaan Operasi inputs too (not the Berita Acara / Laporan Pengusahaan).
-                PermissionName::OperasiPengusahaanInput,
+                // No Pengusahaan Operasi inputs for now (user, 2026-10-30): the operator fills the
+                // core Operator menus and the Input Operasi (Laporan Project) pages only.
             ],
 
             // Field maintenance staff (divisi Pemeliharaan): absen plus every HAR

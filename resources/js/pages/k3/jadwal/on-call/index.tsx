@@ -12,6 +12,7 @@ import {
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { MobileMatrixForm } from '@/components/mobile/matrix-form';
 import {
     OPERASI_MONTHS,
@@ -30,12 +31,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/k3/jadwal';
 import onCall from '@/routes/k3/jadwal/on-call';
 import type { IdName } from '@/types';
-import { toast } from 'sonner';
 
 type DayInfo = {
     date: string; // "YYYY-MM-DD"
@@ -113,12 +114,15 @@ const INACTIVE_CODES = ['L', 'OFF', 'CT', 'A', 'KTA', ''];
 
 function calculateTotal(schedule: Record<string, string>): number {
     let count = 0;
+
     for (const key in schedule) {
         const val = schedule[key]?.trim()?.toUpperCase() ?? '';
+
         if (val && !INACTIVE_CODES.includes(val)) {
             count++;
         }
     }
+
     return count;
 }
 
@@ -215,6 +219,7 @@ export default function JadwalOnCallPage({
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setRows(hydrate(initialRows));
@@ -230,6 +235,7 @@ export default function JadwalOnCallPage({
 
     const prevMonthLabel = useMemo(() => {
         const prevIdx = filters.month === 1 ? 11 : filters.month - 2;
+
         return OPERASI_MONTHS[prevIdx] ?? '';
     }, [filters.month]);
 
@@ -270,7 +276,10 @@ export default function JadwalOnCallPage({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             onCall.store().url,
@@ -338,8 +347,12 @@ export default function JadwalOnCallPage({
     };
 
     const handleEmployeeSelect = (empIdStr: string) => {
-        if (!empIdStr) return;
+        if (!empIdStr) {
+return;
+}
+
         const emp = options.employees.find((e) => String(e.id) === empIdStr);
+
         if (emp) {
             setPersonForm({
                 ...personForm,
@@ -353,6 +366,7 @@ export default function JadwalOnCallPage({
     const handlePersonSubmit = () => {
         if (!personForm.nama.trim()) {
             toast.error('Nama personil wajib diisi.');
+
             return;
         }
 
@@ -380,9 +394,13 @@ export default function JadwalOnCallPage({
             // Update personil info
             setRows(
                 rows.map((r) => {
-                    if (r._key !== editingPersonKey) return r;
+                    if (r._key !== editingPersonKey) {
+return r;
+}
+
                     const nextTotal = r.total;
                     const nextRupiah = nextTotal * nilaiNum;
+
                     return {
                         ...r,
                         employee_id: empId,
@@ -404,14 +422,19 @@ export default function JadwalOnCallPage({
     const handleDeletePerson = (key: number) => {
         setRows(rows.filter((r) => r._key !== key));
         setDirty(true);
+
         if (activeCell?.rowKey === key) {
             setActiveCell(null);
         }
+
         toast.info('Personil dihapus dari tabel sementara.');
     };
 
     const handleCellClick = (rowKey: number, date: string, dayNum: number, personName: string) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         const row = rows.find((r) => r._key === rowKey);
         const curVal = row?.schedule[date] || '';
         setActiveCell({
@@ -426,15 +449,21 @@ export default function JadwalOnCallPage({
     const setShift = (rowKey: number, date: string, code: string) => {
         setRows((prev) =>
             prev.map((r) => {
-                if (r._key !== rowKey) return r;
+                if (r._key !== rowKey) {
+return r;
+}
+
                 const nextSchedule = { ...r.schedule };
+
                 if (code) {
                     nextSchedule[date] = code;
                 } else {
                     delete nextSchedule[date];
                 }
+
                 const newTotal = calculateTotal(nextSchedule);
                 const newRupiah = newTotal * (r.nilai || 100000);
+
                 return {
                     ...r,
                     schedule: nextSchedule,
@@ -448,7 +477,10 @@ export default function JadwalOnCallPage({
     };
 
     const applyShiftCode = (code: string) => {
-        if (!activeCell) return;
+        if (!activeCell) {
+return;
+}
+
         setShift(activeCell.rowKey, activeCell.date, code);
         setActiveCell(null);
     };
@@ -648,7 +680,7 @@ export default function JadwalOnCallPage({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full border-collapse text-left text-xs">
+                            <table className="excel-sheet w-full border-collapse text-left text-xs">
                                 <thead>
                                     <tr className="border-b border-slate-300 bg-slate-100 text-center font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
                                         <th className="w-10 border-r border-slate-300 px-2 py-2 dark:border-slate-700">NO</th>
@@ -660,6 +692,7 @@ export default function JadwalOnCallPage({
                                         {days.map((d) => {
                                             const isHoliday = d.is_holiday;
                                             const isWeekend = d.is_weekend;
+
                                             return (
                                                 <th
                                                     key={d.date}
@@ -976,18 +1009,18 @@ export default function JadwalOnCallPage({
                         {options.employees.length > 0 && editingPersonKey === null && (
                             <div className="space-y-1.5">
                                 <Label>Pilih Pegawai Unit</Label>
-                                <select
-                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs"
-                                    value={personForm.employee_id}
-                                    onChange={(e) => handleEmployeeSelect(e.target.value)}
-                                >
-                                    <option value="">-- Pilih dari data pegawai unit --</option>
-                                    {options.employees.map((emp) => (
-                                        <option key={emp.id} value={emp.id}>
-                                            {emp.name} {emp.position ? `(${emp.position})` : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Select value={personForm.employee_id ? String(personForm.employee_id) : undefined} onValueChange={(value) => handleEmployeeSelect(value)}>
+                                    <SelectTrigger className="w-full text-xs">
+                                        <SelectValue placeholder="-- Pilih dari data pegawai unit --" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {options.employees.map((emp) => (
+                                            <SelectItem key={emp.id} value={String(emp.id)}>
+                                                {emp.name} {emp.position ? `(${emp.position})` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
 
@@ -1104,6 +1137,7 @@ export default function JadwalOnCallPage({
                                 <td style={{ textAlign: 'left', paddingLeft: '4px' }}>{r.jabatan}</td>
                                 {days.map((d) => {
                                     const val = r.schedule[d.date] || '';
+
                                     return (
                                         <td
                                             key={d.date}

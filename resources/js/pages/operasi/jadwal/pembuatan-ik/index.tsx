@@ -140,7 +140,7 @@ export default function PembuatanIkPage({ unit, filters, options, rows: initial,
                         </div>
                     ) : (
                     <div className="overflow-x-auto">
-                    <table className="p-table w-full border-collapse text-xs">
+                    <table className="excel-sheet p-table w-full border-collapse text-xs">
                         <thead>
                             <tr>
                                 <th rowSpan={2} className={`${th} w-10`}>No</th>

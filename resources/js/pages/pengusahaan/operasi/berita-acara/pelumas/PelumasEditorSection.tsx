@@ -48,8 +48,8 @@ export function PelumasEditorSection({
                 </Button>
             </div>
 
-            <div className="overflow-x-auto rounded-md border border-border">
-                <table className="w-full text-xs text-left border-collapse">
+            <div className="overflow-x-auto">
+                <table className="excel-sheet w-full text-xs text-left border-collapse">
                     <thead className="bg-muted/60 text-foreground font-semibold border-b border-border text-[11px]">
                         <tr>
                             <th className="p-2 w-8 text-center">No</th>

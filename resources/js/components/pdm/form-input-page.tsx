@@ -355,8 +355,8 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
                         </Button>
                     )}
                 </div>
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full border-collapse text-xs" style={{ minWidth: Math.max(720, section.columns.length * 80) }}>
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full border-collapse text-xs" style={{ minWidth: Math.max(720, section.columns.length * 80) }}>
                         <thead className={`${head} text-center text-[11px] font-semibold`}>
                             <tr>
                                 <th rowSpan={headRows} className="w-9 border border-slate-400 p-1">No</th>
@@ -617,8 +617,8 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
                 {document.summary && (
                     <div className="flex flex-col gap-1.5">
                         <div className="text-sm font-semibold">{document.summary.title}</div>
-                        <div className="overflow-x-auto rounded-md border border-border bg-card md:w-2/3">
-                            <table className="w-full border-collapse text-xs">
+                        <div className="overflow-x-auto bg-card md:w-2/3">
+                            <table className="excel-sheet w-full border-collapse text-xs">
                                 <thead className={`${HEAD_COLORS[form.header_color] ?? HEAD_COLORS.orange} text-center text-[11px] font-semibold`}>
                                     <tr>
                                         {document.summary.columns.map((label) => (

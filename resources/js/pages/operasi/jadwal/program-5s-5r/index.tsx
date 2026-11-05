@@ -165,7 +165,7 @@ export default function Program5s5rPage({ unit, filters, options, days_in_month,
                         </div>
                     ) : (
                     <div className="overflow-x-auto">
-                    <table className="p-table w-full border-collapse text-xs">
+                    <table className="excel-sheet p-table w-full border-collapse text-xs">
                         <thead>
                             <tr>
                                 <th rowSpan={2} className={`${th} min-w-40 text-left`}>Pelaksana</th>

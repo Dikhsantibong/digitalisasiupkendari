@@ -3,10 +3,12 @@
 namespace Tests\Feature\Operator;
 
 use App\Enums\RoleName;
+use App\Models\Employee;
 use App\Models\Machine;
 use App\Models\OperatorMutasi;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -28,6 +30,34 @@ class MutasiTest extends TestCase
 
         $this->seedAccessControl();
         Storage::fake('public');
+    }
+
+    /** The Leader Shift of a regu on the unit: the one who fills the sheet. */
+    private function leader(Unit $unit, string $regu = 'D'): User
+    {
+        $user = $this->userWithRole(RoleName::Operator, $unit);
+        Employee::factory()->create(['user_id' => $user->id, 'unit_id' => $unit->id, 'regu' => $regu, 'is_shift_leader' => true, 'is_active' => true]);
+
+        return $user;
+    }
+
+    public function test_only_the_leader_shift_fills_the_sheet_other_operators_read_it(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $member = $this->userWithRole(RoleName::Operator, $unit);
+        Employee::factory()->create(['user_id' => $member->id, 'unit_id' => $unit->id, 'regu' => 'D', 'is_shift_leader' => false, 'is_active' => true]);
+
+        $this->actingAs($member)->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => 'sore']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('can_write', false)->where('can_receive', false)->where('leader_only', true));
+        $this->actingAs($member)->post(route('operator.mutasi.store'), $this->payload($unit))->assertForbidden();
+        $this->assertSame(0, OperatorMutasi::query()->count());
+
+        // The Leader Shift saves it; the Project Leader (manages the schedule) may too.
+        $this->actingAs($this->leader($unit))->post(route('operator.mutasi.store'), $this->payload($unit))->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->userWithRole(RoleName::ProjectLeaderOperasi, $unit))
+            ->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => 'sore']))
+            ->assertInertia(fn ($page) => $page->where('can_write', true)->where('leader_only', false));
     }
 
     /**
@@ -64,7 +94,7 @@ class MutasiTest extends TestCase
             'peralatan' => [['nama' => 'Senter', 'ada' => true, 'jumlah' => 3]],
         ]);
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->leader($unit))
             ->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => 'sore']))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -85,7 +115,7 @@ class MutasiTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->leader($unit))
             ->post(route('operator.mutasi.store'), $this->payload($unit))
             ->assertSessionHasNoErrors()
             ->assertRedirect(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => 'sore']));
@@ -107,7 +137,7 @@ class MutasiTest extends TestCase
     public function test_handing_over_needs_a_regu_and_a_paraf(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $operator = $this->leader($unit);
 
         $this->actingAs($operator)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true]))->assertSessionHasErrors('paraf');
         $this->actingAs($operator)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true, 'regu_penyerah' => null, 'paraf' => self::PNG]))->assertSessionHasErrors('regu_penyerah');
@@ -125,7 +155,7 @@ class MutasiTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         $mutasi = OperatorMutasi::factory()->create(['unit_id' => $unit->id, 'diserahkan_at' => now(), 'regu_penyerah' => 'D']);
-        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $operator = $this->leader($unit);
 
         $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'D', 'paraf' => self::PNG])->assertSessionHasErrors('regu_penerima');
         $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'A', 'penerima_nama' => 'Operator A', 'paraf' => self::PNG])->assertSessionHasNoErrors();
@@ -148,7 +178,7 @@ class MutasiTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         $mutasi = OperatorMutasi::factory()->create(['unit_id' => $unit->id]);
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->leader($unit))
             ->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'A', 'paraf' => self::PNG])
             ->assertSessionHasErrors('regu_penerima');
     }
@@ -166,7 +196,7 @@ class MutasiTest extends TestCase
         $this->actingAs($this->userWithRole(RoleName::ManagerUl, $serviceUnit))->get(route('operator.mutasi.index', ['unit_id' => $unit->id]))->assertOk();
         $this->actingAs($this->userWithRole(RoleName::SiteLeader, $unit))->get(route('operator.mutasi.index'))->assertForbidden();
 
-        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $operator = $this->leader($unit);
         $this->actingAs($operator)->post(route('operator.mutasi.terima', $foreign), ['regu_penerima' => 'A', 'paraf' => self::PNG])->assertForbidden();
         $this->actingAs($operator)->get(route('operator.mutasi.pdf', $foreign))->assertForbidden();
     }
@@ -188,7 +218,7 @@ class MutasiTest extends TestCase
         $this->assertStringContainsString('CM 7 kebocoran pada sisi lube hose', $html);
         $this->assertStringContainsString('alt="Paraf penyerah"', $html);
 
-        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+        $this->actingAs($this->leader($unit))
             ->get(route('operator.mutasi.pdf', $mutasi))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');

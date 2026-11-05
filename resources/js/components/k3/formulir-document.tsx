@@ -34,6 +34,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
 
 export type SignerOption = {
     id: number;
@@ -587,6 +588,11 @@ export function HistoryDialog({
 
 /** Label + kontrol kecil di kartu metadata (unit / bulan / tahun / minggu). */
 export function MetaField({ label, children }: { label: string; children: ReactNode }) {
+    // A phone input page uses the account's unit and the current period (app.css hides a row left empty).
+    if (useSimplifiedMobileInput() && ['Unit Pembangkit', 'Bulan', 'Tahun'].includes(label)) {
+        return <span data-mobile-hidden hidden />;
+    }
+
     return (
         <div className="space-y-1">
             <Label className="text-xs">{label}</Label>

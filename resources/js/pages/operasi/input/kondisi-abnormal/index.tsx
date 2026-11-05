@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import {
     AlertOctagon,
     AlertTriangle,
+    Camera,
     ClipboardList,
     Download,
     Pencil,
@@ -15,6 +16,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { toast } from 'sonner';
 import InputError from '@/components/input-error';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { EvidencePhotoField } from '@/components/operasi/evidence-photo-field';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -33,6 +35,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
@@ -66,6 +69,11 @@ type Entry = {
     machine_id: number | null;
     mesin: string;
     peralatan: string;
+    /** Gangguan only. */
+    kronologi: string;
+    /** The saved photo's path (sent back to keep it) and URL. */
+    eviden: string | null;
+    eviden_url: string | null;
     input_by: string | null;
     can_edit: boolean;
 } & Record<TindakKey, number> &
@@ -110,8 +118,13 @@ type FormData = {
     jam_selesai: string;
     machine_id: string;
     peralatan: string;
+    kronologi: string;
+    eviden: string | null;
+    eviden_file: File | null;
 } & Record<TindakKey, boolean> &
     Record<TextKey, string>;
+
+const KRONOLOGI_PLACEHOLDER = 'Urutan kejadian: jam, kejadian, tindakan operator…';
 
 /** The follow-up & impact fields of a report. */
 const DETAIL_TEXTS: { key: TextKey; label: string; placeholder: string }[] = [
@@ -266,6 +279,12 @@ export default function KondisiAbnormalInput({
                                                 {label}
                                             </Badge>
                                         ))}
+                                    {entry.eviden_url && (
+                                        <Badge variant="secondary" className="gap-1">
+                                            <Camera className="size-3" />
+                                            Eviden
+                                        </Badge>
+                                    )}
                                     {entry.input_by && (
                                         <span>oleh {entry.input_by}</span>
                                     )}
@@ -438,22 +457,22 @@ export default function KondisiAbnormalInput({
                                 Rekap per tanggal
                             </div>
                             <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-xs">
-                                    <thead className="bg-[#ea7315]/15 text-left">
+                                <table className="w-full border-collapse border-2 border-black text-xs dark:border-white">
+                                    <thead className="bg-yellow-200 text-left text-[11px] font-bold text-black uppercase dark:bg-yellow-800 dark:text-yellow-50">
                                         <tr>
-                                            <th className="border-b border-border px-3 py-2">
+                                            <th className="border border-black dark:border-white/60 px-3 py-2">
                                                 Tanggal
                                             </th>
-                                            <th className="border-b border-border px-3 py-2 text-center">
+                                            <th className="border border-black dark:border-white/60 px-3 py-2 text-center">
                                                 Abnormal
                                             </th>
-                                            <th className="border-b border-border px-3 py-2 text-center">
+                                            <th className="border border-black dark:border-white/60 px-3 py-2 text-center">
                                                 Durasi abnormal
                                             </th>
-                                            <th className="border-b border-border px-3 py-2 text-center">
+                                            <th className="border border-black dark:border-white/60 px-3 py-2 text-center">
                                                 Gangguan
                                             </th>
-                                            <th className="border-b border-border px-3 py-2 text-center">
+                                            <th className="border border-black dark:border-white/60 px-3 py-2 text-center">
                                                 Durasi gangguan
                                             </th>
                                         </tr>
@@ -461,39 +480,39 @@ export default function KondisiAbnormalInput({
                                     <tbody>
                                         {rekap_harian.map((day) => (
                                             <tr key={day.tanggal}>
-                                                <td className="border-b border-border px-3 py-1.5">
+                                                <td className="border border-black dark:border-white/60 px-3 py-1.5">
                                                     {formatDate(day.tanggal)}
                                                 </td>
-                                                <td className="border-b border-border px-3 py-1.5 text-center tabular-nums">
+                                                <td className="border border-black dark:border-white/60 px-3 py-1.5 text-center tabular-nums">
                                                     {day.abnormal || '–'}
                                                 </td>
-                                                <td className="border-b border-border px-3 py-1.5 text-center tabular-nums">
+                                                <td className="border border-black dark:border-white/60 px-3 py-1.5 text-center tabular-nums">
                                                     {hours(day.durasi_abnormal)}
                                                 </td>
-                                                <td className="border-b border-border px-3 py-1.5 text-center tabular-nums">
+                                                <td className="border border-black dark:border-white/60 px-3 py-1.5 text-center tabular-nums">
                                                     {day.gangguan || '–'}
                                                 </td>
-                                                <td className="border-b border-border px-3 py-1.5 text-center tabular-nums">
+                                                <td className="border border-black dark:border-white/60 px-3 py-1.5 text-center tabular-nums">
                                                     {hours(day.durasi_gangguan)}
                                                 </td>
                                             </tr>
                                         ))}
-                                        <tr className="font-semibold">
-                                            <td className="px-3 py-1.5">
+                                        <tr className="bg-yellow-200 font-bold text-black dark:bg-yellow-800 dark:text-yellow-50">
+                                            <td className="border border-black px-3 py-1.5 dark:border-white/60">
                                                 Total
                                             </td>
-                                            <td className="px-3 py-1.5 text-center tabular-nums">
+                                            <td className="border border-black px-3 py-1.5 dark:border-white/60 text-center tabular-nums">
                                                 {summary.total_abnormal_count}
                                             </td>
-                                            <td className="px-3 py-1.5 text-center tabular-nums">
+                                            <td className="border border-black px-3 py-1.5 dark:border-white/60 text-center tabular-nums">
                                                 {hours(
                                                     summary.total_abnormal_durasi,
                                                 )}
                                             </td>
-                                            <td className="px-3 py-1.5 text-center tabular-nums">
+                                            <td className="border border-black px-3 py-1.5 dark:border-white/60 text-center tabular-nums">
                                                 {summary.total_gangguan_count}
                                             </td>
-                                            <td className="px-3 py-1.5 text-center tabular-nums">
+                                            <td className="border border-black px-3 py-1.5 dark:border-white/60 text-center tabular-nums">
                                                 {hours(
                                                     summary.total_gangguan_durasi,
                                                 )}
@@ -523,6 +542,11 @@ type SheetRow = {
     jam_selesai: string;
     machine_id: string;
     peralatan: string;
+    kronologi: string;
+    eviden: string | null;
+    eviden_url: string | null;
+    /** A newly chosen photo, uploaded on Simpan. */
+    eviden_file: File | null;
 } & Record<TindakKey, boolean> &
     Record<TextKey, string>;
 
@@ -541,6 +565,10 @@ const toSheetRow = (entry: Entry): SheetRow => ({
     jam_selesai: entry.jam_selesai,
     machine_id: entry.machine_id ? String(entry.machine_id) : '',
     peralatan: entry.peralatan,
+    kronologi: entry.kronologi,
+    eviden: entry.eviden,
+    eviden_url: entry.eviden_url,
+    eviden_file: null,
     tl_pendek_sr: entry.tl_pendek_sr === 1,
     tl_pendek_flm: entry.tl_pendek_flm === 1,
     tl_pendek_lainnya: entry.tl_pendek_lainnya === 1,
@@ -552,8 +580,8 @@ const toSheetRow = (entry: Entry): SheetRow => ({
 });
 
 const sheetCell =
-    'min-h-8 w-full rounded-none border-0 bg-transparent px-1.5 py-1.5 text-xs shadow-none focus-visible:ring-1 md:text-xs';
-const sheetTd = 'border border-border p-0 align-top';
+    'min-h-8 w-full rounded-none border-0 bg-transparent px-1.5 py-1.5 text-xs shadow-none focus-visible:border-0 focus-visible:ring-0 focus:bg-yellow-50 md:text-xs dark:focus:bg-yellow-950/40';
+const sheetTd = 'border border-black p-0 align-top dark:border-white/60';
 
 /**
  * Desktop input like a spreadsheet: every report is a row typed straight into
@@ -605,6 +633,10 @@ function AbnormalSheet({
                 jam_selesai: '',
                 machine_id: '',
                 peralatan: '',
+                kronologi: '',
+                eviden: null,
+                eviden_url: null,
+                eviden_file: null,
                 tl_pendek_sr: false,
                 tl_pendek_flm: false,
                 tl_pendek_lainnya: false,
@@ -655,6 +687,7 @@ function AbnormalSheet({
                         jam_selesai: row.jam_selesai,
                         machine_id: row.machine_id,
                         peralatan: row.peralatan,
+                        kronologi: row.kronologi,
                         tl_pendek_sr: row.tl_pendek_sr,
                         tl_pendek_flm: row.tl_pendek_flm,
                         tl_pendek_lainnya: row.tl_pendek_lainnya,
@@ -663,10 +696,19 @@ function AbnormalSheet({
                         tl_panjang: row.tl_panjang,
                         dampak_sistem: row.dampak_sistem,
                         dampak_pembangkit: row.dampak_pembangkit,
+                        // The saved photo's path keeps it; a chosen file is uploaded (the request becomes multipart).
+                        eviden: row.eviden,
+                        ...(row.eviden_file ? { eviden_file: row.eviden_file } : {}),
                     })),
             },
             {
                 preserveScroll: true,
+                onSuccess: (page) => {
+                    // Take the saved rows (with the stored photos) back from the server.
+                    setRows((page.props as unknown as Props).entries.map(toSheetRow));
+                    setDeletedIds([]);
+                    setDirty(false);
+                },
                 onError: (errs) => {
                     setErrors(errs);
                     toast.error(Object.values(errs)[0] ?? 'Periksa kembali isian tabel.');
@@ -680,7 +722,7 @@ function AbnormalSheet({
     const editableIndex = (index: number) => rows.slice(0, index).filter((row) => row.canEdit).length;
     const errorOf = (index: number, field: string) => errors[`rows.${editableIndex(index)}.${field}`];
 
-    const text = (index: number, row: SheetRow, key: TextKey | 'uraian_kondisi', placeholder?: string) => {
+    const text = (index: number, row: SheetRow, key: TextKey | 'uraian_kondisi' | 'kronologi', placeholder?: string) => {
         const error = errorOf(index, key);
 
         return (
@@ -715,38 +757,40 @@ function AbnormalSheet({
                 </div>
             </div>
             <div className="overflow-x-auto">
-                <table className="w-full min-w-[1900px] border-collapse text-xs">
-                    <thead className="bg-[#ea7315]/15 text-left">
+                <table className="w-full min-w-[2200px] border-collapse border-2 border-black text-xs dark:border-white">
+                    <thead className="bg-yellow-200 text-left text-[11px] font-bold text-black uppercase dark:bg-yellow-800 dark:text-yellow-50">
                         <tr>
-                            <th rowSpan={2} className="w-10 border border-border px-2 py-2 text-center">No</th>
-                            <th rowSpan={2} className="w-36 border border-border px-2 py-2">Tanggal</th>
-                            <th rowSpan={2} className="w-28 border border-border px-2 py-2">Jenis</th>
-                            <th colSpan={4} className="border border-border bg-rose-500/10 px-2 py-1 text-center">Gangguan</th>
-                            <th rowSpan={2} className="w-20 border border-border px-2 py-2">Durasi (jam)</th>
-                            <th rowSpan={2} className="min-w-52 border border-border px-2 py-2">Indikasi / uraian</th>
-                            <th rowSpan={2} className="min-w-40 border border-border px-2 py-2">Parameter terkait</th>
-                            <th colSpan={tindak.length + 1} className="border border-border px-2 py-1 text-center">TL jangka pendek</th>
-                            <th rowSpan={2} className="min-w-40 border border-border px-2 py-2">TL jangka panjang</th>
-                            <th rowSpan={2} className="min-w-36 border border-border px-2 py-2">Dampak sistem</th>
-                            <th rowSpan={2} className="min-w-36 border border-border px-2 py-2">Dampak pembangkit</th>
-                            <th rowSpan={2} className="w-28 border border-border px-2 py-2">Pelapor</th>
-                            {canWrite && <th rowSpan={2} className="w-9 border border-border" />}
+                            <th rowSpan={2} className="w-10 border border-black dark:border-white px-2 py-2 text-center">No</th>
+                            <th rowSpan={2} className="w-36 border border-black dark:border-white px-2 py-2">Tanggal</th>
+                            <th rowSpan={2} className="w-28 border border-black dark:border-white px-2 py-2">Jenis</th>
+                            <th colSpan={4} className="border border-black bg-rose-200 dark:border-white dark:bg-rose-900 px-2 py-1 text-center">Gangguan</th>
+                            <th rowSpan={2} className="w-20 border border-black dark:border-white px-2 py-2">Durasi (jam)</th>
+                            <th rowSpan={2} className="min-w-52 border border-black dark:border-white px-2 py-2">Indikasi / uraian</th>
+                            <th rowSpan={2} className="min-w-40 border border-black dark:border-white px-2 py-2">Parameter terkait</th>
+                            <th rowSpan={2} className="min-w-56 border border-black bg-rose-200 dark:border-white dark:bg-rose-900 px-2 py-2">Kronologi (gangguan)</th>
+                            <th colSpan={tindak.length + 1} className="border border-black dark:border-white px-2 py-1 text-center">TL jangka pendek</th>
+                            <th rowSpan={2} className="min-w-40 border border-black dark:border-white px-2 py-2">TL jangka panjang</th>
+                            <th rowSpan={2} className="min-w-36 border border-black dark:border-white px-2 py-2">Dampak sistem</th>
+                            <th rowSpan={2} className="min-w-36 border border-black dark:border-white px-2 py-2">Dampak pembangkit</th>
+                            <th rowSpan={2} className="w-20 border border-black dark:border-white px-2 py-2 text-center">Eviden</th>
+                            <th rowSpan={2} className="w-28 border border-black dark:border-white px-2 py-2">Pelapor</th>
+                            {canWrite && <th rowSpan={2} className="w-9 border border-black dark:border-white" />}
                         </tr>
                         <tr>
-                            <th className="w-24 border border-border bg-rose-500/10 px-1 py-1 text-center">Jam mulai</th>
-                            <th className="w-24 border border-border bg-rose-500/10 px-1 py-1 text-center">Jam selesai</th>
-                            <th className="min-w-32 border border-border bg-rose-500/10 px-2 py-1">Mesin</th>
-                            <th className="min-w-36 border border-border bg-rose-500/10 px-2 py-1">Peralatan</th>
+                            <th className="w-24 border border-black bg-rose-200 dark:border-white dark:bg-rose-900 px-1 py-1 text-center">Jam mulai</th>
+                            <th className="w-24 border border-black bg-rose-200 dark:border-white dark:bg-rose-900 px-1 py-1 text-center">Jam selesai</th>
+                            <th className="min-w-32 border border-black bg-rose-200 dark:border-white dark:bg-rose-900 px-2 py-1">Mesin</th>
+                            <th className="min-w-36 border border-black bg-rose-200 dark:border-white dark:bg-rose-900 px-2 py-1">Peralatan</th>
                             {tindak.map(([key, label]) => (
-                                <th key={key} className="w-12 border border-border px-1 py-1 text-center">{label}</th>
+                                <th key={key} className="w-12 border border-black dark:border-white px-1 py-1 text-center">{label}</th>
                             ))}
-                            <th className="min-w-36 border border-border px-2 py-1">Keterangan</th>
+                            <th className="min-w-36 border border-black dark:border-white px-2 py-1">Keterangan</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.length === 0 && (
                             <tr>
-                                <td colSpan={17 + tindak.length} className="border border-border p-6 text-center text-[13px] text-muted-foreground">
+                                <td colSpan={19 + tindak.length} className="border border-black p-6 dark:border-white/60 text-center text-[13px] text-muted-foreground">
                                     Belum ada laporan pada bulan ini.{canWrite && ' Tekan Tambah Baris untuk mengisi.'}
                                 </td>
                             </tr>
@@ -850,6 +894,7 @@ function AbnormalSheet({
                                     </td>
                                     {text(index, row, 'uraian_kondisi', 'Mis. mesin #2 trip…')}
                                     {text(index, row, 'parameter_terkait', 'Mis. exhaust 520 °C…')}
+                                    {gangguanRow ? text(index, row, 'kronologi', KRONOLOGI_PLACEHOLDER) : <td className={sheetTd}>{muted}</td>}
                                     {tindak.map(([key, label]) => (
                                         <td key={key} className={cn(sheetTd, 'text-center align-middle')}>
                                             <Checkbox
@@ -864,6 +909,22 @@ function AbnormalSheet({
                                     {text(index, row, 'tl_panjang')}
                                     {text(index, row, 'dampak_sistem')}
                                     {text(index, row, 'dampak_pembangkit')}
+                                    <td className={cn(sheetTd, 'p-1 align-middle', errorOf(index, 'eviden_file') && 'bg-destructive/5 ring-1 ring-destructive ring-inset')} title={errorOf(index, 'eviden_file')}>
+                                        {editable ? (
+                                            <EvidencePhotoField
+                                                label="Eviden"
+                                                url={row.eviden_url}
+                                                file={row.eviden_file}
+                                                onPick={(file) => update(index, { eviden_file: file })}
+                                                onRemove={() => update(index, { eviden: null, eviden_url: null, eviden_file: null })}
+                                                size="sm"
+                                            />
+                                        ) : row.eviden_url ? (
+                                            <EvidencePhotoField label="Eviden" url={row.eviden_url} file={null} onPick={() => {}} onRemove={() => {}} disabled size="sm" />
+                                        ) : (
+                                            muted
+                                        )}
+                                    </td>
                                     <td className={cn(sheetTd, 'px-1.5 py-1.5 text-muted-foreground')}>{row.input_by ?? (row.id === null ? 'Baru' : '–')}</td>
                                     {canWrite && (
                                         <td className={cn(sheetTd, 'text-center align-middle')}>
@@ -948,7 +1009,12 @@ function EntryDialog({
         jam_selesai: entry?.jam_selesai ?? '',
         machine_id: entry?.machine_id ? String(entry.machine_id) : '',
         peralatan: entry?.peralatan ?? '',
+        kronologi: entry?.kronologi ?? '',
+        eviden: entry?.eviden ?? null,
+        eviden_file: null,
     });
+    // The saved photo shows until it is removed or replaced.
+    const [evidenUrl, setEvidenUrl] = useState(entry?.eviden_url ?? null);
     const gangguan = form.data.jenis === 'gangguan';
     const computed = gangguan ? gangguanHours(form.data.jam_mulai, form.data.jam_selesai) : null;
 
@@ -957,7 +1023,9 @@ function EntryDialog({
         const options = { preserveScroll: true, onSuccess: onClose };
 
         if (entry) {
-            form.put(kondisiAbnormalRoutes.update(entry.id).url, options);
+            // A photo only travels in a multipart POST, so the PUT is spoofed.
+            form.transform((data) => ({ ...data, _method: 'put' }));
+            form.post(kondisiAbnormalRoutes.update(entry.id).url, { ...options, forceFormData: true });
         } else {
             form.post(kondisiAbnormalRoutes.store().url, options);
         }
@@ -1034,18 +1102,21 @@ function EntryDialog({
                             </p>
                             <div className="col-span-2">
                                 <Field label="Mesin" error={form.errors.machine_id}>
-                                    <select
-                                        value={form.data.machine_id}
-                                        onChange={(e) => form.setData('machine_id', e.target.value)}
-                                        className="h-9 w-full rounded-md border border-input bg-background px-2 text-[13px] text-foreground"
+                                    <Select
+                                        value={form.data.machine_id || undefined}
+                                        onValueChange={(value) => form.setData('machine_id', value)}
                                     >
-                                        <option value="">Pilih mesin…</option>
-                                        {options.machines.map((machine) => (
-                                            <option key={machine.id} value={machine.id}>
-                                                {machine.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger className="h-10 w-full text-[13px] text-foreground" aria-label="Mesin">
+                                            <SelectValue placeholder="Pilih mesin…" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {options.machines.map((machine) => (
+                                                <SelectItem key={machine.id} value={String(machine.id)}>
+                                                    {machine.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </Field>
                             </div>
                             <div className="col-span-2">
@@ -1092,6 +1163,17 @@ function EntryDialog({
                         />
                     </Field>
 
+                    {gangguan && (
+                        <Field label="Kronologi gangguan" error={form.errors.kronologi}>
+                            <Textarea
+                                value={form.data.kronologi}
+                                onChange={(e) => form.setData('kronologi', e.target.value)}
+                                rows={3}
+                                placeholder={KRONOLOGI_PLACEHOLDER}
+                            />
+                        </Field>
+                    )}
+
                     <Field label="Tindak lanjut jangka pendek">
                         <div className="flex flex-wrap gap-4">
                             {tindak.map(([key, label]) => (
@@ -1129,6 +1211,19 @@ function EntryDialog({
                             </Field>
                         ),
                     )}
+
+                    <Field label="Eviden (foto)" error={form.errors.eviden_file}>
+                        <EvidencePhotoField
+                            label="Eviden"
+                            url={evidenUrl}
+                            file={form.data.eviden_file}
+                            onPick={(file) => form.setData('eviden_file', file)}
+                            onRemove={() => {
+                                form.setData((data) => ({ ...data, eviden: null, eviden_file: null }));
+                                setEvidenUrl(null);
+                            }}
+                        />
+                    </Field>
 
                     <DialogFooter className="gap-2 sm:justify-between">
                         {onDelete ? (

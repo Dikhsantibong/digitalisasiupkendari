@@ -96,7 +96,7 @@ class JamMesinTest extends TestCase
                 ->where("readings.{$this->mak1->id}.4", 24)
                 ->where("readings.{$this->mak2->id}.25", -8)
                 ->where('over', [['machine_id' => $this->mak2->id, 'day' => 25]])
-                ->where('filled', ['operasi' => true, 'pemeliharaan' => true, 'gangguan' => true])
+                ->where('filled', ['operasi' => true, 'pemeliharaan' => true, 'mo' => false, 'gangguan' => true])
                 ->where("totals_by_machine.{$this->mak1->id}", round(30 * 24 - 16.53 - 15.77 - 24 - 1.5, 2)));
     }
 

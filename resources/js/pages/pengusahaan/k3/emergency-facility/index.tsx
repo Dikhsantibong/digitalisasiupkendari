@@ -589,7 +589,7 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
 
                     {/* Matriks Tabel Emergency Facility */}
                     <div className="mt-3 overflow-x-auto">
-                        <table className="ef-table w-full border-collapse border border-black text-xs dark:border-border">
+                        <table className="excel-sheet ef-table w-full border-collapse border border-black text-xs dark:border-border">
                             <thead>
                                 {/* Header Baris 1: Kolom Utama */}
                                 <tr className="bg-[#fff59d] text-center font-bold text-foreground dark:bg-amber-950/40">

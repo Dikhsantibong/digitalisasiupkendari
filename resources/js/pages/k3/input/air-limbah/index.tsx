@@ -498,7 +498,7 @@ export default function AirLimbahPage({
 
                     {/* Table View */}
                     <div className="overflow-x-auto">
-                        <table className="w-full border-collapse text-left text-xs">
+                        <table className="excel-sheet w-full border-collapse text-left text-xs">
                             <thead>
                                 <tr className="border-b border-slate-300 bg-[#85b5e1]/30 text-center font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-800/80 dark:text-slate-200">
                                     <th rowSpan={2} className="w-12 border-r border-slate-300 px-3 py-2.5 dark:border-slate-700">

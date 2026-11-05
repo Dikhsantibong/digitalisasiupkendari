@@ -18,6 +18,7 @@ import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-selec
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanJamKerja from '@/routes/k3/pengusahaan/jam-kerja';
 import k3PengusahaanJamKerjaBulanan from '@/routes/k3/pengusahaan/jam-kerja-bulanan';
@@ -469,7 +470,7 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                     </table>
 
                     {/* Tabel 14 Baris FMZ-08.4.4.11 */}
-                    <table className="jkb-table mt-4 w-full border-collapse border border-black text-xs dark:border-border">
+                    <table className="excel-sheet jkb-table mt-4 w-full border-collapse border border-black text-xs dark:border-border">
                         <thead>
                             <tr className="bg-[#e8eaf6] text-center font-bold text-foreground dark:bg-muted/60">
                                 <th className="w-14 border border-black p-2 dark:border-border">NO.</th>
@@ -737,7 +738,7 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                             </h2>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
+                            <table className="excel-sheet w-full text-xs">
                                 <thead>
                                     <tr className="border-b border-border bg-muted/40 text-left font-semibold text-muted-foreground">
                                         <th className="p-2">Periode</th>
@@ -810,6 +811,11 @@ function StatTile({
     label: string;
     value: string;
 }) {
+    // Phone input pages go without summary tiles (a grid left empty is hidden by app.css).
+    if (useSimplifiedMobileInput()) {
+        return <span data-mobile-hidden hidden />;
+    }
+
     return (
         <Card className="flex items-center gap-3 p-3">
             <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>

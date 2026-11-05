@@ -166,8 +166,8 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
                         />
                     </>
                 ) : (
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[720px] border-collapse text-xs">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full min-w-[720px] border-collapse text-xs">
                         <thead className="bg-[#ed7d31] text-center text-[11px] font-semibold text-slate-900">
                             <tr>
                                 <th colSpan={5} className="border border-slate-500 p-1 text-sm">LAPORAN PTW PEMBANGKIT</th>

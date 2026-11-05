@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property int $is_gangguan
  * @property string $durasi_gangguan
  * @property string|null $parameter_terkait
+ * @property string|null $kronologi gangguan only: how the gangguan unfolded
  * @property bool $tl_pendek_sr tindak lanjut jangka pendek: Service Request
  * @property bool $tl_pendek_flm tindak lanjut jangka pendek: FLM
  * @property bool $tl_pendek_lainnya tindak lanjut jangka pendek: lainnya
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $tl_panjang tindak lanjut jangka panjang
  * @property string|null $dampak_sistem
  * @property string|null $dampak_pembangkit
+ * @property string|null $eviden photo on the public disk, under operasi-abnormal/{unit_id}
  * @property string|null $jam_mulai gangguan only, "HH:MM"
  * @property string|null $jam_selesai gangguan only, "HH:MM"
  * @property int|null $machine_id the mesin that had the gangguan
@@ -58,6 +60,7 @@ use Illuminate\Support\Carbon;
     'machine_id',
     'peralatan',
     'parameter_terkait',
+    'kronologi',
     'tl_pendek_sr',
     'tl_pendek_flm',
     'tl_pendek_lainnya',
@@ -65,6 +68,7 @@ use Illuminate\Support\Carbon;
     'tl_panjang',
     'dampak_sistem',
     'dampak_pembangkit',
+    'eviden',
     'input_by',
 ])]
 class KondisiAbnormal extends Model

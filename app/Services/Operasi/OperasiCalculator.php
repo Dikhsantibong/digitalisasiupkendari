@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
 /**
  * The single home for every operasi calculation. The input grid, the reports,
  * and the berita acara all derive their numbers here so a formula is never
- * duplicated (modul-operasi.md §5).
+ * duplicated (PRD.md §10.1).
  *
  * Nothing in here is stored: opening stands carry over, hours come from the
  * Star-Stop log, and production / consumption are computed on read.
@@ -148,7 +148,7 @@ class OperasiCalculator
      * The machine's hours for a month, grouped by status-code category. Hours
      * are derived from the Star-Stop log durations, never typed in. Standby is
      * the balance of the month's available hours after operating, maintenance
-     * and disturbance hours (modul-operasi.md §5.5).
+     * and disturbance hours (PRD.md §10.1).
      *
      * @return array{operasi: float, har: float, gangguan: float, standby: float, total: float}
      */
@@ -181,7 +181,7 @@ class OperasiCalculator
     }
 
     /**
-     * Specific Fuel Consumption for a period (modul-operasi.md §5.4). Bruto uses
+     * Specific Fuel Consumption for a period (PRD.md §10.1). Bruto uses
      * gross production; netto uses production net of own use. Returns null where
      * the denominator is zero, so the report can show a dash rather than divide.
      *

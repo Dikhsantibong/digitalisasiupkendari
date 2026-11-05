@@ -83,80 +83,13 @@ function UserButton({ onDark = false }: { onDark?: boolean }) {
     );
 }
 
-/** Per-viewer tap counts of the home menus (a convenience only; the page works without storage). */
-const USAGE_KEY = 'mobile-menu-usage';
-const QUICK_COUNT = 4;
-
-type Usage = Record<string, number>;
-
-function readUsage(module: string): Usage {
-    try {
-        const raw = window.localStorage.getItem(`${USAGE_KEY}:${module}`);
-
-        return raw ? (JSON.parse(raw) as Usage) : {};
-    } catch {
-        return {};
-    }
-}
-
-function recordUsage(module: string, menu: string): void {
-    try {
-        const usage = readUsage(module);
-        usage[menu] = (usage[menu] ?? 0) + 1;
-        window.localStorage.setItem(
-            `${USAGE_KEY}:${module}`,
-            JSON.stringify(usage),
-        );
-    } catch {
-        // Storage blocked: quick access simply keeps its defaults.
-    }
-}
-
-/**
- * The menus of "Akses Cepat": the user's most-opened menus first, then the
- * module's `quick` defaults, then the first menu of each section.
- */
-function quickMenus(
-    menus: MobileMenu[],
-    defaults: string[],
-    usage: Usage,
-): MobileMenu[] {
-    const byKey = new Map(menus.map((menu) => [menu.key, menu]));
-    const used = Object.entries(usage)
-        .filter(([key, count]) => count > 1 && byKey.has(key))
-        .sort((a, b) => b[1] - a[1])
-        .map(([key]) => key);
-    const firstOfGroups = MOBILE_MENU_GROUPS.map(
-        (group) => menus.find((menu) => menu.group === group.key)?.key,
-    ).filter((key): key is string => key !== undefined);
-    const keys = [
-        ...new Set([
-            ...used,
-            ...defaults.filter((key) => byKey.has(key)),
-            ...firstOfGroups,
-            ...menus.map((menu) => menu.key),
-        ]),
-    ];
-
-    return keys
-        .slice(0, QUICK_COUNT)
-        .map((key) => byKey.get(key) as MobileMenu);
-}
-
-function MenuTile({
-    menu,
-    onOpen,
-}: {
-    menu: MobileMenu;
-    onOpen?: (menu: MobileMenu) => void;
-}) {
+function MenuTile({ menu }: { menu: MobileMenu }) {
     const Icon = menu.icon;
 
     return (
         <Link
             href={menu.href}
             prefetch
-            onClick={() => onOpen?.(menu)}
             className="flex min-w-0 flex-col items-center gap-2 rounded-xl py-1.5 text-center transition outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-95 active:bg-muted/70"
             title={menu.title}
         >
@@ -175,17 +108,11 @@ function MenuTile({
     );
 }
 
-function MenuGrid({
-    menus,
-    onOpen,
-}: {
-    menus: MobileMenu[];
-    onOpen: (menu: MobileMenu) => void;
-}) {
+function MenuGrid({ menus }: { menus: MobileMenu[] }) {
     return (
         <div className="grid grid-cols-4 gap-x-0.5 gap-y-3">
             {menus.map((menu) => (
-                <MenuTile key={menu.key} menu={menu} onOpen={onOpen} />
+                <MenuTile key={menu.key} menu={menu} />
             ))}
         </div>
     );
@@ -207,8 +134,6 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
     const roleLabel = auth.roles.map((role) => role.display_name).join(', ');
     const [query, setQuery] = useState('');
     const [section, setSection] = useState<MobileMenuGroup | 'all'>('all');
-    const moduleKey = resolved.module.key;
-    const [usage] = useState(() => readUsage(moduleKey));
 
     const sections = useMemo(
         () =>
@@ -220,10 +145,6 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
                 ),
             })).filter((group) => group.menus.length > 0),
         [resolved.menus],
-    );
-    const quick = useMemo(
-        () => quickMenus(resolved.menus, resolved.module.quick ?? [], usage),
-        [resolved.menus, resolved.module.quick, usage],
     );
     const withFilters = resolved.menus.length >= FILTER_FROM;
     const search = query.trim().toLowerCase();
@@ -239,7 +160,6 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
         section === 'all'
             ? sections
             : sections.filter((group) => group.key === section);
-    const open = (menu: MobileMenu) => recordUsage(moduleKey, menu.key);
 
     return (
         <div className="flex flex-col gap-4 px-4 pt-4 pb-8">
@@ -267,7 +187,7 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
             ) : (
                 <>
                     {withFilters && (
-                        <div className="sticky top-0 z-20 -mx-4 flex flex-col gap-3 bg-muted/40 px-4 py-2 backdrop-blur-md">
+                        <div className="sticky top-[var(--impersonation-h,0px)] z-20 -mx-4 flex flex-col gap-3 bg-muted/40 px-4 py-2 backdrop-blur-md">
                             <label className="flex h-11 items-center gap-2.5 rounded-xl border border-border/70 bg-card px-3.5 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15">
                                 <Search className="size-[18px] shrink-0 text-muted-foreground" />
                                 <input
@@ -345,22 +265,14 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
                             <Section
                                 title={`Hasil pencarian · ${results.length}`}
                             >
-                                <MenuGrid menus={results} onOpen={open} />
+                                <MenuGrid menus={results} />
                             </Section>
                         )
                     ) : (
                         <>
-                            {withFilters && section === 'all' && (
-                                <Section title="Akses Cepat">
-                                    <MenuGrid menus={quick} onOpen={open} />
-                                </Section>
-                            )}
                             {shown.map((group) => (
                                 <Section key={group.key} title={group.label}>
-                                    <MenuGrid
-                                        menus={group.menus}
-                                        onOpen={open}
-                                    />
+                                    <MenuGrid menus={group.menus} />
                                 </Section>
                             ))}
                         </>
@@ -429,7 +341,7 @@ export default function MobileModuleLayout({
                     <MobileHome resolved={resolved} />
                 ) : (
                     <>
-                        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-2 backdrop-blur">
+                        <header className="sticky top-[var(--impersonation-h,0px)] z-30 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-2 backdrop-blur">
                             <Link
                                 href={resolved.backHref}
                                 className="flex size-10 items-center justify-center rounded-full text-foreground active:bg-muted"

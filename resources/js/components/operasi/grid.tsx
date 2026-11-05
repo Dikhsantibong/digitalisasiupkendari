@@ -8,28 +8,39 @@ import { useCompactLayout } from '@/hooks/use-mobile-module';
 
 /** Excel-like styling shared by every operasi date-row grid. */
 export const OPERASI_GRID_STYLES = `
+.operasi-grid {
+    border: 0 !important;
+    border-radius: 0 !important;
+}
 .operasi-grid .rdg {
-    --rdg-header-row-height: 30px;
+    --rdg-header-row-height: 32px;
+    --rdg-border-color: #000;
+    --rdg-header-background-color: #fef08a;
+    --rdg-selection-color: #ca8a04;
+    --rdg-row-hover-background-color: #fefce8;
     font-size: 12px;
-    border: 1px solid var(--rdg-border-color);
-    border-radius: 6px;
+    border: 2px solid #000;
+    border-radius: 0;
+}
+.operasi-grid .rdg-cell[aria-selected='true'] {
+    background: #fefce8;
 }
 .operasi-grid .rdg-group-header,
 .operasi-grid .rdg-sub-header {
     text-align: center;
     justify-content: center;
+    color: #000;
+    text-transform: uppercase;
+    font-size: 11px;
 }
 .operasi-grid .rdg-group-header {
-    background: #e6eefb;
+    background: #fde047;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.02em;
-    color: #1e3a5f;
 }
 .operasi-grid .rdg-sub-header {
-    background: #f4f7fc;
-    font-weight: 600;
-    color: #334155;
+    background: #fef08a;
+    font-weight: 700;
 }
 .operasi-grid .rdg-derived-header {
     background: #eef0f3;

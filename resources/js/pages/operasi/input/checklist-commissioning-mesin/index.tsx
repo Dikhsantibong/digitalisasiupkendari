@@ -144,7 +144,7 @@ const PRINT_CSS = `
 
 /** A cell typed into like a spreadsheet (no box of its own). */
 const xlInput =
-    'h-8 rounded-none border-0 bg-transparent px-2 text-xs font-normal shadow-none focus:bg-yellow-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40';
+    'h-8 rounded-none border-0 bg-transparent px-2 text-xs font-normal shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40';
 
 export default function OperasiChecklistCommissioningMesinIndex({
     unit,
@@ -1052,7 +1052,7 @@ return SPECS.label;
                                     setDirty(true);
                                 }}
                                 placeholder="disesuaikan dengan kondisi peralatan unit/sentral kit"
-                                className="min-h-16 rounded-none border-0 text-xs shadow-none focus:bg-yellow-50 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40"
+                                className="min-h-16 rounded-none border-0 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40"
                             />
                         ) : (
                             <div className="p-3 text-xs text-muted-foreground">

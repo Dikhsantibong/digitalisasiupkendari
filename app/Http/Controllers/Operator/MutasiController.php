@@ -54,7 +54,7 @@ class MutasiController extends Controller
 
         $mutasi = OperatorMutasi::query()->where('unit_id', $unit->id)->whereDate('tanggal', $tanggal)->where('shift', $shift)->first();
         $employee = $this->employeeOf($user, $unit);
-        $canWrite = $user->hasPermissionTo(PermissionName::OperatorMutasiWrite);
+        $canWrite = $this->writes($user, $unit);
 
         return Inertia::render('operator/mutasi/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
@@ -80,6 +80,8 @@ class MutasiController extends Controller
             'me' => ['nama' => $employee?->name ?? $user->name, 'regu' => $employee?->regu],
             'can_write' => $canWrite && ! $mutasi?->isReceived(),
             'can_receive' => $canWrite && $mutasi !== null && $mutasi->diserahkan_at !== null && ! $mutasi->isReceived(),
+            // An operator who is not the Leader Shift only reads the sheet.
+            'leader_only' => $user->hasPermissionTo(PermissionName::OperatorMutasiWrite) && ! $canWrite,
         ]);
     }
 
@@ -89,10 +91,8 @@ class MutasiController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperatorMutasiWrite), 403);
-
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
-        abort_unless($user->canAccessUnit($unit), 403);
+        abort_unless($user->canAccessUnit($unit) && $this->writes($user, $unit), 403);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer'],
@@ -190,8 +190,7 @@ class MutasiController extends Controller
     public function terima(Request $request, OperatorMutasi $mutasi): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperatorMutasiWrite), 403);
-        abort_unless($user->canAccessUnit($mutasi->unit_id), 403);
+        abort_unless($user->canAccessUnit($mutasi->unit_id) && $this->writes($user, $mutasi->unit), 403);
 
         $validated = $request->validate([
             'regu_penerima' => ['required', Rule::in(AttendanceRoster::REGU)],
@@ -388,6 +387,22 @@ class MutasiController extends Controller
         abort_unless($user->canAccessUnit($unit), 403);
 
         return [$units, $unit];
+    }
+
+    /**
+     * Each shift has a Leader Shift, who fills, hands over and receives the
+     * sheet (user, 2026-10-30): an operator writes only as the Leader Shift
+     * of the unit; whoever manages the shift schedule (Project Leader, TL —
+     * operator.absensi.write) may too.
+     */
+    private function writes(User $user, Unit $unit): bool
+    {
+        if (! $user->hasPermissionTo(PermissionName::OperatorMutasiWrite)) {
+            return false;
+        }
+
+        return $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite)
+            || (bool) $this->employeeOf($user, $unit)?->is_shift_leader;
     }
 
     private function employeeOf(User $user, Unit $unit): ?Employee

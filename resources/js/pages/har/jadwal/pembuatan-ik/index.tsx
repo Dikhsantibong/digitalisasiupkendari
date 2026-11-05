@@ -15,17 +15,6 @@ import {
 import { Fragment, useMemo, useState } from 'react';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
-    buildDocumentHeader,
-    createSheet,
-    downloadWorkbook,
-    mergeCells,
-    paintSheet,
-    setColWidths,
-    SPECS,
-    XLSX_COLORS,
-} from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
-import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -41,7 +30,19 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
+    buildDocumentHeader,
+    createSheet,
+    downloadWorkbook,
+    mergeCells,
+    paintSheet,
+    setColWidths,
+    SPECS,
+    XLSX_COLORS,
+} from '@/lib/jadwal-excel';
 import jadwal from '@/routes/har/jadwal';
 import pembuatanIk from '@/routes/har/jadwal/pembuatan-ik';
 import type { IdName } from '@/types';
@@ -189,11 +190,16 @@ export default function HarJadwalPembuatanIkPage({
 
     // Cycle month cell: Blank -> R -> ✓ -> R & ✓ -> Blank
     const toggleMonthCell = (rowIndex: number, month: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r, idx) => {
-                if (idx !== rowIndex) return r;
+                if (idx !== rowIndex) {
+return r;
+}
+
                 const inRencana = r.rencana_bulan.includes(month);
                 const inRealisasi = r.realisasi_bulan.includes(month);
 
@@ -254,7 +260,10 @@ export default function HarJadwalPembuatanIkPage({
         field: 'instruksi_kerja' | 'pic_pembuat',
         value: string,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r, idx) =>
                 idx === rowIndex ? { ...r, [field]: value } : r,
@@ -265,7 +274,9 @@ export default function HarJadwalPembuatanIkPage({
 
     // Add new IK row
     const handleAddRow = () => {
-        if (!newTitle.trim()) return;
+        if (!newTitle.trim()) {
+return;
+}
 
         setRows((prev) => [
             ...prev,
@@ -286,9 +297,13 @@ export default function HarJadwalPembuatanIkPage({
 
     // Remove IK row
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const filtered = prev.filter((_, idx) => idx !== rowIndex);
+
             return filtered.map((r, idx) => ({ ...r, no_urut: idx + 1 }));
         });
         setDirty(true);
@@ -302,7 +317,10 @@ export default function HarJadwalPembuatanIkPage({
 
     // Save
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -337,6 +355,7 @@ export default function HarJadwalPembuatanIkPage({
     const { monthTotals, grandTotalIk, totalRencana, totalRealisasi, kinerja } =
         useMemo(() => {
             const totals: Record<number, number> = {};
+
             for (let m = 1; m <= 12; m++) {
                 let count = 0;
                 rows.forEach((r) => {
@@ -417,6 +436,7 @@ export default function HarJadwalPembuatanIkPage({
             for (let m = 1; m <= 12; m++) {
                 const inRencana = r.rencana_bulan.includes(m);
                 const inRealisasi = r.realisasi_bulan.includes(m);
+
                 if (inRencana && inRealisasi) {
                     rowData.push('R & ✓');
                 } else if (inRencana) {
@@ -487,9 +507,11 @@ export default function HarJadwalPembuatanIkPage({
             if (r < 4) {
                 return null; // document header is drawn separately
             }
+
             if (r === 4 || r === 5) {
                 return SPECS.headerOrange;
             }
+
             if (r === catRowIdx) {
                 return SPECS.category;
             }
@@ -498,19 +520,25 @@ export default function HarJadwalPembuatanIkPage({
                 if (c === 1) {
                     return SPECS.cellLeft;
                 }
+
                 if (c >= monthStart && c <= monthEnd) {
                     const value = String(headerRows[r]?.[c] ?? '');
+
                     if (value === 'R') {
                         return amberCell;
                     }
+
                     if (value === '✓') {
                         return emeraldCell;
                     }
+
                     if (value === 'R & ✓') {
                         return tealCell;
                     }
+
                     return SPECS.cell;
                 }
+
                 return SPECS.cell;
             }
 
@@ -525,6 +553,7 @@ export default function HarJadwalPembuatanIkPage({
                 if (r === recapHeaderIdx) {
                     return SPECS.headerOrange;
                 }
+
                 return c === 1 ? SPECS.cellLeft : SPECS.cell;
             }
 
@@ -771,7 +800,7 @@ export default function HarJadwalPembuatanIkPage({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="print-table w-full border-collapse text-xs">
+                            <table className="excel-sheet print-table w-full border-collapse text-xs">
                                 <thead className="print-orange-header bg-[#ed7d31] text-black">
                                     <tr>
                                         <th
@@ -1043,7 +1072,7 @@ export default function HarJadwalPembuatanIkPage({
                     <div className="flex flex-col items-start justify-between gap-4 border-t border-border bg-muted/10 p-4 md:flex-row">
                         {/* Recap Table (Matches image) */}
                         <div className="w-full overflow-hidden rounded-xs border border-black md:w-96">
-                            <table className="w-full border-collapse text-xs">
+                            <table className="excel-sheet w-full border-collapse text-xs">
                                 <thead className="print-orange-header bg-[#ed7d31] text-black">
                                     <tr>
                                         <th className="w-10 border border-black p-1.5 text-center font-bold">
@@ -1177,20 +1206,18 @@ export default function HarJadwalPembuatanIkPage({
                             <Label htmlFor="ik-month">
                                 Target Bulan Rencana
                             </Label>
-                            <select
-                                id="ik-month"
-                                value={newMonth}
-                                onChange={(e) =>
-                                    setNewMonth(Number(e.target.value))
-                                }
-                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                            >
-                                {MONTH_LABELS.map((m, idx) => (
-                                    <option key={m} value={idx + 1}>
-                                        {m} - Bulan {idx + 1}
-                                    </option>
-                                ))}
-                            </select>
+                            <Select value={String(newMonth)} onValueChange={(value) => setNewMonth(Number(value))}>
+                                <SelectTrigger className="h-9 w-full text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {MONTH_LABELS.map((m, idx) => (
+                                        <SelectItem key={m} value={String(idx + 1)}>
+                                            {m} - Bulan {idx + 1}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 

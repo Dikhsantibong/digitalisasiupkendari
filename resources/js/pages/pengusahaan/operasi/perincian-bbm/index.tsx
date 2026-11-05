@@ -107,7 +107,7 @@ export default function PerincianBbmIndex(props: RincianBbmProps) {
                     </div>
                     <div className="overflow-x-auto">
                         <table
-                            className="w-full border-collapse text-[13px] sm:min-w-[640px]"
+                            className="excel-sheet w-full border-collapse text-[13px] sm:min-w-[640px]"
                             data-keep-table
                         >
                             <tbody>

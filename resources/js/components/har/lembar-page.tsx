@@ -57,9 +57,9 @@ export type HarLembarPageProps = {
     can_write: boolean;
 };
 
-const th = 'border border-slate-400 px-0.5 py-1';
-const td = 'border border-border';
-const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
+const th = 'border border-black px-0.5 py-1 dark:border-white/60';
+const td = 'h-8 border border-black dark:border-white/60';
+const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 dark:focus:bg-yellow-950/40';
 
 /** PHP sends an empty cell map as a JSON array. */
 const normalize = (rows: Row[], lines: { key: string }[]): Row[] =>
@@ -314,9 +314,7 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                     {lembar.menu === 'jadwal' && can_write && <MobileModeBar editing={mobileEditing} onChange={setMobileEditing} />}
 
                     <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <div className="col-span-2">
-                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
-                        </div>
+                        <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" labelClassName="col-span-2" />
                         {lembar.per_machine && (
                             <div className="col-span-2">
                                 <OperasiSelect label="Mesin" value={String(filters.machine_id ?? '')} onChange={(v) => visit({ machine_id: Number(v) })} options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))} className="w-full" />
@@ -538,9 +536,9 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                     {lembar.grid.some((c) => c.is_red) && <span className="text-red-600">Kolom merah = akhir pekan / hari libur</span>}
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full border-collapse text-xs" style={{ minWidth: Math.max(900, before.length * 120 + lembar.grid.length * perColumn * 26 + 200) }}>
-                        <thead className="bg-orange-200/70 text-center text-[11px] font-semibold text-slate-900 dark:bg-orange-950/40 dark:text-orange-100">
+                <div className="overflow-x-auto bg-card">
+                    <table className="w-full border-collapse border-2 border-black text-xs dark:border-white" style={{ minWidth: Math.max(900, before.length * 120 + lembar.grid.length * perColumn * 26 + 200) }}>
+                        <thead className="bg-yellow-200 text-center text-[11px] font-bold text-black uppercase dark:bg-yellow-800 dark:text-yellow-50">
                             <tr>
                                 <th className={`${th} w-8`} rowSpan={headRows}>NO</th>
                                 {before.map((f) => (
@@ -654,8 +652,8 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
                             {summary.title} <span className="text-xs font-normal text-muted-foreground">(dari data tersimpan)</span>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="border-collapse text-xs">
-                                <thead className="bg-orange-200/70 dark:bg-orange-950/40">
+                            <table className="border-collapse border-2 border-black text-xs dark:border-white">
+                                <thead className="bg-yellow-200 font-bold text-black dark:bg-yellow-800 dark:text-yellow-50">
                                     <tr>
                                         {summary.columns.map((label) => (
                                             <th key={label} className={`${th} px-3`}>{label}</th>

@@ -445,7 +445,7 @@ setInspektur(e.target.value); setDirty(true);
                 </div>
 
                 <div className="overflow-x-auto">
-                    <table className="inspeksi-table w-full border-collapse border-2 border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet inspeksi-table w-full border-collapse border-2 border-black text-[10px] dark:border-border sm:text-[11px]">
                         <thead>
                             <tr className="bg-muted/40 font-bold uppercase text-foreground">
                                 <th className="w-10 border border-black px-1.5 py-1 text-center dark:border-border">NO</th>

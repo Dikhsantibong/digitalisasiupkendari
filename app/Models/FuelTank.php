@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TankFuelType;
+use App\Enums\TankJenis;
 use App\Models\Concerns\BelongsToUnit;
 use Database\Factories\FuelTankFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -18,6 +19,7 @@ use Illuminate\Support\Carbon;
  * @property int $unit_id
  * @property string|null $code
  * @property string $name
+ * @property TankJenis|null $jenis storage / setlink / transfer / service (Opname BBM)
  * @property int|null $bbm_type_id
  * @property TankFuelType $fuel_type
  * @property-read BbmType|null $bbmType
@@ -29,7 +31,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
  */
-#[Fillable(['unit_id', 'code', 'name', 'bbm_type_id', 'fuel_type', 'capacity_liter', 'is_daily_tank', 'sort_order', 'is_active'])]
+#[Fillable(['unit_id', 'code', 'name', 'jenis', 'bbm_type_id', 'fuel_type', 'capacity_liter', 'is_daily_tank', 'sort_order', 'is_active'])]
 class FuelTank extends Model
 {
     /** @use HasFactory<FuelTankFactory> */
@@ -42,6 +44,7 @@ class FuelTank extends Model
     {
         return [
             'fuel_type' => TankFuelType::class,
+            'jenis' => TankJenis::class,
             'is_daily_tank' => 'boolean',
             'is_active' => 'boolean',
         ];

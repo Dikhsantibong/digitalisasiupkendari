@@ -505,8 +505,8 @@ export default function OperasiProgram5s5rInput({ unit, filters, options, weeks:
                     Isi kondisi awal, centang tindakan, pilih progres (0-25%, 26-50%, 51-75%, 76-100%), kondisi akhir, lalu unggah foto eviden per minggu. Baris yang tidak diisi tidak disimpan dan tidak dicetak sebagai hasil.
                 </p>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[1400px] border-collapse text-xs">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full min-w-[1400px] border-collapse text-xs">
                         <thead className="bg-[#ed7d31] text-center text-[11px] font-semibold text-white dark:bg-slate-900 dark:text-slate-200">
                             <tr>
                                 <th className={th} colSpan={3}>Program Kerja 5S 5R</th>

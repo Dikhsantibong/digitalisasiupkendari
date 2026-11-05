@@ -123,6 +123,10 @@ class JamMesinSheet
      */
     public function fromStarStop(Unit $unit, JamMesinJenis $jenis, int $month, int $year, array $machines): array
     {
+        if ($jenis->statusCategory() === null) {
+            return [];
+        }
+
         $rows = EngineStatusLog::query()
             ->where('engine_status_logs.unit_id', $unit->id)
             ->whereIn('engine_id', array_column($machines, 'id'))
@@ -142,9 +146,9 @@ class JamMesinSheet
     }
 
     /**
-     * Jam Siap Operasi: 24 jam minus Jam Operasi, Jam Pemeliharaan and Jam
-     * Gangguan of the day, per machine. A negative value means the three
-     * sheets add up to more than 24 jam that day.
+     * Jam Siap Operasi: 24 jam minus Jam Operasi, Jam Pemeliharaan, Jam MO and
+     * Jam Gangguan of the day, per machine (so it equals the standby of a full
+     * day). A negative value means those add up to more than 24 jam that day.
      *
      * @param  list<array{id: int}>  $machines
      * @return array{readings: array<int, array<int, float>>, totals_by_machine: array<int, float>, grand_total: float, over: list<array{machine_id: int, day: int}>, filled: array<string, bool>}
@@ -156,8 +160,10 @@ class JamMesinSheet
         $filled = [];
 
         foreach (JamMesinJenis::cases() as $jenis) {
-            $sheets[$jenis->value] = $this->readings($unit, $jenis, $month, $year, $machines);
-            $filled[$jenis->value] = $this->record($unit, $jenis, $month, $year) !== null;
+            if ($jenis->countsAgainstSiap()) {
+                $sheets[$jenis->value] = $this->readings($unit, $jenis, $month, $year, $machines);
+                $filled[$jenis->value] = $this->record($unit, $jenis, $month, $year) !== null;
+            }
         }
 
         $readings = [];

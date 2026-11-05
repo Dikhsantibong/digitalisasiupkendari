@@ -80,7 +80,7 @@ export function DivisionFindings({
                 </p>
             ) : (
                 <div className="overflow-x-auto">
-                    <table className="w-full min-w-[960px] border-collapse text-xs">
+                    <table className="excel-sheet w-full min-w-[960px] border-collapse text-xs">
                         <thead className="bg-muted/40 text-left text-[11px] text-muted-foreground uppercase">
                             <tr>
                                 <th className="border-b border-border px-2 py-2 text-center">

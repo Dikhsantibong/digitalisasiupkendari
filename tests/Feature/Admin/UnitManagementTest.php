@@ -66,20 +66,19 @@ class UnitManagementTest extends TestCase
             ->assertInertia(fn ($page) => $page->has('units.data', 2));
     }
 
-    public function test_an_operator_cannot_open_a_unit_outside_their_scope(): void
+    public function test_a_field_role_cannot_open_a_unit_outside_their_scope_and_operators_have_no_master_data(): void
     {
         $ownUnit = Unit::factory()->create();
         $otherUnit = Unit::factory()->create();
 
+        $leader = $this->userWithRole(RoleName::ProjectLeaderOperasi, $ownUnit);
+        $this->actingAs($leader)->get(route('admin.units.show', $ownUnit))->assertOk();
+        $this->actingAs($leader)->get(route('admin.units.show', $otherUnit))->assertForbidden();
+
+        // Operators have no Master Data at all, not even their own unit.
         $operator = $this->userWithRole(RoleName::Operator, $ownUnit);
-
-        $this->actingAs($operator)
-            ->get(route('admin.units.show', $ownUnit))
-            ->assertOk();
-
-        $this->actingAs($operator)
-            ->get(route('admin.units.show', $otherUnit))
-            ->assertForbidden();
+        $this->actingAs($operator)->get(route('admin.units.show', $ownUnit))->assertForbidden();
+        $this->actingAs($operator)->get(route('admin.units.index'))->assertForbidden();
     }
 
     public function test_unit_list_accumulates_machine_capacity_and_counts_machines(): void

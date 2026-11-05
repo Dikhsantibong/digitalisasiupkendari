@@ -727,8 +727,8 @@ export default function HarJadwalPatrolCheckPage({
                             />
                         </div>
                     ) : (
-                        <div className="overflow-x-auto rounded-md border border-border">
-                            <table className="print-table w-full border-collapse text-center text-xs">
+                        <div className="overflow-x-auto">
+                            <table className="excel-sheet print-table w-full border-collapse text-center text-xs">
                                 <thead>
                                     <tr className="border-b border-border bg-muted/30">
                                         <th

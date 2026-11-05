@@ -460,7 +460,7 @@ export default function PengusahaanInventarisApdPage(props: Props) {
 
                 {/* Table Content */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="apd-table w-full border-collapse border border-black text-[11px] dark:border-border">
+                    <table className="excel-sheet apd-table w-full border-collapse border border-black text-[11px] dark:border-border">
                         <thead>
                             <tr className="bg-muted/40 font-bold uppercase text-foreground">
                                 <th className="w-12 border border-black px-2 py-1.5 text-center dark:border-border">

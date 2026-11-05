@@ -30,33 +30,54 @@ type Value = string | number | null;
 type Row = Record<string, Value>;
 
 export type HarTabelPageProps = {
-    tabel: { key: string; title: string; description: string; columns: Column[]; totals: string[]; notes: string[]; blank_rows: number };
+    tabel: { key: string; title: string; description: string; columns: Column[]; totals: string[]; notes: string[]; blank_rows: number; linked_note?: string | null };
     kop_lines: string[];
     unit: IdName;
     filters: { unit_id: number; month: number; year: number };
     options: { units: IdName[]; years: number[] };
     rows: Row[];
+    /** Read-only rows of another module (`_source` = its name), shown before the HAR rows. */
+    linked_rows?: Row[];
     summary: { title: string; columns: string[]; rows: (string | number)[][] } | null;
     urls: { index: string; store: string; pdf: string };
     has_saved: boolean;
     can_write: boolean;
 };
 
-const th = 'border border-slate-400 px-1 py-1';
-const td = 'border border-border';
-const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
+const th = 'border border-black px-1 py-1 dark:border-white/60';
+const td = 'h-8 border border-black dark:border-white/60';
+const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 dark:focus:bg-yellow-950/40';
 const cellTextarea =
-    'block min-h-14 w-full resize-y rounded-none border-0 bg-transparent px-1 py-1 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none';
+    'block min-h-14 w-full resize-y rounded-none border-0 bg-transparent px-1 py-1 text-xs focus:bg-yellow-50 focus-visible:ring-0 focus-visible:outline-none dark:focus:bg-yellow-950/40';
 
 const blankRow = (columns: Column[]): Row => Object.fromEntries(columns.map((c) => [c.key, null]));
 const numeric = (value: Value) => (value !== null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : 0);
+
+/** A read-only cell like the PDF prints it. */
+const display = (column: Column, value: Value): string => {
+    if (value === null || value === '') {
+        return column.type === 'check' || column.type === 'number' ? '–' : '';
+    }
+
+    if (column.type === 'check') {
+        return String(value) === '1' ? '✓' : '–';
+    }
+
+    if (column.type === 'date' && /^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
+        const [year, month, day] = String(value).split('-');
+
+        return `${day}/${month}/${year}`;
+    }
+
+    return String(value);
+};
 
 /**
  * Shared page of the HAR free tables (App\Support\HarTabel) — Rekap Laporan
  * Gangguan and Laporan Kondisi Abnormal & Gangguan Pembangkit. Each has its own
  * thin page at resources/js/pages/har/input/{key}/index.tsx rendering this.
  */
-export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: initialRows, summary, urls, has_saved, can_write }: HarTabelPageProps) {
+export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: initialRows, linked_rows: linked = [], summary, urls, has_saved, can_write }: HarTabelPageProps) {
     const fill = (list: Row[]) => (list.length > 0 ? list : Array.from({ length: tabel.blank_rows }, () => blankRow(tabel.columns)));
     const [rows, setRows] = useState<Row[]>(() => fill(initialRows));
     const [dirty, setDirty] = useState(false);
@@ -221,9 +242,7 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                     <PageHeader title={tabel.title} description={`${unit.name} · ${periodLabel}`} />
 
                     <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <div className="col-span-2">
-                            <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" />
-                        </div>
+                        <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" labelClassName="col-span-2" />
                         <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, i) => ({ value: String(i + 1), label }))} className="w-full" />
                         <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
                     </div>
@@ -233,13 +252,31 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                         {dirty ? <StatusBadge tone="warning">Belum disimpan</StatusBadge> : has_saved ? <StatusBadge tone="success">Tersimpan</StatusBadge> : null}
                     </div>
 
+                    {tabel.linked_note && <p className="px-0.5 text-[12px] text-muted-foreground">{tabel.linked_note}</p>}
+
+                    {linked.map((row, index) => (
+                        <div key={`linked-${index}`} className="rounded-xl border border-border bg-muted/30 p-3">
+                            <div className="flex items-center gap-3">
+                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">{index + 1}</span>
+                                <span className="min-w-0 flex-1 text-[14px] font-medium text-foreground">{summaryOf(row)}</span>
+                                <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10.5px] font-bold text-primary uppercase">{String(row._source ?? '')}</span>
+                            </div>
+                            <p className="mt-1.5 pl-11 text-[12px] text-muted-foreground">
+                                {tabel.columns
+                                    .filter((c) => c.type !== 'textarea' && row[c.key] !== null && row[c.key] !== '')
+                                    .map((c) => (c.type === 'check' ? c.label : `${c.label}: ${display(c, row[c.key] ?? null)}`))
+                                    .join(' · ')}
+                            </p>
+                        </div>
+                    ))}
+
                     {rows.map((row, index) => {
                         const open = openRow === index;
 
                         return (
                             <div key={index} className="rounded-xl border border-border bg-card">
                                 <button type="button" onClick={() => setOpenRow(open ? null : index)} className="flex w-full items-center gap-3 p-3 text-left">
-                                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">{index + 1}</span>
+                                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">{linked.length + index + 1}</span>
                                     <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">{summaryOf(row)}</span>
                                     <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition ${open ? 'rotate-180' : ''}`} />
                                 </button>
@@ -361,9 +398,15 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                     <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="ml-auto h-8 w-auto rounded-sm bg-white object-contain p-0.5 sm:h-11" />
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full border-collapse text-xs" style={{ minWidth: tabel.columns.reduce((sum, c) => sum + Math.max(c.width, 80), 80) }}>
-                        <thead className="bg-[#4f81bd] text-center text-[11px] font-semibold text-white">
+                {tabel.linked_note && (
+                    <p className="text-xs text-muted-foreground">
+                        {tabel.linked_note} {linked.length > 0 ? `(${linked.length} baris bulan ini)` : '(belum ada pada bulan ini)'}
+                    </p>
+                )}
+
+                <div className="overflow-x-auto bg-card">
+                    <table className="w-full border-collapse border-2 border-black text-xs dark:border-white" style={{ minWidth: tabel.columns.reduce((sum, c) => sum + Math.max(c.width, 80), 80) }}>
+                        <thead className="bg-yellow-200 text-center text-[11px] font-bold text-black uppercase dark:bg-yellow-800 dark:text-yellow-50">
                             <tr>
                                 <th className={`${th} w-10`} rowSpan={hasGroups ? 2 : 1}>NO</th>
                                 {groupCells.map((cell) =>
@@ -382,9 +425,23 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                             )}
                         </thead>
                         <tbody>
+                            {linked.map((row, index) => (
+                                <tr key={`linked-${index}`} className="bg-muted/40 align-middle" title={`Dari ${String(row._source ?? '')} — ubah di halaman sumbernya`}>
+                                    <td className={`${td} px-1 text-center`}>
+                                        <div>{index + 1}</div>
+                                        <div className="text-[10px] font-semibold text-primary">{String(row._source ?? '')}</div>
+                                    </td>
+                                    {tabel.columns.map((column) => (
+                                        <td key={column.key} className={`${td} px-1.5 py-1 whitespace-pre-line ${column.align === 'c' ? 'text-center' : ''}`}>
+                                            {display(column, row[column.key] ?? null)}
+                                        </td>
+                                    ))}
+                                    {can_write && <td className={td} />}
+                                </tr>
+                            ))}
                             {rows.map((row, index) => (
                                 <tr key={index} className="align-middle hover:bg-muted/30">
-                                    <td className={`${td} text-center`}>{index + 1}</td>
+                                    <td className={`${td} text-center`}>{linked.length + index + 1}</td>
                                     {tabel.columns.map((column) => (
                                         <td key={column.key} className={`${td} p-0 ${column.type === 'check' ? 'text-center' : ''}`}>{editor(index, column, row[column.key] ?? null)}</td>
                                     ))}
@@ -404,7 +461,7 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                                     <td className={`${td} px-2 py-1 text-right`} colSpan={firstTotal + 1}>TOTAL</td>
                                     {tabel.columns.slice(firstTotal).map((c) => (
                                         <td key={c.key} className={`${td} text-center`}>
-                                            {tabel.totals.includes(c.key) ? Math.round(rows.reduce((sum, row) => sum + numeric(row[c.key]), 0) * 100) / 100 : ''}
+                                            {tabel.totals.includes(c.key) ? Math.round([...linked, ...rows].reduce((sum, row) => sum + numeric(row[c.key]), 0) * 100) / 100 : ''}
                                         </td>
                                     ))}
                                     {can_write && <td className={td} />}
@@ -438,8 +495,8 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                         <div className="text-sm font-semibold">
                             {summary.title} <span className="text-xs font-normal text-muted-foreground">(dari data tersimpan)</span>
                         </div>
-                        <table className="w-fit border-collapse text-xs">
-                            <thead className="bg-[#4f81bd] text-white">
+                        <table className="w-fit border-collapse border-2 border-black text-xs dark:border-white">
+                            <thead className="bg-yellow-200 font-bold text-black dark:bg-yellow-800 dark:text-yellow-50">
                                 <tr>
                                     {summary.columns.map((label) => <th key={label} className={`${th} px-3`}>{label}</th>)}
                                 </tr>

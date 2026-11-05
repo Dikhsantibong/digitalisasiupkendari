@@ -31,11 +31,11 @@ export type LogistikFormInputPageProps = {
     can_write: boolean;
 };
 
-const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
+const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 dark:focus:bg-yellow-950/40';
 const cellTextarea =
-    'block min-h-14 w-full resize-y rounded-none border-0 bg-transparent px-1 py-1 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none';
-const th = 'border border-slate-400 p-1';
-const td = 'border border-border';
+    'block min-h-14 w-full resize-y rounded-none border-0 bg-transparent px-1 py-1 text-xs focus:bg-yellow-50 focus-visible:ring-0 focus-visible:outline-none dark:focus:bg-yellow-950/40';
+const th = 'border border-black p-1 dark:border-white/60';
+const td = 'h-8 border border-black dark:border-white/60';
 const ALIGN = { l: 'text-left', c: 'text-center', r: 'text-right' } as const;
 
 /** PHP sends an empty data map as a JSON array. */
@@ -415,9 +415,9 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
                     Kolom berwarna tebal dihitung otomatis. Baris yang kosong tidak ikut disimpan.
                 </p>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="border-collapse text-xs" style={{ minWidth: tableWidth, width: '100%' }}>
-                        <thead className="bg-[#5bc8f5] text-center text-[11px] font-semibold text-slate-900">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet border-collapse text-xs" style={{ minWidth: tableWidth, width: '100%' }}>
+                        <thead className="bg-yellow-200 text-center text-[11px] font-semibold text-slate-900">
                             <tr>
                                 <th rowSpan={hasGroups ? 2 : 1} className={`${th} w-10`}>NO</th>
                                 {headerCells.map((cell, i) => (
@@ -510,8 +510,8 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
 
                 {summary && (
                     <div className="flex flex-col gap-1">
-                        <table className="w-fit border-collapse text-xs">
-                            <thead className="bg-[#5bc8f5] text-[11px] font-semibold text-slate-900">
+                        <table className="excel-sheet w-fit border-collapse text-xs">
+                            <thead className="bg-yellow-200 text-[11px] font-semibold text-slate-900">
                                 <tr>
                                     <th colSpan={summary.columns.length} className={th}>{summary.title}</th>
                                 </tr>

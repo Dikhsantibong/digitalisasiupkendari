@@ -113,6 +113,7 @@
             font-weight: bold;
         }
         .muted { color: #444; font-size: 6.5px; }
+        .eviden img { max-width: 56px; max-height: 42px; }
         .note-box {
             margin-top: 6px;
             font-size: 7.5px;
@@ -161,11 +162,13 @@
                 <th rowspan="2" style="width: 125px;">INDIKASI / URAIAN KONDISI</th>
                 <th rowspan="2" style="width: 46px;">TANGGAL</th>
                 <th colspan="4">STATUS &amp; DURASI (JAM)</th>
-                <th rowspan="2" style="width: 85px;">PARAMETER TERKAIT</th>
+                <th rowspan="2" style="width: 75px;">PARAMETER TERKAIT</th>
+                <th rowspan="2" style="width: 100px;">KRONOLOGI (GANGGUAN)</th>
                 <th colspan="{{ count($tindakPendek) }}">TINDAK LANJUT JANGKA PENDEK</th>
-                <th rowspan="2" style="width: 95px;">TINDAK LANJUT JANGKA PANJANG</th>
-                <th rowspan="2" style="width: 90px;">DAMPAK TERHADAP SISTEM</th>
-                <th rowspan="2" style="width: 90px;">DAMPAK TERHADAP PEMBANGKIT</th>
+                <th rowspan="2" style="width: 85px;">TINDAK LANJUT JANGKA PANJANG</th>
+                <th rowspan="2" style="width: 80px;">DAMPAK TERHADAP SISTEM</th>
+                <th rowspan="2" style="width: 80px;">DAMPAK TERHADAP PEMBANGKIT</th>
+                <th rowspan="2" style="width: 62px;">EVIDEN</th>
             </tr>
             <tr>
                 <th style="width: 36px;">ABNORMAL</th>
@@ -188,6 +191,7 @@
                     <td class="text-center font-bold">{{ $row['is_gangguan'] }}</td>
                     <td class="text-center">{{ $row['durasi_gangguan'] }}@if($row['jam_mulai'] !== '' && $row['jam_selesai'] !== '')<br><span style="font-size: 7px;">{{ $row['jam_mulai'] }}–{{ $row['jam_selesai'] }}</span>@endif</td>
                     <td>{{ $row['parameter_terkait'] }}</td>
+                    <td style="white-space: pre-line;">{{ $row['kronologi'] }}</td>
                     @foreach(array_keys($tindakPendek) as $key)
                         @if($loop->last)
                             {{-- Lainnya: the tick plus the keterangan of the short-term follow-up. --}}
@@ -199,10 +203,11 @@
                     <td>{{ $row['tl_panjang'] }}</td>
                     <td>{{ $row['dampak_sistem'] }}</td>
                     <td>{{ $row['dampak_pembangkit'] }}</td>
+                    <td class="text-center eviden">@if($row['eviden_url'])<img src="{{ $row['eviden_url'] }}" alt="Eviden">@endif</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="{{ 10 + count($tindakPendek) }}" class="text-center">Belum ada laporan kondisi abnormal / gangguan pada periode ini.</td>
+                    <td colspan="{{ 13 + count($tindakPendek) }}" class="text-center">Belum ada laporan kondisi abnormal / gangguan pada periode ini.</td>
                 </tr>
             @endforelse
             <tr style="background-color: #f9f9f9;" class="font-bold">
@@ -211,11 +216,11 @@
                 <td class="text-center">{{ $totalAbnormalDurasi > 0 ? $totalAbnormalDurasi : 0 }}</td>
                 <td class="text-center">{{ $totalGangguanCount }}</td>
                 <td class="text-center">{{ $totalGangguanDurasi > 0 ? $totalGangguanDurasi : 0 }}</td>
-                <td></td>
+                <td colspan="2"></td>
                 @foreach(array_keys($tindakPendek) as $key)
                     <td class="text-center">{{ $totalTindakPendek[$key] ?? 0 }}</td>
                 @endforeach
-                <td colspan="3"></td>
+                <td colspan="4"></td>
             </tr>
         </tbody>
     </table>
@@ -223,7 +228,8 @@
     <div class="note-box">
         NOTE : 1. KOLOM ABNORMAL DAN GANGGUAN DI ISI ANGKA 1<br>
         2. KOLOM DURASI DI ISI JAM<br>
-        3. TINDAK LANJUT JANGKA PENDEK: SR = SERVICE REQUEST, FLM = FIRST LINE MAINTENANCE, LAINNYA = TULISKAN KETERANGANNYA
+        3. TINDAK LANJUT JANGKA PENDEK: SR = SERVICE REQUEST, FLM = FIRST LINE MAINTENANCE, LAINNYA = TULISKAN KETERANGANNYA<br>
+        4. KRONOLOGI DIISI UNTUK KEJADIAN GANGGUAN
     </div>
 
 </body>

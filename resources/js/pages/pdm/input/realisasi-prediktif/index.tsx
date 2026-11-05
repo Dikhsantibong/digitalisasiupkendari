@@ -191,8 +191,8 @@ export default function PdmRealisasiPrediktifInput({ unit, kop_lines, filters, o
                         empty="Belum ada kegiatan prediktif."
                     />
                 ) : (
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[1250px] border-collapse text-xs">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full min-w-[1250px] border-collapse text-xs">
                         <thead className="bg-muted text-center text-[11px] font-semibold">
                             <tr>
                                 <th rowSpan={2} className="w-8 border border-border p-1">NO</th>

@@ -418,7 +418,7 @@ export default function K3InstruksiKerjaPage({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="print-table w-full border-collapse text-xs">
+                            <table className="excel-sheet print-table w-full border-collapse text-xs">
                                 <thead className="print-thead bg-muted/60 dark:bg-muted/30">
                                     <tr>
                                         <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>

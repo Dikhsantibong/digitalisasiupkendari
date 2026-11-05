@@ -1,6 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, FileDown, History, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
@@ -83,6 +83,11 @@ const TONE: Record<string, string> = {
     X: 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300',
     tidak: 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300',
 };
+
+/** Excel-style sheet: black grid, yellow headers, cells typed into directly. */
+const xlTh = 'border border-black bg-yellow-200 px-1.5 py-1.5 text-center text-[11px] font-bold text-black uppercase dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
+const xlTd = 'h-8 border border-black p-0 dark:border-white/60';
+const xlCell = 'h-8 w-full rounded-none border-0 bg-transparent px-1.5 text-xs shadow-none outline-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 disabled:opacity-100 dark:bg-transparent dark:focus:bg-yellow-950/40';
 
 const CHIP_TONE: Record<string, string> = {
     v: 'border-emerald-600 bg-emerald-600 text-white',
@@ -368,6 +373,37 @@ export function HarFormulirPage({
                         {/* Identity */}
                         {identity.length > 0 && (
                             <Section title="Data Mesin">
+                                {!compact ? (
+                                    <SheetFields
+                                        fields={[
+                                            ...identity.map((field) => ({
+                                                field,
+                                                cell: <CellInput field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} sheet />,
+                                            })),
+                                            ...(tables.some((table) => table.cylinders)
+                                                ? [
+                                                      {
+                                                          field: { key: 'cylinders_count', label: 'Jumlah Silinder' },
+                                                          cell: (
+                                                              <Input
+                                                                  type="number"
+                                                                  inputMode="numeric"
+                                                                  min={1}
+                                                                  max={32}
+                                                                  value={text('cylinders_count')}
+                                                                  onChange={(e) => setCylinders(Number(e.target.value))}
+                                                                  disabled={!can_write}
+                                                                  aria-label="Jumlah Silinder"
+                                                                  className={cn(xlCell, 'text-center')}
+                                                              />
+                                                          ),
+                                                      },
+                                                  ]
+                                                : []),
+                                        ]}
+                                        perRow={2}
+                                    />
+                                ) : (
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                     {identity.map((field) => (
                                         <FieldInput key={field.key} field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} />
@@ -388,6 +424,7 @@ export function HarFormulirPage({
                                         </label>
                                     )}
                                 </div>
+                                )}
                             </Section>
                         )}
 
@@ -422,36 +459,37 @@ export function HarFormulirPage({
                                         canWrite={can_write}
                                     />
                                 ) : (
-                                    <div className="overflow-x-auto rounded-md border border-border">
-                                        <table className="w-full border-collapse text-sm">
-                                            <thead className="bg-muted/60 text-xs text-foreground">
-                                                <tr className="[&>th]:border-b [&>th]:border-border [&>th]:px-2 [&>th]:py-2 [&>th]:text-left [&>th]:font-semibold">
-                                                    <th className="w-32">{table.rowHeader}</th>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse border-2 border-black text-sm dark:border-white">
+                                            <thead>
+                                                <tr>
+                                                    <th className={cn(xlTh, 'w-32')}>{table.rowHeader}</th>
                                                     {table.columns.map((column) => (
-                                                        <th key={column.key} className={column.wide ? 'min-w-56' : 'min-w-28'}>
+                                                        <th key={column.key} className={cn(xlTh, column.wide ? 'min-w-56' : 'min-w-28')}>
                                                             {column.label}
                                                         </th>
                                                     ))}
-                                                    {table.addable && can_write && <th className="w-10" />}
+                                                    {table.addable && can_write && <th className={cn(xlTh, 'w-10')} />}
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {rowsOf(table).map((row, index) => (
-                                                    <tr key={index} className="hover:bg-muted/30 [&>td]:border-b [&>td]:border-border [&>td]:px-2 [&>td]:py-1.5">
-                                                        <td className="font-medium text-foreground">{table.rowLabel(row, index)}</td>
+                                                    <tr key={index} className="hover:bg-yellow-50/40 dark:hover:bg-yellow-950/10">
+                                                        <td className={cn(xlTd, 'bg-yellow-50/60 px-2 text-xs font-semibold text-foreground dark:bg-yellow-950/20')}>{table.rowLabel(row, index)}</td>
                                                         {table.columns.map((column) => (
-                                                            <td key={column.key}>
+                                                            <td key={column.key} className={xlTd}>
                                                                 <CellInput
                                                                     field={column}
                                                                     value={row[column.key] === null || row[column.key] === undefined ? '' : String(row[column.key])}
                                                                     onChange={(value) => setCell(table, index, column.key, value)}
                                                                     canWrite={can_write}
+                                                                    sheet
                                                                 />
                                                             </td>
                                                         ))}
                                                         {table.addable && can_write && (
-                                                            <td>
-                                                                <Button variant="ghost" size="icon" onClick={() => removeRow(table, index)} className="size-8 text-muted-foreground hover:text-destructive" title="Hapus baris">
+                                                            <td className={cn(xlTd, 'text-center')}>
+                                                                <Button variant="ghost" size="icon" onClick={() => removeRow(table, index)} className="size-7 rounded-none text-muted-foreground hover:text-destructive" title="Hapus baris">
                                                                     <Trash2 className="size-4" />
                                                                 </Button>
                                                             </td>
@@ -460,7 +498,7 @@ export function HarFormulirPage({
                                                 ))}
                                                 {rowsOf(table).length === 0 && (
                                                     <tr>
-                                                        <td colSpan={table.columns.length + 2} className="p-4 text-center text-xs text-muted-foreground">
+                                                        <td colSpan={table.columns.length + 2} className={cn(xlTd, 'p-4 text-center text-xs text-muted-foreground')}>
                                                             Belum ada baris.
                                                         </td>
                                                     </tr>
@@ -481,13 +519,23 @@ export function HarFormulirPage({
                         {/* Notes */}
                         {notes.length > 0 && (
                             <Section title="Catatan & Standar">
-                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                    {notes.map((field) => (
-                                        <div key={field.key} className={field.type === 'textarea' && field.wide ? 'md:col-span-2' : ''}>
-                                            <FieldInput field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} />
-                                        </div>
-                                    ))}
-                                </div>
+                                {!compact ? (
+                                    <SheetFields
+                                        fields={notes.map((field) => ({
+                                            field,
+                                            cell: <CellInput field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} sheet />,
+                                        }))}
+                                        perRow={1}
+                                    />
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                        {notes.map((field) => (
+                                            <div key={field.key} className={field.type === 'textarea' && field.wide ? 'md:col-span-2' : ''}>
+                                                <FieldInput field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </Section>
                         )}
 
@@ -526,6 +574,34 @@ function Section({ title, description, children }: { title: string; description?
     );
 }
 
+/** Label / value pairs laid out as an Excel grid: yellow label cell, typed-in value cell. */
+function SheetFields({ fields, perRow }: { fields: { field: HarField; cell: ReactNode }[]; perRow: number }) {
+    const rows = Array.from({ length: Math.ceil(fields.length / perRow) }, (_, i) => fields.slice(i * perRow, i * perRow + perRow));
+
+    return (
+        <div className="overflow-x-auto">
+            <table className="w-full table-fixed border-collapse border-2 border-black text-sm dark:border-white">
+                <tbody>
+                    {rows.map((pairs, rowIndex) => (
+                        <tr key={rowIndex}>
+                            {pairs.map(({ field, cell }) => (
+                                <Fragment key={field.key}>
+                                    <th scope="row" className={cn(xlTh, 'w-48 text-left normal-case', perRow === 1 && 'w-64')}>
+                                        {field.label}
+                                    </th>
+                                    <td className={xlTd} colSpan={pairs.length < perRow ? (perRow - pairs.length) * 2 + 1 : 1}>
+                                        {cell}
+                                    </td>
+                                </Fragment>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 function FieldInput({ field, value, onChange, canWrite }: { field: HarField; value: string; onChange: (value: string) => void; canWrite: boolean }) {
     return (
         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
@@ -545,19 +621,26 @@ function CellInput({
     onChange,
     canWrite,
     className = 'h-8',
+    sheet = false,
 }: {
     field: HarField;
     value: string;
     onChange: (value: string) => void;
     canWrite: boolean;
     className?: string;
+    /** Borderless cell of an Excel-style sheet. */
+    sheet?: boolean;
 }) {
     if (field.type === 'select' && field.options) {
         const options = value === '' || field.options.includes(value) ? field.options : [value, ...field.options];
 
         return (
             <Select value={value || undefined} onValueChange={onChange} disabled={!canWrite}>
-                <SelectTrigger size="sm" className={cn('w-full text-sm', className, TONE[value])}>
+                <SelectTrigger
+                    size="sm"
+                    aria-label={field.label}
+                    className={cn('w-full text-sm', className, TONE[value], sheet && cn(xlCell, 'data-[size=sm]:h-8 font-medium focus-visible:ring-0'))}
+                >
                     <SelectValue placeholder="Pilih" />
                 </SelectTrigger>
                 <SelectContent>
@@ -572,7 +655,17 @@ function CellInput({
     }
 
     if (field.type === 'textarea') {
-        return <Textarea value={value} onChange={(e) => onChange(e.target.value)} disabled={!canWrite} placeholder={field.placeholder} rows={2} className="min-h-8 text-sm" />;
+        return (
+            <Textarea
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                disabled={!canWrite}
+                placeholder={field.placeholder}
+                rows={sheet ? 1 : 2}
+                aria-label={field.label}
+                className={cn('min-h-8 text-sm', sheet && cn(xlCell, 'h-auto resize-none py-1.5 [field-sizing:content]'))}
+            />
+        );
     }
 
     return (
@@ -582,7 +675,8 @@ function CellInput({
             disabled={!canWrite}
             placeholder={field.placeholder}
             inputMode={field.type === 'number' ? 'decimal' : undefined}
-            className={cn('text-sm', className)}
+            aria-label={field.label}
+            className={cn('text-sm', className, sheet && cn(xlCell, field.type === 'number' && 'text-center'))}
         />
     );
 }

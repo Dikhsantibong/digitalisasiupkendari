@@ -393,7 +393,7 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
 
                     {/* Tabel Laporan Kecelakaan Masyarakat Umum */}
                     <div className="mt-4 overflow-x-auto">
-                        <table className="km-table w-full border-collapse border-2 border-black text-xs dark:border-border">
+                        <table className="excel-sheet km-table w-full border-collapse border-2 border-black text-xs dark:border-border">
                             <thead>
                                 <tr className="bg-muted/40 text-center font-bold text-foreground">
                                     <th rowSpan={2} className="w-12 border border-black p-2 dark:border-border">

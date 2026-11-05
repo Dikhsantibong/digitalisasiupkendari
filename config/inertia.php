@@ -18,6 +18,11 @@ return [
     'ssr' => [
         'enabled' => true,
         'url' => 'http://127.0.0.1:13714',
+
+        // Off in local development: the Vite dev server's SSR endpoint can
+        // hang past PHP's 30 second limit ("Maximum execution time exceeded"
+        // in CurlHandler). Set INERTIA_SSR_LOCAL=true to render on the server.
+        'local' => (bool) env('INERTIA_SSR_LOCAL', false),
         // 'bundle' => base_path('bootstrap/ssr/ssr.mjs'),
 
     ],

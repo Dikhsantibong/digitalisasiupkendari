@@ -170,9 +170,10 @@ class FieldRoleTest extends TestCase
                 $this->actingAs($user)->get(route("operasi.input.{$page}.index", $query))->assertOk();
             }
 
-            // The Pengusahaan Operasi inputs are filled by the operators too (operasi.pengusahaan.input).
+            // The Pengusahaan Operasi inputs: the Project Leader only (operasi.pengusahaan.input); not the operators for now.
             foreach (['daily-report', 'star-stop', 'feeder', 'auxiliary', 'fuel-receipt', 'resource-pembangkit'] as $page) {
-                $this->actingAs($user)->get(route("operasi.pengusahaan.{$page}.index", $query))->assertOk();
+                $response = $this->actingAs($user)->get(route("operasi.pengusahaan.{$page}.index", $query));
+                $role === RoleName::ProjectLeaderOperasi ? $response->assertOk() : $response->assertForbidden();
             }
 
             // The Koordinator's hub stays closed, and the HAR pages belong to Harmes / Harlist
@@ -210,7 +211,8 @@ class FieldRoleTest extends TestCase
     public function test_each_input_page_has_its_own_permission_in_role_and_akses(): void
     {
         $this->assertCount(14, PermissionName::operasiLapangan());
-        $this->assertCount(27, PermissionName::harLapangan());
+        // 27 + Material & Peralatan (2026-11-05).
+        $this->assertCount(28, PermissionName::harLapangan());
 
         $operator = Role::query()->where('name', RoleName::Operator->value)->sole()->permissions()->pluck('name');
         $harmes = Role::query()->where('name', RoleName::Harmes->value)->sole()->permissions()->pluck('name');

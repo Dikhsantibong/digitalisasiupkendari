@@ -30,6 +30,7 @@ use App\Http\Controllers\Har\LembarController;
 use App\Http\Controllers\Har\LogbookMutasiController;
 use App\Http\Controllers\Har\LubeQualityController;
 use App\Http\Controllers\Har\MasterController;
+use App\Http\Controllers\Har\MaterialPeralatanController;
 use App\Http\Controllers\Har\MeetingAttendanceController;
 use App\Http\Controllers\Har\MotorCurrentController;
 use App\Http\Controllers\Har\PatrolCheckParameterController;
@@ -151,6 +152,13 @@ Route::middleware(['auth', 'verified'])
         Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])->whereNumber('unsafeCondition')->name('input.unsafe-condition.update');
         Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])->whereNumber('unsafeCondition')->name('input.unsafe-condition.destroy');
         Route::get('input/unsafe-condition/pdf', [UnsafeConditionController::class, 'pdf'])->name('input.unsafe-condition.pdf');
+
+        // Material & Peralatan: the Koordinator lists items & stock, Harmes / Harlist check kelengkapan.
+        Route::get('input/material-peralatan', [MaterialPeralatanController::class, 'index'])->name('input.material-peralatan.index');
+        Route::post('input/material-peralatan', [MaterialPeralatanController::class, 'store'])->name('input.material-peralatan.store');
+        Route::post('input/material-peralatan/cek', [MaterialPeralatanController::class, 'check'])->name('input.material-peralatan.check');
+        Route::get('input/material-peralatan/pdf', [MaterialPeralatanController::class, 'pdf'])->name('input.material-peralatan.pdf');
+        Route::delete('input/material-peralatan/{materialPeralatan}', [MaterialPeralatanController::class, 'destroy'])->whereNumber('materialPeralatan')->name('input.material-peralatan.destroy');
 
         // Tabel input bebas (App\Support\HarTabel): Rekap Laporan Gangguan & Laporan Kondisi Abnormal dan Gangguan.
         foreach (HarTabels::all() as $tabel) {

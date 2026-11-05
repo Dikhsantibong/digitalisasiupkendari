@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,6 +35,19 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Event::listen(Login::class, RecordSuccessfulLogin::class);
+
+        $this->configureSsr();
+    }
+
+    /**
+     * Render client-side in local development, where the Vite dev server's
+     * SSR endpoint can stall a request past max_execution_time; elsewhere
+     * keep config('inertia.ssr.enabled').
+     */
+    protected function configureSsr(): void
+    {
+        Inertia::disableSsr(fn (): bool => ! config('inertia.ssr.enabled', true)
+            || ($this->app->isLocal() && ! config('inertia.ssr.local', false)));
     }
 
     /**

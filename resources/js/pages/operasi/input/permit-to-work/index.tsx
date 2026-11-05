@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,7 @@ const MONTHS = [
 const xlTh = 'border border-black bg-yellow-200 px-1.5 py-1.5 text-center text-[11px] font-bold text-black uppercase dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
 const xlTd = 'h-8 border border-black p-0 dark:border-white/60';
 const xlInput =
-    'h-8 w-full bg-transparent px-2 text-xs outline-none focus:bg-yellow-50 focus:ring-2 focus:ring-primary focus:ring-inset dark:focus:bg-yellow-950/40';
+    'h-8 w-full bg-transparent px-2 text-xs outline-none focus:bg-yellow-50 focus:ring-0 dark:focus:bg-yellow-950/40';
 
 export default function PermitToWorkInput({
     filters,
@@ -121,6 +122,23 @@ export default function PermitToWorkInput({
         setIsDirty(true);
     };
 
+    const [shownBlank, setShownBlank] = useState(1);
+    const filled = (row: PtwRow) => row.uraian.trim() !== '' || row.tanggal !== '';
+    const blankIndexes = rows.map((row, index) => (filled(row) ? -1 : index)).filter((index) => index >= 0);
+    const mobileIndexes = rows
+        .map((row, index) => index)
+        .filter((index) => filled(rows[index]) || blankIndexes.indexOf(index) < shownBlank);
+
+    /** Phone "Tambah": reveal the next blank row, or add one when none is left. */
+    const addMobileRow = () => {
+        if (blankIndexes.length > shownBlank) {
+            setShownBlank((count) => count + 1);
+        } else {
+            handleAddRow();
+            setShownBlank((count) => count + 1);
+        }
+    };
+
     const handleClearRow = (index: number) => {
         const updated = [...rows];
         updated[index] = {
@@ -174,7 +192,9 @@ export default function PermitToWorkInput({
     return (
         <>
             <Head title="Input Laporan Permit to Work (PTW)" />
-            <div className="flex flex-1 flex-col gap-5 p-4 md:p-6">
+            <div className={cn('flex flex-1 flex-col gap-5 p-4 md:p-6', compact && 'gap-3 pb-28')}>
+                {!compact && (
+                <>
                 <PageHeader
                     title="Laporan Permit to Work (PTW) Pembangkit"
                     description="Pencatatan dan pemantauan status izin kerja (Permit to Work) untuk kegiatan pemeliharaan dan operasional pembangkit."
@@ -304,9 +324,12 @@ export default function PermitToWorkInput({
                     </div>
                 </div>
 
+                </>
+                )}
+
                 {/* Table matching Excel template */}
-                <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xs">
-                    <div className="flex items-center justify-between border-b border-border bg-[#ea7315]/10 px-4 py-2.5">
+                <div className={cn('overflow-hidden rounded-lg border border-border bg-card shadow-xs', compact && 'border-0 bg-transparent shadow-none')}>
+                    <div className={cn('flex items-center justify-between border-b border-border bg-[#ea7315]/10 px-4 py-2.5', compact && 'hidden')}>
                         <div className="flex items-center gap-2">
                             <FileCheck className="size-4 text-[#ea7315]" />
                             <span className="text-xs font-bold tracking-wider text-foreground uppercase">
@@ -321,9 +344,9 @@ export default function PermitToWorkInput({
                     </div>
 
                     {compact ? (
-                        <div className="bg-muted/30 p-2">
+                        <div>
                             <MobileRowEditor
-                                rows={rows}
+                                rows={mobileIndexes.map((index) => rows[index])}
                                 canWrite={can_write}
                                 rowKey={(row) => row.no_urut}
                                 title={(row) => row.uraian || 'Izin kerja baru'}
@@ -331,9 +354,9 @@ export default function PermitToWorkInput({
                                     `${row.tanggal || 'Tanggal belum diisi'} · ${row.status.toUpperCase()}`
                                 }
                                 onChange={(index, key, value) =>
-                                    handleRowChange(index, key, value)
+                                    handleRowChange(mobileIndexes[index], key, value)
                                 }
-                                onRemove={handleClearRow}
+                                onRemove={(index) => handleClearRow(mobileIndexes[index])}
                                 removeLabel="Kosongkan baris"
                                 fields={[
                                     {
@@ -460,7 +483,7 @@ export default function PermitToWorkInput({
                         </div>
                     )}
 
-                    {can_write && (
+                    {can_write && !compact && (
                         <div className="flex items-center justify-between border-t border-border bg-card p-3">
                             <span className="text-xs text-muted-foreground">
                                 * Pilih status OPEN untuk pekerjaan berjalan
@@ -490,6 +513,18 @@ export default function PermitToWorkInput({
                     )}
                 </div>
             </div>
+            {compact && can_write && (
+                <StickyActionBar>
+                    <Button size="lg" variant="outline" onClick={addMobileRow}>
+                        <Plus className="size-4" />
+                        Tambah
+                    </Button>
+                    <Button size="lg" onClick={handleSave} disabled={saving || !isDirty}>
+                        <Save className="size-4" />
+                        {saving ? 'Menyimpan…' : 'Simpan'}
+                    </Button>
+                </StickyActionBar>
+            )}
         </>
     );
 }

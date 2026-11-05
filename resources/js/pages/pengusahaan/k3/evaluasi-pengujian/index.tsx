@@ -20,6 +20,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanEvaluasiPengujian from '@/routes/k3/pengusahaan/evaluasi-pengujian';
@@ -510,7 +511,7 @@ export default function PengusahaanEvaluasiPengujianPage(props: Props) {
 
                     {/* Evaluasi Table */}
                     <div className="overflow-x-auto">
-                        <table className="evaluasi-table w-full min-w-[1400px] border-collapse text-xs">
+                        <table className="excel-sheet evaluasi-table w-full min-w-[1400px] border-collapse text-xs">
                             <thead>
                                 <tr className="evaluasi-th bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:font-bold">
                                     <th rowSpan={2} className="w-10">No</th>
@@ -691,6 +692,11 @@ function StatTile({
     label: string;
     value: string;
 }) {
+    // Phone input pages go without summary tiles (a grid left empty is hidden by app.css).
+    if (useSimplifiedMobileInput()) {
+        return <span data-mobile-hidden hidden />;
+    }
+
     return (
         <Card className="flex flex-row items-center gap-3 p-3 py-3 shadow-none">
             <div className={`flex size-8 items-center justify-center rounded-lg ${tone}`}>{icon}</div>

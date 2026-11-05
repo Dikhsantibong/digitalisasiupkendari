@@ -56,6 +56,7 @@
         .summary th, .summary td { border: 1px solid #000; padding: 2px 6px; font-size: 7.5px; }
         .summary th { background: #4f81bd; color: #fff; }
         .notes { margin-top: 6px; font-size: 7.5px; }
+        .source { font-size: 5.5px; font-style: italic; color: #555; }
     </style>
 </head>
 <body>
@@ -95,7 +96,7 @@
                     <td class="c">{{ $loop->iteration }}</td>
                     @foreach($columns as $column)
                         @php $value = $row[$column['key']] ?? null; @endphp
-                        <td class="{{ $column['align'] === 'c' ? 'c' : '' }} {{ $column['key'] === 'status' && $value ? 'status-'.strtolower((string) $value) : '' }}">{{ $format($column, $value) }}</td>
+                        <td class="{{ $column['align'] === 'c' ? 'c' : '' }} {{ $column['key'] === 'status' && $value ? 'status-'.strtolower((string) $value) : '' }}">{{ $format($column, $value) }}@if($loop->first && ! empty($row['_source']))<br><span class="source">Sumber: {{ $row['_source'] }}</span>@endif</td>
                     @endforeach
                 </tr>
             @empty

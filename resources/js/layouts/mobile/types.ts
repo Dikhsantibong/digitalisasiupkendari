@@ -106,6 +106,4 @@ export type MobileModule = {
     /** Home URL the shell's back button returns to. */
     homeHref: string;
     menus: MobileMenu[];
-    /** Menu keys shown first under "Akses Cepat" until the user's own most-opened menus take over. */
-    quick?: string[];
 };

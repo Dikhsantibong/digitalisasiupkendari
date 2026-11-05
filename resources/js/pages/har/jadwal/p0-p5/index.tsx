@@ -864,7 +864,7 @@ export default function HarJadwalP0P5Page({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="print-table w-full border-collapse text-[11px]">
+                            <table className="excel-sheet print-table w-full border-collapse text-[11px]">
                                 <thead>
                                     <tr className="border-b border-border bg-muted/40 font-bold text-foreground">
                                         <th

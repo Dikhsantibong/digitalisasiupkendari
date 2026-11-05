@@ -14,6 +14,7 @@ import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-selec
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanJamKerja from '@/routes/k3/pengusahaan/jam-kerja';
@@ -732,6 +733,11 @@ function StatTile({
     label: string;
     value: string;
 }) {
+    // Phone input pages go without summary tiles (a grid left empty is hidden by app.css).
+    if (useSimplifiedMobileInput()) {
+        return <span data-mobile-hidden hidden />;
+    }
+
     return (
         <Card className="flex flex-row items-center gap-3 p-3 py-3 shadow-none">
             <div className={`flex size-8 items-center justify-center rounded-lg ${tone}`}>{icon}</div>

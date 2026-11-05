@@ -32,7 +32,9 @@ type Props = {
     can_write: boolean;
 };
 
-const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
+const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:border-0 focus-visible:ring-0 focus:bg-yellow-50 dark:focus:bg-yellow-950/40';
+/** Sentences in a cell: a textarea that grows with its text. */
+const cellText = 'min-h-8 resize-none rounded-none border-0 bg-transparent px-1.5 py-1.5 text-xs leading-snug shadow-none [field-sizing:content] focus-visible:border-0 focus-visible:ring-0 focus:bg-yellow-50 md:text-xs dark:focus:bg-yellow-950/40';
 const th = 'border border-slate-400 p-1';
 const td = 'border border-border';
 
@@ -357,8 +359,8 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                     />
                 </div>
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[1400px] border-collapse text-xs">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full min-w-[1400px] border-collapse text-xs">
                         <thead className="bg-[#9dd9f3] text-center text-[11px] font-semibold text-slate-900">
                             <tr>
                                 <th rowSpan={2} className={`${th} w-10`}>No</th>
@@ -386,13 +388,13 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                                 <tr key={index} className="hover:bg-muted/30">
                                     <td className={`${td} p-1 text-center`}>{row.no_urut}</td>
                                     <td className={`${td} p-0`}>
-                                        <Input value={row.mesin} onChange={(e) => update(index, { mesin: e.target.value })} className={cellInput} placeholder="Fuel Transfer Pump" disabled={!can_write} />
+                                        <Textarea value={row.mesin} onChange={(e) => update(index, { mesin: e.target.value })} rows={1} className={cellText} placeholder="Fuel Transfer Pump" disabled={!can_write} />
                                     </td>
                                     <td className={`${td} p-0`}>
                                         <Input type="date" value={row.tanggal ?? ''} onChange={(e) => update(index, { tanggal: e.target.value || null })} className={`${cellInput} text-center`} disabled={!can_write} />
                                     </td>
                                     <td className={`${td} p-0`}>
-                                        <Input value={row.masalah} onChange={(e) => update(index, { masalah: e.target.value })} className={cellInput} disabled={!can_write} />
+                                        <Textarea value={row.masalah} onChange={(e) => update(index, { masalah: e.target.value })} rows={1} className={cellText} placeholder="Masalah yang ditemukan…" disabled={!can_write} />
                                     </td>
                                     {kondisi.map(([key, label]) => (
                                         <td key={key} className={`${td} p-1 text-center`}>
@@ -405,10 +407,10 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
                                         </td>
                                     ))}
                                     <td className={`${td} p-0`}>
-                                        <Input value={row.kondisi_akhir} onChange={(e) => update(index, { kondisi_akhir: e.target.value })} className={`${cellInput} text-center`} placeholder="Ditadah / Backlog" disabled={!can_write} />
+                                        <Textarea value={row.kondisi_akhir} onChange={(e) => update(index, { kondisi_akhir: e.target.value })} rows={1} className={cellText} placeholder="Ditadah / Backlog" disabled={!can_write} />
                                     </td>
                                     <td className={`${td} p-0`}>
-                                        <Input value={row.catatan} onChange={(e) => update(index, { catatan: e.target.value })} className={cellInput} disabled={!can_write} />
+                                        <Textarea value={row.catatan} onChange={(e) => update(index, { catatan: e.target.value })} rows={1} className={cellText} placeholder="Catatan FLM…" disabled={!can_write} />
                                     </td>
                                     <td className={`${td} p-0`}>
                                         <PdmCellSelect

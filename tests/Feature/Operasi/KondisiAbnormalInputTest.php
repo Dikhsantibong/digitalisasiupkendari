@@ -10,6 +10,8 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\Operasi\OperasiReportSections;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
@@ -248,6 +250,90 @@ class KondisiAbnormalInputTest extends TestCase
         $html = view($view, $data)->render();
         $this->assertStringContainsString('CUMMINS #1 · Turbocharger', $html);
         $this->assertStringContainsString('08:00–10:30', $html);
+    }
+
+    public function test_a_gangguan_keeps_its_kronologi_and_an_abnormal_drops_it(): void
+    {
+        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $kronologi = "10:05 alarm tekanan LO rendah\n10:07 mesin #2 trip";
+
+        $this->report($operator, ['tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Mesin #2 trip',
+            'parameter_terkait' => 'Tekanan LO 1,8 bar', 'kronologi' => $kronologi]);
+        $record = KondisiAbnormal::query()->sole();
+        $this->assertSame($kronologi, $record->kronologi);
+
+        $this->actingAs($operator)->get(route('operasi.input.kondisi-abnormal.index', $this->period))
+            ->assertInertia(fn ($page) => $page->where('entries.0.kronologi', $kronologi));
+
+        [$view, $data] = app(KondisiAbnormalController::class)->pdfView($this->unit, 8, 2026);
+        $html = view($view, $data)->render();
+        $this->assertStringContainsString('KRONOLOGI (GANGGUAN)', $html);
+        $this->assertStringContainsString('10:07 mesin #2 trip', $html);
+
+        // An abnormal report keeps no kronologi.
+        $this->sync($operator, ['rows' => [['id' => $record->id, 'tanggal' => '2026-08-12', 'jenis' => 'abnormal', 'uraian_kondisi' => 'Mesin #2 trip', 'kronologi' => 'Tetap terkirim']]])
+            ->assertSessionHasNoErrors();
+        $this->assertNull($record->fresh()->kronologi);
+
+        $this->actingAs($operator)->post(route('operasi.input.kondisi-abnormal.store'), [
+            'unit_id' => $this->unit->id, 'tanggal' => '2026-08-12', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Trip', 'kronologi' => str_repeat('x', 5001),
+        ])->assertSessionHasErrors('kronologi');
+    }
+
+    public function test_an_eviden_photo_is_uploaded_kept_replaced_and_removed(): void
+    {
+        Storage::fake('public');
+        $disk = Storage::disk('public');
+        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $folder = "operasi-abnormal/{$this->unit->id}";
+        $abnormal = ['unit_id' => $this->unit->id, 'tanggal' => '2026-08-12', 'jenis' => 'abnormal', 'uraian_kondisi' => 'Exhaust tinggi'];
+
+        // An abnormal report from the phone, with its photo.
+        $this->report($operator, ['eviden_file' => UploadedFile::fake()->image('awal.jpg')] + $abnormal);
+        $record = KondisiAbnormal::query()->sole();
+        $first = (string) $record->eviden;
+        $this->assertStringStartsWith($folder.'/', $first);
+        $disk->assertExists($first);
+
+        $this->actingAs($operator)->get(route('operasi.input.kondisi-abnormal.index', $this->period))
+            ->assertInertia(fn ($page) => $page->where('entries.0.eviden', $first)->where('entries.0.eviden_url', $disk->url($first)));
+
+        // An edit that sends no eviden field keeps the photo; the PDF embeds it.
+        $this->actingAs($operator)->put(route('operasi.input.kondisi-abnormal.update', $record), ['uraian_kondisi' => 'Exhaust tinggi sekali'] + $abnormal)
+            ->assertSessionHasNoErrors();
+        $this->assertSame($first, $record->fresh()->eviden);
+        [$view, $data] = app(KondisiAbnormalController::class)->pdfView($this->unit, 8, 2026);
+        $this->assertStringStartsWith('data:image/', (string) $data['rows'][0]['eviden_url']);
+        $this->assertStringContainsString('EVIDEN', view($view, $data)->render());
+
+        // The dialog spoofs the PUT to upload a new photo; the old file is deleted.
+        $this->actingAs($operator)->post(route('operasi.input.kondisi-abnormal.update', $record), [
+            '_method' => 'put', 'eviden' => $first, 'eviden_file' => UploadedFile::fake()->image('baru.jpg'),
+        ] + $abnormal)->assertSessionHasNoErrors();
+        $second = (string) $record->fresh()->eviden;
+        $this->assertNotSame($first, $second);
+        $disk->assertMissing($first);
+        $disk->assertExists($second);
+
+        // The sheet keeps the saved path; another path or an empty one removes the photo.
+        $row = ['id' => $record->id, 'tanggal' => '2026-08-12', 'jenis' => 'abnormal', 'uraian_kondisi' => 'Exhaust tinggi'];
+        $this->sync($operator, ['rows' => [['eviden' => $second] + $row]])->assertSessionHasNoErrors();
+        $this->assertSame($second, $record->fresh()->eviden);
+        $this->sync($operator, ['rows' => [['eviden' => "{$folder}/milik-lain.jpg"] + $row]])->assertSessionHasNoErrors();
+        $this->assertNull($record->fresh()->eviden);
+        $disk->assertMissing($second);
+
+        // A new gangguan row of the sheet uploads its photo; a non-image is refused.
+        $gangguan = ['tanggal' => '2026-08-13', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Mesin #1 trip'];
+        $this->sync($operator, ['rows' => [['eviden_file' => UploadedFile::fake()->create('laporan.pdf', 20, 'application/pdf')] + $gangguan]])
+            ->assertSessionHasErrors('rows.0.eviden_file');
+        $this->sync($operator, ['rows' => [['eviden_file' => UploadedFile::fake()->image('trip.jpg')] + $gangguan]])->assertSessionHasNoErrors();
+        $new = KondisiAbnormal::query()->where('uraian_kondisi', 'Mesin #1 trip')->sole();
+        $disk->assertExists((string) $new->eviden);
+
+        // Deleting the report deletes its photo.
+        $this->actingAs($operator)->delete(route('operasi.input.kondisi-abnormal.destroy', $new))->assertRedirect();
+        $disk->assertMissing((string) $new->eviden);
     }
 
     public function test_the_desktop_sheet_is_validated_and_guarded(): void

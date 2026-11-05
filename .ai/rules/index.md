@@ -7,6 +7,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Admin/** | .ai/rules/admin.md |
 | app/** | .ai/rules/app.md |
 | resources/js/components/mobile/** | .ai/rules/components-mobile.md |
+| resources/js/pages/**, resources/js/components/** | .ai/rules/components.md |
 | app/Http/Controllers/Har/** | .ai/rules/controllers-har.md |
 | app/Http/Controllers/K3/** | .ai/rules/controllers-k3.md |
 | app/Http/Controllers/Operasi/** | .ai/rules/controllers-operasi.md |
@@ -28,6 +29,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/Notifications/** | .ai/rules/notifications.md |
 | app/Services/Operasi/** | .ai/rules/operasi.md |
 | resources/js/pages/operator/** | .ai/rules/operator.md |
+| resources/js/components/har/**, resources/js/components/pengusahaan/har-formulir.tsx, resources/js/pages/har/** | .ai/rules/pages-har.md |
 | resources/js/pages/k3/** | .ai/rules/pages-k3.md |
 | resources/js/pages/** | .ai/rules/pages.md |
 | app/Http/Controllers/Pdm/** | .ai/rules/pdm.md |

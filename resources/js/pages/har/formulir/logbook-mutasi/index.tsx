@@ -48,7 +48,7 @@ const SECTIONS: Section[] = [
     { key: 'kondisi_k3', title: 'E. Kondisi K3 (Unsafe Action & Unsafe Condition)', columns: [{ key: 'uraian', label: 'Uraian' }, { key: 'keterangan', label: 'Keterangan' }] },
 ];
 
-const cellInput = 'h-8 rounded-none border-0 bg-transparent px-2 text-xs shadow-none focus-visible:ring-1';
+const cellInput = 'h-8 rounded-none border-0 bg-transparent px-2 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 dark:focus:bg-yellow-950/40';
 const blankRow = (section: Section): Row => Object.fromEntries(section.columns.map((c) => [c.key, null]));
 const formatDate = (iso: string) => {
     const [y, m, d] = iso.split('-').map(Number);
@@ -215,30 +215,30 @@ export default function HarLogbookMutasiPage({ unit, filters, options, logbooks,
     fields={section.columns.map((column) => ({ key: column.key, label: column.label }))}
 />
                                 ) : (
-                                <div className="overflow-x-auto rounded-md border border-border">
-                                    <table className="w-full min-w-[560px] border-collapse text-xs">
-                                        <thead className="bg-muted/60 text-center font-semibold">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full min-w-[560px] border-collapse border-2 border-black text-xs dark:border-white">
+                                        <thead className="bg-yellow-200 text-center font-bold text-black uppercase dark:bg-yellow-800 dark:text-yellow-50">
                                             <tr>
-                                                <th className="w-10 border border-border p-1.5">No</th>
+                                                <th className="w-10 h-8 border border-black dark:border-white/60 p-1.5">No</th>
                                                 {section.columns.map((column) => (
-                                                    <th key={column.key} className={`border border-border p-1.5 ${column.width ?? ''}`}>{column.label}</th>
+                                                    <th key={column.key} className={`h-8 border border-black dark:border-white/60 p-1.5 ${column.width ?? ''}`}>{column.label}</th>
                                                 ))}
-                                                {can_write && <th className="w-9 border border-border" aria-label="Aksi" />}
+                                                {can_write && <th className="w-9 h-8 border border-black dark:border-white/60" aria-label="Aksi" />}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {lists[section.key].length === 0 && (
                                                 <tr>
-                                                    <td colSpan={section.columns.length + 2} className="border border-border p-2 text-center text-muted-foreground">
+                                                    <td colSpan={section.columns.length + 2} className="h-8 border border-black dark:border-white/60 p-2 text-center text-muted-foreground">
                                                         Belum ada baris.
                                                     </td>
                                                 </tr>
                                             )}
                                             {lists[section.key].map((row, index) => (
                                                 <tr key={index}>
-                                                    <td className="border border-border text-center">{index + 1}</td>
+                                                    <td className="h-8 border border-black dark:border-white/60 text-center">{index + 1}</td>
                                                     {section.columns.map((column) => (
-                                                        <td key={column.key} className="border border-border p-0">
+                                                        <td key={column.key} className="h-8 border border-black dark:border-white/60 p-0">
                                                             <Input
                                                                 value={row[column.key] ?? ''}
                                                                 onChange={(e) => update(section.key, lists[section.key].map((r, i) => (i === index ? { ...r, [column.key]: e.target.value === '' ? null : e.target.value } : r)))}
@@ -249,7 +249,7 @@ export default function HarLogbookMutasiPage({ unit, filters, options, logbooks,
                                                         </td>
                                                     ))}
                                                     {can_write && (
-                                                        <td className="border border-border text-center">
+                                                        <td className="h-8 border border-black dark:border-white/60 text-center">
                                                             <button type="button" onClick={() => update(section.key, lists[section.key].filter((_, i) => i !== index))} className="text-muted-foreground hover:text-destructive" aria-label="Hapus baris">
                                                                 <X className="size-3.5" />
                                                             </button>

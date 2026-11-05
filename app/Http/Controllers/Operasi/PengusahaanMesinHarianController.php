@@ -47,7 +47,9 @@ class PengusahaanMesinHarianController extends Controller
         $machines = $this->sheet->machines($unit);
         $record = $this->sheet->record($unit, $jenis, $month, $year);
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
-        $starStop = $jenis === MesinHarianJenis::KaliGangguan ? $this->sheet->gangguanFromStarStop($unit, $month, $year, $machines) : null;
+        // Beban Tertinggi (logsheet) and Jumlah Kali Gangguan (Start Stop Engine) are filled automatically.
+        $automatic = in_array($jenis, [MesinHarianJenis::BebanTinggi, MesinHarianJenis::KaliGangguan], true);
+        $starStop = null;
 
         return Inertia::render("pengusahaan/operasi/{$jenis->value}/index", [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
@@ -56,7 +58,9 @@ class PengusahaanMesinHarianController extends Controller
             'period_label' => Indonesian::monthName($month).' '.$year,
             'machines' => $machines,
             'days_in_month' => $daysInMonth,
-            'readings' => (object) $this->sheet->sanitize($jenis, $record?->readings ?? [], $machines, $daysInMonth),
+            'readings' => (object) $this->sheet->readingsOf($jenis, $unit, $month, $year, $machines),
+            'from_logsheet' => $jenis === MesinHarianJenis::BebanTinggi,
+            'from_start_stop' => $jenis === MesinHarianJenis::KaliGangguan,
             'daya_mampu' => $jenis === MesinHarianJenis::BebanTinggi ? (object) $this->sheet->dayaMampu($unit, $month, $year, $machines) : null,
             'star_stop' => $starStop === null ? null : (object) $starStop['counts'],
             'star_stop_notes' => $starStop['notes'] ?? [],
@@ -105,7 +109,10 @@ class PengusahaanMesinHarianController extends Controller
         $record = OperasiMesinHarian::query()->updateOrCreate(
             ['unit_id' => $unit->id, 'jenis' => $jenis, 'month' => $month, 'year' => $year],
             [
-                'readings' => $this->sheet->sanitize($jenis, $validated['readings'] ?? [], $machines, Carbon::create($year, $month, 1)->daysInMonth),
+                // Beban Tertinggi & Jumlah Kali Gangguan keep their source's values (only daya mampu & catatan are typed in).
+                'readings' => in_array($jenis, [MesinHarianJenis::BebanTinggi, MesinHarianJenis::KaliGangguan], true)
+                    ? $this->sheet->readingsOf($jenis, $unit, $month, $year, $machines)
+                    : $this->sheet->sanitize($jenis, $validated['readings'] ?? [], $machines, Carbon::create($year, $month, 1)->daysInMonth),
                 'params' => $params,
                 'catatan' => $validated['catatan'] ?? null,
                 'input_by' => $user->id,
@@ -134,7 +141,7 @@ class PengusahaanMesinHarianController extends Controller
         $machines = $this->sheet->machines($unit);
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
         $record = $this->sheet->record($unit, $jenis, $month, $year);
-        $readings = $this->sheet->sanitize($jenis, $record?->readings ?? [], $machines, $daysInMonth);
+        $readings = $this->sheet->readingsOf($jenis, $unit, $month, $year, $machines);
 
         $pdf = Pdf::loadView('operasi.mesin-harian.pdf', [
             'unit' => $unit,

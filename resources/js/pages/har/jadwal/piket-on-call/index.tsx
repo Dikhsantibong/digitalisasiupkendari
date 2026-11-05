@@ -15,17 +15,6 @@ import {
 import { Fragment, useMemo, useState } from 'react';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
-    buildDocumentHeader,
-    createSheet,
-    downloadWorkbook,
-    mergeCells,
-    paintSheet,
-    setColWidths,
-    SPECS,
-    XLSX_COLORS,
-} from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
-import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -41,7 +30,19 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
+    buildDocumentHeader,
+    createSheet,
+    downloadWorkbook,
+    mergeCells,
+    paintSheet,
+    setColWidths,
+    SPECS,
+    XLSX_COLORS,
+} from '@/lib/jadwal-excel';
 import jadwal from '@/routes/har/jadwal';
 import piketOnCall from '@/routes/har/jadwal/piket-on-call';
 import type { IdName } from '@/types';
@@ -200,17 +201,24 @@ export default function HarJadwalPiketOnCallPage({
 
     // Toggle piket day on/off
     const togglePiket = (rowIndex: number, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r, idx) => {
-                if (idx !== rowIndex) return r;
+                if (idx !== rowIndex) {
+return r;
+}
+
                 const set = new Set(r.piket || []);
+
                 if (set.has(day)) {
                     set.delete(day);
                 } else {
                     set.add(day);
                 }
+
                 return {
                     ...r,
                     piket: Array.from(set).sort((a, b) => a - b),
@@ -226,7 +234,10 @@ export default function HarJadwalPiketOnCallPage({
         field: keyof PiketRow,
         value: string | number,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r, idx) =>
                 idx === rowIndex ? { ...r, [field]: value } : r,
@@ -237,7 +248,9 @@ export default function HarJadwalPiketOnCallPage({
 
     // Add personnel
     const handleAddPersonnel = () => {
-        if (!newNama.trim()) return;
+        if (!newNama.trim()) {
+return;
+}
 
         setRows((prev) => [
             ...prev,
@@ -259,7 +272,10 @@ export default function HarJadwalPiketOnCallPage({
 
     // Remove row
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.filter((_, idx) => idx !== rowIndex));
         setDirty(true);
     };
@@ -272,7 +288,10 @@ export default function HarJadwalPiketOnCallPage({
 
     // Save changes
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -334,9 +353,11 @@ export default function HarJadwalPiketOnCallPage({
 
         rows.forEach((r, originalIndex) => {
             const cat = r.kategori ? r.kategori.trim().toUpperCase() : 'HARMES';
+
             if (!catMap.has(cat)) {
                 catMap.set(cat, []);
             }
+
             catMap.get(cat)!.push({
                 row: r,
                 originalIndex,
@@ -345,6 +366,7 @@ export default function HarJadwalPiketOnCallPage({
         });
 
         let catIdx = 0;
+
         for (const [kategori, items] of catMap.entries()) {
             groups.push({
                 roman: romanNumerals[catIdx] ?? String(catIdx + 1),
@@ -466,10 +488,12 @@ export default function HarJadwalPiketOnCallPage({
             if (r === headerTop || r === headerBottom) {
                 if (r === headerBottom && c >= dayStart && c <= dayEnd) {
                     const day = days[c - dayStart];
+
                     return day?.is_red
                         ? { ...SPECS.headerGrey, color: XLSX_COLORS.red600 }
                         : SPECS.headerGrey;
                 }
+
                 return SPECS.headerGrey;
             }
 
@@ -481,20 +505,26 @@ export default function HarJadwalPiketOnCallPage({
                 if (c === 0) {
                     return SPECS.cell;
                 }
+
                 if (c === 1) {
                     return SPECS.cellLeft;
                 }
+
                 if (c === 2) {
                     return SPECS.cell;
                 }
+
                 if (c >= dayStart && c <= dayEnd) {
                     const day = days[c - dayStart];
                     const isPiket = String(headerRows[r]?.[c] ?? '') === '1';
+
                     if (isPiket) {
                         return day?.is_red ? piketRed : piketCell;
                     }
+
                     return day?.is_red ? redSoftCell : SPECS.cell;
                 }
+
                 return { ...SPECS.cell, bold: true };
             }
 
@@ -505,9 +535,11 @@ export default function HarJadwalPiketOnCallPage({
         mergeCells(ws, headerTop, 1, headerBottom, 1); // Nama
         mergeCells(ws, headerTop, 2, headerBottom, 2); // No. Hp
         mergeCells(ws, headerTop, dayStart, headerTop, dayEnd); // Month label
+
         for (let c = colTarget; c < totalCols; c++) {
             mergeCells(ws, headerTop, c, headerBottom, c);
         }
+
         categoryRowIdx.forEach((r) => mergeCells(ws, r, 1, r, totalCols - 1));
 
         const colWidths = [5, 22, 14, ...Array(days.length).fill(3.2), 8, 9, 9];
@@ -761,7 +793,7 @@ export default function HarJadwalPiketOnCallPage({
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="print-table w-full border-collapse text-xs">
+                            <table className="excel-sheet print-table w-full border-collapse text-xs">
                                 <thead className="print-thead bg-muted/60 dark:bg-muted/30">
                                     <tr>
                                         <th
@@ -1199,24 +1231,16 @@ export default function HarJadwalPiketOnCallPage({
                                 <Label htmlFor="kategori">
                                     Kategori Disiplin
                                 </Label>
-                                <select
-                                    id="kategori"
-                                    value={newKategori}
-                                    onChange={(e) =>
-                                        setNewKategori(e.target.value)
-                                    }
-                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
-                                >
-                                    <option value="HARMES">
-                                        HARMES (Mesin)
-                                    </option>
-                                    <option value="HARLIS">
-                                        HARLIS (Listrik)
-                                    </option>
-                                    <option value="HAR KONTROL & INSTRUMEN">
-                                        HAR KONTROL & INSTRUMEN
-                                    </option>
-                                </select>
+                                <Select value={newKategori} onValueChange={(value) => setNewKategori(value)}>
+                                    <SelectTrigger className="h-9 w-full text-sm">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="HARMES">HARMES (Mesin)</SelectItem>
+                                        <SelectItem value="HARLIS">HARLIS (Listrik)</SelectItem>
+                                        <SelectItem value="HAR KONTROL & INSTRUMEN">HAR KONTROL &amp; INSTRUMEN</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="grid gap-1.5">

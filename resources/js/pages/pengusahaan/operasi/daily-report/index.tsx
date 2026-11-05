@@ -510,7 +510,7 @@ export default function IkhtisarSentralIndex({
 
                 <Panel title="Ringkasan sentral">
                     <table
-                        className="w-full border-collapse text-[13px]"
+                        className="excel-sheet w-full border-collapse text-[13px]"
                         data-keep-table={compact ? undefined : true}
                     >
                         <thead>
@@ -595,7 +595,7 @@ export default function IkhtisarSentralIndex({
                         />
                     ) : (
                         <table
-                            className="w-full border-collapse text-[13px]"
+                            className="excel-sheet w-full border-collapse text-[13px]"
                             data-keep-table={compact ? undefined : true}
                         >
                             <thead>
@@ -759,7 +759,7 @@ export default function IkhtisarSentralIndex({
                         />
                     ) : (
                         <table
-                            className="w-full border-collapse text-[13px]"
+                            className="excel-sheet w-full border-collapse text-[13px]"
                             data-keep-table={compact ? undefined : true}
                         >
                             <thead>

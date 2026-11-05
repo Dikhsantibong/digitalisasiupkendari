@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import {
     buildDocumentHeader,
@@ -786,7 +787,7 @@ return { ...SPECS.cellLeft, fill: baseBg };
                             />
                         </div>
                     ) : (
-                    <table className="w-full min-w-[1550px] border-collapse text-xs select-none">
+                    <table className="excel-sheet w-full min-w-[1550px] border-collapse text-xs select-none">
                         <thead>
                             <tr className="border-b border-border bg-muted/60 text-muted-foreground">
                                 <th rowSpan={2} className="w-10 min-w-10 border-r border-border px-2 py-2 text-center font-bold">
@@ -1065,15 +1066,16 @@ return { ...SPECS.cellLeft, fill: baseBg };
                     <div className="space-y-3 py-2 text-xs">
                         <div>
                             <Label className="text-xs">Kategori Kegiatan</Label>
-                            <select
-                                value={newCategory}
-                                onChange={(e) => setNewCategory(e.target.value)}
-                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="I. MESIN">I. MESIN</option>
-                                <option value="II. Mingguan">II. Mingguan</option>
-                                <option value="III. Bulanan">III. Bulanan</option>
-                            </select>
+                            <Select value={newCategory} onValueChange={(value) => setNewCategory(value)}>
+                                <SelectTrigger className="mt-1 h-9 w-full text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="I. MESIN" className="text-xs">I. MESIN</SelectItem>
+                                    <SelectItem value="II. Mingguan" className="text-xs">II. Mingguan</SelectItem>
+                                    <SelectItem value="III. Bulanan" className="text-xs">III. Bulanan</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div>
                             <Label className="text-xs">Nama Peralatan / Kegiatan</Label>
@@ -1119,17 +1121,16 @@ return { ...SPECS.cellLeft, fill: baseBg };
                     <div className="space-y-3 py-2 text-xs">
                         <div>
                             <Label className="text-xs">Kategori Kegiatan</Label>
-                            <select
-                                value={editForm.kategori}
-                                onChange={(e) =>
-                                    setEditForm((prev) => ({ ...prev, kategori: e.target.value }))
-                                }
-                                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                            >
-                                <option value="I. MESIN">I. MESIN</option>
-                                <option value="II. Mingguan">II. Mingguan</option>
-                                <option value="III. Bulanan">III. Bulanan</option>
-                            </select>
+                            <Select value={editForm.kategori} onValueChange={(value) => setEditForm((prev) => ({ ...prev, kategori: value }))}>
+                                <SelectTrigger className="mt-1 h-9 w-full text-xs">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="I. MESIN" className="text-xs">I. MESIN</SelectItem>
+                                    <SelectItem value="II. Mingguan" className="text-xs">II. Mingguan</SelectItem>
+                                    <SelectItem value="III. Bulanan" className="text-xs">III. Bulanan</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="grid grid-cols-4 gap-2">
                             <div className="col-span-1">

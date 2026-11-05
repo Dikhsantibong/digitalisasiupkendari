@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { useInMobileShell } from '@/hooks/use-mobile-module';
+import { useInMobileShell, useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
 
 /**
  * The standard page opening: title, optional description, and at most one
  * primary action on the right. Inside a mobile module shell the top bar already
- * carries the title, so only the description and actions are shown.
+ * carries the title, so only the description and actions are shown — and on a
+ * phone input page only the actions (the user fills it straight away).
  */
 export function PageHeader({
     title,
@@ -16,6 +17,11 @@ export function PageHeader({
     actions?: ReactNode;
 }) {
     const inMobileShell = useInMobileShell();
+    const simplified = useSimplifiedMobileInput();
+
+    if (simplified) {
+        return actions ? <div className="flex flex-col gap-2">{actions}</div> : <span data-mobile-hidden hidden />;
+    }
 
     if (inMobileShell) {
         return (

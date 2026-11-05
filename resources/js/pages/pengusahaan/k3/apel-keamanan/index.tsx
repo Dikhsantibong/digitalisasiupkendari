@@ -612,7 +612,7 @@ export default function PengusahaanApelKeamananPage(props: Props) {
 
                 {/* Security Apel Table */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="apel-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet apel-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
                         <thead>
                             <tr className="bg-muted/40 font-bold uppercase text-foreground">
                                 <th className="w-10 border border-black px-1.5 py-1.5 text-center dark:border-border">

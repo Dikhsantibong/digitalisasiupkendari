@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { useCompactLayout, useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
 import { downloadUnsafeConditionWorkbook } from '@/lib/unsafe-condition-excel';
 import { cn } from '@/lib/utils';
 import type { IdName } from '@/types';
@@ -69,8 +69,8 @@ const PHOTOS: [PhotoColumn, string][] = [
     ['foto_sesudah', 'Sesudah'],
 ];
 
-const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
-const cellText = 'min-h-8 rounded-none border-0 bg-transparent px-1 py-1.5 text-xs shadow-none focus-visible:ring-1 md:text-xs';
+const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:border-0 focus-visible:ring-0 focus:bg-yellow-50 dark:focus:bg-yellow-950/40';
+const cellText = 'min-h-8 rounded-none border-0 bg-transparent px-1 py-1.5 text-xs shadow-none focus-visible:border-0 focus-visible:ring-0 focus:bg-yellow-50 md:text-xs dark:focus:bg-yellow-950/40';
 const th = 'border border-black p-1.5 text-center font-bold text-black dark:border-white';
 const td = 'border border-black dark:border-border';
 
@@ -124,13 +124,14 @@ export function UnsafeConditionSheet({
 }: UnsafeConditionSheetProps & {
     routes: { index: string; sync: string; pdf: (query: Filters) => string };
 }) {
-    const [rows, setRows] = useState<SheetRow[]>(() => savedRows.map(toSheetRow));
+    // An empty month opens with one blank finding, so the form is ready to fill.
+    const [rows, setRows] = useState<SheetRow[]>(() => (savedRows.length === 0 && can_write ? [blankRow()] : savedRows.map(toSheetRow)));
     const [deletedIds, setDeletedIds] = useState<number[]>([]);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [exporting, setExporting] = useState(false);
-    const [openRow, setOpenRow] = useState<string | null>(null);
+    const [openRow, setOpenRow] = useState<string | null>(() => (savedRows.length === 0 && can_write ? (rows[0]?.key ?? null) : null));
     const compact = useCompactLayout();
 
     const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
@@ -305,13 +306,6 @@ export function UnsafeConditionSheet({
             <>
                 <Head title={`Unsafe Action & Condition - ${unit.name}`} />
                 <div className={cn('flex flex-col gap-3 p-4', can_write && 'pb-28')}>
-                    <PageHeader title="Unsafe Action & Condition" description={`${unit.name} · ${periodLabel}`} />
-
-
-                    {kpis}
-
-                    <p className="px-0.5 text-[12px] text-muted-foreground">Baris baru tanpa uraian temuan tidak ikut disimpan.</p>
-
                     {rows.length === 0 && (
                         <p className="rounded-xl border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">Belum ada temuan untuk periode ini.</p>
                     )}
@@ -401,16 +395,6 @@ export function UnsafeConditionSheet({
                         );
                     })}
 
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" onClick={exportExcel} disabled={exporting || savedRows.length === 0}>
-                            <FileSpreadsheet className="size-4 text-emerald-600" />
-                            {exporting ? 'Menyiapkan…' : 'Excel'}
-                        </Button>
-                        <Button variant="outline" onClick={() => window.open(routes.pdf(filters), '_blank')}>
-                            <Download className="size-4 text-rose-600" />
-                            PDF
-                        </Button>
-                    </div>
                 </div>
 
                 {can_write && (
@@ -644,6 +628,11 @@ export function UnsafeConditionSheet({
 }
 
 function Kpi({ label, icon, note, children }: { label: string; icon: ReactNode; note: string; children: ReactNode }) {
+    // Phone input pages go without summary tiles (a grid left empty is hidden by app.css).
+    if (useSimplifiedMobileInput()) {
+        return <span data-mobile-hidden hidden />;
+    }
+
     return (
         <Card className="gap-0 p-4 py-4 shadow-xs">
             <div className="flex items-center justify-between">

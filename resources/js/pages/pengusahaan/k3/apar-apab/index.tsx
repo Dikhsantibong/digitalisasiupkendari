@@ -186,7 +186,7 @@ export default function PengusahaanAparApabPage({ unit, filters, options, record
     const td = 'border-r border-black p-1 text-center align-middle dark:border-border';
 
     const table = (
-        <table className="apar-table w-full min-w-[1100px] border-collapse border-2 border-black text-sm dark:border-border">
+        <table className="excel-sheet apar-table w-full min-w-[1100px] border-collapse border-2 border-black text-sm dark:border-border">
             <thead>
                 <tr className="bg-muted/40 text-center text-foreground">
                     <th className={`${th} w-12`}>NO.</th>

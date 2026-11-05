@@ -1,3 +1,5 @@
+import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
+
 /**
  * A single figure with its label and optional supporting line. Deliberately
  * plain: no icons, gradients, or shadows.
@@ -13,6 +15,11 @@ export function SummaryCard({
     hint?: string;
     unit?: string;
 }) {
+    // Phone input pages go without summary cards (a grid left empty is hidden by app.css).
+    if (useSimplifiedMobileInput()) {
+        return <span data-mobile-hidden hidden />;
+    }
+
     return (
         <div className="rounded-md border border-border bg-card p-4">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

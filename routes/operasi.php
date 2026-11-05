@@ -30,6 +30,7 @@ use App\Http\Controllers\Operasi\PengusahaanFeederReadingController;
 use App\Http\Controllers\Operasi\PengusahaanFuelReceiptController;
 use App\Http\Controllers\Operasi\PengusahaanInventarisController;
 use App\Http\Controllers\Operasi\PengusahaanJamMesinController;
+use App\Http\Controllers\Operasi\PengusahaanJamPembangkitController;
 use App\Http\Controllers\Operasi\PengusahaanJamSiapOpsController;
 use App\Http\Controllers\Operasi\PengusahaanKinerjaController;
 use App\Http\Controllers\Operasi\PengusahaanKinerjaTermalController;
@@ -244,6 +245,10 @@ Route::middleware(['auth', 'verified'])
             Route::post("pengusahaan/{$rincian}", [PengusahaanRincianPelumasController::class, 'store'])->defaults('jenis', $rincian)->name("pengusahaan.{$rincian}.store");
             Route::get("pengusahaan/{$rincian}/pdf", [PengusahaanRincianPelumasController::class, 'pdf'])->defaults('jenis', $rincian)->name("pengusahaan.{$rincian}.pdf");
         }
+
+        // Jam Pembangkit: the three typed sheets (and Jam Siap Ops) in one table — the menu the users open.
+        Route::get('pengusahaan/jam-pembangkit', [PengusahaanJamPembangkitController::class, 'index'])->name('pengusahaan.jam-pembangkit.index');
+        Route::post('pengusahaan/jam-pembangkit', [PengusahaanJamPembangkitController::class, 'store'])->name('pengusahaan.jam-pembangkit.store');
 
         // Jam Operasi / Jam Pemeliharaan / Jam Gangguan share one controller; Jam Siap Ops is derived from them.
         foreach (['operasi', 'pemeliharaan', 'gangguan'] as $jamJenis) {

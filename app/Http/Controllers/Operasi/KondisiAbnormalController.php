@@ -12,13 +12,16 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\Notifications\EventNotifier;
+use App\Support\HarTabel\AbnormalGangguanTabel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -29,9 +32,11 @@ use Inertia\Response;
  * Laporan Kondisi Abnormal & Gangguan Pembangkit (Operasi input). One record
  * per kejadian: the operator adds it with its tanggal (several a day are
  * fine), jenis (abnormal / gangguan) & durasi, the indikasi, the related
- * parameter, the short-term follow-up (SR, FLM, lainnya), the long-term
- * follow-up and the impact on the system and on the plant. The page shows
- * the month's rekap; the same records feed the PDF and the Laporan Operasi.
+ * parameter, the kronologi (gangguan only), the short-term follow-up (SR,
+ * FLM, lainnya), the long-term follow-up, the impact on the system and on the
+ * plant and one eviden photo. The page shows the month's rekap; the same
+ * records feed the PDF, the Laporan Operasi and the HAR Laporan Kondisi
+ * Abnormal dan Gangguan ({@see AbnormalGangguanTabel}).
  *
  * Writers: operasi.input.write (Koordinator — every record of the unit) and
  * the operators' field permission (their own records).
@@ -52,6 +57,12 @@ class KondisiAbnormalController extends Controller
 
     /** Free-text follow-up & impact columns. */
     private const TEXT_FIELDS = ['parameter_terkait', 'tl_pendek_keterangan', 'tl_panjang', 'dampak_sistem', 'dampak_pembangkit'];
+
+    /** @var array<string, string> */
+    private const EVIDEN_MESSAGES = [
+        'eviden_file.image' => 'Eviden harus berupa foto.',
+        'eviden_file.max' => 'Ukuran foto eviden paling besar 10 MB.',
+    ];
 
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
@@ -94,7 +105,8 @@ class KondisiAbnormalController extends Controller
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
 
-        $values = $this->values($request);
+        $input = $this->validated($request);
+        $values = $this->normalize($input);
         $date = Carbon::parse($values['tanggal']);
 
         $record = KondisiAbnormal::query()->create([
@@ -103,6 +115,7 @@ class KondisiAbnormalController extends Controller
             'month' => $date->month,
             'no_urut' => $this->nextNumber($unit->id, $date->year, $date->month),
             ...$values,
+            'eviden' => $this->evidenAfterSave($input, null, $unit->id),
             'input_by' => $user->id,
         ]);
 
@@ -119,15 +132,23 @@ class KondisiAbnormalController extends Controller
         $user = $request->user();
         abort_unless($this->canEdit($user, $kondisiAbnormal), 403);
 
-        $values = $this->values($request);
+        $input = $this->validated($request);
+        $values = $this->normalize($input);
         $date = Carbon::parse($values['tanggal']);
         $moved = $date->year !== $kondisiAbnormal->year || $date->month !== $kondisiAbnormal->month;
+        $previousEviden = $kondisiAbnormal->eviden;
 
-        $kondisiAbnormal->fill([...$values, 'year' => $date->year, 'month' => $date->month]);
+        $kondisiAbnormal->fill([
+            ...$values,
+            'eviden' => $this->evidenAfterSave($input, $previousEviden, $kondisiAbnormal->unit_id),
+            'year' => $date->year,
+            'month' => $date->month,
+        ]);
         if ($moved) {
             $kondisiAbnormal->no_urut = $this->nextNumber($kondisiAbnormal->unit_id, $date->year, $date->month);
         }
         $kondisiAbnormal->save();
+        $this->deleteEviden($previousEviden !== $kondisiAbnormal->eviden ? [$previousEviden] : []);
 
         if ($kondisiAbnormal->wasChanged(['is_abnormal', 'is_gangguan'])) {
             $events->kondisiAbnormal($kondisiAbnormal->unit, [$kondisiAbnormal], $user);
@@ -166,7 +187,8 @@ class KondisiAbnormalController extends Controller
         $first = Carbon::create($year, $month, 1)->toDateString();
         $last = Carbon::create($year, $month, 1)->endOfMonth()->toDateString();
 
-        $rows = (array) $request->input('rows', []);
+        // With the uploaded eviden photos (rows.*.eviden_file) merged in.
+        $rows = (array) ($request->all()['rows'] ?? []);
         ksort($rows);
         // A new row left empty (no uraian) is not a report.
         $rows = array_filter($rows, fn ($row, $index): bool => is_array($row) && (! empty($row['id']) || trim((string) ($row['uraian_kondisi'] ?? '')) !== ''), ARRAY_FILTER_USE_BOTH);
@@ -178,6 +200,7 @@ class KondisiAbnormalController extends Controller
             'rows.*.tanggal.after_or_equal' => 'Tanggal baris harus di bulan yang ditampilkan.',
             'rows.*.tanggal.before_or_equal' => 'Tanggal baris harus di bulan yang ditampilkan.',
             'rows.*.uraian_kondisi.required' => 'Indikasi / uraian kondisi wajib diisi.',
+            ...collect(self::EVIDEN_MESSAGES)->mapWithKeys(fn (string $message, string $key): array => ["rows.*.{$key}" => $message])->all(),
         ])->validate();
 
         $existing = KondisiAbnormal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->get()->keyBy('id');
@@ -200,8 +223,9 @@ class KondisiAbnormalController extends Controller
 
         $announce = [];
         $counts = ['created' => 0, 'updated' => 0, 'deleted' => 0];
+        $removedEviden = [];
 
-        DB::transaction(function () use ($rows, $validated, $existing, $deletedIds, $unit, $year, $month, $user, &$announce, &$counts): void {
+        DB::transaction(function () use ($rows, $validated, $existing, $deletedIds, $unit, $year, $month, $user, &$announce, &$counts, &$removedEviden): void {
             $number = $this->nextNumber($unit->id, $year, $month);
 
             foreach (array_keys($rows) as $index) {
@@ -210,7 +234,11 @@ class KondisiAbnormalController extends Controller
 
                 if ($id !== 0) {
                     $record = $existing->get($id);
-                    $record->fill($values);
+                    $previousEviden = $record->eviden;
+                    $record->fill([...$values, 'eviden' => $this->evidenAfterSave($validated['rows'][$index], $previousEviden, $unit->id)]);
+                    if ($record->isDirty('eviden')) {
+                        $removedEviden[] = $previousEviden;
+                    }
                     if ($record->isDirty()) {
                         $record->save();
                         $counts['updated']++;
@@ -228,6 +256,7 @@ class KondisiAbnormalController extends Controller
                     'month' => $month,
                     'no_urut' => $number++,
                     ...$values,
+                    'eviden' => $this->evidenAfterSave($validated['rows'][$index], null, $unit->id),
                     'input_by' => $user->id,
                 ]);
                 $counts['created']++;
@@ -235,11 +264,13 @@ class KondisiAbnormalController extends Controller
 
             foreach ($deletedIds as $id) {
                 if ($existing->has($id) && ! collect($rows)->contains(fn (array $row): bool => (int) ($row['id'] ?? 0) === $id)) {
+                    $removedEviden[] = $existing->get($id)->eviden;
                     $existing->get($id)->delete();
                     $counts['deleted']++;
                 }
             }
         });
+        $this->deleteEviden($removedEviden);
 
         if ($announce !== []) {
             $events->kondisiAbnormal($unit, $announce, $user);
@@ -258,6 +289,7 @@ class KondisiAbnormalController extends Controller
 
         $period = ['unit_id' => $kondisiAbnormal->unit_id, 'month' => $kondisiAbnormal->month, 'year' => $kondisiAbnormal->year];
         $kondisiAbnormal->delete();
+        $this->deleteEviden([$kondisiAbnormal->eviden]);
 
         $this->activityLogger->log(ActivityEvent::Deleted, "Menghapus laporan kondisi abnormal/gangguan #{$kondisiAbnormal->id}", unit: $period['unit_id']);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan dihapus.']);
@@ -317,6 +349,8 @@ class KondisiAbnormalController extends Controller
                     'durasi_abnormal' => $row['durasi_abnormal'] > 0 ? $row['durasi_abnormal'] : '',
                     'is_gangguan' => $row['is_gangguan'] === 1 ? '1' : '',
                     'durasi_gangguan' => $row['durasi_gangguan'] > 0 ? $row['durasi_gangguan'] : '',
+                    // dompdf reads the photo inline.
+                    'eviden_url' => $this->evidenUrl($record->eviden, embed: true),
                 ];
             })->all(),
             'tindakPendek' => self::TINDAK_PENDEK,
@@ -331,18 +365,17 @@ class KondisiAbnormalController extends Controller
     }
 
     /**
-     * The validated values of one record: jenis + durasi go to the matching
-     * abnormal / gangguan columns.
+     * The validated input of one report (the dialog), eviden photo included.
      *
      * @return array<string, mixed>
      */
-    private function values(Request $request): array
+    private function validated(Request $request): array
     {
-        return $this->normalize($request->validate([
+        return $request->validate([
             'unit_id' => ['required', 'integer'],
             'tanggal' => ['required', 'date_format:Y-m-d', 'after_or_equal:2000-01-01', 'before_or_equal:2100-12-31'],
             ...$this->rowRules($request->integer('unit_id')),
-        ]));
+        ], self::EVIDEN_MESSAGES);
     }
 
     /**
@@ -362,6 +395,8 @@ class KondisiAbnormalController extends Controller
             'durasi' => ['nullable', 'numeric', 'min:0', 'max:744'],
             'uraian_kondisi' => ['required', 'string', 'max:2000'],
             'parameter_terkait' => ['nullable', 'string', 'max:2000'],
+            // Gangguan only: how it unfolded.
+            'kronologi' => ['nullable', 'string', 'max:5000'],
             'tl_pendek_sr' => ['nullable', 'boolean'],
             'tl_pendek_flm' => ['nullable', 'boolean'],
             'tl_pendek_lainnya' => ['nullable', 'boolean'],
@@ -369,6 +404,9 @@ class KondisiAbnormalController extends Controller
             'tl_panjang' => ['nullable', 'string', 'max:2000'],
             'dampak_sistem' => ['nullable', 'string', 'max:2000'],
             'dampak_pembangkit' => ['nullable', 'string', 'max:2000'],
+            // The eviden photo: the saved path keeps it, a new file replaces it.
+            'eviden' => ['nullable', 'string', 'max:255'],
+            'eviden_file' => ['nullable', 'image', 'max:10240'],
         ];
     }
 
@@ -391,6 +429,7 @@ class KondisiAbnormalController extends Controller
             'jam_selesai' => $selesai,
             'machine_id' => $abnormal ? null : ($validated['machine_id'] ?? null),
             'peralatan' => $abnormal ? null : (trim((string) ($validated['peralatan'] ?? '')) ?: null),
+            'kronologi' => $abnormal ? null : (trim((string) ($validated['kronologi'] ?? '')) ?: null),
             'tanggal' => $validated['tanggal'],
             'uraian_kondisi' => trim($validated['uraian_kondisi']),
             'is_abnormal' => $abnormal ? 1 : 0,
@@ -439,6 +478,9 @@ class KondisiAbnormalController extends Controller
         $row['machine_id'] = $record->machine_id;
         $row['mesin'] = (string) ($record->machine?->name ?? '');
         $row['peralatan'] = (string) ($record->peralatan ?? '');
+        $row['kronologi'] = (string) ($record->kronologi ?? '');
+        $row['eviden'] = $record->eviden;
+        $row['eviden_url'] = $this->evidenUrl($record->eviden);
         foreach (array_keys(self::TINDAK_PENDEK) as $key) {
             $row[$key] = $record->{$key} ? 1 : 0;
         }
@@ -497,6 +539,51 @@ class KondisiAbnormalController extends Controller
         }
 
         return round($minutes / 60, 2);
+    }
+
+    /**
+     * The eviden photo after a save: a new upload replaces it, the posted path
+     * of the current photo keeps it and an empty value removes it. A report
+     * sent without any eviden field keeps its photo.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    private function evidenAfterSave(array $input, ?string $current, int $unitId): ?string
+    {
+        $upload = $input['eviden_file'] ?? null;
+        if ($upload instanceof UploadedFile) {
+            return $upload->store("operasi-abnormal/{$unitId}", 'public');
+        }
+
+        if (! array_key_exists('eviden', $input)) {
+            return $current;
+        }
+
+        return $current !== null && $input['eviden'] === $current ? $current : null;
+    }
+
+    /**
+     * @param  list<string|null>  $paths  photos no longer used by any report
+     */
+    private function deleteEviden(array $paths): void
+    {
+        $paths = array_values(array_filter($paths));
+        if ($paths !== []) {
+            Storage::disk('public')->delete($paths);
+        }
+    }
+
+    /** The photo's URL, or a data URI for dompdf; null when it is missing. */
+    private function evidenUrl(?string $path, bool $embed = false): ?string
+    {
+        $disk = Storage::disk('public');
+        if ($path === null || ! $disk->exists($path)) {
+            return null;
+        }
+
+        return $embed
+            ? 'data:'.($disk->mimeType($path) ?: 'image/jpeg').';base64,'.base64_encode((string) $disk->get($path))
+            : $disk->url($path);
     }
 
     private function nextNumber(int $unitId, int $year, int $month): int

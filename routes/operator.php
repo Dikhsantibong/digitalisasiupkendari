@@ -3,9 +3,11 @@
 use App\Http\Controllers\Operator\AbsensiController;
 use App\Http\Controllers\Operator\LogsheetController;
 use App\Http\Controllers\Operator\MutasiController;
+use App\Http\Controllers\Operator\OpnameController;
 use App\Http\Controllers\Operator\PengajuanController;
 use App\Http\Controllers\Operator\PresensiController;
 use App\Http\Controllers\Operator\ResumeController;
+use App\Http\Controllers\Operator\StartStopController;
 use App\Services\Operasi\LogsheetAggregator;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +27,16 @@ Route::middleware(['auth', 'verified'])
         Route::post('logsheet', [LogsheetController::class, 'store'])->name('logsheet.store');
         Route::post('logsheet/lembar', [LogsheetController::class, 'storeSheet'])->name('logsheet.sheet');
         Route::get('logsheet/pdf', [LogsheetController::class, 'pdf'])->name('logsheet.pdf');
+
+        // Start Stop Engine: start, CBG on/off and stop of each run per mesin; gangguan stops feed Jumlah Kali Gangguan.
+        Route::get('start-stop', [StartStopController::class, 'index'])->name('start-stop.index');
+        Route::post('start-stop', [StartStopController::class, 'sync'])->name('start-stop.sync');
+
+        // Opname BBM, Opname Pelumas and Opname kWh: one daily sheet each per unit.
+        foreach (['bbm', 'pelumas', 'kwh'] as $opname) {
+            Route::get("opname-{$opname}", [OpnameController::class, 'index'])->defaults('jenis', $opname)->name("opname-{$opname}.index");
+            Route::post("opname-{$opname}", [OpnameController::class, 'store'])->defaults('jenis', $opname)->name("opname-{$opname}.store");
+        }
 
         Route::get('absensi', [AbsensiController::class, 'index'])->name('absensi.index');
         Route::post('absensi', [AbsensiController::class, 'store'])->name('absensi.store');

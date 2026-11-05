@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from 'react';
+import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { cn } from '@/lib/utils';
 
 /**
@@ -62,18 +63,13 @@ export function CellSelect({
     const tone = good === undefined ? '' : good.includes((value ?? '').toLowerCase()) ? TONE_GOOD : TONE_BAD;
 
     return (
-        <select
+        <PdmCellSelect
             value={value ?? ''}
-            onChange={(e) => onChange(e.target.value)}
-            aria-label={ariaLabel}
-            className={cn(CELL, 'cursor-pointer text-center', tone, className)}
-        >
-            {withCurrent(options, value).map((option) => (
-                <option key={option} value={option} className="text-foreground">
-                    {option}
-                </option>
-            ))}
-        </select>
+            onChange={(next) => onChange(next)}
+            options={withCurrent(options, value)}
+    ariaLabel={ariaLabel}
+            className={cn('h-full justify-center', tone, className)}
+        />
     );
 }
 

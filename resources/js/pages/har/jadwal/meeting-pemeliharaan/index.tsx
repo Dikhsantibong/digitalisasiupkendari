@@ -726,8 +726,8 @@ export default function HarJadwalMeetingPemeliharaanPage({
                             />
                         </div>
                     ) : (
-                        <div className="overflow-x-auto rounded-md border border-border">
-                            <table className="print-table w-full border-collapse text-center text-xs">
+                        <div className="overflow-x-auto">
+                            <table className="excel-sheet print-table w-full border-collapse text-center text-xs">
                                 <thead>
                                     {/* Top Header Row (Orange Background) */}
                                     <tr className="print-orange-header border-b border-border bg-[#ed7d31] font-bold text-black">

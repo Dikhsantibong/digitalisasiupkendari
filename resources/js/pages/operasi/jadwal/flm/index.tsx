@@ -5,8 +5,6 @@ import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
 import type { DayValueField } from '@/components/mobile/day-values-form';
 import { monthTimelineDays, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
-import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +13,10 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import flm from '@/routes/operasi/jadwal/flm';
@@ -86,7 +87,10 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [sig, setSig] = useState(signature);
-    if (sig !== signature) { setSig(signature); setRows(hydrate(initialRows)); setNextKey(initialRows.length); setDirty(false); }
+
+    if (sig !== signature) {
+ setSig(signature); setRows(hydrate(initialRows)); setNextKey(initialRows.length); setDirty(false); 
+}
 
     const monthName = useMemo(() => OPERASI_MONTHS[filters.month - 1] ?? '', [filters.month]);
     const days = useMemo(() => Array.from({ length: days_in_month }, (_, i) => i + 1), [days_in_month]);
@@ -97,19 +101,40 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
 
     const setDay = (key: number, day: number, value: string) => {
         setRows((p) => p.map((r) => {
-            if (r._key !== key) return r;
+            if (r._key !== key) {
+return r;
+}
+
             const d = { ...r.days };
-            if (value.trim() === '') delete d[String(day)]; else d[String(day)] = value;
+
+            if (value.trim() === '') {
+delete d[String(day)];
+} else {
+d[String(day)] = value;
+}
+
             return { ...r, days: d };
         }));
         setDirty(true);
     };
     const toggleMark = (key: number, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((p) => p.map((r) => {
-            if (r._key !== key) return r;
+            if (r._key !== key) {
+return r;
+}
+
             const d = { ...r.days };
-            if (d[String(day)]) delete d[String(day)]; else d[String(day)] = '1';
+
+            if (d[String(day)]) {
+delete d[String(day)];
+} else {
+d[String(day)] = '1';
+}
+
             return { ...r, days: d };
         }));
         setDirty(true);
@@ -118,7 +143,9 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
         setRows((p) => p.map((r) => (r._key === key ? { ...r, [field]: field === 'target' ? Math.max(0, parseInt(value, 10) || 0) : value } : r)));
         setDirty(true);
     };
-    const remove = (key: number) => { setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); };
+    const remove = (key: number) => {
+ setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
+};
 
     const addRow = () => {
         setRows((p) => [...p, { _key: nextKey, id: null, section: form.section, shift: form.shift, label: form.label, row_type: form.row_type, days: {}, target: Number(form.target) || 0 }]);
@@ -128,15 +155,27 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
     };
 
     const realisasiOf = (r: Row): number | null => {
-        if (r.row_type === 'shift') return null;
+        if (r.row_type === 'shift') {
+return null;
+}
+
         const vals = Object.values(r.days).filter((v) => String(v).trim() !== '');
-        if (r.row_type === 'minutes') return vals.reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
+
+        if (r.row_type === 'minutes') {
+return vals.reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
+}
+
         return vals.length;
     };
 
-    const handleReset = () => { setRows(hydrate(initialRows)); setDirty(false); };
+    const handleReset = () => {
+ setRows(hydrate(initialRows)); setDirty(false); 
+};
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         const ordered = SECTIONS.flatMap((s) => rows.filter((r) => r.section === s.key));
         router.post(
@@ -159,24 +198,55 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
             const realisasi = realisasiOf(r) ?? '';
             const pct = r.row_type === 'shift' ? '' : (r.target > 0 ? `${Math.round(((realisasiOf(r) ?? 0) / r.target) * 100)}%` : '0%');
             const label = SECTIONS.find((s) => s.key === r.section)?.label ?? '';
-            H.push([label, r.label, r.shift, ...days.map((d) => { const v = r.days[String(d)] ?? ''; if (r.row_type === 'mark') return v !== '' ? 1 : ''; if (r.row_type === 'minutes') return v !== '' ? Number(v) : ''; return v; }), r.row_type === 'shift' ? '' : realisasi, r.row_type === 'shift' ? '' : r.target, pct]);
+            H.push([label, r.label, r.shift, ...days.map((d) => {
+ const v = r.days[String(d)] ?? '';
+
+ if (r.row_type === 'mark') {
+return v !== '' ? 1 : '';
+}
+
+ if (r.row_type === 'minutes') {
+return v !== '' ? Number(v) : '';
+}
+
+ return v; 
+}), r.row_type === 'shift' ? '' : realisasi, r.row_type === 'shift' ? '' : r.target, pct]);
         });
         const { workbook, worksheet: ws } = createSheet('FLM', H);
         const dayStart = 3; const dayEnd = dayStart + days.length - 1; const totalCols = 3 + days.length + 3;
         const done: StyleSpec = { fill: XLSX_COLORS.slate, bold: true, align: 'center', valign: 'center', border: true };
         paintSheet(ws, H.length, totalCols, (r, c) => {
-            if (r < 4) return null;
-            if (r === 4) return SPECS.headerOrange;
-            if (c === 0) return SPECS.label;
-            if (c === 1) return SPECS.cellLeft;
-            if (c >= dayStart && c <= dayEnd) return H[r]?.[c] === 1 ? done : SPECS.cell;
+            if (r < 4) {
+return null;
+}
+
+            if (r === 4) {
+return SPECS.headerOrange;
+}
+
+            if (c === 0) {
+return SPECS.label;
+}
+
+            if (c === 1) {
+return SPECS.cellLeft;
+}
+
+            if (c >= dayStart && c <= dayEnd) {
+return H[r]?.[c] === 1 ? done : SPECS.cell;
+}
+
             return { ...SPECS.cell, bold: true };
         });
         // Merge the category column across each section's rows.
         let cursor = 5;
         SECTIONS.forEach((s) => {
             const n = ordered.filter((r) => r.section === s.key).length;
-            if (n > 1) mergeCells(ws, cursor, 0, cursor + n - 1, 0);
+
+            if (n > 1) {
+mergeCells(ws, cursor, 0, cursor + n - 1, 0);
+}
+
             cursor += n;
         });
         const colWidths = [16, 26, 8, ...Array(days.length).fill(3.2), 9, 8, 7];
@@ -187,14 +257,17 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
 
     const dayCell = (r: Row, day: number) => {
         const val = r.days[String(day)] ?? '';
+
         if (r.row_type === 'mark') {
             const on = val !== '';
+
             return (
                 <td key={day} onClick={() => toggleMark(r._key, day)} className={`border border-black text-center text-[11px] font-bold select-none ${on ? 'flm-done bg-slate-300 dark:bg-slate-600' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>
                     {on ? '1' : ''}
                 </td>
             );
         }
+
         if (r.row_type === 'minutes') {
             return (
                 <td key={day} className="border border-black p-0 text-center">
@@ -202,6 +275,7 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
                 </td>
             );
         }
+
         return (
             <td key={day} className="border border-black p-0 text-center">
                 {can_write ? <input type="text" maxLength={2} value={val} onChange={(e) => setDay(r._key, day, e.target.value.toUpperCase())} className="h-6 w-7 bg-transparent text-center text-[10px] font-semibold uppercase focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary" /> : <span className="text-[10px] font-semibold">{val}</span>}
@@ -251,13 +325,17 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
                 <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
                     <div className="border-b border-border p-4">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
-                            <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border"><img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} /></div>
+                            <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border"><img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} /></div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 SITE KIT</div>
                                 <div className="text-[11px] font-semibold text-foreground uppercase">LAPORAN PROJECT — {unit.name.toUpperCase()}</div>
                                 <div className="text-[11px] font-bold text-foreground uppercase">JADWAL FIRST LINE MAINTENANCE (FLM) OPERATOR — {monthName.toUpperCase()} {filters.year}</div>
                             </div>
-                            <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border"><img src="/logo/mkp.jpg" alt="MKP" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} /></div>
+                            <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border"><img src="/logo/mkp.jpg" alt="MKP" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} /></div>
                         </div>
                     </div>
 
@@ -299,7 +377,7 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
                         </div>
                     ) : (
                     <div className="overflow-x-auto">
-                        <table className="flm-table w-full border-collapse text-xs">
+                        <table className="excel-sheet flm-table w-full border-collapse text-xs">
                             <thead>
                                 <tr>
                                     <th rowSpan={2} className={`${thBase} w-24`}>Kategori</th>
@@ -319,12 +397,17 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
                             <tbody>
                                 {SECTIONS.map((section) => {
                                     const items = rows.filter((r) => r.section === section.key);
-                                    if (items.length === 0) return null;
+
+                                    if (items.length === 0) {
+return null;
+}
+
                                     return (
                                         <Fragment key={section.key}>
                                             {items.map((row, li) => {
                                                 const realisasi = realisasiOf(row);
                                                 const pct = row.row_type === 'shift' ? null : (row.target > 0 ? Math.round(((realisasi ?? 0) / row.target) * 100) : 0);
+
                                                 return (
                                                     <tr key={row._key} className="hover:bg-muted/10">
                                                         {li === 0 && (
@@ -371,18 +454,28 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
                     <div className="grid gap-3 py-2 text-sm">
                         <div className="grid gap-1.5">
                             <Label>Kategori</Label>
-                            <select value={form.section} onChange={(e) => setForm((f) => ({ ...f, section: e.target.value as Section }))} className="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
-                                <option value="rutin">FLM Rutin</option>
-                                <option value="non_rutin">FLM Non Rutin</option>
-                            </select>
+                            <Select value={form.section} onValueChange={(value) => setForm((f) => ({ ...f, section: value as Section }))}>
+                                <SelectTrigger className="h-9 w-full text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="rutin">FLM Rutin</SelectItem>
+                                    <SelectItem value="non_rutin">FLM Non Rutin</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="grid gap-1.5">
                             <Label>Tipe Baris</Label>
-                            <select value={form.row_type} onChange={(e) => setForm((f) => ({ ...f, row_type: e.target.value as RowType }))} className="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
-                                <option value="mark">Realisasi (klik isi 1)</option>
-                                <option value="minutes">Waktu tentatif (menit)</option>
-                                <option value="shift">Jadwal shift (huruf)</option>
-                            </select>
+                            <Select value={form.row_type} onValueChange={(value) => setForm((f) => ({ ...f, row_type: value as RowType }))}>
+                                <SelectTrigger className="h-9 w-full text-sm">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="mark">Realisasi (klik isi 1)</SelectItem>
+                                    <SelectItem value="minutes">Waktu tentatif (menit)</SelectItem>
+                                    <SelectItem value="shift">Jadwal shift (huruf)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="grid gap-1.5"><Label>Uraian</Label><Input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))} /></div>
                         <div className="grid gap-1.5"><Label>Shift</Label><Input value={form.shift} onChange={(e) => setForm((f) => ({ ...f, shift: e.target.value }))} placeholder="A / B / C / D / JADWAL" /></div>

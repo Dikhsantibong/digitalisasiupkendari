@@ -100,6 +100,7 @@ class InputCatalog
                 ['har_jadwal_patrol_checks', 'Jadwal Patrol Check', 'har.jadwal.patrol-check.index'],
                 ['har_jadwal_meeting_pemeliharaans', 'Jadwal Meeting Pemeliharaan', 'har.jadwal.meeting-pemeliharaan.index'],
                 ['har_unsafe_conditions', 'Unsafe Action & Condition', 'har.input.unsafe-condition.index'],
+                ['har_material_peralatans', 'Material & Peralatan', 'har.input.material-peralatan.index'],
                 ['har_program_5s5r_items', 'Program 5S 5R', 'har.input.program-5s5r.index'],
                 ['har_daily_meetings', 'Daily Meeting', 'har.formulir.daily-meeting.index'],
                 ['har_logbook_mutasis', 'Logbook Mutasi', 'har.formulir.logbook-mutasi.index'],

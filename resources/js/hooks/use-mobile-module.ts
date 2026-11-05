@@ -154,3 +154,24 @@ export function useCompactLayout(): boolean {
 
     return inMobileShell || isMobile;
 }
+
+/**
+ * The input, jadwal & formulir pages of every module — not the hubs, the
+ * Laporan pages, nor the documents (Berita Acara, TUG 9) that are made for a
+ * past month.
+ */
+const INPUT_PAGE =
+    /^(?:(?:har|k3|logistik|pdm|operasi)\/(?:input|jadwal|formulir)\/(?!index$)|pengusahaan\/(?:har|k3)\/|pengusahaan\/operasi\/(?!berita-acara|ba-|tug-)|operator\/)/;
+
+/**
+ * An input page filled on a phone inside the module shell: it drops the page
+ * description, the unit / bulan / tahun filters and the summary cards — the
+ * unit is the account's and the period the current one. Desktop, the Laporan
+ * pages and users without a shell (Manager UL, Super Admin) keep them.
+ */
+export function useSimplifiedMobileInput(): boolean {
+    const inMobileShell = useInMobileShell();
+    const { component } = usePage();
+
+    return inMobileShell && INPUT_PAGE.test(component);
+}

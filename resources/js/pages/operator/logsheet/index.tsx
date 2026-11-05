@@ -50,7 +50,7 @@ const sheetSubTh = 'bg-yellow-200 text-[10px] dark:bg-yellow-800';
 const sheetJamTh = 'bg-yellow-400 dark:bg-yellow-600';
 const sheetTd = 'h-7 border border-black px-1.5 py-0.5 dark:border-white/60';
 const sheetInput =
-    'h-7 w-full min-w-12 border-0 bg-transparent px-1 text-center text-xs tabular-nums outline-none focus:bg-sky-50 focus:ring-2 focus:ring-primary focus:ring-inset dark:focus:bg-sky-950';
+    'h-7 w-full min-w-12 border-0 bg-transparent px-1 text-center text-xs tabular-nums outline-none focus:bg-yellow-50 focus:ring-0 dark:focus:bg-yellow-950/40';
 
 /** Every hour's values as text, keyed by time slot then parameter key. */
 const gridOf = (rows: Row[], parameters: Parameter[]): Record<string, Record<string, string>> =>

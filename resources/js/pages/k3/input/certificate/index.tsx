@@ -7,6 +7,7 @@ import type { RowField } from '@/components/mobile/row-editor';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import certificate from '@/routes/k3/input/certificate';
@@ -72,12 +73,18 @@ type StatusKey = 'AKTIF' | 'EXPIRED' | 'BELUM';
 
 const statusOf = (r: Row): StatusKey => {
     const certified = r.ijin_awal_tanggal || r.uji_terakhir_tanggal || r.uji_ulang_tanggal;
-    if (!certified) return 'BELUM';
+
+    if (!certified) {
+return 'BELUM';
+}
+
     if (r.uji_ulang_tanggal) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+
         return new Date(r.uji_ulang_tanggal) >= today ? 'AKTIF' : 'EXPIRED';
     }
+
     return 'AKTIF';
 };
 
@@ -96,7 +103,10 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
 
     const signature = String(filters.unit_id);
     const [sig, setSig] = useState(signature);
-    if (sig !== signature) { setSig(signature); setRows(hydrate(initialRows)); setNextKey(initialRows.length); setDirty(false); }
+
+    if (sig !== signature) {
+ setSig(signature); setRows(hydrate(initialRows)); setNextKey(initialRows.length); setDirty(false); 
+}
 
     const update = (key: number, field: TextField, value: string) => {
         setRows((p) => p.map((r) => (r._key === key ? { ...r, [field]: value } : r)));
@@ -106,8 +116,12 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
         setRows((p) => p.map((r) => (r._key === key ? { ...r, category_code: value || null } : r)));
         setDirty(true);
     };
-    const addRow = () => { setRows((p) => [...p, blank(nextKey)]); setNextKey((k) => k + 1); setDirty(true); };
-    const removeRow = (key: number) => { setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); };
+    const addRow = () => {
+ setRows((p) => [...p, blank(nextKey)]); setNextKey((k) => k + 1); setDirty(true); 
+};
+    const removeRow = (key: number) => {
+ setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
+};
 
     const save = () => {
         setSaving(true);
@@ -136,7 +150,7 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
             <span className="text-xs">{(r[field] as string) || '-'}</span>
         );
 
-    const thBase = 'cert-th border border-black bg-[#dbe9f7] p-1.5 text-center text-[11px] font-bold text-slate-900';
+    const thBase = 'cert-th border border-black bg-yellow-200 p-1.5 text-center text-[11px] font-bold text-slate-900';
 
     return (
         <>
@@ -170,7 +184,9 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
                     <div className="border-b border-border p-3">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT</div>
@@ -178,7 +194,9 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
                                 <div className="text-[11px] font-bold text-foreground uppercase">DAFTAR MONITORING SERTIFIKASI PERALATAN</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                         </div>
                     </div>
@@ -212,7 +230,7 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
                         />
                     ) : (
                         <div className="overflow-x-auto">
-                        <table className="cert-table w-full border-collapse text-xs">
+                        <table className="excel-sheet cert-table w-full border-collapse text-xs">
                             <thead>
                                 <tr>
                                     <th rowSpan={2} className={`${thBase} w-8`}>NO</th>
@@ -243,15 +261,25 @@ export default function CertificateInput({ filters, rows: initialRows, options, 
                                     <tr><td colSpan={can_write ? 17 : 16} className="border border-black p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
                                 ) : rows.map((r, i) => {
                                     const st = statusOf(r);
+
                                     return (
                                         <tr key={r._key} className="[&>td]:border [&>td]:border-black [&>td]:p-1 hover:bg-muted/20">
                                             <td className="text-center">{i + 1}</td>
                                             <td className="min-w-40">
                                                 {can_write ? (
-                                                    <select value={r.category_code ?? ''} onChange={(e) => updateCategory(r._key, e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none">
-                                                        <option value="">— pilih —</option>
-                                                        {options.categories.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
-                                                    </select>
+                                                    <Select value={r.category_code || '__none__'} onValueChange={(value) => updateCategory(r._key, value === '__none__' ? '' : value)}>
+                                                        <SelectTrigger className="h-7 w-full rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="__none__" className="text-xs text-muted-foreground">— pilih —</SelectItem>
+                                                            {options.categories.map((c) => (
+                                                                <SelectItem key={c.code} value={c.code} className="text-xs">
+                                                                    {c.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
                                                 ) : (
                                                     <span className="text-xs">{options.categories.find((c) => c.code === r.category_code)?.name ?? r.category_code ?? '-'}</span>
                                                 )}

@@ -686,7 +686,7 @@ function AbsensiSheet({
                         </div>
 
                         <div className="absensi-scroll overflow-x-auto rounded-lg border border-border bg-card">
-                            <table className="w-full border-collapse text-[11.5px] select-none">
+                            <table className="excel-sheet w-full border-collapse text-[11.5px] select-none">
                                 <thead>
                                     <tr className="bg-[#5b2c8f] text-white">
                                         <th

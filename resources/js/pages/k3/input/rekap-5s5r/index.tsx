@@ -184,7 +184,7 @@ export default function K3Rekap5s5rPage({
 
                             {program.saved ? (
                                 <>
-                                    <table className="w-full border-collapse text-xs">
+                                    <table className="excel-sheet w-full border-collapse text-xs">
                                         <thead className="bg-muted/40 text-left text-[11px] text-muted-foreground uppercase">
                                             <tr>
                                                 <th className="border-b border-border px-3 py-2">

@@ -7,6 +7,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { dashboard } from '@/routes';
 import harFormulir from '@/routes/har/formulir';
 import laporanGangguanRoutes from '@/routes/har/formulir/laporan-gangguan';
@@ -146,7 +147,10 @@ const TEXTAREA_CLASS =
     'w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
 
 const MONTHS_LABEL = (r: Report): string => {
-    if (r.tanggal_laporan) return r.tanggal_laporan;
+    if (r.tanggal_laporan) {
+return r.tanggal_laporan;
+}
+
     return '-';
 };
 
@@ -164,6 +168,7 @@ export default function LaporanGangguanInput({
     // Reset editor when the unit/year context changes.
     const signature = `${filters.unit_id}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setForm(emptyForm());
@@ -194,7 +199,10 @@ export default function LaporanGangguanInput({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             laporanGangguanRoutes.store().url,
@@ -208,6 +216,7 @@ export default function LaporanGangguanInput({
                 preserveScroll: true,
                 onSuccess: () => {
                     setIsDirty(false);
+
                     // For a freshly created report, clear the editor; it now
                     // appears in the refreshed list on the left.
                     if (form.id === null) {
@@ -422,19 +431,25 @@ export default function LaporanGangguanInput({
                             <div className="grid gap-3 md:grid-cols-2">
                                 <div className="grid gap-1.5">
                                     <Label className="text-xs">Mesin (opsional)</Label>
-                                    <select
-                                        value={form.machine_id}
-                                        onChange={(e) => set('machine_id', e.target.value)}
+                                    <Select
+                                        value={form.machine_id ? String(form.machine_id) : '__none__'}
+                                        onValueChange={(value) => set('machine_id', value === '__none__' ? '' : value)}
                                         disabled={!can_write}
-                                        className="h-9 rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
                                     >
-                                        <option value="">— Pilih mesin —</option>
-                                        {options.machines.map((m) => (
-                                            <option key={m.id} value={String(m.id)}>
-                                                {m.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger className="h-9 w-full text-sm">
+                                            <SelectValue placeholder="Pilih mesin" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__none__" className="text-muted-foreground">
+                                                — Pilih mesin —
+                                            </SelectItem>
+                                            {options.machines.map((m) => (
+                                                <SelectItem key={m.id} value={String(m.id)}>
+                                                    {m.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 {textField('Merek', 'merek', 'Cummins Unit #6')}
                                 {textField('Type', 'type', 'KTA-5-G8')}

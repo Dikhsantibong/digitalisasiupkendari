@@ -55,6 +55,10 @@ export type MesinHarianPageProps = {
     catatan: string;
     saved_at: string | null;
     can_write: boolean;
+    /** Beban Tertinggi: the cells are the operators' logsheet LOAD, read-only. */
+    from_logsheet?: boolean;
+    /** Jumlah Kali Gangguan: the gangguan stops of Start Stop Engine, read-only. */
+    from_start_stop?: boolean;
 };
 
 type Config = {
@@ -101,9 +105,13 @@ export function MesinHarianPage({
     catatan,
     saved_at,
     can_write,
+    from_logsheet = false,
+    from_start_stop = false,
     config,
 }: MesinHarianPageProps & { config: Config }) {
     const compact = useCompactLayout();
+    const automatic = from_logsheet || from_start_stop;
+    const cellsEditable = can_write && !automatic;
     const machines = useMemo(
         () =>
             [...unordered].sort(
@@ -325,7 +333,7 @@ export function MesinHarianPage({
                     ? ''
                     : String(readings[machine.id][day])
             }
-            disabled={!can_write}
+            disabled={!cellsEditable}
             onChange={(e) => {
                 const next = e.target.value.replace(
                     config.integer ? /[^\d]/g : /[^\d.,]/g,
@@ -341,7 +349,7 @@ export function MesinHarianPage({
                 }
             }}
             className={cn(
-                'w-full px-2 text-right tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-100',
+                'w-full px-2 text-right tabular-nums outline-none focus:bg-yellow-50 focus-visible:ring-0 dark:focus:bg-yellow-950/40 disabled:cursor-default disabled:opacity-100',
                 className,
             )}
         />
@@ -356,6 +364,7 @@ export function MesinHarianPage({
                     compact && can_write && 'pb-28',
                 )}
             >
+                {!compact && (
                 <PageHeader
                     title={config.title}
                     description={`${config.description} — ${unit.name}, ${period_label}.`}
@@ -385,7 +394,9 @@ export function MesinHarianPage({
                         </>
                     }
                 />
+                )}
 
+                {!compact && (
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-secondary p-3">
                     <OperasiSelect
                         label="Unit"
@@ -429,6 +440,7 @@ export function MesinHarianPage({
                         )}
                     </p>
                 </div>
+                )}
 
                 {machines.length === 0 ? (
                     <section className="rounded-md border border-border bg-card">
@@ -439,7 +451,7 @@ export function MesinHarianPage({
                     </section>
                 ) : (
                     <>
-                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                        <div className={cn('grid grid-cols-2 gap-3 lg:grid-cols-4', compact && 'hidden')}>
                             <SummaryCard
                                 label={
                                     config.mode === 'max'
@@ -474,7 +486,26 @@ export function MesinHarianPage({
                                 ))}
                         </div>
 
-                        {can_write && daya_mampu && (
+                        {automatic && !compact && (
+                            <div className="flex flex-wrap items-center gap-3 rounded-md border border-sky-300 bg-sky-50 px-4 py-3 text-[13px] text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+                                <Zap className="size-4 shrink-0" />
+                                {from_logsheet ? (
+                                    <span className="flex-1">
+                                        Beban tertinggi tiap mesin per hari diambil otomatis dari
+                                        <b> LOAD (kW) tertinggi di Logsheet Operator</b> — tidak perlu
+                                        diinput. Yang bisa diubah di sini hanya daya mampu dan catatan.
+                                    </span>
+                                ) : (
+                                    <span className="flex-1">
+                                        Jumlah gangguan tiap mesin per hari dihitung otomatis dari
+                                        <b> stop karena gangguan di Start Stop Engine</b> (menu Operator) — tidak
+                                        perlu diinput. Yang bisa diubah di sini hanya catatan.
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        {cellsEditable && daya_mampu && (
                             <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-[13px]">
                                 <Zap className="size-4 shrink-0 text-primary" />
                                 <span className="flex-1 text-muted-foreground">
@@ -497,7 +528,7 @@ export function MesinHarianPage({
                             </div>
                         )}
 
-                        {can_write && starStopCells > 0 && (
+                        {cellsEditable && starStopCells > 0 && (
                             <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-card px-4 py-3 text-[13px]">
                                 <Timer className="size-4 shrink-0 text-primary" />
                                 <span className="flex-1 text-muted-foreground">
@@ -551,6 +582,40 @@ export function MesinHarianPage({
                                             {config.satuan}
                                         </span>
                                     </div>
+                                    {automatic ? (
+                                        <div className="flex flex-col gap-2">
+                                            <p className="text-[12px] text-sky-700 dark:text-sky-300">
+                                                {from_logsheet ? 'Beban otomatis dari LOAD tertinggi Logsheet Operator.' : 'Jumlah otomatis dari stop gangguan di Start Stop Engine.'}
+                                            </p>
+                                            {machines.map((machine) => {
+                                                const beban = toNumber(readings[machine.id]?.[selectedDay]);
+                                                const cap = toNumber(mampu[machine.id]);
+
+                                                return (
+                                                    <div key={machine.id} className="flex items-center gap-3 rounded-lg border border-border p-2.5">
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="truncate text-[14px] font-semibold text-foreground">{machine.name}</p>
+                                                            <p className="text-[12px] text-muted-foreground">
+                                                                {from_start_stop
+                                                                    ? beban > 0
+                                                                        ? 'Dari Start Stop Engine'
+                                                                        : 'Tidak ada gangguan'
+                                                                    : beban > 0 && cap > 0
+                                                                      ? `${Math.round((beban / cap) * 100)}% dari daya mampu`
+                                                                      : beban > 0
+                                                                        ? 'Dari logsheet'
+                                                                        : 'Belum ada logsheet'}
+                                                            </p>
+                                                        </div>
+                                                        <div className={cn('rounded-md px-2.5 py-1 text-right tabular-nums', beban > 0 ? 'bg-sky-100 text-sky-900 dark:bg-sky-950/50 dark:text-sky-100' : 'bg-muted text-muted-foreground')}>
+                                                            <span className="text-[17px] font-bold">{beban > 0 ? NUMBER.format(beban) : '–'}</span>
+                                                            <span className="ml-0.5 text-[11px]">{config.satuan}</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
                                     <div className="grid grid-cols-2 gap-2">
                                         {machines.map((machine) => (
                                             <label
@@ -566,32 +631,57 @@ export function MesinHarianPage({
                                             </label>
                                         ))}
                                     </div>
+                                    )}
                                 </div>
+                                {daya_mampu && (
+                                    <div className="rounded-xl border border-orange-200 bg-orange-50 p-3 dark:border-orange-900 dark:bg-orange-950/30">
+                                        <h2 className="mb-2 text-sm font-semibold text-orange-950 dark:text-orange-100">Daya mampu (kW)</h2>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {machines.map((machine) => (
+                                                <label key={machine.id} className="flex flex-col gap-1 text-[12px] text-orange-900 dark:text-orange-200">
+                                                    {machine.name}
+                                                    <input
+                                                        type="text"
+                                                        inputMode="decimal"
+                                                        value={mampu[machine.id] ?? ''}
+                                                        readOnly={!can_write}
+                                                        onChange={(e) =>
+                                                            /^\d*([.,]\d{0,2})?$/.test(e.target.value) &&
+                                                            setMampu((current) => ({ ...current, [machine.id]: e.target.value }))
+                                                        }
+                                                        className="h-10 w-full rounded-md border border-orange-200 bg-background px-2 text-right text-sm font-semibold tabular-nums outline-none focus:ring-2 focus:ring-primary dark:border-orange-900"
+                                                        aria-label={`Daya mampu ${machine.name}`}
+                                                    />
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </section>
                         ) : (
                             <section className="overflow-hidden rounded-md border border-border bg-card">
                                 <div className="overflow-x-auto">
                                     <table
-                                        className="w-full border-collapse text-[13px]"
+                                        className="w-full border-collapse border-2 border-black text-[13px] dark:border-white [&_td]:border-black [&_th]:border-black dark:[&_td]:border-white/60 dark:[&_th]:border-white"
                                         data-keep-table
                                     >
                                         <thead>
-                                            <tr className="bg-secondary text-[12px] text-foreground">
-                                                <th className="sticky left-0 z-20 w-28 border-r border-b border-border bg-secondary px-2 py-2 text-left font-semibold">
+                                            <tr className="bg-yellow-300 text-[12px] text-black dark:bg-yellow-700 dark:text-yellow-50">
+                                                <th className="sticky left-0 z-20 w-28 border border-border bg-yellow-400 px-2 py-2 text-left font-bold dark:bg-yellow-600">
                                                     MERK
                                                 </th>
                                                 {groups.map((group, index) => (
                                                     <th
                                                         key={`${group.merk}-${index}`}
                                                         colSpan={group.count}
-                                                        className="border-r border-b border-border px-2 py-2 text-center font-semibold tracking-[0.2em]"
+                                                        className="border border-border px-2 py-2 text-center font-bold tracking-[0.2em]"
                                                     >
                                                         {group.merk}
                                                     </th>
                                                 ))}
                                                 <th
                                                     rowSpan={daya_mampu ? 4 : 4}
-                                                    className="min-w-28 border-b border-border bg-secondary px-2 py-2 text-center font-semibold"
+                                                    className="min-w-28 border border-border bg-yellow-400 px-2 py-2 text-center font-bold dark:bg-yellow-600"
                                                 >
                                                     {config.mode === 'max'
                                                         ? `JUM. ${unit.name.toUpperCase()}`
@@ -619,16 +709,16 @@ export function MesinHarianPage({
                                             ).map(([label, value]) => (
                                                 <tr
                                                     key={label}
-                                                    className="text-[12px] text-muted-foreground"
+                                                    className="bg-yellow-100 text-[12px] text-black dark:bg-yellow-950/60 dark:text-yellow-50"
                                                 >
-                                                    <th className="sticky left-0 z-20 border-r border-b border-border bg-card px-2 py-1 text-left font-semibold">
+                                                    <th className="sticky left-0 z-20 border border-border bg-yellow-200 px-2 py-1 text-left font-bold dark:bg-yellow-900">
                                                         {label}
                                                     </th>
                                                     {machines.map((machine) => (
                                                         <th
                                                             key={machine.id}
                                                             className={cn(
-                                                                'min-w-24 border-r border-b border-border px-2 py-1 text-center whitespace-nowrap',
+                                                                'min-w-24 border border-border px-2 py-1 text-center whitespace-nowrap',
                                                                 label === 'UNIT'
                                                                     ? 'font-semibold text-foreground'
                                                                     : 'font-normal',
@@ -640,14 +730,14 @@ export function MesinHarianPage({
                                                 </tr>
                                             ))}
                                             {daya_mampu && (
-                                                <tr className="bg-amber-50 text-[12px]">
-                                                    <th className="sticky left-0 z-20 border-r border-b border-border bg-amber-50 px-2 py-1 text-left font-semibold text-amber-900">
+                                                <tr className="bg-orange-100 text-[12px] dark:bg-orange-950/50">
+                                                    <th className="sticky left-0 z-20 border border-border bg-orange-200 px-2 py-1 text-left font-bold text-orange-950 dark:bg-orange-900 dark:text-orange-50">
                                                         DAYA MAMPU (kW)
                                                     </th>
                                                     {machines.map((machine) => (
                                                         <th
                                                             key={machine.id}
-                                                            className="border-r border-b border-border p-0"
+                                                            className="border border-border p-0"
                                                         >
                                                             <input
                                                                 type="text"
@@ -679,11 +769,11 @@ export function MesinHarianPage({
                                                                         }),
                                                                     )
                                                                 }
-                                                                className="h-8 w-full bg-transparent px-2 text-right font-semibold text-amber-900 tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                                                className="h-8 w-full bg-transparent px-2 text-right font-semibold text-amber-900 tabular-nums outline-none focus:bg-yellow-50 focus-visible:ring-0 dark:focus:bg-yellow-950/40"
                                                             />
                                                         </th>
                                                     ))}
-                                                    <th className="border-b border-border px-2 py-1 text-right font-semibold text-amber-900 tabular-nums">
+                                                    <th className="border border-border px-2 py-1 text-right font-bold text-orange-950 tabular-nums dark:text-orange-50">
                                                         {NUMBER.format(
                                                             mampuTotal,
                                                         )}
@@ -697,30 +787,33 @@ export function MesinHarianPage({
                                                     key={day}
                                                     className="hover:bg-muted/30"
                                                 >
-                                                    <td className="sticky left-0 z-10 border-r border-b border-border bg-card px-2 text-center text-[12px] font-medium text-muted-foreground tabular-nums">
+                                                    <td className="sticky left-0 z-10 border border-border bg-yellow-50 px-2 text-center text-[12px] font-semibold text-black tabular-nums dark:bg-card dark:text-foreground">
                                                         {day}
                                                     </td>
                                                     {machines.map((machine) => (
                                                         <td
                                                             key={machine.id}
-                                                            className="border-r border-b border-border p-0"
+                                                            className={cn(
+                                                                'border border-border p-0',
+                                                                automatic && readings[machine.id]?.[day] !== undefined && 'bg-sky-50 dark:bg-sky-950/30',
+                                                            )}
                                                         >
                                                             {input(
                                                                 machine,
                                                                 day,
-                                                                'h-7 border-0 bg-transparent focus:bg-primary/5',
+                                                                'h-7 border-0 bg-transparent focus:bg-yellow-50 dark:focus:bg-yellow-950/40',
                                                             )}
                                                         </td>
                                                     ))}
-                                                    <td className="border-b border-border bg-secondary/60 px-2 text-right font-medium tabular-nums">
+                                                    <td className="border border-border bg-emerald-50 px-2 text-right font-semibold text-emerald-900 tabular-nums dark:bg-emerald-950/40 dark:text-emerald-200">
                                                         {NUMBER.format(
                                                             dayTotal(day),
                                                         )}
                                                     </td>
                                                 </tr>
                                             ))}
-                                            <tr className="bg-secondary font-semibold">
-                                                <td className="sticky left-0 z-10 border-r border-border bg-secondary px-2 py-1.5 text-center text-[12px]">
+                                            <tr className="bg-yellow-300 font-bold text-black dark:bg-yellow-700 dark:text-yellow-50">
+                                                <td className="sticky left-0 z-10 border border-border bg-yellow-400 px-2 py-1.5 text-center text-[12px] dark:bg-yellow-600">
                                                     {config.mode === 'max'
                                                         ? 'TERTINGGI'
                                                         : 'JMH'}
@@ -728,7 +821,7 @@ export function MesinHarianPage({
                                                 {machines.map((machine) => (
                                                     <td
                                                         key={machine.id}
-                                                        className="border-r border-border px-2 py-1.5 text-right tabular-nums"
+                                                        className="border border-border px-2 py-1.5 text-right tabular-nums"
                                                     >
                                                         {NUMBER.format(
                                                             machineTotal(
@@ -737,7 +830,7 @@ export function MesinHarianPage({
                                                         )}
                                                     </td>
                                                 ))}
-                                                <td className="px-2 py-1.5 text-right text-primary tabular-nums">
+                                                <td className="border border-border px-2 py-1.5 text-right tabular-nums">
                                                     {NUMBER.format(unitTotal)}
                                                 </td>
                                             </tr>

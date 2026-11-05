@@ -34,7 +34,6 @@ import {
     Signpost,
     SquarePen,
     Timer,
-    TimerReset,
     UserCheck,
     UserX,
     Waves,
@@ -91,10 +90,7 @@ import operasiPengusahaanDailyReport from '@/routes/operasi/pengusahaan/daily-re
 import operasiPengusahaanEnergiDibangkit from '@/routes/operasi/pengusahaan/energi-dibangkit';
 import operasiPengusahaanEnergiPemakaianSendiri from '@/routes/operasi/pengusahaan/energi-pemakaian-sendiri';
 import operasiPengusahaanInventarisMesin from '@/routes/operasi/pengusahaan/inventaris-mesin';
-import operasiPengusahaanJamGangguan from '@/routes/operasi/pengusahaan/jam-gangguan';
-import operasiPengusahaanJamOperasi from '@/routes/operasi/pengusahaan/jam-operasi';
-import operasiPengusahaanJamPemeliharaan from '@/routes/operasi/pengusahaan/jam-pemeliharaan';
-import operasiPengusahaanJamSiapOps from '@/routes/operasi/pengusahaan/jam-siap-ops';
+import operasiPengusahaanJamPembangkit from '@/routes/operasi/pengusahaan/jam-pembangkit';
 import operasiPengusahaanKaliGangguan from '@/routes/operasi/pengusahaan/kali-gangguan';
 import operasiPengusahaanKinerja from '@/routes/operasi/pengusahaan/kinerja';
 import operasiPengusahaanKinerjaTermal from '@/routes/operasi/pengusahaan/kinerja-termal';
@@ -360,46 +356,13 @@ const MENUS: PengusahaanMenu[] = [
     {
         module: 'operasi',
         section: 'input',
-        title: 'Jam Operasi',
+        title: 'Jam Pembangkit',
         description:
-            'Jam operasi per mesin per hari (maks. 24 jam), bisa diambil dari Star-Stop.',
+            'Jam operasi, pemeliharaan (PO), gangguan dan siap operasi tiap mesin per hari dalam satu tabel; bisa diambil dari Star-Stop.',
         icon: Timer,
-        href: operasiPengusahaanJamOperasi.index().url,
+        href: operasiPengusahaanJamPembangkit.index().url,
         permission: 'operasi.pengusahaan.view',
-        component: 'pengusahaan/operasi/jam-operasi/index',
-    },
-    {
-        module: 'operasi',
-        section: 'input',
-        title: 'Jam Pemeliharaan',
-        description:
-            'Jam pemeliharaan (PO) per mesin per hari, bisa diambil dari Star-Stop.',
-        icon: Wrench,
-        href: operasiPengusahaanJamPemeliharaan.index().url,
-        permission: 'operasi.pengusahaan.view',
-        component: 'pengusahaan/operasi/jam-pemeliharaan/index',
-    },
-    {
-        module: 'operasi',
-        section: 'input',
-        title: 'Jam Gangguan',
-        description:
-            'Jam gangguan per mesin per hari, bisa diambil dari Star-Stop.',
-        icon: ShieldAlert,
-        href: operasiPengusahaanJamGangguan.index().url,
-        permission: 'operasi.pengusahaan.view',
-        component: 'pengusahaan/operasi/jam-gangguan/index',
-    },
-    {
-        module: 'operasi',
-        section: 'input',
-        title: 'Jam Siap Operasi',
-        description:
-            'Dihitung otomatis: 24 jam dikurangi jam operasi, pemeliharaan, dan gangguan.',
-        icon: TimerReset,
-        href: operasiPengusahaanJamSiapOps.index().url,
-        permission: 'operasi.pengusahaan.view',
-        component: 'pengusahaan/operasi/jam-siap-ops/index',
+        component: 'pengusahaan/operasi/jam-pembangkit/index',
     },
     {
         module: 'operasi',

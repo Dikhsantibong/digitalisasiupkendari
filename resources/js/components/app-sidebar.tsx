@@ -25,6 +25,10 @@ import {
     Wrench,
     Pin,
     PinOff,
+    Power,
+    Fuel,
+    Droplets,
+    Zap,
 } from 'lucide-react';
 import { useRef } from 'react';
 import AppLogo from '@/components/app-logo';
@@ -80,9 +84,13 @@ import master from '@/routes/operasi/master';
 import absensi from '@/routes/operator/absensi';
 import logsheet from '@/routes/operator/logsheet';
 import mutasiOperator from '@/routes/operator/mutasi';
+import opnameBbm from '@/routes/operator/opname-bbm';
+import opnameKwh from '@/routes/operator/opname-kwh';
+import opnamePelumas from '@/routes/operator/opname-pelumas';
 import pengajuan from '@/routes/operator/pengajuan';
 import presensi from '@/routes/operator/presensi';
 import resumeOperator from '@/routes/operator/resume';
+import startStop from '@/routes/operator/start-stop';
 import pdmInput from '@/routes/pdm/input';
 import pdmJadwal from '@/routes/pdm/jadwal';
 import pdmLaporan from '@/routes/pdm/laporan';
@@ -214,6 +222,26 @@ export function AppSidebar() {
                     title: 'Logsheet Operator',
                     href: logsheet.index(),
                     icon: NotebookPen,
+                },
+                can('operator.logsheet.view') && {
+                    title: 'Start Stop Engine',
+                    href: startStop.index(),
+                    icon: Power,
+                },
+                can('operator.logsheet.view') && {
+                    title: 'Opname BBM',
+                    href: opnameBbm.index(),
+                    icon: Fuel,
+                },
+                can('operator.logsheet.view') && {
+                    title: 'Opname Pelumas',
+                    href: opnamePelumas.index(),
+                    icon: Droplets,
+                },
+                can('operator.logsheet.view') && {
+                    title: 'Opname kWh',
+                    href: opnameKwh.index(),
+                    icon: Zap,
                 },
                 can('operator.mutasi.view') && {
                     title: 'Lembar Mutasi',

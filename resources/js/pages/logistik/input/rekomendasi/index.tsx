@@ -205,8 +205,8 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
                     </p>
                 )}
 
-                <div className="overflow-x-auto rounded-md border border-border bg-card">
-                    <table className="w-full min-w-[860px] border-collapse text-xs">
+                <div className="overflow-x-auto bg-card">
+                    <table className="excel-sheet w-full min-w-[860px] border-collapse text-xs">
                         <thead className="bg-[#9dd9f3] text-center text-[12px] font-semibold text-slate-900">
                             <tr>
                                 <th className="w-12 border border-slate-400 p-2">NO.</th>

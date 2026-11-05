@@ -759,7 +759,7 @@ return null;
                             />
                             </div>
                         ) : (
-                        <table className="w-full min-w-[1550px] border-collapse text-xs">
+                        <table className="excel-sheet w-full min-w-[1550px] border-collapse text-xs">
                             <thead>
                                 <tr className="border-b border-border bg-[#ed7d31] text-white">
                                     <th rowSpan={2} className="w-10 min-w-10 border-r border-[#d96a20] px-2 py-2 text-center font-bold">

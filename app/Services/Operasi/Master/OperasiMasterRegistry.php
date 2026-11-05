@@ -4,15 +4,18 @@ namespace App\Services\Operasi\Master;
 
 use App\Enums\AttendanceCodeType;
 use App\Enums\CalibrationFactorType;
+use App\Enums\KwhMeterKategori;
 use App\Enums\LubricantUnit;
 use App\Enums\StatusCodeCategory;
 use App\Enums\TankFuelType;
+use App\Enums\TankJenis;
 use App\Models\AttendanceCode;
 use App\Models\AuxiliarySource;
 use App\Models\BbmType;
 use App\Models\CalibrationFactor;
 use App\Models\Feeder;
 use App\Models\FuelTank;
+use App\Models\KwhMeter;
 use App\Models\LubricantType;
 use App\Models\ShiftPattern;
 use App\Models\UnitStatusCode;
@@ -67,6 +70,8 @@ class OperasiMasterRegistry implements MasterRegistry
                 'fields' => [
                     self::text('code', 'Kode'),
                     self::text('name', 'Nama', required: true),
+                    // Groups the tank in the Opname BBM (empty = storage).
+                    self::enumSelect('jenis', 'Jenis Tangki', TankJenis::cases()),
                     self::relation('bbm_type_id', 'Jenis BBM', 'bbm_types', 'name', unitScoped: false, required: true),
                     self::enumSelect('fuel_type', 'Kelompok BBM (Penerimaan)', TankFuelType::cases(), required: true),
                     self::number('capacity_liter', 'Kapasitas (L)'),
@@ -84,6 +89,19 @@ class OperasiMasterRegistry implements MasterRegistry
                     self::text('code', 'Kode'),
                     self::text('name', 'Nama', required: true),
                     self::enumSelect('unit_of_measure', 'Satuan', LubricantUnit::cases(), required: true),
+                    self::number('sort_order', 'Urutan'),
+                    self::bool('is_active', 'Aktif'),
+                ],
+            ],
+            'kwh-meters' => [
+                'label' => 'kWh Meter',
+                'model' => KwhMeter::class,
+                'unit_scoped' => true,
+                'order' => ['kategori', 'sort_order', 'name'],
+                'fields' => [
+                    self::text('name', 'Nama kWh', required: true),
+                    self::enumSelect('kategori', 'Kategori (Opname kWh)', KwhMeterKategori::cases(), required: true),
+                    self::relation('machine_id', 'Mesin', 'machines'),
                     self::number('sort_order', 'Urutan'),
                     self::bool('is_active', 'Aktif'),
                 ],

@@ -495,7 +495,7 @@ export default function LaporanKegiatanPage({ filters, reports, machines, docume
                                 </tbody>
                             </table>
 
-                            <table className="mt-1 w-full border-collapse">
+                            <table className="excel-sheet mt-1 w-full border-collapse">
                                 <thead>
                                     <tr>
                                         <th rowSpan={2} className={cn(head, 'w-8')}>

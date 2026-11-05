@@ -93,6 +93,8 @@ type Props = {
     me: { nama: string; regu: string | null };
     can_write: boolean;
     can_receive: boolean;
+    /** An operator who is not the Leader Shift: read only. */
+    leader_only?: boolean;
 };
 
 const STATUS_LABEL: Record<Status, { label: string; tone: string }> = {
@@ -210,6 +212,7 @@ function MutasiForm({
     me,
     can_write,
     can_receive,
+    leader_only = false,
 }: Props) {
     const compact = useCompactLayout();
     const [mesin, setMesin] = useState<Mesin[]>(mutasi.mesin);
@@ -481,6 +484,12 @@ function MutasiForm({
                         <p className="mt-1 text-xs text-muted-foreground">
                             Lembar baru — daftar tangki, peralatan & status
                             mesin diambil dari lembar {mutasi.carried_from}.
+                        </p>
+                    )}
+                    {leader_only && (
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400">
+                            <Lock className="size-3.5" />
+                            Lembar mutasi diisi, diserahkan dan diterima oleh Leader Shift. Anda dapat melihatnya saja.
                         </p>
                     )}
                     {locked && mutasi.status === 'diterima' && (
@@ -1650,7 +1659,7 @@ function MutasiForm({
 const paperTh = 'border border-black bg-yellow-200 px-1.5 py-1 text-center text-[11px] font-bold text-black dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
 const paperTd = 'h-8 border border-black p-0 dark:border-white/60';
 const paperInput =
-    'h-8 w-full min-w-0 bg-transparent px-1.5 text-center text-xs outline-none focus:bg-yellow-50 focus:ring-2 focus:ring-primary focus:ring-inset disabled:cursor-not-allowed dark:focus:bg-yellow-950/40';
+    'h-8 w-full min-w-0 bg-transparent px-1.5 text-center text-xs outline-none focus:bg-yellow-50 focus:ring-0 disabled:cursor-not-allowed dark:focus:bg-yellow-950/40';
 
 /** A cell ticked (✓) with one click, like the boxes on the paper form. */
 function PaperTick({ checked, onClick, disabled, label }: { checked: boolean; onClick: () => void; disabled: boolean; label: string }) {

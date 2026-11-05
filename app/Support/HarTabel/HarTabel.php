@@ -3,6 +3,7 @@
 namespace App\Support\HarTabel;
 
 use App\Enums\PermissionName;
+use App\Models\Unit;
 use Illuminate\Validation\Rule;
 
 /**
@@ -71,6 +72,24 @@ abstract class HarTabel
     public function orientation(): string
     {
         return 'landscape';
+    }
+
+    /**
+     * Rows another module already records for this table, read live (never
+     * copied): shown read-only before the HAR rows, printed and totalled with
+     * them. Each row carries the module name in `_source`.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function linkedRows(Unit $unit, int $month, int $year): array
+    {
+        return [];
+    }
+
+    /** Where the linked rows come from and where to change them; null without linked rows. */
+    public function linkedNote(): ?string
+    {
+        return null;
     }
 
     /**
@@ -167,6 +186,7 @@ abstract class HarTabel
             'totals' => $this->totals(),
             'notes' => $this->notes(),
             'blank_rows' => $this->blankRows(),
+            'linked_note' => $this->linkedNote(),
         ];
     }
 

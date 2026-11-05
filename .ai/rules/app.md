@@ -14,3 +14,6 @@ Unit/UL scope is resolved only in `App\Services\AccessControl` (memoised per req
 
 ## UP Kendari view-only roles use the Portal and are blocked from writes by middleware
 Manager UP, TL/Asman Operasi/Pemeliharaan/K3 UP are Global-scope roles with `portal.view` + `portal.readonly`. `User::isReadOnly()` drives `EnsureReadOnlyAccess` (rejects every non-GET except logout/notifications/profile/password/2FA) — when adding a new account-level POST route they need, add it to that allowlist. `usesPortal()` (also Manager UL, not read-only) redirects dashboard → `portal.index` and renders PortalLayout. Pages must hide edit buttons via `can_write && ! isReadOnly()`; bidang filtering goes through `Monitoring\ModuleAccess`.
+
+## PRD.md is the only application-flow document
+Keputusan user (2026-11-04): seluruh dokumen alur (concept.md, modul-*.md, prompt-implementasi-*.md) digabung ke `PRD.md` di root. Setiap perubahan alur, role, permission, menu, atau modul WAJIB di-update di PRD.md (bagian modul di §8, aturan hitung §10, isu terbuka §15, keputusan user di §16 Riwayat Keputusan). JANGAN membuat lagi file modul-*.md / prompt-implementasi-*.md terpisah. `design.md` tetap terpisah (design system UI). Komentar kode merujuk ke PRD.md §x.

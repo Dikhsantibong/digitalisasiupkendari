@@ -6,10 +6,12 @@ use App\Enums\RoleName;
 use App\Models\DailyEngineReport;
 use App\Models\Machine;
 use App\Models\OperasiRekap;
+use App\Models\OperatorStartStop;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithAccessControl;
+use Tests\Concerns\RecordsLogsheetLoad;
 use Tests\TestCase;
 
 /**
@@ -18,7 +20,7 @@ use Tests\TestCase;
  */
 class RekapPengusahaanTest extends TestCase
 {
-    use InteractsWithAccessControl, RefreshDatabase;
+    use InteractsWithAccessControl, RecordsLogsheetLoad, RefreshDatabase;
 
     private Unit $unit;
 
@@ -48,8 +50,10 @@ class RekapPengusahaanTest extends TestCase
     public function test_inventaris_shows_the_master_with_mampu_and_beban_tertinggi(): void
     {
         $tl = $this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit);
+        $this->logsheetLoad($this->mak1, '2026-09-01', [1500]);
+        $this->logsheetLoad($this->mak1, '2026-09-02', [1400]);
+        $this->logsheetLoad($this->mak2, '2026-09-01', [1450]);
         $this->actingAs($tl)->post(route('operasi.pengusahaan.beban-tinggi.store'), $this->period([
-            'readings' => [$this->mak1->id => ['1' => 1500, '2' => 1400], $this->mak2->id => ['1' => 1450]],
             'daya_mampu' => [$this->mak1->id => 1700, $this->mak2->id => 1600],
         ]));
 
@@ -81,7 +85,7 @@ class RekapPengusahaanTest extends TestCase
         $this->actingAs($tl)->post(route('operasi.pengusahaan.jam-operasi.store'), $this->period(['readings' => [$this->mak1->id => ['1' => 24, '2' => 24, '3' => 12], $this->mak2->id => ['1' => 20]]]));
         $this->actingAs($tl)->post(route('operasi.pengusahaan.jam-pemeliharaan.store'), $this->period(['readings' => [$this->mak1->id => ['4' => 7.2]]]));
         $this->actingAs($tl)->post(route('operasi.pengusahaan.jam-gangguan.store'), $this->period(['readings' => [$this->mak2->id => ['2' => 5]]]));
-        $this->actingAs($tl)->post(route('operasi.pengusahaan.kali-gangguan.store'), $this->period(['readings' => [$this->mak2->id => ['2' => 2]]]));
+        OperatorStartStop::factory()->gangguan()->count(2)->create(['engine_id' => $this->mak2->id, 'unit_id' => $this->unit->id, 'tanggal' => '2026-09-02']);
         DailyEngineReport::query()->create(['unit_id' => $this->unit->id, 'engine_id' => $this->mak1->id, 'report_date' => '2026-08-31', 'kwh_produksi_stand_akhir' => 1000]);
         DailyEngineReport::query()->create(['unit_id' => $this->unit->id, 'engine_id' => $this->mak1->id, 'report_date' => '2026-09-03', 'kwh_produksi_stand_akhir' => 92584]);
         $this->actingAs($tl)->post(route('operasi.pengusahaan.pemakaian-bbm.store'), $this->period());
