@@ -1,6 +1,7 @@
 import { usePage } from '@inertiajs/react';
 import { Menu } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { GenericExcelButton } from '@/components/generic-excel-button';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,7 @@ export function AppSidebarHeader({
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
             <div className="flex items-center gap-2">
+                <GenericExcelButton />
                 {auth.user && <NotificationBell />}
                 {auth.user && (
                     <DropdownMenu>

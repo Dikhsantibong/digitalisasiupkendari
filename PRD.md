@@ -922,7 +922,7 @@ Draft ──Ajukan──▶ Diajukan ──Verifikasi (Koordinator)──▶ Ver
 | Aspek | Ketentuan |
 |---|---|
 | PDF | dompdf, A4; orientasi mengikuti form (mayoritas landscape) |
-| Excel | Dibuat di browser (ExcelJS) dari data halaman, tata letak sama dengan PDF; editor dokumen memakai SheetJS untuk .xlsx |
+| Excel | Dibuat di browser (ExcelJS) dari data halaman, tata letak sama dengan PDF; editor dokumen memakai SheetJS untuk .xlsx. **Setiap halaman input/jadwal/formulir punya Excel**: halaman tanpa ekspor khusus mendapat tombol Excel generik di bilah atas desktop yang mengekspor tabel halaman apa adanya (berkop, sel gabungan, nilai isian & centang) |
 | Kop | Logo PLN (`public/logo/sidebar-logo.png`) kiri + logo mitra (`public/logo/mkp.jpg`) kanan, di-embed sebagai data URI base64 (bukan path relatif) |
 | Identitas | Nama unit/UL dari master; tidak disalin ke tabel modul |
 | No. Dokumen ISO | Tetap per jenis form (mis. FMKD-314-…, SMT-FM-AK3-…, SMT-FM-EPI-01.04, FMZ-…), default dari config, editable di dokumen; tidak auto-generate |
@@ -1074,6 +1074,7 @@ Aturan data:
 | 2026-11-03 | Menu Operator baru **Opname BBM & kWh** dan **Opname Pelumas** (menu dulu, isi menyusul); semua tabel input/jadwal desktop bergaya Excel (garis hitam, header kuning) |
 | 2026-11-04 | Seluruh dokumen alur modul digabung menjadi PRD ini |
 | 2026-11-05 | Kondisi Abnormal & Gangguan Operasi: kolom **Kronologi** (khusus gangguan, di antara Parameter Terkait dan TL jangka pendek) dan **Eviden** foto; tabel Abnormal & Gangguan Pemeliharaan mengambil data Operasi + baris tambahan Pemeliharaan |
+| 2026-11-06 | Ekspor Excel: Kondisi Abnormal & Gangguan Operasi (khusus, termasuk kronologi & foto eviden) dan tombol Excel generik untuk semua halaman input yang belum punya ekspor (Abnormal & Gangguan HAR, Material & Peralatan, PTW Operasi, Pengusahaan K3/Operasi, Opname, dll.) |
 | 2026-11-05 | Akses Cepat di beranda HP dihapus; Material & Peralatan ditambahkan di Input Pemeliharaan; Jam Pembangkit + MO & Standby (total 24 jam); menu Operator Opname BBM, Opname Pelumas, Opname kWh terpisah dengan kolom dari user + master Jenis Tangki & kWh Meter; halaman input HP semua modul tanpa deskripsi, filter unit/periode, dan kartu ringkasan |
 
 ---

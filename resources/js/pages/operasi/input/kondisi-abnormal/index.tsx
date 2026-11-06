@@ -5,6 +5,7 @@ import {
     Camera,
     ClipboardList,
     Download,
+    FileSpreadsheet,
     Pencil,
     Plus,
     Save,
@@ -38,6 +39,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { downloadKondisiAbnormalWorkbook } from '@/lib/kondisi-abnormal-excel';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
@@ -230,6 +232,18 @@ export default function KondisiAbnormalInput({
     };
 
     const pdfUrl = kondisiAbnormalRoutes.pdf({ query: filters }).url;
+    const [exporting, setExporting] = useState(false);
+    const exportExcel = async () => {
+        setExporting(true);
+
+        try {
+            await downloadKondisiAbnormalWorkbook(unit.name, periodLabel, entries, options.tindak_pendek, `Laporan_Kondisi_Abnormal_${unit.name.replace(/\s+/g, '_')}_${filters.month}_${filters.year}.xlsx`);
+        } catch {
+            toast.error('Gagal membuat file Excel.');
+        } finally {
+            setExporting(false);
+        }
+    };
     // The sheet starts over from the saved reports after every save / visit.
     const sheetKey = entries.map((entry) => `${entry.id}:${entry.tanggal}:${entry.uraian_kondisi.length}`).join('|') + `@${filters.unit_id}-${filters.month}-${filters.year}`;
     const [newFormKey, setNewFormKey] = useState(0);
@@ -427,6 +441,10 @@ export default function KondisiAbnormalInput({
                     description={`Laporkan setiap kejadian abnormal / gangguan dengan tanggalnya — satu hari boleh lebih dari satu laporan. ${unit.name} · ${periodLabel}.`}
                     actions={
                         <div className="flex flex-wrap gap-2">
+                            <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
+                                <FileSpreadsheet className="size-4 text-emerald-600" />
+                                {exporting ? 'Menyiapkan…' : 'Excel'}
+                            </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => window.open(pdfUrl, '_blank')}
