@@ -242,6 +242,7 @@ satu pintu: menu **Laporan** modul.
 | TL PdM & Maturity Level (`tl_pdm`) | Unit | Modul PdM penuh (dipakai akun Koordinator/PIC PdM) |
 | Project Leader (`project_leader_operasi`) | Unit | Semua hak operator + kelola Jadwal Shift & absensi + presensi + input Operasi lapangan + input Pengusahaan Operasi + kelola daftar Material & Peralatan + lihat **semua** Laporan Project (tanda tangan "Mengetahui") + membuat Daily Meeting Pemeliharaan |
 | Operator (`operator`) | Unit | Menu Operator (absen, logsheet, start stop, mutasi, pengajuan, resume) + Input Operasi lapangan; **tanpa** Master Data dan **tanpa** input Pengusahaan |
+| Akun Unit (`akun_unit`) | Unit | Satu akun per unit (`unit.{kode-unit}@upkendari.co.id`) untuk **semua divisi**: lihat & isi input, jadwal, formulir, Pengusahaan, Operator logsheet, dan laporan — hanya data unit itu; tanpa kelola master, pengguna, atau pengesahan laporan |
 | Harmes / Harlist (`harmes`, `harlist`) | Unit | Absen + halaman Input/Formulir Pemeliharaan lapangan (per halaman) |
 | Site Leader (`site_leader`) | Unit | Role warisan Fase 1 (laporan unit/project generik) |
 | Manager UP (`manager_up`) | Global | Portal; lihat & unduh seluruh input dan laporan semua modul di semua unit — **hanya melihat** |
@@ -1074,6 +1075,7 @@ Aturan data:
 | 2026-11-03 | Menu Operator baru **Opname BBM & kWh** dan **Opname Pelumas** (menu dulu, isi menyusul); semua tabel input/jadwal desktop bergaya Excel (garis hitam, header kuning) |
 | 2026-11-04 | Seluruh dokumen alur modul digabung menjadi PRD ini |
 | 2026-11-05 | Kondisi Abnormal & Gangguan Operasi: kolom **Kronologi** (khusus gangguan, di antara Parameter Terkait dan TL jangka pendek) dan **Eviden** foto; tabel Abnormal & Gangguan Pemeliharaan mengambil data Operasi + baris tambahan Pemeliharaan |
+| 2026-11-08 | Role **Akun Unit** + satu akun per unit (semua divisi, hanya data unitnya) via `UnitAccountSeeder` |
 | 2026-11-06 | Ekspor Excel: Kondisi Abnormal & Gangguan Operasi (khusus, termasuk kronologi & foto eviden) dan tombol Excel generik untuk semua halaman input yang belum punya ekspor (Abnormal & Gangguan HAR, Material & Peralatan, PTW Operasi, Pengusahaan K3/Operasi, Opname, dll.) |
 | 2026-11-05 | Akses Cepat di beranda HP dihapus; Material & Peralatan ditambahkan di Input Pemeliharaan; Jam Pembangkit + MO & Standby (total 24 jam); menu Operator Opname BBM, Opname Pelumas, Opname kWh terpisah dengan kolom dari user + master Jenis Tangki & kWh Meter; halaman input HP semua modul tanpa deskripsi, filter unit/periode, dan kartu ringkasan |
 

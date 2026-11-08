@@ -36,6 +36,12 @@ enum RoleName: string
     case Harmes = 'harmes';
     case Harlist = 'harlist';
 
+    // One account per unit for every divisi, seeing only its own unit.
+    case AkunUnit = 'akun_unit';
+
+    // An Akun Unit raised by the Super Admin to see every unit of its UL.
+    case AdminUl = 'admin_ul';
+
     // Kantor induk UP Kendari — membawahi seluruh unit, hanya melihat (Portal Pemantauan).
     case ManagerUp = 'manager_up';
     case TeamLeaderOperasiUp = 'tl_operasi_up';
@@ -66,6 +72,8 @@ enum RoleName: string
             self::Operator => 'Operator',
             self::Harmes => 'Harmes (Pemeliharaan Mesin)',
             self::Harlist => 'Harlist (Pemeliharaan Listrik)',
+            self::AkunUnit => 'Akun Unit',
+            self::AdminUl => 'Admin UL',
             self::ManagerUp => 'Manager UP Kendari',
             self::TeamLeaderOperasiUp => 'TL Operasi UP Kendari',
             self::TeamLeaderPemeliharaanUp => 'TL Pemeliharaan UP Kendari',
@@ -96,6 +104,8 @@ enum RoleName: string
             self::StafK3 => 'Akses 2 — Pengusahaan K3 & keamanan: menu & Laporan Pengusahaan K3 pada unit yang ditugaskan.',
             self::Operator => 'Operator shift (termasuk Leader Shift) divisi Operasi di bawah Koordinator Operasi: mencatat logsheet harian dan absen pada unit pembangkit yang ditugaskan.',
             self::Harmes => 'Teknisi pemeliharaan mesin divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
+            self::AdminUl => 'Akun unit yang diberi peran admin Unit Layanan: semua divisi seperti Akun Unit, untuk seluruh unit pembangkit di bawah UL unit bawaannya.',
+            self::AkunUnit => 'Akun unit pembangkit untuk semua divisi (Operasi, Operator, Pemeliharaan, K3, Logistik, PdM): melihat dan mengisi input, jadwal, formulir, Pengusahaan dan laporan — hanya data unit yang ditugaskan.',
             self::Harlist => 'Teknisi pemeliharaan listrik divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
             self::ManagerUp => 'Kantor induk UP Kendari: melihat & mengunduh seluruh input dan laporan (Operasi, Pemeliharaan, K3, Logistik, PdM — Laporan Project & Pengusahaan) di semua unit. Hanya melihat.',
             self::TeamLeaderOperasiUp => 'Kantor induk UP Kendari: melihat input, monitoring & laporan final bidang Operasi di semua unit. Hanya melihat.',
@@ -118,7 +128,8 @@ enum RoleName: string
             self::AsmanOperasi,
             self::AsmanPemeliharaan,
             self::AsmanK3 => RoleScope::Global,
-            self::ManagerUl => RoleScope::ServiceUnit,
+            self::ManagerUl,
+            self::AdminUl => RoleScope::ServiceUnit,
             self::TeamLeaderOperasi,
             self::TeamLeaderPemeliharaan,
             self::TeamLeaderK3,
@@ -134,7 +145,8 @@ enum RoleName: string
             self::StafK3,
             self::Operator,
             self::Harmes,
-            self::Harlist => RoleScope::Unit,
+            self::Harlist,
+            self::AkunUnit => RoleScope::Unit,
         };
     }
 
@@ -407,6 +419,10 @@ enum RoleName: string
                 ...PermissionName::harLapangan(),
             ],
 
+            // A unit's own account: every divisi of that unit, view & input (no master data management, users or approvals).
+            self::AkunUnit,
+            self::AdminUl => self::unitAccountPermissions(),
+
             // Kantor induk UP Kendari: view permissions of their bidang + Portal & read-only.
             self::TeamLeaderOperasiUp,
             self::AsmanOperasi => [...self::portalBase(), ...self::portalOperasi()],
@@ -428,6 +444,58 @@ enum RoleName: string
 
         // Every role gets the reminder notifications; the Super Admin already holds all cases.
         return $this === self::SuperAdmin ? $granted : [...$granted, ...PermissionName::notifications()];
+    }
+
+    /**
+     * The Akun Unit: every divisi's input, jadwal, formulir, Pengusahaan and
+     * laporan of its unit (view & write) — no master data management, user
+     * management or report approval.
+     *
+     * @return list<PermissionName>
+     */
+    public static function unitAccountPermissions(): array
+    {
+        return [
+            PermissionName::UnitViewAny,
+            PermissionName::UnitView,
+            PermissionName::MachineViewAny,
+            PermissionName::MachineView,
+            PermissionName::EmployeeViewAny,
+            PermissionName::EmployeeView,
+            PermissionName::MonitoringView,
+            PermissionName::OperasiInputView,
+            PermissionName::OperasiInputWrite,
+            PermissionName::OperasiLaporanView,
+            PermissionName::OperasiMasterViewAny,
+            PermissionName::OperasiPengusahaanView,
+            PermissionName::OperasiPengusahaanWrite,
+            PermissionName::OperatorLogsheetView,
+            PermissionName::OperatorLogsheetWrite,
+            PermissionName::OperatorMutasiView,
+            PermissionName::OperatorAbsensiView,
+            PermissionName::HarInputView,
+            PermissionName::HarInputWrite,
+            PermissionName::HarLaporanView,
+            PermissionName::HarExecutiveView,
+            PermissionName::HarMasterViewAny,
+            PermissionName::HarPengusahaanView,
+            PermissionName::HarPengusahaanWrite,
+            PermissionName::K3InputView,
+            PermissionName::K3InputWrite,
+            PermissionName::K3LaporanView,
+            PermissionName::K3MonitoringView,
+            PermissionName::K3MasterViewAny,
+            PermissionName::K3PengusahaanView,
+            PermissionName::K3PengusahaanWrite,
+            PermissionName::LogistikInputView,
+            PermissionName::LogistikInputWrite,
+            PermissionName::LogistikLaporanView,
+            PermissionName::LogistikMasterViewAny,
+            PermissionName::PdmInputView,
+            PermissionName::PdmInputWrite,
+            PermissionName::PdmLaporanView,
+            PermissionName::PdmMasterViewAny,
+        ];
     }
 
     /**

@@ -34,6 +34,7 @@ class DatabaseSeeder extends Seeder
             DocumentTemplateSeeder::class,
             SuperAdminSeeder::class,
             DemoAccountSeeder::class,
+            UnitAccountSeeder::class,
         ]);
     }
 }

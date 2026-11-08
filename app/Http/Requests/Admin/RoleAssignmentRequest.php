@@ -2,8 +2,10 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Enums\RoleName;
 use App\Enums\RoleScope;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -49,6 +51,20 @@ class RoleAssignmentRequest extends FormRequest
 
             if ($role->scope === RoleScope::ServiceUnit && $this->input('service_unit_id') === null) {
                 $validator->errors()->add('service_unit_id', 'Role ini harus ditugaskan pada satu unit layanan.');
+            }
+
+            // Admin UL goes to the UL of the account's own unit(s): an Akun Unit sees the units of its UL.
+            if ($role->name === RoleName::AdminUl->value && $this->input('service_unit_id') !== null) {
+                $user = $this->route('user');
+                $ownUls = $user instanceof User
+                    ? $user->roleAssignments()->whereNotNull('unit_id')->with('unit:id,service_unit_id')->get()->pluck('unit.service_unit_id')->filter()->unique()->values()->all()
+                    : [];
+
+                if ($ownUls === []) {
+                    $validator->errors()->add('role_id', 'Admin UL hanya untuk akun yang sudah ditugaskan pada unit pembangkit di bawah satu UL (cek UL unit tersebut di Master Unit).');
+                } elseif (! in_array((int) $this->input('service_unit_id'), array_map('intval', $ownUls), true)) {
+                    $validator->errors()->add('service_unit_id', 'Pilih Unit Layanan tempat unit bawaan akun ini berada.');
+                }
             }
         });
     }
