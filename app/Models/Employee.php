@@ -57,6 +57,9 @@ class Employee extends Model
 
     public const POSITION_HARLIST = 'Harlist';
 
+    /** Asisten mekanik & elektrik under the Harmes and Harlist. */
+    public const POSITION_ASME = 'ASME & Elec';
+
     protected static function booted(): void
     {
         static::saving(function (Employee $employee): void {
@@ -77,7 +80,7 @@ class Employee extends Model
     /**
      * The divisi of field staff outside the report-signer jabatan: shift
      * operators (any regu, Leader Shift included) belong to Operasi under the
-     * Koordinator Operasi; Harmes and Harlist to Pemeliharaan under the
+     * Koordinator Operasi; Harmes, Harlist and ASME & Elec to Pemeliharaan under the
      * Koordinator Pemeliharaan. Null for anyone else.
      */
     public static function fieldDivision(?string $position, ?string $regu): ?string
@@ -86,7 +89,7 @@ class Employee extends Model
             return 'operasi';
         }
 
-        return in_array($position, [self::POSITION_HARMES, self::POSITION_HARLIST], true) ? 'pemeliharaan' : null;
+        return in_array($position, [self::POSITION_HARMES, self::POSITION_HARLIST, self::POSITION_ASME], true) ? 'pemeliharaan' : null;
     }
 
     /**

@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Building2, CheckCircle2, CircleDashed, FilePen } from 'lucide-react';
+import { CheckCircle2, CircleDashed, FilePen } from 'lucide-react';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
@@ -70,7 +70,7 @@ export default function PdmLaporanIndex({ filters, options, contents }: Props) {
                     />
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3">
                     <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
                         <div>
                             <h2 className="text-base font-semibold text-foreground">Laporan PdM &amp; Maturity Level Pembangkit</h2>
@@ -82,21 +82,6 @@ export default function PdmLaporanIndex({ filters, options, contents }: Props) {
                             <Button onClick={() => router.get(document.edit(query).url)}>
                                 <FilePen className="size-4" />
                                 Buka Dokumen (Lihat, Edit &amp; Cetak)
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-                        <div>
-                            <h2 className="text-base font-semibold text-foreground">Laporan Pengusahaan Pembangkit</h2>
-                            <p className="mt-1 text-[13px] text-muted-foreground">
-                                Laporan pengusahaan dan kinerja unit pembangkit terpadu (ketersediaan daya, efisiensi, pemeliharaan, serta evaluasi operasional).
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button disabled title="Laporan pengusahaan PdM sedang disiapkan">
-                                <Building2 className="size-4" />
-                                Buka Dokumen (Segera Hadir)
                             </Button>
                         </div>
                     </div>

@@ -59,6 +59,7 @@ class AttendanceRoster
             ...array_map(fn (EmployeePosition $p): string => $p->value, self::NON_SHIFT_POSITIONS),
             Employee::POSITION_HARMES,
             Employee::POSITION_HARLIST,
+            Employee::POSITION_ASME,
         ]);
 
         return $query->whereNull('regu')->whereIn('position', array_keys($order))
