@@ -1155,16 +1155,18 @@ export function Heatmap({
     rows,
 }: {
     columns: string[];
-    rows: { label: string; values: number[] }[];
+    rows: { label: string; values: (number | null)[] }[];
 }) {
-    const shade = (v: number) =>
-        v >= 90
-            ? 'bg-emerald-500 text-white'
-            : v >= 80
-              ? 'bg-emerald-400/70 text-emerald-950'
-              : v >= 70
-                ? 'bg-amber-300/80 text-amber-950'
-                : 'bg-rose-400/80 text-rose-950';
+    const shade = (v: number | null) =>
+        v === null
+            ? 'bg-muted text-muted-foreground'
+            : v >= 90
+              ? 'bg-emerald-500 text-white'
+              : v >= 80
+                ? 'bg-emerald-400/70 text-emerald-950'
+                : v >= 70
+                  ? 'bg-amber-300/80 text-amber-950'
+                  : 'bg-rose-400/80 text-rose-950';
 
     return (
         <div className="flex flex-col gap-2">
@@ -1195,9 +1197,9 @@ export function Heatmap({
                                     'rounded-[4px] py-1.5 text-center text-[11px] font-semibold tabular-nums',
                                     shade(v),
                                 )}
-                                title={`${row.label} · ${columns[i]}: ${v}%`}
+                                title={`${row.label} · ${columns[i]}: ${v === null ? 'tidak ada rencana' : `${v}%`}`}
                             >
-                                {v}
+                                {v ?? '—'}
                             </span>
                         ))}
                     </div>

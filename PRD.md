@@ -150,9 +150,6 @@ Prinsip pembangunan: **Modular → Scalable → Auditable → Terkontrol.**
 - **Log Sheet PdM** — kartu "Segera Hadir".
 - Ekspor PDF/Excel dan rekap bulanan untuk **Opname BBM / Pelumas / kWh** (input
   harian sudah berjalan, §8.1).
-- Data modul pada **Dashboard** (HAR, K3, Logistik, PdM, dan grafik Operasi)
-  masih data contoh (`DashboardDummyData`); angka unit, user, aktivitas, dan
-  kelengkapan input sudah nyata.
 
 ### 3.3 Di luar lingkup saat ini (fase lanjut)
 
@@ -371,7 +368,29 @@ Aturan tambahan:
   sesuai permission; Super Admin melihat semua.
 - Ringkasan nyata: jumlah unit, user, status unit, aktivitas, dan **kelengkapan
   input** per modul/menu, dibatasi unit yang terlihat user.
-- Grafik modul saat ini memakai data contoh (ditandai `isDummy`) — lihat §15.
+- **Semua angka nyata** (tanpa data contoh), dibaca dari input unit yang terlihat
+  user (`app/Services/Dashboard/*Dashboard.php`). Setiap bagian modul dimuat
+  sebagai deferred prop (skeleton dulu, satu request per modul). Sheet/input yang
+  belum diisi = 0 atau "Belum ada data"; KPI tanpa sumber tampil "—"; persentase
+  perubahan dibanding bulan lalu hanya muncul bila bulan lalu ada angkanya.
+- Sumber per modul:
+  - **Operasi** — Stand kWh Harian (kWh netto, PS), Beban Tertinggi, Tara Kalor,
+    Pemakaian Bahan Bakar (SFC netto = liter ÷ kWh netto), Jam Pembangkit
+    (Operasi/Standby/PO/MO/Gangguan), Persediaan Bahan Bakar (awal, penerimaan,
+    pemakaian, pengiriman, sisa), Pemakaian Pelumas tambah/ganti, Kinerja Unit Mesin
+    (daya mampu), Data Kinerja Pembangkit Termal (EAF/EFOR/CF; target gauge EAF ≥ 90,
+    EFOR ≤ 5, CF ≥ 60 — konstanta `OperasiDashboard::TARGETS`).
+  - **Pemeliharaan** — Work Order & Service Request per bulan periode laporan; biaya
+    = jasa + material WO; backlog = WO berstatus belum closed (terlama di atas).
+  - **K3** — hari sejak kecelakaan terakhir berkorban (— bila belum pernah),
+    Inspeksi, Unsafe tanpa tindak lanjut, status sertifikat & APAR (rumus Monitoring
+    K3), Patroli Security per lokasi, Kurva S & kepatuhan mingguan dari Time Frame K3.
+  - **Logistik** — Kondisi Stok Tools & Material bulan terakhir tiap unit (stok akhir,
+    ROP; kritis = stok akhir ≤ ROP pada baris yang ada pergerakan), penerimaan
+    BBM/pelumas dari Persediaan, level tangki = saldo akhir BBM ÷ kapasitas tangki aktif.
+  - **PdM** — Realisasi Prediktif (hari rencana vs realisasi), uji Vibrasi (nilai
+    tertinggi V/H max; ≤ 4,5 Normal, ≤ 7,1 Waspada, > 7,1 Alarm) dan Kualitas Pelumas
+    (status uji terakhir).
 
 ### 7.3 Notifikasi
 
@@ -1021,7 +1040,6 @@ Aturan data:
 | Parameter PLTM/PLTG | `logsheet_parameters.plant_type` disiapkan, semua unit pakai `all` | Tambah set parameter per jenis pembangkit |
 | Opname BBM, Pelumas, kWh | Input harian berjalan | PDF/Excel, rekap bulanan, dan (bila diminta) tautan ke Persediaan/Stand kWh Pengusahaan |
 | Log Sheet PdM | Kartu "Segera Hadir" | Bangun input |
-| Dashboard modul | Data contoh | Ganti dengan data nyata per modul |
 | Modul Project & Laporan Unit/Project | Permission ada | Perencanaan, progres, milestone, ekspor |
 | Laporan resmi PLN 1–14 (Operasi) | Belum | Tambah lewat report registry |
 | Master Logistik & asesmen Maturity Level PdM | Belum dirancang | Dirancang bersama user |
@@ -1076,6 +1094,7 @@ Aturan data:
 | 2026-11-04 | Seluruh dokumen alur modul digabung menjadi PRD ini |
 | 2026-11-05 | Kondisi Abnormal & Gangguan Operasi: kolom **Kronologi** (khusus gangguan, di antara Parameter Terkait dan TL jangka pendek) dan **Eviden** foto; tabel Abnormal & Gangguan Pemeliharaan mengambil data Operasi + baris tambahan Pemeliharaan |
 | 2026-11-08 | Role **Akun Unit** + satu akun per unit (semua divisi, hanya data unitnya) via `UnitAccountSeeder` |
+| 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
 | 2026-11-06 | Ekspor Excel: Kondisi Abnormal & Gangguan Operasi (khusus, termasuk kronologi & foto eviden) dan tombol Excel generik untuk semua halaman input yang belum punya ekspor (Abnormal & Gangguan HAR, Material & Peralatan, PTW Operasi, Pengusahaan K3/Operasi, Opname, dll.) |
 | 2026-11-05 | Akses Cepat di beranda HP dihapus; Material & Peralatan ditambahkan di Input Pemeliharaan; Jam Pembangkit + MO & Standby (total 24 jam); menu Operator Opname BBM, Opname Pelumas, Opname kWh terpisah dengan kolom dari user + master Jenis Tangki & kWh Meter; halaman input HP semua modul tanpa deskripsi, filter unit/periode, dan kartu ringkasan |
 

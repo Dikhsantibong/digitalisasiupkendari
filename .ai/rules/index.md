@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/Operasi/** | .ai/rules/controllers-operasi.md |
 | app/Http/Controllers/Operator/**, app/Services/Operator/** | .ai/rules/controllers-operator.md |
 | app/Http/Controllers/** | .ai/rules/controllers.md |
+| app/Services/Dashboard/** | .ai/rules/dashboard.md |
 | resources/js/components/document/** | .ai/rules/document.md |
 | app/Enums/** | .ai/rules/enums.md |
 | resources/js/pages/har/jadwal/** | .ai/rules/har-jadwal.md |

@@ -1,10 +1,9 @@
-import { Head, Link } from '@inertiajs/react';
+import { Deferred, Head, Link } from '@inertiajs/react';
 import {
     Activity,
     ArrowDownRight,
     ArrowUpRight,
     Factory,
-    FlaskConical,
     Package,
     ShieldCheck,
     Wrench,
@@ -55,19 +54,21 @@ type ModuleKey = 'operasi' | 'har' | 'k3' | 'logistik' | 'pdm';
 type Kpi = {
     key: string;
     label: string;
-    value: number;
+    /** Null when the figure has no source yet (e.g. no accident ever recorded). */
+    value: number | null;
     unit: string | null;
     format: ValueFormat;
-    delta: number;
+    /** Change in percent against last month; null when last month has no figure. */
+    delta: number | null;
     good: 'up' | 'down';
     spark: number[];
 };
 
 type Status = { status: string; status_tone: Tone };
 
+/** Module sections are deferred props: undefined until loaded, null when out of scope. */
 type Props = {
     scope: Record<ModuleKey | 'units', boolean>;
-    isDummy: boolean;
     periodLabel: string;
     summary: {
         units: number;
@@ -83,7 +84,7 @@ type Props = {
         caption: string;
     }[];
     moduleActivity: Datum[];
-    operasi: {
+    operasi?: {
         kpis: Kpi[];
         /** kWh netto & PS (MWh) per day, beban tertinggi (MW) as the line. */
         daily: MultiSeries;
@@ -102,9 +103,8 @@ type Props = {
             awal: number;
             penerimaan: number;
             pemakaian: number;
+            pengiriman: number;
             sisa: number;
-            fisik: number;
-            selisih: number;
         }[];
         /** Pemakaian per jenis BBM, last six months (kL). */
         fuel_monthly: MultiSeries;
@@ -117,12 +117,13 @@ type Props = {
             produksi: number;
             sfc: number;
             tara_kalor: number;
-            eaf: number;
+            /** Null when the unit has no jam operasi this month. */
+            eaf: number | null;
         } & Status)[];
         /** Real: completeness of each Pengusahaan Operasi menu this month. */
         completeness: { label: string; percent: number | null; url: string }[];
     } | null;
-    har: {
+    har?: {
         kpis: Kpi[];
         trend: MultiSeries;
         cost: MultiSeries;
@@ -139,7 +140,7 @@ type Props = {
             age: number;
         }[];
     } | null;
-    k3: {
+    k3?: {
         kpis: Kpi[];
         s_curve: {
             month_label: string;
@@ -150,10 +151,10 @@ type Props = {
         patrol_top: Datum[];
         compliance: {
             columns: string[];
-            rows: { label: string; values: number[] }[];
+            rows: { label: string; values: (number | null)[] }[];
         };
     } | null;
-    logistik: {
+    logistik?: {
         kpis: Kpi[];
         tanks: (Datum & { capacity: number })[];
         fuel_flow: MultiSeries;
@@ -167,15 +168,15 @@ type Props = {
             uom: string;
         }[];
     } | null;
-    pdm: {
+    pdm?: {
         kpis: Kpi[];
         realisasi: MultiSeries;
         condition: Datum[];
         vibration: MultiSeries & { threshold: number };
         assets: ({
             asset: string;
-            vibration: number;
-            temperature: number;
+            /** Highest V/H reading of the latest vibration test (mm/s). */
+            vibration: number | null;
             oil: string;
         } & Status)[];
     } | null;
@@ -246,20 +247,64 @@ const MODULES: Record<
     },
 };
 
-const STATUS_COLORS = ['text-emerald-500', 'text-amber-500', 'text-rose-500'];
+const STATUS_COLORS = [
+    'text-emerald-500',
+    'text-amber-500',
+    'text-rose-500',
+    'text-slate-400',
+];
 const MODULE_ORDER: ModuleKey[] = ['operasi', 'har', 'k3', 'logistik', 'pdm'];
 
-function DummyTag() {
+function NoData({ text = 'Belum ada data.' }: { text?: string }) {
     return (
-        <span className="rounded-sm border border-amber-300/70 bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold tracking-wide text-amber-800 uppercase">
-            Data dummy
-        </span>
+        <p className="py-6 text-center text-[13px] text-muted-foreground">
+            {text}
+        </p>
+    );
+}
+
+/** Placeholder of a module section while its deferred data loads. */
+function ModuleSkeleton({ moduleKey }: { moduleKey: ModuleKey }) {
+    const meta = MODULES[moduleKey];
+    const Icon = meta.icon;
+
+    return (
+        <section
+            id={`modul-${moduleKey}`}
+            className="flex scroll-mt-20 flex-col gap-3"
+        >
+            <div className="flex items-center gap-3 border-b border-border pb-2">
+                <Icon className="size-5 shrink-0 text-primary" />
+                <div className="min-w-0">
+                    <h2 className="text-base leading-tight font-semibold text-foreground">
+                        {meta.title}
+                    </h2>
+                    <p className="text-[13px] text-muted-foreground">
+                        Memuat data…
+                    </p>
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                {Array.from({ length: 5 }, (_, i) => (
+                    <div
+                        key={i}
+                        className="h-[118px] animate-pulse rounded-md border border-border bg-muted/60"
+                    />
+                ))}
+            </div>
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+                <div className="h-64 animate-pulse rounded-md border border-border bg-muted/60 lg:col-span-8" />
+                <div className="h-64 animate-pulse rounded-md border border-border bg-muted/60 lg:col-span-4" />
+            </div>
+        </section>
     );
 }
 
 function KpiTile({ kpi, accent }: { kpi: Kpi; accent: string }) {
-    const improving = kpi.good === 'up' ? kpi.delta >= 0 : kpi.delta <= 0;
-    const Arrow = kpi.delta >= 0 ? ArrowUpRight : ArrowDownRight;
+    const delta = kpi.delta;
+    const improving =
+        delta !== null && (kpi.good === 'up' ? delta >= 0 : delta <= 0);
+    const Arrow = (delta ?? 0) >= 0 ? ArrowUpRight : ArrowDownRight;
 
     return (
         <div className="flex min-w-0 flex-col gap-1.5 rounded-md border border-border bg-card p-3.5">
@@ -268,30 +313,40 @@ function KpiTile({ kpi, accent }: { kpi: Kpi; accent: string }) {
             </p>
             <div className="flex items-end justify-between gap-2">
                 <p className="truncate text-[22px] leading-none font-semibold text-foreground tabular-nums">
-                    {formatValue(kpi.value, kpi.format)}
-                    {kpi.unit && (
+                    {kpi.value === null
+                        ? '—'
+                        : formatValue(kpi.value, kpi.format)}
+                    {kpi.unit && kpi.value !== null && (
                         <span className="ml-1 text-xs font-normal text-muted-foreground">
                             {kpi.unit}
                         </span>
                     )}
                 </p>
-                <span
-                    className={cn(
-                        'inline-flex shrink-0 items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[12px] font-semibold tabular-nums',
-                        improving
-                            ? 'bg-emerald-500/10 text-emerald-700'
-                            : 'bg-red-500/10 text-red-700',
-                    )}
-                >
-                    <Arrow className="size-3" />
-                    {Math.abs(kpi.delta).toLocaleString('id-ID', {
-                        maximumFractionDigits: 1,
-                    })}
-                    %
-                </span>
+                {delta !== null && (
+                    <span
+                        className={cn(
+                            'inline-flex shrink-0 items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-[12px] font-semibold tabular-nums',
+                            improving
+                                ? 'bg-emerald-500/10 text-emerald-700'
+                                : 'bg-red-500/10 text-red-700',
+                        )}
+                    >
+                        <Arrow className="size-3" />
+                        {Math.abs(delta).toLocaleString('id-ID', {
+                            maximumFractionDigits: 1,
+                        })}
+                        %
+                    </span>
+                )}
             </div>
-            <Sparkline values={kpi.spark} className={accent} />
-            <p className="text-xs text-muted-foreground">vs bulan lalu</p>
+            {kpi.spark.length > 1 ? (
+                <Sparkline values={kpi.spark} className={accent} />
+            ) : (
+                <div className="h-7" />
+            )}
+            <p className="text-xs text-muted-foreground">
+                {delta !== null ? 'vs bulan lalu' : 'Bulan berjalan'}
+            </p>
         </div>
     );
 }
@@ -299,12 +354,10 @@ function KpiTile({ kpi, accent }: { kpi: Kpi; accent: string }) {
 function ModuleSection({
     moduleKey,
     kpis,
-    isDummy,
     children,
 }: {
     moduleKey: ModuleKey;
     kpis: Kpi[];
-    isDummy: boolean;
     children: ReactNode;
 }) {
     const meta = MODULES[moduleKey];
@@ -325,11 +378,6 @@ function ModuleSection({
                         {meta.subtitle}
                     </p>
                 </div>
-                {isDummy && (
-                    <div className="ml-auto">
-                        <DummyTag />
-                    </div>
-                )}
             </div>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                 {kpis.map((kpi) => (
@@ -345,9 +393,12 @@ function ModuleSection({
 
 function CompactTable({
     head,
+    empty = false,
     children,
 }: {
     head: { label: string; align?: 'right' }[];
+    /** Show a "Belum ada data" row instead of the children. */
+    empty?: boolean;
     children: ReactNode;
 }) {
     return (
@@ -368,7 +419,20 @@ function CompactTable({
                         ))}
                     </TableRow>
                 </TableHeader>
-                <TableBody className="text-[13px]">{children}</TableBody>
+                <TableBody className="text-[13px]">
+                    {empty ? (
+                        <TableRow>
+                            <TableCell
+                                colSpan={head.length}
+                                className="py-6 text-center text-muted-foreground"
+                            >
+                                Belum ada data.
+                            </TableCell>
+                        </TableRow>
+                    ) : (
+                        children
+                    )}
+                </TableBody>
             </Table>
         </div>
     );
@@ -377,7 +441,6 @@ function CompactTable({
 export default function Dashboard(props: Props) {
     const {
         scope,
-        isDummy,
         periodLabel,
         summary,
         moduleHealth,
@@ -393,7 +456,7 @@ export default function Dashboard(props: Props) {
     const unitRows = props.units;
     const { can, hasGlobalAccess, roles } = usePermissions();
 
-    const visibleModules = MODULE_ORDER.filter((key) => props[key] !== null);
+    const visibleModules = MODULE_ORDER.filter((key) => scope[key]);
     const isExecutive = visibleModules.length > 1;
     const roleLabel = roles.map((r) => r.display_name).join(', ');
     const anyData = visibleModules.length > 0 || unitRows.length > 0;
@@ -443,18 +506,6 @@ export default function Dashboard(props: Props) {
                         }
                     />
                 </div>
-
-                {isDummy && visibleModules.length > 0 && (
-                    <p className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-                        <FlaskConical className="mt-0.5 size-4 shrink-0 text-amber-700" />
-                        <span>
-                            Angka dan grafik pada setiap modul di bawah masih{' '}
-                            <b>data dummy</b> untuk pratinjau tampilan. Jenis
-                            BBM, jenis pelumas, unit dan kelengkapan input sudah
-                            mengikuti data nyata.
-                        </span>
-                    </p>
-                )}
 
                 {/* Executive overview */}
                 {isExecutive && (
@@ -537,653 +588,767 @@ export default function Dashboard(props: Props) {
                     </nav>
                 )}
 
-                {operasi && (
-                    <ModuleSection
-                        moduleKey="operasi"
-                        kpis={operasi.kpis}
-                        isDummy={isDummy}
+                {scope.operasi && (
+                    <Deferred
+                        data="operasi"
+                        fallback={<ModuleSkeleton moduleKey="operasi" />}
                     >
-                        <Panel
-                            title="kWh Netto, Pemakaian Sendiri & Beban Tertinggi"
-                            subtitle={`Harian · ${periodLabel} · dari Stand kWh Harian & Beban Tertinggi`}
-                            className="lg:col-span-8"
-                        >
-                            <BarsChart
-                                data={operasi.daily}
-                                mode="stacked"
-                                lineLast
-                                format="number"
-                                lineFormat="decimal"
-                                colors={[
-                                    'text-chart-1',
-                                    'text-chart-3',
-                                    'text-chart-4',
-                                ]}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Komposisi Jam Mesin"
-                            subtitle="Jam operasi, siap ops, HAR & gangguan"
-                            className="lg:col-span-4"
-                        >
-                            <Donut
-                                data={operasi.jam_mesin}
-                                centerLabel="Jam"
-                                colors={[
-                                    'text-emerald-500',
-                                    'text-chart-1',
-                                    'text-amber-500',
-                                    'text-rose-500',
-                                ]}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Persediaan Bahan Bakar"
-                            subtitle="Per jenis BBM (Data Master) · liter"
-                            className="lg:col-span-7"
-                        >
-                            <CompactTable
-                                head={[
-                                    { label: 'Jenis BBM' },
-                                    { label: 'Awal', align: 'right' },
-                                    { label: 'Penerimaan', align: 'right' },
-                                    { label: 'Pemakaian', align: 'right' },
-                                    { label: 'Sisa', align: 'right' },
-                                    { label: 'Selisih fisik', align: 'right' },
-                                ]}
-                            >
-                                {operasi.fuels.map((fuel) => (
-                                    <TableRow key={fuel.code}>
-                                        <TableCell className="font-medium">
-                                            {fuel.name}{' '}
-                                            <span className="text-muted-foreground">
-                                                ({fuel.code})
-                                            </span>
-                                        </TableCell>
-                                        {(
-                                            [
-                                                'awal',
-                                                'penerimaan',
-                                                'pemakaian',
-                                                'sisa',
-                                            ] as const
-                                        ).map((field) => (
-                                            <TableCell
-                                                key={field}
-                                                className="text-right tabular-nums"
-                                            >
-                                                {formatValue(fuel[field])}
-                                            </TableCell>
-                                        ))}
-                                        <TableCell
-                                            className={cn(
-                                                'text-right font-medium tabular-nums',
-                                                fuel.selisih < 0
-                                                    ? 'text-red-700'
-                                                    : 'text-emerald-700',
-                                            )}
+                        {() =>
+                            operasi && (
+                                <ModuleSection
+                                    moduleKey="operasi"
+                                    kpis={operasi.kpis}
+                                >
+                                    <Panel
+                                        title="kWh Netto, Pemakaian Sendiri & Beban Tertinggi"
+                                        subtitle={`Harian · ${periodLabel} · dari Stand kWh Harian & Beban Tertinggi`}
+                                        className="lg:col-span-8"
+                                    >
+                                        <BarsChart
+                                            data={operasi.daily}
+                                            mode="stacked"
+                                            lineLast
+                                            format="number"
+                                            lineFormat="decimal"
+                                            colors={[
+                                                'text-chart-1',
+                                                'text-chart-3',
+                                                'text-chart-4',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Komposisi Jam Mesin"
+                                        subtitle="Jam Pembangkit seluruh mesin bulan berjalan"
+                                        className="lg:col-span-4"
+                                    >
+                                        <Donut
+                                            data={operasi.jam_mesin}
+                                            centerLabel="Jam"
+                                            colors={[
+                                                'text-emerald-500',
+                                                'text-chart-1',
+                                                'text-amber-500',
+                                                'text-chart-5',
+                                                'text-rose-500',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Persediaan Bahan Bakar"
+                                        subtitle="Per jenis BBM (Data Master) · liter"
+                                        className="lg:col-span-7"
+                                    >
+                                        <CompactTable
+                                            empty={operasi.fuels.length === 0}
+                                            head={[
+                                                { label: 'Jenis BBM' },
+                                                {
+                                                    label: 'Awal',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'Penerimaan',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'Pemakaian',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'Pengiriman',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'Sisa',
+                                                    align: 'right',
+                                                },
+                                            ]}
                                         >
-                                            {fuel.selisih > 0 ? '+' : ''}
-                                            {formatValue(fuel.selisih)}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </CompactTable>
-                        </Panel>
-                        <Panel
-                            title="Pemakaian BBM per Jenis"
-                            subtitle="6 bulan terakhir (kL)"
-                            className="lg:col-span-5"
-                        >
-                            <BarsChart
-                                data={operasi.fuel_monthly}
-                                mode="stacked"
-                                format="decimal"
-                                height="h-44"
-                            />
-                        </Panel>
-                        <Panel
-                            title="Pelumas Tambah & Ganti"
-                            subtitle="Per jenis pelumas (Data Master) · liter"
-                            className="lg:col-span-5"
-                        >
-                            <BarsChart
-                                data={{
-                                    labels: operasi.pelumas.map((p) => p.label),
-                                    series: [
-                                        {
-                                            name: 'Tambah',
-                                            values: operasi.pelumas.map(
-                                                (p) => p.tambah,
-                                            ),
-                                        },
-                                        {
-                                            name: 'Ganti',
-                                            values: operasi.pelumas.map(
-                                                (p) => p.ganti,
-                                            ),
-                                        },
-                                    ],
-                                }}
-                                mode="stacked"
-                                colors={['text-chart-2', 'text-chart-5']}
-                                height="h-44"
-                            />
-                        </Panel>
-                        <Panel
-                            title="Indikator Kinerja"
-                            subtitle="Data Kinerja Pembangkit Termal · terhadap target"
-                            className="lg:col-span-3"
-                        >
-                            <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
-                                {operasi.gauges.map((g) => (
-                                    <Gauge key={g.label} {...g} />
-                                ))}
-                            </div>
-                        </Panel>
-                        <Panel
-                            title="Kelengkapan Input Pengusahaan"
-                            subtitle="Bulan berjalan — data nyata"
-                            className="lg:col-span-4"
-                        >
-                            {operasi.completeness.length === 0 ? (
-                                <p className="py-6 text-center text-[13px] text-muted-foreground">
-                                    Belum ada input yang jatuh tempo.
-                                </p>
-                            ) : (
-                                <ul className="flex flex-col gap-1.5">
-                                    {operasi.completeness.map((item) => (
-                                        <li key={item.label}>
-                                            <Link
-                                                href={item.url}
-                                                className="grid grid-cols-[1fr_5rem_2.75rem] items-center gap-2 rounded px-1 py-0.5 text-[12px] hover:bg-muted/60"
-                                            >
-                                                <span className="truncate text-foreground">
-                                                    {item.label}
-                                                </span>
-                                                <span className="h-1.5 overflow-hidden rounded-full bg-muted">
-                                                    <span
-                                                        className={cn(
-                                                            'block h-full rounded-full',
-                                                            (item.percent ??
-                                                                0) >= 90
-                                                                ? 'bg-emerald-500'
-                                                                : (item.percent ??
-                                                                        0) >= 50
-                                                                  ? 'bg-amber-500'
-                                                                  : 'bg-rose-500',
+                                            {operasi.fuels.map((fuel) => (
+                                                <TableRow key={fuel.code}>
+                                                    <TableCell className="font-medium">
+                                                        {fuel.name}{' '}
+                                                        <span className="text-muted-foreground">
+                                                            ({fuel.code})
+                                                        </span>
+                                                    </TableCell>
+                                                    {(
+                                                        [
+                                                            'awal',
+                                                            'penerimaan',
+                                                            'pemakaian',
+                                                            'pengiriman',
+                                                            'sisa',
+                                                        ] as const
+                                                    ).map((field) => (
+                                                        <TableCell
+                                                            key={field}
+                                                            className="text-right tabular-nums"
+                                                        >
+                                                            {formatValue(
+                                                                fuel[field],
+                                                            )}
+                                                        </TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            ))}
+                                        </CompactTable>
+                                    </Panel>
+                                    <Panel
+                                        title="Pemakaian BBM per Jenis"
+                                        subtitle="6 bulan terakhir (kL)"
+                                        className="lg:col-span-5"
+                                    >
+                                        <BarsChart
+                                            data={operasi.fuel_monthly}
+                                            mode="stacked"
+                                            format="decimal"
+                                            height="h-44"
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Pelumas Tambah & Ganti"
+                                        subtitle="Per jenis pelumas (Data Master) · liter"
+                                        className="lg:col-span-5"
+                                    >
+                                        <BarsChart
+                                            data={{
+                                                labels: operasi.pelumas.map(
+                                                    (p) => p.label,
+                                                ),
+                                                series: [
+                                                    {
+                                                        name: 'Tambah',
+                                                        values: operasi.pelumas.map(
+                                                            (p) => p.tambah,
+                                                        ),
+                                                    },
+                                                    {
+                                                        name: 'Ganti',
+                                                        values: operasi.pelumas.map(
+                                                            (p) => p.ganti,
+                                                        ),
+                                                    },
+                                                ],
+                                            }}
+                                            mode="stacked"
+                                            colors={[
+                                                'text-chart-2',
+                                                'text-chart-5',
+                                            ]}
+                                            height="h-44"
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Indikator Kinerja"
+                                        subtitle="Data Kinerja Pembangkit Termal · terhadap target"
+                                        className="lg:col-span-3"
+                                    >
+                                        <div className="grid grid-cols-3 gap-2 lg:grid-cols-1">
+                                            {operasi.gauges.map((g) => (
+                                                <Gauge key={g.label} {...g} />
+                                            ))}
+                                        </div>
+                                    </Panel>
+                                    <Panel
+                                        title="Kelengkapan Input Pengusahaan"
+                                        subtitle="Bulan berjalan — data nyata"
+                                        className="lg:col-span-4"
+                                    >
+                                        {operasi.completeness.length === 0 ? (
+                                            <p className="py-6 text-center text-[13px] text-muted-foreground">
+                                                Belum ada input yang jatuh
+                                                tempo.
+                                            </p>
+                                        ) : (
+                                            <ul className="flex flex-col gap-1.5">
+                                                {operasi.completeness.map(
+                                                    (item) => (
+                                                        <li key={item.label}>
+                                                            <Link
+                                                                href={item.url}
+                                                                className="grid grid-cols-[1fr_5rem_2.75rem] items-center gap-2 rounded px-1 py-0.5 text-[12px] hover:bg-muted/60"
+                                                            >
+                                                                <span className="truncate text-foreground">
+                                                                    {item.label}
+                                                                </span>
+                                                                <span className="h-1.5 overflow-hidden rounded-full bg-muted">
+                                                                    <span
+                                                                        className={cn(
+                                                                            'block h-full rounded-full',
+                                                                            (item.percent ??
+                                                                                0) >=
+                                                                                90
+                                                                                ? 'bg-emerald-500'
+                                                                                : (item.percent ??
+                                                                                        0) >=
+                                                                                    50
+                                                                                  ? 'bg-amber-500'
+                                                                                  : 'bg-rose-500',
+                                                                        )}
+                                                                        style={{
+                                                                            width: `${item.percent ?? 0}%`,
+                                                                        }}
+                                                                    />
+                                                                </span>
+                                                                <span className="text-right text-muted-foreground tabular-nums">
+                                                                    {item.percent ===
+                                                                    null
+                                                                        ? '—'
+                                                                        : `${item.percent}%`}
+                                                                </span>
+                                                            </Link>
+                                                        </li>
+                                                    ),
+                                                )}
+                                            </ul>
+                                        )}
+                                    </Panel>
+                                    <Panel
+                                        title="Kinerja per Unit"
+                                        subtitle="Ringkasan bulan berjalan"
+                                        className="lg:col-span-12"
+                                    >
+                                        <CompactTable
+                                            head={[
+                                                { label: 'Unit' },
+                                                {
+                                                    label: 'Daya Mampu (MW)',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'Beban Tertinggi (MW)',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'kWh Netto (MWh)',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'SFC Netto (L/kWh)',
+                                                    align: 'right',
+                                                },
+                                                {
+                                                    label: 'Tara Kalor',
+                                                    align: 'right',
+                                                },
+                                                { label: 'EAF' },
+                                                { label: 'Status' },
+                                            ]}
+                                        >
+                                            {operasi.units.map((u) => (
+                                                <TableRow key={u.unit}>
+                                                    <TableCell className="font-medium">
+                                                        {u.unit}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatValue(
+                                                            u.daya_mampu,
+                                                            'decimal',
                                                         )}
-                                                        style={{
-                                                            width: `${item.percent ?? 0}%`,
-                                                        }}
-                                                    />
-                                                </span>
-                                                <span className="text-right text-muted-foreground tabular-nums">
-                                                    {item.percent === null
-                                                        ? '—'
-                                                        : `${item.percent}%`}
-                                                </span>
-                                            </Link>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </Panel>
-                        <Panel
-                            title="Kinerja per Unit"
-                            subtitle="Ringkasan bulan berjalan"
-                            className="lg:col-span-12"
-                        >
-                            <CompactTable
-                                head={[
-                                    { label: 'Unit' },
-                                    {
-                                        label: 'Daya Mampu (MW)',
-                                        align: 'right',
-                                    },
-                                    {
-                                        label: 'Beban Tertinggi (MW)',
-                                        align: 'right',
-                                    },
-                                    {
-                                        label: 'kWh Netto (MWh)',
-                                        align: 'right',
-                                    },
-                                    {
-                                        label: 'SFC Netto (L/kWh)',
-                                        align: 'right',
-                                    },
-                                    {
-                                        label: 'Tara Kalor',
-                                        align: 'right',
-                                    },
-                                    { label: 'EAF' },
-                                    { label: 'Status' },
-                                ]}
-                            >
-                                {operasi.units.map((u) => (
-                                    <TableRow key={u.unit}>
-                                        <TableCell className="font-medium">
-                                            {u.unit}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatValue(
-                                                u.daya_mampu,
-                                                'decimal',
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatValue(
-                                                u.beban_puncak,
-                                                'decimal',
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatValue(u.produksi)}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatValue(u.sfc, 'decimal3')}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatValue(u.tara_kalor)}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-                                                    <div
-                                                        className={cn(
-                                                            'h-full rounded-full',
-                                                            u.eaf >= 90
-                                                                ? 'bg-emerald-500'
-                                                                : 'bg-amber-500',
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatValue(
+                                                            u.beban_puncak,
+                                                            'decimal',
                                                         )}
-                                                        style={{
-                                                            width: `${u.eaf}%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span className="tabular-nums">
-                                                    {formatValue(
-                                                        u.eaf,
-                                                        'decimal',
-                                                    )}
-                                                    %
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <StatusBadge tone={u.status_tone}>
-                                                {u.status}
-                                            </StatusBadge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </CompactTable>
-                        </Panel>
-                    </ModuleSection>
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatValue(
+                                                            u.produksi,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatValue(
+                                                            u.sfc,
+                                                            'decimal3',
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="text-right tabular-nums">
+                                                        {formatValue(
+                                                            u.tara_kalor,
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {u.eaf === null ? (
+                                                            <span className="text-muted-foreground">
+                                                                —
+                                                            </span>
+                                                        ) : (
+                                                            <div className="flex items-center gap-2">
+                                                                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                                                                    <div
+                                                                        className={cn(
+                                                                            'h-full rounded-full',
+                                                                            u.eaf >=
+                                                                                90
+                                                                                ? 'bg-emerald-500'
+                                                                                : 'bg-amber-500',
+                                                                        )}
+                                                                        style={{
+                                                                            width: `${u.eaf}%`,
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <span className="tabular-nums">
+                                                                    {formatValue(
+                                                                        u.eaf,
+                                                                        'decimal',
+                                                                    )}
+                                                                    %
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <StatusBadge
+                                                            tone={u.status_tone}
+                                                        >
+                                                            {u.status}
+                                                        </StatusBadge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </CompactTable>
+                                    </Panel>
+                                </ModuleSection>
+                            )
+                        }
+                    </Deferred>
                 )}
 
-                {har && (
-                    <ModuleSection
-                        moduleKey="har"
-                        kpis={har.kpis}
-                        isDummy={isDummy}
+                {scope.har && (
+                    <Deferred
+                        data="har"
+                        fallback={<ModuleSkeleton moduleKey="har" />}
                     >
-                        <Panel
-                            title="Tren Work Order & Service Request"
-                            subtitle="6 bulan terakhir"
-                            className="lg:col-span-7"
-                        >
-                            <BarsChart
-                                data={har.trend}
-                                colors={['text-chart-1', 'text-amber-500']}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Komposisi WO — Jenis"
-                            subtitle="Berdasarkan jenis pemeliharaan"
-                            className="lg:col-span-5"
-                        >
-                            <Donut
-                                data={har.by_type}
-                                centerLabel="WO"
-                                colors={[
-                                    'text-chart-1',
-                                    'text-rose-500',
-                                    'text-chart-2',
-                                    'text-amber-500',
-                                ]}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Biaya Pemeliharaan"
-                            subtitle="Jasa vs material, 6 bulan terakhir"
-                            className="lg:col-span-7"
-                        >
-                            <BarsChart
-                                data={har.cost}
-                                mode="stacked"
-                                format="rupiah"
-                                colors={['text-chart-5', 'text-chart-3']}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Komposisi WO — Status"
-                            subtitle="Progres penyelesaian"
-                            className="lg:col-span-5"
-                        >
-                            <Donut
-                                data={har.by_status}
-                                centerLabel="WO"
-                                colors={[
-                                    'text-emerald-500',
-                                    'text-chart-1',
-                                    'text-amber-500',
-                                    'text-slate-400',
-                                ]}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Backlog Work Order Prioritas"
-                            subtitle="WO belum selesai, diurutkan prioritas"
-                            className="lg:col-span-12"
-                        >
-                            <CompactTable
-                                head={[
-                                    { label: 'No. WO' },
-                                    { label: 'Unit' },
-                                    { label: 'Aset' },
-                                    { label: 'Uraian Pekerjaan' },
-                                    { label: 'Prioritas' },
-                                    { label: 'Status' },
-                                    { label: 'Umur', align: 'right' },
-                                ]}
-                            >
-                                {har.backlog.map((w) => (
-                                    <TableRow key={w.code}>
-                                        <TableCell className="font-mono text-[13px] font-medium">
-                                            {w.code}
-                                        </TableCell>
-                                        <TableCell>{w.unit}</TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {w.asset}
-                                        </TableCell>
-                                        <TableCell className="max-w-72 truncate">
-                                            {w.task}
-                                        </TableCell>
-                                        <TableCell>
-                                            <StatusBadge tone={w.priority_tone}>
-                                                {w.priority}
-                                            </StatusBadge>
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {w.status}
-                                        </TableCell>
-                                        <TableCell
-                                            className={cn(
-                                                'text-right tabular-nums',
-                                                w.age > 7 &&
-                                                    'font-semibold text-rose-600',
-                                            )}
+                        {() =>
+                            har && (
+                                <ModuleSection moduleKey="har" kpis={har.kpis}>
+                                    <Panel
+                                        title="Tren Work Order & Service Request"
+                                        subtitle="6 bulan terakhir"
+                                        className="lg:col-span-7"
+                                    >
+                                        <BarsChart
+                                            data={har.trend}
+                                            colors={[
+                                                'text-chart-1',
+                                                'text-amber-500',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Komposisi WO — Jenis"
+                                        subtitle="Berdasarkan jenis pemeliharaan"
+                                        className="lg:col-span-5"
+                                    >
+                                        <Donut
+                                            data={har.by_type}
+                                            centerLabel="WO"
+                                            colors={[
+                                                'text-chart-1',
+                                                'text-rose-500',
+                                                'text-chart-2',
+                                                'text-amber-500',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Biaya Pemeliharaan"
+                                        subtitle="Jasa vs material, 6 bulan terakhir"
+                                        className="lg:col-span-7"
+                                    >
+                                        <BarsChart
+                                            data={har.cost}
+                                            mode="stacked"
+                                            format="rupiah"
+                                            colors={[
+                                                'text-chart-5',
+                                                'text-chart-3',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Komposisi WO — Status"
+                                        subtitle="Progres penyelesaian"
+                                        className="lg:col-span-5"
+                                    >
+                                        <Donut
+                                            data={har.by_status}
+                                            centerLabel="WO"
+                                            colors={[
+                                                'text-emerald-500',
+                                                'text-chart-1',
+                                                'text-amber-500',
+                                                'text-slate-400',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Backlog Work Order Prioritas"
+                                        subtitle="WO belum selesai, terlama di atas"
+                                        className="lg:col-span-12"
+                                    >
+                                        <CompactTable
+                                            empty={har.backlog.length === 0}
+                                            head={[
+                                                { label: 'No. WO' },
+                                                { label: 'Unit' },
+                                                { label: 'Aset' },
+                                                { label: 'Uraian Pekerjaan' },
+                                                { label: 'Prioritas' },
+                                                { label: 'Status' },
+                                                {
+                                                    label: 'Umur',
+                                                    align: 'right',
+                                                },
+                                            ]}
                                         >
-                                            {w.age} hari
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </CompactTable>
-                        </Panel>
-                    </ModuleSection>
+                                            {har.backlog.map((w) => (
+                                                <TableRow key={w.code}>
+                                                    <TableCell className="font-mono text-[13px] font-medium">
+                                                        {w.code}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {w.unit}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground">
+                                                        {w.asset}
+                                                    </TableCell>
+                                                    <TableCell className="max-w-72 truncate">
+                                                        {w.task}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <StatusBadge
+                                                            tone={
+                                                                w.priority_tone
+                                                            }
+                                                        >
+                                                            {w.priority}
+                                                        </StatusBadge>
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground">
+                                                        {w.status}
+                                                    </TableCell>
+                                                    <TableCell
+                                                        className={cn(
+                                                            'text-right tabular-nums',
+                                                            w.age > 7 &&
+                                                                'font-semibold text-rose-600',
+                                                        )}
+                                                    >
+                                                        {w.age} hari
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </CompactTable>
+                                    </Panel>
+                                </ModuleSection>
+                            )
+                        }
+                    </Deferred>
                 )}
 
-                {k3 && (
-                    <ModuleSection
-                        moduleKey="k3"
-                        kpis={k3.kpis}
-                        isDummy={isDummy}
+                {scope.k3 && (
+                    <Deferred
+                        data="k3"
+                        fallback={<ModuleSkeleton moduleKey="k3" />}
                     >
-                        <Panel
-                            title="Kurva S — Rencana vs Realisasi Kegiatan K3"
-                            subtitle={`Kumulatif ${k3.s_curve.month_label}`}
-                            className="lg:col-span-8"
-                        >
-                            <SCurve points={k3.s_curve.points} />
-                        </Panel>
-                        <Panel
-                            title="Status Sertifikat Alat"
-                            subtitle="Masa berlaku uji ulang"
-                            className="lg:col-span-4"
-                        >
-                            <Donut
-                                data={k3.cert_status}
-                                centerLabel="Sertifikat"
-                                colors={STATUS_COLORS}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Kepatuhan Inspeksi per Unit"
-                            subtitle="Persentase realisasi per minggu"
-                            className="lg:col-span-4"
-                        >
-                            <Heatmap
-                                columns={k3.compliance.columns}
-                                rows={k3.compliance.rows}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Patroli per Lokasi"
-                            subtitle="Kumulatif scan bulan ini"
-                            className="lg:col-span-4"
-                        >
-                            <BarList
-                                data={k3.patrol_top}
-                                colorClass="text-emerald-500"
-                            />
-                        </Panel>
-                        <Panel
-                            title="Status APAR/APAB"
-                            subtitle="Masa berlaku tabung"
-                            className="lg:col-span-4"
-                        >
-                            <Donut
-                                data={k3.apar_status}
-                                centerLabel="Tabung"
-                                colors={STATUS_COLORS}
-                            />
-                        </Panel>
-                    </ModuleSection>
+                        {() =>
+                            k3 && (
+                                <ModuleSection moduleKey="k3" kpis={k3.kpis}>
+                                    <Panel
+                                        title="Kurva S — Rencana vs Realisasi Kegiatan K3"
+                                        subtitle={`Kumulatif ${k3.s_curve.month_label}`}
+                                        className="lg:col-span-8"
+                                    >
+                                        <SCurve points={k3.s_curve.points} />
+                                    </Panel>
+                                    <Panel
+                                        title="Status Sertifikat Alat"
+                                        subtitle="Masa berlaku uji ulang"
+                                        className="lg:col-span-4"
+                                    >
+                                        <Donut
+                                            data={k3.cert_status}
+                                            centerLabel="Sertifikat"
+                                            colors={STATUS_COLORS}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Kepatuhan Kegiatan K3 per Unit"
+                                        subtitle="Realisasi ÷ rencana Time Frame K3 per minggu (%)"
+                                        className="lg:col-span-4"
+                                    >
+                                        {k3.compliance.rows.length === 0 ? (
+                                            <NoData />
+                                        ) : (
+                                            <Heatmap
+                                                columns={k3.compliance.columns}
+                                                rows={k3.compliance.rows}
+                                            />
+                                        )}
+                                    </Panel>
+                                    <Panel
+                                        title="Patroli per Lokasi"
+                                        subtitle="Kumulatif scan bulan ini"
+                                        className="lg:col-span-4"
+                                    >
+                                        {k3.patrol_top.length === 0 ? (
+                                            <NoData />
+                                        ) : (
+                                            <BarList
+                                                data={k3.patrol_top}
+                                                colorClass="text-emerald-500"
+                                            />
+                                        )}
+                                    </Panel>
+                                    <Panel
+                                        title="Status APAR/APAB"
+                                        subtitle="Masa berlaku tabung"
+                                        className="lg:col-span-4"
+                                    >
+                                        <Donut
+                                            data={k3.apar_status}
+                                            centerLabel="Tabung"
+                                            colors={STATUS_COLORS}
+                                        />
+                                    </Panel>
+                                </ModuleSection>
+                            )
+                        }
+                    </Deferred>
                 )}
 
-                {logistik && (
-                    <ModuleSection
-                        moduleKey="logistik"
-                        kpis={logistik.kpis}
-                        isDummy={isDummy}
+                {scope.logistik && (
+                    <Deferred
+                        data="logistik"
+                        fallback={<ModuleSkeleton moduleKey="logistik" />}
                     >
-                        <Panel
-                            title="Penerimaan vs Pemakaian BBM"
-                            subtitle="6 bulan terakhir (kL)"
-                            className="lg:col-span-7"
-                        >
-                            <BarsChart
-                                data={logistik.fuel_flow}
-                                colors={['text-chart-2', 'text-chart-4']}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Level Tangki Timbun BBM"
-                            subtitle="Persentase isi terhadap kapasitas"
-                            className="lg:col-span-5"
-                        >
-                            <LevelBars
-                                data={logistik.tanks}
-                                suffix={(d) =>
-                                    `${(d.capacity ?? 0).toLocaleString('id-ID')} kL`
-                                }
-                            />
-                        </Panel>
-                        <Panel
-                            title="Komposisi Item Persediaan"
-                            subtitle="Berdasarkan kategori"
-                            className="lg:col-span-4"
-                        >
-                            <Donut
-                                data={logistik.category}
-                                centerLabel="Item"
-                                colors={[
-                                    'text-chart-2',
-                                    'text-chart-1',
-                                    'text-chart-4',
-                                    'text-emerald-500',
-                                    'text-slate-400',
-                                ]}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Material Stok Kritis"
-                            subtitle="Di bawah stok minimum"
-                            className="lg:col-span-8"
-                        >
-                            <CompactTable
-                                head={[
-                                    { label: 'Kode' },
-                                    { label: 'Material' },
-                                    { label: 'Unit' },
-                                    { label: 'Stok / Min' },
-                                    { label: 'Kekurangan', align: 'right' },
-                                ]}
-                            >
-                                {logistik.critical.map((m) => (
-                                    <TableRow key={m.code}>
-                                        <TableCell className="font-mono text-[13px]">
-                                            {m.code}
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {m.name}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {m.unit}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
-                                                    <div
-                                                        className="h-full rounded-full bg-rose-500"
-                                                        style={{
-                                                            width: `${Math.min(100, (m.stock / m.min) * 100)}%`,
-                                                        }}
-                                                    />
-                                                </div>
-                                                <span className="tabular-nums">
-                                                    {m.stock} / {m.min} {m.uom}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right font-semibold text-rose-600 tabular-nums">
-                                            {m.min - m.stock} {m.uom}
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </CompactTable>
-                        </Panel>
-                    </ModuleSection>
-                )}
-
-                {pdm && (
-                    <ModuleSection
-                        moduleKey="pdm"
-                        kpis={pdm.kpis}
-                        isDummy={isDummy}
-                    >
-                        <Panel
-                            title="Tren Vibrasi Mesin"
-                            subtitle="12 minggu terakhir (mm/s, ISO 10816)"
-                            className="lg:col-span-8"
-                        >
-                            <LinesChart
-                                data={pdm.vibration}
-                                threshold={pdm.vibration.threshold}
-                                thresholdLabel="Batas alarm"
-                                colors={[
-                                    'text-chart-1',
-                                    'text-emerald-500',
-                                    'text-rose-500',
-                                ]}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Kondisi Aset"
-                            subtitle="Hasil pengukuran terakhir"
-                            className="lg:col-span-4"
-                        >
-                            <Donut
-                                data={pdm.condition}
-                                centerLabel="Aset"
-                                colors={STATUS_COLORS}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Rencana vs Realisasi Pengukuran"
-                            subtitle="6 bulan terakhir"
-                            className="lg:col-span-5"
-                        >
-                            <BarsChart
-                                data={pdm.realisasi}
-                                colors={['text-slate-400', 'text-rose-500']}
-                            />
-                        </Panel>
-                        <Panel
-                            title="Kesehatan Aset"
-                            subtitle="Parameter kondisi per aset"
-                            className="lg:col-span-7"
-                        >
-                            <CompactTable
-                                head={[
-                                    { label: 'Aset' },
-                                    { label: 'Vibrasi (mm/s)', align: 'right' },
-                                    {
-                                        label: 'Suhu Bearing (°C)',
-                                        align: 'right',
-                                    },
-                                    { label: 'Kualitas Oli' },
-                                    { label: 'Status' },
-                                ]}
-                            >
-                                {pdm.assets.map((a) => (
-                                    <TableRow key={a.asset}>
-                                        <TableCell className="font-medium">
-                                            {a.asset}
-                                        </TableCell>
-                                        <TableCell
-                                            className={cn(
-                                                'text-right tabular-nums',
-                                                a.vibration > 7.1 &&
-                                                    'font-semibold text-rose-600',
-                                            )}
+                        {() =>
+                            logistik && (
+                                <ModuleSection
+                                    moduleKey="logistik"
+                                    kpis={logistik.kpis}
+                                >
+                                    <Panel
+                                        title="Penerimaan vs Pemakaian BBM"
+                                        subtitle="6 bulan terakhir (kL)"
+                                        className="lg:col-span-7"
+                                    >
+                                        <BarsChart
+                                            data={logistik.fuel_flow}
+                                            colors={[
+                                                'text-chart-2',
+                                                'text-chart-4',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Level Tangki Timbun BBM"
+                                        subtitle="Persentase isi terhadap kapasitas"
+                                        className="lg:col-span-5"
+                                    >
+                                        {logistik.tanks.length === 0 ? (
+                                            <NoData />
+                                        ) : (
+                                            <LevelBars
+                                                data={logistik.tanks}
+                                                suffix={(d) =>
+                                                    `${(d.capacity ?? 0).toLocaleString('id-ID')} kL`
+                                                }
+                                            />
+                                        )}
+                                    </Panel>
+                                    <Panel
+                                        title="Status Stok Tools & Material"
+                                        subtitle="Laporan Kondisi Stok terakhir tiap unit"
+                                        className="lg:col-span-4"
+                                    >
+                                        <Donut
+                                            data={logistik.category}
+                                            centerLabel="Item"
+                                            colors={[
+                                                'text-chart-2',
+                                                'text-chart-1',
+                                                'text-chart-4',
+                                                'text-emerald-500',
+                                                'text-slate-400',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Material Stok Kritis"
+                                        subtitle="Stok akhir ≤ ROP (Kondisi Stok Tools & Material)"
+                                        className="lg:col-span-8"
+                                    >
+                                        <CompactTable
+                                            empty={
+                                                logistik.critical.length === 0
+                                            }
+                                            head={[
+                                                { label: 'Kode' },
+                                                { label: 'Material' },
+                                                { label: 'Unit' },
+                                                { label: 'Stok / Min' },
+                                                {
+                                                    label: 'Kekurangan',
+                                                    align: 'right',
+                                                },
+                                            ]}
                                         >
-                                            {formatValue(
-                                                a.vibration,
-                                                'decimal',
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatValue(
-                                                a.temperature,
-                                                'decimal',
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                            {a.oil}
-                                        </TableCell>
-                                        <TableCell>
-                                            <StatusBadge tone={a.status_tone}>
-                                                {a.status}
-                                            </StatusBadge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </CompactTable>
-                        </Panel>
-                    </ModuleSection>
+                                            {logistik.critical.map((m) => (
+                                                <TableRow key={m.code}>
+                                                    <TableCell className="font-mono text-[13px]">
+                                                        {m.code}
+                                                    </TableCell>
+                                                    <TableCell className="font-medium">
+                                                        {m.name}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground">
+                                                        {m.unit}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+                                                                <div
+                                                                    className="h-full rounded-full bg-rose-500"
+                                                                    style={{
+                                                                        width: `${Math.min(100, (m.stock / m.min) * 100)}%`,
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <span className="tabular-nums">
+                                                                {m.stock} /{' '}
+                                                                {m.min} {m.uom}
+                                                            </span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-semibold text-rose-600 tabular-nums">
+                                                        {m.min - m.stock}{' '}
+                                                        {m.uom}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </CompactTable>
+                                    </Panel>
+                                </ModuleSection>
+                            )
+                        }
+                    </Deferred>
+                )}
+
+                {scope.pdm && (
+                    <Deferred
+                        data="pdm"
+                        fallback={<ModuleSkeleton moduleKey="pdm" />}
+                    >
+                        {() =>
+                            pdm && (
+                                <ModuleSection moduleKey="pdm" kpis={pdm.kpis}>
+                                    <Panel
+                                        title="Tren Vibrasi Mesin"
+                                        subtitle="6 bulan terakhir · nilai tertinggi uji vibrasi (mm/s, ISO 10816)"
+                                        className="lg:col-span-8"
+                                    >
+                                        {pdm.vibration.series.length === 0 ? (
+                                            <NoData />
+                                        ) : (
+                                            <LinesChart
+                                                data={pdm.vibration}
+                                                threshold={
+                                                    pdm.vibration.threshold
+                                                }
+                                                thresholdLabel="Batas alarm"
+                                                colors={[
+                                                    'text-chart-1',
+                                                    'text-emerald-500',
+                                                    'text-rose-500',
+                                                ]}
+                                            />
+                                        )}
+                                    </Panel>
+                                    <Panel
+                                        title="Kondisi Aset"
+                                        subtitle="Hasil pengukuran terakhir"
+                                        className="lg:col-span-4"
+                                    >
+                                        <Donut
+                                            data={pdm.condition}
+                                            centerLabel="Aset"
+                                            colors={STATUS_COLORS}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Rencana vs Realisasi Pengukuran"
+                                        subtitle="6 bulan terakhir"
+                                        className="lg:col-span-5"
+                                    >
+                                        <BarsChart
+                                            data={pdm.realisasi}
+                                            colors={[
+                                                'text-slate-400',
+                                                'text-rose-500',
+                                            ]}
+                                        />
+                                    </Panel>
+                                    <Panel
+                                        title="Kesehatan Aset"
+                                        subtitle="Uji vibrasi & kualitas pelumas terakhir per mesin"
+                                        className="lg:col-span-7"
+                                    >
+                                        <CompactTable
+                                            empty={pdm.assets.length === 0}
+                                            head={[
+                                                { label: 'Aset' },
+                                                {
+                                                    label: 'Vibrasi (mm/s)',
+                                                    align: 'right',
+                                                },
+                                                { label: 'Kualitas Oli' },
+                                                { label: 'Status' },
+                                            ]}
+                                        >
+                                            {pdm.assets.map((a) => (
+                                                <TableRow key={a.asset}>
+                                                    <TableCell className="font-medium">
+                                                        {a.asset}
+                                                    </TableCell>
+                                                    <TableCell
+                                                        className={cn(
+                                                            'text-right tabular-nums',
+                                                            (a.vibration ?? 0) >
+                                                                7.1 &&
+                                                                'font-semibold text-rose-600',
+                                                        )}
+                                                    >
+                                                        {a.vibration === null
+                                                            ? '—'
+                                                            : formatValue(
+                                                                  a.vibration,
+                                                                  'decimal',
+                                                              )}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground">
+                                                        {a.oil}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <StatusBadge
+                                                            tone={a.status_tone}
+                                                        >
+                                                            {a.status}
+                                                        </StatusBadge>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </CompactTable>
+                                    </Panel>
+                                </ModuleSection>
+                            )
+                        }
+                    </Deferred>
                 )}
 
                 {(unitRows.length > 0 || recentActivity.length > 0) && (

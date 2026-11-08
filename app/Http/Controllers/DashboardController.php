@@ -9,7 +9,11 @@ use App\Models\LubricantType;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
-use App\Services\Dashboard\DashboardDummyData;
+use App\Services\Dashboard\HarDashboard;
+use App\Services\Dashboard\K3Dashboard;
+use App\Services\Dashboard\LogistikDashboard;
+use App\Services\Dashboard\OperasiDashboard;
+use App\Services\Dashboard\PdmDashboard;
 use App\Services\Monitoring\InputCatalog;
 use App\Services\Monitoring\InputCompleteness;
 use App\Services\Operasi\UnitFuelTypes;
@@ -26,11 +30,11 @@ use Inertia\Response;
  * (operasi, pemeliharaan, K3, logistik, PdM), each gated by permission so every
  * role gets its own dashboard (Super Admin, holding all permissions, sees all).
  *
- * Module figures currently come from {@see DashboardDummyData} (flagged to the
- * page via `isDummy`), the Operasi ones labelled with the real jenis BBM and
- * pelumas of the master; unit, user and activity figures and the input
- * completeness ({@see InputCompleteness}) are real and scoped to the units the
- * viewer can see.
+ * Every figure is real and scoped to the units the viewer can see: the module
+ * sections come from {@see OperasiDashboard}, {@see HarDashboard},
+ * {@see K3Dashboard}, {@see LogistikDashboard} and {@see PdmDashboard} (read
+ * from the inputs of each module, PRD.md §8.10), the rings from the input
+ * completeness ({@see InputCompleteness}).
  */
 class DashboardController extends Controller
 {
@@ -46,6 +50,11 @@ class DashboardController extends Controller
     public function __construct(
         private readonly InputCompleteness $completeness,
         private readonly UnitFuelTypes $fuelTypes,
+        private readonly OperasiDashboard $operasiDashboard,
+        private readonly HarDashboard $harDashboard,
+        private readonly K3Dashboard $k3Dashboard,
+        private readonly LogistikDashboard $logistikDashboard,
+        private readonly PdmDashboard $pdmDashboard,
     ) {}
 
     public function __invoke(Request $request): Response|RedirectResponse
@@ -75,7 +84,6 @@ class DashboardController extends Controller
             'units' => $user->can('viewAny', Unit::class),
         ];
 
-        $dummy = new DashboardDummyData($now, $units->pluck('name')->all());
         $modules = array_keys(array_filter(array_intersect_key($scope, self::MODULE_GROUPS)));
         // Real: how complete the inputs are this month (Monitoring → Kelengkapan Input).
         $completeness = $modules === [] ? null : $this->completeness->build(
@@ -87,7 +95,6 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard', [
             'scope' => $scope,
-            'isDummy' => true,
             'periodLabel' => Indonesian::monthName($now->month).' '.$now->year,
             'summary' => [
                 'units' => $units->count(),
@@ -98,14 +105,15 @@ class DashboardController extends Controller
             ],
             'moduleHealth' => $this->moduleHealth($modules, $completeness),
             'moduleActivity' => $this->groupCompleteness($completeness),
-            'operasi' => $scope['operasi'] ? [
-                ...$dummy->operasi($this->unitFuels($units), $this->unitLubricants($units)),
+            // Each module reads many sheets of every visible unit: loaded right after the page, one request per module.
+            'operasi' => $scope['operasi'] ? Inertia::defer(fn (): array => [
+                ...$this->operasiDashboard->build($units, $now, $this->unitFuels($units), $this->unitLubricants($units)),
                 'completeness' => $this->menuCompleteness($completeness, 'operasi_pengusahaan', $now),
-            ] : null,
-            'har' => $scope['har'] ? $dummy->har() : null,
-            'k3' => $scope['k3'] ? $dummy->k3() : null,
-            'logistik' => $scope['logistik'] ? $dummy->logistik() : null,
-            'pdm' => $scope['pdm'] ? $dummy->pdm() : null,
+            ], 'operasi') : null,
+            'har' => $scope['har'] ? Inertia::defer(fn (): array => $this->harDashboard->build($units, $now), 'har') : null,
+            'k3' => $scope['k3'] ? Inertia::defer(fn (): array => $this->k3Dashboard->build($units, $now), 'k3') : null,
+            'logistik' => $scope['logistik'] ? Inertia::defer(fn (): array => $this->logistikDashboard->build($units, $now), 'logistik') : null,
+            'pdm' => $scope['pdm'] ? Inertia::defer(fn (): array => $this->pdmDashboard->build($units, $now), 'pdm') : null,
             'statusBreakdown' => $scope['units']
                 ? collect(UnitStatus::cases())->map(fn (UnitStatus $s): array => [
                     'status' => $s->value, 'label' => $s->label(), 'tone' => $s->tone(), 'total' => $units->where('status', $s)->count(),
