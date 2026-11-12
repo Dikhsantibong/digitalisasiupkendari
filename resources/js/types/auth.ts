@@ -31,6 +31,10 @@ export type Auth = {
     usesPortal: boolean;
     /** View-only account: saving, changing and deleting are refused by the server. */
     readOnly: boolean;
+    /** Manager UL: a portal account that mengesahkan reports — simple review & approve home and menu. */
+    reviewer: boolean;
+    /** Persetujuan menu: how many things wait for the user's decision; null when the account approves nothing. */
+    approvals?: number | null;
     /** Pindah Akun: the Super Admin working as this user, with the minutes left. */
     impersonator?: { id: number; name: string; minutes_left: number } | null;
     /** A Super Admin who may switch to another account now. */

@@ -64,6 +64,40 @@ class ReportSignatories
     }
 
     /**
+     * The name printed for a signer of a saved form: the employee's current
+     * name when the form stores the employee id (so a renamed employee shows
+     * up everywhere), else the name typed on the form, else the current holder
+     * of the jabatan — never the jabatan itself or someone else's name.
+     *
+     * @param  array<string, mixed>  $input  the saved form (e.g. manager_ul_id, manager_ul_name)
+     * @param  string  $prefix  e.g. manager_ul, tl_har, staff_har
+     */
+    public function nameFor(array $input, string $prefix, ?Employee $employee): string
+    {
+        if (! empty($input["{$prefix}_id"])) {
+            return (string) ($employee?->name ?? '');
+        }
+
+        $typed = trim((string) ($input["{$prefix}_name"] ?? ''));
+
+        return $typed !== '' && ! self::isJabatanText($typed) ? $typed : (string) ($employee?->name ?? '');
+    }
+
+    /**
+     * Whether a "name" is in fact a jabatan text (e.g. "Manager UL", "Staff
+     * Pemeliharaan") that earlier versions printed in place of a name.
+     */
+    public static function isJabatanText(string $name): bool
+    {
+        $jabatan = [
+            ...array_map(fn (EmployeePosition $position): string => strtolower($position->value), EmployeePosition::cases()),
+            'staf pemeliharaan', 'staff pemeliharaan', 'staf operasi', 'staf k3',
+        ];
+
+        return in_array(strtolower(trim($name)), $jabatan, true);
+    }
+
+    /**
      * Forget what was looked up (after the delegations or employees changed).
      */
     public function flush(): void

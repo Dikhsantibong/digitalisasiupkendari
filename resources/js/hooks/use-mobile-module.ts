@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { Bell } from 'lucide-react';
+import { BadgeCheck, Bell } from 'lucide-react';
 import { createContext, useContext } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MOBILE_MODULES } from '@/layouts/mobile/modules';
@@ -17,6 +17,18 @@ const SHELL_PAGES: MobileMenu[] = [
         tone: 'bg-primary/10 text-primary',
         href: '/notifikasi',
         component: 'notifications/index',
+        permission: [],
+    },
+    {
+        // Team Leader / Koordinator / Project Leader: what waits for their decision (card on the shell home).
+        key: 'persetujuan',
+        group: 'umum',
+        title: 'Persetujuan',
+        description: 'Laporan & pengajuan menunggu keputusan Anda',
+        icon: BadgeCheck,
+        tone: 'bg-primary/10 text-primary',
+        href: '/persetujuan',
+        component: 'laporan/persetujuan',
         permission: [],
     },
 ];

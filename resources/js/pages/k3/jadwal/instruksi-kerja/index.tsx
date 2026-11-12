@@ -112,6 +112,7 @@ export default function K3InstruksiKerjaPage({
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setRows(hydrate(initialRows));
@@ -137,16 +138,24 @@ export default function K3InstruksiKerjaPage({
     };
 
     const toggleCell = (key: number, category: Category, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => {
-                if (r._key !== key) return r;
+                if (r._key !== key) {
+return r;
+}
+
                 const set = new Set(r[category] || []);
+
                 if (set.has(day)) {
                     set.delete(day);
                 } else {
                     set.add(day);
                 }
+
                 return { ...r, [category]: Array.from(set).sort((a, b) => a - b) };
             }),
         );
@@ -154,7 +163,10 @@ export default function K3InstruksiKerjaPage({
     };
 
     const updateField = (key: number, field: TextField, value: string) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => (r._key === key ? { ...r, [field]: value } : r)),
         );
@@ -162,7 +174,10 @@ export default function K3InstruksiKerjaPage({
     };
 
     const handleMarkPlanWorkingDays = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => ({ ...r, rencana: [...workingDaysList] })),
         );
@@ -170,7 +185,10 @@ export default function K3InstruksiKerjaPage({
     };
 
     const handleAdd = () => {
-        if (!form.kegiatan.trim()) return;
+        if (!form.kegiatan.trim()) {
+return;
+}
+
         setRows((prev) => [
             ...prev,
             {
@@ -193,7 +211,10 @@ export default function K3InstruksiKerjaPage({
     };
 
     const handleRemove = (key: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.filter((r) => r._key !== key));
         setDirty(true);
     };
@@ -204,7 +225,10 @@ export default function K3InstruksiKerjaPage({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             instruksiKerja.store().url,
@@ -255,7 +279,9 @@ export default function K3InstruksiKerjaPage({
                     />
                 );
             }
+
             const isOn = row[category].includes(d.day);
+
             return (
                 <td
                     key={`${category}-${d.day}`}
@@ -375,7 +401,9 @@ export default function K3InstruksiKerjaPage({
                     <div className="border-b border-border p-4">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold tracking-wide text-foreground uppercase">JASA PENDUKUNG TEKNIS UP KENDARI - {unit.name.toUpperCase()}</div>
@@ -383,7 +411,9 @@ export default function K3InstruksiKerjaPage({
                                 <div className="text-[11px] font-bold text-foreground uppercase">JADWAL INSTRUKSI KERJA K3 DAN LINGKUNGAN — {monthName.toUpperCase()} {filters.year}</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                         </div>
                     </div>

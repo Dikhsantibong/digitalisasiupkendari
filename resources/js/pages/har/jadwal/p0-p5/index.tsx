@@ -16,17 +16,6 @@ import { Fragment, useMemo, useState } from 'react';
 import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
 import { TimelineField } from '@/components/mobile/timeline-form';
 import {
-    buildDocumentHeader,
-    createSheet,
-    downloadWorkbook,
-    mergeCells,
-    paintSheet,
-    setColWidths,
-    SPECS,
-    XLSX_COLORS,
-} from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
-import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -38,6 +27,17 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
+    buildDocumentHeader,
+    createSheet,
+    downloadWorkbook,
+    mergeCells,
+    paintSheet,
+    setColWidths,
+    SPECS,
+    XLSX_COLORS,
+} from '@/lib/jadwal-excel';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/har/jadwal';
 import p0P5 from '@/routes/har/jadwal/p0-p5';
@@ -185,6 +185,7 @@ export default function HarJadwalP0P5Page({
         if (unit.service_unit_name) {
             return unit.service_unit_name.toUpperCase();
         }
+
         return unit.name.toUpperCase();
     }, [unit]);
 
@@ -205,7 +206,10 @@ export default function HarJadwalP0P5Page({
     ) => {
         setRows((prev) =>
             prev.map((r) => {
-                if (r.machine_id !== machineId) return r;
+                if (r.machine_id !== machineId) {
+return r;
+}
+
                 const nextCat = { ...r[category] };
                 const trimmed = value.trim().toUpperCase();
                 const dayKey = String(day);
@@ -263,7 +267,10 @@ export default function HarJadwalP0P5Page({
     ) => {
         setRows((prev) =>
             prev.map((r) => {
-                if (r.machine_id !== machineId) return r;
+                if (r.machine_id !== machineId) {
+return r;
+}
+
                 const dayKey = String(day);
                 const nextWarna = {
                     rencana: { ...(r.warna?.rencana ?? {}) },
@@ -292,7 +299,10 @@ export default function HarJadwalP0P5Page({
     ) => {
         setRows((prev) =>
             prev.map((r) => {
-                if (r.machine_id !== machineId) return r;
+                if (r.machine_id !== machineId) {
+return r;
+}
+
                 return { ...r, [field]: value };
             }),
         );
@@ -300,7 +310,10 @@ export default function HarJadwalP0P5Page({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             p0P5.store().url,
@@ -435,24 +448,31 @@ export default function HarJadwalP0P5Page({
             if (color === 'yellow') {
                 return yellowCell;
             }
+
             if (color === 'green') {
                 return greenCell;
             }
+
             if (value === 'P2') {
                 return yellowCell;
             }
+
             if (value === 'P3') {
                 return greenCell;
             }
+
             if (category === 'realisasi' && value.trim() !== '') {
                 return yellowCell;
             }
+
             if (value.trim() !== '') {
                 return { ...SPECS.cell, bold: true };
             }
+
             if (isRed) {
                 return redSoftCell;
             }
+
             return SPECS.cell;
         };
 
@@ -460,6 +480,7 @@ export default function HarJadwalP0P5Page({
             if (r < 4) {
                 return null; // document header is drawn separately
             }
+
             if (r === 4 || r === 5) {
                 // Legend lines (KET siklus + keterangan warna)
                 return c === 0
@@ -476,6 +497,7 @@ export default function HarJadwalP0P5Page({
             if (r === headerRowIdx) {
                 if (c >= dayStart && c <= dayEnd) {
                     const day = days[c - dayStart];
+
                     return day?.is_red
                         ? {
                               fill: XLSX_COLORS.red600,
@@ -487,6 +509,7 @@ export default function HarJadwalP0P5Page({
                           }
                         : SPECS.headerGrey;
                 }
+
                 return SPECS.headerGrey;
             }
 
@@ -497,12 +520,15 @@ export default function HarJadwalP0P5Page({
                 if (c === 0) {
                     return SPECS.cell;
                 }
+
                 if (c === 1) {
                     return sub === 2 ? SPECS.label : SPECS.cellLeft;
                 }
+
                 if (c === colLabel) {
                     return SPECS.labelCenter;
                 }
+
                 if (c >= dayStart && c <= dayEnd) {
                     const day = days[c - dayStart];
                     const key = String(day.day);
@@ -519,6 +545,7 @@ export default function HarJadwalP0P5Page({
                             : sub === 1
                               ? machine?.warna?.realisasi?.[key]
                               : undefined;
+
                     return fillForDay(
                         category,
                         value,
@@ -526,9 +553,11 @@ export default function HarJadwalP0P5Page({
                         Boolean(day?.is_red),
                     );
                 }
+
                 if (c === colOps) {
                     return SPECS.cell;
                 }
+
                 return SPECS.cellLeft;
             }
 
@@ -537,6 +566,7 @@ export default function HarJadwalP0P5Page({
 
         mergeCells(ws, 4, 0, 4, totalCols - 1); // KET siklus
         mergeCells(ws, 5, 0, 5, totalCols - 1); // KETERANGAN WARNA
+
         for (let m = 0; m < rows.length; m++) {
             const top = dataStart + m * 3;
             mergeCells(ws, top, 0, top + 2, 0); // NO column
@@ -574,6 +604,7 @@ export default function HarJadwalP0P5Page({
         if (customColor === 'yellow') {
             return 'bg-[#ffff00] text-black font-extrabold print-yellow-cell';
         }
+
         if (customColor === 'green') {
             return 'bg-[#92d050] text-black font-extrabold print-green-cell';
         }
@@ -582,6 +613,7 @@ export default function HarJadwalP0P5Page({
         if (val === 'P2') {
             return 'bg-[#ffff00] text-black font-extrabold print-yellow-cell';
         }
+
         if (val === 'P3') {
             return 'bg-[#92d050] text-black font-extrabold print-green-cell';
         }
@@ -1487,6 +1519,7 @@ export default function HarJadwalP0P5Page({
                                                             row.durasi[
                                                                 String(d.day)
                                                             ] ?? '';
+
                                                         return (
                                                             <td
                                                                 key={`durasi-${row.machine_id}-${d.day}`}

@@ -1,13 +1,13 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Download, FileSpreadsheet, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { MobileTimelineForm, TimelineField, YEAR_MONTH_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
-import { buildDocumentHeader, createSheet, downloadWorkbook, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MobileTimelineForm, TimelineField, YEAR_MONTH_DAYS } from '@/components/mobile/timeline-form';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import { buildDocumentHeader, createSheet, downloadWorkbook, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import dataTeknis from '@/routes/operasi/jadwal/pembuatan-data-teknis';
@@ -39,16 +39,53 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
 
     const sig = `${filters.unit_id}-${filters.year}`;
     const [last, setLast] = useState(sig);
-    if (last !== sig) { setLast(sig); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); }
+
+    if (last !== sig) {
+ setLast(sig); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); 
+}
 
     const visit = (p: Partial<Props['filters']>) => router.get(dataTeknis.index().url, { ...filters, ...p }, { preserveState: true, preserveScroll: true, replace: true });
-    const toggle = (key: number, m: number) => { if (!can_write) return; setRows((p) => p.map((r) => { if (r._key !== key) return r; const mm = { ...r.months }; if (mm[String(m)]) delete mm[String(m)]; else mm[String(m)] = '1'; return { ...r, months: mm }; })); setDirty(true); };
-    const setField = (key: number, f: 'nama' | 'pic', v: string) => { setRows((p) => p.map((r) => (r._key === key ? { ...r, [f]: v } : r))); setDirty(true); };
-    const addRow = () => { setRows((p) => [...p, { _key: nextKey, id: null, nama: '', pic: '', months: {} }]); setNextKey((k) => k + 1); setDirty(true); };
-    const remove = (key: number) => { setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); };
-    const reset = () => { setRows(hydrate(initial)); setDirty(false); };
+    const toggle = (key: number, m: number) => {
+ if (!can_write) {
+return;
+}
+
+ setRows((p) => p.map((r) => {
+ if (r._key !== key) {
+return r;
+}
+
+ const mm = { ...r.months };
+
+ if (mm[String(m)]) {
+delete mm[String(m)];
+} else {
+mm[String(m)] = '1';
+}
+
+ return { ...r, months: mm }; 
+})); setDirty(true); 
+};
+    const setField = (key: number, f: 'nama' | 'pic', v: string) => {
+ setRows((p) => p.map((r) => (r._key === key ? { ...r, [f]: v } : r))); setDirty(true); 
+};
+    const addRow = () => {
+ setRows((p) => [...p, { _key: nextKey, id: null, nama: '', pic: '', months: {} }]); setNextKey((k) => k + 1); setDirty(true); 
+};
+    const remove = (key: number) => {
+ setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
+};
+    const reset = () => {
+ setRows(hydrate(initial)); setDirty(false); 
+};
     const jumlahOf = (r: Row) => Object.values(r.months).filter((v) => String(v).trim() !== '').length;
-    const save = () => { if (!can_write) return; setSaving(true); router.post(dataTeknis.store().url, { unit_id: filters.unit_id, year: filters.year, rows: rows.map((r) => ({ id: r.id, nama: r.nama, pic: r.pic, months: r.months })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); };
+    const save = () => {
+ if (!can_write) {
+return;
+}
+
+ setSaving(true); router.post(dataTeknis.store().url, { unit_id: filters.unit_id, year: filters.year, rows: rows.map((r) => ({ id: r.id, nama: r.nama, pic: r.pic, months: r.months })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
+};
 
     const handleExcel = async () => {
         const H: (string | number)[][] = [[], [], [], []];
@@ -58,10 +95,22 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
         const mStart = 3; const mEnd = 14; const totalCols = 16;
         const done: StyleSpec = { fill: XLSX_COLORS.slate, bold: true, align: 'center', valign: 'center', border: true };
         paintSheet(ws, H.length, totalCols, (r, c) => {
-            if (r < 4) return null;
-            if (r === 4) return SPECS.headerOrange;
-            if (c === 1 || c === 2) return SPECS.cellLeft;
-            if (c >= mStart && c <= mEnd) return H[r]?.[c] === 1 ? done : SPECS.cell;
+            if (r < 4) {
+return null;
+}
+
+            if (r === 4) {
+return SPECS.headerOrange;
+}
+
+            if (c === 1 || c === 2) {
+return SPECS.cellLeft;
+}
+
+            if (c >= mStart && c <= mEnd) {
+return H[r]?.[c] === 1 ? done : SPECS.cell;
+}
+
             return { ...SPECS.cell, bold: true };
         });
         const colWidths = [5, 42, 16, ...Array(12).fill(4), 8];
@@ -100,7 +149,9 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
                     <div className="border-b border-border p-3">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT</div>
@@ -108,7 +159,9 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
                                 <div className="text-[11px] font-bold text-foreground uppercase">JADWAL PEMBUATAN DATA TEKNIS PEMBANGKIT — TAHUN {filters.year}</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                         </div>
                     </div>
@@ -159,7 +212,11 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
                                     <td className="border border-black p-1 text-center">{i + 1}</td>
                                     <td className="border border-black p-1 text-left">{can_write ? <input value={r.nama} onChange={(e) => setField(r._key, 'nama', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" placeholder="Nama data teknis…" /> : <span className="text-xs">{r.nama}</span>}</td>
                                     <td className="border border-black p-1 text-center">{can_write ? <input value={r.pic} onChange={(e) => setField(r._key, 'pic', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" /> : <span className="text-xs">{r.pic}</span>}</td>
-                                    {MONTHS.map((_, mi) => { const m = mi + 1; const on = !!r.months[String(m)]; return <td key={m} onClick={() => toggle(r._key, m)} className={`border border-black text-center text-[11px] font-bold select-none ${on ? 'p-done bg-slate-300 dark:bg-slate-600' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>{on ? '1' : ''}</td>; })}
+                                    {MONTHS.map((_, mi) => {
+ const m = mi + 1; const on = !!r.months[String(m)];
+
+ return <td key={m} onClick={() => toggle(r._key, m)} className={`border border-black text-center text-[11px] font-bold select-none ${on ? 'p-done bg-slate-300 dark:bg-slate-600' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>{on ? '1' : ''}</td>; 
+})}
                                     <td className="border border-black p-1 text-center font-extrabold">{jumlahOf(r)}</td>
                                     {can_write && <td className="no-print border border-black p-0 text-center"><Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:text-destructive" onClick={() => remove(r._key)}><Trash2 className="size-3.5" /></Button></td>}
                                 </tr>

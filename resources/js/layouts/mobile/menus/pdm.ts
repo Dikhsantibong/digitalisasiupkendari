@@ -170,7 +170,7 @@ const INPUT: Entry[] = [
 ];
 
 /**
- * Phone menus of the PdM & Maturity Level module (TL PdM): Jadwal (opens
+ * Phone menus of the PdM & Maturity Level module (Koordinator PdM): Jadwal (opens
  * read-only, "Ubah Jadwal" to edit), Input and Laporan — the same pages as the
  * desktop hubs, each behind the module permission.
  */

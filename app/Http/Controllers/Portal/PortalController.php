@@ -19,6 +19,8 @@ use App\Services\Monitoring\InputCompleteness;
 use App\Services\Monitoring\ModuleAccess;
 use App\Services\Monitoring\ReportMonitoring;
 use App\Services\Operator\PresenceRecorder;
+use App\Services\Reports\ApprovalInbox;
+use App\Services\Reports\ModuleResume;
 use App\Support\Indonesian;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -46,9 +48,25 @@ class PortalController extends Controller
         private readonly ModuleAccess $access,
         private readonly InputCompleteness $completeness,
         private readonly ReportMonitoring $reports,
+        private readonly ApprovalInbox $inbox,
     ) {}
 
+    /**
+     * Beranda: the Manager UL (who mengesahkan) gets the simple review &
+     * approve home; the view-only UP accounts the monitoring overview.
+     */
     public function index(Request $request): Response
+    {
+        $user = $this->authorizePortal($request);
+
+        return $this->isReviewer($user) ? $this->reviewerHome($request, $user) : $this->overview($request);
+    }
+
+    /**
+     * Ringkasan Pemantauan: input & report status per bidang (the original
+     * Beranda; the Manager UL opens it from "Ringkasan Pemantauan").
+     */
+    public function overview(Request $request): Response
     {
         $user = $this->authorizePortal($request);
         [$units, $period] = $this->scope($request);
@@ -149,6 +167,54 @@ class PortalController extends Controller
                 }, array_filter($data['entries'], fn (array $e): bool => $e['group'] === $g))),
             ], array_keys($data['groups'])),
         ]);
+    }
+
+    /**
+     * The Manager UL home: what waits for the user's signature (with review,
+     * PDF and sahkan / tolak at hand), what they signed, and the status of
+     * every report of their units this period — nothing else.
+     */
+    private function reviewerHome(Request $request, User $user): Response
+    {
+        [$units, $period] = $this->scope($request);
+        $modules = $this->access->reportModules($user);
+        $laporan = $this->reports->build($units, $period['month'], $period['year'], modules: $modules);
+        $queue = $this->inbox->queue($user, $units);
+        $history = $this->inbox->history($user, $units);
+        $startOfMonth = Carbon::create($period['year'], $period['month'], 1)->startOfMonth();
+
+        return Inertia::render('portal/manager', [
+            'period' => $period + ['label' => Indonesian::monthName($period['month']).' '.$period['year']],
+            'scope_label' => $this->scopeLabel($user),
+            'unit_count' => $units->count(),
+            'employee' => $user->employee?->only(['name', 'position']),
+            'counts' => [
+                'waiting' => count($queue),
+                // Counted in the database (the history list shows only the latest ones).
+                'signed_this_month' => $user->employee === null ? 0 : ReportWorkflowStep::query()
+                    ->where('employee_id', $user->employee->id)
+                    ->whereBetween('signed_at', [$startOfMonth, $startOfMonth->copy()->endOfMonth()])
+                    ->count(),
+                'final' => $laporan['counts']['final'] ?? 0,
+                'in_progress' => ($laporan['counts']['diajukan'] ?? 0) + ($laporan['counts']['verifikasi'] ?? 0) + ($laporan['counts']['disetujui'] ?? 0),
+                'rejected' => $laporan['counts']['ditolak'] ?? 0,
+                'stuck' => count($laporan['stuck']),
+            ],
+            'queue' => $queue,
+            'history' => $history,
+            'status' => ['modules' => $laporan['modules'], 'matrix' => $laporan['matrix']],
+            'resume_modules' => collect(ModuleResume::MODULES)
+                ->filter(fn (array $definition, string $key): bool => ModuleResume::allows($user, $key))
+                ->map(fn (array $definition, string $key): array => ['key' => $key, 'label' => $definition[0]])
+                ->values()->all(),
+            'options' => $this->options($user, $units),
+        ]);
+    }
+
+    /** A portal account that mengesahkan (the Manager UL), as opposed to the view-only UP accounts. */
+    private function isReviewer(User $user): bool
+    {
+        return ! $user->isReadOnly() && $user->hasPermissionTo(PermissionName::ReportUnitApprove);
     }
 
     private function authorizePortal(Request $request): User

@@ -16,17 +16,6 @@ import {
 import { useMemo, useState } from 'react';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
-    buildDocumentHeader,
-    createSheet,
-    downloadWorkbook,
-    mergeCells,
-    paintSheet,
-    setColWidths,
-    SPECS,
-    XLSX_COLORS,
-} from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
-import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -43,6 +32,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
+    buildDocumentHeader,
+    createSheet,
+    downloadWorkbook,
+    mergeCells,
+    paintSheet,
+    setColWidths,
+    SPECS,
+    XLSX_COLORS,
+} from '@/lib/jadwal-excel';
 import jadwal from '@/routes/har/jadwal';
 import harian from '@/routes/har/jadwal/harian';
 import type { IdName } from '@/types';
@@ -194,18 +194,26 @@ export default function HarJadwalHarianPage({
 
     // Toggle single day on/off for a row
     const toggleDay = (rowIndex: number, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r, idx) => {
-                if (idx !== rowIndex) return r;
+                if (idx !== rowIndex) {
+return r;
+}
+
                 const set = new Set(r.jadwal || []);
+
                 if (set.has(day)) {
                     set.delete(day);
                 } else {
                     set.add(day);
                 }
+
                 const updatedJadwal = Array.from(set).sort((a, b) => a - b);
+
                 return {
                     ...r,
                     jadwal: updatedJadwal,
@@ -222,7 +230,10 @@ export default function HarJadwalHarianPage({
         field: keyof HarianRow,
         value: string | number,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r, idx) =>
                 idx === rowIndex ? { ...r, [field]: value } : r,
@@ -233,7 +244,9 @@ export default function HarJadwalHarianPage({
 
     // Quick Fill: Mark all working days for all activities
     const handleMarkAllWorkingDays = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r) => ({
@@ -247,7 +260,9 @@ export default function HarJadwalHarianPage({
 
     // Add activity
     const handleAddActivity = () => {
-        if (!newKegiatan.trim()) return;
+        if (!newKegiatan.trim()) {
+return;
+}
 
         setRows((prev) => [
             ...prev,
@@ -269,9 +284,13 @@ export default function HarJadwalHarianPage({
 
     // Remove row
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const filtered = prev.filter((_, idx) => idx !== rowIndex);
+
             return filtered.map((r, idx) => ({ ...r, no_urut: idx + 1 }));
         });
         setDirty(true);
@@ -285,7 +304,10 @@ export default function HarJadwalHarianPage({
 
     // Save
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -359,7 +381,10 @@ export default function HarJadwalHarianPage({
                 idx + 1,
                 r.kegiatan,
                 ...days.map((d) => {
-                    if (d.is_red) return 'LIBUR';
+                    if (d.is_red) {
+return 'LIBUR';
+}
+
                     return r.jadwal.includes(d.day) ? 1 : '';
                 }),
                 target,
@@ -405,10 +430,12 @@ export default function HarJadwalHarianPage({
             if (r === headerTop || r === headerBottom) {
                 if (r === headerBottom && c >= dayStart && c <= dayEnd) {
                     const day = days[c - dayStart];
+
                     return day?.is_red
                         ? { ...SPECS.headerGrey, color: XLSX_COLORS.red600 }
                         : SPECS.headerGrey;
                 }
+
                 return SPECS.headerGrey;
             }
 
@@ -417,22 +444,29 @@ export default function HarJadwalHarianPage({
                 if (c === 0) {
                     return SPECS.cell;
                 }
+
                 if (c === 1) {
                     return SPECS.cellLeft;
                 }
+
                 if (c >= dayStart && c <= dayEnd) {
                     const value = headerRows[r]?.[c];
+
                     if (value === 'LIBUR') {
                         return redCell;
                     }
+
                     if (value === 1) {
                         return doneCell;
                     }
+
                     return SPECS.cell;
                 }
+
                 if (c === colKeterangan) {
                     return SPECS.cellLeft;
                 }
+
                 return { ...SPECS.cell, bold: true };
             }
 
@@ -443,6 +477,7 @@ export default function HarJadwalHarianPage({
         mergeCells(ws, headerTop, 0, headerBottom, 0); // No
         mergeCells(ws, headerTop, 1, headerBottom, 1); // KEGIATAN
         mergeCells(ws, headerTop, dayStart, headerTop, dayEnd); // Month label
+
         for (let c = colTarget; c <= colKeterangan; c++) {
             mergeCells(ws, headerTop, c, headerBottom, c);
         }

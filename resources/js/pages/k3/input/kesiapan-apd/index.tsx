@@ -99,6 +99,7 @@ export default function K3KesiapanApdPage({
     // Sync when filters change
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSig, setLastSig] = useState(signature);
+
     if (lastSig !== signature) {
         setLastSig(signature);
         setRows(hydrate(initialRows));
@@ -111,6 +112,7 @@ export default function K3KesiapanApdPage({
     const orderedGroups = useMemo(() => {
         const rowGroups = rows.map((r) => r.kelompok);
         const all = [...groups, ...rowGroups.filter((g) => !groups.includes(g))];
+
         return all.filter((g, i, a) => a.indexOf(g) === i);
     }, [groups, rows]);
 
@@ -169,7 +171,10 @@ export default function K3KesiapanApdPage({
     };
 
     const save = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         const orderedRows = orderedGroups.flatMap((g) =>
@@ -229,12 +234,15 @@ export default function K3KesiapanApdPage({
     const getSelectClass = (val: string | null) => {
         const base =
             'h-7 w-full text-xs font-medium transition-colors disabled:opacity-60';
+
         if (val === 'Layak' || val === 'Aman' || val === 'Memenuhi' || val === 'Ergonomi' || val === 'Ada') {
             return `${base} border-emerald-300 bg-emerald-50/60 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300`;
         }
+
         if (val === 'Tidak Layak' || val === 'Tidak memenuhi' || val === 'Tidak ada' || val === 'Tdk Ergonomi') {
             return `${base} border-rose-300 bg-rose-50/60 text-rose-800 dark:border-rose-800 dark:bg-rose-950/30 dark:text-rose-300`;
         }
+
         return `${base} border-input bg-background text-muted-foreground`;
     };
 
@@ -506,6 +514,7 @@ export default function K3KesiapanApdPage({
                             <tbody>
                                 {orderedGroups.map((group) => {
                                     const groupItems = rows.filter((r) => r.kelompok === group);
+
                                     return (
                                         <Fragment key={group}>
                                             {/* Group Category Header Row */}
@@ -841,6 +850,7 @@ function ApdCellSelect({
 }) {
     const val = value ?? '-';
     const choices = options.includes(val) ? options : [val, ...options];
+
     return (
         <Select value={val} onValueChange={onChange}>
             <SelectTrigger size="sm" className={className}>

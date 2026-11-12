@@ -2,9 +2,11 @@
 
 namespace App\Services\Har;
 
+use App\Enums\EmployeePosition;
 use App\Models\Employee;
 use App\Models\Machine;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -44,16 +46,11 @@ class HarAxialConrodPdfBuilder
             : 'UL '.$serviceUnitName;
 
         // Signatories resolution
-        $managerUl = ! empty($input['manager_ul_id']) ? Employee::find($input['manager_ul_id']) : $unit->manager();
+        $signatories = app(ReportSignatories::class);
+        $managerUl = ! empty($input['manager_ul_id']) ? Employee::find($input['manager_ul_id']) : $signatories->holder($unit, EmployeePosition::ManagerUl);
         $tlHar = ! empty($input['tl_har_id'])
             ? Employee::find($input['tl_har_id'])
-            : $unit->employees()
-                ->where('is_active', true)
-                ->where(function ($q) {
-                    $q->where('position', 'like', '%team leader pemeliharaan%')
-                        ->orWhere('position', 'like', '%tl pemeliharaan%')
-                        ->orWhere('position', 'like', '%pemeliharaan%');
-                })->first();
+            : $signatories->holder($unit, EmployeePosition::TeamLeaderPemeliharaan);
 
         $staffHar = ! empty($input['staff_har_id'])
             ? Employee::find($input['staff_har_id'])
@@ -65,12 +62,16 @@ class HarAxialConrodPdfBuilder
                         ->orWhere('position', 'like', '%staff%')
                         ->orWhere('position', 'like', '%teknisi%')
                         ->orWhere('position', 'like', '%operator%');
-                })->first();
+                })
+                // The Staf Pemeliharaan first; a teknisi / operator only when the unit has none.
+                ->orderByRaw("position = 'Staf Pemeliharaan' desc")
+                ->orderBy('id')
+                ->first();
 
         // Resolve names
-        $managerName = $input['manager_ul_name'] ?? ($managerUl?->name ?? 'SURYADI PRATAMA');
-        $tlName = $input['tl_har_name'] ?? ($tlHar?->name ?? 'SURYADI PRATAMA');
-        $staffName = $input['staff_har_name'] ?? ($staffHar?->name ?? 'RAHMAT RAHIM FAISAL');
+        $managerName = $signatories->nameFor($input, 'manager_ul', $managerUl);
+        $tlName = $signatories->nameFor($input, 'tl_har', $tlHar);
+        $staffName = $signatories->nameFor($input, 'staff_har', $staffHar);
 
         // Resolve signatures with fallback to scanned official signatures
         $managerSignature = $this->resolveSignatureBase64($managerUl);

@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
 import { RotateCcw, Undo2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 type Point = { x: number; y: number };
@@ -37,7 +37,10 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: Point[][], scale: n
     ctx.lineJoin = 'round';
 
     for (const stroke of strokes) {
-        if (stroke.length === 0) continue;
+        if (stroke.length === 0) {
+continue;
+}
+
         if (stroke.length === 1) {
             ctx.beginPath();
             ctx.arc(stroke[0].x * scale, stroke[0].y * scale, 1.5 * scale, 0, Math.PI * 2);
@@ -64,11 +67,14 @@ function drawStrokes(ctx: CanvasRenderingContext2D, strokes: Point[][], scale: n
         ctx.lineTo(last.x * scale, last.y * scale);
         ctx.stroke();
     }
+
     ctx.restore();
 }
 
 function exportCroppedSignature(strokes: Point[][]): string | null {
-    if (strokes.length === 0) return null;
+    if (strokes.length === 0) {
+return null;
+}
 
     const strokeBuffer = 4;
     const padding = 16;
@@ -81,14 +87,28 @@ function exportCroppedSignature(strokes: Point[][]): string | null {
     for (const stroke of strokes) {
         for (const p of stroke) {
             totalPoints++;
-            if (p.x < minX) minX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y > maxY) maxY = p.y;
+
+            if (p.x < minX) {
+minX = p.x;
+}
+
+            if (p.y < minY) {
+minY = p.y;
+}
+
+            if (p.x > maxX) {
+maxX = p.x;
+}
+
+            if (p.y > maxY) {
+maxY = p.y;
+}
         }
     }
 
-    if (totalPoints === 0 || !Number.isFinite(minX)) return null;
+    if (totalPoints === 0 || !Number.isFinite(minX)) {
+return null;
+}
 
     minX = Math.max(0, minX - strokeBuffer);
     minY = Math.max(0, minY - strokeBuffer);
@@ -105,7 +125,10 @@ function exportCroppedSignature(strokes: Point[][]): string | null {
     outCanvas.height = Math.round((rawHeight + padding * 2) * exportScale);
 
     const outCtx = outCanvas.getContext('2d');
-    if (!outCtx) return null;
+
+    if (!outCtx) {
+return null;
+}
 
     outCtx.imageSmoothingEnabled = true;
     outCtx.imageSmoothingQuality = 'high';
@@ -127,15 +150,26 @@ export function SignaturePad({ onChange, className }: SignaturePadProps) {
 
     const getDpr = () => {
         const canvas = canvasRef.current;
-        if (!canvas || !canvas.clientWidth) return Math.max(window.devicePixelRatio || 1, 2.5);
+
+        if (!canvas || !canvas.clientWidth) {
+return Math.max(window.devicePixelRatio || 1, 2.5);
+}
+
         return canvas.width / canvas.clientWidth;
     };
 
     const redrawCanvas = () => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
+
+        if (!canvas) {
+return;
+}
+
         const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+
+        if (!ctx) {
+return;
+}
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         drawStrokes(ctx, strokesRef.current, getDpr());
@@ -144,7 +178,10 @@ export function SignaturePad({ onChange, className }: SignaturePadProps) {
     const setupCanvasResolution = () => {
         const canvas = canvasRef.current;
         const container = containerRef.current;
-        if (!canvas || !container) return;
+
+        if (!canvas || !container) {
+return;
+}
 
         const cssWidth = Math.round(container.clientWidth) || 500;
         const cssHeight = 180;
@@ -167,12 +204,16 @@ export function SignaturePad({ onChange, className }: SignaturePadProps) {
         setupCanvasResolution();
 
         const container = containerRef.current;
-        if (!container) return;
+
+        if (!container) {
+return;
+}
 
         let prevWidth = Math.round(container.clientWidth);
         const observer = new ResizeObserver((entries) => {
             for (const entry of entries) {
                 const width = Math.round(entry.contentRect.width);
+
                 if (width > 0 && Math.abs(width - prevWidth) >= 4) {
                     prevWidth = width;
                     setupCanvasResolution();
@@ -187,13 +228,17 @@ export function SignaturePad({ onChange, className }: SignaturePadProps) {
     const handleStart = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
         e.preventDefault();
         const canvas = canvasRef.current;
-        if (!canvas) return;
+
+        if (!canvas) {
+return;
+}
 
         const pt = getCanvasCoords(canvas, e);
         isDrawingRef.current = true;
         currentStrokeRef.current = [pt];
 
         const ctx = canvas.getContext('2d');
+
         if (ctx) {
             const dpr = getDpr();
             ctx.save();
@@ -206,13 +251,23 @@ export function SignaturePad({ onChange, className }: SignaturePadProps) {
     };
 
     const handleMove = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-        if (!isDrawingRef.current) return;
+        if (!isDrawingRef.current) {
+return;
+}
+
         e.preventDefault();
 
         const canvas = canvasRef.current;
-        if (!canvas) return;
+
+        if (!canvas) {
+return;
+}
+
         const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+
+        if (!ctx) {
+return;
+}
 
         const pt = getCanvasCoords(canvas, e);
         const stroke = currentStrokeRef.current;
@@ -255,7 +310,10 @@ export function SignaturePad({ onChange, className }: SignaturePadProps) {
     };
 
     const handleEnd = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-        if (!isDrawingRef.current) return;
+        if (!isDrawingRef.current) {
+return;
+}
+
         e.preventDefault();
         isDrawingRef.current = false;
 
@@ -283,7 +341,10 @@ export function SignaturePad({ onChange, className }: SignaturePadProps) {
     };
 
     const handleUndo = () => {
-        if (strokesRef.current.length === 0) return;
+        if (strokesRef.current.length === 0) {
+return;
+}
+
         strokesRef.current.pop();
         setStrokeCount(strokesRef.current.length);
         redrawCanvas();

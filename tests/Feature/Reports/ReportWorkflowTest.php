@@ -21,6 +21,7 @@ use Database\Seeders\EmployeeSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -66,14 +67,14 @@ class ReportWorkflowTest extends TestCase
             [EmployeePosition::KoordinatorPemeliharaan, RoleName::KoordinatorPemeliharaan, 'Amir Koordinator Har'],
             [EmployeePosition::KoordinatorOperasi, RoleName::KoordinatorOperasi, 'Ahmad Koordinator Operasi'],
             [EmployeePosition::KoordinatorK3, RoleName::KoordinatorK3, 'Kiki Koordinator K3'],
-            [EmployeePosition::KoordinatorLogistik, RoleName::TeamLeaderLogistik, 'Lina Koordinator Logistik'],
-            [EmployeePosition::KoordinatorPdm, RoleName::TeamLeaderPdm, 'Dian Koordinator PDM'],
+            [EmployeePosition::KoordinatorLogistik, RoleName::KoordinatorLogistik, 'Lina Koordinator Logistik'],
+            [EmployeePosition::KoordinatorPdm, RoleName::KoordinatorPdm, 'Dian Koordinator PDM'],
             [EmployeePosition::ProjectLeader, RoleName::ProjectLeaderOperasi, 'Herwin Project Leader'],
             [EmployeePosition::OfficePemeliharaan, RoleName::KoordinatorPemeliharaan, 'Olla Office Har'],
             [EmployeePosition::OfficeOperasi, RoleName::KoordinatorOperasi, 'Oki Office Operasi'],
             [EmployeePosition::OfficeK3, RoleName::KoordinatorK3, 'Opi Office K3'],
-            [EmployeePosition::OfficeLogistik, RoleName::TeamLeaderLogistik, 'Ola Office Logistik'],
-            [EmployeePosition::PicPdm, RoleName::TeamLeaderPdm, 'Pia PIC PDM'],
+            [EmployeePosition::OfficeLogistik, RoleName::KoordinatorLogistik, 'Ola Office Logistik'],
+            [EmployeePosition::PicPdm, RoleName::KoordinatorPdm, 'Pia PIC PDM'],
         ] as [$position, $role, $name]) {
             $this->signers[$position->value] = $this->signer($position, $role, $this->unit, $name);
         }
@@ -82,8 +83,8 @@ class ReportWorkflowTest extends TestCase
             'har' => $this->userWithRole(RoleName::KoordinatorPemeliharaan, $this->unit),
             'operasi' => $this->userWithRole(RoleName::KoordinatorOperasi, $this->unit),
             'k3' => $this->userWithRole(RoleName::KoordinatorK3, $this->unit),
-            'logistik' => $this->userWithRole(RoleName::TeamLeaderLogistik, $this->unit),
-            'pdm' => $this->userWithRole(RoleName::TeamLeaderPdm, $this->unit),
+            'logistik' => $this->userWithRole(RoleName::KoordinatorLogistik, $this->unit),
+            'pdm' => $this->userWithRole(RoleName::KoordinatorPdm, $this->unit),
         ];
     }
 
@@ -300,6 +301,124 @@ class ReportWorkflowTest extends TestCase
     }
 
     // Notifikasi alur persetujuan
+
+    public function test_the_manager_ul_home_lists_what_waits_for_them_and_they_sahkan_or_tolak_from_it(): void
+    {
+        $manager = $this->signers[EmployeePosition::ManagerUl->value];
+        $this->submit('har');
+        $this->submit('k3');
+        $this->act('verify', 'har', EmployeePosition::KoordinatorPemeliharaan)->assertRedirect();
+
+        // Only verified by the Koordinator: not the Manager's turn yet.
+        $this->actingAs($manager)->get(route('portal.index', self::PERIOD))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('portal/manager')->has('queue', 0)->where('counts.waiting', 0));
+
+        $this->act('approve', 'har', EmployeePosition::TeamLeaderPemeliharaan)->assertRedirect();
+        $this->act('verify', 'k3', EmployeePosition::KoordinatorK3)->assertRedirect();
+        $this->act('approve', 'k3', EmployeePosition::TeamLeaderK3)->assertRedirect();
+
+        $this->actingAs($manager)->get(route('portal.index', self::PERIOD))->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('portal/manager')
+                ->where('counts.waiting', 2)
+                ->has('queue', 2)
+                ->where('queue.0.action', 'ratify')
+                ->where('queue.0.unit_id', $this->unit->id)
+                ->where('queue.0.steps', fn ($steps): bool => collect($steps)->pluck('name')->all() === ['Amir Koordinator Har', 'Budi TL Har', 'Citra Manager']
+                    && collect($steps)->last()['current'] === true && collect($steps)->first()['signed_at'] !== null)
+                ->where('queue.0.document_url', fn (string $url): bool => str_contains($url, '/har/laporan/dokumen'))
+                ->has('status.matrix', 1));
+
+        // Sahkan one and tolak the other with the same routes the page posts to.
+        $this->act('ratify', 'har', EmployeePosition::ManagerUl)->assertRedirect();
+        $this->act('reject', 'k3', EmployeePosition::ManagerUl)->assertRedirect();
+
+        $this->assertSame(ReportStatus::Final, $this->workflow('har')->status);
+        $this->actingAs($manager)->get(route('portal.index', self::PERIOD))->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('queue', 0)
+                ->where('history.0.final', true)
+                ->where('history', fn ($rows): bool => collect($rows)->pluck('title')->contains(ReportModule::Har->label()))
+                ->where('counts.final', 1)
+                ->where('counts.rejected', 1));
+    }
+
+    public function test_the_manager_ul_monthly_signature_count_is_not_capped_by_the_history_list(): void
+    {
+        $manager = $this->signers[EmployeePosition::ManagerUl->value];
+        $employee = $manager->employee;
+
+        // 14 signed steps this period (the history list shows only the latest 12).
+        foreach (range(1, 14) as $i) {
+            $workflow = ReportWorkflow::query()->create(['module' => ReportModule::Har, 'unit_id' => $this->unit->id, 'month' => $i <= 12 ? $i : 1, 'year' => 2000 + $i, 'status' => ReportStatus::Final]);
+            $workflow->steps()->create(['stage' => 'pengesahan', 'sequence' => 3, 'caption' => 'Mengesahkan', 'position' => EmployeePosition::ManagerUl->value, 'employee_id' => $employee->id, 'signed_at' => Carbon::create(2026, 8, 10 + $i)]);
+        }
+
+        $this->actingAs($manager)->get(route('portal.index', self::PERIOD))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('counts.signed_this_month', 14)->has('history', 12));
+    }
+
+    public function test_the_team_leader_and_koordinator_find_their_turn_on_the_dashboard_and_the_persetujuan_page(): void
+    {
+        $koordinator = $this->signers[EmployeePosition::KoordinatorPemeliharaan->value];
+        $tl = $this->signers[EmployeePosition::TeamLeaderPemeliharaan->value];
+        $projectLeader = $this->signers[EmployeePosition::ProjectLeader->value];
+        $this->submit('har');
+
+        // The Koordinator's turn first: the TL's inbox is empty, the menu shows no count.
+        $this->actingAs($koordinator)->get(route('dashboard'))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('auth.approvals', 1)->where('approvals.queue.0.action', 'verify')->has('inputTodo'));
+        $this->actingAs($tl)->get(route('dashboard'))->assertOk()
+            ->assertInertia(fn ($page) => $page->where('auth.approvals', 0)->has('approvals.queue', 0));
+
+        $this->act('verify', 'har', EmployeePosition::KoordinatorPemeliharaan)->assertRedirect();
+
+        // Now the TL (who also inputs) sees it to setujui, on the dashboard and on Persetujuan.
+        $this->actingAs($tl)->get(route('dashboard'))->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('dashboard')
+                ->where('auth.approvals', 1)
+                ->where('approvals.queue.0.action', 'approve')
+                ->where('approvals.queue.0.title', ReportModule::Har->label())
+                // The modules' charts are untouched (still deferred).
+                ->missing('har'));
+        $this->actingAs($tl)->get(route('approvals.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('laporan/persetujuan')->has('queue', 1)->where('queue.0.action', 'approve'));
+        $this->act('approve', 'har', EmployeePosition::TeamLeaderPemeliharaan)->assertRedirect();
+        $this->actingAs($tl)->get(route('approvals.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->has('queue', 0)->where('history.0.caption', 'Menyetujui'));
+
+        // The Project Leader signs "Mengetahui" in the report: listed, no action.
+        $this->actingAs($projectLeader)->get(route('approvals.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->has('queue', 0)->where('acknowledgements.0.title', ReportModule::Har->label())->where('acknowledgements.0.caption', 'Mengetahui'));
+    }
+
+    public function test_the_koordinator_logistik_and_pdm_verify_and_the_tl_pemeliharaan_approves_from_their_inbox(): void
+    {
+        $tl = $this->signers[EmployeePosition::TeamLeaderPemeliharaan->value];
+
+        foreach (['logistik' => EmployeePosition::KoordinatorLogistik, 'pdm' => EmployeePosition::KoordinatorPdm] as $module => $koordinatorPosition) {
+            $koordinator = $this->signers[$koordinatorPosition->value];
+            $this->assertTrue($koordinator->hasRole($module === 'logistik' ? RoleName::KoordinatorLogistik : RoleName::KoordinatorPdm));
+            $this->submit($module);
+
+            // Koordinator: Verifikasi on the dashboard & Persetujuan; the menu shows the count.
+            $this->actingAs($koordinator)->get(route('dashboard'))->assertOk()
+                ->assertInertia(fn ($page) => $page->where('auth.approvals', 1)->where('approvals.queue.0.action', 'verify')->where('approvals.queue.0.module', $module));
+            $this->actingAs($koordinator)->get(route('approvals.index'))->assertOk()
+                ->assertInertia(fn ($page) => $page->where('queue.0.title', ReportModule::from($module)->label()));
+            $this->act('verify', $module, $koordinatorPosition)->assertRedirect();
+
+            // Then the TL Pemeliharaan approves it (not a TL Logistik / TL PdM).
+            $this->actingAs($tl)->get(route('approvals.index'))->assertOk()
+                ->assertInertia(fn ($page) => $page->where('queue', fn ($items): bool => collect($items)->contains(fn ($item): bool => $item['module'] === $module && $item['action'] === 'approve')));
+            $this->act('approve', $module, EmployeePosition::TeamLeaderPemeliharaan)->assertRedirect();
+            $this->assertSame(ReportStatus::Disetujui, $this->workflow($module)->status);
+        }
+
+        $this->assertNull(RoleName::tryFrom('tl_logistik'));
+        $this->assertNull(RoleName::tryFrom('tl_pdm'));
+    }
 
     public function test_each_step_notifies_the_signer_whose_turn_it_is_and_the_maker(): void
     {

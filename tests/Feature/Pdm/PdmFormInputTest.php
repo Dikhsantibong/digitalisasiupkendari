@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Pdm;
 
+use App\Enums\EmployeePosition;
 use App\Enums\RoleName;
 use App\Http\Controllers\Pdm\FormInputController;
+use App\Models\Employee;
 use App\Models\Machine;
 use App\Models\PdmFormDocument;
 use App\Models\PdmFormItem;
@@ -33,7 +35,7 @@ class PdmFormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         Machine::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         foreach (PdmForms::all() as $form) {
             $this->actingAs($user)
@@ -54,7 +56,7 @@ class PdmFormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.forms.index', ['form' => 'tidak-ada', 'unit_id' => $unit->id]))
             ->assertNotFound();
     }
@@ -62,7 +64,7 @@ class PdmFormInputTest extends TestCase
     public function test_the_5s5r_checklist_saves_rows_and_computes_the_akumulatif(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         $this->actingAs($user)
             ->post(route('pdm.input.forms.store', ['form' => 'checklist-5s5r']), [
@@ -96,7 +98,7 @@ class PdmFormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         [$first, $second] = Machine::factory()->forUnit($unit)->count(2)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         foreach ([$first, $second] as $machine) {
             $this->actingAs($user)
@@ -121,7 +123,7 @@ class PdmFormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         Machine::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         foreach (['kontrol-material' => 'L', 'vibrasi' => 'P'] as $form => $orientation) {
             $response = $this->actingAs($user)
@@ -137,8 +139,10 @@ class PdmFormInputTest extends TestCase
     public function test_patrol_check_pdm_starts_from_the_default_checklist_and_identitas(): void
     {
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Poasia']);
+        // Tim Patrol & Pelaksana start from the names of the Office K3 / Office PDM (Data Pegawai), not the jabatan.
+        Employee::factory()->forUnit($unit)->create(['name' => 'Sudoyo Age', 'position' => EmployeePosition::OfficeK3->value, 'is_active' => true, 'singleton_key' => EmployeePosition::OfficeK3->singletonKey($unit->id, $unit->service_unit_id)]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.forms.index', ['form' => 'patrol-check-pdm', 'unit_id' => $unit->id, 'month' => 7, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -147,7 +151,9 @@ class PdmFormInputTest extends TestCase
                 ->where('document.saved', false)
                 ->where('document.header.unit', 'PLTD Poasia')
                 ->where('document.header.tanggal', '2026-07-01')
-                ->where('document.header.tim_patrol', 'Officer K3L')
+                ->where('document.header.tim_patrol', 'Sudoyo Age')
+                // No Office PDM in Data Pegawai: left empty, never the jabatan.
+                ->where('document.header.pelaksana', '')
                 ->has('document.rows.checklist', count(PatrolCheckPdmForm::ITEMS))
                 ->where('document.rows.checklist.0.area', 'Mesin Diesel')
                 ->where('document.rows.checklist.27.item', 'Temuan dibuatkan WO')
@@ -158,7 +164,7 @@ class PdmFormInputTest extends TestCase
     public function test_patrol_check_pdm_keeps_one_tick_per_row_and_summarises_the_result(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         $this->actingAs($user)
             ->post(route('pdm.input.forms.store', ['form' => 'patrol-check-pdm']), [
@@ -205,7 +211,7 @@ class PdmFormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->post(route('pdm.input.forms.store', ['form' => 'patrol-check-pdm']), [
                 'unit_id' => $unit->id, 'month' => 7, 'year' => 2026,
                 'rows' => ['checklist' => [['area' => 'Mesin', 'ya' => 'ya']]],
@@ -216,7 +222,7 @@ class PdmFormInputTest extends TestCase
     public function test_patrol_check_pdm_pdf_prints_the_identitas_and_ticks(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
         $this->actingAs($user)->post(route('pdm.input.forms.store', ['form' => 'patrol-check-pdm']), [
             'unit_id' => $unit->id, 'month' => 7, 'year' => 2026,
             'header' => ['tanggal' => '2026-07-10', 'pelaksana' => 'Andi PdM'],
@@ -237,7 +243,7 @@ class PdmFormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.forms.index', ['form' => 'checklist-patrol-check', 'unit_id' => $unit->id, 'month' => 7, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -254,7 +260,7 @@ class PdmFormInputTest extends TestCase
     public function test_checklist_patrol_check_saves_statuses_and_summarises_the_patrol(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         $this->actingAs($user)
             ->post(route('pdm.input.forms.store', ['form' => 'checklist-patrol-check']), [

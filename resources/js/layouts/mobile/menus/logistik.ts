@@ -167,7 +167,7 @@ const menu = (
 });
 
 /**
- * Phone menus of the Logistik & Gudang module (TL Logistik & Gudang): Jadwal
+ * Phone menus of the Logistik & Gudang module (Koordinator Logistik & Gudang): Jadwal
  * (opens read-only, "Ubah Jadwal" to edit), Input and Laporan — the same pages
  * as the desktop hubs, each behind the module permission.
  */

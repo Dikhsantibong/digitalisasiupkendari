@@ -48,7 +48,10 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [sig, setSig] = useState(signature);
-    if (sig !== signature) { setSig(signature); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); }
+
+    if (sig !== signature) {
+ setSig(signature); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); 
+}
 
     const orderedGroups = [...groups, ...rows.map((r) => r.grup).filter((g) => !groups.includes(g))].filter((g, i, a) => a.indexOf(g) === i);
 
@@ -67,7 +70,9 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
         setNextKey((k) => k + 1);
         setDirty(true);
     };
-    const remove = (key: number) => { setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); };
+    const remove = (key: number) => {
+ setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
+};
 
     const save = () => {
         setSaving(true);
@@ -173,6 +178,7 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
                                     const items = rows.filter((r) => r.grup === grup);
                                     let lastSub = '__none__';
                                     let n = 0;
+
                                     return (
                                         <Fragment key={grup}>
                                             <tr className="bg-muted/70">
@@ -180,8 +186,13 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
                                             </tr>
                                             {items.map((row) => {
                                                 const showSub = row.subkategori && row.subkategori !== lastSub;
-                                                if (row.subkategori !== lastSub) lastSub = row.subkategori;
+
+                                                if (row.subkategori !== lastSub) {
+lastSub = row.subkategori;
+}
+
                                                 n += 1;
+
                                                 return (
                                                     <Fragment key={row._key}>
                                                         {showSub && (

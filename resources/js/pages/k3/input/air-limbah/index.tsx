@@ -12,6 +12,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
 import {
     OPERASI_MONTHS,
@@ -34,7 +35,6 @@ import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import airLimbah from '@/routes/k3/input/air-limbah';
 import type { IdName } from '@/types';
-import { toast } from 'sonner';
 
 type ServerRow = {
     id: number | null;
@@ -114,10 +114,17 @@ const PRINT_CSS = `
 const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: i }));
 
 function formatIndoDate(dateStr: string | null): string {
-    if (!dateStr) return '-';
+    if (!dateStr) {
+return '-';
+}
+
     try {
         const parts = dateStr.split('-');
-        if (parts.length !== 3) return dateStr;
+
+        if (parts.length !== 3) {
+return dateStr;
+}
+
         const year = parts[0];
         const monthIndex = parseInt(parts[1], 10) - 1;
         const day = parseInt(parts[2], 10);
@@ -125,6 +132,7 @@ function formatIndoDate(dateStr: string | null): string {
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
             'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
         ];
+
         return `${day} ${months[monthIndex] ?? parts[1]} ${year}`;
     } catch {
         return dateStr;
@@ -162,6 +170,7 @@ export default function AirLimbahPage({
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setRows(hydrate(initialRows));
@@ -197,7 +206,10 @@ export default function AirLimbahPage({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             airLimbah.store().url,
@@ -291,6 +303,7 @@ export default function AirLimbahPage({
     const handleFormSubmit = () => {
         if (!form.area_penyiraman.trim()) {
             toast.error('Area penyiraman wajib diisi.');
+
             return;
         }
 

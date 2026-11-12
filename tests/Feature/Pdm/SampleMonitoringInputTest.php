@@ -27,7 +27,7 @@ class SampleMonitoringInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.sample-monitoring.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -45,7 +45,7 @@ class SampleMonitoringInputTest extends TestCase
     public function test_saving_keeps_filled_rows_and_computes_the_rekap(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         $this->actingAs($user)->post(route('pdm.input.sample-monitoring.store'), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
@@ -106,7 +106,7 @@ class SampleMonitoringInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.sample-monitoring.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');

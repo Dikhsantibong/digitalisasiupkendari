@@ -164,7 +164,9 @@ export default function OperasiJadwalBlackstartIndex({
         type: 'rencana' | 'realisasi',
         weekKey: string,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) => {
             const updated = [...prev];
@@ -172,6 +174,7 @@ export default function OperasiJadwalBlackstartIndex({
             const currentArr = [...(targetRow[type] || [])];
 
             const existsIdx = currentArr.indexOf(weekKey);
+
             if (existsIdx >= 0) {
                 currentArr.splice(existsIdx, 1);
             } else {
@@ -180,6 +183,7 @@ export default function OperasiJadwalBlackstartIndex({
 
             targetRow[type] = currentArr;
             updated[rowIndex] = targetRow;
+
             return updated;
         });
         setDirty(true);
@@ -191,10 +195,14 @@ export default function OperasiJadwalBlackstartIndex({
         field: 'uraian' | 'pic',
         value: string,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const updated = [...prev];
             updated[rowIndex] = { ...updated[rowIndex], [field]: value };
+
             return updated;
         });
         setDirty(true);
@@ -202,7 +210,10 @@ export default function OperasiJadwalBlackstartIndex({
 
     // Add new item
     const handleAddRow = () => {
-        if (!newUraian.trim()) return;
+        if (!newUraian.trim()) {
+return;
+}
+
         setRows((prev) => [
             ...prev,
             {
@@ -222,9 +233,13 @@ export default function OperasiJadwalBlackstartIndex({
 
     // Remove item
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const filtered = prev.filter((_, idx) => idx !== rowIndex);
+
             return filtered.map((r, idx) => ({ ...r, no_urut: idx + 1 }));
         });
         setDirty(true);
@@ -238,7 +253,10 @@ export default function OperasiJadwalBlackstartIndex({
 
     // Save
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -267,17 +285,24 @@ export default function OperasiJadwalBlackstartIndex({
     // Calculations: column totals & grand total
     const { columnTotals, grandTotal, recapData } = useMemo(() => {
         const totals: Record<string, number> = {};
+
         for (let m = 1; m <= 12; m++) {
             for (let w = 1; w <= 4; w++) {
                 const key = `${m}-${w}`;
                 let count = 0;
                 rows.forEach((r) => {
-                    if (r.rencana?.includes(key)) count++;
-                    if (r.realisasi?.includes(key)) count++;
+                    if (r.rencana?.includes(key)) {
+count++;
+}
+
+                    if (r.realisasi?.includes(key)) {
+count++;
+}
                 });
                 totals[key] = count;
             }
         }
+
         const grand = Object.values(totals).reduce((sum, c) => sum + c, 0);
 
         const recap = rows.map((r, i) => {
@@ -318,9 +343,11 @@ export default function OperasiJadwalBlackstartIndex({
 
         // Header Row 2
         const rowH2: (string | number)[] = ['', '', '', ''];
+
         for (let m = 1; m <= 12; m++) {
             rowH2.push(1, 2, 3, 4);
         }
+
         rowH2.push('');
         sheetData.push(rowH2);
 
@@ -334,33 +361,39 @@ export default function OperasiJadwalBlackstartIndex({
 
             // REN
             const rRen: (string | number)[] = [r.no_urut || idx + 1, r.uraian, 'REN', r.pic || ''];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     rRen.push(ren.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             rRen.push(ren.length > 0 ? ren.length : 0);
             sheetData.push(rRen);
 
             // REAL
             const rReal: (string | number)[] = ['', '', 'REAL', ''];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     rReal.push(real.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             rReal.push(real.length > 0 ? real.length : 0);
             sheetData.push(rReal);
         });
 
         // Total Row
         const totRow: (string | number)[] = ['', 'TOTAL', '', ''];
+
         for (let m = 1; m <= 12; m++) {
             for (let w = 1; w <= 4; w++) {
                 const c = columnTotals[`${m}-${w}`] || 0;
                 totRow.push(c > 0 ? c : '');
             }
         }
+
         totRow.push(grandTotal > 0 ? grandTotal : 0);
         sheetData.push(totRow);
 
@@ -676,6 +709,7 @@ export default function OperasiJadwalBlackstartIndex({
                                                     [1, 2, 3, 4].map((w) => {
                                                         const key = `${mIdx + 1}-${w}`;
                                                         const isMarked = ren.includes(key);
+
                                                         return (
                                                             <td
                                                                 key={`ren-${key}`}
@@ -724,6 +758,7 @@ export default function OperasiJadwalBlackstartIndex({
                                                     [1, 2, 3, 4].map((w) => {
                                                         const key = `${mIdx + 1}-${w}`;
                                                         const isMarked = real.includes(key);
+
                                                         return (
                                                             <td
                                                                 key={`real-${key}`}
@@ -762,6 +797,7 @@ export default function OperasiJadwalBlackstartIndex({
                                         [1, 2, 3, 4].map((w) => {
                                             const key = `${mIdx + 1}-${w}`;
                                             const val = columnTotals[key] || 0;
+
                                             return (
                                                 <td
                                                     key={`tot-${key}`}

@@ -10,6 +10,7 @@ use App\Models\PdmJadwalHarian;
 use App\Models\PdmJadwalMeta;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Pdm\PdmJadwalSigners;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -136,11 +137,9 @@ class JadwalHarianController extends Controller
             $meta->revision = $meta->revision ?: '00';
             $meta->effective_date = $meta->effective_date ?: Carbon::create($year, $month, 1)->locale('id')->isoFormat('D MMMM Y');
             $meta->page_number = $meta->page_number ?: '1 dari 1';
-            $meta->disetujui_nama = $meta->disetujui_nama ?: 'TL PdM & MATLEV';
-            $meta->disetujui_jabatan = $meta->disetujui_jabatan ?: 'Team Leader PdM & Matlev';
-            $meta->dibuat_nama = $meta->dibuat_nama ?: 'Pelaksana PdM';
-            $meta->dibuat_jabatan = $meta->dibuat_jabatan ?: 'Junior Engineer PdM';
         }
+        // Signers by name (Data Pegawai), never the jabatan text.
+        $meta = app(PdmJadwalSigners::class)->apply($meta, $unit, 'harian');
 
         $savedRecords = PdmJadwalHarian::query()
             ->where('unit_id', $unit->id)
@@ -424,6 +423,7 @@ class JadwalHarianController extends Controller
             ->where('year', $year)
             ->where('month', $month)
             ->first();
+        $meta = app(PdmJadwalSigners::class)->apply($meta, $unit, 'harian');
 
         $rows = PdmJadwalHarian::query()
             ->where('unit_id', $unit->id)

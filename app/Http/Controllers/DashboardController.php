@@ -17,6 +17,7 @@ use App\Services\Dashboard\PdmDashboard;
 use App\Services\Monitoring\InputCatalog;
 use App\Services\Monitoring\InputCompleteness;
 use App\Services\Operasi\UnitFuelTypes;
+use App\Services\Reports\ApprovalInbox;
 use App\Support\Indonesian;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -55,6 +56,7 @@ class DashboardController extends Controller
         private readonly K3Dashboard $k3Dashboard,
         private readonly LogistikDashboard $logistikDashboard,
         private readonly PdmDashboard $pdmDashboard,
+        private readonly ApprovalInbox $inbox,
     ) {}
 
     public function __invoke(Request $request): Response|RedirectResponse
@@ -132,6 +134,13 @@ class DashboardController extends Controller
                 'is_active' => $unit->is_active,
             ])->all() : [],
             'recentActivity' => $user->can('viewAny', ActivityLog::class) ? $this->recentActivity($user) : [],
+            // Team Leader / Koordinator / Project Leader approve and input: their inbox and the inputs left to fill.
+            'approvals' => ApprovalInbox::applies($user) ? [
+                'queue' => $this->inbox->queue($user, $units),
+                'requests' => $this->inbox->requests($user),
+                'acknowledgements' => array_slice($this->inbox->acknowledgements($user), 0, 5),
+            ] : null,
+            'inputTodo' => $this->inputTodo($completeness, $now),
         ]);
     }
 
@@ -186,6 +195,44 @@ class DashboardController extends Controller
      * @param  array<string, mixed>|null  $completeness
      * @return list<array{label: string, percent: int|null, url: string}>
      */
+    /**
+     * The input menus of the viewer's modules still incomplete this month,
+     * least complete first, with a link to fill them (average over the units).
+     *
+     * @param  array<string, mixed>|null  $completeness
+     * @return list<array{label: string, group: string, percent: int, url: string}>
+     */
+    private function inputTodo(?array $completeness, Carbon $now): array
+    {
+        if ($completeness === null || $completeness['units'] === []) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($completeness['entries'] as $entry) {
+            $percents = array_filter(
+                array_map(fn (array $unit): ?int => $unit['cells'][$entry['key']]['percent'] ?? null, $completeness['units']),
+                fn (?int $value): bool => $value !== null,
+            );
+            if ($percents === []) {
+                continue;
+            }
+            $percent = (int) round(array_sum($percents) / count($percents));
+            if ($percent < 100) {
+                $rows[] = [
+                    'label' => $entry['label'],
+                    'group' => InputCatalog::GROUPS[$entry['group']] ?? $entry['group'],
+                    'percent' => $percent,
+                    'url' => route($entry['route'], [...$entry['params'], 'month' => $now->month, 'year' => $now->year]),
+                ];
+            }
+        }
+
+        usort($rows, fn (array $a, array $b): int => $a['percent'] <=> $b['percent']);
+
+        return array_slice($rows, 0, 8);
+    }
+
     private function menuCompleteness(?array $completeness, string $group, Carbon $now): array
     {
         if ($completeness === null) {

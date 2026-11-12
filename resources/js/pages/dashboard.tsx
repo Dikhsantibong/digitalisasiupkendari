@@ -31,6 +31,16 @@ import type {
     ValueFormat,
 } from '@/components/dashboard/charts';
 import { EmptyState } from '@/components/empty-state';
+import {
+    ReportQueue,
+    RequestQueue,
+    SignedList,
+} from '@/components/laporan/approval-inbox';
+import type {
+    HistoryItem,
+    QueueItem,
+    RequestItem,
+} from '@/components/laporan/approval-inbox';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { SummaryCard } from '@/components/summary-card';
@@ -47,6 +57,7 @@ import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import units from '@/routes/admin/units';
+import approvalRoutes from '@/routes/approvals';
 import type { Tone } from '@/types';
 
 type ModuleKey = 'operasi' | 'har' | 'k3' | 'logistik' | 'pdm';
@@ -196,6 +207,14 @@ type Props = {
         service_unit: string | null;
         installed_capacity_mw: string | null;
     }[];
+    /** Team Leader / Koordinator / Project Leader: their approval inbox (null = approves nothing). */
+    approvals: {
+        queue: QueueItem[];
+        requests: RequestItem[];
+        acknowledgements: HistoryItem[];
+    } | null;
+    /** Input menus of the viewer's modules still incomplete this month. */
+    inputTodo: { label: string; group: string; percent: number; url: string }[];
     recentActivity: {
         id: number;
         event_label: string;
@@ -452,6 +471,8 @@ export default function Dashboard(props: Props) {
         pdm,
         statusBreakdown,
         recentActivity,
+        approvals,
+        inputTodo,
     } = props;
     const unitRows = props.units;
     const { can, hasGlobalAccess, roles } = usePermissions();
@@ -506,6 +527,100 @@ export default function Dashboard(props: Props) {
                         }
                     />
                 </div>
+
+                {/* Team Leader / Koordinator / Project Leader: approve and input. */}
+                {approvals && (
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+                        <Panel
+                            title="Perlu Persetujuan Anda"
+                            subtitle="Laporan di giliran Anda & pengajuan operator — review, lalu setujui atau tolak"
+                            className="lg:col-span-8"
+                            action={
+                                <Link
+                                    href={approvalRoutes.index()}
+                                    className="shrink-0 text-[12px] font-medium text-primary hover:underline"
+                                >
+                                    Buka Persetujuan
+                                </Link>
+                            }
+                        >
+                            <div className="-mx-4 -mb-4 border-t border-border">
+                                <ReportQueue
+                                    items={approvals.queue}
+                                    emptyText="Tidak ada laporan yang menunggu persetujuan Anda."
+                                />
+                                {approvals.requests.length > 0 && (
+                                    <div className="border-t border-border">
+                                        <p className="px-4 pt-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                            Pengajuan operator
+                                        </p>
+                                        <RequestQueue
+                                            items={approvals.requests}
+                                        />
+                                    </div>
+                                )}
+                                {approvals.acknowledgements.length > 0 && (
+                                    <div className="border-t border-border">
+                                        <p className="px-4 pt-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                            Laporan project yang Anda ketahui
+                                        </p>
+                                        <SignedList
+                                            items={approvals.acknowledgements}
+                                            emptyText=""
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </Panel>
+                        <Panel
+                            title="Lanjutkan Input"
+                            subtitle="Menu input modul Anda yang belum lengkap bulan ini"
+                            className="lg:col-span-4"
+                        >
+                            {inputTodo.length === 0 ? (
+                                <p className="py-6 text-center text-[13px] text-muted-foreground">
+                                    Semua input yang jatuh tempo sudah lengkap.
+                                </p>
+                            ) : (
+                                <ul className="flex flex-col gap-1.5">
+                                    {inputTodo.map((item) => (
+                                        <li key={item.group + item.label}>
+                                            <Link
+                                                href={item.url}
+                                                className="grid grid-cols-[1fr_4rem_2.75rem] items-center gap-2 rounded px-1 py-1 text-[12px] hover:bg-muted/60"
+                                            >
+                                                <span className="min-w-0">
+                                                    <span className="block truncate font-medium text-foreground">
+                                                        {item.label}
+                                                    </span>
+                                                    <span className="block truncate text-[11px] text-muted-foreground">
+                                                        {item.group}
+                                                    </span>
+                                                </span>
+                                                <span className="h-1.5 overflow-hidden rounded-full bg-muted">
+                                                    <span
+                                                        className={cn(
+                                                            'block h-full rounded-full',
+                                                            item.percent >= 50
+                                                                ? 'bg-amber-500'
+                                                                : 'bg-rose-500',
+                                                        )}
+                                                        style={{
+                                                            width: `${item.percent}%`,
+                                                        }}
+                                                    />
+                                                </span>
+                                                <span className="text-right text-muted-foreground tabular-nums">
+                                                    {item.percent}%
+                                                </span>
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </Panel>
+                    </div>
+                )}
 
                 {/* Executive overview */}
                 {isExecutive && (

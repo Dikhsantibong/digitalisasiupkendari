@@ -161,23 +161,23 @@ export const MOBILE_MODULES: MobileModule[] = [
         menus: K3_PENGUSAHAAN_MENUS,
     },
     {
-        // Logistik & Gudang on a phone: TL Logistik & Gudang.
+        // Logistik & Gudang on a phone: Koordinator Logistik & Gudang.
         key: 'logistik',
         enabled: true,
         title: 'Logistik & Gudang',
         subtitle: 'Jadwal, input & laporan logistik & gudang',
-        roles: ['tl_logistik'],
+        roles: ['koordinator_logistik'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         menus: LOGISTIK_MENUS,
     },
     {
-        // PdM & Maturity Level on a phone: TL PdM.
+        // PdM & Maturity Level on a phone: Koordinator PdM.
         key: 'pdm',
         enabled: true,
         title: 'PdM & Maturity Level',
         subtitle: 'Jadwal, input & laporan PdM & MATLEV',
-        roles: ['tl_pdm'],
+        roles: ['koordinator_pdm'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         menus: PDM_MENUS,

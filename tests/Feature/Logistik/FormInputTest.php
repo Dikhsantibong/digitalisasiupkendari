@@ -34,7 +34,7 @@ class FormInputTest extends TestCase
     public function test_every_form_opens_with_its_default_rows_and_prints_a_pdf(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         foreach (LogistikForms::all() as $form) {
@@ -61,7 +61,7 @@ class FormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.input.form.index', ['form' => 'pendukung', 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertInertia(fn ($page) => $page
                 ->has('rows', count(PendukungForm::URAIAN))
@@ -73,7 +73,7 @@ class FormInputTest extends TestCase
     public function test_kondisi_stok_computes_stok_akhir_and_rop(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -99,7 +99,7 @@ class FormInputTest extends TestCase
     public function test_peralatan_counts_realisasi_and_the_recap(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -122,7 +122,7 @@ class FormInputTest extends TestCase
     {
         Storage::fake('public');
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -170,7 +170,7 @@ class FormInputTest extends TestCase
     public function test_inventaris_lainnya_ticks_one_result_per_day_and_counts_the_realisasi(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 7, 'year' => 2026];
 
         $this->actingAs($user)
@@ -216,7 +216,7 @@ class FormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.input.form.index', ['form' => 'permit-to-work', 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -231,7 +231,7 @@ class FormInputTest extends TestCase
     public function test_permit_to_work_keeps_one_status_per_permit_and_totals_open_and_close(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -278,7 +278,7 @@ class FormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->post(route('logistik.input.form.store', ['form' => 'permit-to-work']), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [['section' => 'ptw', 'data' => ['uraian' => 'Uji', 'tanggal' => '31-08-2026', 'open' => 'ya']]],
@@ -290,7 +290,7 @@ class FormInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->post(route('logistik.input.form.store', ['form' => 'unsafe']), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['section' => 'temuan', 'data' => ['kategori' => 'LAINNYA']]]])
             ->assertSessionHasErrors('rows.0.data.kategori');
     }

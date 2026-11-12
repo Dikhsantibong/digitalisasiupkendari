@@ -56,13 +56,13 @@ class DemoAccountSeeder extends Seeder
         'koordinator-har' => [EmployeePosition::KoordinatorPemeliharaan, RoleName::KoordinatorPemeliharaan],
         'koordinator-operasi' => [EmployeePosition::KoordinatorOperasi, RoleName::KoordinatorOperasi],
         'koordinator-k3' => [EmployeePosition::KoordinatorK3, RoleName::KoordinatorK3],
-        'koordinator-logistik' => [EmployeePosition::KoordinatorLogistik, RoleName::TeamLeaderLogistik],
-        'koordinator-pdm' => [EmployeePosition::KoordinatorPdm, RoleName::TeamLeaderPdm],
+        'koordinator-logistik' => [EmployeePosition::KoordinatorLogistik, RoleName::KoordinatorLogistik],
+        'koordinator-pdm' => [EmployeePosition::KoordinatorPdm, RoleName::KoordinatorPdm],
         'office-har' => [EmployeePosition::OfficePemeliharaan, RoleName::KoordinatorPemeliharaan],
         'office-operasi' => [EmployeePosition::OfficeOperasi, RoleName::KoordinatorOperasi],
         'office-k3' => [EmployeePosition::OfficeK3, RoleName::KoordinatorK3],
-        'office-logistik' => [EmployeePosition::OfficeLogistik, RoleName::TeamLeaderLogistik],
-        'pic-pdm' => [EmployeePosition::PicPdm, RoleName::TeamLeaderPdm],
+        'office-logistik' => [EmployeePosition::OfficeLogistik, RoleName::KoordinatorLogistik],
+        'pic-pdm' => [EmployeePosition::PicPdm, RoleName::KoordinatorPdm],
     ];
 
     /**

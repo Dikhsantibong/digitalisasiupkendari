@@ -93,7 +93,10 @@ class K3FormulirDocumentBuilder
             $defaultTitle = $signer['title'] !== '' ? $signer['title'] : 'Manager '.$ulLabel;
 
             $data[$key.'_id'] = $employee?->id;
-            $data[$key.'_name'] = $this->filled($input, $key.'_name') ?? ($employee?->name ?? $defaultTitle);
+            // A name typed on the form wins (e.g. a Plh.); the jabatan saved as a name by earlier versions does not.
+            $typedName = $this->filled($input, $key.'_name');
+            $typedName = in_array($typedName, [$defaultTitle, $signer['title']], true) ? null : $typedName;
+            $data[$key.'_name'] = $typedName ?? (string) ($employee?->name ?? '');
             $data[$key.'_title'] = $this->filled($input, $key.'_title') ?? $defaultTitle;
             $data[$key.'_signature'] = $this->signatureBase64($employee);
             $data['signers'][] = ['key' => $key, 'label' => $signer['label']];

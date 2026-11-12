@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    ChartNoAxesCombined,
     ChevronRight,
     ClipboardCheck,
     Cog,
@@ -8,6 +9,8 @@ import {
     FileBarChart,
     FileCheck2,
     Home,
+    Inbox,
+    LayoutDashboard,
     LayoutGrid,
     Menu,
     Users,
@@ -47,6 +50,7 @@ import { cn, toUrl } from '@/lib/utils';
 import employees from '@/routes/admin/employees';
 import machines from '@/routes/admin/machines';
 import units from '@/routes/admin/units';
+import resume from '@/routes/laporan/resume';
 import monitoring from '@/routes/monitoring';
 import portal from '@/routes/portal';
 import type { Auth, BreadcrumbItem } from '@/types';
@@ -62,6 +66,8 @@ type NavLink = {
 type Nav = {
     auth: Auth;
     links: NavLink[];
+    /** Manager UL: the monitoring pages kept one click away, out of the main menu. */
+    more: NavLink[];
     manage: NavLink[];
     active: (link: NavLink) => boolean;
     crumbs: BreadcrumbItem[];
@@ -89,14 +95,20 @@ export default function PortalLayout({
     const isMobile = useIsMobile();
     const pathname = usePage().url.split('?')[0];
 
-    const links: NavLink[] = [
-        {
-            title: 'Beranda',
-            short: 'Beranda',
-            href: portal.index().url,
-            icon: Home,
-            match: [portal.index().url],
-        },
+    // Resume Bulanan of the first module the account may view.
+    const resumeModule = (
+        [
+            ['operasi', ['operasi.laporan.view', 'operasi.pengusahaan.view']],
+            ['pemeliharaan', ['har.laporan.view', 'har.pengusahaan.view']],
+            ['k3', ['k3.laporan.view', 'k3.pengusahaan.view']],
+            ['logistik', ['logistik.laporan.view']],
+            ['pdm', ['pdm.laporan.view']],
+        ] as const
+    ).find(([, permissions]) =>
+        permissions.some((permission) => can(permission)),
+    )?.[0];
+
+    const monitoringLinks: NavLink[] = [
         {
             title: 'Data Input',
             short: 'Input',
@@ -111,21 +123,90 @@ export default function PortalLayout({
             icon: ClipboardCheck,
             match: [monitoring.input().url, monitoring.index().url],
         },
+    ];
+
+    // The Manager UL (reviewer): a short menu around review & pengesahan.
+    const reviewerLinks: NavLink[] = [
         {
-            title: 'Status Laporan',
-            short: 'Verifikasi',
-            href: monitoring.laporan().url,
-            icon: FileCheck2,
-            match: [monitoring.laporan().url],
+            title: 'Pengesahan',
+            short: 'Beranda',
+            href: portal.index().url,
+            icon: Inbox,
+            match: [portal.index().url],
         },
         {
-            title: 'Laporan',
+            title: 'Arsip Laporan',
             short: 'Laporan',
             href: portal.laporan().url,
             icon: FileBarChart,
             match: [portal.laporan().url],
         },
+        ...(resumeModule
+            ? [
+                  {
+                      title: 'Resume Bulanan',
+                      short: 'Resume',
+                      href: resume.show(resumeModule).url,
+                      icon: ChartNoAxesCombined,
+                      match: ['/laporan/resume'],
+                  },
+              ]
+            : []),
+        {
+            title: 'Status Laporan',
+            short: 'Status',
+            href: monitoring.laporan().url,
+            icon: FileCheck2,
+            match: [monitoring.laporan().url],
+        },
+        {
+            title: 'Ringkasan Pemantauan',
+            short: 'Ringkasan',
+            href: portal.overview().url,
+            icon: LayoutDashboard,
+            match: [portal.overview().url],
+        },
     ];
+
+    const links: NavLink[] = auth.reviewer
+        ? reviewerLinks
+        : [
+              {
+                  title: 'Beranda',
+                  short: 'Beranda',
+                  href: portal.index().url,
+                  icon: Home,
+                  match: [portal.index().url],
+              },
+              {
+                  title: 'Data Input',
+                  short: 'Input',
+                  href: portal.input().url,
+                  icon: LayoutGrid,
+                  match: [portal.input().url],
+              },
+              {
+                  title: 'Status Input',
+                  short: 'Status',
+                  href: monitoring.input().url,
+                  icon: ClipboardCheck,
+                  match: [monitoring.input().url, monitoring.index().url],
+              },
+              {
+                  title: 'Status Laporan',
+                  short: 'Verifikasi',
+                  href: monitoring.laporan().url,
+                  icon: FileCheck2,
+                  match: [monitoring.laporan().url],
+              },
+              {
+                  title: 'Laporan',
+                  short: 'Laporan',
+                  href: portal.laporan().url,
+                  icon: FileBarChart,
+                  match: [portal.laporan().url],
+              },
+          ];
 
     // Pages the account may still manage (e.g. the Manager UL's master data) — never for a view-only account.
     const manage: NavLink[] = auth.readOnly
@@ -175,7 +256,8 @@ export default function PortalLayout({
                       : []),
               ];
 
-    const nav: Nav = { auth, links, manage, active, crumbs };
+    const more = auth.reviewer ? monitoringLinks : [];
+    const nav: Nav = { auth, links, more, manage, active, crumbs };
 
     if (isMobile) {
         return (
@@ -204,9 +286,12 @@ function ReadOnlyBadge({ className }: { className?: string }) {
 
 /** Desktop & tablet: the same sidebar shell as the rest of the app, with the portal menu. */
 function PortalDesktop({ nav, children }: { nav: Nav; children: ReactNode }) {
-    const { auth, links, manage, active, crumbs } = nav;
+    const { auth, links, more, manage, active, crumbs } = nav;
     const groups = [
-        { label: 'Pemantauan', items: links },
+        { label: auth.reviewer ? 'Tugas Saya' : 'Pemantauan', items: links },
+        ...(more.length > 0
+            ? [{ label: 'Pemantauan Lainnya', items: more }]
+            : []),
         ...(manage.length > 0 ? [{ label: 'Kelola Data', items: manage }] : []),
     ];
 
@@ -286,7 +371,7 @@ function PortalMobile({
     deep: boolean;
     children: ReactNode;
 }) {
-    const { auth, links, manage, active, crumbs } = nav;
+    const { auth, links, more, manage, active, crumbs } = nav;
 
     return (
         <div className="flex min-h-dvh flex-col bg-background">
@@ -317,6 +402,24 @@ function PortalMobile({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent className="w-60" align="end">
                                 <UserMenuContent user={auth.user} />
+                                {more.length > 0 && (
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuLabel>
+                                            Pemantauan lainnya
+                                        </DropdownMenuLabel>
+                                        {more.map((item) => (
+                                            <DropdownMenuItem
+                                                key={item.title}
+                                                asChild
+                                            >
+                                                <Link href={item.href}>
+                                                    {item.title}
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </>
+                                )}
                                 {manage.length > 0 && (
                                     <>
                                         <DropdownMenuSeparator />
@@ -373,7 +476,10 @@ function PortalMobile({
             </main>
 
             <nav
-                className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]"
+                className="fixed inset-x-0 bottom-0 z-30 grid border-t border-border bg-card pb-[env(safe-area-inset-bottom)]"
+                style={{
+                    gridTemplateColumns: `repeat(${links.length}, minmax(0, 1fr))`,
+                }}
                 aria-label="Portal"
             >
                 {links.map((link) => (

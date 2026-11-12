@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Building2, FilePenLine } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
+import { ResumeCard } from '@/components/laporan/resume-card';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -66,50 +67,66 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                     <OperasiSelect
                         label="Unit"
                         value={String(filters.unit_id)}
-                        onChange={(value) =>
-                            visit({ unit_id: Number(value) })
-                        }
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        onChange={(value) => visit({ unit_id: Number(value) })}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                 </div>
 
                 {reports.length === 0 ? (
-                    <EmptyState title="Belum ada laporan" description="Belum ada laporan terdaftar." />
+                    <EmptyState
+                        title="Belum ada laporan"
+                        description="Belum ada laporan terdaftar."
+                    />
                 ) : (
                     <div className="grid gap-3 md:grid-cols-2">
-                        {can('operasi.laporan.view') && reports.map((report) => (
-                            <div
-                                key={report.code}
-                                className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4"
-                            >
-                                <div>
-                                    <h2 className="text-base font-semibold text-foreground">
-                                        {report.title}
-                                    </h2>
-                                    <p className="mt-1 text-[13px] text-muted-foreground">
-                                        {report.description}
-                                    </p>
+                        <ResumeCard module="operasi" filters={filters} />
+                        {can('operasi.laporan.view') &&
+                            reports.map((report) => (
+                                <div
+                                    key={report.code}
+                                    className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4"
+                                >
+                                    <div>
+                                        <h2 className="text-base font-semibold text-foreground">
+                                            {report.title}
+                                        </h2>
+                                        <p className="mt-1 text-[13px] text-muted-foreground">
+                                            {report.description}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Button
+                                            onClick={() => openDocument(report)}
+                                            className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                                        >
+                                            <FilePenLine className="size-4" />
+                                            Buka Dokumen Operasi (Lihat, Edit
+                                            &amp; Cetak)
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button onClick={() => openDocument(report)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
-                                        <FilePenLine className="size-4" />
-                                        Buka Dokumen Operasi (Lihat, Edit &amp; Cetak)
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
 
                         {/* Laporan Pengusahaan Pembangkit (Akses 2 — data dari input Pengusahaan Operasi) */}
                         {can('operasi.pengusahaan.view') && (
@@ -119,13 +136,29 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                         Laporan Pengusahaan Pembangkit
                                     </h2>
                                     <p className="mt-1 text-[13px] text-muted-foreground">
-                                        Ringkasan kinerja, produksi &amp; pemakaian sendiri, BBM &amp; pelumas, feeder, pasokan cadangan, star-stop, resource pembangkit dan status berita acara — terisi otomatis dari input Pengusahaan Operasi (gabungan Portrait &amp; Landscape).
+                                        Ringkasan kinerja, produksi &amp;
+                                        pemakaian sendiri, BBM &amp; pelumas,
+                                        feeder, pasokan cadangan, star-stop,
+                                        resource pembangkit dan status berita
+                                        acara — terisi otomatis dari input
+                                        Pengusahaan Operasi (gabungan Portrait
+                                        &amp; Landscape).
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    <Button onClick={() => router.get(pengusahaan.edit({ query: reportQuery() }).url)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
+                                    <Button
+                                        onClick={() =>
+                                            router.get(
+                                                pengusahaan.edit({
+                                                    query: reportQuery(),
+                                                }).url,
+                                            )
+                                        }
+                                        className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                                    >
                                         <Building2 className="size-4" />
-                                        Buka Dokumen Pengusahaan (Lihat, Edit &amp; Cetak)
+                                        Buka Dokumen Pengusahaan (Lihat, Edit
+                                        &amp; Cetak)
                                     </Button>
                                 </div>
                             </div>

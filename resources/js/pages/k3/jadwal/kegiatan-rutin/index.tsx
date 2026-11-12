@@ -131,6 +131,7 @@ export default function K3KegiatanRutinPage({
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setRows(hydrate(initialRows));
@@ -156,17 +157,26 @@ export default function K3KegiatanRutinPage({
     };
 
     const toggleDay = (key: number, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => {
-                if (r._key !== key) return r;
+                if (r._key !== key) {
+return r;
+}
+
                 const set = new Set(r.jadwal || []);
+
                 if (set.has(day)) {
                     set.delete(day);
                 } else {
                     set.add(day);
                 }
+
                 const jadwal = Array.from(set).sort((a, b) => a - b);
+
                 return { ...r, jadwal, realisasi_count: jadwal.length };
             }),
         );
@@ -178,7 +188,10 @@ export default function K3KegiatanRutinPage({
         field: 'kegiatan' | 'target' | 'keterangan',
         value: string | number,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => (r._key === key ? { ...r, [field]: value } : r)),
         );
@@ -186,7 +199,10 @@ export default function K3KegiatanRutinPage({
     };
 
     const handleMarkAllWorkingDays = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => ({
                 ...r,
@@ -198,7 +214,10 @@ export default function K3KegiatanRutinPage({
     };
 
     const handleAddActivity = () => {
-        if (!newKegiatan.trim()) return;
+        if (!newKegiatan.trim()) {
+return;
+}
+
         setRows((prev) => [
             ...prev,
             {
@@ -221,7 +240,10 @@ export default function K3KegiatanRutinPage({
     };
 
     const handleRemoveRow = (key: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.filter((r) => r._key !== key));
         setDirty(true);
     };
@@ -232,7 +254,10 @@ export default function K3KegiatanRutinPage({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         // Persist grouped and in display order so the stored sequence is stable.
@@ -589,7 +614,9 @@ export default function K3KegiatanRutinPage({
                                                                         />
                                                                     );
                                                                 }
+
                                                                 const isDone = row.jadwal.includes(d.day);
+
                                                                 return (
                                                                     <td
                                                                         key={d.day}

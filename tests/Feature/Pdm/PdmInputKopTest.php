@@ -40,7 +40,7 @@ class PdmInputKopTest extends TestCase
     public function test_the_input_page_shows_the_same_kop_as_its_pdf(string $input): void
     {
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Poasia']);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
         $lines = PdmInputKop::lines($input, $unit->name);
 
@@ -78,7 +78,7 @@ class PdmInputKopTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
         Machine::factory()->forUnit($unit)->create();
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         foreach (PdmForms::all() as $form) {
             $this->actingAs($user)

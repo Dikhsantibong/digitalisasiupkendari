@@ -1,6 +1,10 @@
 import { Head, router } from '@inertiajs/react';
 import { FilePen } from 'lucide-react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { ResumeCard } from '@/components/laporan/resume-card';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
@@ -22,7 +26,13 @@ export default function LogistikLaporanIndex({ filters, options }: Props) {
         );
     };
 
-    const query = { query: { unit_id: filters.unit_id, month: filters.month, year: filters.year } };
+    const query = {
+        query: {
+            unit_id: filters.unit_id,
+            month: filters.month,
+            year: filters.year,
+        },
+    };
 
     return (
         <>
@@ -38,32 +48,54 @@ export default function LogistikLaporanIndex({ filters, options }: Props) {
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                 </div>
 
-                <div className="grid gap-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                    <ResumeCard module="logistik" filters={filters} />
                     <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
                         <div>
-                            <h2 className="text-base font-semibold text-foreground">Laporan Logistik &amp; Gudang Pembangkit</h2>
+                            <h2 className="text-base font-semibold text-foreground">
+                                Laporan Logistik &amp; Gudang Pembangkit
+                            </h2>
                             <p className="mt-1 text-[13px] text-muted-foreground">
-                                Tersusun Sampul, Lembar Pengesahan, Daftar Isi, lalu seluruh tabel jadwal &amp; input logistik &amp; gudang — terisi otomatis dari data tersimpan (atau isian bawaan halaman bila belum disimpan). PDF menggabungkan halaman Portrait &amp; Landscape dengan nomor halaman daftar isi otomatis.
+                                Tersusun Sampul, Lembar Pengesahan, Daftar Isi,
+                                lalu seluruh tabel jadwal &amp; input logistik
+                                &amp; gudang — terisi otomatis dari data
+                                tersimpan (atau isian bawaan halaman bila belum
+                                disimpan). PDF menggabungkan halaman Portrait
+                                &amp; Landscape dengan nomor halaman daftar isi
+                                otomatis.
                             </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            <Button onClick={() => router.get(document.edit(query).url)}>
+                            <Button
+                                onClick={() =>
+                                    router.get(document.edit(query).url)
+                                }
+                            >
                                 <FilePen className="size-4" />
                                 Buka Dokumen (Lihat, Edit &amp; Cetak)
                             </Button>

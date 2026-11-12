@@ -2,8 +2,10 @@
 
 namespace App\Support\PdmForms;
 
+use App\Enums\EmployeePosition;
 use App\Models\Machine;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
 
@@ -105,8 +107,9 @@ class PatrolCheckPdmForm extends PdmForm
             'unit' => $unit->name,
             'tanggal' => Carbon::create($year, $month, 1)->format('Y-m-d'),
             'waktu' => '10.00 WITA',
-            'tim_patrol' => 'Officer K3L',
-            'pelaksana' => 'Officer PdM',
+            // Names of the Office K3 and Office PDM of the unit (Data Pegawai), not the jabatan.
+            'tim_patrol' => (string) app(ReportSignatories::class)->holder($unit, EmployeePosition::OfficeK3)?->name,
+            'pelaksana' => (string) app(ReportSignatories::class)->holder($unit, EmployeePosition::OfficePdm)?->name,
         ];
     }
 

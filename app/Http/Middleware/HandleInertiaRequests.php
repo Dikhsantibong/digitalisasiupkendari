@@ -2,10 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\PermissionName;
 use App\Models\Role;
 use App\Models\User;
 use App\Services\AccessControl;
 use App\Services\Impersonation;
+use App\Services\Reports\ApprovalInbox;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -53,6 +55,10 @@ class HandleInertiaRequests extends Middleware
                 // Portal Pemantauan layout & view-only mode (kantor induk UP Kendari, Manager UL).
                 'usesPortal' => $user?->usesPortal() ?? false,
                 'readOnly' => $user?->isReadOnly() ?? false,
+                // Manager UL: a portal account that mengesahkan reports — gets the simple review & approve home.
+                'reviewer' => $user !== null && $user->usesPortal() && ! $user->isReadOnly() && $user->hasPermissionTo(PermissionName::ReportUnitApprove),
+                // Persetujuan menu: what waits for the user's decision (null = the account approves nothing).
+                'approvals' => fn (): ?int => $user === null ? null : ApprovalInbox::pendingCount($user),
                 // Pindah Akun: the Super Admin behind a "masuk sebagai" session, and whether one may start.
                 'impersonator' => $this->impersonator($request),
                 'canImpersonate' => ($user?->isSuperAdmin() ?? false) && ! app(Impersonation::class)->isActive($request),

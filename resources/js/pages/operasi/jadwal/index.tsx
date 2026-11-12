@@ -1,4 +1,6 @@
 import { Head, router } from '@inertiajs/react';
+import type {
+    Users} from 'lucide-react';
 import {
     Activity,
     CalendarClock,
@@ -7,7 +9,6 @@ import {
     PackageCheck,
     Sliders,
     Sparkles,
-    Users,
     Wrench,
     ZapOff,
 } from 'lucide-react';
@@ -154,6 +155,7 @@ export default function OperasiJadwalIndex({ filters, options }: Props) {
                     {JADWAL_LIST.map((item) => {
                         const Icon = item.icon;
                         const isAvailable = AVAILABLE_TARGETS.includes(item.target);
+
                         return (
                             <div
                                 key={item.title}

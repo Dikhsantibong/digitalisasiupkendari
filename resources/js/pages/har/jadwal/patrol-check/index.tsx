@@ -16,6 +16,14 @@ import {
 import { Fragment, useMemo, useState } from 'react';
 import { MobileTimelineForm } from '@/components/mobile/timeline-form';
 import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
     buildDocumentHeader,
     createSheet,
     downloadWorkbook,
@@ -25,14 +33,6 @@ import {
     SPECS,
     XLSX_COLORS,
 } from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
-import {
-    OPERASI_MONTHS,
-    OperasiSelect,
-} from '@/components/operasi/filter-select';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/har/jadwal';
 import patrolCheck from '@/routes/har/jadwal/patrol-check';
@@ -174,11 +174,16 @@ export default function HarJadwalPatrolCheckPage({
         category: 'rencana' | 'realisasi',
         day: number,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r) => {
-                if (r.employee_id !== employeeId) return r;
+                if (r.employee_id !== employeeId) {
+return r;
+}
+
                 const nextMap = { ...r[category] };
                 const dayKey = String(day);
                 const currentVal = nextMap[dayKey];
@@ -200,10 +205,15 @@ export default function HarJadwalPatrolCheckPage({
 
     // Auto rotate piket across non-red working days sequentially across operators
     const handleAutoRotate = () => {
-        if (!can_write || rows.length === 0) return;
+        if (!can_write || rows.length === 0) {
+return;
+}
 
         const workingDays = days.filter((d) => !d.is_red);
-        if (workingDays.length === 0) return;
+
+        if (workingDays.length === 0) {
+return;
+}
 
         setRows((prev) => {
             const next = prev.map((r) => ({
@@ -223,7 +233,9 @@ export default function HarJadwalPatrolCheckPage({
 
     // Copy entire Rencana to Realisasi
     const handleCopyRencanaToRealisasi = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r) => ({
@@ -242,7 +254,10 @@ export default function HarJadwalPatrolCheckPage({
 
     // Save changes
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -315,12 +330,18 @@ export default function HarJadwalPatrolCheckPage({
 
         rows.forEach((r, idx) => {
             const rencanaCols = days.map((d) => {
-                if (d.is_red) return 'OFF';
+                if (d.is_red) {
+return 'OFF';
+}
+
                 return String(r.rencana[String(d.day)] ?? '') === '1' ? 1 : '';
             });
 
             const realisasiCols = days.map((d) => {
-                if (d.is_red) return 'OFF';
+                if (d.is_red) {
+return 'OFF';
+}
+
                 return String(r.realisasi[String(d.day)] ?? '') === '1'
                     ? 1
                     : '';
@@ -392,8 +413,10 @@ export default function HarJadwalPatrolCheckPage({
             if (r === headerRowIdx) {
                 if (c >= dayStart && c <= dayEnd) {
                     const day = days[c - dayStart];
+
                     return day?.is_red ? offCell : SPECS.headerGrey;
                 }
+
                 return SPECS.headerGrey;
             }
 
@@ -401,19 +424,25 @@ export default function HarJadwalPatrolCheckPage({
                 if (c === 0) {
                     return SPECS.cellLeft;
                 }
+
                 if (c === 1) {
                     return SPECS.labelCenter;
                 }
+
                 if (c >= dayStart && c <= dayEnd) {
                     const value = String(sheetData[r]?.[c] ?? '');
+
                     if (value === 'OFF') {
                         return offCell;
                     }
+
                     if (value === '1') {
                         return blueCell;
                     }
+
                     return SPECS.cell;
                 }
+
                 return { ...SPECS.cell, bold: true };
             }
 
@@ -431,6 +460,7 @@ export default function HarJadwalPatrolCheckPage({
             const top = dataStart + p * 2;
             mergeCells(ws, top, 0, top + 1, 0); // NAMA column spans rencana + realisasi
         }
+
         // Summary columns span the whole personnel block
         for (let c = colRencana; c < totalCols; c++) {
             mergeCells(ws, dataStart, c, dataEnd, c);

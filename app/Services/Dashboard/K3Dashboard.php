@@ -62,7 +62,8 @@ class K3Dashboard
         $certificates = $this->certificateStatuses($unitIds);
         $extinguishers = $this->extinguisherStatuses($unitIds, $now);
         $aparTotal = array_sum($extinguishers);
-        $aparReady = $aparTotal === 0 ? null : round(($extinguishers[CertificateStatus::Aktif->value] + $extinguishers[CertificateStatus::Mendekati->value]) / $aparTotal * 100, 1);
+        // No APAR checked yet (every tube "Belum") is no data, not 0% ready.
+        $aparReady = $aparTotal === 0 || $extinguishers[CertificateStatus::Belum->value] === $aparTotal ? null : round(($extinguishers[CertificateStatus::Aktif->value] + $extinguishers[CertificateStatus::Mendekati->value]) / $aparTotal * 100, 1);
 
         $plans = K3ActivityPlan::query()->whereIn('unit_id', $unitIds)->where('year', $now->year)->where('month', $now->month)->get(['unit_id', 'plan_days', 'real_days']);
 

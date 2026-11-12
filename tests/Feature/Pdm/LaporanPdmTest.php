@@ -28,7 +28,7 @@ class LaporanPdmTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.laporan.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -43,7 +43,7 @@ class LaporanPdmTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         Machine::factory()->forUnit($unit)->create(['name' => 'ZHEJIANG #1']);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -75,7 +75,7 @@ class LaporanPdmTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         PdmSampleMonitoring::factory()->create(['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'lokasi' => 'Gudang Sampel Poasia']);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertInertia(fn ($page) => $page->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $content): bool => str_contains($content, 'Gudang Sampel Poasia'))));
     }
@@ -83,7 +83,7 @@ class LaporanPdmTest extends TestCase
     public function test_the_edited_document_is_saved_and_can_be_regenerated(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -106,7 +106,7 @@ class LaporanPdmTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'download' => 1]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
@@ -133,7 +133,7 @@ class LaporanPdmTest extends TestCase
     public function test_the_laporan_page_lists_the_report_contents_with_their_saved_state(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
         $this->actingAs($user)->post(route('pdm.input.forms.store', ['form' => 'checklist-patrol-check']), [
             'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
             'rows' => ['turbin' => [['item' => 'Bearing Turbin', 'status' => 'OK']]],
@@ -160,7 +160,7 @@ class LaporanPdmTest extends TestCase
     public function test_the_patrol_check_forms_reach_the_document(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
         $this->actingAs($user)->post(route('pdm.input.forms.store', ['form' => 'patrol-check-pdm']), $period + [
             'rows' => ['checklist' => [['area' => 'Generator', 'item' => 'Getaran bearing uji', 'tidak' => '1', 'temuan' => 'Getaran DE tinggi']]],
@@ -200,7 +200,7 @@ class LaporanPdmTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         Machine::factory()->forUnit($unit)->create();
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $content = '';

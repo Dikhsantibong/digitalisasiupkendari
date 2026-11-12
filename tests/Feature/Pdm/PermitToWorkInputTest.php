@@ -27,7 +27,7 @@ class PermitToWorkInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.permit-to-work.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -42,7 +42,7 @@ class PermitToWorkInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->post(route('pdm.input.permit-to-work.store'), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [
@@ -63,7 +63,7 @@ class PermitToWorkInputTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         PdmPermitToWork::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 8, 'no_urut' => 1]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.permit-to-work.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
@@ -76,7 +76,7 @@ class PermitToWorkInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->post(route('pdm.input.permit-to-work.store'), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [['uraian' => 'x', 'status' => 'pending']],

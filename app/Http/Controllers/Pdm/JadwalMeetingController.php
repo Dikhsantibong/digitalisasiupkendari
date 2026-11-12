@@ -11,6 +11,7 @@ use App\Models\PdmJadwalMeeting;
 use App\Models\PdmJadwalMeta;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Pdm\PdmJadwalSigners;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -102,27 +103,15 @@ class JadwalMeetingController extends Controller
         ]);
 
         if (! $meta->exists) {
-            $tlHar = $employees->first(fn ($e): bool => str_contains(strtolower($e->position ?? ''), 'leader pemeliharaan') || str_contains(strtolower($e->position ?? ''), 'tl har'));
-            $projectLeader = $employees->first(fn ($e): bool => str_contains(strtolower($e->position ?? ''), 'project leader') || str_contains(strtolower($e->position ?? ''), 'manager') || str_contains(strtolower($e->position ?? ''), 'manajer'));
-            $koorHar = $employees->first(fn ($e): bool => str_contains(strtolower($e->position ?? ''), 'koordinator') || str_contains(strtolower($e->position ?? ''), 'supervisor'));
 
             $meta->doc_number = $meta->doc_number ?: 'PLN-NP-UPKDR/JADWAL-MEETING-PDM';
             $meta->revision = $meta->revision ?: '00';
             $meta->effective_date = $meta->effective_date ?: Carbon::create($year, $month, 1)->locale('id')->isoFormat('D MMMM Y');
             $meta->page_number = $meta->page_number ?: '1 dari 1';
 
-            $meta->mengetahui_employee_id = $tlHar?->id;
-            $meta->mengetahui_nama = $tlHar?->name ?: 'Team Leader Pemeliharaan';
-            $meta->mengetahui_jabatan = $tlHar?->position ?: 'Team Leader Pemeliharaan';
-
-            $meta->disetujui_employee_id = $projectLeader?->id;
-            $meta->disetujui_nama = $projectLeader?->name ?: 'Project Leader';
-            $meta->disetujui_jabatan = $projectLeader?->position ?: 'Project Leader';
-
-            $meta->dibuat_employee_id = $koorHar?->id;
-            $meta->dibuat_nama = $koorHar?->name ?: 'Koordinator Pemeliharaan';
-            $meta->dibuat_jabatan = $koorHar?->position ?: 'Koordinator Pemeliharaan';
         }
+        // Signers by name (Data Pegawai), never the jabatan text.
+        $meta = app(PdmJadwalSigners::class)->apply($meta, $unit, 'meeting');
 
         $savedRecords = PdmJadwalMeeting::query()
             ->where('unit_id', $unit->id)
@@ -407,6 +396,7 @@ class JadwalMeetingController extends Controller
             ->where('year', $year)
             ->where('month', $month)
             ->first();
+        $meta = app(PdmJadwalSigners::class)->apply($meta, $unit, 'meeting');
 
         $rows = PdmJadwalMeeting::query()
             ->where('unit_id', $unit->id)

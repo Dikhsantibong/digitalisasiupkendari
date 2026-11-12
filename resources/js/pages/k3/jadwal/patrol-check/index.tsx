@@ -100,6 +100,7 @@ export default function K3PatrolCheckPage({
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setRows(hydrate(initialRows));
@@ -115,16 +116,24 @@ export default function K3PatrolCheckPage({
     };
 
     const toggleCell = (key: number, category: Category, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => {
-                if (r._key !== key) return r;
+                if (r._key !== key) {
+return r;
+}
+
                 const set = new Set(r[category] || []);
+
                 if (set.has(day)) {
                     set.delete(day);
                 } else {
                     set.add(day);
                 }
+
                 return { ...r, [category]: Array.from(set).sort((a, b) => a - b) };
             }),
         );
@@ -132,19 +141,28 @@ export default function K3PatrolCheckPage({
     };
 
     const updateField = (key: number, field: 'uraian' | 'keterangan' | 'bobot_sla', value: string | number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.map((r) => (r._key === key ? { ...r, [field]: value } : r)));
         setDirty(true);
     };
 
     const handleMarkPlanWorkingDays = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.map((r) => ({ ...r, rencana: [...workingDaysList] })));
         setDirty(true);
     };
 
     const handleAdd = () => {
-        if (!form.uraian.trim()) return;
+        if (!form.uraian.trim()) {
+return;
+}
+
         setRows((prev) => [
             ...prev,
             {
@@ -165,7 +183,10 @@ export default function K3PatrolCheckPage({
     };
 
     const handleRemove = (key: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.filter((r) => r._key !== key));
         setDirty(true);
     };
@@ -176,7 +197,10 @@ export default function K3PatrolCheckPage({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             patrolCheck.store().url,
@@ -205,12 +229,18 @@ export default function K3PatrolCheckPage({
     // Overall weighted SLA = Σ(bobot × persentase) ÷ Σ bobot.
     const overallSla = useMemo(() => {
         const totalBobot = rows.reduce((s, r) => s + (Number(r.bobot_sla) || 0), 0);
-        if (totalBobot <= 0) return 0;
+
+        if (totalBobot <= 0) {
+return 0;
+}
+
         const weighted = rows.reduce((s, r) => {
             const target = r.rencana.length;
             const perf = target > 0 ? (r.realisasi.length / target) * 100 : 0;
+
             return s + (Number(r.bobot_sla) || 0) * perf;
         }, 0);
+
         return Math.round(weighted / totalBobot);
     }, [rows]);
 
@@ -219,10 +249,12 @@ export default function K3PatrolCheckPage({
             if (d.is_red) {
                 return <td key={`${category}-${d.day}`} className="print-red-cell border border-black bg-[#ff0000] select-none" title={`${d.day} (${d.dow}): Libur / Akhir Pekan`} />;
             }
+
             const planned = row.rencana.includes(d.day);
             const realized = row.realisasi.includes(d.day);
             const on = category === 'rencana' ? planned : realized;
             let color = '';
+
             if (on) {
                 if (category === 'realisasi') {
                     color = 'bg-emerald-400 text-black print-green-cell';
@@ -230,6 +262,7 @@ export default function K3PatrolCheckPage({
                     color = realized ? 'bg-emerald-400 text-black print-green-cell' : 'bg-yellow-300 text-black print-yellow-cell';
                 }
             }
+
             return (
                 <td
                     key={`${category}-${d.day}`}
@@ -321,7 +354,9 @@ export default function K3PatrolCheckPage({
                     <div className="border-b border-border p-4">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold tracking-wide text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT</div>
@@ -330,7 +365,9 @@ export default function K3PatrolCheckPage({
                                 <div className="text-[11px] font-bold text-foreground uppercase">PATROL CHECK HARIAN K3 DAN LINGKUNGAN BULAN {monthName.toUpperCase()} {filters.year}</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                         </div>
                     </div>

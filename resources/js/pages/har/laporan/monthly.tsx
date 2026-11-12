@@ -1,6 +1,6 @@
-import { Fragment } from 'react';
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { Fragment } from 'react';
 import { Button } from '@/components/ui/button';
 import { formatNumber } from '@/lib/format';
 import laporan from '@/routes/har/laporan';
@@ -345,6 +345,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
     const srByCategory = data.sr_summary.by_category ?? [];
     const srCountFor = (codes: string[]) => {
         const u = codes.map((c) => c.toUpperCase());
+
         return srByCategory
             .filter((c) => u.includes(c.category.toUpperCase()))
             .reduce((sum, c) => sum + c.count, 0);
@@ -361,9 +362,16 @@ export default function MonthlyReport({ data }: { data: Data }) {
 
     let srMapMax = Math.max(14, srCm, srFlm, srCancel, srPdm);
     srMapMax = Math.ceil(srMapMax / 2) * 2;
-    if (srMapMax < 14) srMapMax = 14;
+
+    if (srMapMax < 14) {
+srMapMax = 14;
+}
+
     const srMapTicks: number[] = [];
-    for (let t = 0; t <= srMapMax; t += 2) srMapTicks.push(t);
+
+    for (let t = 0; t <= srMapMax; t += 2) {
+srMapTicks.push(t);
+}
 
     const srByEngine = data.sr_summary.by_engine ?? [];
     const totalTerbit = srByEngine.reduce((sum, e) => sum + e.terbit, 0);
@@ -412,7 +420,10 @@ export default function MonthlyReport({ data }: { data: Data }) {
     const flmRowsReversed = [...unitSrRows].reverse();
     const flmMaxVal = Math.max(4, ...unitSrRows.map((r) => r.flm), 0);
     const flmTicks: number[] = [];
-    for (let t = 0; t <= flmMaxVal; t += 1) flmTicks.push(t);
+
+    for (let t = 0; t <= flmMaxVal; t += 1) {
+flmTicks.push(t);
+}
 
     const srSummaryOpen = data.sr_summary.open;
     const srSummaryClose = data.sr_summary.close;
@@ -421,9 +432,16 @@ export default function MonthlyReport({ data }: { data: Data }) {
     const srSummaryClosePct = srSummaryTotal > 0 ? 100 - srSummaryOpenPct : 0;
 
     let c1Max = Math.max(12, srSummaryOpen, srSummaryClose);
-    if (c1Max % 2 !== 0) c1Max++;
+
+    if (c1Max % 2 !== 0) {
+c1Max++;
+}
+
     const c1Ticks: number[] = [];
-    for (let t = 0; t <= c1Max; t += 2) c1Ticks.push(t);
+
+    for (let t = 0; t <= c1Max; t += 2) {
+c1Ticks.push(t);
+}
 
     const top5SrAssets = data.sr_summary.top_assets ?? [];
 
@@ -846,6 +864,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                 <svg viewBox="0 0 520 130" className="mx-auto block h-28 w-full font-sans">
                                     {srMapTicks.map((t) => {
                                         const tx = 160 + (t / srMapMax) * 340;
+
                                         return (
                                             <g key={t}>
                                                 <line x1={tx} y1={10} x2={tx} y2={105} stroke="#e5e7eb" strokeWidth={0.8} />
@@ -863,6 +882,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                     ].map((b, bIdx) => {
                                         const by = 16 + bIdx * 23;
                                         const bw = srMapMax > 0 ? (b.val / srMapMax) * 340 : 0;
+
                                         return (
                                             <g key={b.label}>
                                                 <text x={155} y={by + 10} textAnchor="end" fontSize={8} fill="#000">{b.label}</text>
@@ -934,6 +954,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                     <svg viewBox="0 0 280 180" className="h-44 w-full font-sans">
                                         {flmTicks.map((t) => {
                                             const tx = 75 + (t / flmMaxVal) * 175;
+
                                             return (
                                                 <g key={t}>
                                                     <line x1={tx} y1={24} x2={tx} y2={150} stroke="#e5e7eb" strokeWidth={0.8} />
@@ -946,6 +967,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                         {flmRowsReversed.map((fr, rIdx) => {
                                             const ry = 30 + rIdx * 20;
                                             const rw = flmMaxVal > 0 ? (fr.flm / flmMaxVal) * 175 : 0;
+
                                             return (
                                                 <g key={fr.name}>
                                                     <text x={70} y={ry + 10} textAnchor="end" fontSize={7.5} fill="#000">{fr.name}</text>
@@ -1001,6 +1023,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                 <svg viewBox="0 0 540 120" className="mx-auto block h-28 w-full font-sans">
                                     {c1Ticks.map((t) => {
                                         const tx = 65 + (t / c1Max) * 445;
+
                                         return (
                                             <g key={t}>
                                                 <line x1={tx} y1={10} x2={tx} y2={85} stroke="#e5e7eb" strokeDasharray="2,2" strokeWidth={0.8} />
@@ -1044,6 +1067,7 @@ export default function MonthlyReport({ data }: { data: Data }) {
                                             const barH = Math.max(14, freq * 22);
                                             const barY = 90 - barH;
                                             const lbl = assetItem.asset.length > 18 ? assetItem.asset.substring(0, 18) + '...' : assetItem.asset;
+
                                             return (
                                                 <g key={assetItem.asset + idx}>
                                                     <line x1={cx - 33} y1={12} x2={cx - 33} y2={90} stroke="#f0f0f0" strokeWidth={0.8} />

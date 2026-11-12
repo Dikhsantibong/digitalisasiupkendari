@@ -48,7 +48,10 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [sig, setSig] = useState(signature);
-    if (sig !== signature) { setSig(signature); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); }
+
+    if (sig !== signature) {
+ setSig(signature); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); 
+}
 
     // Groups present in data but not in the default order still get rendered.
     const orderedGroups = [...groups, ...rows.map((r) => r.grup).filter((g) => !groups.includes(g))].filter((g, i, a) => a.indexOf(g) === i);
@@ -68,7 +71,9 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
         setNextKey((k) => k + 1);
         setDirty(true);
     };
-    const remove = (key: number) => { setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); };
+    const remove = (key: number) => {
+ setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
+};
 
     const save = () => {
         setSaving(true);
@@ -180,6 +185,7 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
                             <tbody>
                                 {orderedGroups.map((grup) => {
                                     const items = rows.filter((r) => r.grup === grup);
+
                                     return (
                                         <Fragment key={grup}>
                                             <tr className="bg-muted/70">
@@ -188,6 +194,7 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
                                             {items.map((row, li) => {
                                                 const notReady = Math.max(0, row.jml_total - row.jml_ready);
                                                 const pct = row.jml_total > 0 ? Math.round((row.jml_ready / row.jml_total) * 100) : 0;
+
                                                 return (
                                                     <tr key={row._key} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
                                                         <td className="text-center">{li + 1}</td>

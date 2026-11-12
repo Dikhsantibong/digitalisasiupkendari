@@ -6,6 +6,8 @@ use App\Enums\PersediaanJenis;
 use App\Enums\RoleName;
 use App\Enums\TankFuelType;
 use App\Models\BbmType;
+use App\Models\FireExtinguisher;
+use App\Models\FireExtinguisherCheck;
 use App\Models\FuelTank;
 use App\Models\LogistikFormRow;
 use App\Models\LubricantType;
@@ -122,11 +124,11 @@ class DashboardTest extends TestCase
         }
     }
 
-    public function test_tl_logistik_and_tl_pdm_dashboards_are_scoped_to_their_module(): void
+    public function test_koordinator_logistik_and_koordinator_pdm_dashboards_are_scoped_to_their_module(): void
     {
         $this->seedAccessControl();
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, Unit::factory()->create()))
             ->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page
                 ->where('scope.logistik', true)
@@ -135,7 +137,7 @@ class DashboardTest extends TestCase
                 ->loadDeferredProps('logistik', fn ($reload) => $reload->has('logistik.critical')),
             );
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, Unit::factory()->create()))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, Unit::factory()->create()))
             ->get(route('dashboard'))
             ->assertInertia(fn ($page) => $page
                 ->where('scope.pdm', true)
@@ -231,6 +233,25 @@ class DashboardTest extends TestCase
             ->assertInertia(fn ($page) => $page->loadDeferredProps('har', fn ($reload) => $reload
                 ->where('har.kpis.0.value', 1)
                 ->where('har.backlog.0.code', 'WO-LAIN')));
+
+        Carbon::setTestNow();
+    }
+
+    public function test_apar_readiness_is_no_data_until_a_tube_was_checked(): void
+    {
+        $this->seedAccessControl();
+        Carbon::setTestNow('2026-11-20 08:00:00');
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $tubes = FireExtinguisher::factory()->count(2)->forUnit($unit)->create(['is_active' => true]);
+        $tl = $this->userWithRole(RoleName::KoordinatorK3, $unit);
+        $apar = fn () => $this->actingAs($tl)->get(route('dashboard'))->assertOk();
+
+        // Never checked: "—", not 0 %.
+        $apar()->assertInertia(fn ($page) => $page->loadDeferredProps('k3', fn ($reload) => $reload->where('k3.kpis.4.key', 'apar')->where('k3.kpis.4.value', null)));
+
+        // One tube checked and valid, one not yet checked: 50 %.
+        FireExtinguisherCheck::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 11, 'fire_extinguisher_id' => $tubes[0]->id, 'exp_date' => '2027-06-01']);
+        $apar()->assertInertia(fn ($page) => $page->loadDeferredProps('k3', fn ($reload) => $reload->where('k3.kpis.4.value', fn ($value): bool => (float) $value === 50.0)));
 
         Carbon::setTestNow();
     }

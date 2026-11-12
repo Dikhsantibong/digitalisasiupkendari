@@ -61,6 +61,7 @@ export function NavCollapsible({
                                     const isSubActive = item.items.some((sub) =>
                                         isCurrentUrl(sub.href),
                                     );
+
                                     return (
                                         <Collapsible
                                             key={item.title}

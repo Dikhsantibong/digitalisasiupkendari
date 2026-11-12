@@ -88,6 +88,7 @@ export default function TimeFrameInput({
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setRows(initialRows);
@@ -112,16 +113,24 @@ export default function TimeFrameInput({
     };
 
     const toggleCell = (activityId: number, category: Category, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => {
-                if (r.activity_type_id !== activityId) return r;
+                if (r.activity_type_id !== activityId) {
+return r;
+}
+
                 const set = new Set(r[category] || []);
+
                 if (set.has(day)) {
                     set.delete(day);
                 } else {
                     set.add(day);
                 }
+
                 return { ...r, [category]: Array.from(set).sort((a, b) => a - b) };
             }),
         );
@@ -133,7 +142,10 @@ export default function TimeFrameInput({
         field: 'pic' | 'keterangan',
         value: string,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) =>
                 r.activity_type_id === activityId ? { ...r, [field]: value } : r,
@@ -143,7 +155,10 @@ export default function TimeFrameInput({
     };
 
     const handleMarkPlanWorkingDays = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => ({ ...r, rencana: [...workingDaysList] })),
         );
@@ -156,7 +171,10 @@ export default function TimeFrameInput({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             timeFrame.store().url,
@@ -199,6 +217,7 @@ export default function TimeFrameInput({
             // Legend: green = Terealisasi (realised), yellow = Tidak Terealisasi
             // (planned but not realised).
             let color = '';
+
             if (on) {
                 if (category === 'realisasi') {
                     color = 'bg-emerald-400 text-black print-green-cell';
@@ -313,7 +332,9 @@ export default function TimeFrameInput({
                     <div className="border-b border-border p-4">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold tracking-wide text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT</div>
@@ -322,7 +343,9 @@ export default function TimeFrameInput({
                                 <div className="text-[11px] font-bold text-foreground uppercase">TIME FRAME KINERJA K3 DAN LINGKUNGAN BULAN {monthName.toUpperCase()} {filters.year}</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="max-h-12 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="max-h-12 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                         </div>
                     </div>

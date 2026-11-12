@@ -86,7 +86,7 @@ class K3DivisionFeedTest extends TestCase
 
     public function test_logistik_temuan_land_in_kondisi_k3_but_blank_rows_do_not(): void
     {
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $this->unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $this->unit))
             ->post(route('logistik.input.form.store', ['form' => 'unsafe']), $this->period + ['rows' => [
                 ['section' => 'temuan', 'data' => ['periode' => 'MINGGU KE - 1', 'kategori' => 'UNSAFE ACTION', 'temuan' => 'Forklift tanpa sabuk pengaman', 'lokasi' => 'Gudang 2', 'tindak_lanjut' => 'Teguran', 'keterangan' => 'Close']],
                 ['section' => 'temuan', 'data' => ['periode' => 'MINGGU KE - 2', 'kategori' => 'UNSAFE CONDITION', 'temuan' => 'Rak miring', 'keterangan' => 'menunggu material']],
@@ -200,7 +200,7 @@ class K3DivisionFeedTest extends TestCase
             [...HarProgram5s5r::blankRow(3, 'rapi'), 'progres' => '26-50', 'keterangan' => 'Rak tools ditata ulang'],
         ]])->assertSessionHasNoErrors();
 
-        $pdm = $this->userWithRole(RoleName::TeamLeaderPdm, $this->unit);
+        $pdm = $this->userWithRole(RoleName::KoordinatorPdm, $this->unit);
         $this->actingAs($pdm)->post(route('pdm.input.forms.store', ['form' => 'checklist-5s5r']), $this->period + [
             'header' => ['nama_pembangkit' => $this->unit->name],
             'rows' => ['ringkas' => [
@@ -209,7 +209,7 @@ class K3DivisionFeedTest extends TestCase
             ]],
         ])->assertSessionHasNoErrors();
 
-        $logistik = $this->userWithRole(RoleName::TeamLeaderLogistik, $this->unit);
+        $logistik = $this->userWithRole(RoleName::KoordinatorLogistik, $this->unit);
         $this->actingAs($logistik)->post(route('logistik.input.sheet.store', ['jadwal' => 'inspeksi-5s5r']), $this->period + ['rows' => [
             ['section' => 'ringkas', 'nama' => 'Alat rusak dipisahkan', 'days' => ['1' => 'D', '2' => 'D'], 'keterangan' => 'Dua alat rusak dipisah'],
             ['section' => 'rajin', 'nama' => 'Briefing dilaksanakan', 'days' => ['1' => 'D'], 'target' => 4],
@@ -336,7 +336,7 @@ class K3DivisionFeedTest extends TestCase
 
     public function test_new_logistik_temuan_reach_k3_once(): void
     {
-        $tlLogistik = $this->userWithRole(RoleName::TeamLeaderLogistik, $this->unit);
+        $tlLogistik = $this->userWithRole(RoleName::KoordinatorLogistik, $this->unit);
         $koordinatorK3 = $this->userWithRole(RoleName::KoordinatorK3, $this->unit);
         $tlK3 = $this->userWithRole(RoleName::TeamLeaderK3, $this->unit);
         $koordinatorOperasi = $this->userWithRole(RoleName::KoordinatorOperasi, $this->unit);

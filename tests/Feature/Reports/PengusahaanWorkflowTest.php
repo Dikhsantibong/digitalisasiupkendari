@@ -155,8 +155,9 @@ class PengusahaanWorkflowTest extends TestCase
         $this->assertSame('Laporan Anda sudah disetujui', $staf->notifications()->sole()->data['title']);
         $this->actingAs($manager)->get(route('portal.index', self::PERIOD))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('my_turn', fn ($items): bool => collect($items)->contains(fn ($item): bool => $item['title'] === 'Laporan Pengusahaan Operasi'
-                && $item['document_url'] === $documentUrl)));
+            // The Manager UL home lists it under "Perlu Pengesahan Anda", ready to sahkan.
+            ->assertInertia(fn ($page) => $page->component('portal/manager')->where('queue', fn ($items): bool => collect($items)->contains(fn ($item): bool => $item['title'] === 'Laporan Pengusahaan Operasi'
+                && $item['document_url'] === $documentUrl && $item['action'] === 'ratify')));
         $edit($manager)->assertInertia(fn ($page) => $page->where('workflow.can.ratify', true)->where('workflow.status', 'disetujui'));
         $edit($tl)->assertInertia(fn ($page) => $page->where('workflow.can.approve', false));
 

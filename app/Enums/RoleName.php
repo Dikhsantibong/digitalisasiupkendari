@@ -22,8 +22,10 @@ enum RoleName: string
     case TeamLeaderOperasi = 'tl_operasi';
     case TeamLeaderPemeliharaan = 'tl_pemeliharaan';
     case TeamLeaderK3 = 'tl_k3';
-    case TeamLeaderLogistik = 'tl_logistik';
-    case TeamLeaderPdm = 'tl_pdm';
+    // Logistik & PdM are run by their Koordinator (user, 2026-11-09: the TL Logistik / TL PdM roles were dropped);
+    // their reports are approved by the TL Pemeliharaan.
+    case KoordinatorLogistik = 'koordinator_logistik';
+    case KoordinatorPdm = 'koordinator_pdm';
     case SiteLeader = 'site_leader';
     case ProjectLeaderOperasi = 'project_leader_operasi';
     case KoordinatorOperasi = 'koordinator_operasi';
@@ -59,8 +61,8 @@ enum RoleName: string
             self::TeamLeaderOperasi => 'TL Operasi',
             self::TeamLeaderPemeliharaan => 'TL Pemeliharaan',
             self::TeamLeaderK3 => 'TL K3 & Keamanan',
-            self::TeamLeaderLogistik => 'TL Logistik & Gudang',
-            self::TeamLeaderPdm => 'TL PdM & Maturity Level',
+            self::KoordinatorLogistik => 'Koordinator Logistik & Gudang',
+            self::KoordinatorPdm => 'Koordinator PdM & Maturity Level',
             self::SiteLeader => 'Site Leader',
             self::ProjectLeaderOperasi => 'Project Leader Operasi',
             self::KoordinatorOperasi => 'Koordinator Operasi',
@@ -92,8 +94,8 @@ enum RoleName: string
             self::TeamLeaderOperasi => 'Akses 2 — Pengusahaan operasi (menu & Laporan Pengusahaan), serta menyetujui Laporan Operasi Pembangkit pada unit yang ditugaskan.',
             self::TeamLeaderPemeliharaan => 'Akses 2 — Pengusahaan pemeliharaan (menu & Laporan Pengusahaan), serta menyetujui Laporan Pemeliharaan Pembangkit pada unit yang ditugaskan.',
             self::TeamLeaderK3 => 'Akses 2 — Pengusahaan K3 & keamanan (menu & Laporan Pengusahaan), serta menyetujui Laporan K3 Pembangkit pada unit yang ditugaskan.',
-            self::TeamLeaderLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan.',
-            self::TeamLeaderPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan.',
+            self::KoordinatorLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan dan memverifikasi Laporan Logistik (disetujui TL Pemeliharaan).',
+            self::KoordinatorPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan dan memverifikasi Laporan PdM (disetujui TL Pemeliharaan).',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
             self::ProjectLeaderOperasi => 'Project Leader: Akses 1 — melihat seluruh Laporan Project (Operasi, Pemeliharaan, K3, Logistik, PdM), serta menjadwalkan shift regu & mengelola absensi pada unit pembangkit yang ditugaskan.',
             self::KoordinatorOperasi => 'Akses 1 — Laporan Project operasi (Koordinator & Office): jadwal, input, berita acara, master dan Laporan Operasi Pembangkit, serta mengawasi logsheet & jadwal shift operator.',
@@ -133,8 +135,8 @@ enum RoleName: string
             self::TeamLeaderOperasi,
             self::TeamLeaderPemeliharaan,
             self::TeamLeaderK3,
-            self::TeamLeaderLogistik,
-            self::TeamLeaderPdm,
+            self::KoordinatorLogistik,
+            self::KoordinatorPdm,
             self::SiteLeader,
             self::ProjectLeaderOperasi,
             self::KoordinatorOperasi,
@@ -303,9 +305,9 @@ enum RoleName: string
                 PermissionName::K3PengusahaanWrite,
             ],
 
-            self::TeamLeaderLogistik => [
+            self::KoordinatorLogistik => [
                 ...$this->teamLeaderBasePermissions(),
-                // The logistik & gudang module belongs to TL Logistik & Gudang.
+                // The logistik & gudang module belongs to the Koordinator Logistik & Gudang.
                 PermissionName::LogistikInputView,
                 PermissionName::LogistikInputWrite,
                 PermissionName::LogistikLaporanView,
@@ -313,9 +315,9 @@ enum RoleName: string
                 PermissionName::LogistikMasterManage,
             ],
 
-            self::TeamLeaderPdm => [
+            self::KoordinatorPdm => [
                 ...$this->teamLeaderBasePermissions(),
-                // The PdM & maturity level module belongs to TL PdM.
+                // The PdM & maturity level module belongs to the Koordinator PdM.
                 PermissionName::PdmInputView,
                 PermissionName::PdmInputWrite,
                 PermissionName::PdmLaporanView,

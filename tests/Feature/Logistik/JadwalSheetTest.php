@@ -36,7 +36,7 @@ class JadwalSheetTest extends TestCase
     public function test_every_sheet_opens_with_its_default_rows_and_prints_a_pdf(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         foreach (array_keys(LogistikJadwal::SHEETS) as $sheet) {
@@ -62,7 +62,7 @@ class JadwalSheetTest extends TestCase
     public function test_a_sheet_is_only_served_under_its_own_menu(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
 
         $this->actingAs($user)->get('/logistik/jadwal/patrol-check')->assertNotFound();
         $this->actingAs($user)->get('/logistik/input/lembar/kegiatan')->assertNotFound();
@@ -72,7 +72,7 @@ class JadwalSheetTest extends TestCase
     public function test_kegiatan_rows_are_saved_with_their_progress(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -98,7 +98,7 @@ class JadwalSheetTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get($this->routeFor('pemeliharaan', 'index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -116,7 +116,7 @@ class JadwalSheetTest extends TestCase
     public function test_the_pemeliharaan_realisasi_gives_the_kinerja_and_reaches_the_laporan(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
         $mondays = ['3' => 'D', '10' => 'D', '17' => 'D', '24' => 'D', '31' => 'D'];
 
@@ -151,7 +151,7 @@ class JadwalSheetTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         Holiday::factory()->create(['year' => 2026, 'date' => '2026-08-17', 'day_name' => 'Monday', 'description' => 'Hari Kemerdekaan RI']);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get($this->routeFor('piket-patrol-check', 'index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -166,7 +166,7 @@ class JadwalSheetTest extends TestCase
     public function test_the_piket_patrol_check_kinerja_can_exceed_the_target(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
         $days = collect([3, 7, 10, 14, 18, 21, 24, 28, 31])->mapWithKeys(fn (int $day): array => [(string) $day => 'D'])->all();
 
@@ -193,7 +193,7 @@ class JadwalSheetTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->post($this->routeFor('shift', 'store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['nama' => 'Hidayatmin', 'days' => ['1' => 'R']]]])
             ->assertSessionHasErrors('rows.0.days.1');
     }
@@ -201,7 +201,7 @@ class JadwalSheetTest extends TestCase
     public function test_the_shift_sheet_counts_the_rekap_absensi(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -216,7 +216,7 @@ class JadwalSheetTest extends TestCase
     public function test_the_ik_sheet_is_yearly(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
 
         $this->actingAs($user)
             ->post($this->routeFor('ik', 'store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['nama' => 'IK Penerimaan Material', 'pic' => 'Officer', 'days' => ['2' => 'D', '9' => 'R']]]])
@@ -236,7 +236,7 @@ class JadwalSheetTest extends TestCase
     public function test_a_maturity_item_keeps_a_single_level(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -252,7 +252,7 @@ class JadwalSheetTest extends TestCase
     {
         Storage::fake('public');
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
 
         $this->actingAs($user)
             ->post($this->routeFor('inspeksi-5s5r', 'store'), [

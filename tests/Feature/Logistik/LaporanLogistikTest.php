@@ -31,7 +31,7 @@ class LaporanLogistikTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.laporan.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -54,7 +54,7 @@ class LaporanLogistikTest extends TestCase
             ...array_map(fn ($form): string => 'form-'.$form->key(), LogistikForms::all()),
         ];
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.laporan.document.edit', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -85,7 +85,7 @@ class LaporanLogistikTest extends TestCase
     public function test_data_saved_in_the_new_jadwal_and_input_pages_reaches_the_document(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         // Jadwal Pemeliharaan & Jadwal Piket Patrol Check (sheets).
@@ -159,7 +159,7 @@ class LaporanLogistikTest extends TestCase
     public function test_the_edited_document_is_saved_and_can_be_regenerated(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderLogistik, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
@@ -177,7 +177,7 @@ class LaporanLogistikTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.laporan.document.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'download' => 1]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');

@@ -220,7 +220,7 @@ Pembangkit; TL tidak diberi permission input Akses 1. Kedua laporan dibuka dari
 satu pintu: menu **Laporan** modul.
 
 **Logistik & Gudang** dan **PdM & Maturity Level** hanya punya satu akses
-(`logistik.*`, `pdm.*`), dipegang role `tl_logistik` dan `tl_pdm`.
+(`logistik.*`, `pdm.*`), dipegang role `koordinator_logistik` dan `koordinator_pdm`.
 
 ### 5.2 Daftar role sistem
 
@@ -235,8 +235,8 @@ satu pintu: menu **Laporan** modul.
 | Koordinator Operasi (`koordinator_operasi`) | Unit | Akses 1 Operasi penuh + master Operasi; awasi logsheet/mutasi; **kelola Jadwal Shift & absensi** |
 | Koordinator Pemeliharaan (`koordinator_pemeliharaan`) | Unit | Akses 1 Pemeliharaan penuh + master HAR + Executive Summary |
 | Koordinator K3 (`koordinator_k3`) | Unit | Akses 1 K3 penuh + master K3 + Monitoring K3 |
-| TL Logistik & Gudang (`tl_logistik`) | Unit | Modul Logistik penuh (dipakai akun Koordinator/Office Logistik) |
-| TL PdM & Maturity Level (`tl_pdm`) | Unit | Modul PdM penuh (dipakai akun Koordinator/PIC PdM) |
+| Koordinator Logistik & Gudang (`koordinator_logistik`) | Unit | Modul Logistik penuh (akun Koordinator/Office Logistik); Koordinator Logistik **memverifikasi** Laporan Logistik, disetujui **TL Pemeliharaan** |
+| Koordinator PdM & Maturity Level (`koordinator_pdm`) | Unit | Modul PdM penuh (akun Koordinator/PIC PdM); Koordinator PDM **memverifikasi** Laporan PdM, disetujui **TL Pemeliharaan** |
 | Project Leader (`project_leader_operasi`) | Unit | Semua hak operator + kelola Jadwal Shift & absensi + presensi + input Operasi lapangan + input Pengusahaan Operasi + kelola daftar Material & Peralatan + lihat **semua** Laporan Project (tanda tangan "Mengetahui") + membuat Daily Meeting Pemeliharaan |
 | Operator (`operator`) | Unit | Menu Operator (absen, logsheet, start stop, mutasi, pengajuan, resume) + Input Operasi lapangan; **tanpa** Master Data dan **tanpa** input Pengusahaan |
 | Akun Unit (`akun_unit`) | Unit | Satu akun per unit (`unit.{kode-unit}@upkendari.co.id`) untuk **semua divisi**: lihat & isi input, jadwal, formulir, Pengusahaan, Operator logsheet, dan laporan — hanya data unit itu; tanpa kelola master, pengguna, atau pengesahan laporan |
@@ -757,6 +757,49 @@ PdM (segera hadir)*.
 - **Portal Pemantauan** (`/pantau`) — beranda Manager UP, TL/Asman UP, dan
   Manager UL: ringkasan, laporan, dan data input semua unit dalam cakupan,
   difilter per bidang. Untuk role UP bersifat **hanya melihat**.
+- **Beranda Manager UL** (akun portal yang bukan hanya-melihat dan memegang
+  `report_unit.approve`, flag `auth.reviewer`) — tampilan sederhana yang fokus
+  ke tugasnya: daftar **Perlu Pengesahan Anda** (urut terlama; tiap laporan
+  dengan rantai penanda tangan ✓/●/○, Review dokumen, PDF, **Sahkan** dan
+  **Tolak** dengan alasan — memakai rute workflow yang sama), status laporan
+  semua unit per periode, riwayat tanda tangan, dan tautan Resume Bulanan. Menu:
+  Pengesahan, Arsip Laporan, Resume Bulanan, Status Laporan, Ringkasan
+  Pemantauan; Data Input & Status Input di "Pemantauan Lainnya"; Kelola Data
+  tetap. Ringkasan lama tetap di `/pantau/ringkasan` (`portal.overview`). Akun UP
+  hanya-melihat tidak berubah.
+
+- **Persetujuan untuk akun yang menginput sekaligus menyetujui** (Team Leader,
+  Koordinator, Project Leader; `App\Services\Reports\ApprovalInbox`): menu
+  **Persetujuan** (`/persetujuan`, jumlah antrean di sidebar) dan, di Dashboard,
+  panel **Perlu Persetujuan Anda** + **Lanjutkan Input** (menu input modulnya
+  yang belum lengkap bulan ini, terendah dulu). Isinya: laporan di giliran akun
+  (Koordinator → Verifikasi, TL → Setujui, Manager UL → Sahkan; Review/PDF/Tolak),
+  **pengajuan operator** (izin/cuti/tukar shift) bagi pemegang
+  `operator.absensi.write` seperti Project Leader (Setujui/Tolak ke rute
+  `operator.pengajuan.*`), riwayat tanda tangan, dan **Laporan Project yang
+  diketahui** Project Leader ("Mengetahui", tanpa aksi — tercetak saat FINAL).
+  Semua menu input & pengusahaan mereka tetap seperti sebelumnya; akun yang tidak
+  menyetujui apa pun (mis. Operator, Super Admin) tidak berubah.
+  Di **HP** (shell modul) beranda menampilkan kartu **Persetujuan · N menunggu**
+  yang membuka halaman Persetujuan di dalam shell.
+
+### 8.11 Resume Bulanan per Modul
+
+- Kartu **Resume Bulanan (Grafik & Akumulasi)** di halaman Laporan tiap modul
+  (Operasi, Pemeliharaan, K3, Logistik, PdM) → `/laporan/resume/{modul}`
+  (`laporan.resume.show` / `.pdf`), dibuka siapa pun yang boleh melihat laporan
+  modul itu, untuk unit yang dapat diaksesnya.
+- Isi (`App\Services\Reports\ModuleResume`, angka sama dengan Dashboard):
+  KPI + **arah** dibanding bulan lalu (▲/▼ %, membaik/memburuk), **Ringkasan
+  Arah Data** (kalimat otomatis: tren KPI, rata-rata 6 bulan, capaian target,
+  temuan penting), **grafik lengkap** — batang berkelompok/bertumpuk, kombinasi
+  batang+garis, garis (dengan batas alarm), donat, gauge, batang horizontal,
+  level tangki, kurva S, heatmap — termasuk grafik **akumulasi** (kumulatif),
+  lalu tabel rincian (dengan kolom kumulatif), Status Laporan dan Kelengkapan
+  Input.
+- **PDF** (dompdf, A4 **landscape**, grafik SVG dari `App\Support\SvgChart`
+  dua per baris) dan **Excel** (landscape; sheet "Resume" kop + KPI + arah data +
+  tabel, sheet "Grafik" berisi semua grafik sebagai gambar).
 
 ---
 
@@ -1095,6 +1138,10 @@ Aturan data:
 | 2026-11-05 | Kondisi Abnormal & Gangguan Operasi: kolom **Kronologi** (khusus gangguan, di antara Parameter Terkait dan TL jangka pendek) dan **Eviden** foto; tabel Abnormal & Gangguan Pemeliharaan mengambil data Operasi + baris tambahan Pemeliharaan |
 | 2026-11-08 | Role **Akun Unit** + satu akun per unit (semua divisi, hanya data unitnya) via `UnitAccountSeeder` |
 | 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
+| 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
+| 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
+| 2026-11-09 | **Resume Bulanan** per modul (grafik lengkap, akumulasi, arah data; PDF & Excel landscape) dan **Beranda Manager UL** yang fokus review & pengesahan (§8.10–8.11) |
+| 2026-11-09 | Semua penanda tangan Laporan Project & Pengusahaan (termasuk formulir HAR/K3 & jadwal PdM di dalamnya) dicetak dengan **nama pegawai** dari Data Pegawai (nama terkini bila formulir menyimpan ID pegawai); bila pejabat belum ada → garis kosong, tidak pernah teks jabatan atau nama orang unit lain. "Dibuat Oleh" Pengusahaan Operasi = Staf yang mengajukan |
 | 2026-11-06 | Ekspor Excel: Kondisi Abnormal & Gangguan Operasi (khusus, termasuk kronologi & foto eviden) dan tombol Excel generik untuk semua halaman input yang belum punya ekspor (Abnormal & Gangguan HAR, Material & Peralatan, PTW Operasi, Pengusahaan K3/Operasi, Opname, dll.) |
 | 2026-11-05 | Akses Cepat di beranda HP dihapus; Material & Peralatan ditambahkan di Input Pemeliharaan; Jam Pembangkit + MO & Standby (total 24 jam); menu Operator Opname BBM, Opname Pelumas, Opname kWh terpisah dengan kolom dari user + master Jenis Tangki & kWh Meter; halaman input HP semua modul tanpa deskripsi, filter unit/periode, dan kartu ringkasan |
 

@@ -11,6 +11,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { MobileTimelineForm } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
@@ -33,7 +34,6 @@ import { dashboard } from '@/routes';
 import jadwal from '@/routes/k3/jadwal';
 import pekerjaanRutin from '@/routes/k3/jadwal/pekerjaan-rutin';
 import type { IdName } from '@/types';
-import { toast } from 'sonner';
 
 type DayInfo = { day: number; dow: string; is_red: boolean; holiday?: string | null };
 
@@ -102,6 +102,7 @@ export default function K3PekerjaanRutinPage({
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
+
     if (signature !== lastSignature) {
         setLastSignature(signature);
         setRows(hydrate(initialRows));
@@ -121,16 +122,24 @@ export default function K3PekerjaanRutinPage({
     };
 
     const toggleCell = (key: number, category: Category, day: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r) => {
-                if (r._key !== key) return r;
+                if (r._key !== key) {
+return r;
+}
+
                 const set = new Set(r[category] || []);
+
                 if (set.has(day)) {
                     set.delete(day);
                 } else {
                     set.add(day);
                 }
+
                 return { ...r, [category]: Array.from(set).sort((a, b) => a - b) };
             }),
         );
@@ -138,7 +147,10 @@ export default function K3PekerjaanRutinPage({
     };
 
     const handleMarkPlanWorkingDays = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => prev.map((r) => ({ ...r, rencana: [...workingDaysList] })));
         setDirty(true);
         toast.success('Rencana seluruh hari kerja telah ditandai.');
@@ -159,8 +171,10 @@ export default function K3PekerjaanRutinPage({
     const handleModalSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const trimmedUraian = form.uraian.trim();
+
         if (!trimmedUraian) {
             toast.error('Uraian pekerjaan wajib diisi.');
+
             return;
         }
 
@@ -194,11 +208,16 @@ export default function K3PekerjaanRutinPage({
     };
 
     const handleRemove = (key: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         const target = rows.find((r) => r._key === key);
+
         if (!window.confirm(`Hapus pekerjaan "${target?.uraian || 'ini'}"?`)) {
             return;
         }
+
         setRows((prev) => prev.filter((r) => r._key !== key));
         setDirty(true);
     };
@@ -209,7 +228,10 @@ export default function K3PekerjaanRutinPage({
     };
 
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
         router.post(
             pekerjaanRutin.store().url,
@@ -250,6 +272,7 @@ export default function K3PekerjaanRutinPage({
             tReal += r.realisasi.length;
         });
         const pct = tTarget > 0 ? Math.round((tReal / tTarget) * 100) : 0;
+
         return { totalTarget: tTarget, totalReal: tReal, overallKinerja: pct };
     }, [rows]);
 
@@ -264,10 +287,12 @@ export default function K3PekerjaanRutinPage({
                     />
                 );
             }
+
             const planned = row.rencana.includes(d.day);
             const realized = row.realisasi.includes(d.day);
             const on = category === 'rencana' ? planned : realized;
             let color = '';
+
             if (on) {
                 if (category === 'realisasi') {
                     color = 'bg-emerald-400 text-black print-green-cell font-bold';
@@ -277,6 +302,7 @@ export default function K3PekerjaanRutinPage({
                         : 'bg-yellow-300 text-black print-yellow-cell font-bold';
                 }
             }
+
             return (
                 <td
                     key={`${category}-${d.day}`}

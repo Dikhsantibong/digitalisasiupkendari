@@ -289,15 +289,15 @@
         <tr>
             <td>
                 <div>Menyetujui,</div>
-                <div style="font-weight: bold; margin-top: 1px;">{{ $meta?->disetujui_jabatan ?: 'Team Leader PdM & Matlev' }}</div>
+                <div style="font-weight: bold; margin-top: 1px;">{{ $meta?->disetujui_jabatan ?: 'Team Leader Pemeliharaan' }}</div>
                 <div class="sign-space">&nbsp;</div>
-                <div style="font-weight: bold; text-decoration: underline;">{{ $meta?->disetujui_nama ?: 'TL PdM & MATLEV' }}</div>
+                <div style="font-weight: bold; text-decoration: underline;">{{ $meta?->disetujui_nama ?: '..........................................' }}</div>
             </td>
             <td>
                 <div>Dibuat,</div>
-                <div style="font-weight: bold; margin-top: 1px;">{{ $meta?->dibuat_jabatan ?: 'Junior Engineer PdM' }}</div>
+                <div style="font-weight: bold; margin-top: 1px;">{{ $meta?->dibuat_jabatan ?: 'Koordinator PDM' }}</div>
                 <div class="sign-space">&nbsp;</div>
-                <div style="font-weight: bold; text-decoration: underline;">{{ $meta?->dibuat_nama ?: 'Pelaksana PdM' }}</div>
+                <div style="font-weight: bold; text-decoration: underline;">{{ $meta?->dibuat_nama ?: '..........................................' }}</div>
             </td>
         </tr>
     </table>

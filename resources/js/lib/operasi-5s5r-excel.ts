@@ -75,6 +75,7 @@ const put = (
 ) => {
     const cell = sheet.getRow(row).getCell(col);
     cell.value = value ?? '';
+
     if (spec) {
         applyStyle(cell, spec);
     }
@@ -138,6 +139,7 @@ export async function downloadOperasi5s5rWorkbook(
 
     // Images
     const pln = await loadImageBase64('/logo/sidebar-logo.png');
+
     if (pln) {
         const id = workbook.addImage({ base64: pln, extension: 'png' });
         worksheet.addImage(id, {
@@ -147,6 +149,7 @@ export async function downloadOperasi5s5rWorkbook(
     }
 
     const mkp = await loadImageBase64('/logo/mkp.jpg');
+
     if (mkp) {
         const id = workbook.addImage({ base64: mkp, extension: 'jpeg' });
         worksheet.addImage(id, {
@@ -216,8 +219,10 @@ export async function downloadOperasi5s5rWorkbook(
 
     // Populate Data
     let currentRow = 8;
+
     for (const week of weeks) {
         const startWeekRow = currentRow;
+
         for (const row of week.rows) {
             worksheet.getRow(currentRow).height = 36;
 

@@ -176,7 +176,19 @@ class PortalAccessTest extends TestCase
         $this->assertTrue($manager->usesPortal());
         $this->assertFalse($manager->isReadOnly(), 'The Manager UL still mengesahkan reports and manages master data.');
         $this->actingAs($manager)->get(route('dashboard'))->assertRedirect(route('portal.index'));
-        $this->actingAs($manager)->get(route('portal.index'))->assertOk()->assertInertia(fn ($page) => $page->where('unit_count', 1)->where('read_only', false));
+        // Beranda: the simple review & approve home; the monitoring overview stays one click away.
+        $this->actingAs($manager)->get(route('portal.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('portal/manager')->where('unit_count', 1)->where('auth.reviewer', true)->has('queue')->has('status.matrix', 1));
+        $this->actingAs($manager)->get(route('portal.overview'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('portal/index')->where('unit_count', 1)->where('read_only', false));
+    }
+
+    public function test_view_only_up_accounts_keep_the_monitoring_beranda(): void
+    {
+        $user = $this->userWithRole(RoleName::ManagerUp);
+
+        $this->actingAs($user)->get(route('portal.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page->component('portal/index')->where('auth.reviewer', false));
     }
 
     public function test_other_roles_keep_the_normal_app(): void

@@ -2,10 +2,11 @@
 
 namespace App\Services\Har;
 
+use App\Enums\EmployeePosition;
 use App\Models\Employee;
-use App\Models\HarPrelubeTest;
 use App\Models\Machine;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,7 +15,7 @@ class HarPrelubeTestPdfBuilder
     /**
      * Build view data for the Prelube Test PDF and HTML document.
      *
-     * @param array<string, mixed> $input
+     * @param  array<string, mixed>  $input
      * @return array<string, mixed>
      */
     public function buildData(Unit $unit, ?Machine $machine = null, array $input = []): array
@@ -43,19 +44,14 @@ class HarPrelubeTestPdfBuilder
         $serviceUnitName = $unit->serviceUnit?->name ?? $unit->name;
         $ulLabel = str_starts_with(strtoupper($serviceUnitName), 'UL')
             ? $serviceUnitName
-            : 'UL ' . $serviceUnitName;
+            : 'UL '.$serviceUnitName;
 
         // Signatures resolution
-        $managerUl = ! empty($input['manager_ul_id']) ? Employee::find($input['manager_ul_id']) : $unit->manager();
+        $signatories = app(ReportSignatories::class);
+        $managerUl = ! empty($input['manager_ul_id']) ? Employee::find($input['manager_ul_id']) : $signatories->holder($unit, EmployeePosition::ManagerUl);
         $tlHar = ! empty($input['tl_har_id'])
             ? Employee::find($input['tl_har_id'])
-            : $unit->employees()
-                ->where('is_active', true)
-                ->where(function ($q) {
-                    $q->where('position', 'like', '%team leader pemeliharaan%')
-                        ->orWhere('position', 'like', '%tl pemeliharaan%')
-                        ->orWhere('position', 'like', '%pemeliharaan%');
-                })->first();
+            : $signatories->holder($unit, EmployeePosition::TeamLeaderPemeliharaan);
 
         $staffHar = ! empty($input['staff_har_id'])
             ? Employee::find($input['staff_har_id'])
@@ -67,7 +63,11 @@ class HarPrelubeTestPdfBuilder
                         ->orWhere('position', 'like', '%staff%')
                         ->orWhere('position', 'like', '%teknisi%')
                         ->orWhere('position', 'like', '%operator%');
-                })->first();
+                })
+                // The Staf Pemeliharaan first; a teknisi / operator only when the unit has none.
+                ->orderByRaw("position = 'Staf Pemeliharaan' desc")
+                ->orderBy('id')
+                ->first();
 
         return [
             'unit' => $unit,
@@ -95,17 +95,17 @@ class HarPrelubeTestPdfBuilder
 
             // Signatories
             'manager_ul_id' => $managerUl?->id,
-            'manager_ul_name' => $input['manager_ul_name'] ?? ($managerUl?->name ?? 'Manager UL'),
-            'manager_ul_title' => $input['manager_ul_title'] ?? ('Manager ' . $ulLabel),
+            'manager_ul_name' => $signatories->nameFor($input, 'manager_ul', $managerUl),
+            'manager_ul_title' => $input['manager_ul_title'] ?? ('Manager '.$ulLabel),
             'manager_ul_signature' => $this->resolveSignatureBase64($managerUl),
 
             'tl_har_id' => $tlHar?->id,
-            'tl_har_name' => $input['tl_har_name'] ?? ($tlHar?->name ?? 'Team Leader Pemeliharaan'),
+            'tl_har_name' => $signatories->nameFor($input, 'tl_har', $tlHar),
             'tl_har_title' => $input['tl_har_title'] ?? 'Team Leader Pemeliharaan',
             'tl_har_signature' => $this->resolveSignatureBase64($tlHar),
 
             'staff_har_id' => $staffHar?->id,
-            'staff_har_name' => $input['staff_har_name'] ?? ($staffHar?->name ?? 'Staff Pemeliharaan'),
+            'staff_har_name' => $signatories->nameFor($input, 'staff_har', $staffHar),
             'staff_har_title' => $input['staff_har_title'] ?? 'Staff Pemeliharaan',
             'staff_har_signature' => $this->resolveSignatureBase64($staffHar),
 
@@ -125,7 +125,7 @@ class HarPrelubeTestPdfBuilder
     /**
      * Render the PDF / HTML view.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     public function renderHtml(array $data): string
     {
@@ -140,6 +140,7 @@ class HarPrelubeTestPdfBuilder
 
         if (Storage::disk('public')->exists($employee->signature_path)) {
             $path = Storage::disk('public')->path($employee->signature_path);
+
             return $this->fileToBase64($path);
         }
 
@@ -165,6 +166,6 @@ class HarPrelubeTestPdfBuilder
             default => 'image/png',
         };
 
-        return 'data:' . $mime . ';base64,' . base64_encode($content);
+        return 'data:'.$mime.';base64,'.base64_encode($content);
     }
 }

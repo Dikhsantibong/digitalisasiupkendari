@@ -3,6 +3,8 @@
 namespace App\Services\Operasi;
 
 use App\Enums\EmployeePosition;
+use App\Enums\ReportModule;
+use App\Models\ReportWorkflow;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Reports\ReportSignatories;
@@ -58,7 +60,7 @@ class OperasiPengusahaanDocument
                     'formatted_date' => Carbon::create($year, $month, 1)->endOfMonth()->day.' '.Indonesian::monthName($month).' '.$year,
                 ],
                 'signatories' => [
-                    'staf' => ['name' => '', 'position' => 'Staf Operasi'],
+                    'staf' => ['name' => $this->preparedBy($unit, $month, $year, $user), 'position' => 'Staf Operasi'],
                     'tl' => $signer(EmployeePosition::TeamLeaderOperasi),
                     'manager' => $signer(EmployeePosition::ManagerUl),
                 ],
@@ -66,6 +68,29 @@ class OperasiPengusahaanDocument
             'pengusahaan' => $this->report->sections($unit, $month, $year),
             'chapters' => $this->book->chapters($unit, $month, $year, $user),
         ];
+    }
+
+    /**
+     * "Dibuat Oleh" (Staf Operasi): the employee who submitted the report,
+     * else the Staf Operasi of the unit preparing it now; empty (a dotted
+     * line) otherwise — never the jabatan text.
+     */
+    private function preparedBy(Unit $unit, int $month, int $year, User $user): string
+    {
+        $submitter = ReportWorkflow::query()
+            ->where('module', ReportModule::OperasiPengusahaan)
+            ->where('unit_id', $unit->id)->where('month', $month)->where('year', $year)
+            ->whereNotNull('submitted_by')
+            ->with('submitter.employee')
+            ->first()?->submitter;
+
+        if ($submitter?->employee !== null) {
+            return $submitter->employee->name;
+        }
+
+        $own = $user->employee;
+
+        return $own !== null && $own->is_active && $own->unit_id === $unit->id && $own->position === 'Staf Operasi' ? $own->name : '';
     }
 
     /**

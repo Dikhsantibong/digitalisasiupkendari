@@ -35,5 +35,6 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/pages/** | .ai/rules/pages.md |
 | app/Http/Controllers/Pdm/** | .ai/rules/pdm.md |
 | resources/js/pages/pengusahaan/** | .ai/rules/pengusahaan.md |
+| app/Http/Controllers/Portal/** | .ai/rules/portal.md |
 | app/Services/Reports/** | .ai/rules/reports.md |
 | app/Services/Impersonation.php, app/Services/UnsafeConditionSync.php | .ai/rules/services.md |

@@ -16,7 +16,7 @@ Phone shells are listed in layouts/mobile/modules.ts.
 - Pengusahaan K3 sheets use components/pengusahaan/k3-sheet.tsx (desktop table plus phone MobileRowEditor) and k3-cells.tsx (CellSelect, CellDate stored as DD/MM/YYYY, K3_OPTIONS).
 
 ## PdM & Logistik phone shells
-tl_logistik (koordinator/office logistik) has a phone shell from menus/logistik.ts, and tl_pdm (koordinator/pic pdm) has one from menus/pdm.ts. Groups are log-* and pdm-*, gated by {m}.input.view / {m}.laporan.view. pdm/(jadwal|input) and logistik/(jadwal|input) are in TABLE_CARD_PAGES, so row tables become cards automatically. Day grids get their own compact branch instead:
+koordinator_logistik (koordinator/office logistik) has a phone shell from menus/logistik.ts, and koordinator_pdm (koordinator/pic pdm) has one from menus/pdm.ts. Groups are log-* and pdm-*, gated by {m}.input.view / {m}.laporan.view. pdm/(jadwal|input) and logistik/(jadwal|input) are in TABLE_CARD_PAGES, so row tables become cards automatically. Day grids get their own compact branch instead:
 - every Logistik grid sheet (LogistikJadwalSheetPage, 8 layouts) renders components/logistik/jadwal-sheet-mobile.tsx (date strip + code chips; jadwal sheets are view-first, input sheets open for input);
 - the 4 PdM jadwal pages and pdm/input/realisasi-prediktif use MobileTimelineForm.
 Desktop output must stay unchanged; phone views sit behind useCompactLayout. A new PdM/Logistik page must be added to these menus.

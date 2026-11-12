@@ -12,17 +12,6 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
-import {
-    buildDocumentHeader,
-    createSheet,
-    downloadWorkbook,
-    mergeCells,
-    paintSheet,
-    setColWidths,
-    SPECS,
-    XLSX_COLORS,
-} from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
 import { MobileTimelineForm, TimelineField, weekColumnOf, weekKeyOf, YEAR_WEEK_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
@@ -38,6 +27,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
+    buildDocumentHeader,
+    createSheet,
+    downloadWorkbook,
+    mergeCells,
+    paintSheet,
+    setColWidths,
+    SPECS,
+    XLSX_COLORS,
+} from '@/lib/jadwal-excel';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import performanceTest from '@/routes/operasi/jadwal/performance-test';
@@ -196,7 +196,9 @@ export default function JadwalPerformanceTestIndex({
         type: '50' | '75' | '100',
         weekKey: string,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) => {
             const updated = [...prev];
@@ -210,6 +212,7 @@ export default function JadwalPerformanceTestIndex({
             const currentArr = [...(targetRow[propName] || [])];
 
             const existsIdx = currentArr.indexOf(weekKey);
+
             if (existsIdx >= 0) {
                 currentArr.splice(existsIdx, 1);
             } else {
@@ -218,6 +221,7 @@ export default function JadwalPerformanceTestIndex({
 
             targetRow[propName] = currentArr;
             updated[rowIndex] = targetRow;
+
             return updated;
         });
         setDirty(true);
@@ -225,13 +229,17 @@ export default function JadwalPerformanceTestIndex({
 
     // Update machine name
     const handleUpdateName = (rowIndex: number, newName: string) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const updated = [...prev];
             updated[rowIndex] = {
                 ...updated[rowIndex],
                 nama_mesin: newName,
             };
+
             return updated;
         });
         setDirty(true);
@@ -239,7 +247,10 @@ export default function JadwalPerformanceTestIndex({
 
     // Add new machine
     const handleAddMesin = () => {
-        if (!newNamaMesin.trim()) return;
+        if (!newNamaMesin.trim()) {
+return;
+}
+
         setRows((prev) => [
             ...prev,
             {
@@ -259,9 +270,13 @@ export default function JadwalPerformanceTestIndex({
 
     // Remove machine row
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const filtered = prev.filter((_, idx) => idx !== rowIndex);
+
             return filtered.map((r, idx) => ({ ...r, no_urut: idx + 1 }));
         });
         setDirty(true);
@@ -275,7 +290,10 @@ export default function JadwalPerformanceTestIndex({
 
     // Save
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -305,19 +323,30 @@ export default function JadwalPerformanceTestIndex({
     // Column totals calculation across 48 weeks
     const { columnTotals, grandTotal } = useMemo(() => {
         const totals: Record<string, number> = {};
+
         for (let m = 1; m <= 12; m++) {
             for (let w = 1; w <= 4; w++) {
                 const key = `${m}-${w}`;
                 let count = 0;
                 rows.forEach((r) => {
-                    if (r.beban_50?.includes(key)) count++;
-                    if (r.beban_75?.includes(key)) count++;
-                    if (r.beban_100?.includes(key)) count++;
+                    if (r.beban_50?.includes(key)) {
+count++;
+}
+
+                    if (r.beban_75?.includes(key)) {
+count++;
+}
+
+                    if (r.beban_100?.includes(key)) {
+count++;
+}
                 });
                 totals[key] = count;
             }
         }
+
         const grand = Object.values(totals).reduce((sum, c) => sum + c, 0);
+
         return { columnTotals: totals, grandTotal: grand };
     }, [rows]);
 
@@ -332,9 +361,11 @@ export default function JadwalPerformanceTestIndex({
             'UJI BBN',
         ];
         rowH1.push('BULAN');
+
         for (let i = 1; i < 48; i++) {
             rowH1.push('');
         }
+
         rowH1.push('JUMLAH');
         sheetData.push(rowH1);
 
@@ -348,9 +379,11 @@ export default function JadwalPerformanceTestIndex({
 
         // Header Row 3: Weeks 1..4
         const rowH3: (string | number)[] = ['', '', ''];
+
         for (let m = 1; m <= 12; m++) {
             rowH3.push(1, 2, 3, 4);
         }
+
         rowH3.push('');
         sheetData.push(rowH3);
 
@@ -370,12 +403,15 @@ export default function JadwalPerformanceTestIndex({
         // Data Rows
         rows.forEach((r, idx) => {
             const section = r.section || 'A. PEMBUATAN DATA TEKNIKS';
+
             if (section !== currentSection) {
                 currentSection = section;
                 const secRow: (string | number)[] = [section];
+
                 for (let c = 1; c < totalCols; c++) {
                     secRow.push('');
                 }
+
                 sheetData.push(secRow);
                 sectionRowIndices.push(currentRowIndex);
                 currentRowIndex++;
@@ -391,33 +427,39 @@ export default function JadwalPerformanceTestIndex({
                 r.nama_mesin,
                 '50%',
             ];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     r50.push(b50.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             r50.push(b50.length > 0 ? b50.length : '');
             sheetData.push(r50);
             currentRowIndex++;
 
             // 75%
             const r75: (string | number)[] = ['', '', '75%'];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     r75.push(b75.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             r75.push(b75.length > 0 ? b75.length : '');
             sheetData.push(r75);
             currentRowIndex++;
 
             // 100%
             const r100: (string | number)[] = ['', '', '100%'];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     r100.push(b100.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             r100.push(b100.length > 0 ? b100.length : '');
             sheetData.push(r100);
             currentRowIndex++;
@@ -425,12 +467,14 @@ export default function JadwalPerformanceTestIndex({
 
         // Total Row
         const totRow: (string | number)[] = ['', 'TOTAL', ''];
+
         for (let m = 1; m <= 12; m++) {
             for (let w = 1; w <= 4; w++) {
                 const c = columnTotals[`${m}-${w}`] || 0;
                 totRow.push(c > 0 ? c : '');
             }
         }
+
         totRow.push(grandTotal > 0 ? grandTotal : '');
         sheetData.push(totRow);
         const totalRowIdx = currentRowIndex;
@@ -488,6 +532,7 @@ export default function JadwalPerformanceTestIndex({
             if (r < 4) {
                 return null; // document header
             }
+
             if (r === headerTop || r === headerMid || r === headerBottom) {
                 return SPECS.headerOrange;
             }
@@ -500,17 +545,21 @@ export default function JadwalPerformanceTestIndex({
                 if (c === 0) {
                     return SPECS.labelCenter;
                 }
+
                 if (c === 1) {
                     return SPECS.label;
                 }
+
                 if (c === 2) {
                     return SPECS.labelCenter;
                 }
+
                 if (c >= weekStart && c <= weekEnd) {
                     return String(sheetData[r]?.[c] ?? '') === '1'
                         ? markedCell
                         : SPECS.cell;
                 }
+
                 return { ...SPECS.cell, bold: true }; // JUMLAH
             }
 
@@ -518,6 +567,7 @@ export default function JadwalPerformanceTestIndex({
                 if (c === colJumlah) {
                     return grandTotalCell;
                 }
+
                 return c === 1
                     ? { ...SPECS.total, align: 'center' }
                     : SPECS.total;
@@ -528,12 +578,15 @@ export default function JadwalPerformanceTestIndex({
                 if (r === recapHeaderIdx) {
                     return SPECS.headerOrange;
                 }
+
                 if (c === 1) {
                     return SPECS.label;
                 }
+
                 if (c === 2) {
                     return SPECS.labelCenter;
                 }
+
                 return SPECS.cell;
             }
 
@@ -563,6 +616,7 @@ export default function JadwalPerformanceTestIndex({
             if (sectionRowIndices.includes(rowTracker)) {
                 rowTracker++;
             }
+
             mergeCells(ws, rowTracker, 0, rowTracker + 2, 0);
             mergeCells(ws, rowTracker, 1, rowTracker + 2, 1);
             rowTracker += 3;
@@ -888,12 +942,14 @@ export default function JadwalPerformanceTestIndex({
                             <tbody>
                                 {(() => {
                                     let currentSection: string | null = null;
+
                                     return rows.map((row, rIdx) => {
                                         const section =
                                             row.section ||
                                             'A. PEMBUATAN DATA TEKNIKS';
                                         const renderSectionHeader =
                                             section !== currentSection;
+
                                         if (renderSectionHeader) {
                                             currentSection = section;
                                         }
@@ -964,6 +1020,7 @@ export default function JadwalPerformanceTestIndex({
                                                                     b50.includes(
                                                                         key,
                                                                     );
+
                                                                 return (
                                                                     <td
                                                                         key={`50-${key}`}
@@ -1031,6 +1088,7 @@ export default function JadwalPerformanceTestIndex({
                                                                     b75.includes(
                                                                         key,
                                                                     );
+
                                                                 return (
                                                                     <td
                                                                         key={`75-${key}`}
@@ -1078,6 +1136,7 @@ export default function JadwalPerformanceTestIndex({
                                                                     b100.includes(
                                                                         key,
                                                                     );
+
                                                                 return (
                                                                     <td
                                                                         key={`100-${key}`}
@@ -1126,6 +1185,7 @@ export default function JadwalPerformanceTestIndex({
                                         [1, 2, 3, 4].map((w) => {
                                             const key = `${mIdx + 1}-${w}`;
                                             const val = columnTotals[key] || 0;
+
                                             return (
                                                 <td
                                                     key={`tot-${key}`}

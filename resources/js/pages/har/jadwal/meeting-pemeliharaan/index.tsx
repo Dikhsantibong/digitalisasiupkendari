@@ -15,6 +15,14 @@ import {
 import { Fragment, useMemo, useState } from 'react';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
     buildDocumentHeader,
     createSheet,
     downloadWorkbook,
@@ -24,14 +32,6 @@ import {
     SPECS,
     XLSX_COLORS,
 } from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
-import {
-    OPERASI_MONTHS,
-    OperasiSelect,
-} from '@/components/operasi/filter-select';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/har/jadwal';
 import meetingPemeliharaan from '@/routes/har/jadwal/meeting-pemeliharaan';
@@ -168,11 +168,16 @@ export default function HarJadwalMeetingPemeliharaanPage({
         category: 'rencana' | 'realisasi',
         day: number,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r, idx) => {
-                if (idx !== rowIndex) return r;
+                if (idx !== rowIndex) {
+return r;
+}
+
                 const nextMap = { ...r[category] };
                 const dayKey = String(day);
                 const currentVal = Number(nextMap[dayKey] ?? 0);
@@ -194,7 +199,10 @@ export default function HarJadwalMeetingPemeliharaanPage({
 
     // Update target
     const handleTargetChange = (rowIndex: number, newTarget: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r, idx) =>
                 idx === rowIndex ? { ...r, target: Math.max(0, newTarget) } : r,
@@ -205,7 +213,10 @@ export default function HarJadwalMeetingPemeliharaanPage({
 
     // Update uraian
     const handleUraianChange = (rowIndex: number, newUraian: string) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) =>
             prev.map((r, idx) =>
                 idx === rowIndex ? { ...r, uraian: newUraian } : r,
@@ -216,7 +227,10 @@ export default function HarJadwalMeetingPemeliharaanPage({
 
     // Add row
     const handleAddRow = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => [
             ...prev,
             {
@@ -232,14 +246,19 @@ export default function HarJadwalMeetingPemeliharaanPage({
 
     // Remove row
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write || rows.length <= 1) return;
+        if (!can_write || rows.length <= 1) {
+return;
+}
+
         setRows((prev) => prev.filter((_, idx) => idx !== rowIndex));
         setDirty(true);
     };
 
     // Copy entire Rencana to Realisasi
     const handleCopyRencanaToRealisasi = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) =>
             prev.map((r) => ({
@@ -258,7 +277,10 @@ export default function HarJadwalMeetingPemeliharaanPage({
 
     // Save changes
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -403,25 +425,32 @@ export default function HarJadwalMeetingPemeliharaanPage({
             if (r < 4) {
                 return null; // document header is drawn separately
             }
+
             if (r === headerTop || r === headerBottom) {
                 return SPECS.headerOrange;
             }
 
             if (r >= dataStart) {
                 const sub = (r - dataStart) % 2; // 0 rencana, 1 realisasi
+
                 if (c === 0) {
                     return SPECS.cellLeft;
                 }
+
                 if (c === 1) {
                     return SPECS.labelCenter;
                 }
+
                 if (c >= dayStart && c <= dayEnd) {
                     const value = Number(sheetData[r]?.[c] ?? 0);
+
                     if (value > 0) {
                         return sub === 0 ? amberCell : emeraldCell;
                     }
+
                     return SPECS.cell;
                 }
+
                 return { ...SPECS.cell, bold: true };
             }
 
@@ -430,9 +459,11 @@ export default function HarJadwalMeetingPemeliharaanPage({
 
         mergeCells(ws, headerTop, 0, headerBottom, 0); // URAIAN
         mergeCells(ws, headerTop, 1, headerBottom, 1); // month / year
+
         for (let c = colRencana; c < totalCols; c++) {
             mergeCells(ws, headerTop, c, headerBottom, c);
         }
+
         for (let u = 0; u < calculatedRows.length; u++) {
             const top = dataStart + u * 2;
             mergeCells(ws, top, 0, top + 1, 0); // URAIAN spans rencana + realisasi

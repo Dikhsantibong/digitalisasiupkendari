@@ -1,12 +1,15 @@
 <?php
 
 use App\Enums\ReportModule;
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ModuleResumeController;
 use App\Http\Controllers\Monitoring\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Portal\PortalController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReportWorkflowController;
+use App\Services\Reports\ModuleResume;
 use Illuminate\Support\Facades\Route;
 
 // No landing page: guests go straight to the login page, signed-in users to their dashboard.
@@ -18,6 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     // Portal Pemantauan (kantor induk UP Kendari & Manager UL): lihat input, status & laporan final.
     Route::prefix('pantau')->name('portal.')->group(function (): void {
         Route::get('/', [PortalController::class, 'index'])->name('index');
+        Route::get('ringkasan', [PortalController::class, 'overview'])->name('overview');
         Route::get('laporan', [PortalController::class, 'laporan'])->name('laporan');
         Route::get('data-input', [PortalController::class, 'input'])->name('input');
     });
@@ -41,6 +45,18 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::get('{notification}', [NotificationController::class, 'open'])->whereUuid('notification')->name('open');
         Route::post('{notification}/baca', [NotificationController::class, 'markRead'])->whereUuid('notification')->name('read');
     });
+
+    // Persetujuan: laporan di giliran akun (Koordinator / TL / Manager UL), pengajuan operator, laporan "Mengetahui".
+    Route::get('persetujuan', [ApprovalController::class, 'index'])->name('approvals.index');
+
+    // Resume Bulanan per modul (pratinjau, PDF; Excel diunduh dari pratinjau), dibuka dari menu Laporan tiap modul.
+    Route::prefix('laporan/resume/{module}')
+        ->name('laporan.resume.')
+        ->whereIn('module', array_keys(ModuleResume::MODULES))
+        ->group(function (): void {
+            Route::get('/', [ModuleResumeController::class, 'show'])->name('show');
+            Route::get('pdf', [ModuleResumeController::class, 'pdf'])->name('pdf');
+        });
 
     // Workflow Laporan Pembangkit (ajukan → verifikasi Koordinator → setujui TL Pemeliharaan → sahkan Manager UL → final),
     // authorised inside ReportWorkflowService.

@@ -28,7 +28,7 @@ class KesiapanApdInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.kesiapan-apd.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -48,7 +48,7 @@ class KesiapanApdInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->post(route('pdm.input.kesiapan-apd.store'), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [
@@ -75,7 +75,7 @@ class KesiapanApdInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->post(route('pdm.input.kesiapan-apd.store'), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [['inspeksi' => 'Helm', 'kelayakan_apd' => 'Bagus']],
@@ -87,7 +87,7 @@ class KesiapanApdInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.kesiapan-apd.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
@@ -110,7 +110,7 @@ class KesiapanApdInputTest extends TestCase
         $own = Unit::factory()->create(['is_active' => true]);
         $foreign = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $own))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $own))
             ->get(route('pdm.input.kesiapan-apd.index', ['unit_id' => $foreign->id]))
             ->assertForbidden();
     }

@@ -13,17 +13,6 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
-import {
-    buildDocumentHeader,
-    createSheet,
-    downloadWorkbook,
-    mergeCells,
-    paintSheet,
-    setColWidths,
-    SPECS,
-    XLSX_COLORS,
-} from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
 import { MobileTimelineForm, TimelineField, weekColumnOf, weekKeyOf, YEAR_WEEK_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +28,17 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import {
+    buildDocumentHeader,
+    createSheet,
+    downloadWorkbook,
+    mergeCells,
+    paintSheet,
+    setColWidths,
+    SPECS,
+    XLSX_COLORS,
+} from '@/lib/jadwal-excel';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import commissioningTestPeralatan from '@/routes/operasi/jadwal/commissioning-test-peralatan';
@@ -188,7 +188,9 @@ export default function HarJadwalCommPeralatanIndex({
         type: '50' | '75' | '100',
         weekKey: string,
     ) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
 
         setRows((prev) => {
             const updated = [...prev];
@@ -202,6 +204,7 @@ export default function HarJadwalCommPeralatanIndex({
             const currentArr = [...(targetRow[propName] || [])];
 
             const existsIdx = currentArr.indexOf(weekKey);
+
             if (existsIdx >= 0) {
                 currentArr.splice(existsIdx, 1);
             } else {
@@ -210,6 +213,7 @@ export default function HarJadwalCommPeralatanIndex({
 
             targetRow[propName] = currentArr;
             updated[rowIndex] = targetRow;
+
             return updated;
         });
         setDirty(true);
@@ -217,13 +221,17 @@ export default function HarJadwalCommPeralatanIndex({
 
     // Update equipment name
     const handleUpdateName = (rowIndex: number, newName: string) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const updated = [...prev];
             updated[rowIndex] = {
                 ...updated[rowIndex],
                 nama_peralatan: newName,
             };
+
             return updated;
         });
         setDirty(true);
@@ -231,7 +239,10 @@ export default function HarJadwalCommPeralatanIndex({
 
     // Add new equipment
     const handleAddEquipment = () => {
-        if (!newNamaPeralatan.trim()) return;
+        if (!newNamaPeralatan.trim()) {
+return;
+}
+
         setRows((prev) => [
             ...prev,
             {
@@ -250,9 +261,13 @@ export default function HarJadwalCommPeralatanIndex({
 
     // Remove equipment
     const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setRows((prev) => {
             const filtered = prev.filter((_, idx) => idx !== rowIndex);
+
             return filtered.map((r, idx) => ({ ...r, no_urut: idx + 1 }));
         });
         setDirty(true);
@@ -266,7 +281,10 @@ export default function HarJadwalCommPeralatanIndex({
 
     // Save
     const handleSave = () => {
-        if (!can_write) return;
+        if (!can_write) {
+return;
+}
+
         setSaving(true);
 
         router.post(
@@ -295,19 +313,30 @@ export default function HarJadwalCommPeralatanIndex({
     // Column totals calculation across 48 weeks
     const { columnTotals, grandTotal } = useMemo(() => {
         const totals: Record<string, number> = {};
+
         for (let m = 1; m <= 12; m++) {
             for (let w = 1; w <= 4; w++) {
                 const key = `${m}-${w}`;
                 let count = 0;
                 rows.forEach((r) => {
-                    if (r.beban_50?.includes(key)) count++;
-                    if (r.beban_75?.includes(key)) count++;
-                    if (r.beban_100?.includes(key)) count++;
+                    if (r.beban_50?.includes(key)) {
+count++;
+}
+
+                    if (r.beban_75?.includes(key)) {
+count++;
+}
+
+                    if (r.beban_100?.includes(key)) {
+count++;
+}
                 });
                 totals[key] = count;
             }
         }
+
         const grand = Object.values(totals).reduce((sum, c) => sum + c, 0);
+
         return { columnTotals: totals, grandTotal: grand };
     }, [rows]);
 
@@ -329,9 +358,11 @@ export default function HarJadwalCommPeralatanIndex({
 
         // Header Row 2
         const rowH2: (string | number)[] = ['', '', ''];
+
         for (let m = 1; m <= 12; m++) {
             rowH2.push(1, 2, 3, 4);
         }
+
         rowH2.push('');
         sheetData.push(rowH2);
 
@@ -347,43 +378,51 @@ export default function HarJadwalCommPeralatanIndex({
                 r.nama_peralatan,
                 '50%',
             ];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     r50.push(b50.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             r50.push(b50.length > 0 ? b50.length : '');
             sheetData.push(r50);
 
             // 75%
             const r75: (string | number)[] = ['', '', '75%'];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     r75.push(b75.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             r75.push(b75.length > 0 ? b75.length : '');
             sheetData.push(r75);
 
             // 100%
             const r100: (string | number)[] = ['', '', '100%'];
+
             for (let m = 1; m <= 12; m++) {
                 for (let w = 1; w <= 4; w++) {
                     r100.push(b100.includes(`${m}-${w}`) ? 1 : '');
                 }
             }
+
             r100.push(b100.length > 0 ? b100.length : '');
             sheetData.push(r100);
         });
 
         // Total Row
         const totRow: (string | number)[] = ['', 'TOTAL', ''];
+
         for (let m = 1; m <= 12; m++) {
             for (let w = 1; w <= 4; w++) {
                 const c = columnTotals[`${m}-${w}`] || 0;
                 totRow.push(c > 0 ? c : '');
             }
         }
+
         totRow.push(grandTotal > 0 ? grandTotal : '');
         sheetData.push(totRow);
 
@@ -424,6 +463,7 @@ export default function HarJadwalCommPeralatanIndex({
             if (r < 4) {
                 return null; // document header is drawn separately
             }
+
             if (r === headerTop || r === headerBottom) {
                 return SPECS.headerOrange;
             }
@@ -432,17 +472,21 @@ export default function HarJadwalCommPeralatanIndex({
                 if (c === 0) {
                     return SPECS.labelCenter;
                 }
+
                 if (c === 1) {
                     return SPECS.label;
                 }
+
                 if (c === 2) {
                     return SPECS.labelCenter;
                 }
+
                 if (c >= weekStart && c <= weekEnd) {
                     return String(sheetData[r]?.[c] ?? '') === '1'
                         ? markedCell
                         : SPECS.cell;
                 }
+
                 return { ...SPECS.cell, bold: true }; // JUMLAH
             }
 
@@ -457,12 +501,15 @@ export default function HarJadwalCommPeralatanIndex({
                 if (r === recapHeaderIdx) {
                     return SPECS.headerOrange;
                 }
+
                 if (c === 1) {
                     return SPECS.label;
                 }
+
                 if (c === 2) {
                     return SPECS.labelCenter;
                 }
+
                 return SPECS.cell;
             }
 
@@ -473,15 +520,18 @@ export default function HarJadwalCommPeralatanIndex({
         mergeCells(ws, headerTop, 1, headerBottom, 1); // PERALATAN
         mergeCells(ws, headerTop, 2, headerBottom, 2); // UJI BEBAN
         mergeCells(ws, headerTop, colJumlah, headerBottom, colJumlah); // JUMLAH
+
         for (let m = 0; m < 12; m++) {
             const c = weekStart + m * 4;
             mergeCells(ws, headerTop, c, headerTop, c + 3); // month label
         }
+
         for (let e = 0; e < rows.length; e++) {
             const top = dataStart + e * 3;
             mergeCells(ws, top, 0, top + 2, 0); // NO spans 50/75/100
             mergeCells(ws, top, 1, top + 2, 1); // PERALATAN name
         }
+
         for (let m = 0; m < machines.length; m++) {
             const top = recapHeaderIdx + 1 + m * 3;
             mergeCells(ws, top, 0, top + 2, 0);
@@ -836,6 +886,7 @@ export default function HarJadwalCommPeralatanIndex({
                                                                     b50.includes(
                                                                         key,
                                                                     );
+
                                                                 return (
                                                                     <td
                                                                         key={`50-${key}`}
@@ -902,6 +953,7 @@ export default function HarJadwalCommPeralatanIndex({
                                                                     b75.includes(
                                                                         key,
                                                                     );
+
                                                                 return (
                                                                     <td
                                                                         key={`75-${key}`}
@@ -948,6 +1000,7 @@ export default function HarJadwalCommPeralatanIndex({
                                                                     b100.includes(
                                                                         key,
                                                                     );
+
                                                                 return (
                                                                     <td
                                                                         key={`100-${key}`}
@@ -995,6 +1048,7 @@ export default function HarJadwalCommPeralatanIndex({
                                         [1, 2, 3, 4].map((w) => {
                                             const key = `${mIdx + 1}-${w}`;
                                             const val = columnTotals[key] || 0;
+
                                             return (
                                                 <td
                                                     key={`tot-${key}`}

@@ -1,4 +1,6 @@
 import { Head, router } from '@inertiajs/react';
+import type {
+    Users} from 'lucide-react';
 import {
     CalendarClock,
     CalendarDays,
@@ -6,8 +8,7 @@ import {
     FileText,
     Leaf,
     PhoneCall,
-    ShieldCheck,
-    Users,
+    ShieldCheck
 } from 'lucide-react';
 import {
     OPERASI_MONTHS,

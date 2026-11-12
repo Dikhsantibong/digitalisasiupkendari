@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { Building2, FilePen } from 'lucide-react';
+import { ResumeCard } from '@/components/laporan/resume-card';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -28,7 +29,13 @@ export default function HarLaporanIndex({ filters, options }: Props) {
         );
     };
 
-    const query = { query: { unit_id: filters.unit_id, month: filters.month, year: filters.year } };
+    const query = {
+        query: {
+            unit_id: filters.unit_id,
+            month: filters.month,
+            year: filters.year,
+        },
+    };
 
     return (
         <>
@@ -44,35 +51,56 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2">
+                    <ResumeCard module="pemeliharaan" filters={filters} />
                     {can('har.laporan.view') && (
                         <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
                             <div>
-                                <h2 className="text-base font-semibold text-foreground">Laporan Pemeliharaan Pembangkit</h2>
+                                <h2 className="text-base font-semibold text-foreground">
+                                    Laporan Pemeliharaan Pembangkit
+                                </h2>
                                 <p className="mt-1 text-[13px] text-muted-foreground">
-                                    Lembar pengesahan, resume statistik, dan rekap lengkap seluruh jadwal pemeliharaan (Harian, P0-P5, Piket On Call, Patrol Cek, Meeting, Pembuatan IK).
+                                    Lembar pengesahan, resume statistik, dan
+                                    rekap lengkap seluruh jadwal pemeliharaan
+                                    (Harian, P0-P5, Piket On Call, Patrol Cek,
+                                    Meeting, Pembuatan IK).
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Button onClick={() => router.get(document.edit(query).url)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
+                                <Button
+                                    onClick={() =>
+                                        router.get(document.edit(query).url)
+                                    }
+                                    className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                                >
                                     <FilePen className="size-4" />
-                                    Buka Dokumen Pemeliharaan (Lihat, Edit &amp; Cetak)
+                                    Buka Dokumen Pemeliharaan (Lihat, Edit &amp;
+                                    Cetak)
                                 </Button>
                             </div>
                         </div>
@@ -81,15 +109,26 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                     {can('har.pengusahaan.view') && (
                         <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
                             <div>
-                                <h2 className="text-base font-semibold text-foreground">Laporan Pengusahaan Pembangkit</h2>
+                                <h2 className="text-base font-semibold text-foreground">
+                                    Laporan Pengusahaan Pembangkit
+                                </h2>
                                 <p className="mt-1 text-[13px] text-muted-foreground">
-                                    Executive summary, istilah &amp; definisi, service request, maintenance summary, rekapitulasi WO task, detail WO per kategori, dan lampiran.
+                                    Executive summary, istilah &amp; definisi,
+                                    service request, maintenance summary,
+                                    rekapitulasi WO task, detail WO per
+                                    kategori, dan lampiran.
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                                <Button onClick={() => router.get(pengusahaan.edit(query).url)} className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal">
+                                <Button
+                                    onClick={() =>
+                                        router.get(pengusahaan.edit(query).url)
+                                    }
+                                    className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                                >
                                     <Building2 className="size-4" />
-                                    Buka Dokumen Pengusahaan (Lihat, Edit &amp; Cetak)
+                                    Buka Dokumen Pengusahaan (Lihat, Edit &amp;
+                                    Cetak)
                                 </Button>
                             </div>
                         </div>

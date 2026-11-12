@@ -42,13 +42,24 @@ export default function FireAlarmInput({ unit, filters, rows: initial, options, 
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [sig, setSig] = useState(signature);
-    if (sig !== signature) { setSig(signature); setRows(initial.map(toRow)); setDirty(false); }
+
+    if (sig !== signature) {
+ setSig(signature); setRows(initial.map(toRow)); setDirty(false); 
+}
 
     const visit = (patch: Partial<Props['filters']>) => router.get(fireAlarm.index().url, { ...filters, ...patch }, { preserveState: true, preserveScroll: true, replace: true });
-    const update = (i: number, k: keyof Row, v: string) => { setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r))); setDirty(true); };
-    const addRow = () => { setRows((p) => [...p, empty()]); setDirty(true); };
-    const removeRow = (i: number) => { setRows((p) => p.filter((_, idx) => idx !== i)); setDirty(true); };
-    const save = () => { setSaving(true); router.post(fireAlarm.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); };
+    const update = (i: number, k: keyof Row, v: string) => {
+ setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r))); setDirty(true); 
+};
+    const addRow = () => {
+ setRows((p) => [...p, empty()]); setDirty(true); 
+};
+    const removeRow = (i: number) => {
+ setRows((p) => p.filter((_, idx) => idx !== i)); setDirty(true); 
+};
+    const save = () => {
+ setSaving(true); router.post(fireAlarm.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
+};
 
     const cell = (i: number, k: keyof Row, type = 'text') =>
         can_write ? <Input type={type} value={rows[i][k] as string} onChange={(e) => update(i, k, e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{(rows[i][k] as string) || '-'}</span>;

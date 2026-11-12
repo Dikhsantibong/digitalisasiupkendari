@@ -54,12 +54,21 @@ export function DocumentReadView({
     const srcDoc =`<!doctype html><html><head><meta charset="utf-8"><style>${contentCss}
         body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 12px; color: #000; margin: 12px; }
         table { border-collapse: collapse; }
-        ${contentStyles}
+        ${
+            // Some report styles carry their own <style>…</style> tags; inside this <style> a "</style>" would end
+            // it early and drop every rule after it (the cover fixes, the sheet layout).
+            contentStyles.replace(/<\/?style[^>]*>/gi, '')
+        }
         /* The read view: each section a white sheet with space between, like the printed pages. */
         html { background: #e5e7eb; }
         body { background: transparent; }
         body > * { position: relative; overflow: hidden; background: #fff; padding: 28px; margin: 0 0 16px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); box-sizing: border-box; }
         body > .page-break, body > br, body > style { display: none; }
+        /* Covers are drawn for the PDF (page-bleed margins, fixed A4 size): on screen show them as a whole A4
+           page centred in their sheet — the same as the editor's .mce-content-body cover rules. */
+        .op-cover, .har-cover, .k3-cover { margin: 0 auto; width: 210mm; height: 297mm; max-width: 100%; }
+        .op-cover-bg, .har-cover-bg, .k3-cover-bg { max-width: 100%; }
+        .pc-cover { max-width: 210mm; margin: 0 auto; }
         </style></head><body>${html}</body></html>`;
 
     return (

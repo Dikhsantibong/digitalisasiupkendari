@@ -1,5 +1,6 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import {
+    BadgeCheck,
     BarChart3,
     Building2,
     CalendarRange,
@@ -50,7 +51,12 @@ import {
 import { usePermissions } from '@/hooks/use-permissions';
 import { FIELD_MENUS } from '@/layouts/mobile/modules';
 import { MOBILE_MENU_GROUPS } from '@/layouts/mobile/types';
-import { PENGUSAHAAN_MENUS, PENGUSAHAAN_MODULES, PENGUSAHAAN_SECTIONS, pengusahaanSection } from '@/lib/pengusahaan-menus';
+import {
+    PENGUSAHAAN_MENUS,
+    PENGUSAHAAN_MODULES,
+    PENGUSAHAAN_SECTIONS,
+    pengusahaanSection,
+} from '@/lib/pengusahaan-menus';
 import type { PengusahaanModuleKey } from '@/lib/pengusahaan-menus';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -63,6 +69,7 @@ import roles from '@/routes/admin/roles';
 import serviceUnits from '@/routes/admin/service-units';
 import units from '@/routes/admin/units';
 import users from '@/routes/admin/users';
+import approvals from '@/routes/approvals';
 import harFormulir from '@/routes/har/formulir';
 import harInput from '@/routes/har/input';
 import harJadwal from '@/routes/har/jadwal';
@@ -94,7 +101,7 @@ import startStop from '@/routes/operator/start-stop';
 import pdmInput from '@/routes/pdm/input';
 import pdmJadwal from '@/routes/pdm/jadwal';
 import pdmLaporan from '@/routes/pdm/laporan';
-import type { NavGroup } from '@/types';
+import type { Auth, NavGroup } from '@/types';
 
 export function AppSidebar() {
     const { can, isSuperAdmin } = usePermissions();
@@ -112,14 +119,22 @@ export function AppSidebar() {
             clearTimeout(hoverTimer.current);
         }
 
-        hoverTimer.current = setTimeout(() => setPeek(inside), inside ? 120 : 250);
+        hoverTimer.current = setTimeout(
+            () => setPeek(inside),
+            inside ? 120 : 250,
+        );
     };
+
+    const approvalCount = (usePage().props.auth as Auth).approvals ?? null;
 
     // Akses 2 — Pengusahaan (TL & Staf) menus of a module, listed inside the
     // module's own group before its Laporan (registry: lib/pengusahaan-menus.ts,
     // shown to holders of `*.pengusahaan.view`). Someone holding Akses 1 too
     // sees them suffixed "Pengusahaan" so the two Input menus stay apart.
-    const pengusahaanItems = (key: PengusahaanModuleKey, akses1Permission: string): NavGroup['items'] => {
+    const pengusahaanItems = (
+        key: PengusahaanModuleKey,
+        akses1Permission: string,
+    ): NavGroup['items'] => {
         const module = PENGUSAHAAN_MODULES.find((item) => item.key === key)!;
 
         if (!can(module.permission)) {
@@ -130,7 +145,14 @@ export function AppSidebar() {
 
         // A section shows only when the module has pages in it; Operasi names its Formulir "Berita Acara".
         // (only the sections with a page the user may open: the operators get Input, not Berita Acara).
-        return PENGUSAHAAN_SECTIONS.filter((section) => PENGUSAHAAN_MENUS.some((menu) => menu.module === key && menu.section === section.key && can(menu.permission))).map((section) => ({
+        return PENGUSAHAAN_SECTIONS.filter((section) =>
+            PENGUSAHAAN_MENUS.some(
+                (menu) =>
+                    menu.module === key &&
+                    menu.section === section.key &&
+                    can(menu.permission),
+            ),
+        ).map((section) => ({
             title: pengusahaanSection(section.key, key).title + suffix,
             href: module.hub(section.key),
             icon: pengusahaanSection(section.key, key).icon,
@@ -142,6 +164,19 @@ export function AppSidebar() {
             label: 'Umum',
             items: [
                 { title: 'Dashboard', href: dashboard(), icon: LayoutGrid },
+                // Team Leader, Koordinator, Project Leader: what waits for their decision.
+                ...(approvalCount !== null
+                    ? [
+                          {
+                              title:
+                                  approvalCount > 0
+                                      ? `Persetujuan (${approvalCount})`
+                                      : 'Persetujuan',
+                              href: approvals.index(),
+                              icon: BadgeCheck,
+                          },
+                      ]
+                    : []),
             ],
         },
         // Monitoring lintas modul (Super Admin, atau role yang diberi monitoring.view).
@@ -269,14 +304,21 @@ export function AppSidebar() {
         // Harmes / Harlist: Input & Formulir Pemeliharaan), one group per
         // section; roles with the full module input already reach them under
         // their own module.
-        ...MOBILE_MENU_GROUPS.filter((section) => section.key !== 'umum').map((section) => ({
-            label: section.label,
-            items: FIELD_MENUS.filter((menu) => menu.group === section.key && can(menu.permission) && !can(menu.coveredBy ?? '')).map((menu) => ({
-                title: menu.title,
-                href: menu.href,
-                icon: menu.icon,
-            })),
-        })),
+        ...MOBILE_MENU_GROUPS.filter((section) => section.key !== 'umum').map(
+            (section) => ({
+                label: section.label,
+                items: FIELD_MENUS.filter(
+                    (menu) =>
+                        menu.group === section.key &&
+                        can(menu.permission) &&
+                        !can(menu.coveredBy ?? ''),
+                ).map((menu) => ({
+                    title: menu.title,
+                    href: menu.href,
+                    icon: menu.icon,
+                })),
+            }),
+        ),
         {
             label: 'Operasi',
             items: [
@@ -426,76 +468,90 @@ export function AppSidebar() {
 
     return (
         <>
-        <Sidebar
-            collapsible="offcanvas"
-            onMouseEnter={() => hover(true)}
-            onMouseLeave={() => hover(false)}
-        >
-            <SidebarHeader>
-                <div className="flex items-center gap-1">
-                    <SidebarMenu className="min-w-0 flex-1">
-                        <SidebarMenuItem>
-                            <SidebarMenuButton size="lg" asChild>
-                                <Link href={dashboard()} prefetch>
-                                    <AppLogo />
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                    {/* Lock the sidebar open, or let it hide when the cursor leaves it. */}
-                    <button
-                        type="button"
-                        onClick={togglePinned}
-                        className={cn(
-                            'flex size-8 shrink-0 items-center justify-center rounded-md transition hover:bg-sidebar-accent',
-                            pinned ? 'text-sidebar-foreground' : 'text-sidebar-foreground/60',
-                        )}
-                        title={pinned ? 'Sidebar dikunci. Klik agar tersembunyi otomatis saat kursor keluar.' : 'Kunci sidebar agar selalu tampil'}
-                        aria-label={pinned ? 'Lepas kunci sidebar' : 'Kunci sidebar'}
-                        aria-pressed={pinned}
-                    >
-                        {pinned ? <Pin className="size-4 fill-current" /> : <PinOff className="size-4" />}
-                    </button>
-                </div>
-            </SidebarHeader>
-
-            <SidebarContent>
-                {/* Only the Super Admin (every menu) gets collapsible groups; other roles see a short, flat menu. */}
-                {groups.map((group) =>
-                    group.label === 'Umum' || !isSuperAdmin ? (
-                        <NavMain
-                            key={group.label}
-                            label={group.label}
-                            items={group.items}
-                        />
-                    ) : (
-                        <NavCollapsible
-                            key={group.label}
-                            label={group.label}
-                            items={group.items}
-                        />
-                    ),
-                )}
-            </SidebarContent>
-
-            <SidebarFooter>
-                <NavUser />
-            </SidebarFooter>
-        </Sidebar>
-
-        {/* Hidden sidebar: the "Portal Saya" tab on the left edge opens it on hover / tap. */}
-        {!pinned && !peeking && (
-            <button
-                type="button"
+            <Sidebar
+                collapsible="offcanvas"
                 onMouseEnter={() => hover(true)}
-                onClick={() => setPeek(true)}
-                className="fixed top-1/2 left-0 z-40 hidden -translate-y-1/2 flex-col items-center gap-1.5 rounded-r-lg bg-sidebar px-1.5 py-3 text-sidebar-foreground shadow-lg transition hover:pl-2.5 md:flex"
-                aria-label="Buka menu Portal Saya"
+                onMouseLeave={() => hover(false)}
             >
-                <LayoutGrid className="size-4" />
-                <span className="text-[11px] font-semibold tracking-wide [writing-mode:vertical-rl] rotate-180">Portal Saya</span>
-            </button>
-        )}
+                <SidebarHeader>
+                    <div className="flex items-center gap-1">
+                        <SidebarMenu className="min-w-0 flex-1">
+                            <SidebarMenuItem>
+                                <SidebarMenuButton size="lg" asChild>
+                                    <Link href={dashboard()} prefetch>
+                                        <AppLogo />
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                        {/* Lock the sidebar open, or let it hide when the cursor leaves it. */}
+                        <button
+                            type="button"
+                            onClick={togglePinned}
+                            className={cn(
+                                'flex size-8 shrink-0 items-center justify-center rounded-md transition hover:bg-sidebar-accent',
+                                pinned
+                                    ? 'text-sidebar-foreground'
+                                    : 'text-sidebar-foreground/60',
+                            )}
+                            title={
+                                pinned
+                                    ? 'Sidebar dikunci. Klik agar tersembunyi otomatis saat kursor keluar.'
+                                    : 'Kunci sidebar agar selalu tampil'
+                            }
+                            aria-label={
+                                pinned ? 'Lepas kunci sidebar' : 'Kunci sidebar'
+                            }
+                            aria-pressed={pinned}
+                        >
+                            {pinned ? (
+                                <Pin className="size-4 fill-current" />
+                            ) : (
+                                <PinOff className="size-4" />
+                            )}
+                        </button>
+                    </div>
+                </SidebarHeader>
+
+                <SidebarContent>
+                    {/* Only the Super Admin (every menu) gets collapsible groups; other roles see a short, flat menu. */}
+                    {groups.map((group) =>
+                        group.label === 'Umum' || !isSuperAdmin ? (
+                            <NavMain
+                                key={group.label}
+                                label={group.label}
+                                items={group.items}
+                            />
+                        ) : (
+                            <NavCollapsible
+                                key={group.label}
+                                label={group.label}
+                                items={group.items}
+                            />
+                        ),
+                    )}
+                </SidebarContent>
+
+                <SidebarFooter>
+                    <NavUser />
+                </SidebarFooter>
+            </Sidebar>
+
+            {/* Hidden sidebar: the "Portal Saya" tab on the left edge opens it on hover / tap. */}
+            {!pinned && !peeking && (
+                <button
+                    type="button"
+                    onMouseEnter={() => hover(true)}
+                    onClick={() => setPeek(true)}
+                    className="fixed top-1/2 left-0 z-40 hidden -translate-y-1/2 flex-col items-center gap-1.5 rounded-r-lg bg-sidebar px-1.5 py-3 text-sidebar-foreground shadow-lg transition hover:pl-2.5 md:flex"
+                    aria-label="Buka menu Portal Saya"
+                >
+                    <LayoutGrid className="size-4" />
+                    <span className="rotate-180 text-[11px] font-semibold tracking-wide [writing-mode:vertical-rl]">
+                        Portal Saya
+                    </span>
+                </button>
+            )}
         </>
     );
 }

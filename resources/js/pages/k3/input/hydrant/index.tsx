@@ -46,6 +46,7 @@ export default function HydrantInput({ unit, filters, rows: initial, options, ca
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [sig, setSig] = useState(signature);
+
     if (sig !== signature) {
         setSig(signature);
         setRows(initial.map(toRow));
@@ -53,9 +54,15 @@ export default function HydrantInput({ unit, filters, rows: initial, options, ca
     }
 
     const visit = (patch: Partial<Props['filters']>) => router.get(hydrant.index().url, { ...filters, ...patch }, { preserveState: true, preserveScroll: true, replace: true });
-    const update = (i: number, k: keyof Row, v: string) => { setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r))); setDirty(true); };
-    const addRow = () => { setRows((p) => [...p, empty()]); setDirty(true); };
-    const removeRow = (i: number) => { setRows((p) => p.filter((_, idx) => idx !== i)); setDirty(true); };
+    const update = (i: number, k: keyof Row, v: string) => {
+ setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r))); setDirty(true); 
+};
+    const addRow = () => {
+ setRows((p) => [...p, empty()]); setDirty(true); 
+};
+    const removeRow = (i: number) => {
+ setRows((p) => p.filter((_, idx) => idx !== i)); setDirty(true); 
+};
     const save = () => {
         setSaving(true);
         router.post(hydrant.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) });

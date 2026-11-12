@@ -2,10 +2,12 @@
 
 namespace App\Services\Har;
 
+use App\Enums\EmployeePosition;
 use App\Models\Employee;
 use App\Models\HarVibration;
 use App\Models\Machine;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -64,16 +66,11 @@ class HarVibrationPdfBuilder
             : 'UL '.$serviceUnitName;
 
         // Signatories resolution
-        $managerUl = ! empty($input['manager_ul_id']) ? Employee::find($input['manager_ul_id']) : $unit->manager();
+        $signatories = app(ReportSignatories::class);
+        $managerUl = ! empty($input['manager_ul_id']) ? Employee::find($input['manager_ul_id']) : $signatories->holder($unit, EmployeePosition::ManagerUl);
         $tlHar = ! empty($input['tl_har_id'])
             ? Employee::find($input['tl_har_id'])
-            : $unit->employees()
-                ->where('is_active', true)
-                ->where(function ($q) {
-                    $q->where('position', 'like', '%team leader pemeliharaan%')
-                        ->orWhere('position', 'like', '%tl pemeliharaan%')
-                        ->orWhere('position', 'like', '%pemeliharaan%');
-                })->first();
+            : $signatories->holder($unit, EmployeePosition::TeamLeaderPemeliharaan);
 
         $staffHar = ! empty($input['staff_har_id'])
             ? Employee::find($input['staff_har_id'])
@@ -85,7 +82,11 @@ class HarVibrationPdfBuilder
                         ->orWhere('position', 'like', '%staff%')
                         ->orWhere('position', 'like', '%teknisi%')
                         ->orWhere('position', 'like', '%operator%');
-                })->first();
+                })
+                // The Staf Pemeliharaan first; a teknisi / operator only when the unit has none.
+                ->orderByRaw("position = 'Staf Pemeliharaan' desc")
+                ->orderBy('id')
+                ->first();
 
         return [
             'unit' => $unit,
@@ -116,17 +117,17 @@ class HarVibrationPdfBuilder
 
             // Signatories
             'manager_ul_id' => $managerUl?->id,
-            'manager_ul_name' => $input['manager_ul_name'] ?? ($managerUl?->name ?? 'SURYADI PRATAMA'),
+            'manager_ul_name' => $signatories->nameFor($input, 'manager_ul', $managerUl),
             'manager_ul_title' => $input['manager_ul_title'] ?? ('PH. Manager Unit '.$ulLabel),
             'manager_ul_signature' => $this->resolveSignatureBase64($managerUl),
 
             'tl_har_id' => $tlHar?->id,
-            'tl_har_name' => $input['tl_har_name'] ?? ($tlHar?->name ?? 'SURYADI PRATAMA'),
+            'tl_har_name' => $signatories->nameFor($input, 'tl_har', $tlHar),
             'tl_har_title' => $input['tl_har_title'] ?? ('Team Leader Pemeliharaan '.$ulLabel),
             'tl_har_signature' => $this->resolveSignatureBase64($tlHar),
 
             'staff_har_id' => $staffHar?->id,
-            'staff_har_name' => $input['staff_har_name'] ?? ($staffHar?->name ?? 'RAHMAT RAHIM FAISAL'),
+            'staff_har_name' => $signatories->nameFor($input, 'staff_har', $staffHar),
             'staff_har_title' => $input['staff_har_title'] ?? 'Staff Pemeliharaan',
             'staff_har_signature' => $this->resolveSignatureBase64($staffHar),
 

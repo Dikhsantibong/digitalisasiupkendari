@@ -27,7 +27,7 @@ class RekomendasiInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.input.rekomendasi.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -44,7 +44,7 @@ class RekomendasiInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->post(route('logistik.input.rekomendasi.store'), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [
@@ -66,7 +66,7 @@ class RekomendasiInputTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         LogistikRekomendasi::factory()->create(['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'uraian' => 'Inventaris Gudang']);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.input.rekomendasi.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertInertia(fn ($page) => $page
                 ->where('rows.0.uraian', 'Inventaris Gudang')
@@ -80,7 +80,7 @@ class RekomendasiInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
             ->get(route('logistik.input.rekomendasi.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
@@ -103,7 +103,7 @@ class RekomendasiInputTest extends TestCase
         $own = Unit::factory()->create(['is_active' => true]);
         $foreign = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderLogistik, $own))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $own))
             ->get(route('logistik.input.rekomendasi.index', ['unit_id' => $foreign->id]))
             ->assertForbidden();
     }

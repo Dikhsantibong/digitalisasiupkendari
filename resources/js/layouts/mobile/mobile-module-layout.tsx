@@ -1,5 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft, Menu, Search, X } from 'lucide-react';
+import { ArrowLeft, BadgeCheck, ChevronRight, Menu, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -179,6 +179,39 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
                     <UserButton onDark />
                 </div>
             </header>
+
+            {/* Approvers (Team Leader, Koordinator, Project Leader): what waits for their decision. */}
+            {auth.approvals != null && (
+                <Link
+                    href="/persetujuan"
+                    className={cn(
+                        'flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-sm active:bg-muted',
+                        auth.approvals > 0
+                            ? 'border-primary/30 bg-primary/5'
+                            : 'border-border bg-card',
+                    )}
+                >
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <BadgeCheck className="size-5" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-semibold text-foreground">
+                            Persetujuan
+                        </span>
+                        <span className="block text-[12.5px] text-muted-foreground">
+                            {auth.approvals > 0
+                                ? `${auth.approvals} menunggu keputusan Anda`
+                                : 'Tidak ada yang menunggu keputusan Anda'}
+                        </span>
+                    </span>
+                    {auth.approvals > 0 && (
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[12px] font-semibold text-primary-foreground tabular-nums">
+                            {auth.approvals}
+                        </span>
+                    )}
+                    <ChevronRight className="size-4 text-muted-foreground" />
+                </Link>
+            )}
 
             {resolved.menus.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">

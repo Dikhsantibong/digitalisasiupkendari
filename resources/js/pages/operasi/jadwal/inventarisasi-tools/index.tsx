@@ -1,13 +1,13 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, CheckCheck, Download, FileSpreadsheet, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { monthTimelineDays, MobileTimelineForm, RENC_REAL, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
-import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
-import type { StyleSpec } from '@/lib/jadwal-excel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { monthTimelineDays, MobileTimelineForm, RENC_REAL, TimelineField } from '@/components/mobile/timeline-form';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import type { StyleSpec } from '@/lib/jadwal-excel';
+import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import inventaris from '@/routes/operasi/jadwal/inventarisasi-tools';
@@ -41,19 +41,56 @@ export default function InventarisPage({ unit, filters, options, days_in_month, 
 
     const sig = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [last, setLast] = useState(sig);
-    if (last !== sig) { setLast(sig); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); }
+
+    if (last !== sig) {
+ setLast(sig); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); 
+}
 
     const monthName = useMemo(() => OPERASI_MONTHS[filters.month - 1] ?? '', [filters.month]);
     const days = useMemo(() => Array.from({ length: days_in_month }, (_, i) => i + 1), [days_in_month]);
 
     const visit = (p: Partial<Props['filters']>) => router.get(inventaris.index().url, { ...filters, ...p }, { preserveState: true, preserveScroll: true, replace: true });
-    const toggle = (key: number, cat: Cat, day: number) => { if (!can_write) return; setRows((prev) => prev.map((r) => { if (r._key !== key) return r; const s = new Set(r[cat]); s.has(day) ? s.delete(day) : s.add(day); return { ...r, [cat]: Array.from(s).sort((a, b) => a - b) }; })); setDirty(true); };
-    const setField = (key: number, f: 'uraian' | 'shift' | 'target', v: string) => { setRows((p) => p.map((r) => (r._key === key ? { ...r, [f]: f === 'target' ? Math.max(0, parseInt(v, 10) || 0) : v } : r))); setDirty(true); };
-    const addRow = () => { setRows((p) => [...p, { _key: nextKey, id: null, uraian: '', shift: 'JADWAL', rencana: [], realisasi: [], target: 5 }]); setNextKey((k) => k + 1); setDirty(true); };
-    const remove = (key: number) => { setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); };
-    const markPlan = () => { if (!can_write) return; setRows((p) => p.map((r) => ({ ...r, rencana: days.slice() }))); setDirty(true); };
-    const reset = () => { setRows(hydrate(initial)); setDirty(false); };
-    const save = () => { if (!can_write) return; setSaving(true); router.post(inventaris.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows: rows.map((r) => ({ id: r.id, uraian: r.uraian || r.shift || 'Inventarisasi', shift: r.shift, rencana: r.rencana, realisasi: r.realisasi, target: r.target })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); };
+    const toggle = (key: number, cat: Cat, day: number) => {
+ if (!can_write) {
+return;
+}
+
+ setRows((prev) => prev.map((r) => {
+ if (r._key !== key) {
+return r;
+}
+
+ const s = new Set(r[cat]); s.has(day) ? s.delete(day) : s.add(day);
+
+ return { ...r, [cat]: Array.from(s).sort((a, b) => a - b) }; 
+})); setDirty(true); 
+};
+    const setField = (key: number, f: 'uraian' | 'shift' | 'target', v: string) => {
+ setRows((p) => p.map((r) => (r._key === key ? { ...r, [f]: f === 'target' ? Math.max(0, parseInt(v, 10) || 0) : v } : r))); setDirty(true); 
+};
+    const addRow = () => {
+ setRows((p) => [...p, { _key: nextKey, id: null, uraian: '', shift: 'JADWAL', rencana: [], realisasi: [], target: 5 }]); setNextKey((k) => k + 1); setDirty(true); 
+};
+    const remove = (key: number) => {
+ setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
+};
+    const markPlan = () => {
+ if (!can_write) {
+return;
+}
+
+ setRows((p) => p.map((r) => ({ ...r, rencana: days.slice() }))); setDirty(true); 
+};
+    const reset = () => {
+ setRows(hydrate(initial)); setDirty(false); 
+};
+    const save = () => {
+ if (!can_write) {
+return;
+}
+
+ setSaving(true); router.post(inventaris.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows: rows.map((r) => ({ id: r.id, uraian: r.uraian || r.shift || 'Inventarisasi', shift: r.shift, rencana: r.rencana, realisasi: r.realisasi, target: r.target })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
+};
 
     const handleExcel = async () => {
         const H: (string | number)[][] = [[], [], [], []];
@@ -67,15 +104,39 @@ export default function InventarisPage({ unit, filters, options, days_in_month, 
         const dayStart = 3; const dayEnd = dayStart + days.length - 1; const colRenc = dayStart + days.length; const colKinerja = colRenc + 3; const totalCols = colKinerja + 1;
         const done: StyleSpec = { fill: XLSX_COLORS.slate, bold: true, align: 'center', valign: 'center', border: true };
         paintSheet(ws, H.length, totalCols, (r, c) => {
-            if (r < 4) return null;
-            if (r === 4) return SPECS.headerOrange;
-            if (c === 0) return SPECS.cellLeft;
-            if (c === 1) return SPECS.labelCenter;
-            if (c === 2) return SPECS.labelCenter;
-            if (c >= dayStart && c <= dayEnd) return H[r]?.[c] === 1 ? done : SPECS.cell;
+            if (r < 4) {
+return null;
+}
+
+            if (r === 4) {
+return SPECS.headerOrange;
+}
+
+            if (c === 0) {
+return SPECS.cellLeft;
+}
+
+            if (c === 1) {
+return SPECS.labelCenter;
+}
+
+            if (c === 2) {
+return SPECS.labelCenter;
+}
+
+            if (c >= dayStart && c <= dayEnd) {
+return H[r]?.[c] === 1 ? done : SPECS.cell;
+}
+
             return { ...SPECS.cell, bold: true };
         });
-        rows.forEach((_, i) => { const top = 5 + i * 2; mergeCells(ws, top, 0, top + 1, 0); mergeCells(ws, top, 1, top + 1, 1); for (let c = colRenc; c <= colKinerja; c++) mergeCells(ws, top, c, top + 1, c); });
+        rows.forEach((_, i) => {
+ const top = 5 + i * 2; mergeCells(ws, top, 0, top + 1, 0); mergeCells(ws, top, 1, top + 1, 1);
+
+ for (let c = colRenc; c <= colKinerja; c++) {
+mergeCells(ws, top, c, top + 1, c);
+} 
+});
         const colWidths = [26, 8, 12, ...Array(days.length).fill(3.2), 9, 8, 9, 11];
         setColWidths(ws, colWidths);
         await buildDocumentHeader({ workbook, worksheet: ws }, { totalCols, colWidths, titleLines: ['JASA PENDUKUNG TEKNIS 11 & 6 SITE - KIT', `LAPORAN PROJECT — ${unit.name.toUpperCase()}`, 'INVENTARISASI TOOLS & MATERIAL'], barTitle: `JADWAL INVENTARISASI TOOLS DAN MATERIAL OPERASI — ${monthName.toUpperCase()} ${filters.year}` });
@@ -83,7 +144,11 @@ export default function InventarisPage({ unit, filters, options, days_in_month, 
     };
 
     const th = 'p-th border border-black bg-[#ea7315] p-1 text-center text-[10px] font-bold text-white';
-    const dayCells = (r: Row, cat: Cat) => days.map((d) => { const on = r[cat].includes(d); return <td key={`${cat}-${d}`} onClick={() => toggle(r._key, cat, d)} className={`border border-black text-center text-[11px] font-bold select-none ${on ? 'p-done bg-slate-300 dark:bg-slate-600' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>{on ? '1' : ''}</td>; });
+    const dayCells = (r: Row, cat: Cat) => days.map((d) => {
+ const on = r[cat].includes(d);
+
+ return <td key={`${cat}-${d}`} onClick={() => toggle(r._key, cat, d)} className={`border border-black text-center text-[11px] font-bold select-none ${on ? 'p-done bg-slate-300 dark:bg-slate-600' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>{on ? '1' : ''}</td>; 
+});
 
     return (
         <>
@@ -114,7 +179,9 @@ export default function InventarisPage({ unit, filters, options, days_in_month, 
                     <div className="border-b border-border p-3">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT</div>
@@ -122,7 +189,9 @@ export default function InventarisPage({ unit, filters, options, days_in_month, 
                                 <div className="text-[11px] font-bold text-foreground uppercase">JADWAL INVENTARISASI TOOLS DAN MATERIAL OPERASI — {monthName.toUpperCase()} {filters.year}</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                                <img src="/logo/mkp.jpg" alt="MKP" className="max-h-11 object-contain" onError={(e) => {
+ (e.target as HTMLElement).style.display = 'none'; 
+}} />
                             </div>
                         </div>
                     </div>
@@ -171,6 +240,7 @@ export default function InventarisPage({ unit, filters, options, days_in_month, 
                         <tbody>
                             {rows.map((r) => {
                                 const rc = r.rencana.length; const re = r.realisasi.length; const kin = r.target > 0 ? Math.round((re / r.target) * 100) : 0;
+
                                 return (
                                     <Fragment key={r._key}>
                                         <tr className="hover:bg-muted/10">

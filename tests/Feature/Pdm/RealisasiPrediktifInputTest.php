@@ -27,7 +27,7 @@ class RealisasiPrediktifInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.realisasi-prediktif.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
@@ -46,7 +46,7 @@ class RealisasiPrediktifInputTest extends TestCase
     public function test_saving_cleans_the_days_and_computes_kinerja(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::TeamLeaderPdm, $unit);
+        $user = $this->userWithRole(RoleName::KoordinatorPdm, $unit);
 
         $this->actingAs($user)
             ->post(route('pdm.input.realisasi-prediktif.store'), [
@@ -73,7 +73,7 @@ class RealisasiPrediktifInputTest extends TestCase
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->post(route('pdm.input.realisasi-prediktif.store'), [
                 'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
                 'rows' => [['uraian' => '', 'rencana' => [1]]],
@@ -86,7 +86,7 @@ class RealisasiPrediktifInputTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         PdmRealisasiPrediktif::factory()->create(['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]);
 
-        $response = $this->actingAs($this->userWithRole(RoleName::TeamLeaderPdm, $unit))
+        $response = $this->actingAs($this->userWithRole(RoleName::KoordinatorPdm, $unit))
             ->get(route('pdm.input.realisasi-prediktif.pdf', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]));
 
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
