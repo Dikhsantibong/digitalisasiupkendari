@@ -18,6 +18,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -886,28 +887,13 @@ return;
                                                 </td>
 
                                                 {/* INSTRUKSI KERJA */}
-                                                <td className="border border-black p-0.5">
-                                                    {can_write ? (
-                                                        <input
-                                                            type="text"
-                                                            value={
-                                                                row.instruksi_kerja
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateTextField(
-                                                                    idx,
-                                                                    'instruksi_kerja',
-                                                                    e.target.value,
-                                                                )
-                                                            }
-                                                            className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                            placeholder="IK......................................................"
-                                                        />
-                                                    ) : (
-                                                        <span className="px-1.5 text-xs">
-                                                            {row.instruksi_kerja}
-                                                        </span>
-                                                    )}
+                                                <td className="min-w-64 border border-black p-0.5 align-middle whitespace-normal">
+                                                    <AutoWrapCellInput
+                                                        value={row.instruksi_kerja}
+                                                        onChange={(val) => updateTextField(idx, 'instruksi_kerja', val)}
+                                                        placeholder="IK......................................................"
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
 
                                                 {/* PIC PEMBUAT */}

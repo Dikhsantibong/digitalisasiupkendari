@@ -17,6 +17,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -528,7 +529,7 @@ return;
                                         <th rowSpan={2} className="w-10 border border-black p-2 text-center font-bold text-foreground">
                                             No
                                         </th>
-                                        <th rowSpan={2} className="w-64 min-w-56 border border-black p-2 text-left font-bold text-foreground">
+                                        <th rowSpan={2} className="w-72 min-w-64 whitespace-normal border border-black p-2 text-left font-bold text-foreground">
                                             Nama Peralatan / Kegiatan
                                         </th>
                                         <th colSpan={days.length} className="border border-black p-1.5 text-center font-bold tracking-wider text-foreground uppercase">
@@ -543,7 +544,7 @@ return;
                                         <th rowSpan={2} className="w-16 border border-black p-2 text-center font-bold text-foreground">
                                             KINERJA
                                         </th>
-                                        <th rowSpan={2} className="w-48 min-w-40 border border-black p-2 text-left font-bold text-foreground">
+                                        <th rowSpan={2} className="w-56 min-w-44 whitespace-normal border border-black p-2 text-left font-bold text-foreground">
                                             Keterangan
                                         </th>
                                         {can_write && (
@@ -592,17 +593,12 @@ return;
                                                             <td className="border border-black p-1 text-center font-medium text-foreground">
                                                                 {li + 1}
                                                             </td>
-                                                            <td className="border border-black p-1 text-foreground">
-                                                                {can_write ? (
-                                                                    <input
-                                                                        type="text"
-                                                                        value={row.kegiatan}
-                                                                        onChange={(e) => updateField(row._key, 'kegiatan', e.target.value)}
-                                                                        className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                    />
-                                                                ) : (
-                                                                    <span className="px-1.5 text-xs">{row.kegiatan}</span>
-                                                                )}
+                                                            <td className="min-w-64 border border-black p-1 align-middle whitespace-normal text-foreground">
+                                                                <AutoWrapCellInput
+                                                                    value={row.kegiatan}
+                                                                    onChange={(val) => updateField(row._key, 'kegiatan', val)}
+                                                                    readOnly={!can_write}
+                                                                />
                                                             </td>
                                                             {days.map((d) => {
                                                                 if (d.is_red) {
@@ -647,18 +643,14 @@ return;
                                                             <td className={`border border-black p-1 text-center font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                                                 {kinerja}%
                                                             </td>
-                                                            <td className="border border-black p-1 text-foreground">
-                                                                {can_write ? (
-                                                                    <input
-                                                                        type="text"
-                                                                        value={row.keterangan || ''}
-                                                                        onChange={(e) => updateField(row._key, 'keterangan', e.target.value)}
-                                                                        placeholder="Catatan…"
-                                                                        className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                    />
-                                                                ) : (
-                                                                    <span className="px-1 text-xs">{row.keterangan || '-'}</span>
-                                                                )}
+                                                            <td className="min-w-44 border border-black p-1 align-middle whitespace-normal text-foreground">
+                                                                <AutoWrapCellInput
+                                                                    value={row.keterangan || ''}
+                                                                    onChange={(val) => updateField(row._key, 'keterangan', val)}
+                                                                    placeholder="Catatan…"
+                                                                    emptyFallback="-"
+                                                                    readOnly={!can_write}
+                                                                />
                                                             </td>
                                                             {can_write && (
                                                                 <td className="no-print border border-black p-1 text-center">

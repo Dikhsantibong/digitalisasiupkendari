@@ -93,6 +93,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
                     'beban_50' => [],
                     'beban_75' => [],
                     'beban_100' => [],
+                    'realisasi' => [],
                     'keterangan' => '',
                 ];
             })->all();
@@ -104,6 +105,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
                 'beban_50' => $r->beban_50 ?? [],
                 'beban_75' => $r->beban_75 ?? [],
                 'beban_100' => $r->beban_100 ?? [],
+                'realisasi' => $r->realisasi ?? [],
                 'keterangan' => $r->keterangan ?? '',
             ])->all();
         }
@@ -148,6 +150,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
             'rows.*.beban_50' => ['nullable', 'array'],
             'rows.*.beban_75' => ['nullable', 'array'],
             'rows.*.beban_100' => ['nullable', 'array'],
+            'rows.*.realisasi' => ['nullable', 'array'],
             'rows.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -169,6 +172,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
                 $b50 = $cleanWeeks($row['beban_50'] ?? []);
                 $b75 = $cleanWeeks($row['beban_75'] ?? []);
                 $b100 = $cleanWeeks($row['beban_100'] ?? []);
+                $realisasi = $cleanWeeks($row['realisasi'] ?? []);
 
                 if (! empty($row['id'])) {
                     $record = OperasiCommPeralatan::query()
@@ -183,6 +187,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
                             'beban_50' => $b50,
                             'beban_75' => $b75,
                             'beban_100' => $b100,
+                            'realisasi' => $realisasi,
                             'keterangan' => $row['keterangan'] ?? null,
                             'sort_order' => $index,
                             'input_by' => $user->id,
@@ -201,6 +206,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
                     'beban_50' => $b50,
                     'beban_75' => $b75,
                     'beban_100' => $b100,
+                    'realisasi' => $realisasi,
                     'keterangan' => $row['keterangan'] ?? null,
                     'sort_order' => $index,
                     'input_by' => $user->id,
@@ -276,6 +282,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
                 'beban_50' => [],
                 'beban_75' => [],
                 'beban_100' => [],
+                'realisasi' => [],
                 'keterangan' => '',
             ])->all();
         } else {
@@ -285,6 +292,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
                 'beban_50' => $r->beban_50 ?? [],
                 'beban_75' => $r->beban_75 ?? [],
                 'beban_100' => $r->beban_100 ?? [],
+                'realisasi' => $r->realisasi ?? [],
                 'keterangan' => $r->keterangan ?? '',
             ])->all();
         }
@@ -335,6 +343,7 @@ class JadwalCommissioningTestPeralatanController extends Controller
             'year' => $year,
             'months' => self::MONTHS,
             'rows' => $rows,
+            'has_saved' => $records->isNotEmpty(),
             'columnTotals' => $columnTotals,
             'grandTotal' => $grandTotal,
             'machines' => $machineList,

@@ -7,6 +7,7 @@ import { LogistikSheetMobile } from '@/components/logistik/jadwal-sheet-mobile';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -220,7 +221,13 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
         );
 
     const namaInput = (index: number, placeholder = '') => (
-        <Input value={rows[index].nama} onChange={(e) => updateRow(index, { nama: e.target.value })} className={cellInput} placeholder={placeholder} disabled={!can_write} />
+        <AutoWrapCellInput
+            value={rows[index].nama}
+            onChange={(value) => updateRow(index, { nama: value })}
+            className="px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+            placeholder={placeholder}
+            disabled={!can_write}
+        />
     );
 
     const targetInput = (index: number, fallback: number) => (
@@ -286,8 +293,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                                     <td className={`${td} p-1 text-center font-semibold`}>{p.rencana}</td>
                                     <td className={`${td} p-1 text-center font-semibold`}>{p.realisasi}</td>
                                     <td className={`${td} p-1 text-center font-semibold`}>{p.kinerja}</td>
-                                    <td className={`${td} p-0`}>
-                                        <Input value={row.keterangan} onChange={(e) => updateRow(index, { keterangan: e.target.value })} className={cellInput} disabled={!can_write} />
+                                    <td className={`${td} p-0 align-middle whitespace-normal`}>
+                                        <AutoWrapCellInput value={row.keterangan} onChange={(value) => updateRow(index, { keterangan: value })} className="px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40" disabled={!can_write} />
                                     </td>
                                     {removeButton(index)}
                                 </tr>
@@ -407,8 +414,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                     return (
                         <tr key={index}>
                             <td className={`${td} p-1 text-center font-semibold`}>{index + 1}</td>
-                            <td className={`${td} p-0`}>
-                                <Input value={row.pic} onChange={(e) => updateRow(index, { pic: e.target.value })} className={cellInput} disabled={!can_write} />
+                            <td className={`${td} p-0 align-middle whitespace-normal`}>
+                                <AutoWrapCellInput value={row.pic} onChange={(value) => updateRow(index, { pic: value })} className="px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40" disabled={!can_write} />
                             </td>
                             <td className={`${td} p-0`}>{namaInput(index, 'Nama personil')}</td>
                             {columns.map((column) => {
@@ -459,8 +466,8 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                             <tr key={index}>
                                 <td className={`${td} p-1 text-center`}>{index + 1}</td>
                                 <td className={`${td} p-0`}>{namaInput(index, 'IK ....')}</td>
-                                <td className={`${td} p-0`}>
-                                    <Input value={row.pic} onChange={(e) => updateRow(index, { pic: e.target.value })} className={cellInput} disabled={!can_write} />
+                                <td className={`${td} p-0 align-middle whitespace-normal`}>
+                                    <AutoWrapCellInput value={row.pic} onChange={(value) => updateRow(index, { pic: value })} className="px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40" disabled={!can_write} />
                                 </td>
                                 {columns.map((column) => rdCell(index, column))}
                                 <td className={`${td} p-1 text-center font-semibold`}>{jadwalProgress(row).rencana}</td>

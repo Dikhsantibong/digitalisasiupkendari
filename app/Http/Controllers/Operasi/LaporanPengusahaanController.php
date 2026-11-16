@@ -66,7 +66,9 @@ class LaporanPengusahaanController extends Controller
 
                 return [
                     'document_number' => $data['document']['number'],
-                    'content' => $record?->content_html ?? $this->document->bodyHtml($data),
+                    'content' => $record?->content_html !== null
+                        ? $this->document->refreshSignatureBlock($record->content_html, $unit, $month, $year, $request->user())
+                        : $this->document->bodyHtml($data),
                     'content_styles' => $this->document->styles($data),
                     'letterhead' => $this->document->letterhead($data),
                     'grid' => $record?->content_grid ?? $this->document->grid($data),
@@ -95,7 +97,10 @@ class LaporanPengusahaanController extends Controller
             $pdf = $merger->render($styles, $body, [['show' => '', 'orientation' => 'landscape']], [], self::FOOTER);
         } else {
             // Every chapter prints in its own orientation; portrait and landscape pages are merged in order.
-            $body = $this->embedAssets($record?->content_html ?? $this->document->bodyHtml($data));
+            $rawBody = $record?->content_html !== null
+                ? $this->document->refreshSignatureBlock($record->content_html, $unit, $month, $year, $request->user())
+                : $this->document->bodyHtml($data);
+            $body = $this->embedAssets($rawBody);
             $pdf = $merger->renderSections($styles, $body, 'op-p-section', 'op-p-landscape', self::FOOTER, unnumberedPages: 1);
         }
 

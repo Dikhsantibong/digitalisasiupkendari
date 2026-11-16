@@ -10,6 +10,7 @@ import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -130,8 +131,16 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
             );
         }
 
+        if (column.type === 'date') {
+            return (
+                <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} className={cellInput} disabled={!can_write} />
+            );
+        }
+
         return (
-            <Input type={column.type === 'date' ? 'date' : 'text'} value={value} onChange={(e) => onChange(e.target.value)} className={cellInput} disabled={!can_write} />
+            <div className="p-1">
+                <AutoWrapCellInput value={value} onChange={onChange} readOnly={!can_write} />
+            </div>
         );
     };
 
@@ -299,9 +308,9 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
                                                 <td key={i} className="border border-border p-1 text-center">{value}</td>
                                             ))}
                                             <td className="border border-border p-1 text-center">{rekap.status}</td>
-                                            <td className="border border-border p-0">
+                                            <td className="border border-border p-1 align-middle whitespace-normal">
                                                 {target ? (
-                                                    <Input value={target.keterangan} onChange={(e) => setTarget(rekap.jenis, { keterangan: e.target.value })} className={cellInput} disabled={!can_write} />
+                                                    <AutoWrapCellInput value={target.keterangan} onChange={(val) => setTarget(rekap.jenis, { keterangan: val })} readOnly={!can_write} />
                                                 ) : null}
                                             </td>
                                         </tr>

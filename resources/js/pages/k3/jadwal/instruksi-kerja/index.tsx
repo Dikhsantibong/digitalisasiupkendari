@@ -17,6 +17,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -256,17 +257,15 @@ return;
         );
     };
 
-    const textCell = (row: Row, field: TextField, extra = '') =>
-        can_write ? (
-            <input
-                type="text"
-                value={row[field] || ''}
-                onChange={(e) => updateField(row._key, field, e.target.value)}
-                className={`w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none ${extra}`}
-            />
-        ) : (
-            <span className="px-1 text-xs">{row[field] || '-'}</span>
-        );
+    const textCell = (row: Row, field: TextField, extra = '') => (
+        <AutoWrapCellInput
+            value={row[field] || ''}
+            onChange={(val) => updateField(row._key, field, val)}
+            className={extra}
+            emptyFallback="-"
+            readOnly={!can_write}
+        />
+    );
 
     const dayCells = (row: Row, category: Category) =>
         days.map((d) => {
@@ -452,7 +451,7 @@ return;
                                 <thead className="print-thead bg-muted/60 dark:bg-muted/30">
                                     <tr>
                                         <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
-                                        <th rowSpan={2} className="w-56 min-w-48 border border-black p-1 text-left font-bold text-foreground">Kegiatan</th>
+                                        <th rowSpan={2} className="w-64 min-w-56 whitespace-normal border border-black p-1 text-left font-bold text-foreground">Kegiatan</th>
                                         <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">Waktu</th>
                                         <th rowSpan={2} className="w-16 border border-black p-1 text-center font-bold text-foreground">PIC</th>
                                         <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">Peserta</th>
@@ -461,7 +460,7 @@ return;
                                         <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
                                         <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">REALISASI</th>
                                         <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">KINERJA</th>
-                                        <th rowSpan={2} className="w-40 min-w-32 border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
+                                        <th rowSpan={2} className="w-48 min-w-40 whitespace-normal border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
                                         {can_write && <th rowSpan={2} className="no-print w-9 border border-black p-1 text-center font-bold text-foreground">Aksi</th>}
                                     </tr>
                                     <tr>
@@ -483,16 +482,16 @@ return;
                                                 {/* RENC row */}
                                                 <tr className="transition-colors hover:bg-muted/10">
                                                     <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top text-foreground">{textCell(row, 'kegiatan')}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-center align-top">{textCell(row, 'waktu', 'text-center')}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-center align-top">{textCell(row, 'pic', 'text-center')}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-center align-top">{textCell(row, 'peserta', 'text-center')}</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-left align-middle whitespace-normal text-foreground">{textCell(row, 'kegiatan')}</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle whitespace-normal">{textCell(row, 'waktu', 'text-center')}</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle whitespace-normal">{textCell(row, 'pic', 'text-center')}</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-center align-middle whitespace-normal">{textCell(row, 'peserta', 'text-center')}</td>
                                                     <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
                                                     {dayCells(row, 'rencana')}
                                                     <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
                                                     <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
                                                     <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{kinerja}%</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top">{textCell(row, 'keterangan')}</td>
+                                                    <td rowSpan={2} className="border border-black p-1 text-left align-middle whitespace-normal">{textCell(row, 'keterangan')}</td>
                                                     {can_write && (
                                                         <td rowSpan={2} className="no-print border border-black p-1 text-center align-middle">
                                                             <Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive" onClick={() => handleRemove(row._key)} title="Hapus Kegiatan">

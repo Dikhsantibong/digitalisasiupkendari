@@ -1,8 +1,9 @@
 import { Head, router } from '@inertiajs/react';
 import { ArrowLeft, Download, FileSpreadsheet, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { MobileTimelineForm, TimelineField, YEAR_MONTH_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -13,7 +14,7 @@ import jadwal from '@/routes/operasi/jadwal';
 import dataTeknis from '@/routes/operasi/jadwal/pembuatan-data-teknis';
 import type { IdName } from '@/types';
 
-type ServerRow = { id: number | null; nama: string; pic: string; months: Record<string, string> };
+type ServerRow = { id: number | null; nama: string; pic: string; months: Record<string, string>; realisasi?: Record<string, string> };
 type Row = ServerRow & { _key: number };
 
 type Props = {
@@ -26,7 +27,7 @@ type Props = {
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
 const PRINT_CSS = `@media print { @page { size:A4 landscape; margin:8mm; } body *{visibility:hidden!important;} .print-container,.print-container *{visibility:visible!important;} .print-container{position:absolute!important;left:0!important;top:0!important;width:100%!important;} .no-print{display:none!important;} .p-table th,.p-table td{border:1px solid #000!important;font-size:8px!important;} .p-th{background:#ea7315!important;color:#fff!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} .p-done{background:#cbd5e1!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;} }`;
-const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: i, months: { ...r.months } }));
+const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: i, months: { ...r.months }, realisasi: { ...(r.realisasi ?? {}) } }));
 
 export default function DataTeknisPage({ unit, filters, options, rows: initial, can_write }: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initial));
@@ -45,7 +46,7 @@ export default function DataTeknisPage({ unit, filters, options, rows: initial, 
 }
 
     const visit = (p: Partial<Props['filters']>) => router.get(dataTeknis.index().url, { ...filters, ...p }, { preserveState: true, preserveScroll: true, replace: true });
-    const toggle = (key: number, m: number) => {
+    const toggle = (key: number, m: number, field: 'months' | 'realisasi' = 'months') => {
  if (!can_write) {
 return;
 }
@@ -55,7 +56,7 @@ return;
 return r;
 }
 
- const mm = { ...r.months };
+ const mm = { ...(r[field] ?? {}) };
 
  if (mm[String(m)]) {
 delete mm[String(m)];
@@ -63,14 +64,14 @@ delete mm[String(m)];
 mm[String(m)] = '1';
 }
 
- return { ...r, months: mm }; 
+ return { ...r, [field]: mm }; 
 })); setDirty(true); 
 };
     const setField = (key: number, f: 'nama' | 'pic', v: string) => {
  setRows((p) => p.map((r) => (r._key === key ? { ...r, [f]: v } : r))); setDirty(true); 
 };
     const addRow = () => {
- setRows((p) => [...p, { _key: nextKey, id: null, nama: '', pic: '', months: {} }]); setNextKey((k) => k + 1); setDirty(true); 
+ setRows((p) => [...p, { _key: nextKey, id: null, nama: '', pic: '', months: {}, realisasi: {} }]); setNextKey((k) => k + 1); setDirty(true); 
 };
     const remove = (key: number) => {
  setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
@@ -78,13 +79,13 @@ mm[String(m)] = '1';
     const reset = () => {
  setRows(hydrate(initial)); setDirty(false); 
 };
-    const jumlahOf = (r: Row) => Object.values(r.months).filter((v) => String(v).trim() !== '').length;
+    const jumlahOf = (r: Row, field: 'months' | 'realisasi' = 'months') => Object.values(r[field] ?? {}).filter((v) => String(v).trim() !== '').length;
     const save = () => {
  if (!can_write) {
 return;
 }
 
- setSaving(true); router.post(dataTeknis.store().url, { unit_id: filters.unit_id, year: filters.year, rows: rows.map((r) => ({ id: r.id, nama: r.nama, pic: r.pic, months: r.months })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
+ setSaving(true); router.post(dataTeknis.store().url, { unit_id: filters.unit_id, year: filters.year, rows: rows.map((r) => ({ id: r.id, nama: r.nama, pic: r.pic, months: r.months, realisasi: r.realisasi ?? {} })) }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
 };
 
     const handleExcel = async () => {
@@ -172,16 +173,17 @@ return H[r]?.[c] === 1 ? done : SPECS.cell;
                                 rows={rows}
                                 rowKey={(row) => row._key}
                                 title={(row) => row.nama || 'Baris baru'}
-                                categories={[{ key: 'plan', label: 'Dijadwalkan', onClass: 'border-slate-500 bg-slate-300 text-black' }]}
-                                isOn={(row, _category, month) => !!row.months[String(month)]}
-                                onToggle={(row, _category, month) => toggle(row._key, month)}
+
+                                categories={[{ key: 'months', label: 'Rencana', onClass: 'border-slate-500 bg-slate-300 text-black' }, { key: 'realisasi', label: 'Realisasi', onClass: 'border-emerald-700 bg-emerald-600 text-white' }]}
+                                isOn={(row, category, month) => !!row[category as 'months' | 'realisasi']?.[String(month)]}
+                                onToggle={(row, category, month) => toggle(row._key, month, category as 'months' | 'realisasi')}
                                 details={(row) => (
                                     <>
                                         <TimelineField label="Nama" value={row.nama} onChange={(v) => setField(row._key, 'nama', v)} readOnly={!can_write} />
                                         <TimelineField label="PIC" value={row.pic} onChange={(v) => setField(row._key, 'pic', v)} readOnly={!can_write} />
                                     </>
                                 )}
-                                summary={(row) => `PIC ${row.pic || '-'} · ${Object.keys(row.months).length} bulan dijadwalkan`}
+                                summary={(row) => `PIC ${row.pic || '-'} · REN ${jumlahOf(row, 'months')} · REAL ${jumlahOf(row, 'realisasi')} bln`}
                                 dayLabel={(month) => `Bulan ${month.dow} ${filters.year}`}
                                 initialDay={currentMonth}
                                 onRemove={(row) => remove(row._key)}
@@ -197,8 +199,9 @@ return H[r]?.[c] === 1 ? done : SPECS.cell;
                         <thead>
                             <tr>
                                 <th rowSpan={2} className={`${th} w-10`}>No</th>
-                                <th rowSpan={2} className={`${th} min-w-64 text-left`}>Data Teknis</th>
-                                <th rowSpan={2} className={`${th} min-w-32`}>PIC Pembuat</th>
+                                <th rowSpan={2} className={`${th} min-w-64 whitespace-normal text-left`}>Data Teknis</th>
+                                <th rowSpan={2} className={`${th} min-w-32 whitespace-normal`}>PIC Pembuat</th>
+                                <th rowSpan={2} className={`${th} w-14`}>Status</th>
                                 <th colSpan={12} className={th}>Bulan</th>
                                 <th rowSpan={2} className={th}>Jumlah</th>
                                 {can_write && <th rowSpan={2} className={`${th} no-print`}>Aksi</th>}
@@ -206,20 +209,33 @@ return H[r]?.[c] === 1 ? done : SPECS.cell;
                             <tr>{MONTHS.map((m) => <th key={m} className={`${th} w-8`}>{m}</th>)}</tr>
                         </thead>
                         <tbody>
-                            <tr className="bg-[#ea7315]/10"><td colSpan={can_write ? 16 : 15} className="border border-black p-1 text-left text-xs font-bold uppercase">A. Pembuatan Data Teknis</td></tr>
+                            <tr className="bg-[#ea7315]/10"><td colSpan={can_write ? 17 : 16} className="border border-black p-1 text-left text-xs font-bold uppercase">A. Pembuatan Data Teknis</td></tr>
                             {rows.map((r, i) => (
-                                <tr key={r._key} className="hover:bg-muted/10">
-                                    <td className="border border-black p-1 text-center">{i + 1}</td>
-                                    <td className="border border-black p-1 text-left">{can_write ? <input value={r.nama} onChange={(e) => setField(r._key, 'nama', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" placeholder="Nama data teknis…" /> : <span className="text-xs">{r.nama}</span>}</td>
-                                    <td className="border border-black p-1 text-center">{can_write ? <input value={r.pic} onChange={(e) => setField(r._key, 'pic', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" /> : <span className="text-xs">{r.pic}</span>}</td>
+                                <Fragment key={r._key}>
+                                <tr className="hover:bg-muted/10">
+                                    <td rowSpan={2} className="border border-black p-1 text-center">{i + 1}</td>
+                                    <td rowSpan={2} className="min-w-64 border border-black p-1 text-left align-middle whitespace-normal"><AutoWrapCellInput value={r.nama} onChange={(val) => setField(r._key, 'nama', val)} placeholder="Nama data teknis…" readOnly={!can_write} /></td>
+                                    <td rowSpan={2} className="min-w-32 border border-black p-1 text-center align-middle whitespace-normal"><AutoWrapCellInput value={r.pic} onChange={(val) => setField(r._key, 'pic', val)} className="text-center" readOnly={!can_write} /></td>
+                                    <td className="border border-black bg-muted/20 p-1 text-center text-[10px] font-bold">REN</td>
                                     {MONTHS.map((_, mi) => {
  const m = mi + 1; const on = !!r.months[String(m)];
 
  return <td key={m} onClick={() => toggle(r._key, m)} className={`border border-black text-center text-[11px] font-bold select-none ${on ? 'p-done bg-slate-300 dark:bg-slate-600' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>{on ? '1' : ''}</td>; 
 })}
                                     <td className="border border-black p-1 text-center font-extrabold">{jumlahOf(r)}</td>
-                                    {can_write && <td className="no-print border border-black p-0 text-center"><Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:text-destructive" onClick={() => remove(r._key)}><Trash2 className="size-3.5" /></Button></td>}
+                                    {can_write && <td rowSpan={2} className="no-print border border-black p-0 text-center"><Button variant="ghost" size="icon" className="size-6 text-muted-foreground hover:text-destructive" onClick={() => remove(r._key)}><Trash2 className="size-3.5" /></Button></td>}
                                 </tr>
+                                <tr className="hover:bg-muted/10">
+                                    <td className="border border-black bg-emerald-50/70 p-1 text-center text-[10px] font-bold text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">REAL</td>
+                                    {MONTHS.map((_, mi) => {
+                                        const m = mi + 1;
+                                        const onReal = !!(r.realisasi ?? {})[String(m)];
+
+                                        return <td key={`real-${m}`} onClick={() => toggle(r._key, m, 'realisasi')} className={`border border-black text-center text-[11px] font-bold select-none ${onReal ? 'bg-emerald-100 text-emerald-950 dark:bg-emerald-900/60 dark:text-emerald-100' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}>{onReal ? '1' : ''}</td>;
+                                    })}
+                                    <td className="border border-black bg-emerald-50/70 p-1 text-center font-extrabold text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">{jumlahOf(r, 'realisasi')}</td>
+                                </tr>
+                                </Fragment>
                             ))}
                         </tbody>
                     </table>

@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Listeners\RecordSuccessfulLogin;
 use App\Services\Har\ManualWorkOrderSource;
 use App\Services\Har\WorkOrderSource;
+use App\Services\Reports\SignatureMarkResolver;
+use App\Services\Reports\WorkflowSignatureMarkResolver;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Support\Facades\Date;
@@ -25,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
         // now; swap this binding for WpcWorkOrderSource when the WPC integration
         // is built — no controller or report changes needed.
         $this->app->bind(WorkOrderSource::class, ManualWorkOrderSource::class);
+
+        // Controls how signed/approved report signatures render ('qr', 'image', 'text',
+        // or a custom signature provider class implementing SignatureMarkResolver).
+        $this->app->bind(SignatureMarkResolver::class, WorkflowSignatureMarkResolver::class);
     }
 
     /**

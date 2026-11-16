@@ -180,7 +180,7 @@ class FlmController extends Controller
 
         return ['operasi.jadwal.flm-pdf', [
             'unit' => $unit, 'month' => $month, 'year' => $year, 'monthName' => $monthName,
-            'daysInMonth' => $daysInMonth, 'rows' => $rows, 'logoLeft' => $logoLeft, 'logoRight' => $logoRight,
+            'daysInMonth' => $daysInMonth, 'rows' => $rows, 'has_saved' => $saved->isNotEmpty(), 'logoLeft' => $logoLeft, 'logoRight' => $logoRight,
         ]];
     }
 

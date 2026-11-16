@@ -10,6 +10,7 @@ import {
     Zap,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import {
     BarList,
@@ -21,7 +22,6 @@ import {
     LevelBars,
     LinesChart,
     Panel,
-    Ring,
     SCurve,
     Sparkline,
 } from '@/components/dashboard/charts';
@@ -56,6 +56,7 @@ import { usePermissions } from '@/hooks/use-permissions';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
+import activityLogs from '@/routes/admin/activity-logs';
 import units from '@/routes/admin/units';
 import approvalRoutes from '@/routes/approvals';
 import type { Tone } from '@/types';
@@ -217,10 +218,13 @@ type Props = {
     inputTodo: { label: string; group: string; percent: number; url: string }[];
     recentActivity: {
         id: number;
+        event?: string;
         event_label: string;
         tone: Tone;
+        category?: 'input' | 'approval' | 'system';
         description: string;
         user: string | null;
+        unit?: string | null;
         created_at: string | null;
     }[];
 };
@@ -457,13 +461,371 @@ function CompactTable({
     );
 }
 
+type UnitPerfRow = NonNullable<Props['operasi']>['units'][number];
+type UnitMetricKey = 'mw' | 'produksi' | 'eaf' | 'efisiensi';
+
+const UNIT_METRICS: { key: UnitMetricKey; label: string }[] = [
+    { key: 'mw', label: 'Daya & Beban' },
+    { key: 'produksi', label: 'kWh Netto' },
+    { key: 'eaf', label: 'EAF (%)' },
+    { key: 'efisiensi', label: 'SFC & Tara Kalor' },
+];
+
+function UnitPerformancePanel({ units }: { units: UnitPerfRow[] }) {
+    const [metric, setMetric] = useState<UnitMetricKey>('mw');
+
+    const chart = (() => {
+        const labels = units.map((u) => u.unit);
+
+        switch (metric) {
+            case 'produksi':
+                return {
+                    data: {
+                        labels,
+                        series: [
+                            {
+                                name: 'kWh Netto (MWh)',
+                                values: units.map((u) => u.produksi),
+                            },
+                        ],
+                    },
+                    format: 'number' as ValueFormat,
+                    lineLast: false,
+                    lineFormat: 'number' as ValueFormat,
+                    colors: ['text-emerald-500'],
+                };
+            case 'eaf':
+                return {
+                    data: {
+                        labels,
+                        series: [
+                            {
+                                name: 'EAF (%)',
+                                values: units.map((u) => u.eaf ?? 0),
+                            },
+                        ],
+                    },
+                    format: 'percent' as ValueFormat,
+                    lineLast: false,
+                    lineFormat: 'number' as ValueFormat,
+                    colors: ['text-chart-3'],
+                };
+            case 'efisiensi':
+                return {
+                    data: {
+                        labels,
+                        series: [
+                            {
+                                name: 'SFC Netto (L/kWh)',
+                                values: units.map((u) => u.sfc),
+                            },
+                            {
+                                name: 'Tara Kalor (kCal/kWh)',
+                                values: units.map((u) => u.tara_kalor),
+                            },
+                        ],
+                    },
+                    format: 'decimal3' as ValueFormat,
+                    lineLast: true,
+                    lineFormat: 'number' as ValueFormat,
+                    colors: ['text-chart-1', 'text-chart-5'],
+                };
+            default:
+                return {
+                    data: {
+                        labels,
+                        series: [
+                            {
+                                name: 'Daya Mampu (MW)',
+                                values: units.map((u) => u.daya_mampu),
+                            },
+                            {
+                                name: 'Beban Tertinggi (MW)',
+                                values: units.map((u) => u.beban_puncak),
+                            },
+                        ],
+                    },
+                    format: 'decimal' as ValueFormat,
+                    lineLast: false,
+                    lineFormat: 'number' as ValueFormat,
+                    colors: ['text-chart-1', 'text-chart-4'],
+                };
+        }
+    })();
+
+    return (
+        <Panel
+            title="Kinerja per Unit"
+            subtitle="Ringkasan bulan berjalan"
+            className="lg:col-span-12"
+            action={
+                units.length > 0 ? (
+                    <div
+                        className="inline-flex flex-wrap gap-1 rounded-md border border-border bg-muted/60 p-0.5"
+                        role="tablist"
+                        aria-label="Metrik grafik kinerja per unit"
+                    >
+                        {UNIT_METRICS.map((item) => (
+                            <button
+                                key={item.key}
+                                type="button"
+                                role="tab"
+                                aria-selected={metric === item.key}
+                                onClick={() => setMetric(item.key)}
+                                className={cn(
+                                    'cursor-pointer rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors',
+                                    metric === item.key
+                                        ? 'bg-background text-foreground shadow-xs'
+                                        : 'text-muted-foreground hover:text-foreground',
+                                )}
+                            >
+                                {item.label}
+                            </button>
+                        ))}
+                    </div>
+                ) : undefined
+            }
+        >
+            {units.length > 0 && (
+                <div className="overflow-x-auto pb-1 lg:overflow-visible">
+                    <div className="min-w-[680px] lg:min-w-0">
+                        <BarsChart
+                            data={chart.data}
+                            mode="grouped"
+                            lineLast={chart.lineLast}
+                            format={chart.format}
+                            lineFormat={chart.lineFormat}
+                            colors={chart.colors}
+                            height="h-64"
+                            viewWidth={900}
+                            rotateLabels={units.length > 6}
+                        />
+                    </div>
+                </div>
+            )}
+            <CompactTable
+                empty={units.length === 0}
+                head={[
+                    { label: 'Unit' },
+                    { label: 'Daya Mampu (MW)', align: 'right' },
+                    { label: 'Beban Tertinggi (MW)', align: 'right' },
+                    { label: 'kWh Netto (MWh)', align: 'right' },
+                    { label: 'SFC Netto (L/kWh)', align: 'right' },
+                    { label: 'Tara Kalor', align: 'right' },
+                    { label: 'EAF' },
+                    { label: 'Status' },
+                ]}
+            >
+                {units.map((u) => (
+                    <TableRow key={u.unit}>
+                        <TableCell className="font-medium">{u.unit}</TableCell>
+                        <TableCell className="text-right tabular-nums">
+                            {formatValue(u.daya_mampu, 'decimal')}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                            {formatValue(u.beban_puncak, 'decimal')}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                            {formatValue(u.produksi)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                            {formatValue(u.sfc, 'decimal3')}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                            {formatValue(u.tara_kalor)}
+                        </TableCell>
+                        <TableCell>
+                            {u.eaf === null ? (
+                                <span className="text-muted-foreground">—</span>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <div
+                                        className="h-1.5 w-20 overflow-hidden rounded-full bg-muted"
+                                        style={{
+                                            boxShadow:
+                                                'inset 0 1px 2px rgba(0,0,0,0.16)',
+                                        }}
+                                    >
+                                        <div
+                                            className={cn(
+                                                'h-full rounded-full',
+                                                u.eaf >= 90
+                                                    ? 'bg-emerald-500'
+                                                    : 'bg-amber-500',
+                                            )}
+                                            style={{
+                                                width: `${u.eaf}%`,
+                                                backgroundImage:
+                                                    'linear-gradient(180deg, rgba(255,255,255,0.42), rgba(0,0,0,0.22))',
+                                            }}
+                                        />
+                                    </div>
+                                    <span className="tabular-nums">
+                                        {formatValue(u.eaf, 'decimal')}%
+                                    </span>
+                                </div>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                            <StatusBadge tone={u.status_tone}>
+                                {u.status}
+                            </StatusBadge>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </CompactTable>
+        </Panel>
+    );
+}
+
+type ActivityItem = Props['recentActivity'][number];
+type ActivityFilter = 'all' | 'input' | 'approval';
+
+function UserActivityPanel({
+    items,
+    canViewAll,
+}: {
+    items: ActivityItem[];
+    canViewAll: boolean;
+}) {
+    const [filter, setFilter] = useState<ActivityFilter>('all');
+
+    const inputCount = items.filter((a) => a.category !== 'approval').length;
+    const approvalCount = items.filter((a) => a.category === 'approval').length;
+
+    const visible = items.filter((a) => {
+        if (filter === 'approval') {
+            return a.category === 'approval';
+        }
+
+        if (filter === 'input') {
+            return a.category !== 'approval';
+        }
+
+        return true;
+    });
+
+    const tabs: { key: ActivityFilter; label: string; count: number }[] = [
+        { key: 'all', label: 'Semua', count: items.length },
+        { key: 'input', label: 'Input & Data', count: inputCount },
+        { key: 'approval', label: 'Approval', count: approvalCount },
+    ];
+
+    return (
+        <Panel
+            title="Riwayat Aktivitas User"
+            subtitle="Pantauan aktivitas pengguna mulai dari input data hingga verifikasi & approval"
+            action={
+                <div className="flex flex-wrap items-center gap-2">
+                    {items.length > 0 && (
+                        <div
+                            className="inline-flex flex-wrap gap-1 rounded-md border border-border bg-muted/60 p-0.5"
+                            role="tablist"
+                            aria-label="Filter riwayat aktivitas user"
+                        >
+                            {tabs.map((tab) => (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={filter === tab.key}
+                                    onClick={() => setFilter(tab.key)}
+                                    className={cn(
+                                        'cursor-pointer rounded-[4px] px-2 py-1 text-[11px] font-medium transition-colors',
+                                        filter === tab.key
+                                            ? 'bg-background text-foreground shadow-xs'
+                                            : 'text-muted-foreground hover:text-foreground',
+                                    )}
+                                >
+                                    {tab.label}{' '}
+                                    <span className="text-muted-foreground tabular-nums">
+                                        ({tab.count})
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {canViewAll && (
+                        <Link
+                            href={activityLogs.index()}
+                            className="shrink-0 text-[12px] font-medium text-primary hover:underline"
+                        >
+                            Log lengkap
+                        </Link>
+                    )}
+                </div>
+            }
+        >
+            <div className="-mx-4 -mb-4 max-h-72 overflow-auto border-t border-border">
+                <table className="w-full caption-bottom text-left text-[13px]">
+                    <thead className="sticky top-0 z-10 border-b border-border bg-secondary">
+                        <tr>
+                            <th className="h-9 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                Waktu
+                            </th>
+                            <th className="h-9 px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                User
+                            </th>
+                            <th className="h-9 px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                Unit
+                            </th>
+                            <th className="h-9 px-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                Tahap
+                            </th>
+                            <th className="h-9 px-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                Aktivitas
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        {visible.length === 0 ? (
+                            <tr>
+                                <td
+                                    colSpan={5}
+                                    className="px-4 py-6 text-center text-muted-foreground"
+                                >
+                                    Belum ada riwayat aktivitas pada kategori
+                                    ini.
+                                </td>
+                            </tr>
+                        ) : (
+                            visible.map((activity) => (
+                                <tr
+                                    key={activity.id}
+                                    className="transition-colors hover:bg-muted/40"
+                                >
+                                    <td className="px-4 py-2.5 text-[12px] whitespace-nowrap text-muted-foreground tabular-nums">
+                                        {formatDateTime(activity.created_at)}
+                                    </td>
+                                    <td className="px-3 py-2.5 font-medium whitespace-nowrap text-foreground">
+                                        {activity.user ?? 'Sistem'}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-[12px] whitespace-nowrap text-muted-foreground">
+                                        {activity.unit ?? 'Global'}
+                                    </td>
+                                    <td className="px-3 py-2.5 whitespace-nowrap">
+                                        <StatusBadge tone={activity.tone}>
+                                            {activity.event_label}
+                                        </StatusBadge>
+                                    </td>
+                                    <td className="px-4 py-2.5 text-foreground">
+                                        {activity.description}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </Panel>
+    );
+}
+
 export default function Dashboard(props: Props) {
     const {
         scope,
         periodLabel,
         summary,
-        moduleHealth,
-        moduleActivity,
         operasi,
         har,
         k3,
@@ -622,56 +984,12 @@ export default function Dashboard(props: Props) {
                     </div>
                 )}
 
-                {/* Executive overview */}
-                {isExecutive && (
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-                        <Panel
-                            title="Kelengkapan Input per Modul"
-                            subtitle="Rata-rata kelengkapan input bulan berjalan (0–100%) — data nyata"
-                            className="lg:col-span-8"
-                        >
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
-                                {moduleHealth.map((m) => {
-                                    const meta = MODULES[m.key];
-
-                                    return (
-                                        <a
-                                            key={m.key}
-                                            href={`#modul-${m.key}`}
-                                            className="group flex flex-col items-center gap-1.5 rounded-md border border-transparent p-2 text-center transition hover:border-border hover:bg-muted/50"
-                                        >
-                                            <Ring
-                                                value={m.value}
-                                                colorClass={meta.accent}
-                                            />
-                                            <p className="text-[12.5px] font-semibold text-foreground">
-                                                {m.label}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {m.caption}
-                                            </p>
-                                        </a>
-                                    );
-                                })}
-                            </div>
-                        </Panel>
-                        <Panel
-                            title="Kelengkapan Input per Grup"
-                            subtitle="Bulan berjalan (%) — data nyata"
-                            className="lg:col-span-4"
-                        >
-                            {moduleActivity.length === 0 ? (
-                                <p className="py-6 text-center text-[13px] text-muted-foreground">
-                                    Belum ada input yang jatuh tempo bulan ini.
-                                </p>
-                            ) : (
-                                <BarList
-                                    data={moduleActivity.slice(0, 9)}
-                                    format="percent"
-                                />
-                            )}
-                        </Panel>
-                    </div>
+                {(can('activity_log.view_any') ||
+                    recentActivity.length > 0) && (
+                    <UserActivityPanel
+                        items={recentActivity}
+                        canViewAll={can('activity_log.view_any')}
+                    />
                 )}
 
                 {isExecutive && (
@@ -697,7 +1015,7 @@ export default function Dashboard(props: Props) {
                                 className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <Factory className="size-3.5 text-primary" />
-                                Unit & Aktivitas
+                                Unit Pembangkit
                             </a>
                         )}
                     </nav>
@@ -920,113 +1238,9 @@ export default function Dashboard(props: Props) {
                                             </ul>
                                         )}
                                     </Panel>
-                                    <Panel
-                                        title="Kinerja per Unit"
-                                        subtitle="Ringkasan bulan berjalan"
-                                        className="lg:col-span-12"
-                                    >
-                                        <CompactTable
-                                            head={[
-                                                { label: 'Unit' },
-                                                {
-                                                    label: 'Daya Mampu (MW)',
-                                                    align: 'right',
-                                                },
-                                                {
-                                                    label: 'Beban Tertinggi (MW)',
-                                                    align: 'right',
-                                                },
-                                                {
-                                                    label: 'kWh Netto (MWh)',
-                                                    align: 'right',
-                                                },
-                                                {
-                                                    label: 'SFC Netto (L/kWh)',
-                                                    align: 'right',
-                                                },
-                                                {
-                                                    label: 'Tara Kalor',
-                                                    align: 'right',
-                                                },
-                                                { label: 'EAF' },
-                                                { label: 'Status' },
-                                            ]}
-                                        >
-                                            {operasi.units.map((u) => (
-                                                <TableRow key={u.unit}>
-                                                    <TableCell className="font-medium">
-                                                        {u.unit}
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums">
-                                                        {formatValue(
-                                                            u.daya_mampu,
-                                                            'decimal',
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums">
-                                                        {formatValue(
-                                                            u.beban_puncak,
-                                                            'decimal',
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums">
-                                                        {formatValue(
-                                                            u.produksi,
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums">
-                                                        {formatValue(
-                                                            u.sfc,
-                                                            'decimal3',
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums">
-                                                        {formatValue(
-                                                            u.tara_kalor,
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {u.eaf === null ? (
-                                                            <span className="text-muted-foreground">
-                                                                —
-                                                            </span>
-                                                        ) : (
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
-                                                                    <div
-                                                                        className={cn(
-                                                                            'h-full rounded-full',
-                                                                            u.eaf >=
-                                                                                90
-                                                                                ? 'bg-emerald-500'
-                                                                                : 'bg-amber-500',
-                                                                        )}
-                                                                        style={{
-                                                                            width: `${u.eaf}%`,
-                                                                        }}
-                                                                    />
-                                                                </div>
-                                                                <span className="tabular-nums">
-                                                                    {formatValue(
-                                                                        u.eaf,
-                                                                        'decimal',
-                                                                    )}
-                                                                    %
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <StatusBadge
-                                                            tone={u.status_tone}
-                                                        >
-                                                            {u.status}
-                                                        </StatusBadge>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </CompactTable>
-                                    </Panel>
+                                    <UnitPerformancePanel
+                                        units={operasi.units}
+                                    />
                                 </ModuleSection>
                             )
                         }
@@ -1466,7 +1680,7 @@ export default function Dashboard(props: Props) {
                     </Deferred>
                 )}
 
-                {(unitRows.length > 0 || recentActivity.length > 0) && (
+                {unitRows.length > 0 && (
                     <section
                         id="modul-unit"
                         className="flex scroll-mt-20 flex-col gap-3"
@@ -1477,137 +1691,88 @@ export default function Dashboard(props: Props) {
                             </span>
                             <div>
                                 <h2 className="text-base leading-tight font-semibold text-foreground">
-                                    Unit & Aktivitas Sistem
+                                    Unit Pembangkit
                                 </h2>
                                 <p className="text-[13px] text-muted-foreground">
-                                    Data aktual dari master unit dan log
-                                    aktivitas
+                                    Data aktual status dan kapasitas master unit
                                 </p>
                             </div>
                         </div>
                         <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
-                            {unitRows.length > 0 && (
-                                <Panel
-                                    title="Daftar Unit Pembangkit"
-                                    subtitle={`${unitRows.length} unit dalam cakupan Anda`}
-                                    className={
-                                        recentActivity.length > 0
-                                            ? 'lg:col-span-8'
-                                            : 'lg:col-span-12'
-                                    }
-                                    action={
-                                        can('unit.view_any') ? (
-                                            <Link
-                                                href={units.index()}
-                                                className="shrink-0 text-[12px] font-medium text-primary hover:underline"
+                            <Panel
+                                title="Daftar Unit Pembangkit"
+                                subtitle={`${unitRows.length} unit dalam cakupan Anda`}
+                                className="lg:col-span-12"
+                                action={
+                                    can('unit.view_any') ? (
+                                        <Link
+                                            href={units.index()}
+                                            className="shrink-0 text-[12px] font-medium text-primary hover:underline"
+                                        >
+                                            Lihat semua
+                                        </Link>
+                                    ) : undefined
+                                }
+                            >
+                                {statusBreakdown.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                        {statusBreakdown.map((s) => (
+                                            <span
+                                                key={s.status}
+                                                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[13px]"
                                             >
-                                                Lihat semua
-                                            </Link>
-                                        ) : undefined
-                                    }
-                                >
-                                    {statusBreakdown.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {statusBreakdown.map((s) => (
-                                                <span
-                                                    key={s.status}
-                                                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[13px]"
-                                                >
-                                                    <StatusBadge tone={s.tone}>
-                                                        {s.label}
-                                                    </StatusBadge>
-                                                    <span className="font-semibold tabular-nums">
-                                                        {s.total}
-                                                    </span>
+                                                <StatusBadge tone={s.tone}>
+                                                    {s.label}
+                                                </StatusBadge>
+                                                <span className="font-semibold tabular-nums">
+                                                    {s.total}
                                                 </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <CompactTable
-                                        head={[
-                                            { label: 'Unit' },
-                                            { label: 'Unit Layanan' },
-                                            { label: 'Tipe' },
-                                            { label: 'Status' },
-                                            {
-                                                label: 'Kapasitas (MW)',
-                                                align: 'right',
-                                            },
-                                        ]}
-                                    >
-                                        {unitRows.slice(0, 8).map((unit) => (
-                                            <TableRow key={unit.id}>
-                                                <TableCell>
-                                                    <span className="font-medium">
-                                                        {unit.name}
-                                                    </span>
-                                                    <span className="block text-[11px] text-muted-foreground">
-                                                        {unit.code}
-                                                    </span>
-                                                </TableCell>
-                                                <TableCell className="text-muted-foreground">
-                                                    {unit.service_unit ??
-                                                        'UP Kendari'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {unit.type}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <StatusBadge
-                                                        tone={unit.status_tone}
-                                                    >
-                                                        {unit.status_label}
-                                                    </StatusBadge>
-                                                </TableCell>
-                                                <TableCell className="text-right tabular-nums">
-                                                    {unit.installed_capacity_mw ??
-                                                        '—'}
-                                                </TableCell>
-                                            </TableRow>
+                                            </span>
                                         ))}
-                                    </CompactTable>
-                                </Panel>
-                            )}
-                            {recentActivity.length > 0 && (
-                                <Panel
-                                    title="Aktivitas Terbaru"
-                                    subtitle="Log perubahan data"
-                                    className={
-                                        unitRows.length > 0
-                                            ? 'lg:col-span-4'
-                                            : 'lg:col-span-12'
-                                    }
+                                    </div>
+                                )}
+                                <CompactTable
+                                    head={[
+                                        { label: 'Unit' },
+                                        { label: 'Unit Layanan' },
+                                        { label: 'Tipe' },
+                                        { label: 'Status' },
+                                        {
+                                            label: 'Kapasitas (MW)',
+                                            align: 'right',
+                                        },
+                                    ]}
                                 >
-                                    <ol className="relative flex flex-col gap-3 border-l border-border pl-4">
-                                        {recentActivity.map((activity) => (
-                                            <li
-                                                key={activity.id}
-                                                className="relative"
-                                            >
-                                                <span className="absolute top-1.5 -left-[21px] size-2.5 rounded-full border-2 border-card bg-primary" />
-                                                <div className="flex items-center gap-2">
-                                                    <StatusBadge
-                                                        tone={activity.tone}
-                                                    >
-                                                        {activity.event_label}
-                                                    </StatusBadge>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {formatDateTime(
-                                                            activity.created_at,
-                                                        )}
-                                                    </span>
-                                                </div>
-                                                <p className="mt-1 line-clamp-2 text-[12.5px] text-foreground">
-                                                    {activity.description}
-                                                </p>
-                                                <p className="text-[11px] text-muted-foreground">
-                                                    {activity.user ?? 'Sistem'}
-                                                </p>
-                                            </li>
-                                        ))}
-                                    </ol>
-                                </Panel>
-                            )}
+                                    {unitRows.slice(0, 8).map((unit) => (
+                                        <TableRow key={unit.id}>
+                                            <TableCell>
+                                                <span className="font-medium">
+                                                    {unit.name}
+                                                </span>
+                                                <span className="block text-[11px] text-muted-foreground">
+                                                    {unit.code}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">
+                                                {unit.service_unit ??
+                                                    'UP Kendari'}
+                                            </TableCell>
+                                            <TableCell>{unit.type}</TableCell>
+                                            <TableCell>
+                                                <StatusBadge
+                                                    tone={unit.status_tone}
+                                                >
+                                                    {unit.status_label}
+                                                </StatusBadge>
+                                            </TableCell>
+                                            <TableCell className="text-right tabular-nums">
+                                                {unit.installed_capacity_mw ??
+                                                    '—'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </CompactTable>
+                            </Panel>
                         </div>
                     </section>
                 )}

@@ -3,9 +3,9 @@ import { ArrowLeft, CheckCheck, Download, FileSpreadsheet, Plus, Printer, Rotate
 import { Fragment, useMemo, useState } from 'react';
 import { monthTimelineDays, MobileTimelineForm, RENC_REAL, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import type { StyleSpec } from '@/lib/jadwal-excel';
 import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
@@ -226,7 +226,7 @@ mergeCells(ws, top, c, top + 1, c);
                     <table className="excel-sheet p-table w-full border-collapse text-xs">
                         <thead>
                             <tr>
-                                <th rowSpan={2} className={`${th} min-w-40 text-left`}>Pelaksana</th>
+                                <th rowSpan={2} className={`${th} min-w-48 whitespace-normal text-left`}>Pelaksana</th>
                                 <th rowSpan={2} className={th}>Rencana / Realisasi</th>
                                 <th colSpan={days.length} className={th}>Bulan {monthName}</th>
                                 <th rowSpan={2} className={th}>Rencana</th>
@@ -244,8 +244,13 @@ mergeCells(ws, top, c, top + 1, c);
                                 return (
                                     <Fragment key={r._key}>
                                         <tr className="hover:bg-muted/10">
-                                            <td rowSpan={2} className="border border-black p-1 text-left align-middle">
-                                                {can_write ? <input value={r.pelaksana} onChange={(e) => setField(r._key, 'pelaksana', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs font-semibold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" /> : <span className="text-xs font-semibold">{r.pelaksana}</span>}
+                                            <td rowSpan={2} className="min-w-48 border border-black p-1 text-left align-middle whitespace-normal">
+                                                <AutoWrapCellInput
+                                                    value={r.pelaksana}
+                                                    onChange={(val) => setField(r._key, 'pelaksana', val)}
+                                                    className="font-semibold"
+                                                    readOnly={!can_write}
+                                                />
                                             </td>
                                             <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold">RENCANA</td>
                                             {dayCells(r, 'rencana')}

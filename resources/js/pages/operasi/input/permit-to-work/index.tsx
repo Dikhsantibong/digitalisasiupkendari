@@ -13,6 +13,7 @@ import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
@@ -407,19 +408,15 @@ export default function PermitToWorkInput({
                                         return (
                                             <tr key={row.no_urut} className="hover:bg-muted/30">
                                                 <td className={cn(xlTd, 'text-center font-bold text-muted-foreground')}>{row.no_urut}</td>
-                                                <td className={xlTd}>
-                                                    {can_write ? (
-                                                        <input
-                                                            type="text"
-                                                            value={row.uraian}
-                                                            onChange={(e) => handleRowChange(index, 'uraian', e.target.value)}
-                                                            className={xlInput}
-                                                            placeholder="Uraian pekerjaan PTW..."
-                                                            aria-label={`Uraian baris ${row.no_urut}`}
-                                                        />
-                                                    ) : (
-                                                        <span className="block px-2">{row.uraian || '-'}</span>
-                                                    )}
+                                                <td className={cn(xlTd, 'p-1 align-middle whitespace-normal')}>
+                                                    <AutoWrapCellInput
+                                                        value={row.uraian}
+                                                        onChange={(val) => handleRowChange(index, 'uraian', val)}
+                                                        className="min-h-6 px-1.5 py-1 focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+                                                        placeholder="Uraian pekerjaan PTW..."
+                                                        emptyFallback="-"
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
                                                 <td className={xlTd}>
                                                     {can_write ? (

@@ -3,9 +3,249 @@
  * Tailwind text utilities driven through `currentColor`, so every chart follows
  * the corporate palette (--chart-*) and stays theme-aware.
  */
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+
+const TAU = Math.PI * 2;
+
+function useSvgUid(prefix: string): string {
+    const raw = useId().replace(/[^a-zA-Z0-9_-]/g, '');
+
+    return `${prefix}-${raw}`;
+}
+
+function intersectArcRanges(
+    start: number,
+    end: number,
+    winStart: number,
+    winEnd: number,
+): [number, number][] {
+    const spans: [number, number][] = [];
+
+    for (let k = -1; k <= 2; k++) {
+        const a = Math.max(start, winStart + k * TAU);
+        const b = Math.min(end, winEnd + k * TAU);
+
+        if (b - a > 1e-4) {
+            spans.push([a, b]);
+        }
+    }
+
+    return spans;
+}
+
+function ellipsePoint(
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    angle: number,
+): [number, number] {
+    return [cx + rx * Math.cos(angle), cy + ry * Math.sin(angle)];
+}
+
+function fmtPt([x, y]: [number, number]): string {
+    return `${x.toFixed(2)} ${y.toFixed(2)}`;
+}
+
+function donutWallPath(
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    depth: number,
+    a: number,
+    b: number,
+): string {
+    const topA = ellipsePoint(cx, cy, rx, ry, a);
+    const topB = ellipsePoint(cx, cy, rx, ry, b);
+    const botA: [number, number] = [topA[0], topA[1] + depth];
+    const botB: [number, number] = [topB[0], topB[1] + depth];
+
+    return `M ${fmtPt(topA)} A ${rx} ${ry} 0 0 1 ${fmtPt(topB)} L ${fmtPt(botB)} A ${rx} ${ry} 0 0 0 ${fmtPt(botA)} Z`;
+}
+
+function donutCutWallPath(
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    irx: number,
+    iry: number,
+    depth: number,
+    angle: number,
+): string {
+    const outTop = ellipsePoint(cx, cy, rx, ry, angle);
+    const inTop = ellipsePoint(cx, cy, irx, iry, angle);
+
+    return `M ${fmtPt(inTop)} L ${fmtPt(outTop)} L ${outTop[0].toFixed(2)} ${(outTop[1] + depth).toFixed(2)} L ${inTop[0].toFixed(2)} ${(inTop[1] + depth).toFixed(2)} Z`;
+}
+
+function donutTopPath(
+    cx: number,
+    cy: number,
+    rx: number,
+    ry: number,
+    irx: number,
+    iry: number,
+    start: number,
+    end: number,
+): { d: string; evenOdd: boolean } {
+    const sweep = end - start;
+
+    if (sweep >= TAU - 1e-4) {
+        return {
+            evenOdd: true,
+            d: [
+                `M ${cx + rx} ${cy}`,
+                `A ${rx} ${ry} 0 1 1 ${cx - rx} ${cy}`,
+                `A ${rx} ${ry} 0 1 1 ${cx + rx} ${cy} Z`,
+                `M ${cx + irx} ${cy}`,
+                `A ${irx} ${iry} 0 1 0 ${cx - irx} ${cy}`,
+                `A ${irx} ${iry} 0 1 0 ${cx + irx} ${cy} Z`,
+            ].join(' '),
+        };
+    }
+
+    const large = sweep > Math.PI ? 1 : 0;
+    const outStart = ellipsePoint(cx, cy, rx, ry, start);
+    const outEnd = ellipsePoint(cx, cy, rx, ry, end);
+    const inEnd = ellipsePoint(cx, cy, irx, iry, end);
+    const inStart = ellipsePoint(cx, cy, irx, iry, start);
+
+    return {
+        evenOdd: false,
+        d: `M ${fmtPt(outStart)} A ${rx} ${ry} 0 ${large} 1 ${fmtPt(outEnd)} L ${fmtPt(inEnd)} A ${irx} ${iry} 0 ${large} 0 ${fmtPt(inStart)} Z`,
+    };
+}
+
+/** 3D stage floor slab used behind Bar, Line, and S-Curve SVG charts. */
+function StageFloor3d({
+    left,
+    right,
+    top,
+    bottom,
+    dx = 6,
+    dy = -4.5,
+}: {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    dx?: number;
+    dy?: number;
+}) {
+    const backLeft = left + dx;
+    const backRight = right + dx;
+    const backBottom = bottom + dy;
+    const backTop = top + dy;
+
+    return (
+        <g pointerEvents="none">
+            <line
+                x1={left}
+                y1={bottom}
+                x2={backLeft}
+                y2={backBottom}
+                className="text-border"
+                stroke="currentColor"
+                strokeOpacity={0.7}
+            />
+            <line
+                x1={backLeft}
+                y1={backTop}
+                x2={backLeft}
+                y2={backBottom}
+                className="text-border"
+                stroke="currentColor"
+                strokeOpacity={0.5}
+                strokeDasharray="2 3"
+            />
+            <polygon
+                points={`${left},${bottom} ${right},${bottom} ${backRight},${backBottom} ${backLeft},${backBottom}`}
+                className="text-muted"
+                fill="currentColor"
+                opacity={0.65}
+            />
+            <rect
+                x={left}
+                y={bottom}
+                width={Math.max(0, right - left)}
+                height={3}
+                className="text-border"
+                fill="currentColor"
+                opacity={0.75}
+            />
+        </g>
+    );
+}
+
+/** Single 3D extruded prism bar supporting grouped and stacked towers. */
+function BarPrism({
+    x,
+    top,
+    width,
+    height,
+    dx,
+    dy,
+    colorClass,
+    opacity,
+    uid,
+}: {
+    x: number;
+    top: number;
+    width: number;
+    height: number;
+    dx: number;
+    dy: number;
+    colorClass: string;
+    opacity: number;
+    uid: string;
+}) {
+    if (height <= 0.2 || width <= 0.2) {
+        return null;
+    }
+
+    const x2 = x + width;
+    const bottom = top + height;
+    const topPoly = `${x},${top} ${x + dx},${top + dy} ${x2 + dx},${top + dy} ${x2},${top}`;
+    const sidePoly = `${x2},${top} ${x2 + dx},${top + dy} ${x2 + dx},${bottom + dy} ${x2},${bottom}`;
+
+    return (
+        <g className={colorClass} opacity={opacity}>
+            <polygon points={sidePoly} fill="currentColor" />
+            <polygon points={sidePoly} fill={`url(#${uid}-side)`} />
+
+            <polygon points={topPoly} fill="currentColor" />
+            <polygon points={topPoly} fill={`url(#${uid}-top)`} />
+
+            <rect
+                x={x}
+                y={top}
+                width={width}
+                height={height}
+                fill="currentColor"
+            />
+            <rect
+                x={x}
+                y={top}
+                width={width}
+                height={height}
+                fill={`url(#${uid}-front)`}
+            />
+            <line
+                x1={x}
+                y1={top + 0.4}
+                x2={x2}
+                y2={top + 0.4}
+                stroke="#ffffff"
+                strokeOpacity={0.42}
+                strokeWidth={0.8}
+            />
+        </g>
+    );
+}
 
 export const SERIES = [
     'text-chart-1',
@@ -155,17 +395,28 @@ function Tooltip({
     width: number;
     children: ReactNode;
 }) {
+    const pct = (x / width) * 100;
+    const alignX =
+        pct < 12
+            ? '-translate-x-2'
+            : pct > 88
+              ? '-translate-x-[calc(100%-0.5rem)]'
+              : '-translate-x-1/2';
+
     return (
         <div
-            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-border bg-popover px-2.5 py-1.5 text-[11px] whitespace-nowrap text-popover-foreground shadow-md"
-            style={{ left: `${(x / width) * 100}%`, top: y }}
+            className={cn(
+                'pointer-events-none absolute z-10 -translate-y-full rounded-md border border-border bg-popover px-2.5 py-1.5 text-[11px] whitespace-nowrap text-popover-foreground shadow-md',
+                alignX,
+            )}
+            style={{ left: `${pct}%`, top: y }}
         >
             {children}
         </div>
     );
 }
 
-/** A tiny trend line for KPI tiles. */
+/** A tiny 3D ribbon trend line for KPI tiles. */
 export function Sparkline({
     values,
     className,
@@ -173,19 +424,42 @@ export function Sparkline({
     values: number[];
     className?: string;
 }) {
+    const uid = useSvgUid('spark');
     const W = 100;
     const H = 28;
+
+    if (values.length === 0) {
+        return <div className={cn('h-7 w-full', className)} aria-hidden />;
+    }
+
     const min = Math.min(...values);
     const max = Math.max(...values);
     const range = max - min || 1;
     const x = (i: number) => (i / Math.max(1, values.length - 1)) * W;
-    const y = (v: number) => H - 2 - ((v - min) / range) * (H - 4);
-    const path = values
+    const y = (v: number) => H - 4 - ((v - min) / range) * (H - 7);
+    const pts = values.map((v, i) => [x(i), y(v)] as const);
+    const path = pts
         .map(
-            (v, i) =>
-                `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`,
+            ([px, py], i) =>
+                `${i === 0 ? 'M' : 'L'}${px.toFixed(1)} ${py.toFixed(1)}`,
         )
         .join(' ');
+    const shadowPath = pts
+        .map(
+            ([px, py], i) =>
+                `${i === 0 ? 'M' : 'L'}${(px + 1.4).toFixed(1)} ${(py + 2.2).toFixed(1)}`,
+        )
+        .join(' ');
+    const ribbonSide =
+        pts.length >= 2
+            ? `${path} L${pts
+                  .map(
+                      ([px, py]) =>
+                          `${(px + 1.4).toFixed(1)} ${(py + 2.2).toFixed(1)}`,
+                  )
+                  .reverse()
+                  .join(' L')} Z`
+            : '';
 
     return (
         <svg
@@ -194,23 +468,50 @@ export function Sparkline({
             preserveAspectRatio="none"
             aria-hidden
         >
+            <defs>
+                <linearGradient id={`${uid}-area`} x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                        offset="0%"
+                        stopColor="currentColor"
+                        stopOpacity={0.28}
+                    />
+                    <stop
+                        offset="100%"
+                        stopColor="currentColor"
+                        stopOpacity={0.02}
+                    />
+                </linearGradient>
+            </defs>
             <path
                 d={`${path} L${W} ${H} L0 ${H} Z`}
-                fill="currentColor"
-                opacity={0.12}
+                fill={`url(#${uid}-area)`}
             />
+            <path
+                d={shadowPath}
+                fill="none"
+                stroke="#000000"
+                strokeOpacity={0.14}
+                strokeWidth={2}
+                vectorEffect="non-scaling-stroke"
+            />
+            {ribbonSide && (
+                <>
+                    <path d={ribbonSide} fill="currentColor" opacity={0.85} />
+                    <path d={ribbonSide} fill="#000000" opacity={0.24} />
+                </>
+            )}
             <path
                 d={path}
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={1.6}
+                strokeWidth={1.8}
                 vectorEffect="non-scaling-stroke"
             />
         </svg>
     );
 }
 
-/** Donut with centred total and a percentage legend. */
+/** Tilted 3D donut chart with centred total and a percentage legend. */
 export function Donut({
     data,
     centerLabel = 'Total',
@@ -220,15 +521,9 @@ export function Donut({
     centerLabel?: string;
     colors?: string[];
 }) {
+    const uid = useSvgUid('donut');
     const [active, setActive] = useState<number | null>(null);
     const total = data.reduce((s, d) => s + d.value, 0);
-    const r = 50;
-    const c = 2 * Math.PI * r;
-    const gap = data.length > 1 ? 2 : 0;
-    const lens = data.map((d) => (total === 0 ? 0 : (d.value / total) * c));
-    const offsets = lens.map((_, i) =>
-        lens.slice(0, i).reduce((s, v) => s + v, 0),
-    );
     const focus = active !== null ? data[active] : null;
 
     if (total === 0) {
@@ -239,54 +534,334 @@ export function Donut({
         );
     }
 
+    const cx = 66;
+    const cy = 54;
+    const rx = 56;
+    const ry = 39;
+    const irx = 37;
+    const iry = 25;
+    const depth = 11;
+    const valueText = (focus?.value ?? total).toLocaleString('id-ID');
+    const labelText = focus?.label ?? centerLabel;
+    const valueFontSize =
+        valueText.length <= 3
+            ? 17
+            : valueText.length === 4
+              ? 15.5
+              : valueText.length <= 6
+                ? 13.5
+                : valueText.length <= 8
+                  ? 11.5
+                  : 10;
+    const labelFontSize = labelText.length > 14 ? 7.5 : 8.5;
+
+    type Slice3d = {
+        index: number;
+        label: string;
+        value: number;
+        colorClass: string;
+        start: number;
+        end: number;
+        ox: number;
+        oy: number;
+        innerSpans: [number, number][];
+        outerSpans: [number, number][];
+        top: { d: string; evenOdd: boolean };
+    };
+
+    const single = data.filter((d) => d.value > 0).length <= 1;
+    const slices: Slice3d[] = [];
+    let angle = -Math.PI / 2;
+
+    data.forEach((d, i) => {
+        if (d.value <= 0) {
+            return;
+        }
+
+        const sweep = (d.value / total) * TAU;
+        const start = angle;
+        const end = angle + sweep;
+        angle = end;
+
+        const mid = (start + end) / 2;
+        const lift = !single && active === i ? 1 : 0;
+        const ox = lift * Math.cos(mid) * 4.2;
+        const oy = lift * Math.sin(mid) * 2.8;
+
+        slices.push({
+            index: i,
+            label: d.label,
+            value: d.value,
+            colorClass: colors[i % colors.length],
+            start,
+            end,
+            ox,
+            oy,
+            innerSpans: intersectArcRanges(start, end, Math.PI, TAU),
+            outerSpans: intersectArcRanges(start, end, 0, Math.PI),
+            top: donutTopPath(cx + ox, cy + oy, rx, ry, irx, iry, start, end),
+        });
+    });
+
+    const activeSlice = slices.find((s) => s.index === active) ?? null;
+    const passiveSlices = slices.filter((s) => s.index !== active);
+    const activeMidSin = activeSlice
+        ? Math.sin((activeSlice.start + activeSlice.end) / 2)
+        : 0;
+    const orderedSlices =
+        activeSlice && activeMidSin < 0
+            ? [activeSlice, ...passiveSlices]
+            : activeSlice
+              ? [...passiveSlices, activeSlice]
+              : slices;
+
+    const renderSliceInnerWall = (sl: Slice3d) =>
+        sl.innerSpans.map(([a, b], k) => {
+            const pathD = donutWallPath(
+                cx + sl.ox,
+                cy + sl.oy,
+                irx,
+                iry,
+                depth,
+                a,
+                b,
+            );
+
+            return (
+                <g
+                    key={`in-${sl.index}-${k}`}
+                    className={cn(sl.colorClass, 'cursor-pointer')}
+                    opacity={active === null || active === sl.index ? 1 : 0.4}
+                    onMouseEnter={() => setActive(sl.index)}
+                    onMouseLeave={() => setActive(null)}
+                >
+                    <path d={pathD} fill="currentColor" />
+                    <path d={pathD} fill={`url(#${uid}-inner)`} />
+                </g>
+            );
+        });
+
+    const renderSliceCutWalls = (sl: Slice3d) => {
+        if (sl.end - sl.start >= TAU - 1e-4) {
+            return null;
+        }
+
+        const cuts: string[] = [];
+
+        if (Math.cos(sl.start) < 0) {
+            cuts.push(
+                donutCutWallPath(
+                    cx + sl.ox,
+                    cy + sl.oy,
+                    rx,
+                    ry,
+                    irx,
+                    iry,
+                    depth,
+                    sl.start,
+                ),
+            );
+        }
+
+        if (Math.cos(sl.end) > 0) {
+            cuts.push(
+                donutCutWallPath(
+                    cx + sl.ox,
+                    cy + sl.oy,
+                    rx,
+                    ry,
+                    irx,
+                    iry,
+                    depth,
+                    sl.end,
+                ),
+            );
+        }
+
+        return cuts.map((pathD, k) => (
+            <g key={`cut-${sl.index}-${k}`} className={sl.colorClass}>
+                <path d={pathD} fill="currentColor" />
+                <path d={pathD} fill="#000000" fillOpacity={0.28} />
+            </g>
+        ));
+    };
+
+    const renderSliceOuterAndTop = (sl: Slice3d) => (
+        <g
+            key={`face-${sl.index}`}
+            className={cn(sl.colorClass, 'cursor-pointer transition-opacity')}
+            opacity={active === null || active === sl.index ? 1 : 0.4}
+            onMouseEnter={() => setActive(sl.index)}
+            onMouseLeave={() => setActive(null)}
+        >
+            {sl.outerSpans.map(([a, b], k) => {
+                const pathD = donutWallPath(
+                    cx + sl.ox,
+                    cy + sl.oy,
+                    rx,
+                    ry,
+                    depth,
+                    a,
+                    b,
+                );
+
+                return (
+                    <g key={`out-${sl.index}-${k}`}>
+                        <path d={pathD} fill="currentColor" />
+                        <path d={pathD} fill={`url(#${uid}-outer)`} />
+                    </g>
+                );
+            })}
+            <path
+                d={sl.top.d}
+                fillRule={sl.top.evenOdd ? 'evenodd' : undefined}
+                fill="currentColor"
+            />
+            <path
+                d={sl.top.d}
+                fillRule={sl.top.evenOdd ? 'evenodd' : undefined}
+                fill={`url(#${uid}-top)`}
+                stroke="#ffffff"
+                strokeOpacity={0.28}
+                strokeWidth={0.65}
+            />
+        </g>
+    );
+
     return (
         <div className="flex items-center gap-4">
             <svg viewBox="0 0 132 132" className="size-32 shrink-0" role="img">
-                <g transform="translate(66 66) rotate(-90)">
-                    <circle
-                        r={r}
-                        fill="none"
-                        className="text-muted"
-                        stroke="currentColor"
-                        strokeWidth={14}
-                    />
-                    {data.map((d, i) => (
-                        <circle
-                            key={d.label}
-                            r={r}
-                            fill="none"
-                            className={cn(
-                                colors[i % colors.length],
-                                'cursor-pointer transition-opacity',
-                            )}
-                            stroke="currentColor"
-                            strokeWidth={active === i ? 18 : 14}
-                            strokeDasharray={`${Math.max(0, lens[i] - gap)} ${c - Math.max(0, lens[i] - gap)}`}
-                            strokeDashoffset={-offsets[i]}
-                            opacity={active === null || active === i ? 1 : 0.35}
-                            onMouseEnter={() => setActive(i)}
-                            onMouseLeave={() => setActive(null)}
+                <defs>
+                    <radialGradient
+                        id={`${uid}-shadow`}
+                        cx="50%"
+                        cy="50%"
+                        r="50%"
+                    >
+                        <stop offset="0%" stopColor="#000000" stopOpacity={0} />
+                        <stop
+                            offset="48%"
+                            stopColor="#000000"
+                            stopOpacity={0}
                         />
-                    ))}
-                </g>
+                        <stop
+                            offset="72%"
+                            stopColor="#000000"
+                            stopOpacity={0.18}
+                        />
+                        <stop
+                            offset="100%"
+                            stopColor="#000000"
+                            stopOpacity={0}
+                        />
+                    </radialGradient>
+                    <radialGradient id={`${uid}-top`} cx="34%" cy="28%" r="74%">
+                        <stop
+                            offset="0%"
+                            stopColor="#ffffff"
+                            stopOpacity={0.34}
+                        />
+                        <stop
+                            offset="56%"
+                            stopColor="#ffffff"
+                            stopOpacity={0.05}
+                        />
+                        <stop
+                            offset="100%"
+                            stopColor="#000000"
+                            stopOpacity={0.1}
+                        />
+                    </radialGradient>
+                    <linearGradient
+                        id={`${uid}-outer`}
+                        gradientUnits="userSpaceOnUse"
+                        x1={cx - rx}
+                        y1={0}
+                        x2={cx + rx}
+                        y2={0}
+                    >
+                        <stop
+                            offset="0%"
+                            stopColor="#000000"
+                            stopOpacity={0.26}
+                        />
+                        <stop
+                            offset="28%"
+                            stopColor="#000000"
+                            stopOpacity={0.12}
+                        />
+                        <stop
+                            offset="72%"
+                            stopColor="#000000"
+                            stopOpacity={0.32}
+                        />
+                        <stop
+                            offset="100%"
+                            stopColor="#000000"
+                            stopOpacity={0.48}
+                        />
+                    </linearGradient>
+                    <linearGradient
+                        id={`${uid}-inner`}
+                        gradientUnits="userSpaceOnUse"
+                        x1={cx - irx}
+                        y1={0}
+                        x2={cx + irx}
+                        y2={0}
+                    >
+                        <stop
+                            offset="0%"
+                            stopColor="#000000"
+                            stopOpacity={0.46}
+                        />
+                        <stop
+                            offset="70%"
+                            stopColor="#000000"
+                            stopOpacity={0.18}
+                        />
+                        <stop
+                            offset="100%"
+                            stopColor="#000000"
+                            stopOpacity={0.34}
+                        />
+                    </linearGradient>
+                </defs>
+                <ellipse
+                    cx={cx}
+                    cy={cy + depth + 5}
+                    rx={rx + 2}
+                    ry={ry}
+                    fill={`url(#${uid}-shadow)`}
+                />
+                {orderedSlices.map(renderSliceInnerWall)}
+                {activeSlice && renderSliceCutWalls(activeSlice)}
+                {orderedSlices.map(renderSliceOuterAndTop)}
                 <text
-                    x={66}
-                    y={64}
+                    x={cx}
+                    y={61.5}
                     textAnchor="middle"
                     className="fill-foreground"
-                    fontSize={22}
+                    stroke="var(--card)"
+                    strokeWidth={3}
+                    strokeLinejoin="round"
+                    style={{ paintOrder: 'stroke fill' }}
+                    fontSize={valueFontSize}
                     fontWeight={700}
                 >
-                    {(focus?.value ?? total).toLocaleString('id-ID')}
+                    {valueText}
                 </text>
                 <text
-                    x={66}
-                    y={80}
+                    x={cx}
+                    y={72.5}
                     textAnchor="middle"
                     className="fill-muted-foreground"
-                    fontSize={9.5}
+                    stroke="var(--card)"
+                    strokeWidth={2.2}
+                    strokeLinejoin="round"
+                    style={{ paintOrder: 'stroke fill' }}
+                    fontSize={labelFontSize}
                 >
-                    {focus?.label ?? centerLabel}
+                    {labelText}
                 </text>
             </svg>
             <ul className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -299,10 +874,14 @@ export function Donut({
                     >
                         <span
                             className={cn(
-                                'size-2.5 shrink-0 rounded-sm',
+                                'size-2.5 shrink-0 rounded-sm shadow-xs',
                                 colors[i % colors.length],
                             )}
-                            style={{ backgroundColor: 'currentColor' }}
+                            style={{
+                                backgroundColor: 'currentColor',
+                                backgroundImage:
+                                    'linear-gradient(180deg, rgba(255,255,255,0.38), rgba(0,0,0,0.18))',
+                            }}
                         />
                         <span className="truncate text-foreground">
                             {d.label}
@@ -334,6 +913,8 @@ export function BarsChart({
     lineFormat = 'number',
     colors = SERIES,
     height = 'h-52',
+    viewWidth = 560,
+    rotateLabels = false,
 }: {
     data: MultiSeries;
     mode?: BarMode;
@@ -342,11 +923,19 @@ export function BarsChart({
     lineFormat?: ValueFormat;
     colors?: string[];
     height?: string;
+    viewWidth?: number;
+    rotateLabels?: boolean;
 }) {
+    const uid = useSvgUid('bars');
     const [hover, setHover] = useState<number | null>(null);
-    const W = 560;
-    const H = 230;
-    const pad = { l: 44, r: lineLast ? 40 : 10, t: 12, b: 24 };
+    const W = viewWidth;
+    const H = rotateLabels ? 264 : 230;
+    const pad = {
+        l: rotateLabels ? 54 : format === 'decimal3' ? 48 : 44,
+        r: lineLast ? 44 : 12,
+        t: 12,
+        b: rotateLabels ? 64 : 24,
+    };
     const innerW = W - pad.l - pad.r;
     const innerH = H - pad.t - pad.b;
     const barSeries = lineLast ? data.series.slice(0, -1) : data.series;
@@ -365,16 +954,33 @@ export function BarsChart({
     const yLine = (v: number) => pad.t + innerH - (v / lineMax) * innerH;
     const cx = (i: number) => pad.l + slot * i + slot / 2;
     const groupW = Math.min(
-        slot * 0.7,
+        slot * 0.72,
         mode === 'stacked' ? 30 : 16 * barSeries.length,
     );
     const barW = mode === 'stacked' ? groupW : groupW / barSeries.length;
-    const labelEvery = Math.ceil(n / 12);
+    const labelEvery = rotateLabels ? 1 : Math.ceil(n / 12);
     const grid = [0, 0.25, 0.5, 0.75, 1];
     const short = (v: number, f: ValueFormat) =>
         f === 'rupiah'
             ? formatRupiahShort(v).replace('Rp ', '')
-            : formatValue(v, f === 'decimal3' ? 'decimal' : f);
+            : formatValue(v, f);
+    const stageDx = 6;
+    const stageDy = -4.5;
+    const linePts = lineSeries
+        ? lineSeries.values.map((v, i) => [cx(i), yLine(v)] as const)
+        : [];
+    const linePath = linePts
+        .map(
+            ([px, py], i) =>
+                `${i === 0 ? 'M' : 'L'}${px.toFixed(1)} ${py.toFixed(1)}`,
+        )
+        .join(' ');
+    const lineShadowPath = linePts
+        .map(
+            ([px, py], i) =>
+                `${i === 0 ? 'M' : 'L'}${(px + 1.5).toFixed(1)} ${(py + 2.4).toFixed(1)}`,
+        )
+        .join(' ');
 
     return (
         <div className="flex flex-col gap-2">
@@ -386,47 +992,129 @@ export function BarsChart({
                     role="img"
                     onMouseLeave={() => setHover(null)}
                 >
-                    {grid.map((f) => (
-                        <g key={f}>
-                            <line
-                                x1={pad.l}
-                                x2={W - pad.r}
-                                y1={y(max * f)}
-                                y2={y(max * f)}
-                                className="text-border"
-                                stroke="currentColor"
-                                strokeDasharray={f === 0 ? undefined : '3 3'}
+                    <defs>
+                        <linearGradient
+                            id={`${uid}-front`}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                        >
+                            <stop
+                                offset="0%"
+                                stopColor="#ffffff"
+                                stopOpacity={0.22}
                             />
-                            <text
-                                x={pad.l - 6}
-                                y={y(max * f) + 3}
-                                textAnchor="end"
-                                className="fill-muted-foreground"
-                                fontSize={9}
-                            >
-                                {short(max * f, format)}
-                            </text>
-                            {lineSeries && (
+                            <stop
+                                offset="45%"
+                                stopColor="#ffffff"
+                                stopOpacity={0.03}
+                            />
+                            <stop
+                                offset="100%"
+                                stopColor="#000000"
+                                stopOpacity={0.2}
+                            />
+                        </linearGradient>
+                        <linearGradient
+                            id={`${uid}-top`}
+                            x1="0"
+                            y1="0"
+                            x2="1"
+                            y2="1"
+                        >
+                            <stop
+                                offset="0%"
+                                stopColor="#ffffff"
+                                stopOpacity={0.44}
+                            />
+                            <stop
+                                offset="100%"
+                                stopColor="#ffffff"
+                                stopOpacity={0.24}
+                            />
+                        </linearGradient>
+                        <linearGradient
+                            id={`${uid}-side`}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                        >
+                            <stop
+                                offset="0%"
+                                stopColor="#000000"
+                                stopOpacity={0.26}
+                            />
+                            <stop
+                                offset="100%"
+                                stopColor="#000000"
+                                stopOpacity={0.44}
+                            />
+                        </linearGradient>
+                    </defs>
+                    <StageFloor3d
+                        left={pad.l}
+                        right={W - pad.r}
+                        top={pad.t}
+                        bottom={pad.t + innerH}
+                        dx={stageDx}
+                        dy={stageDy}
+                    />
+                    {grid.map((f) => {
+                        const gy = y(max * f);
+
+                        return (
+                            <g key={f}>
+                                <path
+                                    d={`M${pad.l} ${gy} L${pad.l + stageDx} ${gy + stageDy} L${W - pad.r + stageDx} ${gy + stageDy}`}
+                                    fill="none"
+                                    className="text-border"
+                                    stroke="currentColor"
+                                    strokeOpacity={f === 0 ? 0.85 : 0.7}
+                                    strokeDasharray={
+                                        f === 0 ? undefined : '3 3'
+                                    }
+                                />
                                 <text
-                                    x={W - pad.r + 6}
-                                    y={yLine(lineMax * f) + 3}
+                                    x={pad.l - 6}
+                                    y={gy + 3}
+                                    textAnchor="end"
                                     className="fill-muted-foreground"
                                     fontSize={9}
                                 >
-                                    {short(lineMax * f, lineFormat)}
+                                    {short(max * f, format)}
                                 </text>
-                            )}
-                        </g>
-                    ))}
+                                {lineSeries && (
+                                    <text
+                                        x={W - pad.r + 8}
+                                        y={yLine(lineMax * f) + 3}
+                                        className="fill-muted-foreground"
+                                        fontSize={9}
+                                    >
+                                        {short(lineMax * f, lineFormat)}
+                                    </text>
+                                )}
+                            </g>
+                        );
+                    })}
+                    {hover !== null && (
+                        <polygon
+                            points={`${pad.l + slot * hover},${pad.t + innerH} ${pad.l + slot * (hover + 1)},${pad.t + innerH} ${pad.l + slot * (hover + 1) + stageDx},${pad.t + innerH + stageDy} ${pad.l + slot * hover + stageDx},${pad.t + innerH + stageDy}`}
+                            className="text-muted"
+                            fill="currentColor"
+                            opacity={0.75}
+                        />
+                    )}
                     {hover !== null && (
                         <rect
-                            x={pad.l + slot * hover}
-                            y={pad.t}
+                            x={pad.l + slot * hover + stageDx}
+                            y={pad.t + stageDy}
                             width={slot}
                             height={innerH}
                             className="text-muted"
                             fill="currentColor"
-                            opacity={0.6}
+                            opacity={0.35}
                         />
                     )}
                     {data.labels.map((label, i) => {
@@ -450,43 +1138,70 @@ export function BarsChart({
                                             : y(0);
                                     stackBase += v;
 
+                                    if (v <= 0) {
+                                        return null;
+                                    }
+
+                                    const drawW = Math.max(
+                                        1.5,
+                                        barW - (mode === 'grouped' ? 2 : 0),
+                                    );
+                                    const drawH = Math.max(0, bottom - top);
+                                    const dx = Math.max(
+                                        2,
+                                        Math.min(6, drawW * 0.42),
+                                    );
+                                    const dy = -Math.max(
+                                        1.8,
+                                        Math.min(4.8, dx * 0.8),
+                                    );
+
                                     return (
-                                        <rect
+                                        <BarPrism
                                             key={se.name}
                                             x={x + (mode === 'grouped' ? 1 : 0)}
-                                            y={top}
-                                            width={Math.max(
-                                                1,
-                                                barW -
-                                                    (mode === 'grouped'
-                                                        ? 2
-                                                        : 0),
-                                            )}
-                                            height={Math.max(0, bottom - top)}
-                                            rx={mode === 'stacked' ? 0 : 2}
-                                            className={
+                                            top={top}
+                                            width={drawW}
+                                            height={drawH}
+                                            dx={dx}
+                                            dy={dy}
+                                            colorClass={
                                                 colors[s % colors.length]
                                             }
-                                            fill="currentColor"
                                             opacity={
                                                 hover === null || hover === i
-                                                    ? 0.9
+                                                    ? 0.96
                                                     : 0.55
                                             }
+                                            uid={uid}
                                         />
                                     );
                                 })}
-                                {i % labelEvery === 0 && (
-                                    <text
-                                        x={cx(i)}
-                                        y={H - 8}
-                                        textAnchor="middle"
-                                        className="fill-muted-foreground"
-                                        fontSize={9}
-                                    >
-                                        {label}
-                                    </text>
-                                )}
+                                {i % labelEvery === 0 &&
+                                    (rotateLabels ? (
+                                        <text
+                                            x={cx(i)}
+                                            y={pad.t + innerH + 13}
+                                            textAnchor="end"
+                                            transform={`rotate(-26 ${cx(i)} ${pad.t + innerH + 13})`}
+                                            className="fill-muted-foreground"
+                                            fontSize={9}
+                                        >
+                                            {label.length > 18
+                                                ? `${label.slice(0, 17)}…`
+                                                : label}
+                                        </text>
+                                    ) : (
+                                        <text
+                                            x={cx(i)}
+                                            y={H - 8}
+                                            textAnchor="middle"
+                                            className="fill-muted-foreground"
+                                            fontSize={9}
+                                        >
+                                            {label}
+                                        </text>
+                                    ))}
                                 <rect
                                     x={pad.l + slot * i}
                                     y={pad.t}
@@ -504,26 +1219,55 @@ export function BarsChart({
                             pointerEvents="none"
                         >
                             <path
-                                d={lineSeries.values
-                                    .map(
-                                        (v, i) =>
-                                            `${i === 0 ? 'M' : 'L'}${cx(i).toFixed(1)} ${yLine(v).toFixed(1)}`,
-                                    )
-                                    .join(' ')}
+                                d={lineShadowPath}
                                 fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2.2}
+                                stroke="#000000"
+                                strokeOpacity={0.22}
+                                strokeWidth={2.4}
                                 vectorEffect="non-scaling-stroke"
                             />
-                            {lineSeries.values.map((v, i) => (
-                                <circle
-                                    key={i}
-                                    cx={cx(i)}
-                                    cy={yLine(v)}
-                                    r={hover === i ? 4 : n > 16 ? 0 : 2.8}
-                                    fill="currentColor"
-                                />
-                            ))}
+                            <path
+                                d={linePath}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2.4}
+                                vectorEffect="non-scaling-stroke"
+                            />
+                            {lineSeries.values.map((v, i) => {
+                                const r = hover === i ? 4.4 : n > 16 ? 0 : 3.2;
+
+                                if (r === 0) {
+                                    return null;
+                                }
+
+                                const px = cx(i);
+                                const py = yLine(v);
+
+                                return (
+                                    <g key={i}>
+                                        <circle
+                                            cx={px + 0.8}
+                                            cy={py + 1.2}
+                                            r={r}
+                                            fill="#000000"
+                                            fillOpacity={0.24}
+                                        />
+                                        <circle
+                                            cx={px}
+                                            cy={py}
+                                            r={r}
+                                            fill="currentColor"
+                                        />
+                                        <circle
+                                            cx={px - r * 0.28}
+                                            cy={py - r * 0.28}
+                                            r={r * 0.34}
+                                            fill="#ffffff"
+                                            fillOpacity={0.55}
+                                        />
+                                    </g>
+                                );
+                            })}
                         </g>
                     )}
                 </svg>
@@ -569,7 +1313,7 @@ export function BarsChart({
     );
 }
 
-/** Multi-series line chart with an optional alarm threshold. */
+/** Multi-series 3D extruded ribbon line chart with an optional alarm threshold. */
 export function LinesChart({
     data,
     threshold,
@@ -581,10 +1325,11 @@ export function LinesChart({
     thresholdLabel?: string;
     colors?: string[];
 }) {
+    const uid = useSvgUid('lines');
     const [hover, setHover] = useState<number | null>(null);
     const W = 560;
     const H = 220;
-    const pad = { l: 34, r: 10, t: 12, b: 24 };
+    const pad = { l: 34, r: 12, t: 12, b: 24 };
     const innerW = W - pad.l - pad.r;
     const innerH = H - pad.t - pad.b;
     const n = data.labels.length;
@@ -594,6 +1339,10 @@ export function LinesChart({
     );
     const x = (i: number) => pad.l + (i / Math.max(1, n - 1)) * innerW;
     const y = (v: number) => pad.t + innerH - (v / max) * innerH;
+    const stageDx = 6;
+    const stageDy = -4.5;
+    const ribDx = 3.6;
+    const ribDy = -2.6;
 
     return (
         <div className="flex flex-col gap-2">
@@ -605,50 +1354,80 @@ export function LinesChart({
                     role="img"
                     onMouseLeave={() => setHover(null)}
                 >
-                    {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-                        <g key={f}>
-                            <line
-                                x1={pad.l}
-                                x2={W - pad.r}
-                                y1={y(max * f)}
-                                y2={y(max * f)}
-                                className="text-border"
-                                stroke="currentColor"
-                                strokeDasharray={f === 0 ? undefined : '3 3'}
+                    <defs>
+                        <linearGradient
+                            id={`${uid}-danger`}
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                        >
+                            <stop
+                                offset="0%"
+                                stopColor="currentColor"
+                                stopOpacity={0.12}
                             />
-                            <text
-                                x={pad.l - 6}
-                                y={y(max * f) + 3}
-                                textAnchor="end"
-                                className="fill-muted-foreground"
-                                fontSize={9}
-                            >
-                                {formatValue(max * f, 'decimal')}
-                            </text>
-                        </g>
-                    ))}
+                            <stop
+                                offset="100%"
+                                stopColor="currentColor"
+                                stopOpacity={0.03}
+                            />
+                        </linearGradient>
+                    </defs>
+                    <StageFloor3d
+                        left={pad.l}
+                        right={W - pad.r}
+                        top={pad.t}
+                        bottom={pad.t + innerH}
+                        dx={stageDx}
+                        dy={stageDy}
+                    />
+                    {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+                        const gy = y(max * f);
+
+                        return (
+                            <g key={f}>
+                                <path
+                                    d={`M${pad.l} ${gy} L${pad.l + stageDx} ${gy + stageDy} L${W - pad.r + stageDx} ${gy + stageDy}`}
+                                    fill="none"
+                                    className="text-border"
+                                    stroke="currentColor"
+                                    strokeOpacity={0.7}
+                                    strokeDasharray={
+                                        f === 0 ? undefined : '3 3'
+                                    }
+                                />
+                                <text
+                                    x={pad.l - 6}
+                                    y={gy + 3}
+                                    textAnchor="end"
+                                    className="fill-muted-foreground"
+                                    fontSize={9}
+                                >
+                                    {formatValue(max * f, 'decimal')}
+                                </text>
+                            </g>
+                        );
+                    })}
                     {threshold !== undefined && (
                         <g className="text-rose-500">
                             <rect
-                                x={pad.l}
-                                y={pad.t}
+                                x={pad.l + stageDx}
+                                y={pad.t + stageDy}
                                 width={innerW}
                                 height={Math.max(0, y(threshold) - pad.t)}
-                                fill="currentColor"
-                                opacity={0.06}
+                                fill={`url(#${uid}-danger)`}
                             />
-                            <line
-                                x1={pad.l}
-                                x2={W - pad.r}
-                                y1={y(threshold)}
-                                y2={y(threshold)}
+                            <path
+                                d={`M${pad.l} ${y(threshold)} L${pad.l + stageDx} ${y(threshold) + stageDy} L${W - pad.r + stageDx} ${y(threshold) + stageDy}`}
+                                fill="none"
                                 stroke="currentColor"
                                 strokeWidth={1.4}
                                 strokeDasharray="6 4"
                             />
                             <text
                                 x={W - pad.r - 4}
-                                y={y(threshold) - 4}
+                                y={y(threshold) + stageDy - 4}
                                 textAnchor="end"
                                 fill="currentColor"
                                 fontSize={9}
@@ -669,30 +1448,94 @@ export function LinesChart({
                             strokeDasharray="2 2"
                         />
                     )}
-                    {data.series.map((se, s) => (
-                        <g key={se.name} className={colors[s % colors.length]}>
-                            <path
-                                d={se.values
-                                    .map(
-                                        (v, i) =>
-                                            `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`,
-                                    )
-                                    .join(' ')}
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2.2}
-                                vectorEffect="non-scaling-stroke"
-                            />
-                            {hover !== null && (
-                                <circle
-                                    cx={x(hover)}
-                                    cy={y(se.values[hover] ?? 0)}
-                                    r={3.5}
-                                    fill="currentColor"
-                                />
-                            )}
-                        </g>
-                    ))}
+                    {data.series.map((se, s) => {
+                        const pts = se.values.map(
+                            (v, i) => [x(i), y(v)] as const,
+                        );
+                        const front = pts
+                            .map(
+                                ([px, py], i) =>
+                                    `${i === 0 ? 'M' : 'L'}${px.toFixed(1)} ${py.toFixed(1)}`,
+                            )
+                            .join(' ');
+                        const shadow = pts
+                            .map(
+                                ([px, py], i) =>
+                                    `${i === 0 ? 'M' : 'L'}${(px + 1.5).toFixed(1)} ${(py + 2.5).toFixed(1)}`,
+                            )
+                            .join(' ');
+                        const ribbon =
+                            pts.length >= 2
+                                ? `${front} L${pts
+                                      .map(
+                                          ([px, py]) =>
+                                              `${(px + ribDx).toFixed(1)} ${(py + ribDy).toFixed(1)}`,
+                                      )
+                                      .reverse()
+                                      .join(' L')} Z`
+                                : '';
+
+                        return (
+                            <g
+                                key={se.name}
+                                className={colors[s % colors.length]}
+                            >
+                                {pts.length >= 2 && (
+                                    <>
+                                        <path
+                                            d={shadow}
+                                            fill="none"
+                                            stroke="#000000"
+                                            strokeOpacity={0.14}
+                                            strokeWidth={2.5}
+                                            vectorEffect="non-scaling-stroke"
+                                        />
+                                        <path
+                                            d={ribbon}
+                                            fill="currentColor"
+                                            opacity={0.85}
+                                        />
+                                        <path
+                                            d={ribbon}
+                                            fill="#ffffff"
+                                            opacity={0.28}
+                                        />
+                                        <path
+                                            d={front}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth={2}
+                                            vectorEffect="non-scaling-stroke"
+                                        />
+                                    </>
+                                )}
+                                {hover !== null && (
+                                    <g>
+                                        <circle
+                                            cx={x(hover) + 0.8}
+                                            cy={y(se.values[hover] ?? 0) + 1.2}
+                                            r={4}
+                                            fill="#000000"
+                                            fillOpacity={0.24}
+                                        />
+                                        <circle
+                                            cx={x(hover)}
+                                            cy={y(se.values[hover] ?? 0)}
+                                            r={4}
+                                            fill="currentColor"
+                                        />
+                                        <circle
+                                            cx={x(hover) - 1.1}
+                                            cy={y(se.values[hover] ?? 0) - 1.1}
+                                            r={1.3}
+                                            fill="#ffffff"
+                                            fillOpacity={0.6}
+                                        />
+                                    </g>
+                                )}
+                            </g>
+                        );
+                    })}
                     {data.labels.map((label, i) => (
                         <g key={label}>
                             {(i % Math.ceil(n / 12) === 0 || i === n - 1) && (
@@ -769,8 +1612,9 @@ export function LinesChart({
 
 type SCurvePoint = { day: number; plan: number; real: number | null };
 
-/** Cumulative plan-vs-realisation S-curve; realisation stops at today. */
+/** Cumulative plan-vs-realisation 3D S-curve; realisation stops at today. */
 export function SCurve({ points }: { points: SCurvePoint[] }) {
+    const uid = useSvgUid('scurve');
     const W = 640;
     const H = 220;
     const pad = { l: 34, r: 12, t: 12, b: 24 };
@@ -793,12 +1637,31 @@ export function SCurve({ points }: { points: SCurvePoint[] }) {
                 `${i === 0 ? 'M' : 'L'}${x(p.day).toFixed(1)} ${y(p.plan).toFixed(1)}`,
         )
         .join(' ');
-    const realPath = real
+    const planShadowPath = points
         .map(
             (p, i) =>
-                `${i === 0 ? 'M' : 'L'}${x(p.day).toFixed(1)} ${y(p.real).toFixed(1)}`,
+                `${i === 0 ? 'M' : 'L'}${(x(p.day) + 1.5).toFixed(1)} ${(y(p.plan) + 2.2).toFixed(1)}`,
         )
         .join(' ');
+    const realPts = real.map((p) => [x(p.day), y(p.real)] as const);
+    const realPath = realPts
+        .map(
+            ([px, py], i) =>
+                `${i === 0 ? 'M' : 'L'}${px.toFixed(1)} ${py.toFixed(1)}`,
+        )
+        .join(' ');
+    const depthX = 5.5;
+    const depthY = -4;
+    const realRibbonTop =
+        realPts.length >= 2
+            ? `${realPath} L${realPts
+                  .map(
+                      ([px, py]) =>
+                          `${(px + depthX).toFixed(1)} ${(py + depthY).toFixed(1)}`,
+                  )
+                  .reverse()
+                  .join(' L')} Z`
+            : '';
     const last = real[real.length - 1];
     const pct = last
         ? Math.round((last.real / Math.max(1, last.plan)) * 100)
@@ -812,28 +1675,59 @@ export function SCurve({ points }: { points: SCurvePoint[] }) {
                 preserveAspectRatio="none"
                 role="img"
             >
-                {[0, 0.25, 0.5, 0.75, 1].map((f) => (
-                    <g key={f}>
-                        <line
-                            x1={pad.l}
-                            x2={W - pad.r}
-                            y1={y(max * f)}
-                            y2={y(max * f)}
-                            className="text-border"
-                            stroke="currentColor"
-                            strokeDasharray={f === 0 ? undefined : '3 3'}
+                <defs>
+                    <linearGradient
+                        id={`${uid}-real`}
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                    >
+                        <stop
+                            offset="0%"
+                            stopColor="currentColor"
+                            stopOpacity={0.34}
                         />
-                        <text
-                            x={pad.l - 6}
-                            y={y(max * f) + 3}
-                            textAnchor="end"
-                            className="fill-muted-foreground"
-                            fontSize={9}
-                        >
-                            {Math.round(max * f)}
-                        </text>
-                    </g>
-                ))}
+                        <stop
+                            offset="100%"
+                            stopColor="currentColor"
+                            stopOpacity={0.04}
+                        />
+                    </linearGradient>
+                </defs>
+                <StageFloor3d
+                    left={pad.l}
+                    right={W - pad.r}
+                    top={pad.t}
+                    bottom={pad.t + innerH}
+                    dx={depthX}
+                    dy={depthY}
+                />
+                {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+                    const gy = y(max * f);
+
+                    return (
+                        <g key={f}>
+                            <path
+                                d={`M${pad.l} ${gy} L${pad.l + depthX} ${gy + depthY} L${W - pad.r + depthX} ${gy + depthY}`}
+                                fill="none"
+                                className="text-border"
+                                stroke="currentColor"
+                                strokeOpacity={0.7}
+                                strokeDasharray={f === 0 ? undefined : '3 3'}
+                            />
+                            <text
+                                x={pad.l - 6}
+                                y={gy + 3}
+                                textAnchor="end"
+                                className="fill-muted-foreground"
+                                fontSize={9}
+                            >
+                                {Math.round(max * f)}
+                            </text>
+                        </g>
+                    );
+                })}
                 {[1, 8, 15, 22, days].map((d) => (
                     <text
                         key={d}
@@ -847,6 +1741,15 @@ export function SCurve({ points }: { points: SCurvePoint[] }) {
                     </text>
                 ))}
                 <path
+                    d={planShadowPath}
+                    fill="none"
+                    stroke="#000000"
+                    strokeOpacity={0.14}
+                    strokeWidth={2}
+                    strokeDasharray="6 4"
+                    vectorEffect="non-scaling-stroke"
+                />
+                <path
                     d={planPath}
                     className="text-chart-5"
                     fill="none"
@@ -856,19 +1759,40 @@ export function SCurve({ points }: { points: SCurvePoint[] }) {
                     vectorEffect="non-scaling-stroke"
                 />
                 {last && (
-                    <>
+                    <g className="text-emerald-500">
                         <path
                             d={`${realPath} L${x(last.day)} ${y(0)} L${x(1)} ${y(0)} Z`}
-                            className="text-emerald-500"
+                            fill={`url(#${uid}-real)`}
+                        />
+                        {realRibbonTop && (
+                            <>
+                                <path
+                                    d={realRibbonTop}
+                                    fill="currentColor"
+                                    opacity={0.9}
+                                />
+                                <path
+                                    d={realRibbonTop}
+                                    fill="#ffffff"
+                                    opacity={0.28}
+                                />
+                            </>
+                        )}
+                        <polygon
+                            points={`${x(last.day)},${y(last.real)} ${x(last.day) + depthX},${y(last.real) + depthY} ${x(last.day) + depthX},${y(0) + depthY} ${x(last.day)},${y(0)}`}
                             fill="currentColor"
-                            opacity={0.14}
+                            opacity={0.75}
+                        />
+                        <polygon
+                            points={`${x(last.day)},${y(last.real)} ${x(last.day) + depthX},${y(last.real) + depthY} ${x(last.day) + depthX},${y(0) + depthY} ${x(last.day)},${y(0)}`}
+                            fill="#000000"
+                            opacity={0.26}
                         />
                         <path
                             d={realPath}
-                            className="text-emerald-500"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth={2.6}
+                            strokeWidth={2.5}
                             vectorEffect="non-scaling-stroke"
                         />
                         <line
@@ -881,13 +1805,26 @@ export function SCurve({ points }: { points: SCurvePoint[] }) {
                             strokeDasharray="2 3"
                         />
                         <circle
+                            cx={x(last.day) + 0.8}
+                            cy={y(last.real) + 1.2}
+                            r={4.5}
+                            fill="#000000"
+                            fillOpacity={0.25}
+                        />
+                        <circle
                             cx={x(last.day)}
                             cy={y(last.real)}
-                            r={4}
-                            className="text-emerald-500"
+                            r={4.5}
                             fill="currentColor"
                         />
-                    </>
+                        <circle
+                            cx={x(last.day) - 1.3}
+                            cy={y(last.real) - 1.3}
+                            r={1.5}
+                            fill="#ffffff"
+                            fillOpacity={0.65}
+                        />
+                    </g>
                 )}
             </svg>
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -930,7 +1867,7 @@ export function SCurve({ points }: { points: SCurvePoint[] }) {
     );
 }
 
-/** Semicircle gauge against a target; `good` says which direction is healthy. */
+/** Semicircle 3D cylindrical gauge against a target; `good` says which direction is healthy. */
 export function Gauge({
     label,
     value,
@@ -951,6 +1888,7 @@ export function Gauge({
     const tAngle = Math.PI * (1 - Math.min(1, target / max));
     const tx = 50 + Math.cos(tAngle) * r;
     const ty = 52 - Math.sin(tAngle) * r;
+    const arcD = `M ${50 - r} 52 A ${r} ${r} 0 0 1 ${50 + r} 52`;
 
     return (
         <div className="flex flex-col items-center">
@@ -960,7 +1898,16 @@ export function Gauge({
                 role="img"
             >
                 <path
-                    d={`M ${50 - r} 52 A ${r} ${r} 0 0 1 ${50 + r} 52`}
+                    d={arcD}
+                    transform="translate(0 1.8)"
+                    fill="none"
+                    stroke="#000000"
+                    strokeOpacity={0.14}
+                    strokeWidth={9.5}
+                    strokeLinecap="round"
+                />
+                <path
+                    d={arcD}
                     fill="none"
                     className="text-muted"
                     stroke="currentColor"
@@ -968,15 +1915,69 @@ export function Gauge({
                     strokeLinecap="round"
                 />
                 <path
-                    d={`M ${50 - r} 52 A ${r} ${r} 0 0 1 ${50 + r} 52`}
+                    d={arcD}
                     fill="none"
-                    className={ok ? 'text-emerald-500' : 'text-amber-500'}
-                    stroke="currentColor"
-                    strokeWidth={9}
+                    stroke="#000000"
+                    strokeOpacity={0.1}
+                    strokeWidth={3}
                     strokeLinecap="round"
-                    strokeDasharray={`${fill} ${half}`}
                 />
-                <circle cx={tx} cy={ty} r={2.6} className="fill-foreground" />
+                {fill > 0.1 && (
+                    <g className={ok ? 'text-emerald-500' : 'text-amber-500'}>
+                        <g transform="translate(0 1.8)">
+                            <path
+                                d={arcD}
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={9}
+                                strokeLinecap="round"
+                                strokeDasharray={`${fill} ${half}`}
+                            />
+                            <path
+                                d={arcD}
+                                fill="none"
+                                stroke="#000000"
+                                strokeOpacity={0.28}
+                                strokeWidth={9}
+                                strokeLinecap="round"
+                                strokeDasharray={`${fill} ${half}`}
+                            />
+                        </g>
+                        <path
+                            d={arcD}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={9}
+                            strokeLinecap="round"
+                            strokeDasharray={`${fill} ${half}`}
+                        />
+                        <path
+                            d={arcD}
+                            transform="translate(0 -1.1)"
+                            fill="none"
+                            stroke="#ffffff"
+                            strokeOpacity={0.36}
+                            strokeWidth={2.4}
+                            strokeLinecap="round"
+                            strokeDasharray={`${fill} ${half}`}
+                        />
+                    </g>
+                )}
+                <circle
+                    cx={tx}
+                    cy={ty + 1}
+                    r={2.9}
+                    fill="#000000"
+                    fillOpacity={0.26}
+                />
+                <circle cx={tx} cy={ty} r={2.8} className="fill-foreground" />
+                <circle
+                    cx={tx - 0.8}
+                    cy={ty - 0.8}
+                    r={0.95}
+                    fill="#ffffff"
+                    fillOpacity={0.65}
+                />
                 <text
                     x={50}
                     y={48}
@@ -999,7 +2000,7 @@ export function Gauge({
     );
 }
 
-/** Circular progress ring, for per-module health scores. */
+/** Circular 3D tubular progress ring, for per-module health scores. */
 export function Ring({
     value,
     colorClass,
@@ -1011,6 +2012,7 @@ export function Ring({
 }) {
     const r = 26;
     const c = 2 * Math.PI * r;
+    const len = (Math.min(100, Math.max(0, value)) / 100) * c;
 
     return (
         <svg
@@ -1019,6 +2021,15 @@ export function Ring({
             className="shrink-0"
             role="img"
         >
+            <circle
+                cx={32}
+                cy={33.8}
+                r={r}
+                fill="none"
+                stroke="#000000"
+                strokeOpacity={0.14}
+                strokeWidth={6.5}
+            />
             <circle
                 cx={32}
                 cy={32}
@@ -1033,13 +2044,62 @@ export function Ring({
                 cy={32}
                 r={r}
                 fill="none"
-                className={colorClass}
-                stroke="currentColor"
-                strokeWidth={6}
-                strokeLinecap="round"
-                strokeDasharray={`${(Math.min(100, value) / 100) * c} ${c}`}
-                transform="rotate(-90 32 32)"
+                stroke="#000000"
+                strokeOpacity={0.1}
+                strokeWidth={2}
             />
+            {len > 0.1 && (
+                <g className={colorClass}>
+                    <g transform="translate(0 1.6)">
+                        <circle
+                            cx={32}
+                            cy={32}
+                            r={r}
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={6}
+                            strokeLinecap="round"
+                            strokeDasharray={`${len} ${c}`}
+                            transform="rotate(-90 32 32)"
+                        />
+                        <circle
+                            cx={32}
+                            cy={32}
+                            r={r}
+                            fill="none"
+                            stroke="#000000"
+                            strokeOpacity={0.28}
+                            strokeWidth={6}
+                            strokeLinecap="round"
+                            strokeDasharray={`${len} ${c}`}
+                            transform="rotate(-90 32 32)"
+                        />
+                    </g>
+                    <circle
+                        cx={32}
+                        cy={32}
+                        r={r}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={6}
+                        strokeLinecap="round"
+                        strokeDasharray={`${len} ${c}`}
+                        transform="rotate(-90 32 32)"
+                    />
+                    <circle
+                        cx={32}
+                        cy={31.2}
+                        r={r}
+                        fill="none"
+                        stroke="#ffffff"
+                        strokeOpacity={0.38}
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeDasharray={`${len} ${c}`}
+                        transform="rotate(-90 32 31.2)"
+                    />
+                </g>
+            )}
             <text
                 x={32}
                 y={36}
@@ -1054,7 +2114,7 @@ export function Ring({
     );
 }
 
-/** Horizontal ranked bars. */
+/** Horizontal ranked 3D cylindrical bars. */
 export function BarList({
     data,
     colorClass = 'text-chart-1',
@@ -1082,7 +2142,13 @@ export function BarList({
                                 {d.label}
                             </span>
                         </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                            className="h-1.5 overflow-hidden rounded-full bg-muted"
+                            style={{
+                                boxShadow:
+                                    'inset 0 1.5px 2px rgba(0,0,0,0.16), inset 0 -0.5px 0 rgba(255,255,255,0.2)',
+                            }}
+                        >
                             <div
                                 className={cn(
                                     'h-full rounded-full',
@@ -1091,6 +2157,9 @@ export function BarList({
                                 style={{
                                     width: `${(d.value / max) * 100}%`,
                                     backgroundColor: 'currentColor',
+                                    backgroundImage:
+                                        'linear-gradient(180deg, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.08) 45%, rgba(0,0,0,0.26) 100%)',
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
                                 }}
                             />
                         </div>
@@ -1104,7 +2173,7 @@ export function BarList({
     );
 }
 
-/** Level bars (e.g. tank fill %), coloured by threshold. */
+/** Level bars (e.g. tank fill %) styled as 3D cylindrical tubes, coloured by threshold. */
 export function LevelBars({
     data,
     suffix,
@@ -1135,12 +2204,24 @@ export function LevelBars({
                                 {suffix && <> · {suffix(d)}</>}
                             </span>
                         </div>
-                        <div className="relative h-2.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                            className="relative h-2.5 overflow-hidden rounded-full bg-muted"
+                            style={{
+                                boxShadow:
+                                    'inset 0 2px 3px rgba(0,0,0,0.2), inset 0 -1px 0 rgba(255,255,255,0.22)',
+                            }}
+                        >
                             <div
                                 className={cn('h-full rounded-full', tone)}
-                                style={{ width: `${d.value}%` }}
+                                style={{
+                                    width: `${d.value}%`,
+                                    backgroundImage:
+                                        'linear-gradient(180deg, rgba(255,255,255,0.48) 0%, rgba(255,255,255,0.12) 42%, rgba(0,0,0,0.26) 100%)',
+                                    boxShadow:
+                                        'inset -2px 0 3px rgba(0,0,0,0.22), 0 1px 2px rgba(0,0,0,0.18)',
+                                }}
                             />
-                            <span className="absolute inset-y-0 left-[35%] w-px bg-background/80" />
+                            <span className="absolute inset-y-0 left-[35%] w-px bg-background/85 shadow-xs" />
                         </div>
                     </li>
                 );
@@ -1149,7 +2230,7 @@ export function LevelBars({
     );
 }
 
-/** Row × column heatmap of percentages. */
+/** Row × column 3D beveled keycap heatmap of percentages. */
 export function Heatmap({
     columns,
     rows,
@@ -1167,6 +2248,23 @@ export function Heatmap({
                 : v >= 70
                   ? 'bg-amber-300/80 text-amber-950'
                   : 'bg-rose-400/80 text-rose-950';
+
+    const tileStyle = (v: number | null) =>
+        v === null
+            ? { boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.12)' }
+            : {
+                  backgroundImage:
+                      'linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0) 52%, rgba(0,0,0,0.14) 100%)',
+                  boxShadow:
+                      'inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 0 rgba(0,0,0,0.22), 0 1px 2px rgba(0,0,0,0.12)',
+              };
+
+    const swatchStyle = {
+        backgroundImage:
+            'linear-gradient(180deg, rgba(255,255,255,0.32), rgba(0,0,0,0.14))',
+        boxShadow:
+            'inset 0 0.5px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.2)',
+    };
 
     return (
         <div className="flex flex-col gap-2">
@@ -1194,9 +2292,10 @@ export function Heatmap({
                             <span
                                 key={i}
                                 className={cn(
-                                    'rounded-[4px] py-1.5 text-center text-[11px] font-semibold tabular-nums',
+                                    'rounded-[4px] py-1.5 text-center text-[11px] font-semibold tabular-nums transition-transform hover:-translate-y-px',
                                     shade(v),
                                 )}
+                                style={tileStyle(v)}
                                 title={`${row.label} · ${columns[i]}: ${v === null ? 'tidak ada rencana' : `${v}%`}`}
                             >
                                 {v ?? '—'}
@@ -1207,18 +2306,31 @@ export function Heatmap({
             </div>
             <div className="flex flex-wrap gap-3 text-[10.5px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
-                    <span className="size-2 rounded-sm bg-emerald-500" />≥ 90%
+                    <span
+                        className="size-2 rounded-sm bg-emerald-500"
+                        style={swatchStyle}
+                    />
+                    ≥ 90%
                 </span>
                 <span className="inline-flex items-center gap-1">
-                    <span className="size-2 rounded-sm bg-emerald-400/70" />
+                    <span
+                        className="size-2 rounded-sm bg-emerald-400/70"
+                        style={swatchStyle}
+                    />
                     80–89%
                 </span>
                 <span className="inline-flex items-center gap-1">
-                    <span className="size-2 rounded-sm bg-amber-300/80" />
+                    <span
+                        className="size-2 rounded-sm bg-amber-300/80"
+                        style={swatchStyle}
+                    />
                     70–79%
                 </span>
                 <span className="inline-flex items-center gap-1">
-                    <span className="size-2 rounded-sm bg-rose-400/80" />
+                    <span
+                        className="size-2 rounded-sm bg-rose-400/80"
+                        style={swatchStyle}
+                    />
                     &lt; 70%
                 </span>
             </div>

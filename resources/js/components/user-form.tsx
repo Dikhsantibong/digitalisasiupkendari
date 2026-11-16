@@ -1,9 +1,19 @@
 import { Form, Link } from '@inertiajs/react';
+import { ExternalLink } from 'lucide-react';
 import { FormField } from '@/components/form-field';
 import PasswordInput from '@/components/password-input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { usePermissions } from '@/hooks/use-permissions';
+import employees from '@/routes/admin/employees';
 import users from '@/routes/admin/users';
 import type { FormAction, UserRow } from '@/types';
 
@@ -14,17 +24,44 @@ type Props = {
     submitLabel: string;
 };
 
+const NO_SELECTION = 'none';
+
+/** Mirrors AttendanceRoster::REGU. */
+const REGU = ['A', 'B', 'C', 'D'];
+
 export function UserForm({ action, user, submitLabel }: Props) {
     const isEditing = user !== undefined;
+    const { can } = usePermissions();
 
     return (
-        <Form {...action} className="flex flex-col gap-6">
+        <Form
+            {...action}
+            transform={(data) => ({
+                ...data,
+                regu: data.regu === NO_SELECTION ? '' : data.regu,
+            })}
+            className="flex flex-col gap-6"
+        >
             {({ errors, processing }) => (
                 <>
                     <section className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
-                        <h2 className="text-base font-semibold text-foreground">
-                            Identitas
-                        </h2>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h2 className="text-base font-semibold text-foreground">
+                                Identitas
+                            </h2>
+                            {user?.employee_record_id &&
+                                can('employee.update') && (
+                                    <Link
+                                        href={employees.edit(
+                                            user.employee_record_id,
+                                        )}
+                                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                    >
+                                        Buka di Master Pegawai
+                                        <ExternalLink className="size-3" />
+                                    </Link>
+                                )}
+                        </div>
 
                         <div className="grid gap-4 sm:grid-cols-2">
                             <FormField
@@ -83,6 +120,55 @@ export function UserForm({ action, user, submitLabel }: Props) {
                                     name="position"
                                     defaultValue={user?.position ?? ''}
                                 />
+                            </FormField>
+
+                            <FormField
+                                label="Regu Shift"
+                                hint="Isi untuk operator shift (Regu A–D). Tersinkronisasi dengan Master Pegawai & Jadwal Shift."
+                                error={errors.regu}
+                            >
+                                <Select
+                                    name="regu"
+                                    defaultValue={user?.regu ?? NO_SELECTION}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Pilih regu shift" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={NO_SELECTION}>
+                                            Bukan pegawai shift
+                                        </SelectItem>
+                                        {REGU.map((regu) => (
+                                            <SelectItem key={regu} value={regu}>
+                                                Regu {regu}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormField>
+
+                            <FormField
+                                label="Leader Shift"
+                                hint="Satu regu hanya punya 1 Leader Shift aktif per unit; anggota lainnya operator biasa."
+                                error={errors.is_shift_leader}
+                            >
+                                <label className="flex h-9 items-center gap-2 rounded-md border border-border bg-secondary px-3">
+                                    <input
+                                        type="hidden"
+                                        name="is_shift_leader"
+                                        value="0"
+                                    />
+                                    <Checkbox
+                                        name="is_shift_leader"
+                                        value="1"
+                                        defaultChecked={
+                                            user?.is_shift_leader ?? false
+                                        }
+                                    />
+                                    <span className="text-[13px]">
+                                        Jadikan Leader Shift regu ini
+                                    </span>
+                                </label>
                             </FormField>
 
                             <FormField

@@ -10,19 +10,7 @@ import {
     TrendingUp,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import {
-    BarList,
-    BarsChart,
-    Donut,
-    Gauge,
-    Heatmap,
-    LevelBars,
-    LinesChart,
-    Panel,
-    SCurve,
-    Sparkline,
-} from '@/components/dashboard/charts';
-import type { Datum, MultiSeries } from '@/components/dashboard/charts';
+import { Panel, Sparkline } from '@/components/dashboard/charts';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -35,43 +23,33 @@ import { dashboard } from '@/routes';
 import resumeRoutes from '@/routes/laporan/resume';
 import type { IdName } from '@/types';
 
-type Chart = { title: string; subtitle?: string; svg: string } & (
-    | ({ type: 'bar' | 'stacked'; line_last?: boolean } & MultiSeries)
-    | ({
-          type: 'line';
-          threshold?: number;
-          threshold_label?: string;
-      } & MultiSeries)
-    | { type: 'donut' | 'hbar'; data: Datum[] }
-    | { type: 'level'; data: (Datum & { capacity: number })[] }
-    | {
-          type: 'gauge';
-          items: {
-              label: string;
-              value: number;
-              target: number;
-              good: 'up' | 'down';
-          }[];
-      }
-    | {
-          type: 'scurve';
-          points: { day: number; plan: number; real: number | null }[];
-      }
-    | {
-          type: 'heatmap';
-          columns: string[];
-          rows: { label: string; values: (number | null)[] }[];
-      }
-);
+/** One chart of the resume, drawn on the server as a 3D image (App\\Services\\Reports\\Chart3d). */
+type Chart = { title: string; subtitle?: string; type: string; image: string };
 
 type Resume = {
     module: string;
     title: string;
-    unit: { id: number; name: string; service_unit: string | null };
+    unit: {
+        id: number;
+        code?: string | null;
+        name: string;
+        service_unit: string | null;
+        type?: string | null;
+        contract?: string | null;
+        capacity_mw?: number;
+        status?: string;
+        machine_count?: number;
+    };
     period: { month: number; year: number; label: string };
+    meta?: { label: string; value: string }[];
     kpis: {
         label: string;
         value: string;
+        previous?: string;
+        good?: string;
+        target_label?: string;
+        avg?: string;
+        max?: string;
         delta: number | null;
         trend: 'naik' | 'turun' | 'tetap' | null;
         assessment: 'membaik' | 'memburuk' | 'stabil' | null;
@@ -86,6 +64,7 @@ type Resume = {
         title: string;
         columns: string[];
         rows: string[][];
+        footer?: string[];
         note?: string;
     }[];
 };
@@ -99,89 +78,11 @@ type Props = {
     modules: { key: string; label: string }[];
 };
 
-const DONUT_COLORS = [
-    'text-chart-1',
-    'text-amber-500',
-    'text-emerald-500',
-    'text-rose-500',
-    'text-chart-5',
-    'text-slate-400',
-];
-
-function NoData() {
-    return (
-        <p className="py-8 text-center text-[13px] text-muted-foreground">
-            Belum ada data.
-        </p>
-    );
-}
-
-/** One chart of the resume, drawn with the dashboard's chart components. */
-function ResumeChart({ chart }: { chart: Chart }) {
-    switch (chart.type) {
-        case 'bar':
-        case 'stacked':
-            return (
-                <BarsChart
-                    data={chart}
-                    mode={chart.type === 'stacked' ? 'stacked' : 'grouped'}
-                    lineLast={chart.line_last}
-                    format="decimal"
-                    lineFormat="decimal"
-                />
-            );
-        case 'line':
-            return chart.series.length === 0 ? (
-                <NoData />
-            ) : (
-                <LinesChart
-                    data={chart}
-                    threshold={chart.threshold}
-                    thresholdLabel={chart.threshold_label}
-                />
-            );
-        case 'donut':
-            return <Donut data={chart.data} colors={DONUT_COLORS} />;
-        case 'hbar':
-            return chart.data.length === 0 ? (
-                <NoData />
-            ) : (
-                <BarList data={chart.data} format="decimal" />
-            );
-        case 'level':
-            return chart.data.length === 0 ? (
-                <NoData />
-            ) : (
-                <LevelBars
-                    data={chart.data}
-                    suffix={(d) =>
-                        `${(d.capacity ?? 0).toLocaleString('id-ID')} kL`
-                    }
-                />
-            );
-        case 'gauge':
-            return (
-                <div className="grid grid-cols-3 gap-2">
-                    {chart.items.map((item) => (
-                        <Gauge key={item.label} {...item} />
-                    ))}
-                </div>
-            );
-        case 'scurve':
-            return <SCurve points={chart.points} />;
-        case 'heatmap':
-            return chart.rows.length === 0 ? (
-                <NoData />
-            ) : (
-                <Heatmap columns={chart.columns} rows={chart.rows} />
-            );
-    }
-}
-
 /**
- * Resume Bulanan per modul: KPI, every chart and the tables of one unit &
- * month, with the PDF (server, charts included) and the Excel (tables +
- * a "Grafik" sheet of chart images) downloads.
+ * Resume Bulanan per modul, chart-first: KPI with their direction, the
+ * Ringkasan Arah Data and every chart as a 3D image (bars, stacked bars with a
+ * line, 3D lines, pie, donut, gauges, horizontal bars); the detail tables are
+ * folded below as an appendix. PDF and Excel (landscape) show the same.
  */
 export default function ResumePage({
     resume,
@@ -343,6 +244,12 @@ export default function ResumePage({
                                 <p className="text-[20px] leading-tight font-semibold text-foreground tabular-nums">
                                     {kpi.value}
                                 </p>
+                                {(kpi.previous || kpi.max) && (
+                                    <p className="text-[11px] text-muted-foreground tabular-nums">
+                                        Bulan lalu: {kpi.previous ?? '—'} ·
+                                        Puncak: {kpi.max ?? '—'}
+                                    </p>
+                                )}
                                 {kpi.spark.length > 1 ? (
                                     <Sparkline
                                         values={kpi.spark}
@@ -409,82 +316,127 @@ export default function ResumePage({
                     </ul>
                 </Panel>
 
-                <section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                <section className="grid grid-cols-1 gap-3 xl:grid-cols-2">
                     {resume.charts.map((chart, index) => (
                         <Panel
                             key={chart.title}
                             title={`${index + 1}. ${chart.title}`}
                             subtitle={chart.subtitle}
                         >
-                            <ResumeChart chart={chart} />
+                            <img
+                                src={chart.image}
+                                alt={chart.title}
+                                className="h-auto w-full rounded-sm"
+                                loading="lazy"
+                            />
                         </Panel>
                     ))}
                 </section>
 
-                <section className="flex flex-col gap-4">
-                    {resume.sections.map((section, index) => (
-                        <div
-                            key={section.title}
-                            className="flex flex-col gap-1.5"
-                        >
-                            <h2 className="text-sm font-semibold text-foreground">
-                                {index + 1}. {section.title}
-                            </h2>
-                            <div className="overflow-x-auto">
-                                <table className="excel-sheet w-full text-[13px]">
-                                    <thead>
-                                        <tr>
-                                            <th className="w-10">No</th>
-                                            {section.columns.map((column) => (
-                                                <th key={column}>{column}</th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {section.rows.length === 0 ? (
+                <details
+                    open
+                    className="group rounded-md border border-border bg-card"
+                >
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground select-none">
+                        Lampiran — Tabel Rincian ({resume.sections.length}{' '}
+                        tabel)
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                            klik untuk melipat / membuka
+                        </span>
+                    </summary>
+                    <section className="flex flex-col gap-4 border-t border-border p-4">
+                        {resume.sections.map((section, index) => (
+                            <div
+                                key={section.title}
+                                className="flex flex-col gap-1.5"
+                            >
+                                <h2 className="text-sm font-semibold text-foreground">
+                                    {index + 1}. {section.title}
+                                </h2>
+                                <div className="overflow-x-auto">
+                                    <table className="excel-sheet w-full text-[13px]">
+                                        <thead>
                                             <tr>
-                                                <td
-                                                    colSpan={
-                                                        section.columns.length +
-                                                        1
-                                                    }
-                                                    className="py-3 text-center text-muted-foreground"
-                                                >
-                                                    Belum ada data.
-                                                </td>
+                                                <th className="w-10">No</th>
+                                                {section.columns.map(
+                                                    (column) => (
+                                                        <th key={column}>
+                                                            {column}
+                                                        </th>
+                                                    ),
+                                                )}
                                             </tr>
-                                        ) : (
-                                            section.rows.map((row, r) => (
-                                                <tr key={r}>
-                                                    <td className="text-center">
-                                                        {r + 1}
+                                        </thead>
+                                        <tbody>
+                                            {section.rows.length === 0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan={
+                                                            section.columns
+                                                                .length + 1
+                                                        }
+                                                        className="py-3 text-center text-muted-foreground"
+                                                    >
+                                                        Belum ada data.
                                                     </td>
-                                                    {row.map((cell, c) => (
-                                                        <td
-                                                            key={c}
-                                                            className={
-                                                                c === 0
-                                                                    ? 'px-2'
-                                                                    : 'px-2 text-right tabular-nums'
-                                                            }
-                                                        >
-                                                            {cell}
-                                                        </td>
-                                                    ))}
                                                 </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
+                                            ) : (
+                                                section.rows.map((row, r) => (
+                                                    <tr key={r}>
+                                                        <td className="text-center">
+                                                            {r + 1}
+                                                        </td>
+                                                        {row.map((cell, c) => (
+                                                            <td
+                                                                key={c}
+                                                                className={
+                                                                    c === 0
+                                                                        ? 'px-2'
+                                                                        : 'px-2 text-right tabular-nums'
+                                                                }
+                                                            >
+                                                                {cell}
+                                                            </td>
+                                                        ))}
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                        {section.footer &&
+                                            section.footer.length > 0 && (
+                                                <tfoot>
+                                                    <tr className="bg-amber-50 font-semibold dark:bg-amber-950/30">
+                                                        <td className="text-center">
+                                                            —
+                                                        </td>
+                                                        {section.footer.map(
+                                                            (cell, c) => (
+                                                                <td
+                                                                    key={c}
+                                                                    className={
+                                                                        c === 0
+                                                                            ? 'px-2 font-semibold'
+                                                                            : 'px-2 text-right font-semibold tabular-nums'
+                                                                    }
+                                                                >
+                                                                    {cell}
+                                                                </td>
+                                                            ),
+                                                        )}
+                                                    </tr>
+                                                </tfoot>
+                                            )}
+                                    </table>
+                                </div>
+                                {section.note && (
+                                    <p className="text-xs text-muted-foreground italic">
+                                        {section.note}
+                                    </p>
+                                )}
                             </div>
-                            {section.note && (
-                                <p className="text-xs text-muted-foreground italic">
-                                    {section.note}
-                                </p>
-                            )}
-                        </div>
-                    ))}
-                </section>
+                        ))}
+                    </section>
+                </details>
             </div>
         </>
     );

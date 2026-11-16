@@ -18,6 +18,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -823,29 +824,13 @@ return;
                                                     </td>
 
                                                     {/* KEGIATAN */}
-                                                    <td className="border border-black p-1 text-foreground">
-                                                        {can_write ? (
-                                                            <input
-                                                                type="text"
-                                                                value={
-                                                                    row.kegiatan
-                                                                }
-                                                                onChange={(e) =>
-                                                                    updateField(
-                                                                        originalIndex,
-                                                                        'kegiatan',
-                                                                        e.target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                            />
-                                                        ) : (
-                                                            <span className="px-1.5 text-xs">
-                                                                {row.kegiatan}
-                                                            </span>
-                                                        )}
-                                                    </td>
+                                                <td className="min-w-80 border border-black p-1 align-middle whitespace-normal text-foreground">
+                                                    <AutoWrapCellInput
+                                                        value={row.kegiatan}
+                                                        onChange={(val) => updateField(originalIndex, 'kegiatan', val)}
+                                                        readOnly={!can_write}
+                                                    />
+                                                </td>
 
                                                     {/* 5 Status Check Columns */}
                                                     {STATUS_COLUMNS.map(
@@ -939,31 +924,15 @@ return;
                                                     </td>
 
                                                     {/* PARAF */}
-                                                    <td className="border border-black p-0.5 text-center">
-                                                        {can_write ? (
-                                                            <input
-                                                                type="text"
-                                                                value={
-                                                                    row.paraf
-                                                                }
-                                                                onChange={(e) =>
-                                                                    updateField(
-                                                                        originalIndex,
-                                                                        'paraf',
-                                                                        e.target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                placeholder="Paraf"
-                                                                className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                            />
-                                                        ) : (
-                                                            <span className="px-1 text-xs">
-                                                                {row.paraf ||
-                                                                    '-'}
-                                                            </span>
-                                                        )}
-                                                    </td>
+                                                <td className="min-w-20 border border-black p-1 text-center align-middle whitespace-normal text-foreground">
+                                                    <AutoWrapCellInput
+                                                        value={row.paraf}
+                                                        onChange={(val) => updateField(originalIndex, 'paraf', val)}
+                                                        className="text-center"
+                                                        emptyFallback="-"
+                                                        readOnly={!can_write}
+                                                    />
+                                                </td>
 
                                                     {/* Action (No-Print) */}
                                                     {can_write && (

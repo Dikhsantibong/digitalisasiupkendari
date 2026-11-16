@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DayList;
 use App\Models\Concerns\BelongsToUnit;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -58,8 +59,8 @@ class PdmJadwal5s5r extends Model
             'year' => 'integer',
             'month' => 'integer',
             'no_urut' => 'integer',
-            'rencana' => 'array',
-            'realisasi' => 'array',
+            'rencana' => DayList::class,
+            'realisasi' => DayList::class,
             'target' => 'integer',
             'sort_order' => 'integer',
         ];

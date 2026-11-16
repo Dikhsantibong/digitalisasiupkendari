@@ -16,11 +16,13 @@ import {
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { normalizeRencRealRows, toDayList } from '@/lib/day-list';
 import { MobileTimelineForm, RENC_REAL, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -116,7 +118,7 @@ export default function PdmJadwalMeetingIndex({
     catatan: initialCatatan,
     can_write,
 }: Props) {
-    const [rows, setRows] = useState<JadwalMeetingRow[]>(initialRows);
+    const [rows, setRows] = useState<JadwalMeetingRow[]>(() => normalizeRencRealRows(initialRows));
     const [catatan, setCatatan] = useState<string>(initialCatatan || '');
     const [dirty, setDirty] = useState(false);
     const compact = useCompactLayout();
@@ -161,7 +163,7 @@ return;
 return r;
 }
 
-                const currentList = r[type] || [];
+                const currentList = toDayList(r[type]);
                 const isMarked = currentList.includes(day);
                 const nextList = isMarked
                     ? currentList.filter((d) => d !== day)
@@ -332,7 +334,7 @@ return;
 
     // Reset rows to initial state
     const handleReset = () => {
-        setRows(initialRows);
+        setRows(normalizeRencRealRows(initialRows));
         setCatatan(initialCatatan || '');
         setDirty(false);
         toast.info('Perubahan dibatalkan ke data terakhir yang tersimpan.');
@@ -748,7 +750,7 @@ return null;
                                 rowKey={(row, index) => row.id ?? `new-${index}`}
                                 title={(row) => row.uraian || 'Meeting baru'}
                                 categories={RENC_REAL}
-                                isOn={(row, category, day) => (category === 'rencana' ? row.rencana : row.realisasi).includes(day)}
+                                isOn={(row, category, day) => toDayList(category === 'rencana' ? row.rencana : row.realisasi).includes(day)}
                                 onToggle={(row, category, day) => handleToggleDay(rows.indexOf(row), category as 'rencana' | 'realisasi', day)}
                                 details={(row, index) => (
                                     <>
@@ -756,7 +758,7 @@ return null;
                                         <TimelineField label="Target" type="number" value={row.target} onChange={(v) => handleUpdateTarget(index, Number(v))} readOnly={!can_write} />
                                     </>
                                 )}
-                                summary={(row) => `Target ${row.target} · Rencana ${row.rencana.length} · Realisasi ${row.realisasi.length}`}
+                                summary={(row) => `Target ${row.target} · Rencana ${toDayList(row.rencana).length} · Realisasi ${toDayList(row.realisasi).length}`}
                                 onRemove={(_row, index) => handleDeleteRow(index)}
                                 readOnly={!can_write}
                                 editing={mobileEditing}
@@ -768,7 +770,7 @@ return null;
                         <table className="excel-sheet w-full min-w-[1550px] border-collapse text-xs">
                             <thead>
                                 <tr className="border-b border-border bg-[#ed7d31] text-white">
-                                    <th rowSpan={2} className="w-[300px] min-w-[300px] border-r border-[#d96a20] px-3 py-2 text-left font-bold">
+                                    <th rowSpan={2} className="w-[300px] min-w-[300px] whitespace-normal border-r border-[#d96a20] px-3 py-2 text-left font-bold">
                                         URAIAN
                                     </th>
                                     <th rowSpan={2} className="w-28 min-w-28 border-r border-[#d96a20] px-2 py-2 text-center font-bold uppercase">
@@ -812,8 +814,8 @@ return null;
                             </thead>
                             <tbody>
                                 {rows.map((row, rIdx) => {
-                                    const rencList = row.rencana || [];
-                                    const realList = row.realisasi || [];
+                                    const rencList = toDayList(row.rencana);
+                                    const realList = toDayList(row.realisasi);
                                     const target = row.target;
                                     const realisasi = realList.length;
                                     const kinerja = target > 0 ? Math.round((realisasi / target) * 100) : 0;
@@ -823,18 +825,14 @@ return null;
                                             {/* Sub-row 1: RENCANA */}
                                             <tr className="border-b border-border/40 hover:bg-muted/10 transition-colors">
                                                 {/* Uraian (rowSpan 2) */}
-                                                <td rowSpan={2} className="border-r border-border px-3 py-1 font-semibold text-foreground w-[300px] min-w-[300px]">
-                                                    {can_write ? (
-                                                        <input
-                                                            type="text"
-                                                            value={row.uraian}
-                                                            onChange={(e) => handleUpdateUraian(rIdx, e.target.value)}
-                                                            placeholder="Uraian agenda meeting..."
-                                                            className="h-7 w-full rounded border border-input/60 bg-background px-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground/50 hover:border-border focus:border-primary focus:outline-none"
-                                                        />
-                                                    ) : (
-                                                        <span className="px-1">{row.uraian}</span>
-                                                    )}
+                                                <td rowSpan={2} className="border-r border-border px-3 py-1 font-semibold text-foreground w-[300px] min-w-[300px] align-middle whitespace-normal">
+                                                    <AutoWrapCellInput
+                                                        value={row.uraian}
+                                                        onChange={(val) => handleUpdateUraian(rIdx, val)}
+                                                        placeholder="Uraian agenda meeting..."
+                                                        className="font-semibold"
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
 
                                                 {/* Label RENCANA */}

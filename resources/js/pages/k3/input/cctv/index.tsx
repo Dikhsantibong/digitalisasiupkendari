@@ -6,6 +6,7 @@ import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -64,8 +65,25 @@ export default function CctvInput({ unit, filters, rows: initial, options, can_w
  setSaving(true); router.post(cctv.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
 };
 
-    const cell = (i: number, k: keyof Row, type = 'text', placeholder = '') =>
-        can_write ? <Input type={type} value={rows[i][k] as string} onChange={(e) => update(i, k, e.target.value)} className="h-8 text-xs" placeholder={placeholder} /> : <span className="text-xs">{(rows[i][k] as string) || '-'}</span>;
+    const cell = (i: number, k: keyof Row, type = 'text', placeholder = '') => {
+        if (type === 'date') {
+            return can_write ? (
+                <Input type="date" value={rows[i][k] as string} onChange={(e) => update(i, k, e.target.value)} className="h-8 text-xs" placeholder={placeholder} />
+            ) : (
+                <span className="text-xs">{(rows[i][k] as string) || '-'}</span>
+            );
+        }
+
+        return (
+            <AutoWrapCellInput
+                value={rows[i][k] as string}
+                onChange={(val) => update(i, k, val)}
+                placeholder={placeholder}
+                emptyFallback="-"
+                readOnly={!can_write}
+            />
+        );
+    };
 
     const cols = can_write ? 9 : 8;
 
@@ -126,7 +144,7 @@ export default function CctvInput({ unit, filters, rows: initial, options, can_w
                                 {rows.length === 0 ? (
                                     <tr><td colSpan={cols} className="border border-border p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
                                 ) : rows.map((_, i) => (
-                                    <tr key={i} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
+                                    <tr key={i} className="[&>td]:border [&>td]:border-border [&>td]:p-1 [&>td]:align-middle [&>td]:whitespace-normal hover:bg-muted/20">
                                         <td className="text-center">{i + 1}</td>
                                         <td>{cell(i, 'tanggal', 'date')}</td>
                                         <td className="min-w-[80px]">{cell(i, 'no_cctv')}</td>

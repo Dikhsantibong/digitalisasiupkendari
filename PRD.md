@@ -433,8 +433,9 @@ Aturan:
 
 ### 7.5 Administrasi
 
-- **Pengguna** — CRUD user, aktif/nonaktif, penugasan role ke UL/unit, beralih
-  akun (impersonasi) oleh Super Admin.
+- **Pengguna** — CRUD user, aktif/nonaktif, penugasan role ke UL/unit, pengaturan
+  **Regu Shift (A–D)** & **Leader Shift** (tersinkronisasi dua arah dengan Master
+  Pegawai `employees`), serta beralih akun (impersonasi) oleh Super Admin.
 - **Role & Akses** — buat/ubah role non-sistem, matriks permission per menu
   dikelompokkan per grup (§5.3).
 - **Penanda Tangan Laporan** — delegasi jabatan penanda tangan suatu unit ke
@@ -790,16 +791,23 @@ PdM (segera hadir)*.
   (`laporan.resume.show` / `.pdf`), dibuka siapa pun yang boleh melihat laporan
   modul itu, untuk unit yang dapat diaksesnya.
 - Isi (`App\Services\Reports\ModuleResume`, angka sama dengan Dashboard):
-  KPI + **arah** dibanding bulan lalu (▲/▼ %, membaik/memburuk), **Ringkasan
+  identitas & ringkasan eksekutif unit (`meta`), KPI + nilai bulan lalu + rata-rata/puncak
+  + **arah** dibanding bulan lalu (▲/▼ %, membaik/memburuk), **Ringkasan
   Arah Data** (kalimat otomatis: tren KPI, rata-rata 6 bulan, capaian target,
-  temuan penting), **grafik lengkap** — batang berkelompok/bertumpuk, kombinasi
-  batang+garis, garis (dengan batas alarm), donat, gauge, batang horizontal,
-  level tangki, kurva S, heatmap — termasuk grafik **akumulasi** (kumulatif),
-  lalu tabel rincian (dengan kolom kumulatif), Status Laporan dan Kelengkapan
-  Input.
-- **PDF** (dompdf, A4 **landscape**, grafik SVG dari `App\Support\SvgChart`
-  dua per baris) dan **Excel** (landscape; sheet "Resume" kop + KPI + arah data +
-  tabel, sheet "Grafik" berisi semua grafik sebagai gambar).
+  temuan penting), **grafik 3D lengkap** (`App\Services\Reports\Chart3d`, jumlah genap
+  tiap modul agar grid 2 kolom selalu simetris: batang berkelompok/bertumpuk,
+  kombinasi batang+garis, garis dengan batas alarm, pie & donat 3D dengan kartu
+  legenda & placeholder saat nilai 0, gauge dengan kartu evaluasi target, batang
+  horizontal, level tangki, kurva S, heatmap, jam & kapasitas per mesin Operasi,
+  serta grafik **akumulasi** kumulatif), lalu tabel rincian lengkap (termasuk
+  rincian per mesin Operasi, kolom kumulatif, dan baris footer Total/Rata-rata),
+  Status Laporan, dan Kelengkapan Input.
+- **PDF** (dompdf, A4 **landscape**, grafik PNG 3D dua per baris) dan **Excel**
+  (`resources/js/lib/resume-excel.ts`, landscape lebar penuh 10 kolom `A–J` ≈
+  1.730 px: sheet `"Resume"` memuat kop penuh, blok identitas unit, 5 kartu visual
+  KPI + tabel perbandingan KPI, tabel Ringkasan Arah Data ber-badge status,
+  seluruh grafik 3D berbingkai 2 kolom, serta seluruh tabel rincian ber-footer
+  total; sheet `"Data Tabel"` memuat tabel rincian tanpa merge untuk olah data).
 
 ---
 
@@ -1140,10 +1148,13 @@ Aturan data:
 | 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
+| 2026-11-12 | Resume Bulanan semua modul **berbasis grafik 3D** (batang, batang bertumpuk + garis, garis 3D, lingkaran, donat, gauge, batang horizontal; `Chart3d`); grafik di depan, tabel hanya lampiran (Excel: grafik di sheet utama, tabel di sheet "Data Tabel") |
 | 2026-11-09 | **Resume Bulanan** per modul (grafik lengkap, akumulasi, arah data; PDF & Excel landscape) dan **Beranda Manager UL** yang fokus review & pengesahan (§8.10–8.11) |
 | 2026-11-09 | Semua penanda tangan Laporan Project & Pengusahaan (termasuk formulir HAR/K3 & jadwal PdM di dalamnya) dicetak dengan **nama pegawai** dari Data Pegawai (nama terkini bila formulir menyimpan ID pegawai); bila pejabat belum ada → garis kosong, tidak pernah teks jabatan atau nama orang unit lain. "Dibuat Oleh" Pengusahaan Operasi = Staf yang mengajukan |
 | 2026-11-06 | Ekspor Excel: Kondisi Abnormal & Gangguan Operasi (khusus, termasuk kronologi & foto eviden) dan tombol Excel generik untuk semua halaman input yang belum punya ekspor (Abnormal & Gangguan HAR, Material & Peralatan, PTW Operasi, Pengusahaan K3/Operasi, Opname, dll.) |
 | 2026-11-05 | Akses Cepat di beranda HP dihapus; Material & Peralatan ditambahkan di Input Pemeliharaan; Jam Pembangkit + MO & Standby (total 24 jam); menu Operator Opname BBM, Opname Pelumas, Opname kWh terpisah dengan kolom dari user + master Jenis Tangki & kWh Meter; halaman input HP semua modul tanpa deskripsi, filter unit/periode, dan kartu ringkasan |
+| 2026-11-12 | Ekspor Excel & tampilan **Resume Bulanan** diperbaiki menjadi lebar penuh 10 kolom (`A–J`), dilengkapi blok identitas unit, 5 kartu visual KPI + tabel perbandingan KPI (bulan ini, bulan lalu, perubahan %, rata-rata, puncak), tabel Ringkasan Arah Data ber-badge, grafik 3D lengkap & simetris berbingkai (termasuk grafik jam & kapasitas per mesin Operasi serta placeholder 3D saat nilai 0), dan seluruh tabel rincian ber-footer total langsung di sheet `"Resume"` maupun `"Data Tabel"` (§8.11) |
+| 2026-11-12 | Halaman **Pengguna** (`/admin/users`) dan **Master Pegawai** (`/admin/employees`) menampilkan badge & filter **Regu Shift (A–D)** serta **Leader Shift**; form tambah/edit Pengguna dilengkapi pengaturan langsung **Regu Shift** & **Leader Shift** yang tersinkronisasi dua arah dengan `employees`, serta perbaikan dropdown pemilihan role/unit/akun pengguna dengan pencarian instan dan *collision flip* otomatis (§7.4–7.5) |
 
 ---
 

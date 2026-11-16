@@ -17,7 +17,7 @@ class DashboardSupport
      * when there is nothing to compare with (no figure last month).
      *
      * @param  list<float|int>  $spark
-     * @return array{key: string, label: string, value: float|int|null, unit: string|null, format: string, delta: float|null, good: string, spark: list<float>}
+     * @return array{key: string, label: string, value: float|int|null, previous: float|int|null, unit: string|null, format: string, delta: float|null, good: string, spark: list<float>}
      */
     public static function kpi(string $key, string $label, float|int|null $value, ?string $unit, string $format, string $good, float|int|null $previous = null, array $spark = []): array
     {
@@ -29,6 +29,7 @@ class DashboardSupport
             'key' => $key,
             'label' => $label,
             'value' => $value,
+            'previous' => $previous,
             'unit' => $unit,
             'format' => $format,
             'delta' => $delta,

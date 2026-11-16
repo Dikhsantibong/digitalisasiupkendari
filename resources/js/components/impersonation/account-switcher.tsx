@@ -22,8 +22,9 @@ type Chosen = Pick<SwitchableUser, 'id' | 'name' | 'email'>;
 
 /**
  * Pindah Akun (Super Admin): search an account and work as that user. Opened
- * from the user menu, the Kelola Pengguna list or Ctrl+Shift+K. The server
- * decides everything (who may switch, to whom, the password) — this only asks.
+ * from the top header (button or user menu), the Kelola Pengguna list or
+ * Ctrl+Shift+K. The server decides everything (who may switch, to whom, the
+ * password) — this only asks.
  */
 export function AccountSwitcher() {
     const auth = usePage().props.auth as Auth | undefined;

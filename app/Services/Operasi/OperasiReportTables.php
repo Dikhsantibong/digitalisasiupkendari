@@ -10,6 +10,7 @@ use App\Http\Controllers\Operasi\FlmMonitoringController;
 use App\Http\Controllers\Operasi\InventarisController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestPeralatanController;
+use App\Http\Controllers\Operasi\JadwalPerformanceTestController;
 use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\MaterialPeralatanController;
 use App\Http\Controllers\Operasi\MeetingShiftController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Operasi\PembuatanIkController;
 use App\Http\Controllers\Operasi\PengusahaanResourcePembangkitController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
+use App\Models\OperasiInstruksiKerja;
 use App\Models\Unit;
 use App\Services\Reports\Chart3d;
 use App\Services\Reports\ReportWorkflowService;
@@ -46,7 +48,7 @@ class OperasiReportTables
         'pembuatan_ik' => [PembuatanIkController::class, 'Jadwal Pembuatan IK'],
         'data_teknis' => [DataTeknisController::class, 'Jadwal Pembuatan Data Teknis KIT'],
         'blackstart' => [BlackstartController::class, 'Jadwal Pemeriksaan Instalasi Blackstart'],
-        'performance_test' => [JadwalCommissioningTestPeralatanController::class, 'Jadwal Pelaksanaan Performance Test'],
+        'performance_test' => [JadwalPerformanceTestController::class, 'Jadwal Pelaksanaan Performance Test'],
         'commissioning' => [JadwalCommissioningTestController::class, 'Jadwal Commissioning Test Mesin Pembangkit'],
         'kondisi_abnormal' => [KondisiAbnormalController::class, 'Laporan Kondisi Abnormal & Gangguan'],
         'material_peralatan' => [MaterialPeralatanController::class, 'Laporan Material dan Peralatan'],
@@ -72,6 +74,12 @@ class OperasiReportTables
 
         foreach (self::TABLES as $key => [$controller, $title]) {
             [$view, $data] = app($controller)->pdfView($unit, $month, $year);
+            if ($key === 'performance_test' && empty($data['has_saved'])) {
+                [$fallbackView, $fallbackData] = app(JadwalCommissioningTestPeralatanController::class)->pdfView($unit, $month, $year);
+                if (! empty($fallbackData['has_saved'])) {
+                    [$view, $data] = [$fallbackView, $fallbackData];
+                }
+            }
             $payloads[$key] = $data;
             $scope = 'op-v-'.Str::slug(str_replace('.', '-', $view));
             $fragment = $this->fragments->extract(View::make($view, $data)->render(), $scope);
@@ -82,7 +90,7 @@ class OperasiReportTables
         return [
             'tables' => $tables,
             'styles' => implode("\n", $styles),
-            'resume' => $this->resume($payloads, $month, $year, $engineDaysFilled),
+            'resume' => $this->resume($unit, $payloads, $month, $year, $engineDaysFilled),
         ];
     }
 
@@ -94,19 +102,41 @@ class OperasiReportTables
      * @param  array<string, array<string, mixed>>  $payloads  table key => pdfView data
      * @return array{rows: list<array{no: int, deskripsi: string, target: int, realisasi: int, analisa: string}>, summary: array{target: float, realisasi: float, analisa: string}, charts: array{pie: string, bar: string}}
      */
-    private function resume(array $payloads, int $month, int $year, int $engineDaysFilled): array
+    private function resume(Unit $unit, array $payloads, int $month, int $year, int $engineDaysFilled): array
     {
         $rows = fn (string $key): array => array_values((array) ($payloads[$key]['rows'] ?? []));
+        $hasSaved = fn (string $key): bool => (bool) ($payloads[$key]['has_saved'] ?? true);
         $sum = fn (array $list, callable $value): int => (int) array_sum(array_map($value, $list));
-        $flm = fn (string $section): array => array_filter($rows('flm'), fn (array $r): bool => ($r['section'] ?? '') === $section && ($r['row_type'] ?? '') === 'mark');
+        $flm = fn (string $section): array => $hasSaved('flm')
+            ? array_filter($rows('flm'), fn (array $r): bool => ($r['section'] ?? '') === $section && ($r['row_type'] ?? '') === 'mark')
+            : [];
         $dayPlan = fn (string $key): array => [
-            $sum($rows($key), fn (array $r): int => (int) ($r['target'] ?? $r['rencana_count'] ?? 0)),
+            $sum($rows($key), fn (array $r): int => (int) (($r['target'] ?? 0) > 0 ? $r['target'] : ($r['rencana_count'] ?? 0))),
             $sum($rows($key), fn (array $r): int => (int) ($r['realisasi_count'] ?? 0)),
         ];
-        $thisMonth = fn (string $key): int => count(array_filter($rows($key), fn (array $r): bool => ! empty(($r['months'] ?? [])[(string) $month] ?? null)));
+        $thisMonth = fn (string $key, string $field = 'months'): int => count(array_filter(
+            $rows($key),
+            fn (array $r): bool => trim((string) (($r[$field] ?? [])[(string) $month] ?? '')) !== '',
+        ));
         $weeks = fn (array $keys): int => count(array_filter((array) $keys, fn ($k): bool => str_starts_with((string) $k, $month.'-')));
         $meeting = array_filter($rows('meeting_shift'), fn (array $r): bool => ($r['row_type'] ?? '') !== 'shift');
-        $performance = $sum($rows('performance_test'), fn (array $r): int => $weeks([...($r['beban_50'] ?? []), ...($r['beban_75'] ?? []), ...($r['beban_100'] ?? [])]) > 0 ? 1 : 0);
+        $performanceRows = $hasSaved('performance_test') ? $rows('performance_test') : [];
+        $performanceTarget = $sum($performanceRows, fn (array $r): int => $weeks([...($r['beban_50'] ?? []), ...($r['beban_75'] ?? []), ...($r['beban_100'] ?? [])]) > 0 ? 1 : 0);
+        $performanceRealisasi = $sum($performanceRows, fn (array $r): int => $weeks($r['realisasi'] ?? []) > 0 ? 1 : 0);
+        $ikRealisasi = OperasiInstruksiKerja::query()
+            ->where('unit_id', $unit->id)
+            ->where(function ($q) use ($year, $month): void {
+                $q->where(function ($sub) use ($year, $month): void {
+                    $sub->whereNotNull('tanggal')
+                        ->whereYear('tanggal', $year)
+                        ->whereMonth('tanggal', $month);
+                })->orWhere(function ($sub) use ($year, $month): void {
+                    $sub->whereNull('tanggal')
+                        ->whereYear('created_at', $year)
+                        ->whereMonth('created_at', $month);
+                });
+            })
+            ->count();
         $daysInMonth = (int) Carbon::create($year, $month, 1)->daysInMonth;
 
         $activities = [
@@ -115,13 +145,13 @@ class OperasiReportTables
             'Jadwal 5S5R' => $dayPlan('program_5s5r'),
             'Jadwal Meeting Shift Operator' => [$sum($meeting, fn (array $r): int => (int) ($r['target'] ?? 0)), $sum($meeting, fn (array $r): int => (int) ($r['realisasi'] ?? 0))],
             'Jadwal Inventarisasi Tools & Material Operasi' => $dayPlan('inventarisasi'),
-            'Jadwal Instruksi Kerja (IK)' => [$thisMonth('pembuatan_ik'), $thisMonth('pembuatan_ik')],
-            'Jadwal Pembuatan Data Teknis' => [$thisMonth('data_teknis'), $thisMonth('data_teknis')],
+            'Jadwal Instruksi Kerja (IK)' => [$thisMonth('pembuatan_ik'), $ikRealisasi],
+            'Jadwal Pembuatan Data Teknis' => [$thisMonth('data_teknis'), $thisMonth('data_teknis', 'realisasi')],
             'Jadwal Pemeriksaan Instalasi Blackstart' => [
                 $sum($rows('blackstart'), fn (array $r): int => $weeks($r['rencana'] ?? [])),
                 $sum($rows('blackstart'), fn (array $r): int => $weeks($r['realisasi'] ?? [])),
             ],
-            'Jadwal Pelaksanaan Performance Test Mesin Pembangkit' => [$performance, $performance],
+            'Jadwal Pelaksanaan Performance Test Mesin Pembangkit' => [$performanceTarget, $performanceRealisasi],
             'Input Data Aplikasi Pembangkit' => [$daysInMonth, $engineDaysFilled],
         ];
 

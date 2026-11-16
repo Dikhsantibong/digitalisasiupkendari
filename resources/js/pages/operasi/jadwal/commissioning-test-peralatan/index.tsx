@@ -15,6 +15,7 @@ import {
 import { Fragment, useMemo, useState } from 'react';
 import { MobileTimelineForm, TimelineField, weekColumnOf, weekKeyOf, YEAR_WEEK_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -778,7 +779,7 @@ count++;
                                     <th
                                         rowSpan={2}
                                         className="border border-black px-3 py-1.5 text-left text-[11px] dark:border-white"
-                                        style={{ minWidth: '180px' }}
+                                        style={{ minWidth: '220px' }}
                                     >
                                         PERALATAN PEMBANGKIT
                                     </th>
@@ -850,29 +851,13 @@ count++;
                                                 >
                                                     {row.no_urut || rIdx + 1}
                                                 </td>
-                                                <td
-                                                    rowSpan={3}
-                                                    className="border border-black px-2 py-1 text-left font-semibold dark:border-white"
-                                                >
-                                                    {can_write ? (
-                                                        <Input
-                                                            value={
-                                                                row.nama_peralatan
-                                                            }
-                                                            onChange={(e) =>
-                                                                handleUpdateName(
-                                                                    rIdx,
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            className="h-7 text-xs font-semibold uppercase"
-                                                        />
-                                                    ) : (
-                                                        <span className="uppercase">
-                                                            {row.nama_peralatan}
-                                                        </span>
-                                                    )}
+                                                <td rowSpan={2} className="min-w-[220px] border border-black p-1 text-left align-middle whitespace-normal dark:border-white">
+                                                    <AutoWrapCellInput
+                                                        value={row.nama_peralatan}
+                                                        onChange={(val) => handleUpdateName(rIdx, val)}
+                                                        className="font-semibold uppercase"
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
                                                 <td className="border border-black bg-muted/20 px-1 py-1 font-semibold dark:border-white">
                                                     50%

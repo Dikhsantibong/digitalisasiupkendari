@@ -18,6 +18,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -764,7 +765,7 @@ return;
                                     <tr className="print-orange-header border-b border-border bg-[#ed7d31] font-bold text-black">
                                         <th
                                             rowSpan={2}
-                                            style={{ minWidth: '170px' }}
+                                            style={{ minWidth: '240px' }}
                                             className="border-r border-border p-2 text-left align-middle"
                                         >
                                             <div className="flex items-center gap-1.5">
@@ -856,22 +857,25 @@ return;
                                             <tr className="border-b border-border transition-colors hover:bg-muted/10">
                                                 <td
                                                     rowSpan={2}
-                                                    className="border-r border-border bg-background p-2 text-left align-middle"
+                                                    className="min-w-60 border-r border-border bg-background p-2 text-left align-middle whitespace-normal"
                                                 >
                                                     {can_write &&
                                                     calculatedRows.length > 1 ? (
                                                         <div className="flex items-center gap-1.5">
-                                                            <input
-                                                                type="text"
-                                                                value={row.uraian}
-                                                                onChange={(e) =>
+                                                            <AutoWrapCellInput
+                                                                value={
+                                                                    row.uraian
+                                                                }
+                                                                onChange={(
+                                                                    val,
+                                                                ) =>
                                                                     handleUraianChange(
                                                                         rIndex,
-                                                                        e.target
-                                                                            .value,
+                                                                        val,
                                                                     )
                                                                 }
-                                                                className="w-full rounded border border-border bg-transparent px-2 py-1 text-xs font-semibold text-foreground focus:border-primary focus:outline-hidden"
+                                                                wrapperClassName="flex-1"
+                                                                className="rounded border border-border px-2 py-1 font-semibold"
                                                             />
                                                             <Button
                                                                 variant="ghost"
@@ -888,9 +892,11 @@ return;
                                                             </Button>
                                                         </div>
                                                     ) : (
-                                                        <span className="font-semibold text-foreground">
-                                                            {row.uraian}
-                                                        </span>
+                                                        <AutoWrapCellInput
+                                                            value={row.uraian}
+                                                            readOnly
+                                                            className="font-semibold"
+                                                        />
                                                     )}
                                                 </td>
                                                 <td className="border-r border-border bg-muted/10 p-1.5 text-center font-semibold text-muted-foreground">

@@ -55,8 +55,8 @@ class DataTeknisController extends Controller
         $saved = OperasiDataTeknis::query()->where('unit_id', $unit->id)->where('year', $year)->orderBy('sort_order')->orderBy('id')->get();
 
         $rows = $saved->isEmpty()
-            ? collect(self::DEFAULTS)->map(fn (array $d): array => ['id' => null, 'nama' => $d['nama'], 'pic' => $d['pic'], 'months' => []])->all()
-            : $saved->map(fn (OperasiDataTeknis $r): array => ['id' => $r->id, 'nama' => $r->nama ?? '', 'pic' => $r->pic ?? '', 'months' => $r->months ?? []])->all();
+            ? collect(self::DEFAULTS)->map(fn (array $d): array => ['id' => null, 'nama' => $d['nama'], 'pic' => $d['pic'], 'months' => [], 'realisasi' => []])->all()
+            : $saved->map(fn (OperasiDataTeknis $r): array => ['id' => $r->id, 'nama' => $r->nama ?? '', 'pic' => $r->pic ?? '', 'months' => $r->months ?? [], 'realisasi' => $r->realisasi ?? []])->all();
 
         return Inertia::render('operasi/jadwal/pembuatan-data-teknis/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
@@ -81,6 +81,7 @@ class DataTeknisController extends Controller
             'rows.*.nama' => ['nullable', 'string', 'max:255'],
             'rows.*.pic' => ['nullable', 'string', 'max:255'],
             'rows.*.months' => ['nullable', 'array'],
+            'rows.*.realisasi' => ['nullable', 'array'],
         ]);
 
         $year = (int) $validated['year'];
@@ -95,6 +96,7 @@ class DataTeknisController extends Controller
                 OperasiDataTeknis::query()->create([
                     'unit_id' => $unit->id, 'year' => $year, 'no_urut' => $i + 1,
                     'nama' => $row['nama'], 'pic' => $row['pic'] ?? null, 'months' => $clean($row['months'] ?? []),
+                    'realisasi' => $clean($row['realisasi'] ?? []),
                     'sort_order' => $i, 'input_by' => $user->id,
                 ]);
             }
@@ -132,12 +134,16 @@ class DataTeknisController extends Controller
         $rows = OperasiDataTeknis::query()->where('unit_id', $unit->id)->where('year', $year)
             ->orderBy('sort_order')->orderBy('id')->get()
             ->map(fn (OperasiDataTeknis $r): array => [
-                'nama' => $r->nama ?? '', 'pic' => $r->pic ?? '', 'months' => $r->months ?? [],
+                'nama' => $r->nama ?? '',
+                'pic' => $r->pic ?? '',
+                'months' => $r->months ?? [],
+                'realisasi' => $r->realisasi ?? [],
                 'jumlah' => count(array_filter($r->months ?? [], fn ($v): bool => trim((string) $v) !== '')),
+                'jumlah_realisasi' => count(array_filter($r->realisasi ?? [], fn ($v): bool => trim((string) $v) !== '')),
             ])->all();
 
         return ['operasi.jadwal.pembuatan-pdf', [
-            'unit' => $unit, 'year' => $year, 'rows' => $rows,
+            'unit' => $unit, 'year' => $year, 'rows' => $rows, 'has_saved' => $rows !== [],
             'barTitle' => 'JADWAL PEMBUATAN DATA TEKNIS PEMBANGKIT', 'namaHeader' => 'DATA TEKNIS', 'sectionTitle' => 'A. PEMBUATAN DATA TEKNIS',
             ...JadwalPdf::logos(),
         ]];

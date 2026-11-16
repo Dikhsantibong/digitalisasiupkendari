@@ -1,14 +1,17 @@
 import { Form } from '@inertiajs/react';
-import { Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Search, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import RoleAssignmentController from '@/actions/App/Http/Controllers/Admin/RoleAssignmentController';
 import { EmptyState } from '@/components/empty-state';
 import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
@@ -38,6 +41,12 @@ type Props = {
     canAssign: boolean;
 };
 
+const SCOPE_GROUPS: { key: string; label: string }[] = [
+    { key: 'unit', label: 'Cakupan Unit Pembangkit' },
+    { key: 'service_unit', label: 'Cakupan Unit Layanan (UL)' },
+    { key: 'global', label: 'Cakupan Global (UP Kendari)' },
+];
+
 /**
  * Grants and revokes a user's roles. The scope field shown depends on the role
  * chosen, mirroring the rule enforced on the server.
@@ -51,10 +60,60 @@ export function RoleAssignmentManager({
     canAssign,
 }: Props) {
     const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+    const [selectedUnitId, setSelectedUnitId] = useState<string>('');
+    const [selectedServiceUnitId, setSelectedServiceUnitId] =
+        useState<string>('');
+    const [roleSearch, setRoleSearch] = useState<string>('');
+    const [unitSearch, setUnitSearch] = useState<string>('');
 
     const selectedRole = roles.find(
         (role) => String(role.id) === selectedRoleId,
     );
+
+    const assignedRoleIds = useMemo(
+        () => new Set(assignments.map((a) => a.role_id)),
+        [assignments],
+    );
+
+    const filteredRolesByGroup = useMemo(() => {
+        const keyword = roleSearch.trim().toLowerCase();
+
+        return SCOPE_GROUPS.map((group) => ({
+            ...group,
+            items: roles.filter(
+                (role) =>
+                    role.scope === group.key &&
+                    (String(role.id) === selectedRoleId ||
+                        keyword === '' ||
+                        role.display_name.toLowerCase().includes(keyword) ||
+                        role.scope_label.toLowerCase().includes(keyword)),
+            ),
+        })).filter((group) => group.items.length > 0);
+    }, [roles, roleSearch, selectedRoleId]);
+
+    const filteredUnits = useMemo(() => {
+        const keyword = unitSearch.trim().toLowerCase();
+
+        return units.filter(
+            (unit) =>
+                String(unit.id) === selectedUnitId ||
+                keyword === '' ||
+                unit.name.toLowerCase().includes(keyword),
+        );
+    }, [units, unitSearch, selectedUnitId]);
+
+    const handleRoleChange = (value: string) => {
+        setSelectedRoleId(value);
+        setSelectedUnitId('');
+        setSelectedServiceUnitId('');
+    };
+
+    const isScopeReady =
+        selectedRole !== undefined &&
+        (selectedRole.scope === 'global' ||
+            (selectedRole.scope === 'unit' && selectedUnitId !== '') ||
+            (selectedRole.scope === 'service_unit' &&
+                selectedServiceUnitId !== ''));
 
     return (
         <section className="flex flex-col gap-3">
@@ -131,6 +190,11 @@ export function RoleAssignmentManager({
                 <Form
                     {...RoleAssignmentController.store.form(userId)}
                     options={{ preserveScroll: true }}
+                    onSuccess={() => {
+                        setSelectedRoleId('');
+                        setSelectedUnitId('');
+                        setSelectedServiceUnitId('');
+                    }}
                     resetOnSuccess
                     className="flex flex-col gap-4 rounded-md border border-border bg-card p-4"
                 >
@@ -149,23 +213,84 @@ export function RoleAssignmentManager({
                                     <Select
                                         name="role_id"
                                         value={selectedRoleId}
-                                        onValueChange={setSelectedRoleId}
+                                        onValueChange={handleRoleChange}
+                                        onOpenChange={(open) => {
+                                            if (!open) {
+                                                setRoleSearch('');
+                                            }
+                                        }}
                                     >
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Pilih role" />
                                         </SelectTrigger>
-                                        <SelectContent>
-                                            {roles.map((role) => (
-                                                <SelectItem
-                                                    key={role.id}
-                                                    value={String(role.id)}
-                                                >
-                                                    {role.display_name}
-                                                    <span className="ml-1 text-xs text-muted-foreground">
-                                                        — {role.scope_label}
-                                                    </span>
-                                                </SelectItem>
-                                            ))}
+                                        <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-[18rem]">
+                                            <div
+                                                className="sticky top-0 z-10 bg-popover p-1.5 pb-1"
+                                                onKeyDown={(e) =>
+                                                    e.stopPropagation()
+                                                }
+                                            >
+                                                <div className="relative">
+                                                    <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                                                    <Input
+                                                        value={roleSearch}
+                                                        onChange={(e) =>
+                                                            setRoleSearch(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        placeholder="Cari nama role..."
+                                                        className="h-8 pl-8 text-xs"
+                                                    />
+                                                </div>
+                                            </div>
+                                            {filteredRolesByGroup.length ===
+                                            0 ? (
+                                                <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                                                    Role tidak ditemukan.
+                                                </div>
+                                            ) : (
+                                                filteredRolesByGroup.map(
+                                                    (group) => (
+                                                        <SelectGroup
+                                                            key={group.key}
+                                                        >
+                                                            <SelectLabel className="bg-muted/50 font-semibold text-foreground">
+                                                                {group.label}
+                                                            </SelectLabel>
+                                                            {group.items.map(
+                                                                (role) => (
+                                                                    <SelectItem
+                                                                        key={
+                                                                            role.id
+                                                                        }
+                                                                        value={String(
+                                                                            role.id,
+                                                                        )}
+                                                                    >
+                                                                        <span>
+                                                                            {
+                                                                                role.display_name
+                                                                            }
+                                                                        </span>
+                                                                        <span className="ml-1 text-xs text-muted-foreground">
+                                                                            —{' '}
+                                                                            {
+                                                                                role.scope_label
+                                                                            }
+                                                                            {assignedRoleIds.has(
+                                                                                role.id,
+                                                                            )
+                                                                                ? ' (aktif)'
+                                                                                : ''}
+                                                                        </span>
+                                                                    </SelectItem>
+                                                                ),
+                                                            )}
+                                                        </SelectGroup>
+                                                    ),
+                                                )
+                                            )}
                                         </SelectContent>
                                     </Select>
                                 </FormField>
@@ -176,19 +301,59 @@ export function RoleAssignmentManager({
                                         required
                                         error={errors.unit_id}
                                     >
-                                        <Select name="unit_id">
+                                        <Select
+                                            name="unit_id"
+                                            value={selectedUnitId}
+                                            onValueChange={setSelectedUnitId}
+                                            onOpenChange={(open) => {
+                                                if (!open) {
+                                                    setUnitSearch('');
+                                                }
+                                            }}
+                                        >
                                             <SelectTrigger className="w-full">
-                                                <SelectValue placeholder="Pilih unit" />
+                                                <SelectValue placeholder="Pilih unit pembangkit" />
                                             </SelectTrigger>
-                                            <SelectContent>
-                                                {units.map((unit) => (
-                                                    <SelectItem
-                                                        key={unit.id}
-                                                        value={String(unit.id)}
-                                                    >
-                                                        {unit.name}
-                                                    </SelectItem>
-                                                ))}
+                                            <SelectContent className="w-[var(--radix-select-trigger-width)] min-w-[16rem]">
+                                                <div
+                                                    className="sticky top-0 z-10 bg-popover p-1.5 pb-1"
+                                                    onKeyDown={(e) =>
+                                                        e.stopPropagation()
+                                                    }
+                                                >
+                                                    <div className="relative">
+                                                        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                                                        <Input
+                                                            value={unitSearch}
+                                                            onChange={(e) =>
+                                                                setUnitSearch(
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            placeholder="Cari unit pembangkit..."
+                                                            className="h-8 pl-8 text-xs"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {filteredUnits.length === 0 ? (
+                                                    <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                                                        Unit tidak ditemukan.
+                                                    </div>
+                                                ) : (
+                                                    filteredUnits.map(
+                                                        (unit) => (
+                                                            <SelectItem
+                                                                key={unit.id}
+                                                                value={String(
+                                                                    unit.id,
+                                                                )}
+                                                            >
+                                                                {unit.name}
+                                                            </SelectItem>
+                                                        ),
+                                                    )
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </FormField>
@@ -200,7 +365,13 @@ export function RoleAssignmentManager({
                                         required
                                         error={errors.service_unit_id}
                                     >
-                                        <Select name="service_unit_id">
+                                        <Select
+                                            name="service_unit_id"
+                                            value={selectedServiceUnitId}
+                                            onValueChange={
+                                                setSelectedServiceUnitId
+                                            }
+                                        >
                                             <SelectTrigger className="w-full">
                                                 <SelectValue placeholder="Pilih unit layanan" />
                                             </SelectTrigger>
@@ -235,9 +406,7 @@ export function RoleAssignmentManager({
                             <div className="flex justify-end">
                                 <Button
                                     type="submit"
-                                    disabled={
-                                        processing || selectedRoleId === ''
-                                    }
+                                    disabled={processing || !isScopeReady}
                                 >
                                     <Plus className="size-4" />
                                     Tugaskan Role

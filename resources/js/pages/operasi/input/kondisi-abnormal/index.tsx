@@ -24,6 +24,7 @@ import {
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -744,18 +745,16 @@ function AbnormalSheet({
         const error = errorOf(index, key);
 
         return (
-            <td className={cn(sheetTd, error && 'bg-destructive/5 ring-1 ring-destructive ring-inset')} title={error}>
-                {row.canEdit && canWrite ? (
-                    <Textarea
-                        value={row[key]}
-                        onChange={(e) => update(index, { [key]: e.target.value })}
-                        rows={1}
-                        placeholder={placeholder}
-                        className={cn(sheetCell, 'resize-y')}
-                    />
-                ) : (
-                    <div className="px-1.5 py-1.5 text-xs whitespace-pre-line">{row[key] || '–'}</div>
-                )}
+            <td className={cn(sheetTd, 'p-1 align-middle whitespace-normal', error && 'bg-destructive/5 ring-1 ring-destructive ring-inset')} title={error}>
+                <AutoWrapCellInput
+                    value={row[key]}
+                    onChange={(val) => update(index, { [key]: val })}
+                    placeholder={placeholder}
+                    emptyFallback="–"
+                    allowNewlines
+                    className="min-h-7 px-1 py-1 focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+                    readOnly={!(row.canEdit && canWrite)}
+                />
             </td>
         );
     };
@@ -841,13 +840,21 @@ function AbnormalSheet({
                                                 placeholder="Pilih…"
                                                 className="h-8"
                                             />
+                                        ) : field === 'peralatan' ? (
+                                            <div className="p-1">
+                                                <AutoWrapCellInput
+                                                    value={row[field]}
+                                                    onChange={(val) => update(index, { [field]: val })}
+                                                    placeholder="Mis. cylinder head"
+                                                    className="min-h-7 px-1 py-1 focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+                                                />
+                                            </div>
                                         ) : (
                                             <Input
-                                                type={field === 'peralatan' ? 'text' : 'time'}
+                                                type="time"
                                                 value={row[field]}
                                                 onChange={(e) => update(index, { [field]: e.target.value })}
-                                                placeholder={field === 'peralatan' ? 'Mis. cylinder head' : undefined}
-                                                className={cn(sheetCell, 'h-8', field !== 'peralatan' && 'text-center')}
+                                                className={cn(sheetCell, 'h-8 text-center')}
                                             />
                                         )}
                                     </td>

@@ -15,6 +15,7 @@ import {
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -402,14 +403,14 @@ return;
                                 <thead className="print-thead bg-muted/60 dark:bg-muted/30">
                                     <tr>
                                         <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
-                                        <th rowSpan={2} className="w-56 min-w-48 border border-black p-1 text-left font-bold text-foreground">Uraian Pelaporan</th>
+                                        <th rowSpan={2} className="w-56 min-w-48 whitespace-normal border border-black p-1 text-left font-bold text-foreground">Uraian Pelaporan</th>
                                         <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">PIC</th>
                                         <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">Status</th>
                                         <th colSpan={days.length} className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase">Time line</th>
                                         <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
                                         <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">REALISASI</th>
                                         <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">KINERJA</th>
-                                        <th rowSpan={2} className="w-40 min-w-32 border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
+                                        <th rowSpan={2} className="w-40 min-w-32 whitespace-normal border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
                                     </tr>
                                     <tr>
                                         {days.map((d) => (
@@ -437,36 +438,29 @@ return;
                                                     {/* RENC */}
                                                     <tr className="transition-colors hover:bg-muted/10">
                                                         <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
-                                                        <td rowSpan={2} className="border border-black p-1 text-left align-top text-[11px] text-foreground">{row.uraian}</td>
-                                                        <td rowSpan={2} className="border border-black p-1 text-center align-top">
-                                                            {can_write ? (
-                                                                <input
-                                                                    type="text"
-                                                                    value={row.pic || ''}
-                                                                    onChange={(e) => updateField(row.activity_type_id, 'pic', e.target.value)}
-                                                                    className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                />
-                                                            ) : (
-                                                                <span className="text-xs">{row.pic || '-'}</span>
-                                                            )}
+                                                        <td rowSpan={2} className="min-w-48 border border-black p-1 text-left align-middle text-[11px] whitespace-normal [overflow-wrap:anywhere] text-foreground">{row.uraian}</td>
+                                                        <td rowSpan={2} className="border border-black p-1 text-center align-middle whitespace-normal">
+                                                            <AutoWrapCellInput
+                                                                value={row.pic || ''}
+                                                                onChange={(val) => updateField(row.activity_type_id, 'pic', val)}
+                                                                className="text-center"
+                                                                emptyFallback="-"
+                                                                readOnly={!can_write}
+                                                            />
                                                         </td>
                                                         <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
                                                         {dayCells(row, 'rencana')}
                                                         <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
                                                         <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
                                                         <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{kinerja}%</td>
-                                                        <td rowSpan={2} className="border border-black p-1 text-left align-top">
-                                                            {can_write ? (
-                                                                <input
-                                                                    type="text"
-                                                                    value={row.keterangan || ''}
-                                                                    onChange={(e) => updateField(row.activity_type_id, 'keterangan', e.target.value)}
-                                                                    placeholder="Catatan…"
-                                                                    className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                />
-                                                            ) : (
-                                                                <span className="px-1 text-xs">{row.keterangan || '-'}</span>
-                                                            )}
+                                                        <td rowSpan={2} className="min-w-32 border border-black p-1 text-left align-middle whitespace-normal">
+                                                            <AutoWrapCellInput
+                                                                value={row.keterangan || ''}
+                                                                onChange={(val) => updateField(row.activity_type_id, 'keterangan', val)}
+                                                                placeholder="Catatan…"
+                                                                emptyFallback="-"
+                                                                readOnly={!can_write}
+                                                            />
                                                         </td>
                                                     </tr>
                                                     {/* REAL */}

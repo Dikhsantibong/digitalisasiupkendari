@@ -6,6 +6,7 @@ import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -198,8 +199,8 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
                                                 return (
                                                     <tr key={row._key} className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
                                                         <td className="text-center">{li + 1}</td>
-                                                        <td className="min-w-[220px]">
-                                                            {can_write ? <Input value={row.nama_peralatan} onChange={(e) => updateText(row._key, 'nama_peralatan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.nama_peralatan}</span>}
+                                                        <td className="min-w-[220px] align-middle whitespace-normal">
+                                                            <AutoWrapCellInput value={row.nama_peralatan} onChange={(val) => updateText(row._key, 'nama_peralatan', val)} readOnly={!can_write} />
                                                         </td>
                                                         <td className="text-center">
                                                             {can_write ? <Input type="number" min="0" value={row.jml_total || ''} onChange={(e) => updateNum(row._key, 'jml_total', e.target.value)} className="h-8 w-14 text-center text-xs" placeholder="0" /> : row.jml_total}
@@ -209,9 +210,9 @@ export default function EmergencyFacilityInput({ unit, filters, groups, rows: in
                                                         </td>
                                                         <td className="text-center font-medium">{notReady}</td>
                                                         <td className={`text-center font-bold ${pct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{row.jml_total > 0 ? `${pct}%` : '-'}</td>
-                                                        <td className="min-w-[160px]">{can_write ? <Input value={row.lokasi} onChange={(e) => updateText(row._key, 'lokasi', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.lokasi || '-'}</span>}</td>
-                                                        <td className="min-w-[140px]">{can_write ? <Input value={row.kendala} onChange={(e) => updateText(row._key, 'kendala', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.kendala || '-'}</span>}</td>
-                                                        <td className="min-w-[140px]">{can_write ? <Input value={row.tindak_lanjut} onChange={(e) => updateText(row._key, 'tindak_lanjut', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.tindak_lanjut || '-'}</span>}</td>
+                                                        <td className="min-w-[160px] align-middle whitespace-normal"><AutoWrapCellInput value={row.lokasi} onChange={(val) => updateText(row._key, 'lokasi', val)} emptyFallback="-" readOnly={!can_write} /></td>
+                                                        <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.kendala} onChange={(val) => updateText(row._key, 'kendala', val)} emptyFallback="-" readOnly={!can_write} /></td>
+                                                        <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.tindak_lanjut} onChange={(val) => updateText(row._key, 'tindak_lanjut', val)} emptyFallback="-" readOnly={!can_write} /></td>
                                                         {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(row._key)}><Trash2 className="size-4" /></Button></td>}
                                                     </tr>
                                                 );

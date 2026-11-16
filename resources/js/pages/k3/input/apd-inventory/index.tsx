@@ -6,6 +6,7 @@ import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -203,16 +204,16 @@ lastSub = row.subkategori;
                                                         )}
                                                         <tr className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
                                                             <td className="text-center">{n}</td>
-                                                            <td className="min-w-[220px] pl-3">
-                                                                {can_write ? <Input value={row.nama} onChange={(e) => updateText(row._key, 'nama', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.nama}</span>}
+                                                            <td className="min-w-[220px] pl-3 align-middle whitespace-normal">
+                                                                <AutoWrapCellInput value={row.nama} onChange={(val) => updateText(row._key, 'nama', val)} readOnly={!can_write} />
                                                             </td>
                                                             <td className="text-center">
                                                                 {can_write ? <Input type="number" min="0" value={row.jumlah || ''} onChange={(e) => updateNum(row._key, e.target.value)} className="h-8 w-16 text-center text-xs" placeholder="0" /> : row.jumlah}
                                                             </td>
-                                                            <td className="min-w-[80px]">{can_write ? <Input value={row.satuan} onChange={(e) => updateText(row._key, 'satuan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.satuan}</span>}</td>
-                                                            <td className="min-w-[140px]">{can_write ? <Input value={row.lokasi} onChange={(e) => updateText(row._key, 'lokasi', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.lokasi || '-'}</span>}</td>
-                                                            <td className="min-w-[140px]">{can_write ? <Input value={row.keterangan} onChange={(e) => updateText(row._key, 'keterangan', e.target.value)} className="h-8 text-xs" /> : <span className="text-xs">{row.keterangan || '-'}</span>}</td>
-                                                            <td className="min-w-[140px]">{can_write ? <Input value={row.foto} onChange={(e) => updateText(row._key, 'foto', e.target.value)} className="h-8 text-xs" placeholder="https://…" /> : <span className="text-xs">{row.foto || '-'}</span>}</td>
+                                                            <td className="min-w-[80px] align-middle whitespace-normal"><AutoWrapCellInput value={row.satuan} onChange={(val) => updateText(row._key, 'satuan', val)} readOnly={!can_write} /></td>
+                                                            <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.lokasi} onChange={(val) => updateText(row._key, 'lokasi', val)} emptyFallback="-" readOnly={!can_write} /></td>
+                                                            <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.keterangan} onChange={(val) => updateText(row._key, 'keterangan', val)} emptyFallback="-" readOnly={!can_write} /></td>
+                                                            <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.foto} onChange={(val) => updateText(row._key, 'foto', val)} placeholder="https://…" emptyFallback="-" readOnly={!can_write} /></td>
                                                             {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(row._key)}><Trash2 className="size-4" /></Button></td>}
                                                         </tr>
                                                     </Fragment>

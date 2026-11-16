@@ -3,6 +3,7 @@ import { ArrowLeft, Download, FileSpreadsheet, Plus, Printer, RotateCcw, Save, T
 import { useState } from 'react';
 import { MobileTimelineForm, TimelineField, YEAR_MONTH_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -197,8 +198,8 @@ return H[r]?.[c] === 1 ? done : SPECS.cell;
                         <thead>
                             <tr>
                                 <th rowSpan={2} className={`${th} w-10`}>No</th>
-                                <th rowSpan={2} className={`${th} min-w-64 text-left`}>Instruksi Kerja</th>
-                                <th rowSpan={2} className={`${th} min-w-32`}>PIC Pembuat</th>
+                                <th rowSpan={2} className={`${th} min-w-64 whitespace-normal text-left`}>Instruksi Kerja</th>
+                                <th rowSpan={2} className={`${th} min-w-32 whitespace-normal`}>PIC Pembuat</th>
                                 <th colSpan={12} className={th}>Bulan</th>
                                 <th rowSpan={2} className={th}>Jumlah</th>
                                 {can_write && <th rowSpan={2} className={`${th} no-print`}>Aksi</th>}
@@ -210,8 +211,8 @@ return H[r]?.[c] === 1 ? done : SPECS.cell;
                             {rows.map((r, i) => (
                                 <tr key={r._key} className="hover:bg-muted/10">
                                     <td className="border border-black p-1 text-center">{i + 1}</td>
-                                    <td className="border border-black p-1 text-left">{can_write ? <input value={r.nama} onChange={(e) => setField(r._key, 'nama', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" placeholder="Nama IK…" /> : <span className="text-xs">{r.nama}</span>}</td>
-                                    <td className="border border-black p-1 text-center">{can_write ? <input value={r.pic} onChange={(e) => setField(r._key, 'pic', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" /> : <span className="text-xs">{r.pic}</span>}</td>
+                                    <td className="min-w-64 border border-black p-1 text-left align-middle whitespace-normal"><AutoWrapCellInput value={r.nama} onChange={(val) => setField(r._key, 'nama', val)} placeholder="Nama IK…" readOnly={!can_write} /></td>
+                                    <td className="min-w-32 border border-black p-1 text-center align-middle whitespace-normal"><AutoWrapCellInput value={r.pic} onChange={(val) => setField(r._key, 'pic', val)} className="text-center" readOnly={!can_write} /></td>
                                     {MONTHS.map((_, mi) => {
  const m = mi + 1; const on = !!r.months[String(m)];
 

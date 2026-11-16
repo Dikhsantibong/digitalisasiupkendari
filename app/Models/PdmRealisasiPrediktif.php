@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DayList;
 use App\Models\Concerns\BelongsToUnit;
 use Database\Factories\PdmRealisasiPrediktifFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -46,8 +47,8 @@ class PdmRealisasiPrediktif extends Model
             'year' => 'integer',
             'month' => 'integer',
             'no_urut' => 'integer',
-            'rencana' => 'array',
-            'realisasi' => 'array',
+            'rencana' => DayList::class,
+            'realisasi' => DayList::class,
             'durasi' => 'decimal:2',
             'sort_order' => 'integer',
         ];

@@ -174,7 +174,7 @@ class MonthlyEngineReport implements OperasiReport
                     continue;
                 }
 
-                if ($mRow['kwh_produksi_stand_akhir'] !== null || $mRow['kwh_produksi'] !== null) {
+                if ((bool) ($mRow['is_complete'] ?? false)) {
                     $hasAnyData = true;
                 }
 

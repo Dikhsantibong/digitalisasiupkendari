@@ -267,7 +267,13 @@ class ReportWorkflowTest extends TestCase
         $this->actingAs($this->signers[EmployeePosition::ManagerUl->value])
             ->get(route('har.laporan.document.edit', $this->target()))
             ->assertInertia(fn ($page) => $page->where('workflow.can.ratify', false)->where('workflow.can.reject', false));
-        $this->assertStringNotContainsString('data:image/png;base64,', $this->documentContent());
+        // Koordinator has already verified (1 QR mark), while TL, Manager UL and in-report signers remain unsigned.
+        $partial = $this->documentContent();
+        $this->assertSame(1, substr_count($partial, 'data:image/png;base64,'));
+        $this->assertSame(1, substr_count($partial, '/verifikasi-ttd/'));
+        [$beforeLaporan, $laporanBlock] = explode('id="ttd-laporan"', $partial, 2);
+        $this->assertStringNotContainsString('data:image/png;base64,', $laporanBlock);
+        $this->assertNotEmpty($beforeLaporan);
 
         $this->act('approve', 'har', EmployeePosition::TeamLeaderPemeliharaan)->assertRedirect();
 
@@ -285,10 +291,11 @@ class ReportWorkflowTest extends TestCase
         );
         $this->assertSame(['Koordinator Pemeliharaan', 'Team Leader Pemeliharaan', 'Manager UL'], $workflow->logs->slice(1, 3)->pluck('jabatan')->values()->all());
 
-        // Signatures print only now, the in-report block dated with the pengesahan.
+        // Signatures print on every slot once FINAL (both the 3 pengesahan steps and 2 in-report signers).
         $content = $this->documentContent();
-        $this->assertStringContainsString('data:image/png;base64,', $content);
-        $this->assertStringContainsString('Ditandatangani secara elektronik', $content);
+        $this->assertSame(5, substr_count($content, 'data:image/png;base64,'));
+        $this->assertSame(5, substr_count($content, '/verifikasi-ttd/'));
+        $this->assertStringNotContainsString('Ditandatangani secara elektronik', $content);
 
         // FINAL cannot be edited, regenerated, re-submitted or rejected.
         $maker = $this->makers['har'];

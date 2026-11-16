@@ -4,10 +4,13 @@ namespace App\Services\Operasi;
 
 use App\Enums\EmployeePosition;
 use App\Enums\ReportModule;
+use App\Enums\ReportStatus;
 use App\Models\ReportWorkflow;
+use App\Models\ReportWorkflowStep;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Reports\ReportSignatories;
+use App\Services\Reports\SignatureMarkResolver;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\View;
@@ -24,6 +27,7 @@ class OperasiPengusahaanDocument
         private readonly OperasiPengusahaanReport $report,
         private readonly OperasiPengusahaanBook $book,
         private readonly ReportSignatories $signatories,
+        private readonly SignatureMarkResolver $signatureMarks,
     ) {}
 
     /**
@@ -36,10 +40,6 @@ class OperasiPengusahaanDocument
     public function build(Unit $unit, int $month, int $year, User $user): array
     {
         $unit->loadMissing('serviceUnit');
-        $signer = fn (EmployeePosition $position): array => [
-            'name' => (string) ($this->signatories->holder($unit, $position)?->name ?? ''),
-            'position' => $position->value,
-        ];
 
         return [
             'document' => [
@@ -59,14 +59,73 @@ class OperasiPengusahaanDocument
                     'month_name' => Indonesian::monthName($month),
                     'formatted_date' => Carbon::create($year, $month, 1)->endOfMonth()->day.' '.Indonesian::monthName($month).' '.$year,
                 ],
-                'signatories' => [
-                    'staf' => ['name' => $this->preparedBy($unit, $month, $year, $user), 'position' => 'Staf Operasi'],
-                    'tl' => $signer(EmployeePosition::TeamLeaderOperasi),
-                    'manager' => $signer(EmployeePosition::ManagerUl),
-                ],
+                'signatories' => $this->signatoriesPayload($unit, $month, $year, $user),
             ],
             'pengusahaan' => $this->report->sections($unit, $month, $year),
             'chapters' => $this->book->chapters($unit, $month, $year, $user),
+        ];
+    }
+
+    /**
+     * Refresh the saved document's #ttd-pengusahaan block with current workflow signature marks.
+     */
+    public function refreshSignatureBlock(string $html, Unit $unit, int $month, int $year, User $user): string
+    {
+        if (! str_contains($html, 'ttd-pengusahaan')) {
+            return $html;
+        }
+
+        $block = View::make('operasi.laporan.partials.pengusahaan-signatures', [
+            'signatories' => $this->signatoriesPayload($unit, $month, $year, $user),
+        ])->render();
+
+        return preg_replace('/<table\b[^>]*\bid="ttd-pengusahaan"[^>]*>.*?<\/table>/s', $block, $html, 1) ?? $html;
+    }
+
+    /**
+     * Build signatories (Staf Operasi, Team Leader Operasi, Manager UL) along with
+     * resolved signature marks (QR/image/text) once each workflow step is signed.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function signatoriesPayload(Unit $unit, int $month, int $year, User $user): array
+    {
+        $workflow = ReportWorkflow::query()
+            ->where('module', ReportModule::OperasiPengusahaan)
+            ->where('unit_id', $unit->id)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->with(['submitter.employee', 'steps.employee'])
+            ->first();
+
+        $active = $workflow !== null && $workflow->status !== ReportStatus::Ditolak;
+        $steps = $workflow?->steps?->keyBy('sequence') ?? collect();
+
+        $stepSigner = function (EmployeePosition $position, int $sequence) use ($unit, $active, $steps): array {
+            $step = $steps->get($sequence);
+            $mark = ($active && $step instanceof ReportWorkflowStep && $step->signed_at !== null)
+                ? $this->signatureMarks->forStep($step, $step->employee, $step->signed_at->toIso8601String())
+                : [];
+
+            return [
+                'name' => $step?->employee?->name ?? (string) ($this->signatories->holder($unit, $position)?->name ?? ''),
+                'position' => $position->value,
+                ...$mark,
+            ];
+        };
+
+        $stafMark = ($active && $workflow->submitted_at !== null)
+            ? $this->signatureMarks->forSubmission($workflow, $workflow->submitter?->employee, $workflow->submitted_at->toIso8601String())
+            : [];
+
+        return [
+            'staf' => [
+                'name' => $this->preparedBy($unit, $month, $year, $user, $workflow),
+                'position' => 'Staf Operasi',
+                ...$stafMark,
+            ],
+            'tl' => $stepSigner(EmployeePosition::TeamLeaderOperasi, 2),
+            'manager' => $stepSigner(EmployeePosition::ManagerUl, 3),
         ];
     }
 
@@ -75,14 +134,16 @@ class OperasiPengusahaanDocument
      * else the Staf Operasi of the unit preparing it now; empty (a dotted
      * line) otherwise — never the jabatan text.
      */
-    private function preparedBy(Unit $unit, int $month, int $year, User $user): string
+    private function preparedBy(Unit $unit, int $month, int $year, User $user, ?ReportWorkflow $workflow = null): string
     {
-        $submitter = ReportWorkflow::query()
-            ->where('module', ReportModule::OperasiPengusahaan)
-            ->where('unit_id', $unit->id)->where('month', $month)->where('year', $year)
-            ->whereNotNull('submitted_by')
-            ->with('submitter.employee')
-            ->first()?->submitter;
+        $submitter = $workflow?->submitted_by !== null
+            ? $workflow->submitter
+            : ReportWorkflow::query()
+                ->where('module', ReportModule::OperasiPengusahaan)
+                ->where('unit_id', $unit->id)->where('month', $month)->where('year', $year)
+                ->whereNotNull('submitted_by')
+                ->with('submitter.employee')
+                ->first()?->submitter;
 
         if ($submitter?->employee !== null) {
             return $submitter->employee->name;

@@ -14,6 +14,7 @@ import {
 import { Fragment, useState } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -38,7 +39,6 @@ import {
     setColWidths,
     SPECS,
 } from '@/lib/jadwal-excel';
-import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import operasiInput from '@/routes/operasi/input';
 import checklistCommissioningMesin from '@/routes/operasi/input/checklist-commissioning-mesin';
@@ -141,10 +141,6 @@ const PRINT_CSS = `
     }
 }
 `;
-
-/** A cell typed into like a spreadsheet (no box of its own). */
-const xlInput =
-    'h-8 rounded-none border-0 bg-transparent px-2 text-xs font-normal shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 md:text-xs dark:bg-transparent dark:focus:bg-yellow-950/40';
 
 export default function OperasiChecklistCommissioningMesinIndex({
     unit,
@@ -785,7 +781,7 @@ return SPECS.label;
                                         </th>
                                         <th
                                             rowSpan={2}
-                                            className="border border-black px-3 py-1.5 text-left text-[11px] dark:border-white"
+                                            className="whitespace-normal border border-black px-3 py-1.5 text-left text-[11px] dark:border-white"
                                             style={{ minWidth: '260px' }}
                                         >
                                             KEGIATAN
@@ -887,30 +883,13 @@ return SPECS.label;
                                                         <td className="border border-black px-1 py-1 font-medium dark:border-white">
                                                             {r.no}
                                                         </td>
-                                                        <td className="border border-black p-0 text-left font-medium dark:border-white">
-                                                            {can_write ? (
-                                                                <Input
-                                                                    value={
-                                                                        r.kegiatan
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        handleUpdateRow(
-                                                                            rIdx,
-                                                                            'kegiatan',
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    className={xlInput}
-                                                                />
-                                                            ) : (
-                                                                <span className="block px-2">
-                                                                    {r.kegiatan}
-                                                                </span>
-                                                            )}
+                                                        <td className="min-w-[260px] border border-black p-1 text-left align-middle whitespace-normal font-medium dark:border-white">
+                                                            <AutoWrapCellInput
+                                                                value={r.kegiatan}
+                                                                onChange={(val) => handleUpdateRow(rIdx, 'kegiatan', val)}
+                                                                className="font-normal focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+                                                                readOnly={!can_write}
+                                                            />
                                                         </td>
 
                                                         {/* 5 Status Columns */}
@@ -947,61 +926,25 @@ return SPECS.label;
                                                         )}
 
                                                         {/* PIC */}
-                                                        <td className="border border-black p-0 dark:border-white">
-                                                            {can_write ? (
-                                                                <Input
-                                                                    value={
-                                                                        r.pic ||
-                                                                        ''
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        handleUpdateRow(
-                                                                            rIdx,
-                                                                            'pic',
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    placeholder="Nama PIC"
-                                                                    className={cn(xlInput, 'text-center')}
-                                                                />
-                                                            ) : (
-                                                                <span>
-                                                                    {r.pic}
-                                                                </span>
-                                                            )}
+                                                        <td className="min-w-28 border border-black p-1 align-middle whitespace-normal dark:border-white">
+                                                            <AutoWrapCellInput
+                                                                value={r.pic || ''}
+                                                                onChange={(val) => handleUpdateRow(rIdx, 'pic', val)}
+                                                                placeholder="Nama PIC"
+                                                                className="text-center font-normal focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+                                                                readOnly={!can_write}
+                                                            />
                                                         </td>
 
                                                         {/* Paraf */}
-                                                        <td className="border border-black p-0 dark:border-white">
-                                                            {can_write ? (
-                                                                <Input
-                                                                    value={
-                                                                        r.paraf ||
-                                                                        ''
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        handleUpdateRow(
-                                                                            rIdx,
-                                                                            'paraf',
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    placeholder="Paraf"
-                                                                    className={cn(xlInput, 'text-center')}
-                                                                />
-                                                            ) : (
-                                                                <span>
-                                                                    {r.paraf}
-                                                                </span>
-                                                            )}
+                                                        <td className="min-w-20 border border-black p-1 align-middle whitespace-normal dark:border-white">
+                                                            <AutoWrapCellInput
+                                                                value={r.paraf || ''}
+                                                                onChange={(val) => handleUpdateRow(rIdx, 'paraf', val)}
+                                                                placeholder="Paraf"
+                                                                className="text-center font-normal focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+                                                                readOnly={!can_write}
+                                                            />
                                                         </td>
 
                                                         {/* Action */}

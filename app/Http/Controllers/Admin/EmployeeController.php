@@ -39,13 +39,20 @@ class EmployeeController extends Controller
             ->when($request->input('unit_id'), fn ($query, $id) => $query->where('unit_id', $id))
             ->when($request->input('service_unit_id'), fn ($query, $id) => $query->where('service_unit_id', $id))
             ->when($request->input('position'), fn ($query, $pos) => $query->where('position', $pos))
+            ->when($request->input('regu'), function ($query, string $regu): void {
+                if ($regu === 'leader') {
+                    $query->where('is_shift_leader', true)->whereNotNull('regu');
+                } else {
+                    $query->where('regu', $regu);
+                }
+            })
             ->orderBy('name')
             ->paginate(15)
             ->withQueryString();
 
         return Inertia::render('admin/employees/index', [
             'employees' => $employees->through(fn (Employee $employee): array => $this->presentEmployee($employee)),
-            'filters' => $request->only(['search', 'unit_id', 'service_unit_id', 'position']),
+            'filters' => $request->only(['search', 'unit_id', 'service_unit_id', 'position', 'regu']),
             'options' => $this->options($request),
         ]);
     }

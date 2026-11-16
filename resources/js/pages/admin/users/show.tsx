@@ -55,6 +55,22 @@ export default function UserShow({ user, permissions, activity }: Props) {
                 <section className="grid gap-4 rounded-md border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
                     <Detail label="Email">{user.email}</Detail>
                     <Detail label="NIP">{user.employee_id ?? '—'}</Detail>
+                    <Detail label="Regu Shift">
+                        {user.regu ? (
+                            <span className="inline-flex flex-wrap items-center gap-1.5">
+                                <StatusBadge tone="info">
+                                    Regu {user.regu}
+                                </StatusBadge>
+                                {user.is_shift_leader && (
+                                    <StatusBadge tone="warning">
+                                        Leader Shift
+                                    </StatusBadge>
+                                )}
+                            </span>
+                        ) : (
+                            'Bukan pegawai shift'
+                        )}
+                    </Detail>
                     <Detail label="Telepon">{user.phone ?? '—'}</Detail>
                     <Detail label="Status Akun">
                         <StatusBadge

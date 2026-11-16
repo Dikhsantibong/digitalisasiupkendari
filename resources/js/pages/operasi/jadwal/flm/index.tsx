@@ -6,6 +6,7 @@ import type { DayValueField } from '@/components/mobile/day-values-form';
 import { monthTimelineDays, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -381,7 +382,7 @@ mergeCells(ws, cursor, 0, cursor + n - 1, 0);
                             <thead>
                                 <tr>
                                     <th rowSpan={2} className={`${thBase} w-24`}>Kategori</th>
-                                    <th rowSpan={2} className={`${thBase} min-w-32 text-left`}>Uraian</th>
+                                    <th rowSpan={2} className={`${thBase} min-w-48 whitespace-normal text-left`}>Uraian</th>
                                     <th rowSpan={2} className={`${thBase} w-16`}>Shift</th>
                                     <th colSpan={days.length} className={thBase}>Bulan {monthName}</th>
                                     <th colSpan={3} className={thBase}>Analisa Kinerja</th>
@@ -415,8 +416,13 @@ return null;
                                                                 {section.label}
                                                             </td>
                                                         )}
-                                                        <td className="border border-black p-1 text-left">
-                                                            {can_write ? <input value={row.label} onChange={(e) => updateMeta(row._key, 'label', e.target.value)} className={`w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none ${row.row_type === 'minutes' ? 'text-rose-600 dark:text-rose-400' : ''}`} /> : <span className={`text-xs ${row.row_type === 'minutes' ? 'text-rose-600 dark:text-rose-400' : ''}`}>{row.label}</span>}
+                                                        <td className="min-w-48 border border-black p-1 text-left align-middle whitespace-normal">
+                                                            <AutoWrapCellInput
+                                                                value={row.label}
+                                                                onChange={(val) => updateMeta(row._key, 'label', val)}
+                                                                className={row.row_type === 'minutes' ? 'text-rose-600 dark:text-rose-400' : ''}
+                                                                readOnly={!can_write}
+                                                            />
                                                         </td>
                                                         <td className="border border-black p-0 text-center">
                                                             {can_write ? <input value={row.shift} onChange={(e) => updateMeta(row._key, 'shift', e.target.value)} className="h-7 w-14 bg-transparent text-center text-xs font-semibold focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary" /> : <span className="text-xs font-semibold">{row.shift}</span>}

@@ -18,6 +18,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -958,34 +959,14 @@ return;
                                                                 </td>
 
                                                                 {/* Nama */}
-                                                                <td className="border border-border p-1 font-bold text-foreground">
-                                                                    {can_write ? (
-                                                                        <input
-                                                                            type="text"
-                                                                            value={
-                                                                                row.nama
-                                                                            }
-                                                                            onChange={(
-                                                                                e,
-                                                                            ) =>
-                                                                                updateField(
-                                                                                    originalIndex,
-                                                                                    'nama',
-                                                                                    e
-                                                                                        .target
-                                                                                        .value,
-                                                                                )
-                                                                            }
-                                                                            className="w-full bg-transparent px-1.5 py-0.5 font-bold uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                            placeholder="Nama Personil"
-                                                                        />
-                                                                    ) : (
-                                                                        <span className="px-1.5 uppercase">
-                                                                            {
-                                                                                row.nama
-                                                                            }
-                                                                        </span>
-                                                                    )}
+                                                                <td className="min-w-44 border border-border p-1 align-middle font-bold whitespace-normal text-foreground">
+                                                                    <AutoWrapCellInput
+                                                                        value={row.nama}
+                                                                        onChange={(val) => updateField(originalIndex, 'nama', val)}
+                                                                        placeholder="Nama Personil"
+                                                                        className="font-bold uppercase"
+                                                                        readOnly={!can_write}
+                                                                    />
                                                                 </td>
 
                                                                 {/* No. Hp */}

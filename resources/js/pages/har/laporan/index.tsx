@@ -76,63 +76,69 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                     />
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                    <ResumeCard module="pemeliharaan" filters={filters} />
-                    {can('har.laporan.view') && (
-                        <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-                            <div>
-                                <h2 className="text-base font-semibold text-foreground">
-                                    Laporan Pemeliharaan Pembangkit
-                                </h2>
-                                <p className="mt-1 text-[13px] text-muted-foreground">
-                                    Lembar pengesahan, resume statistik, dan
-                                    rekap lengkap seluruh jadwal pemeliharaan
-                                    (Harian, P0-P5, Piket On Call, Patrol Cek,
-                                    Meeting, Pembuatan IK).
-                                </p>
+                <div className="flex flex-col gap-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {can('har.laporan.view') && (
+                            <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
+                                <div>
+                                    <h2 className="text-base font-semibold text-foreground">
+                                        Laporan Pemeliharaan Pembangkit
+                                    </h2>
+                                    <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                                        Lembar pengesahan, resume statistik, dan
+                                        rekap lengkap seluruh jadwal
+                                        pemeliharaan (Harian, P0-P5, Piket On
+                                        Call, Patrol Cek, Meeting, Pembuatan
+                                        IK).
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        onClick={() =>
+                                            router.get(document.edit(query).url)
+                                        }
+                                        className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                                    >
+                                        <FilePen className="size-4" />
+                                        Buka Dokumen Pemeliharaan (Lihat, Edit
+                                        &amp; Cetak)
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    onClick={() =>
-                                        router.get(document.edit(query).url)
-                                    }
-                                    className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
-                                >
-                                    <FilePen className="size-4" />
-                                    Buka Dokumen Pemeliharaan (Lihat, Edit &amp;
-                                    Cetak)
-                                </Button>
-                            </div>
-                        </div>
-                    )}
+                        )}
 
-                    {can('har.pengusahaan.view') && (
-                        <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-                            <div>
-                                <h2 className="text-base font-semibold text-foreground">
-                                    Laporan Pengusahaan Pembangkit
-                                </h2>
-                                <p className="mt-1 text-[13px] text-muted-foreground">
-                                    Executive summary, istilah &amp; definisi,
-                                    service request, maintenance summary,
-                                    rekapitulasi WO task, detail WO per
-                                    kategori, dan lampiran.
-                                </p>
+                        {can('har.pengusahaan.view') && (
+                            <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
+                                <div>
+                                    <h2 className="text-base font-semibold text-foreground">
+                                        Laporan Pengusahaan Pembangkit
+                                    </h2>
+                                    <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                                        Executive summary, istilah &amp;
+                                        definisi, service request, maintenance
+                                        summary, rekapitulasi WO task, detail WO
+                                        per kategori, dan lampiran.
+                                    </p>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        onClick={() =>
+                                            router.get(
+                                                pengusahaan.edit(query).url,
+                                            )
+                                        }
+                                        className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                                    >
+                                        <Building2 className="size-4" />
+                                        Buka Dokumen Pengusahaan (Lihat, Edit
+                                        &amp; Cetak)
+                                    </Button>
+                                </div>
                             </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    onClick={() =>
-                                        router.get(pengusahaan.edit(query).url)
-                                    }
-                                    className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
-                                >
-                                    <Building2 className="size-4" />
-                                    Buka Dokumen Pengusahaan (Lihat, Edit &amp;
-                                    Cetak)
-                                </Button>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
+                    <ResumeCard module="pemeliharaan" filters={filters} />
                 </div>
             </div>
         </>

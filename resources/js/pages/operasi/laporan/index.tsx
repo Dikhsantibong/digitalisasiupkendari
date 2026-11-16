@@ -99,70 +99,76 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                         description="Belum ada laporan terdaftar."
                     />
                 ) : (
-                    <div className="grid gap-3 md:grid-cols-2">
-                        <ResumeCard module="operasi" filters={filters} />
-                        {can('operasi.laporan.view') &&
-                            reports.map((report) => (
-                                <div
-                                    key={report.code}
-                                    className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4"
-                                >
+                    <div className="flex flex-col gap-4">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            {can('operasi.laporan.view') &&
+                                reports.map((report) => (
+                                    <div
+                                        key={report.code}
+                                        className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs"
+                                    >
+                                        <div>
+                                            <h2 className="text-base font-semibold text-foreground">
+                                                {report.title}
+                                            </h2>
+                                            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                                                {report.description}
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            <Button
+                                                onClick={() =>
+                                                    openDocument(report)
+                                                }
+                                                className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
+                                            >
+                                                <FilePenLine className="size-4" />
+                                                Buka Dokumen Operasi (Lihat,
+                                                Edit &amp; Cetak)
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+
+                            {/* Laporan Pengusahaan Pembangkit (Akses 2 — data dari input Pengusahaan Operasi) */}
+                            {can('operasi.pengusahaan.view') && (
+                                <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
                                     <div>
                                         <h2 className="text-base font-semibold text-foreground">
-                                            {report.title}
+                                            Laporan Pengusahaan Pembangkit
                                         </h2>
-                                        <p className="mt-1 text-[13px] text-muted-foreground">
-                                            {report.description}
+                                        <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+                                            Ringkasan kinerja, produksi &amp;
+                                            pemakaian sendiri, BBM &amp;
+                                            pelumas, feeder, pasokan cadangan,
+                                            star-stop, resource pembangkit dan
+                                            status berita acara — terisi
+                                            otomatis dari input Pengusahaan
+                                            Operasi (gabungan Portrait &amp;
+                                            Landscape).
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         <Button
-                                            onClick={() => openDocument(report)}
+                                            onClick={() =>
+                                                router.get(
+                                                    pengusahaan.edit({
+                                                        query: reportQuery(),
+                                                    }).url,
+                                                )
+                                            }
                                             className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
                                         >
-                                            <FilePenLine className="size-4" />
-                                            Buka Dokumen Operasi (Lihat, Edit
-                                            &amp; Cetak)
+                                            <Building2 className="size-4" />
+                                            Buka Dokumen Pengusahaan (Lihat,
+                                            Edit &amp; Cetak)
                                         </Button>
                                     </div>
                                 </div>
-                            ))}
+                            )}
+                        </div>
 
-                        {/* Laporan Pengusahaan Pembangkit (Akses 2 — data dari input Pengusahaan Operasi) */}
-                        {can('operasi.pengusahaan.view') && (
-                            <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-                                <div>
-                                    <h2 className="text-base font-semibold text-foreground">
-                                        Laporan Pengusahaan Pembangkit
-                                    </h2>
-                                    <p className="mt-1 text-[13px] text-muted-foreground">
-                                        Ringkasan kinerja, produksi &amp;
-                                        pemakaian sendiri, BBM &amp; pelumas,
-                                        feeder, pasokan cadangan, star-stop,
-                                        resource pembangkit dan status berita
-                                        acara — terisi otomatis dari input
-                                        Pengusahaan Operasi (gabungan Portrait
-                                        &amp; Landscape).
-                                    </p>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <Button
-                                        onClick={() =>
-                                            router.get(
-                                                pengusahaan.edit({
-                                                    query: reportQuery(),
-                                                }).url,
-                                            )
-                                        }
-                                        className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
-                                    >
-                                        <Building2 className="size-4" />
-                                        Buka Dokumen Pengusahaan (Lihat, Edit
-                                        &amp; Cetak)
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
+                        <ResumeCard module="operasi" filters={filters} />
                     </div>
                 )}
             </div>

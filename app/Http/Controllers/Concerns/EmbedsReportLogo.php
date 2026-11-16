@@ -75,6 +75,43 @@ trait EmbedsReportLogo
             $html,
         );
 
+        // Convert inline <svg> elements (such as report cover backgrounds and pillar icons)
+        // into <img src="data:image/svg+xml;base64,..."> so dompdf renders them identically to the editor preview.
+        $html = (string) preg_replace_callback(
+            '#<svg\b([^>]*)>(.*?)</svg>#is',
+            function (array $matches): string {
+                $attrs = (string) preg_replace('/\bviewbox=/i', 'viewBox=', $matches[1]);
+                $inner = $matches[2];
+
+                $classAttr = '';
+                if (preg_match('/\bclass=(["\'])(.*?)\1/i', $attrs, $cm)) {
+                    $classAttr = ' class="'.htmlspecialchars($cm[2], ENT_QUOTES).'"';
+                }
+
+                $styleAttr = '';
+                if (preg_match('/\bstyle=(["\'])(.*?)\1/i', $attrs, $sm)) {
+                    $styleAttr = ' style="'.htmlspecialchars($sm[2], ENT_QUOTES).'"';
+                }
+
+                if (! str_contains($attrs, 'xmlns=')) {
+                    $attrs .= ' xmlns="http://www.w3.org/2000/svg"';
+                }
+
+                if (
+                    ! preg_match('/\bwidth=/i', $attrs)
+                    && preg_match('/\bviewBox=(["\'])\s*0\s+0\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s*\1/i', $attrs, $vm)
+                ) {
+                    $attrs .= ' width="'.$vm[2].'" height="'.$vm[3].'"';
+                }
+
+                $svgXml = '<svg'.$attrs.'>'.$inner.'</svg>';
+                $dataUri = 'data:image/svg+xml;base64,'.base64_encode($svgXml);
+
+                return '<img'.$classAttr.$styleAttr.' src="'.$dataUri.'" alt="">';
+            },
+            $html,
+        );
+
         return $html;
     }
 }

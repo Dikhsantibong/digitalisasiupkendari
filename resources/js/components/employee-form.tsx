@@ -3,10 +3,11 @@ import {
     FileSignature,
     Image as ImageIcon,
     PenTool,
+    Search,
     Trash2,
     Upload,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FormField } from '@/components/form-field';
 import { SignaturePad } from '@/components/signature-pad';
 import { Button } from '@/components/ui/button';
@@ -53,6 +54,25 @@ export function EmployeeForm({
     );
     const [signatureBase64, setSignatureBase64] = useState<string>('');
     const [removeSignature, setRemoveSignature] = useState(false);
+    const [selectedUserId, setSelectedUserId] = useState<string>(
+        employee?.user_id ? String(employee.user_id) : NO_SELECTION,
+    );
+    const [userSearch, setUserSearch] = useState<string>('');
+
+    const filteredUsers = useMemo(() => {
+        const usersList = options.users ?? [];
+        const q = userSearch.trim().toLowerCase();
+
+        if (!q) {
+            return usersList;
+        }
+
+        return usersList.filter(
+            (u) =>
+                String(u.id) === selectedUserId ||
+                u.name.toLowerCase().includes(q),
+        );
+    }, [options.users, userSearch, selectedUserId]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -288,20 +308,36 @@ export function EmployeeForm({
                             >
                                 <Select
                                     name="user_id"
-                                    defaultValue={
-                                        employee?.user_id
-                                            ? String(employee.user_id)
-                                            : NO_SELECTION
-                                    }
+                                    value={selectedUserId}
+                                    onValueChange={setSelectedUserId}
                                 >
                                     <SelectTrigger className="w-full">
                                         <SelectValue placeholder="Pilih akun pengguna" />
                                     </SelectTrigger>
                                     <SelectContent>
+                                        <div className="sticky top-0 z-10 border-b border-border bg-popover p-1.5">
+                                            <div className="relative">
+                                                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+                                                <input
+                                                    type="text"
+                                                    value={userSearch}
+                                                    onChange={(e) =>
+                                                        setUserSearch(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    onKeyDown={(e) =>
+                                                        e.stopPropagation()
+                                                    }
+                                                    placeholder="Cari nama akun..."
+                                                    className="h-8 w-full rounded-sm border border-border bg-background pr-2.5 pl-8 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                                                />
+                                            </div>
+                                        </div>
                                         <SelectItem value={NO_SELECTION}>
                                             Tidak ditautkan
                                         </SelectItem>
-                                        {(options.users ?? []).map((user) => (
+                                        {filteredUsers.map((user) => (
                                             <SelectItem
                                                 key={user.id}
                                                 value={String(user.id)}

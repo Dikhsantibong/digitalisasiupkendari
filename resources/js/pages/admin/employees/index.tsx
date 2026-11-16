@@ -29,6 +29,7 @@ type Props = {
         unit_id?: string;
         service_unit_id?: string;
         position?: string;
+        regu?: string;
     };
     options: {
         units: IdName[];
@@ -50,6 +51,7 @@ export default function EmployeesIndex({
             unit_id: filters.unit_id,
             service_unit_id: filters.service_unit_id,
             position: filters.position,
+            regu: filters.regu,
         },
     );
 
@@ -90,27 +92,47 @@ export default function EmployeesIndex({
                                 label: unit.name,
                             }))}
                         />
-                        {options.service_units && options.service_units.length > 0 && (
-                            <FilterSelect
-                                value={values.service_unit_id}
-                                onChange={(value) => setFilter('service_unit_id', value)}
-                                placeholder="Unit Layanan"
-                                allLabel="Semua UL"
-                                options={options.service_units.map((su) => ({
-                                    value: String(su.id),
-                                    label: su.name,
-                                }))}
-                            />
-                        )}
+                        {options.service_units &&
+                            options.service_units.length > 0 && (
+                                <FilterSelect
+                                    value={values.service_unit_id}
+                                    onChange={(value) =>
+                                        setFilter('service_unit_id', value)
+                                    }
+                                    placeholder="Unit Layanan"
+                                    allLabel="Semua UL"
+                                    options={options.service_units.map(
+                                        (su) => ({
+                                            value: String(su.id),
+                                            label: su.name,
+                                        }),
+                                    )}
+                                />
+                            )}
                         <FilterSelect
                             value={values.position}
                             onChange={(value) => setFilter('position', value)}
                             placeholder="Jabatan"
                             allLabel="Semua Jabatan"
-                            options={(options.positions ?? []).map((position) => ({
-                                value: position,
-                                label: position,
-                            }))}
+                            options={(options.positions ?? []).map(
+                                (position) => ({
+                                    value: position,
+                                    label: position,
+                                }),
+                            )}
+                        />
+                        <FilterSelect
+                            value={values.regu}
+                            onChange={(value) => setFilter('regu', value)}
+                            placeholder="Regu Shift"
+                            allLabel="Semua Regu"
+                            options={[
+                                { value: 'A', label: 'Regu A' },
+                                { value: 'B', label: 'Regu B' },
+                                { value: 'C', label: 'Regu C' },
+                                { value: 'D', label: 'Regu D' },
+                                { value: 'leader', label: 'Leader Shift' },
+                            ]}
                         />
                     </FilterBar>
 
@@ -142,7 +164,9 @@ export default function EmployeesIndex({
                                     <TableHead>NID/NIP</TableHead>
                                     <TableHead>Penempatan / Unit</TableHead>
                                     <TableHead>Jabatan</TableHead>
-                                    <TableHead className="w-28 text-center">Tanda Tangan</TableHead>
+                                    <TableHead className="w-28 text-center">
+                                        Tanda Tangan
+                                    </TableHead>
                                     <TableHead>Status</TableHead>
                                     <TableHead className="w-24 text-right">
                                         Aksi
@@ -186,7 +210,23 @@ export default function EmployeesIndex({
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            {employee.position ?? '—'}
+                                            <div className="flex flex-col gap-1">
+                                                <span>
+                                                    {employee.position ?? '—'}
+                                                </span>
+                                                {employee.regu && (
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                        <StatusBadge tone="info">
+                                                            Regu {employee.regu}
+                                                        </StatusBadge>
+                                                        {employee.is_shift_leader && (
+                                                            <StatusBadge tone="warning">
+                                                                Leader Shift
+                                                            </StatusBadge>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {employee.signature_url ? (
@@ -195,13 +235,15 @@ export default function EmployeesIndex({
                                                     title={`Tanda tangan ${employee.name}`}
                                                 >
                                                     <img
-                                                        src={employee.signature_url}
+                                                        src={
+                                                            employee.signature_url
+                                                        }
                                                         alt={`Tanda tangan ${employee.name}`}
                                                         className="h-7 max-w-[80px] object-contain"
                                                     />
                                                 </div>
                                             ) : (
-                                                <span className="text-xs italic text-muted-foreground">
+                                                <span className="text-xs text-muted-foreground italic">
                                                     Belum ada
                                                 </span>
                                             )}

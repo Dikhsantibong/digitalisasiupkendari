@@ -94,15 +94,21 @@ class OperasiCalculator
             $row['flowmeter_mfo_stand_awal'] = $usesMfo ? $previous['flowmeter_mfo_stand_akhir'] : null;
 
             // kWh = (akhir − awal) × faktor koreksi (kalibrasi) × faktor kali meter (Master Mesin).
-            $row['kwh_produksi'] = $this->meterDelta(
+            $deltaProd = $this->meterDelta(
                 $row['kwh_produksi_stand_akhir'],
                 $row['kwh_produksi_stand_awal'],
-            ) * $factors['kwh'] * $multipliers['produksi'];
+            );
+            $row['kwh_produksi'] = $deltaProd === null
+                ? null
+                : $deltaProd * $factors['kwh'] * $multipliers['produksi'];
 
-            $row['kwh_pakai_sendiri'] = $this->meterDelta(
+            $deltaPs = $this->meterDelta(
                 $row['kwh_pakai_sendiri_stand_akhir'],
                 $row['kwh_pakai_sendiri_stand_awal'],
-            ) * $factors['kwh'] * $multipliers['ps'];
+            );
+            $row['kwh_pakai_sendiri'] = $deltaPs === null
+                ? null
+                : $deltaPs * $factors['kwh'] * $multipliers['ps'];
 
             $row['kwh_netto'] = $row['kwh_produksi'] === null || $row['kwh_pakai_sendiri'] === null
                 ? null

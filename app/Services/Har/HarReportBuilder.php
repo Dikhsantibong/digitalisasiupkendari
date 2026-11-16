@@ -1121,7 +1121,6 @@ class HarReportBuilder
 
         // 6. PEMBUATAN IK
         $ikRecords = HarJadwalPembuatanIk::query()
-            ->with(['pic'])
             ->where('unit_id', $unit->id)
             ->where('year', $year)
             ->orderBy('sort_order')
@@ -1154,12 +1153,12 @@ class HarReportBuilder
             $ikRows = $ikRecords->map(function (HarJadwalPembuatanIk $r, int $idx): array {
                 $rencana = $r->rencana_bulan ?? [];
                 $realisasi = $r->realisasi_bulan ?? [];
-                $totalTarget = (int) ($r->target ?? (count($rencana) ?: 1));
+                $totalTarget = count($rencana) ?: 1;
 
                 return [
-                    'no_urut' => $r->sort_order ?: ($idx + 1),
-                    'instruksi_kerja' => $r->judul_ik,
-                    'pic_pembuat' => $r->pic?->name ?? 'Tim HAR',
+                    'no_urut' => $r->no_urut ?: ($r->sort_order ?: ($idx + 1)),
+                    'instruksi_kerja' => $r->instruksi_kerja,
+                    'pic_pembuat' => $r->pic_pembuat ?: 'Tim HAR',
                     'rencana_bulan' => $rencana,
                     'realisasi_bulan' => $realisasi,
                     'jumlah' => $totalTarget,

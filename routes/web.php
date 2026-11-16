@@ -9,11 +9,18 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\Portal\PortalController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReportWorkflowController;
+use App\Http\Controllers\SignatureVerificationController;
 use App\Services\Reports\ModuleResume;
 use Illuminate\Support\Facades\Route;
 
 // No landing page: guests go straight to the login page, signed-in users to their dashboard.
 Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'login'))->name('home');
+
+// Public QR barcode signature verification (no authentication needed when scanned on paper/PDF).
+Route::get('verifikasi-ttd/{ref}/{token}', [SignatureVerificationController::class, 'show'])
+    ->where('ref', 'w?[0-9]+')
+    ->where('token', '[a-f0-9]+')
+    ->name('signature.verify');
 
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');

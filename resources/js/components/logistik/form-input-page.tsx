@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -252,7 +253,7 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
                 );
             }
             default:
-                return <Input value={String(value ?? '')} onChange={(e) => setValue(index, column.key, e.target.value)} className={`${cellInput} ${align}`} disabled={!can_write} />;
+                return <AutoWrapCellInput value={String(value ?? '')} onChange={(next) => setValue(index, column.key, next)} className={`px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40 ${align}`} disabled={!can_write} />;
         }
     };
 

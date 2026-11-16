@@ -38,6 +38,7 @@ use Illuminate\Support\Carbon;
     'beban_50',
     'beban_75',
     'beban_100',
+    'realisasi',
     'keterangan',
     'sort_order',
     'input_by',
@@ -60,6 +61,7 @@ class OperasiPerformanceTestMesin extends Model
             'beban_50' => 'array',
             'beban_75' => 'array',
             'beban_100' => 'array',
+            'realisasi' => 'array',
             'sort_order' => 'integer',
             'input_by' => 'integer',
         ];

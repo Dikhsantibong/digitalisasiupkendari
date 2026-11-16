@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/page-header';
 import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
@@ -187,8 +188,8 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
                             {rows.map((row, index) => (
                                 <tr key={index} className="hover:bg-muted/30">
                                     <td className="border border-border p-1 text-center">{index + 1}</td>
-                                    <td className="border border-border p-0">
-                                        <Input value={row.uraian} onChange={(e) => update(index, { uraian: e.target.value })} className={cellInput} disabled={!can_write} />
+                                    <td className="border border-border p-1 align-middle whitespace-normal">
+                                        <AutoWrapCellInput value={row.uraian} onChange={(val) => update(index, { uraian: val })} readOnly={!can_write} />
                                     </td>
                                     <td className="border border-border p-0">
                                         <Input type="date" value={row.tanggal ?? ''} onChange={(e) => update(index, { tanggal: e.target.value || null })} className={`${cellInput} text-center`} disabled={!can_write} />

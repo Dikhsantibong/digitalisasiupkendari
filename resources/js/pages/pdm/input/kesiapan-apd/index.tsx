@@ -11,6 +11,7 @@ import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -316,13 +317,14 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                                 <Fragment key={`${group.kelompok}-${groupIndex}`}>
                                     <tr className="bg-muted/50 font-semibold">
                                         <td className="border border-border p-1 text-center">{ROMAN[groupIndex] ?? groupIndex + 1}</td>
-                                        <td colSpan={can_write ? 13 : 12} className="border border-border p-0">
-                                            <div className="flex items-center gap-2 pr-2">
-                                                <Input
+                                        <td colSpan={can_write ? 13 : 12} className="border border-border p-1 align-middle whitespace-normal">
+                                            <div className="flex items-center gap-2 pr-1">
+                                                <AutoWrapCellInput
                                                     value={group.kelompok}
-                                                    onChange={(e) => renameGroup(group.kelompok, e.target.value)}
-                                                    className={`${cellInput} font-semibold`}
-                                                    disabled={!can_write}
+                                                    onChange={(val) => renameGroup(group.kelompok, val)}
+                                                    wrapperClassName="flex-1"
+                                                    className="px-1.5 py-0.5 font-semibold"
+                                                    readOnly={!can_write}
                                                 />
                                                 {can_write && (
                                                     <Button variant="ghost" size="sm" className="h-7 shrink-0 gap-1 text-xs" onClick={() => addRow(group.kelompok)}>
@@ -336,8 +338,8 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                                     {group.items.map(({ row, index }, itemIndex) => (
                                         <tr key={index} className="hover:bg-muted/30">
                                             <td className="border border-border p-1 text-center">{itemIndex + 1}</td>
-                                            <td className="border border-border p-0">
-                                                <Input value={row.inspeksi} onChange={(e) => updateRow(index, { inspeksi: e.target.value })} className={cellInput} disabled={!can_write} />
+                                            <td className="border border-border p-1 align-middle whitespace-normal">
+                                                <AutoWrapCellInput value={row.inspeksi} onChange={(val) => updateRow(index, { inspeksi: val })} readOnly={!can_write} />
                                             </td>
                                             <td className="border border-border p-0">
                                                 <Input
@@ -349,8 +351,8 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                                                     disabled={!can_write}
                                                 />
                                             </td>
-                                            <td className="border border-border p-0">
-                                                <Input value={row.satuan ?? ''} onChange={(e) => updateRow(index, { satuan: e.target.value })} className={`${cellInput} text-center`} disabled={!can_write} />
+                                            <td className="border border-border p-1 align-middle whitespace-normal">
+                                                <AutoWrapCellInput value={row.satuan ?? ''} onChange={(val) => updateRow(index, { satuan: val })} className="text-center" readOnly={!can_write} />
                                             </td>
                                             {ANSWER_COLUMNS.map((column) => (
                                                 <td key={column.key} className="border border-border p-0">
@@ -363,8 +365,8 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                                                     />
                                                 </td>
                                             ))}
-                                            <td className="border border-border p-0">
-                                                <Input value={row.keterangan} onChange={(e) => updateRow(index, { keterangan: e.target.value })} className={cellInput} disabled={!can_write} />
+                                            <td className="border border-border p-1 align-middle whitespace-normal">
+                                                <AutoWrapCellInput value={row.keterangan} onChange={(val) => updateRow(index, { keterangan: val })} readOnly={!can_write} />
                                             </td>
                                             {can_write && (
                                                 <td className="border border-border p-0 text-center">

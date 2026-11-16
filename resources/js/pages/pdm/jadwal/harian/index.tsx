@@ -14,11 +14,13 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { normalizeJadwalRows, toDayList } from '@/lib/day-list';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -145,7 +147,7 @@ export default function PdmJadwalHarianIndex({
     meta: initialMeta,
     can_write,
 }: Props) {
-    const [rows, setRows] = useState<PdmHarianRow[]>(initialRows);
+    const [rows, setRows] = useState<PdmHarianRow[]>(() => normalizeJadwalRows(initialRows));
     const [meta, setMeta] = useState<DocumentMeta>(initialMeta);
     const [isSaving, setIsSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
@@ -169,7 +171,7 @@ export default function PdmJadwalHarianIndex({
 
     if (signature !== lastSignature) {
         setLastSignature(signature);
-        setRows(initialRows);
+        setRows(normalizeJadwalRows(initialRows));
         setMeta(initialMeta);
         setDirty(false);
     }
@@ -381,7 +383,7 @@ return;
 
     // Reset rows to initial state
     const handleReset = () => {
-        setRows(initialRows);
+        setRows(normalizeJadwalRows(initialRows));
         setMeta(initialMeta);
         setDirty(false);
         toast.info('Perubahan dibatalkan ke data terakhir yang tersimpan.');
@@ -766,7 +768,7 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                 title={(row) => row.kegiatan || 'Kegiatan baru'}
                                 sectionOf={(row) => row.kategori}
                                 categories={[{ key: 'jadwal', label: 'Terlaksana', onClass: 'border-emerald-600 bg-emerald-500 text-black' }]}
-                                isOn={(row, _category, day) => (row.jadwal || []).includes(day)}
+                                isOn={(row, _category, day) => toDayList(row.jadwal).includes(day)}
                                 onToggle={(row, _category, day) => handleToggleDay(rows.indexOf(row), day)}
                                 details={(row) => (
                                     <div className="grid grid-cols-2 gap-2">
@@ -775,7 +777,7 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                     </div>
                                 )}
                                 summary={(row) => {
-                                    const realisasi = (row.jadwal || []).length;
+                                    const realisasi = toDayList(row.jadwal).length;
 
                                     return `Target ${row.target} · Realisasi ${realisasi} · Kinerja ${row.target > 0 ? Math.round((realisasi / row.target) * 100) : 0}%`;
                                 }}
@@ -793,7 +795,7 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                 <th rowSpan={2} className="w-10 min-w-10 border-r border-border px-2 py-2 text-center font-bold">
                                     No
                                 </th>
-                                <th rowSpan={2} className="min-w-[260px] border-r border-border px-3 py-2 text-left font-bold">
+                                <th rowSpan={2} className="min-w-[260px] whitespace-normal border-r border-border px-3 py-2 text-left font-bold">
                                     Nama Peralatan
                                 </th>
                                 <th
@@ -811,7 +813,7 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                 <th rowSpan={2} className="w-16 min-w-16 border-r border-border px-1 py-2 text-center font-bold">
                                     A. KINERJA
                                 </th>
-                                <th rowSpan={2} className="min-w-[150px] border-r border-border px-2 py-2 text-left font-bold">
+                                <th rowSpan={2} className="whitespace-normal min-w-[150px] border-r border-border px-2 py-2 text-left font-bold">
                                     Keterangan
                                 </th>
                                 <th rowSpan={2} className="w-20 min-w-20 px-2 py-2 text-center font-bold no-print">
@@ -837,8 +839,8 @@ return { ...SPECS.cellLeft, fill: baseBg };
                         <tbody>
                             {rows.map((row, rIdx) => {
                                 const isCategory = row.is_category_header;
-                                const jadwalSet = new Set(row.jadwal || []);
-                                const realisasi = (row.jadwal || []).length;
+                                const jadwalSet = new Set(toDayList(row.jadwal));
+                                const realisasi = toDayList(row.jadwal).length;
                                 const kinerja =
                                     row.target > 0 ? Math.round((realisasi / row.target) * 100) : 0;
 
@@ -889,25 +891,18 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                         </td>
 
                                         {/* Nama Peralatan */}
-                                        <td className="border-r border-border px-3 py-1 font-medium text-foreground min-w-[260px]">
-                                            {can_write ? (
-                                                <input
-                                                    type="text"
-                                                    value={row.kegiatan}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setRows((prev) =>
-                                                            prev.map((r, idx) => (idx === rIdx ? { ...r, kegiatan: val } : r))
-                                                        );
-                                                        setDirty(true);
-                                                    }}
-                                                    placeholder="Nama peralatan / kegiatan..."
-                                                    className="h-6 w-full rounded border border-transparent bg-transparent px-1 text-xs font-medium text-foreground placeholder:text-muted-foreground/50 hover:border-border focus:border-primary focus:bg-background"
-                                                />
-                                            ) : (
-                                                row.kegiatan
-                                            )}
-                                        </td>
+                                                <td className="border-r border-border px-3 py-1 font-medium text-foreground min-w-[260px] align-middle whitespace-normal">
+                                                    <AutoWrapCellInput
+                                                        value={row.kegiatan}
+                                                        onChange={(val) => {
+                                                            setRows((prev) => prev.map((r, idx) => (idx === rIdx ? { ...r, kegiatan: val } : r)));
+                                                            setDirty(true);
+                                                        }}
+                                                        placeholder="Nama peralatan / kegiatan..."
+                                                        className="font-medium"
+                                                        readOnly={!can_write}
+                                                    />
+                                                </td>
 
                                         {/* Day Columns 1..31 */}
                                         {days.map((d) => {
@@ -973,21 +968,15 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                         </td>
 
                                         {/* Keterangan */}
-                                        <td className="border-r border-border px-2 py-1 min-w-[150px]">
-                                            {can_write ? (
-                                                <input
-                                                    type="text"
-                                                    value={row.keterangan || ''}
-                                                    onChange={(e) =>
-                                                        handleUpdateKeterangan(rIdx, e.target.value)
-                                                    }
-                                                    placeholder="-"
-                                                    className="h-6 w-full rounded border border-transparent bg-transparent px-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 hover:border-border focus:border-primary focus:bg-background"
-                                                />
-                                            ) : (
-                                                <span className="text-xs">{row.keterangan || '-'}</span>
-                                            )}
-                                        </td>
+                                                <td className="border-r border-border px-2 py-1 min-w-[160px] align-middle whitespace-normal">
+                                                    <AutoWrapCellInput
+                                                        value={row.keterangan || ''}
+                                                        onChange={(val) => handleUpdateKeterangan(rIdx, val)}
+                                                        placeholder="-"
+                                                        emptyFallback="-"
+                                                        readOnly={!can_write}
+                                                    />
+                                                </td>
 
                                         {/* Quick Actions */}
                                         <td className="px-1 py-1 text-center no-print w-20 min-w-20">

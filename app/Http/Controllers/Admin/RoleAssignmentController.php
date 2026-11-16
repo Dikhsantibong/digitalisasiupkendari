@@ -37,6 +37,10 @@ class RoleAssignmentController extends Controller
 
         $assignment = $user->assignRole($role, $scope, $request->user());
 
+        if ($assignment->unit_id !== null && $user->employee !== null && $user->employee->unit_id === null) {
+            $user->employee->update(['unit_id' => $assignment->unit_id]);
+        }
+
         $this->activityLogger->log(
             ActivityEvent::RoleAssigned,
             "Menugaskan role {$role->display_name} kepada {$user->name} pada {$assignment->locationLabel()}",

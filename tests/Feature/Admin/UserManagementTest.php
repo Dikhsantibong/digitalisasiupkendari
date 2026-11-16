@@ -222,4 +222,50 @@ class UserManagementTest extends TestCase
 
         $this->assertGuest();
     }
+
+    public function test_updating_a_user_syncs_regu_and_shift_leader_to_linked_employee(): void
+    {
+        $superAdmin = $this->userWithRole(RoleName::SuperAdmin);
+        $unit = Unit::factory()->create();
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+
+        $this->actingAs($superAdmin)
+            ->put(route('admin.users.update', $operator), [
+                'name' => $operator->name,
+                'employee_id' => 'PLTD-TEST-PEG-001',
+                'email' => $operator->email,
+                'position' => 'Operator',
+                'phone' => $operator->phone,
+                'regu' => 'B',
+                'is_shift_leader' => '1',
+                'is_active' => '1',
+                'password' => '',
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('employees', [
+            'user_id' => $operator->id,
+            'unit_id' => $unit->id,
+            'nip' => 'PLTD-TEST-PEG-001',
+            'regu' => 'B',
+            'is_shift_leader' => true,
+        ]);
+
+        // A second operator in the same unit & regu cannot also be Leader Shift.
+        $secondOperator = $this->userWithRole(RoleName::Operator, $unit);
+
+        $this->actingAs($superAdmin)
+            ->put(route('admin.users.update', $secondOperator), [
+                'name' => $secondOperator->name,
+                'employee_id' => 'PLTD-TEST-PEG-002',
+                'email' => $secondOperator->email,
+                'position' => 'Operator',
+                'phone' => $secondOperator->phone,
+                'regu' => 'B',
+                'is_shift_leader' => '1',
+                'is_active' => '1',
+                'password' => '',
+            ])
+            ->assertSessionHasErrors('is_shift_leader');
+    }
 }

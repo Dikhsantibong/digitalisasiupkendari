@@ -20,9 +20,15 @@ type Props = {
     user: User;
     /** The phone shell of the field roles hides the Settings entry. */
     showSettings?: boolean;
+    /** Rendered in the top header; the sidebar footer keeps only user/logout. */
+    showImpersonation?: boolean;
 };
 
-export function UserMenuContent({ user, showSettings = true }: Props) {
+export function UserMenuContent({
+    user,
+    showSettings = true,
+    showImpersonation = true,
+}: Props) {
     const cleanup = useMobileNavigation();
     const auth = usePage().props.auth as Auth | undefined;
 
@@ -61,7 +67,8 @@ export function UserMenuContent({ user, showSettings = true }: Props) {
                     </DropdownMenuGroup>
                 </>
             )}
-            {(auth?.canImpersonate || auth?.impersonator) && (
+            {showImpersonation &&
+                (auth?.canImpersonate || auth?.impersonator) && (
                 <>
                     <DropdownMenuSeparator />
                     {auth?.impersonator ? (

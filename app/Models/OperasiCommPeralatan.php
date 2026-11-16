@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
  * @property array<string>|null $beban_50
  * @property array<string>|null $beban_75
  * @property array<string>|null $beban_100
+ * @property array<string>|null $realisasi
  * @property string|null $keterangan
  * @property int $sort_order
  * @property int|null $input_by
@@ -36,6 +37,7 @@ use Illuminate\Support\Carbon;
     'beban_50',
     'beban_75',
     'beban_100',
+    'realisasi',
     'keterangan',
     'sort_order',
     'input_by',
@@ -58,6 +60,7 @@ class OperasiCommPeralatan extends Model
             'beban_50' => 'array',
             'beban_75' => 'array',
             'beban_100' => 'array',
+            'realisasi' => 'array',
             'sort_order' => 'integer',
         ];
     }

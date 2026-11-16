@@ -15,6 +15,7 @@ import { Fragment, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { MobileTimelineForm, TimelineField, weekColumnOf, weekKeyOf, YEAR_WEEK_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -610,13 +611,13 @@ count++;
                                     <th rowSpan={2} className="border border-black px-2 py-1.5 text-[11px] dark:border-white" style={{ width: '30px' }}>
                                         NO
                                     </th>
-                                    <th rowSpan={2} className="border border-black px-3 py-1.5 text-left text-[11px] dark:border-white" style={{ minWidth: '180px' }}>
+                                    <th rowSpan={2} className="whitespace-normal border border-black px-3 py-1.5 text-left text-[11px] dark:border-white" style={{ minWidth: '220px' }}>
                                         URAIAN PEMERIKSAAN
                                     </th>
                                     <th rowSpan={2} className="border border-black px-1.5 py-1.5 text-[11px] dark:border-white" style={{ width: '60px' }}>
                                         REN &amp; REAL
                                     </th>
-                                    <th rowSpan={2} className="border border-black px-2 py-1.5 text-[11px] dark:border-white" style={{ width: '90px' }}>
+                                    <th rowSpan={2} className="whitespace-normal border border-black px-2 py-1.5 text-[11px] dark:border-white" style={{ width: '90px' }}>
                                         PIC PEMBUAT
                                     </th>
                                     {MONTH_NAMES.map((m) => (
@@ -669,41 +670,25 @@ count++;
                                                 >
                                                     {row.no_urut || rIdx + 1}
                                                 </td>
-                                                <td
-                                                    rowSpan={2}
-                                                    className="border border-black px-2 py-1 text-left font-semibold dark:border-white"
-                                                >
-                                                    {can_write ? (
-                                                        <Input
-                                                            value={row.uraian}
-                                                            onChange={(e) =>
-                                                                handleUpdateField(rIdx, 'uraian', e.target.value)
-                                                            }
-                                                            className="h-7 text-xs font-semibold uppercase"
-                                                        />
-                                                    ) : (
-                                                        <span className="uppercase">{row.uraian}</span>
-                                                    )}
+                                                <td rowSpan={2} className="min-w-[220px] border border-black p-1 text-left align-middle whitespace-normal dark:border-white">
+                                                    <AutoWrapCellInput
+                                                        value={row.uraian}
+                                                        onChange={(val) => handleUpdateField(rIdx, 'uraian', val)}
+                                                        className="font-semibold uppercase"
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
                                                 <td className="border border-black bg-muted/20 px-1 py-1 font-semibold dark:border-white">
                                                     REN
                                                 </td>
-                                                <td
-                                                    rowSpan={2}
-                                                    className="border border-black px-1 py-1 dark:border-white"
-                                                >
-                                                    {can_write ? (
-                                                        <Input
-                                                            value={row.pic || ''}
-                                                            onChange={(e) =>
-                                                                handleUpdateField(rIdx, 'pic', e.target.value)
-                                                            }
-                                                            placeholder="PIC"
-                                                            className="h-7 text-xs"
-                                                        />
-                                                    ) : (
-                                                        <span>{row.pic}</span>
-                                                    )}
+                                                <td rowSpan={2} className="min-w-[110px] border border-black p-1 text-center align-middle whitespace-normal dark:border-white">
+                                                    <AutoWrapCellInput
+                                                        value={row.pic || ''}
+                                                        onChange={(val) => handleUpdateField(rIdx, 'pic', val)}
+                                                        placeholder="PIC"
+                                                        className="text-center"
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
                                                 {Array.from({ length: 12 }).map((_, mIdx) =>
                                                     [1, 2, 3, 4].map((w) => {

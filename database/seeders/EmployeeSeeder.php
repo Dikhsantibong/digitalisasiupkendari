@@ -123,6 +123,9 @@ class EmployeeSeeder extends Seeder
         }
 
         $employee = Employee::query()->firstOrNew(['nip' => $nip]);
+        if ($employee->exists && $employee->name !== '' && ! str_contains($employee->name, '—')) {
+            $attributes['name'] = $employee->name;
+        }
         $employee->fill([...$attributes, 'is_active' => true, 'division' => $signer['division']]);
         $employee->singleton_key = $signer['singleton_key'];
         $employee->save();

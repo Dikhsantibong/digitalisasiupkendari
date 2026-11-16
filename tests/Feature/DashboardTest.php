@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ActivityEvent;
 use App\Enums\PersediaanJenis;
 use App\Enums\RoleName;
 use App\Enums\TankFuelType;
+use App\Models\ActivityLog;
 use App\Models\BbmType;
 use App\Models\FireExtinguisher;
 use App\Models\FireExtinguisherCheck;
@@ -13,6 +15,7 @@ use App\Models\LogistikFormRow;
 use App\Models\LubricantType;
 use App\Models\OperasiPersediaan;
 use App\Models\ReportPeriod;
+use App\Models\ReportWorkflow;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\WorkOrder;
@@ -254,5 +257,64 @@ class DashboardTest extends TestCase
         $apar()->assertInertia(fn ($page) => $page->loadDeferredProps('k3', fn ($reload) => $reload->where('k3.kpis.4.value', fn ($value): bool => (float) $value === 50.0)));
 
         Carbon::setTestNow();
+    }
+
+    public function test_dashboard_recent_activity_tracks_inputs_through_approvals(): void
+    {
+        $this->seedAccessControl();
+        $unit = Unit::factory()->create(['name' => 'PLTD Uji']);
+        $admin = $this->userWithRole(RoleName::SuperAdmin);
+        $actor = $this->userWithRole(RoleName::Operator, $unit);
+
+        ActivityLog::query()->create([
+            'user_id' => $actor->id,
+            'event' => ActivityEvent::LoggedIn,
+            'description' => 'User masuk ke aplikasi',
+            'unit_id' => $unit->id,
+            'created_at' => now()->subMinutes(5),
+        ]);
+
+        ActivityLog::query()->create([
+            'user_id' => $actor->id,
+            'event' => ActivityEvent::Created,
+            'description' => 'Menyimpan Stand kWh Harian PLTD Uji',
+            'unit_id' => $unit->id,
+            'created_at' => now()->subMinutes(4),
+        ]);
+
+        ActivityLog::query()->create([
+            'user_id' => $actor->id,
+            'event' => ActivityEvent::Updated,
+            'description' => 'Mengesahkan Laporan Operasi PLTD Uji periode 11/2026',
+            'subject_type' => ReportWorkflow::class,
+            'subject_id' => 1,
+            'unit_id' => $unit->id,
+            'created_at' => now()->subMinutes(3),
+        ]);
+
+        ActivityLog::query()->create([
+            'user_id' => $actor->id,
+            'event' => ActivityEvent::Updated,
+            'description' => 'Menolak Laporan HAR PLTD Uji periode 11/2026',
+            'subject_type' => ReportWorkflow::class,
+            'subject_id' => 2,
+            'unit_id' => $unit->id,
+            'created_at' => now()->subMinutes(2),
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('recentActivity', 3)
+                ->where('recentActivity.0.event_label', 'Ditolak')
+                ->where('recentActivity.0.tone', 'danger')
+                ->where('recentActivity.0.category', 'approval')
+                ->where('recentActivity.0.unit', 'PLTD Uji')
+                ->where('recentActivity.1.event_label', 'Disahkan')
+                ->where('recentActivity.1.tone', 'success')
+                ->where('recentActivity.1.category', 'approval')
+                ->where('recentActivity.2.event_label', 'Dibuat')
+                ->where('recentActivity.2.category', 'input'));
     }
 }

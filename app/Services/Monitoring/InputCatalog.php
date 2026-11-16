@@ -106,7 +106,7 @@ class InputCatalog
                 ['har_logbook_mutasis', 'Logbook Mutasi', 'har.formulir.logbook-mutasi.index'],
             ]),
             ...$this->yearly('har', [['har_jadwal_pembuatan_iks', 'Jadwal Pembuatan IK', 'har.jadwal.pembuatan-ik.index']]),
-            ...array_map(fn ($lembar): array => $this->entry('har', 'har_lembar_rows', $lembar->title(), "har.{$lembar->menu()}.lembar.index", 'month', ['where' => ['lembar' => $lembar->key()], 'params' => ['lembar' => $lembar->key()]]), HarLembars::all()),
+            ...array_map(fn ($lembar): array => $this->entry('har', 'har_lembar_rows', $lembar->title(), "har.{$lembar->menu()}.lembar.index", $lembar->yearly() ? 'year' : 'month', ['where' => ['lembar' => $lembar->key()], 'params' => ['lembar' => $lembar->key()]]), HarLembars::all()),
             ...array_map(fn ($tabel): array => $this->entry('har', 'har_tabel_rows', $tabel->title(), "har.input.{$tabel->key()}.index", 'month', ['where' => ['tabel' => $tabel->key()]]), HarTabels::all()),
             $this->entry('har', 'work_orders', 'Work Order', 'har.input.work-order.index', 'period'),
             $this->entry('har', 'service_requests', 'Service Request', 'har.input.service-request.index', 'period'),

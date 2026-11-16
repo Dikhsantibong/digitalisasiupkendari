@@ -73,14 +73,13 @@ export default function LogistikLaporanIndex({ filters, options }: Props) {
                     />
                 </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                    <ResumeCard module="logistik" filters={filters} />
-                    <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-                        <div>
+                <div className="flex flex-col gap-4">
+                    <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs sm:flex-row sm:items-center">
+                        <div className="min-w-0">
                             <h2 className="text-base font-semibold text-foreground">
                                 Laporan Logistik &amp; Gudang Pembangkit
                             </h2>
-                            <p className="mt-1 text-[13px] text-muted-foreground">
+                            <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                 Tersusun Sampul, Lembar Pengesahan, Daftar Isi,
                                 lalu seluruh tabel jadwal &amp; input logistik
                                 &amp; gudang — terisi otomatis dari data
@@ -90,7 +89,7 @@ export default function LogistikLaporanIndex({ filters, options }: Props) {
                                 otomatis.
                             </p>
                         </div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex shrink-0 flex-wrap gap-2">
                             <Button
                                 onClick={() =>
                                     router.get(document.edit(query).url)
@@ -101,6 +100,8 @@ export default function LogistikLaporanIndex({ filters, options }: Props) {
                             </Button>
                         </div>
                     </div>
+
+                    <ResumeCard module="logistik" filters={filters} />
                 </div>
             </div>
         </>

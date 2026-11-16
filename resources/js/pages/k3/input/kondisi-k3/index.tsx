@@ -20,6 +20,7 @@ import { DivisionFindings } from '@/components/k3/division-findings';
 import type { DivisionFinding, DivisionSummary } from '@/components/k3/division-findings';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -607,20 +608,14 @@ return;
                                             </td>
 
                                             {/* LOKASI */}
-                                            <td>
-                                                {can_write ? (
-                                                    <Input
-                                                        type="text"
-                                                        value={row.lokasi ?? ''}
-                                                        onChange={(e) =>
-                                                            updateCell(row._key, 'lokasi', e.target.value)
-                                                        }
-                                                        placeholder="Lokasi temuan..."
-                                                        className="h-7 w-full text-xs"
-                                                    />
-                                                ) : (
-                                                    <span className="px-1">{row.lokasi || '-'}</span>
-                                                )}
+                                            <td className="align-middle whitespace-normal">
+                                                <AutoWrapCellInput
+                                                    value={row.lokasi ?? ''}
+                                                    onChange={(val) => updateCell(row._key, 'lokasi', val)}
+                                                    placeholder="Lokasi temuan..."
+                                                    emptyFallback="-"
+                                                    readOnly={!can_write}
+                                                />
                                             </td>
 
                                             {/* KETERANGAN */}

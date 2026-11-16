@@ -50,7 +50,7 @@ class OperasiReportSections
         $dataTeknis = $this->yearPlanRows(OperasiDataTeknis::query(), $unit->id, $year);
         $blackstart = $this->blackstart($unit->id, $month, $year);
         $engineDaysFilled = collect($engineReport['rows'] ?? [])
-            ->filter(fn (array $row): bool => ($row['kwh_produksi_stand_akhir'] ?? null) !== null)
+            ->filter(fn (array $row): bool => (bool) ($row['is_complete'] ?? (($row['kwh_produksi_stand_akhir'] ?? null) !== null)))
             ->count();
 
         return [

@@ -140,6 +140,9 @@ export type UserRow = {
     position: string | null;
     phone: string | null;
     is_active: boolean;
+    regu?: string | null;
+    is_shift_leader?: boolean;
+    employee_record_id?: number | null;
     last_login_at: string | null;
     created_at: string | null;
     assignments: AssignmentRow[];

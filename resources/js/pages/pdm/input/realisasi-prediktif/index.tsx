@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/page-header';
 import { PdmDocumentHeader } from '@/components/pdm/document-header';
 import { PdmInputToolbar } from '@/components/pdm/input-toolbar';
 import type { PdmInputFilters } from '@/components/pdm/input-toolbar';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -217,11 +218,11 @@ export default function PdmRealisasiPrediktifInput({ unit, kop_lines, filters, o
                                 <Fragment key={index}>
                                     <tr>
                                         <td rowSpan={2} className="border border-border p-1 text-center">{index + 1}</td>
-                                        <td rowSpan={2} className="border border-border p-0">
-                                            <Input value={row.uraian} onChange={(e) => update(index, { uraian: e.target.value })} className={`${cellInput} font-semibold`} disabled={!can_write} />
+                                        <td rowSpan={2} className="min-w-48 border border-border p-1 align-middle whitespace-normal">
+                                            <AutoWrapCellInput value={row.uraian} onChange={(val) => update(index, { uraian: val })} className="font-semibold" readOnly={!can_write} />
                                         </td>
-                                        <td rowSpan={2} className="border border-border p-0">
-                                            <Input value={row.mesin} onChange={(e) => update(index, { mesin: e.target.value })} className={cellInput} placeholder="ZHEJIANG #1" disabled={!can_write} />
+                                        <td rowSpan={2} className="min-w-36 border border-border p-1 align-middle whitespace-normal">
+                                            <AutoWrapCellInput value={row.mesin} onChange={(val) => update(index, { mesin: val })} placeholder="ZHEJIANG #1" readOnly={!can_write} />
                                         </td>
                                         <td className="border border-border bg-sky-500 p-1 text-center text-[10px] font-bold text-white">RENCANA</td>
                                         {days.map((day) => dayCell(index, 'rencana', day))}

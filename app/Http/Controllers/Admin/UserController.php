@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
+use App\Models\Employee;
 use App\Models\Role;
 use App\Models\RoleAssignment;
 use App\Models\ServiceUnit;
@@ -13,9 +14,11 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\AccessControl;
 use App\Services\ActivityLogger;
+use App\Services\Operator\AttendanceRoster;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -30,7 +33,12 @@ class UserController extends Controller
         $viewer = $request->user();
 
         $users = User::query()
-            ->with(['roleAssignments.role:id,display_name', 'roleAssignments.unit:id,name', 'roleAssignments.serviceUnit:id,name'])
+            ->with([
+                'employee:id,user_id,unit_id,nip,regu,is_shift_leader',
+                'roleAssignments.role:id,display_name',
+                'roleAssignments.unit:id,name',
+                'roleAssignments.serviceUnit:id,name',
+            ])
             ->unless($viewer->hasGlobalAccess(), function (Builder $query) use ($viewer): void {
                 $query->whereHas('roleAssignments', function (Builder $query) use ($viewer): void {
                     $query->whereIn('unit_id', $viewer->accessibleUnitIds())
@@ -50,6 +58,13 @@ class UserController extends Controller
             ->when($request->input('unit_id'), function (Builder $query, $unitId): void {
                 $query->whereHas('roleAssignments', fn (Builder $query) => $query->where('unit_id', $unitId));
             })
+            ->when($request->input('regu'), function (Builder $query, string $regu): void {
+                if ($regu === 'leader') {
+                    $query->whereHas('employee', fn (Builder $q) => $q->where('is_shift_leader', true)->whereNotNull('regu'));
+                } elseif (in_array($regu, AttendanceRoster::REGU, true)) {
+                    $query->whereHas('employee', fn (Builder $q) => $q->where('regu', $regu));
+                }
+            })
             ->when($request->filled('status'), function (Builder $query) use ($request): void {
                 $query->where('is_active', $request->input('status') === 'active');
             })
@@ -59,7 +74,7 @@ class UserController extends Controller
 
         return Inertia::render('admin/users/index', [
             'users' => $users->through(fn (User $user): array => $this->presentUser($user)),
-            'filters' => $request->only(['search', 'role_id', 'unit_id', 'status']),
+            'filters' => $request->only(['search', 'role_id', 'unit_id', 'regu', 'status']),
             'options' => $this->options($request),
         ]);
     }
@@ -77,10 +92,11 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
 
-        $data = $request->validated();
+        $data = Arr::except($request->validated(), ['regu', 'is_shift_leader']);
         $data['email_verified_at'] = now();
 
         $user = User::query()->create($data);
+        $this->syncEmployeeShift($user, $request);
 
         $this->activityLogger->log(
             ActivityEvent::Created,
@@ -103,6 +119,7 @@ class UserController extends Controller
 
         return Inertia::render('admin/users/show', [
             'user' => $this->presentUser($user->load([
+                'employee:id,user_id,unit_id,nip,regu,is_shift_leader',
                 'roleAssignments.role:id,display_name,scope',
                 'roleAssignments.unit:id,name',
                 'roleAssignments.serviceUnit:id,name',
@@ -129,6 +146,7 @@ class UserController extends Controller
 
         return Inertia::render('admin/users/edit', [
             'user' => $this->presentUser($user->load([
+                'employee:id,user_id,unit_id,nip,regu,is_shift_leader',
                 'roleAssignments.role:id,display_name,scope',
                 'roleAssignments.unit:id,name',
                 'roleAssignments.serviceUnit:id,name',
@@ -142,13 +160,14 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
 
-        $data = $request->validated();
+        $data = Arr::except($request->validated(), ['regu', 'is_shift_leader']);
 
         if (blank($data['password'] ?? null)) {
             unset($data['password']);
         }
 
         $user->update($data);
+        $this->syncEmployeeShift($user, $request);
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
@@ -187,6 +206,13 @@ class UserController extends Controller
      */
     private function presentUser(User $user): array
     {
+        $employee = $user->relationLoaded('employee') ? $user->employee : null;
+        if ($employee === null && filled($user->employee_id)) {
+            $employee = Employee::query()
+                ->where('nip', $user->employee_id)
+                ->first(['id', 'user_id', 'unit_id', 'nip', 'regu', 'is_shift_leader']);
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -195,6 +221,9 @@ class UserController extends Controller
             'position' => $user->position,
             'phone' => $user->phone,
             'is_active' => $user->is_active,
+            'regu' => $employee?->regu,
+            'is_shift_leader' => (bool) ($employee?->is_shift_leader ?? false),
+            'employee_record_id' => $employee?->id,
             'last_login_at' => $user->last_login_at?->toIso8601String(),
             'created_at' => $user->created_at?->toIso8601String(),
             'assignments' => $user->relationLoaded('roleAssignments')
@@ -206,6 +235,56 @@ class UserController extends Controller
                 ])->all()
                 : [],
         ];
+    }
+
+    /**
+     * Synchronise the user's shift regu and Leader Shift flag with their linked
+     * Master Pegawai ({@see Employee}) record when submitted from UserForm.
+     */
+    private function syncEmployeeShift(User $user, Request $request): void
+    {
+        if (! $request->hasAny(['regu', 'is_shift_leader'])) {
+            return;
+        }
+
+        $rawRegu = $request->input('regu');
+        $regu = is_string($rawRegu) && in_array($rawRegu, AttendanceRoster::REGU, true) ? $rawRegu : null;
+        $isShiftLeader = $regu !== null && $request->boolean('is_shift_leader');
+
+        $employee = $user->employee
+            ?? (filled($user->employee_id)
+                ? Employee::query()->where('nip', $user->employee_id)->where(fn ($q) => $q->whereNull('user_id')->orWhere('user_id', $user->id))->first()
+                : null);
+
+        $unitId = $employee?->unit_id ?? $user->roleAssignments()->whereNotNull('unit_id')->value('unit_id');
+
+        if ($employee !== null) {
+            $employee->fill([
+                'user_id' => $user->id,
+                'unit_id' => $unitId,
+                'name' => $user->name,
+                'nip' => $user->employee_id ?: $employee->nip,
+                'regu' => $regu,
+                'is_shift_leader' => $isShiftLeader,
+                'is_active' => $user->is_active,
+            ]);
+            $employee->save();
+
+            return;
+        }
+
+        if ($regu !== null) {
+            Employee::query()->create([
+                'user_id' => $user->id,
+                'unit_id' => $unitId,
+                'name' => $user->name,
+                'nip' => $user->employee_id,
+                'position' => $user->position ?: 'Operator',
+                'regu' => $regu,
+                'is_shift_leader' => $isShiftLeader,
+                'is_active' => $user->is_active,
+            ]);
+        }
     }
 
     /**

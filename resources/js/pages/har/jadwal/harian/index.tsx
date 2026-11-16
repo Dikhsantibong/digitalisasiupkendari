@@ -19,6 +19,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -799,7 +800,7 @@ return 'LIBUR';
                                         </th>
                                         <th
                                             rowSpan={2}
-                                            className="w-64 min-w-56 border border-black p-2 text-left font-bold text-foreground"
+                                            className="w-72 min-w-64 border border-black p-2 text-left font-bold whitespace-normal text-foreground"
                                         >
                                             KEGIATAN
                                         </th>
@@ -835,7 +836,7 @@ return 'LIBUR';
                                         </th>
                                         <th
                                             rowSpan={2}
-                                            className="w-48 min-w-40 border border-black p-2 text-left font-bold text-foreground"
+                                            className="w-56 min-w-44 border border-black p-2 text-left font-bold whitespace-normal text-foreground"
                                         >
                                             Keterangan
                                         </th>
@@ -891,25 +892,18 @@ return 'LIBUR';
                                                 </td>
 
                                                 {/* KEGIATAN */}
-                                                <td className="border border-black p-1 text-foreground">
-                                                    {can_write ? (
-                                                        <input
-                                                            type="text"
-                                                            value={row.kegiatan}
-                                                            onChange={(e) =>
-                                                                updateField(
-                                                                    idx,
-                                                                    'kegiatan',
-                                                                    e.target.value,
-                                                                )
-                                                            }
-                                                            className="w-full bg-transparent px-1.5 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                        />
-                                                    ) : (
-                                                        <span className="px-1.5 text-xs">
-                                                            {row.kegiatan}
-                                                        </span>
-                                                    )}
+                                                <td className="min-w-64 border border-black p-1 align-middle whitespace-normal text-foreground">
+                                                    <AutoWrapCellInput
+                                                        value={row.kegiatan}
+                                                        onChange={(val) =>
+                                                            updateField(
+                                                                idx,
+                                                                'kegiatan',
+                                                                val,
+                                                            )
+                                                        }
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
 
                                                 {/* Day Cells */}
@@ -1023,28 +1017,22 @@ return 'LIBUR';
                                                 </td>
 
                                                 {/* Keterangan */}
-                                                <td className="border border-black p-1 text-foreground">
-                                                    {can_write ? (
-                                                        <input
-                                                            type="text"
-                                                            value={
-                                                                row.keterangan || ''
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateField(
-                                                                    idx,
-                                                                    'keterangan',
-                                                                    e.target.value,
-                                                                )
-                                                            }
-                                                            placeholder="Catatan kegiatan..."
-                                                            className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                        />
-                                                    ) : (
-                                                        <span className="px-1 text-xs">
-                                                            {row.keterangan || '-'}
-                                                        </span>
-                                                    )}
+                                                <td className="min-w-44 border border-black p-1 align-middle whitespace-normal text-foreground">
+                                                    <AutoWrapCellInput
+                                                        value={
+                                                            row.keterangan || ''
+                                                        }
+                                                        onChange={(val) =>
+                                                            updateField(
+                                                                idx,
+                                                                'keterangan',
+                                                                val,
+                                                            )
+                                                        }
+                                                        placeholder="Catatan kegiatan..."
+                                                        emptyFallback="-"
+                                                        readOnly={!can_write}
+                                                    />
                                                 </td>
 
                                                 {/* Aksi (No-Print) */}

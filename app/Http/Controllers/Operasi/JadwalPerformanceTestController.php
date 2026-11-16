@@ -83,26 +83,17 @@ class JadwalPerformanceTestController extends Controller
             ->get();
 
         if ($savedRecords->isEmpty()) {
-            $sampleMarks = [
-                0 => ['1-1', '4-4', '7-1'],
-                1 => ['2-1', '5-3', '8-3'],
-                2 => ['3-3', '6-3'],
-            ];
-
-            $rows = collect(self::DEFAULT_MESINS)->map(function (string $nama, int $idx) use ($sampleMarks): array {
-                $marks = $sampleMarks[$idx] ?? [];
-
-                return [
-                    'id' => null,
-                    'no_urut' => $idx + 1,
-                    'nama_mesin' => $nama,
-                    'section' => 'A. PEMBUATAN DATA TEKNIKS',
-                    'beban_50' => $marks,
-                    'beban_75' => $marks,
-                    'beban_100' => $marks,
-                    'keterangan' => '',
-                ];
-            })->all();
+            $rows = collect(self::DEFAULT_MESINS)->map(fn (string $nama, int $idx): array => [
+                'id' => null,
+                'no_urut' => $idx + 1,
+                'nama_mesin' => $nama,
+                'section' => 'A. PEMBUATAN DATA TEKNIKS',
+                'beban_50' => [],
+                'beban_75' => [],
+                'beban_100' => [],
+                'realisasi' => [],
+                'keterangan' => '',
+            ])->all();
         } else {
             $rows = $savedRecords->map(fn (OperasiPerformanceTestMesin $r, int $idx): array => [
                 'id' => $r->id,
@@ -112,6 +103,7 @@ class JadwalPerformanceTestController extends Controller
                 'beban_50' => $r->beban_50 ?? [],
                 'beban_75' => $r->beban_75 ?? [],
                 'beban_100' => $r->beban_100 ?? [],
+                'realisasi' => $r->realisasi ?? [],
                 'keterangan' => $r->keterangan ?? '',
             ])->all();
         }
@@ -157,6 +149,7 @@ class JadwalPerformanceTestController extends Controller
             'rows.*.beban_50' => ['nullable', 'array'],
             'rows.*.beban_75' => ['nullable', 'array'],
             'rows.*.beban_100' => ['nullable', 'array'],
+            'rows.*.realisasi' => ['nullable', 'array'],
             'rows.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);
 
@@ -185,6 +178,7 @@ class JadwalPerformanceTestController extends Controller
                     'beban_50' => $cleanArray($row['beban_50'] ?? []),
                     'beban_75' => $cleanArray($row['beban_75'] ?? []),
                     'beban_100' => $cleanArray($row['beban_100'] ?? []),
+                    'realisasi' => $cleanArray($row['realisasi'] ?? []),
                     'keterangan' => $row['keterangan'] ?? null,
                     'sort_order' => $index,
                     'input_by' => $user->id,
@@ -234,29 +228,25 @@ class JadwalPerformanceTestController extends Controller
      *
      * @return array{0: string, 1: array<string, mixed>}
      */
-    public function pdfView(Unit $unit, int $year): array
+    public function pdfView(Unit $unit, int $monthOrYear, ?int $year = null): array
     {
+        $resolvedYear = $year ?? $monthOrYear;
         $records = OperasiPerformanceTestMesin::query()
             ->where('unit_id', $unit->id)
-            ->where('year', $year)
+            ->where('year', $resolvedYear)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
 
         if ($records->isEmpty()) {
-            $sampleMarks = [
-                0 => ['1-1', '4-4', '7-1'],
-                1 => ['2-1', '5-3', '8-3'],
-                2 => ['3-3', '6-3'],
-            ];
-
             $rows = collect(self::DEFAULT_MESINS)->map(fn (string $nama, int $idx) => [
                 'no_urut' => $idx + 1,
                 'nama_mesin' => $nama,
                 'section' => 'A. PEMBUATAN DATA TEKNIKS',
-                'beban_50' => $sampleMarks[$idx] ?? [],
-                'beban_75' => $sampleMarks[$idx] ?? [],
-                'beban_100' => $sampleMarks[$idx] ?? [],
+                'beban_50' => [],
+                'beban_75' => [],
+                'beban_100' => [],
+                'realisasi' => [],
                 'keterangan' => '',
             ])->all();
         } else {
@@ -267,6 +257,7 @@ class JadwalPerformanceTestController extends Controller
                 'beban_50' => $r->beban_50 ?? [],
                 'beban_75' => $r->beban_75 ?? [],
                 'beban_100' => $r->beban_100 ?? [],
+                'realisasi' => $r->realisasi ?? [],
                 'keterangan' => $r->keterangan ?? '',
             ])->all();
         }
@@ -314,9 +305,10 @@ class JadwalPerformanceTestController extends Controller
 
         return ['operasi.jadwal.performance-test-pdf', [
             'unit' => $unit,
-            'year' => $year,
+            'year' => $resolvedYear,
             'months' => self::MONTHS,
             'rows' => $rows,
+            'has_saved' => $records->isNotEmpty(),
             'columnTotals' => $columnTotals,
             'grandTotal' => $grandTotal,
             'machines' => $machineList,

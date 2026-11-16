@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
 import { monthTimelineDays, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -245,7 +246,7 @@ return H[r]?.[c] === 1 ? done : SPECS.cell;
                     <table className="excel-sheet p-table w-full border-collapse text-xs">
                         <thead>
                             <tr>
-                                <th rowSpan={2} className={`${th} min-w-48 text-left`}>Hari / Tanggal</th>
+                                <th rowSpan={2} className={`${th} min-w-56 whitespace-normal text-left`}>Hari / Tanggal</th>
                                 <th colSpan={days.length} className={th}>Bulan {monthName}</th>
                                 <th rowSpan={2} className={th}>Rencana</th>
                                 <th rowSpan={2} className={th}>Target</th>
@@ -263,8 +264,12 @@ return H[r]?.[c] === 1 ? done : SPECS.cell;
 
                                 return (
                                     <tr key={r._key} className="hover:bg-muted/10">
-                                        <td className={`border border-black p-1 text-left ${isShift ? 'bg-muted/20 font-semibold' : ''}`}>
-                                            {can_write ? <input value={r.label} onChange={(e) => setMeta(r._key, 'label', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" /> : <span className="text-xs">{r.label}</span>}
+                                        <td rowSpan={2} className="min-w-56 border border-black p-1 text-left align-middle whitespace-normal">
+                                            <AutoWrapCellInput
+                                                value={r.label}
+                                                onChange={(val) => setMeta(r._key, 'label', val)}
+                                                readOnly={!can_write}
+                                            />
                                         </td>
                                         {days.map((d) => {
                                             const val = r.days[String(d)] ?? '';

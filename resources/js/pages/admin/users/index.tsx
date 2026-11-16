@@ -30,6 +30,7 @@ type Props = {
         search?: string;
         role_id?: string;
         unit_id?: string;
+        regu?: string;
         status?: string;
     };
     options: {
@@ -50,6 +51,7 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
             search: filters.search,
             role_id: filters.role_id,
             unit_id: filters.unit_id,
+            regu: filters.regu,
             status: filters.status,
         },
     );
@@ -100,6 +102,19 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
                                 value: String(unit.id),
                                 label: unit.name,
                             }))}
+                        />
+                        <FilterSelect
+                            value={values.regu}
+                            onChange={(value) => setFilter('regu', value)}
+                            placeholder="Regu Shift"
+                            allLabel="Semua Regu"
+                            options={[
+                                { value: 'A', label: 'Regu A' },
+                                { value: 'B', label: 'Regu B' },
+                                { value: 'C', label: 'Regu C' },
+                                { value: 'D', label: 'Regu D' },
+                                { value: 'leader', label: 'Leader Shift' },
+                            ]}
                         />
                         <FilterSelect
                             value={values.status}
@@ -165,37 +180,52 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
                                             {user.employee_id ?? '—'}
                                         </TableCell>
                                         <TableCell>
-                                            {user.assignments.length === 0 ? (
-                                                <span className="text-xs text-muted-foreground">
-                                                    Belum ditugaskan
-                                                </span>
-                                            ) : (
-                                                <ul className="flex flex-col gap-0.5">
-                                                    {user.assignments.map(
-                                                        (assignment) => (
-                                                            <li
-                                                                key={
-                                                                    assignment.id
-                                                                }
-                                                                className="text-[13px]"
-                                                            >
-                                                                <span className="font-medium">
-                                                                    {
-                                                                        assignment.role
+                                            <div className="flex flex-col gap-1">
+                                                {user.assignments.length ===
+                                                0 ? (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Belum ditugaskan
+                                                    </span>
+                                                ) : (
+                                                    <ul className="flex flex-col gap-0.5">
+                                                        {user.assignments.map(
+                                                            (assignment) => (
+                                                                <li
+                                                                    key={
+                                                                        assignment.id
                                                                     }
-                                                                </span>
-                                                                <span className="text-muted-foreground">
-                                                                    {' '}
-                                                                    ·{' '}
-                                                                    {
-                                                                        assignment.scope_label
-                                                                    }
-                                                                </span>
-                                                            </li>
-                                                        ),
-                                                    )}
-                                                </ul>
-                                            )}
+                                                                    className="text-[13px]"
+                                                                >
+                                                                    <span className="font-medium">
+                                                                        {
+                                                                            assignment.role
+                                                                        }
+                                                                    </span>
+                                                                    <span className="text-muted-foreground">
+                                                                        {' '}
+                                                                        ·{' '}
+                                                                        {
+                                                                            assignment.scope_label
+                                                                        }
+                                                                    </span>
+                                                                </li>
+                                                            ),
+                                                        )}
+                                                    </ul>
+                                                )}
+                                                {user.regu && (
+                                                    <div className="flex flex-wrap items-center gap-1">
+                                                        <StatusBadge tone="info">
+                                                            Regu {user.regu}
+                                                        </StatusBadge>
+                                                        {user.is_shift_leader && (
+                                                            <StatusBadge tone="warning">
+                                                                Leader Shift
+                                                            </StatusBadge>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
                                             {formatDateTime(user.last_login_at)}

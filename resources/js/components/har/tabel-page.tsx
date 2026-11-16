@@ -7,6 +7,7 @@ import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-selec
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { StatusBadge } from '@/components/status-badge';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -173,15 +174,23 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                 );
             }
             default:
-                return (
+                return column.type === 'date' || column.type === 'number' ? (
                     <Input
-                        type={column.type === 'date' ? 'date' : column.type === 'number' ? 'number' : 'text'}
+                        type={column.type === 'date' ? 'date' : 'number'}
                         step={column.type === 'number' ? 'any' : undefined}
                         value={value ?? ''}
                         onChange={(e) => setValue(index, column, e.target.value === '' ? null : column.type === 'number' ? Number(e.target.value) : e.target.value)}
                         className={`${cellInput} ${align}`}
                         disabled={!can_write}
                         aria-label={label}
+                    />
+                ) : (
+                    <AutoWrapCellInput
+                        value={String(value ?? '')}
+                        onChange={(next) => setValue(index, column, next === '' ? null : next)}
+                        className={`px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40 ${align}`}
+                        disabled={!can_write}
+                        ariaLabel={label}
                     />
                 );
         }

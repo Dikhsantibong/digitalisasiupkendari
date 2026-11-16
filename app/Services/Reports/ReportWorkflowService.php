@@ -36,7 +36,10 @@ use Illuminate\Validation\ValidationException;
  */
 class ReportWorkflowService
 {
-    public function __construct(private readonly ReportSignatories $signatories) {}
+    public function __construct(
+        private readonly ReportSignatories $signatories,
+        private readonly SignatureMarkResolver $signatureMarks,
+    ) {}
 
     public function find(ReportModule $module, int $unitId, int $month, int $year): ?ReportWorkflow
     {
@@ -277,16 +280,29 @@ class ReportWorkflowService
     {
         $workflow = $this->find($module, $unit->id, $month, $year);
         $rows = collect($this->signerRows($module, $unit, $workflow));
-        $final = $this->status($workflow) === ReportStatus::Final;
+        $status = $this->status($workflow);
+        $final = $status === ReportStatus::Final;
+        $rejected = $status === ReportStatus::Ditolak;
+        $steps = $workflow?->steps?->keyBy(fn (ReportWorkflowStep $s): string => "{$s->stage}:{$s->sequence}") ?? collect();
         // The in-report signers do not act: once FINAL they are dated with the pengesahan.
         $finalizedAt = $workflow?->finalized_at?->toIso8601String();
-        $cells = fn (string $stage): array => $rows->where('stage', $stage)->map(fn (array $row): array => [
-            'caption' => $row['caption'],
-            'position' => $row['position'],
-            'name' => $row['name'],
-            'image' => $final ? $row['image'] : null,
-            'signed_at' => $final ? ($row['signed_at'] ?? $finalizedAt) : null,
-        ])->values()->all();
+        $cells = fn (string $stage): array => $rows->where('stage', $stage)->map(function (array $row) use ($stage, $final, $rejected, $steps, $finalizedAt): array {
+            $step = $steps->get("{$stage}:{$row['sequence']}");
+            $approved = $step instanceof ReportWorkflowStep
+                && ! $rejected
+                && ($stage === ReportWorkflowStep::STAGE_PENGESAHAN ? $row['signed'] : $final);
+            $signedAt = $approved ? ($row['signed_at'] ?? $finalizedAt) : null;
+            $mark = $approved
+                ? $this->signatureMarks->forStep($step, $step->employee, $signedAt)
+                : ['mode' => null, 'qr' => null, 'image' => null, 'verify_url' => null, 'signed_at' => null];
+
+            return [
+                'caption' => $row['caption'],
+                'position' => $row['position'],
+                'name' => $row['name'],
+                ...$mark,
+            ];
+        })->values()->all();
 
         return [
             // Printed in workflow order: Memeriksa · Menyetujui · Mengesahkan.

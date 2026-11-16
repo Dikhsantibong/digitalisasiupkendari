@@ -49,14 +49,20 @@ class ModuleResumeTest extends TestCase
                     ->component('laporan/resume')
                     ->where('resume.module', $module)
                     ->where('resume.unit.name', 'PLTD Uji')
+                    ->has('resume.meta', 8)
                     ->has('resume.kpis', 5)
+                    ->where('resume.kpis.0', fn ($kpi): bool => $kpi->has(['previous', 'target_label', 'avg', 'max']))
                     ->has('resume.insights')
-                    ->where('resume.charts', fn ($charts): bool => count($charts) >= 5
-                        && collect($charts)->every(fn (array $chart): bool => str_starts_with($chart['svg'], '<svg'))
+                    ->where('resume.charts', fn ($charts): bool => count($charts) >= 8
+                        && count($charts) % 2 === 0
+                        // Every chart is a 3D PNG drawn on the server (the same image for the page, PDF and Excel).
+                        && collect($charts)->every(fn (array $chart): bool => str_starts_with($chart['image'], 'data:image/png;base64,') && ! isset($chart['svg']))
                         // Several chart models, and at least one running total (akumulasi) — except K3, whose S-curve is the cumulative one.
                         && collect($charts)->pluck('type')->unique()->count() >= 3
                         && ($module === 'k3' ? collect($charts)->contains('type', 'scurve') : collect($charts)->contains(fn (array $c): bool => str_starts_with($c['title'], 'Akumulasi'))))
-                    ->where('resume.sections', fn ($sections): bool => collect($sections)->pluck('title')->contains('Kelengkapan Input') && collect($sections)->pluck('title')->contains('Status Laporan')),
+                    ->where('resume.sections', fn ($sections): bool => collect($sections)->pluck('title')->contains('Kelengkapan Input')
+                        && collect($sections)->pluck('title')->contains('Status Laporan')
+                        && ($module !== 'operasi' || collect($sections)->pluck('title')->contains('Rincian Kinerja & Jam Operasi per Mesin'))),
                 );
         }
     }

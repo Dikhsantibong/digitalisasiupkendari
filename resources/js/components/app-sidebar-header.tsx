@@ -1,5 +1,5 @@
 import { usePage } from '@inertiajs/react';
-import { Menu } from 'lucide-react';
+import { Menu, Users } from 'lucide-react';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { GenericExcelButton } from '@/components/generic-excel-button';
 import { NotificationBell } from '@/components/notifications/notification-bell';
@@ -13,6 +13,7 @@ import {
 import { useSidebar } from '@/components/ui/sidebar';
 import { UserMenuContent } from '@/components/user-menu-content';
 import { useInitials } from '@/hooks/use-initials';
+import { openAccountSwitcher } from '@/lib/impersonation';
 import type { BreadcrumbItem as BreadcrumbItemType } from '@/types';
 
 export function AppSidebarHeader({
@@ -43,6 +44,19 @@ export function AppSidebarHeader({
             </div>
             <div className="flex items-center gap-2">
                 <GenericExcelButton />
+                {auth.canImpersonate && (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAccountSwitcher()}
+                        title="Beralih akun pengguna (Ctrl+Shift+K)"
+                        className="h-8 gap-1.5 px-2.5 text-xs font-medium"
+                    >
+                        <Users className="size-3.5" />
+                        <span className="hidden sm:inline">Pindah Akun</span>
+                    </Button>
+                )}
                 {auth.user && <NotificationBell />}
                 {auth.user && (
                     <DropdownMenu>

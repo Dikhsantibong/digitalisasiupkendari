@@ -546,7 +546,7 @@ return;
                                         <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">
                                             No
                                         </th>
-                                        <th rowSpan={2} className="w-72 min-w-60 border border-black p-1 text-left font-bold text-foreground">
+                                        <th rowSpan={2} className="w-72 min-w-60 whitespace-normal border border-black p-1 text-left font-bold text-foreground">
                                             URAIAN
                                         </th>
                                         <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">
@@ -603,9 +603,9 @@ return;
                                                     <td rowSpan={2} className="border border-black text-center font-medium">
                                                         {idx + 1}
                                                     </td>
-                                                    <td rowSpan={2} className="border border-black px-2 py-1 text-left font-semibold text-foreground">
-                                                        {row.uraian}
-                                                    </td>
+                                            <td rowSpan={2} className="min-w-60 border border-black px-2 py-1 text-left align-middle font-semibold whitespace-normal [overflow-wrap:anywhere] text-foreground">
+                                                {row.uraian}
+                                            </td>
                                                     <td className="border border-black bg-muted/40 text-center font-bold text-[10px]">
                                                         RENC
                                                     </td>

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Enums\UnitStatus;
 use App\Models\ActivityLog;
 use App\Models\LubricantType;
+use App\Models\ReportWorkflow;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
@@ -308,21 +310,82 @@ class DashboardController extends Controller
     }
 
     /**
+     * User activity timeline covering data inputs through report approvals.
+     *
      * @return list<array<string, mixed>>
      */
     private function recentActivity(User $user): array
     {
         return ActivityLog::query()
-            ->visibleTo($user)->with('user:id,name')->latest('created_at')->limit(8)->get()
-            ->map(fn (ActivityLog $log): array => [
-                'id' => $log->id,
-                'event' => $log->event->value,
-                'event_label' => $log->event->label(),
-                'tone' => $log->event->tone(),
-                'description' => $log->description,
-                'user' => $log->user?->name,
-                'created_at' => $log->created_at?->toIso8601String(),
-            ])
+            ->visibleTo($user)
+            ->whereNotIn('event', [ActivityEvent::LoggedIn->value, ActivityEvent::LoggedOut->value])
+            ->with(['user:id,name', 'unit:id,name'])
+            ->latest('created_at')
+            ->limit(30)
+            ->get()
+            ->map(function (ActivityLog $log): array {
+                $stage = $this->classifyActivity($log);
+
+                return [
+                    'id' => $log->id,
+                    'event' => $log->event->value,
+                    'event_label' => $stage['label'],
+                    'tone' => $stage['tone'],
+                    'category' => $stage['category'],
+                    'description' => $log->description,
+                    'user' => $log->user?->name,
+                    'unit' => $log->unit?->name,
+                    'created_at' => $log->created_at?->toIso8601String(),
+                ];
+            })
             ->all();
+    }
+
+    /**
+     * @return array{category: 'input'|'approval'|'system', label: string, tone: string}
+     */
+    private function classifyActivity(ActivityLog $log): array
+    {
+        $desc = $log->description;
+        $isWorkflow = $log->subject_type === ReportWorkflow::class
+            || preg_match('/^(Mengajukan|Menyerahkan|Memverifikasi|Menyetujui|Mengesahkan|Menolak|Membatalkan|Menerima|Bersedia)\b/i', $desc) === 1;
+
+        if ($isWorkflow) {
+            if (preg_match('/^Menolak\b/i', $desc) === 1) {
+                return ['category' => 'approval', 'label' => 'Ditolak', 'tone' => 'danger'];
+            }
+
+            if (preg_match('/^Membatalkan\b/i', $desc) === 1) {
+                return ['category' => 'approval', 'label' => 'Dibatalkan', 'tone' => 'warning'];
+            }
+
+            if (preg_match('/^Mengesahkan\b/i', $desc) === 1) {
+                return ['category' => 'approval', 'label' => 'Disahkan', 'tone' => 'success'];
+            }
+
+            if (preg_match('/^(Menyetujui|Menerima|Bersedia)\b/i', $desc) === 1) {
+                return ['category' => 'approval', 'label' => 'Disetujui', 'tone' => 'success'];
+            }
+
+            if (preg_match('/^Memverifikasi\b/i', $desc) === 1) {
+                return ['category' => 'approval', 'label' => 'Diverifikasi', 'tone' => 'info'];
+            }
+
+            return ['category' => 'approval', 'label' => 'Diajukan', 'tone' => 'warning'];
+        }
+
+        $category = in_array($log->event, [
+            ActivityEvent::Created,
+            ActivityEvent::Updated,
+            ActivityEvent::Deleted,
+            ActivityEvent::Restored,
+            ActivityEvent::Exported,
+        ], true) ? 'input' : 'system';
+
+        return [
+            'category' => $category,
+            'label' => $log->event->label(),
+            'tone' => $log->event->tone(),
+        ];
     }
 }

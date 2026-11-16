@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DayList;
 use App\Models\Concerns\BelongsToUnit;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -67,7 +68,7 @@ class PdmJadwalHarian extends Model
             'target' => 'integer',
             'rencana_count' => 'integer',
             'realisasi_count' => 'integer',
-            'jadwal' => 'array',
+            'jadwal' => DayList::class,
             'sort_order' => 'integer',
             'input_by' => 'integer',
         ];

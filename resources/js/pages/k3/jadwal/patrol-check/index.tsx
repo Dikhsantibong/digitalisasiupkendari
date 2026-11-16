@@ -17,6 +17,7 @@ import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -407,7 +408,7 @@ return 0;
                                 <thead className="print-thead bg-muted/60 dark:bg-muted/30">
                                     <tr>
                                         <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
-                                        <th rowSpan={2} className="w-64 min-w-56 border border-black p-1 text-left font-bold text-foreground">Uraian Pekerjaan</th>
+                                        <th rowSpan={2} className="w-72 min-w-64 whitespace-normal border border-black p-1 text-left font-bold text-foreground">Uraian Pekerjaan</th>
                                         <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">Status</th>
                                         <th colSpan={days.length} className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase">Tanggal</th>
                                         <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
@@ -435,24 +436,26 @@ return 0;
                                             <Fragment key={row._key}>
                                                 <tr className="transition-colors hover:bg-muted/10">
                                                     <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top text-foreground">
-                                                        {can_write ? (
-                                                            <input type="text" value={row.uraian} onChange={(e) => updateField(row._key, 'uraian', e.target.value)} className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
-                                                        ) : (
-                                                            <span className="px-1 text-xs">{row.uraian}</span>
-                                                        )}
+                                                    <td rowSpan={2} className="min-w-64 border border-black p-1 text-left align-middle whitespace-normal text-foreground">
+                                                        <AutoWrapCellInput
+                                                            value={row.uraian}
+                                                            onChange={(val) => updateField(row._key, 'uraian', val)}
+                                                            readOnly={!can_write}
+                                                        />
                                                     </td>
                                                     <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
                                                     {dayCells(row, 'rencana')}
                                                     <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
                                                     <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
                                                     <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${persentase >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{persentase}%</td>
-                                                    <td rowSpan={2} className="border border-black p-1 text-left align-top">
-                                                        {can_write ? (
-                                                            <input type="text" value={row.keterangan || ''} onChange={(e) => updateField(row._key, 'keterangan', e.target.value)} placeholder="Catatan…" className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none" />
-                                                        ) : (
-                                                            <span className="px-1 text-xs">{row.keterangan || '-'}</span>
-                                                        )}
+                                                    <td className="min-w-36 border border-black p-1 text-left align-middle whitespace-normal">
+                                                        <AutoWrapCellInput
+                                                            value={row.keterangan || ''}
+                                                            onChange={(val) => updateField(row._key, 'keterangan', val)}
+                                                            placeholder="Catatan…"
+                                                            emptyFallback="-"
+                                                            readOnly={!can_write}
+                                                        />
                                                     </td>
                                                     <td rowSpan={2} className="border border-black p-1 text-center align-middle">
                                                         {can_write ? (

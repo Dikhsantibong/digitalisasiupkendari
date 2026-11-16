@@ -1,7 +1,7 @@
 {{--
     Resume Bulanan per modul (App\Services\Reports\ModuleResume), A4 landscape:
     kop, KPI with their direction against last month, the Ringkasan Arah
-    Data, every chart (static SVG from App\Support\SvgChart, two per row) and
+    Data, every chart (3D PNG from App\Services\Reports\Chart3d, two per row) and
     the tables with their running totals.
     Params: $resume, $unitModel (App\Models\Unit), $printedAt.
 --}}
@@ -58,6 +58,9 @@
                     <td>
                         <div class="l">{{ $kpi['label'] }}</div>
                         <div class="v">{{ $kpi['value'] }}</div>
+                        @if (! empty($kpi['previous']) || ! empty($kpi['max']))
+                            <div class="d flat">Bulan lalu: {{ $kpi['previous'] ?? '—' }} · Puncak: {{ $kpi['max'] ?? '—' }}</div>
+                        @endif
                         <div class="d">
                             @if ($kpi['trend'] === null)
                                 <span class="flat">Bulan berjalan</span>
@@ -83,7 +86,7 @@
         @endforeach
     </table>
 
-    <h2>C. GRAFIK &amp; AKUMULASI</h2>
+    <h2>C. GRAFIK 3D &amp; AKUMULASI</h2>
     <table class="charts">
         @foreach (array_chunk($resume['charts'], 2) as $pair)
             <tr>
@@ -91,7 +94,7 @@
                     <td>
                         <div class="t">{{ ($loop->parent->index * 2) + $loop->iteration }}. {{ $chart['title'] }}</div>
                         @if (! empty($chart['subtitle']))<div class="s">{{ $chart['subtitle'] }}</div>@endif
-                        <img src="{{ \App\Support\SvgChart::dataUri($chart['svg']) }}" alt="{{ $chart['title'] }}">
+                        <img src="{{ $chart['image'] }}" alt="{{ $chart['title'] }}">
                     </td>
                 @endforeach
                 @if (count($pair) === 1)
@@ -101,7 +104,7 @@
         @endforeach
     </table>
 
-    <h2>D. TABEL RINCIAN</h2>
+    <h2 style="page-break-before: always;">LAMPIRAN — TABEL RINCIAN</h2>
     @foreach ($resume['sections'] as $section)
         <div style="page-break-inside: avoid;">
             <div style="font-weight: bold; font-size: 9.5px; margin: 8px 0 3px;">{{ $loop->iteration }}. {{ $section['title'] }}</div>
@@ -126,6 +129,16 @@
                         <tr><td colspan="{{ count($section['columns']) + 1 }}" class="empty">Belum ada data.</td></tr>
                     @endforelse
                 </tbody>
+                @if (! empty($section['footer']))
+                    <tfoot>
+                        <tr style="background: #fef9c3; font-weight: bold;">
+                            <td style="text-align: center;">—</td>
+                            @foreach ($section['footer'] as $i => $cell)
+                                <td style="text-align: {{ $i === 0 ? 'left' : 'right' }}; font-weight: bold;">{{ $cell }}</td>
+                            @endforeach
+                        </tr>
+                    </tfoot>
+                @endif
             </table>
             @if (! empty($section['note']))<div class="note">{{ $section['note'] }}</div>@endif
         </div>

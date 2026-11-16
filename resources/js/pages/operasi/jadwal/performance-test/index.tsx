@@ -14,6 +14,7 @@ import {
 import { Fragment, useMemo, useState } from 'react';
 import { MobileTimelineForm, TimelineField, weekColumnOf, weekKeyOf, YEAR_WEEK_DAYS } from '@/components/mobile/timeline-form';
 import { OperasiSelect } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -51,6 +52,7 @@ type PerformanceTestRow = {
     beban_50: string[];
     beban_75: string[];
     beban_100: string[];
+    realisasi?: string[];
     keterangan?: string;
 };
 
@@ -84,6 +86,7 @@ const BEBAN_CATEGORIES = [
     { key: '50', label: 'Beban 50%', onClass: 'border-amber-500 bg-amber-300 text-black' },
     { key: '75', label: 'Beban 75%', onClass: 'border-orange-500 bg-orange-400 text-black' },
     { key: '100', label: 'Beban 100%', onClass: 'border-emerald-600 bg-emerald-500 text-black' },
+    { key: 'real', label: 'Realisasi', onClass: 'border-emerald-700 bg-emerald-600 text-white' },
 ];
 
 const MONTH_NAMES = [
@@ -193,7 +196,7 @@ export default function JadwalPerformanceTestIndex({
     // Toggle cell for 50%, 75%, 100%
     const handleToggleCell = (
         rowIndex: number,
-        type: '50' | '75' | '100',
+        type: '50' | '75' | '100' | 'real',
         weekKey: string,
     ) => {
         if (!can_write) {
@@ -204,10 +207,11 @@ return;
             const updated = [...prev];
             const targetRow = { ...updated[rowIndex] };
             const propName =
-                type === '50'
+                type === 'real' ? 'realisasi' : type === '50'
                     ? 'beban_50'
                     : type === '75'
                       ? 'beban_75'
+                      // fallback
                       : 'beban_100';
             const currentArr = [...(targetRow[propName] || [])];
 
@@ -261,6 +265,7 @@ return;
                 beban_50: [],
                 beban_75: [],
                 beban_100: [],
+                realisasi: [],
             },
         ]);
         setNewNamaMesin('');
@@ -309,6 +314,7 @@ return;
                     beban_50: r.beban_50,
                     beban_75: r.beban_75,
                     beban_100: r.beban_100,
+                    realisasi: r.realisasi || [],
                     keterangan: r.keterangan || '',
                 })),
             },
@@ -846,10 +852,10 @@ count++;
                                 rowKey={(row, index) => row.id ?? `new-${index}`}
                                 title={(row) => row.nama_mesin || 'Baris baru'}
                                 categories={BEBAN_CATEGORIES}
-                                isOn={(row, category, week) => row[`beban_${category}` as 'beban_50' | 'beban_75' | 'beban_100'].includes(weekKeyOf(week))}
-                                onToggle={(row, category, week) => handleToggleCell(rows.indexOf(row), category as '50' | '75' | '100', weekKeyOf(week))}
+                                isOn={(row, category, week) => (category === 'real' ? row.realisasi || [] : row[`beban_${category}` as 'beban_50' | 'beban_75' | 'beban_100']).includes(weekKeyOf(week))}
+                                onToggle={(row, category, week) => handleToggleCell(rows.indexOf(row), category as '50' | '75' | '100' | 'real', weekKeyOf(week))}
                                 details={(row, index) => <TimelineField label="Nama" value={row.nama_mesin} onChange={(v) => handleUpdateName(index, v)} readOnly={!can_write} />}
-                                summary={(row) => `50% · ${row.beban_50.length} — 75% · ${row.beban_75.length} — 100% · ${row.beban_100.length} minggu`}
+                                summary={(row) => `50% · ${row.beban_50.length} — 75% · ${row.beban_75.length} — 100% · ${row.beban_100.length} — Realisasi · ${(row.realisasi || []).length} minggu`}
                                 onRemove={(_row, index) => handleRemoveRow(index)}
                                 sectionOf={(row) => row.section || 'A. PEMBUATAN DATA TEKNIKS'}
                                 dayLabel={(week) => `${week.dow} ${filters.year} · minggu ${week.label}`}
@@ -875,7 +881,7 @@ count++;
                                     <th
                                         rowSpan={3}
                                         className="border border-black px-3 py-1.5 text-left text-[11px] dark:border-white"
-                                        style={{ minWidth: '180px' }}
+                                        style={{ minWidth: '220px' }}
                                     >
                                         MESIN PEMBANGKIT
                                     </th>
@@ -957,6 +963,7 @@ count++;
                                         const b50 = row.beban_50 || [];
                                         const b75 = row.beban_75 || [];
                                         const b100 = row.beban_100 || [];
+                                        const real = row.realisasi || [];
 
                                         return (
                                             <Fragment
@@ -977,36 +984,20 @@ count++;
                                                 {/* Sub-row 1: 50% */}
                                                 <tr className="hover:bg-muted/30">
                                                     <td
-                                                        rowSpan={3}
+                                                        rowSpan={4}
                                                         className="border border-black px-1 py-1 font-medium dark:border-white"
                                                     >
                                                         {row.no_urut ||
                                                             rIdx + 1}
                                                     </td>
-                                                    <td
-                                                        rowSpan={3}
-                                                        className="border border-black px-2 py-1 text-left font-semibold dark:border-white"
-                                                    >
-                                                        {can_write ? (
-                                                            <Input
-                                                                value={
-                                                                    row.nama_mesin
-                                                                }
-                                                                onChange={(e) =>
-                                                                    handleUpdateName(
-                                                                        rIdx,
-                                                                        e.target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                className="h-7 text-xs font-semibold uppercase"
-                                                            />
-                                                        ) : (
-                                                            <span className="uppercase">
-                                                                {row.nama_mesin}
-                                                            </span>
-                                                        )}
-                                                    </td>
+                                                <td rowSpan={2} className="min-w-[220px] border border-black p-1 text-left align-middle whitespace-normal dark:border-white">
+                                                    <AutoWrapCellInput
+                                                        value={row.nama_mesin}
+                                                        onChange={(val) => handleUpdateName(rIdx, val)}
+                                                        className="font-semibold uppercase"
+                                                        readOnly={!can_write}
+                                                    />
+                                                </td>
                                                     <td className="border border-black bg-muted/20 px-1 py-1 font-semibold dark:border-white">
                                                         50%
                                                     </td>
@@ -1052,7 +1043,7 @@ count++;
                                                             : ''}
                                                     </td>
                                                     <td
-                                                        rowSpan={3}
+                                                        rowSpan={4}
                                                         className="no-print border border-black px-1 py-1 dark:border-white"
                                                     >
                                                         {can_write && (
@@ -1165,6 +1156,54 @@ count++;
                                                     <td className="border border-black bg-muted/20 px-1 py-1 font-bold dark:border-white">
                                                         {b100.length > 0
                                                             ? b100.length
+                                                            : ''}
+                                                    </td>
+                                                </tr>
+
+                                                {/* Sub-row 4: REAL */}
+                                                <tr className="hover:bg-muted/30">
+                                                    <td className="border border-black bg-emerald-50/70 px-1 py-1 font-semibold text-emerald-900 dark:border-white dark:bg-emerald-950/30 dark:text-emerald-200">
+                                                        REAL
+                                                    </td>
+                                                    {Array.from({
+                                                        length: 12,
+                                                    }).map((_, mIdx) =>
+                                                        [1, 2, 3, 4].map(
+                                                            (w) => {
+                                                                const key = `${mIdx + 1}-${w}`;
+                                                                const isMarked =
+                                                                    real.includes(
+                                                                        key,
+                                                                    );
+
+                                                                return (
+                                                                    <td
+                                                                        key={`real-${key}`}
+                                                                        onClick={() =>
+                                                                            handleToggleCell(
+                                                                                rIdx,
+                                                                                'real',
+                                                                                key,
+                                                                            )
+                                                                        }
+                                                                        className={`cursor-pointer border border-black px-0.5 py-1 text-center font-bold transition-colors dark:border-white ${
+                                                                            isMarked
+                                                                                ? 'bg-emerald-100 text-emerald-950 dark:bg-emerald-900/60 dark:text-emerald-100'
+                                                                                : 'hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20'
+                                                                        }`}
+                                                                        title={`Klik untuk ubah Realisasi Bln ${mIdx + 1} M${w}`}
+                                                                    >
+                                                                        {isMarked
+                                                                            ? '1'
+                                                                            : ''}
+                                                                    </td>
+                                                                );
+                                                            },
+                                                        ),
+                                                    )}
+                                                    <td className="border border-black bg-emerald-50/70 px-1 py-1 font-bold text-emerald-900 dark:border-white dark:bg-emerald-950/30 dark:text-emerald-200">
+                                                        {real.length > 0
+                                                            ? real.length
                                                             : ''}
                                                     </td>
                                                 </tr>

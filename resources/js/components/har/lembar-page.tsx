@@ -9,6 +9,7 @@ import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-selec
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { StatusBadge } from '@/components/status-badge';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -230,15 +231,25 @@ export function HarLembarPage({ lembar, kop_lines, unit, filters, options, rows:
     };
 
     const fieldCell = (field: Field, index: number, row: Row) => (
-        <td key={field.key} className={`${td} p-0`} rowSpan={lembar.lines.length} style={{ minWidth: field.width }}>
-            <Input
-                type={field.type === 'number' ? 'number' : 'text'}
-                value={row.fields[field.key] ?? ''}
-                onChange={(e) => setField(index, field.key, e.target.value)}
-                className={`${cellInput} ${field.align === 'c' ? 'text-center' : ''}`}
-                disabled={!can_write}
-                aria-label={`${field.label} baris ${index + 1}`}
-            />
+        <td key={field.key} className={`${td} p-0 align-middle whitespace-normal`} rowSpan={lembar.lines.length} style={{ minWidth: field.width }}>
+            {field.type === 'number' ? (
+                <Input
+                    type="number"
+                    value={row.fields[field.key] ?? ''}
+                    onChange={(e) => setField(index, field.key, e.target.value)}
+                    className={`${cellInput} ${field.align === 'c' ? 'text-center' : ''}`}
+                    disabled={!can_write}
+                    aria-label={`${field.label} baris ${index + 1}`}
+                />
+            ) : (
+                <AutoWrapCellInput
+                    value={String(row.fields[field.key] ?? '')}
+                    onChange={(value) => setField(index, field.key, value)}
+                    className={`px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40 ${field.align === 'c' ? 'text-center' : ''}`}
+                    disabled={!can_write}
+                    ariaLabel={`${field.label} baris ${index + 1}`}
+                />
+            )}
         </td>
     );
 

@@ -18,8 +18,8 @@ export function ResumeCard({ module, filters }: Props) {
     const query = { query: filters };
 
     return (
-        <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4">
-            <div>
+        <div className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4 shadow-xs sm:flex-row sm:items-center">
+            <div className="min-w-0">
                 <h2 className="text-base font-semibold text-foreground">
                     Resume Bulanan (Grafik &amp; Akumulasi)
                 </h2>
@@ -31,14 +31,17 @@ export function ResumeCard({ module, filters }: Props) {
                     (landscape).
                 </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Button asChild>
                     <Link href={resume.show(module, query).url}>
                         <ChartNoAxesCombined className="size-4" />
                         Buka Resume
                     </Link>
                 </Button>
-                <Button variant="outline" asChild>
+                <Button
+                    className="bg-rose-600 text-white hover:bg-rose-700"
+                    asChild
+                >
                     <a
                         href={
                             resume.pdf(module, {
@@ -50,7 +53,10 @@ export function ResumeCard({ module, filters }: Props) {
                         PDF
                     </a>
                 </Button>
-                <Button variant="outline" asChild>
+                <Button
+                    className="bg-emerald-600 text-white hover:bg-emerald-700"
+                    asChild
+                >
                     {/* Opens the resume page, which downloads its Excel (charts are drawn in the browser). */}
                     <Link
                         href={

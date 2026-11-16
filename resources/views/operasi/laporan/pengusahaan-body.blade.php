@@ -62,18 +62,7 @@
 
         <div style="margin-top: 40px;">
             <div style="text-align: right; font-size: 9px; margin-bottom: 15px;">Kendari, {{ $period['formatted_date'] ?? '' }}</div>
-            <table class="sign-table">
-                <tr>
-                    @foreach ([['Dibuat Oleh:', 'staf'], ['Diperiksa Oleh:', 'tl'], ['Disetujui Oleh:', 'manager']] as [$role, $key])
-                        <td>
-                            <div class="sign-role">{{ $role }}</div>
-                            <div class="sign-position">{{ $signatories[$key]['position'] ?? '' }}</div>
-                            <div class="sign-space"></div>
-                            <div class="sign-name">{{ ($signatories[$key]['name'] ?? '') ?: '(...................................)' }}</div>
-                        </td>
-                    @endforeach
-                </tr>
-            </table>
+            @include('operasi.laporan.partials.pengusahaan-signatures', ['signatories' => $signatories])
         </div>
     </div>
 </div>

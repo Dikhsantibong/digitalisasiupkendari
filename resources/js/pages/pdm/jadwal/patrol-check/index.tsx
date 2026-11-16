@@ -17,11 +17,13 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { normalizeJadwalRows, toDayList } from '@/lib/day-list';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import {
@@ -157,7 +159,7 @@ export default function PdmJadwalPatrolCheckIndex({
     meta: initialMeta,
     can_write,
 }: Props) {
-    const [rows, setRows] = useState<PatrolCheckRow[]>(initialRows);
+    const [rows, setRows] = useState<PatrolCheckRow[]>(() => normalizeJadwalRows(initialRows));
     const [meta, setMeta] = useState<MetaState>(initialMeta);
     const [dirty, setDirty] = useState(false);
     const compact = useCompactLayout();
@@ -459,7 +461,7 @@ return;
 
     // Reset rows to initial state
     const handleReset = () => {
-        setRows(initialRows);
+        setRows(normalizeJadwalRows(initialRows));
         setMeta(initialMeta);
         setDirty(false);
         toast.info('Perubahan dibatalkan ke data terakhir yang tersimpan.');
@@ -863,7 +865,7 @@ return { ...SPECS.cell, fill: baseBg };
                                 title={(row) => row.nama || 'Petugas baru'}
                                 sectionOf={(row) => row.kategori}
                                 categories={[{ key: 'jadwal', label: 'Piket', onClass: 'border-sky-600 bg-sky-500 text-white' }]}
-                                isOn={(row, _category, day) => (row.jadwal || []).includes(day)}
+                                isOn={(row, _category, day) => toDayList(row.jadwal).includes(day)}
                                 onToggle={(row, _category, day) => handleToggleDay(rows.indexOf(row), day)}
                                 details={(row) => (
                                     <>
@@ -874,7 +876,7 @@ return { ...SPECS.cell, fill: baseBg };
                                         </div>
                                     </>
                                 )}
-                                summary={(row) => `${row.no_hp ? `HP ${row.no_hp} · ` : ''}Target ${row.target} · Piket ${(row.jadwal || []).length} hari`}
+                                summary={(row) => `${row.no_hp ? `HP ${row.no_hp} · ` : ''}Target ${row.target} · Piket ${toDayList(row.jadwal).length} hari`}
                                 onRemove={(row) => handleDeleteRow(rows.indexOf(row))}
                                 readOnly={!can_write}
                                 editing={mobileEditing}
@@ -933,7 +935,7 @@ return { ...SPECS.cell, fill: baseBg };
                         <tbody>
                             {rows.map((row, rIdx) => {
                                 const isCategory = row.is_category_header;
-                                const jadwalArr = row.jadwal || [];
+                                const jadwalArr = toDayList(row.jadwal);
                                 const realisasi = jadwalArr.length;
                                 const target = row.target;
                                 const kinerja = target > 0 ? Math.round((realisasi / target) * 100) : 0;
@@ -985,18 +987,15 @@ return { ...SPECS.cell, fill: baseBg };
                                         </td>
 
                                         {/* Nama */}
-                                        <td className="border-r border-border px-2 py-1 font-semibold text-foreground">
-                                            {can_write ? (
-                                                <input
-                                                    type="text"
-                                                    value={row.nama}
-                                                    onChange={(e) => handleUpdateNama(rIdx, e.target.value)}
-                                                    placeholder="Nama Teknisi..."
-                                                    className="h-6 w-full rounded border border-transparent bg-transparent px-1 text-xs font-semibold text-foreground placeholder:text-muted-foreground/50 hover:border-border focus:border-primary focus:bg-background"
-                                                />
-                                            ) : (
-                                                row.nama || '-'
-                                            )}
+                                        <td className="border-r border-border px-2 py-1 font-semibold text-foreground min-w-[180px] align-middle whitespace-normal">
+                                            <AutoWrapCellInput
+                                                value={row.nama}
+                                                onChange={(val) => handleUpdateNama(rIdx, val)}
+                                                placeholder="Nama Teknisi..."
+                                                emptyFallback="-"
+                                                className="font-semibold"
+                                                readOnly={!can_write}
+                                            />
                                         </td>
 
                                         {/* No. Hp */}

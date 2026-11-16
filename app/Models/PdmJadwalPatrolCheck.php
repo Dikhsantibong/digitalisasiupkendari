@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\DayList;
 use App\Models\Concerns\BelongsToUnit;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -66,7 +67,7 @@ class PdmJadwalPatrolCheck extends Model
             'month' => 'integer',
             'is_category_header' => 'boolean',
             'target' => 'integer',
-            'jadwal' => 'array',
+            'jadwal' => DayList::class,
             'sort_order' => 'integer',
         ];
     }

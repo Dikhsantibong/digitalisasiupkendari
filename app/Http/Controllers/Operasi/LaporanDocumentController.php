@@ -54,7 +54,7 @@ class LaporanDocumentController extends Controller
      * v8 = Jadwal Shift Operator carries the real attendance from the presensi
      *      (hadir / tidak hadir marks, Hadir, Tdk Hadir, % Hadir).
      */
-    private const BODY_VERSION = 8;
+    private const BODY_VERSION = 9;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN OPERASI PEMBANGKIT';
 
@@ -337,7 +337,7 @@ class LaporanDocumentController extends Controller
     private function tables(Unit $unit, int $month, int $year, array $data): array
     {
         $engineDaysFilled = collect($data['rows'] ?? [])
-            ->filter(fn (array $row): bool => ($row['kwh_produksi_stand_akhir'] ?? null) !== null)
+            ->filter(fn (array $row): bool => (bool) ($row['is_complete'] ?? (($row['kwh_produksi_stand_akhir'] ?? null) !== null)))
             ->count();
 
         return $this->builtTables["{$unit->id}-{$month}-{$year}"] ??= $this->tables->build($unit, $month, $year, $engineDaysFilled);
