@@ -87,7 +87,65 @@ abstract class BaseInstruksiKerjaController extends Controller
         $user = $request->user();
         abort_unless($this->canWrite($user), 403);
 
-        $validated = $request->validate([
+        $validated = $this->validateDocument($request);
+
+        $unit = Unit::query()->findOrFail($validated['unit_id']);
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $model = $this->modelClass();
+        $doc = ! empty($validated['id'])
+            ? $this->query()->where('unit_id', $unit->id)->findOrFail($validated['id'])
+            : new $model([
+                'unit_id' => $unit->id,
+                'sort_order' => (int) $this->query()->where('unit_id', $unit->id)->max('sort_order') + 1,
+            ]);
+
+        $doc->fill([
+            ...$this->attributes($validated),
+            'input_by' => $user->id,
+        ])->save();
+
+        $this->activityLogger->log(
+            ActivityEvent::Updated,
+            "Menyimpan Instruksi Kerja {$this->moduleName()} \"".str_replace("\n", ' ', $doc->judul)."\" {$unit->name}",
+            $doc,
+            unit: $unit->id,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Instruksi Kerja disimpan.']);
+
+        return to_route("{$this->routePrefix()}.index", ['unit_id' => $unit->id, 'doc' => $doc->id]);
+    }
+
+    /**
+     * PDF of the IK as currently edited (not saved): the editor's "Pratinjau PDF"
+     * tab, rendered exactly like the saved {@see Pdf()}.
+     */
+    public function preview(Request $request): HttpResponse
+    {
+        $user = $request->user();
+        abort_unless($this->canView($user), 403);
+
+        $validated = $this->validateDocument($request);
+        $unit = Unit::query()->findOrFail($validated['unit_id']);
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $doc = array_map(fn ($value) => $value ?? '', $this->attributes($validated));
+
+        $html = view('har.instruksi-kerja.pdf', [
+            'docs' => [[...$doc, 'id' => null, 'updated_at' => null]],
+            'unitName' => $unit->name,
+        ])->render();
+
+        return Pdf::loadHTML($this->embedAssets($html))->setPaper('a4', 'portrait')->stream('Pratinjau_IK.pdf');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function validateDocument(Request $request): array
+    {
+        return $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
             'id' => ['nullable', 'integer'],
             'kop' => ['required', 'string', 'max:255'],
@@ -114,19 +172,17 @@ abstract class BaseInstruksiKerjaController extends Controller
             'judul.required' => 'Judul pekerjaan IK wajib diisi.',
             'sections.*.judul.required' => 'Setiap bagian harus punya judul (mis. ALAT).',
         ]);
+    }
 
-        $unit = Unit::query()->findOrFail($validated['unit_id']);
-        abort_unless($user->canAccessUnit($unit), 403);
-
-        $model = $this->modelClass();
-        $doc = ! empty($validated['id'])
-            ? $this->query()->where('unit_id', $unit->id)->findOrFail($validated['id'])
-            : new $model([
-                'unit_id' => $unit->id,
-                'sort_order' => (int) $this->query()->where('unit_id', $unit->id)->max('sort_order') + 1,
-            ]);
-
-        $doc->fill([
+    /**
+     * The stored fields of an IK from the validated input (empty points dropped).
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    protected function attributes(array $validated): array
+    {
+        return [
             'kop' => trim($validated['kop']),
             'judul' => trim($validated['judul']),
             'mesin' => $this->text($validated['mesin'] ?? null),
@@ -152,19 +208,7 @@ abstract class BaseInstruksiKerjaController extends Controller
             'dibuat_nama' => $this->text($validated['dibuat_nama'] ?? null),
             'disetujui_jabatan' => $this->text($validated['disetujui_jabatan'] ?? null),
             'disetujui_nama' => $this->text($validated['disetujui_nama'] ?? null),
-            'input_by' => $user->id,
-        ])->save();
-
-        $this->activityLogger->log(
-            ActivityEvent::Updated,
-            "Menyimpan Instruksi Kerja {$this->moduleName()} \"".str_replace("\n", ' ', $doc->judul)."\" {$unit->name}",
-            $doc,
-            unit: $unit->id,
-        );
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Instruksi Kerja disimpan.']);
-
-        return to_route("{$this->routePrefix()}.index", ['unit_id' => $unit->id, 'doc' => $doc->id]);
+        ];
     }
 
     public function destroy(Request $request, int $instruksiKerja): RedirectResponse
@@ -239,7 +283,7 @@ abstract class BaseInstruksiKerjaController extends Controller
     }
 
     /**
-     * Default Dibuat (the module's Koordinator) & Disetujui (Project Leader) of a new IK: the unit's jabatan holders.
+     * Default Dibuat (the module's Koordinator) & Disetujui ({@see approvedBy()}) of a new IK: the unit's jabatan holders.
      *
      * @return array{dibuat_jabatan: string, dibuat_nama: string, disetujui_jabatan: string, disetujui_nama: string}
      */
@@ -248,13 +292,25 @@ abstract class BaseInstruksiKerjaController extends Controller
         $holder = fn (EmployeePosition $position): string => (string) $unit->employees()
             ->where('is_active', true)->where('position', $position->value)->orderBy('id')->value('name');
         [$jabatan, $position] = $this->preparedBy();
+        [$approverJabatan, $approver] = $this->approvedBy();
 
         return [
             'dibuat_jabatan' => $jabatan,
             'dibuat_nama' => $holder($position),
-            'disetujui_jabatan' => 'Project Leader',
-            'disetujui_nama' => $holder(EmployeePosition::ProjectLeader),
+            'disetujui_jabatan' => $approverJabatan,
+            'disetujui_nama' => $holder($approver),
         ];
+    }
+
+    /**
+     * Default "Disetujui" of a new IK: the Project Leader, unless the module
+     * signs elsewhere (Logistik & PdM: TL Pemeliharaan).
+     *
+     * @return array{0: string, 1: EmployeePosition}
+     */
+    protected function approvedBy(): array
+    {
+        return ['Project Leader', EmployeePosition::ProjectLeader];
     }
 
     /**

@@ -74,6 +74,11 @@ export type ReportWorkflowState = {
         ratify: boolean;
         reject: boolean;
     };
+    /**
+     * Optional own action endpoints (Laporan UL); a Laporan Pembangkit posts to
+     * the report-workflow routes of its module.
+     */
+    action_urls?: Partial<Record<Action, string>>;
 };
 
 type Action = 'submit' | 'verify' | 'approve' | 'ratify' | 'reject';
@@ -159,7 +164,9 @@ export function ReportWorkflowPanel({
         },
         approve: {
             title: 'Setujui Laporan',
-            description: `Sebagai ${tlPosition}, Anda menyetujui laporan ${hasKoordinator ? 'yang telah diperiksa Koordinator' : 'yang diajukan Staf'}. Laporan diteruskan ke Manager UL untuk disahkan.`,
+            description: workflow.action_urls
+                ? 'Anda menyetujui laporan ini. Laporan diteruskan ke tahap berikutnya (Team Leader berikutnya atau Manager UL untuk disahkan).'
+                : `Sebagai ${tlPosition}, Anda menyetujui laporan ${hasKoordinator ? 'yang telah diperiksa Koordinator' : 'yang diajukan Staf'}. Laporan diteruskan ke Manager UL untuk disahkan.`,
             confirm: 'Setujui',
             field: 'note',
             required: false,
@@ -196,7 +203,8 @@ export function ReportWorkflowPanel({
         const dialog = dialogs[action];
         setProcessing(true);
         router.post(
-            reportWorkflow[action](workflow.module).url,
+            workflow.action_urls?.[action] ??
+                reportWorkflow[action](workflow.module).url,
             { ...target, [dialog.field]: note || null },
             {
                 preserveScroll: true,

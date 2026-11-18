@@ -39,7 +39,7 @@ export default function PengusahaanHub({ module, section }: Props) {
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title={`${section.title} ${module.title}`}
-                    description="Akses 2 — Pengusahaan (Team Leader & Staf). Menu di halaman ini diatur per role di Role & Akses."
+                    description="Akses 2 — Team Leader & Staf. Menu di halaman ini diatur per role di Role & Akses."
                 />
 
                 {menus.length === 0 ? (
@@ -49,7 +49,7 @@ export default function PengusahaanHub({ module, section }: Props) {
                         </div>
                         <h3 className="text-base font-semibold text-foreground">Belum ada menu</h3>
                         <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                            Belum ada halaman {section.title.toLowerCase()} pengusahaan {module.title.toLowerCase()} yang tersedia untuk akun Anda.
+                            Belum ada halaman {section.title.toLowerCase()} {module.title.toLowerCase()} yang tersedia untuk akun Anda.
                         </p>
                     </div>
                 ) : (

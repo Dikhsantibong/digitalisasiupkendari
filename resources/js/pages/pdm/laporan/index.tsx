@@ -93,7 +93,7 @@ export default function PdmLaporanIndex({ filters, options, contents }: Props) {
                     <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs sm:flex-row sm:items-center">
                         <div className="min-w-0">
                             <h2 className="text-base font-semibold text-foreground">
-                                Laporan PdM &amp; Maturity Level Pembangkit
+                                Laporan Project PdM &amp; Maturity Level
                             </h2>
                             <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                 Tersusun Sampul, Daftar Isi, Lembar Pengesahan,

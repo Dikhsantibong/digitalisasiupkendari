@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarPrelubeTestPdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Checklist Prelube Test (per mesin & tanggal uji).
+ * Akses 2 — Formulir Checklist Prelube Test (per mesin & tanggal uji).
  */
 class PrelubeTestController extends HarFormulirController
 {

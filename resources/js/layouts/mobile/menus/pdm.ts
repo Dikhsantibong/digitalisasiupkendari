@@ -1,4 +1,5 @@
 import {
+    FileText,
     Activity,
     CalendarCheck2,
     CalendarClock,
@@ -16,6 +17,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
 import pdmForms from '@/routes/pdm/input/forms';
+import instruksiKerja from '@/routes/pdm/input/instruksi-kerja';
 import kesiapanApd from '@/routes/pdm/input/kesiapan-apd';
 import permitToWork from '@/routes/pdm/input/permit-to-work';
 import realisasiPrediktif from '@/routes/pdm/input/realisasi-prediktif';
@@ -79,6 +81,14 @@ const JADWAL: Entry[] = [
 ];
 
 const INPUT: Entry[] = [
+    [
+        'instruksi-kerja',
+        'Instruksi Kerja (IK) PdM',
+        'Instruksi Kerja',
+        FileText,
+        instruksiKerja.index().url,
+        'pdm/input/instruksi-kerja/index',
+    ],
     [
         'kesiapan-apd',
         'Kesiapan APD Bagian PdM Pembangkit',

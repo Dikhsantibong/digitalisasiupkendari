@@ -37,9 +37,9 @@ export default function HarLaporanPengusahaan({
 }: Props) {
     return (
         <>
-            <Head title="Dokumen Laporan Pengusahaan Pembangkit" />
+            <Head title="Dokumen Laporan Pemeliharaan" />
             <DocumentEditor
-                title="Laporan Pengusahaan Pembangkit"
+                title="Laporan Pemeliharaan"
                 description="Laporan bulanan terisi otomatis. Edit sebagai teks (seperti Word) atau spreadsheet (seperti Excel), simpan, lalu unduh PDF atau Excel."
                 backUrl={laporan.index().url}
                 backLabel="Kembali"
@@ -72,6 +72,6 @@ HarLaporanPengusahaan.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Laporan Pemeliharaan Pembangkit', href: laporan.index() },
-        { title: 'Laporan Pengusahaan Pembangkit', href: laporan.index() },
+        { title: 'Laporan Pemeliharaan', href: laporan.index() },
     ],
 };

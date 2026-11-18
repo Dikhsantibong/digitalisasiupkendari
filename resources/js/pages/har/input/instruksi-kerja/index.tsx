@@ -17,6 +17,7 @@ export default function InstruksiKerjaPage(props: InstruksiKerjaPageProps) {
                 store: instruksiKerja.store().url,
                 pdf: (query) => instruksiKerja.pdf({ query }).url,
                 destroy: (id) => instruksiKerja.destroy(id).url,
+                preview: instruksiKerja.preview().url,
             }}
             copy={{
                 headTitle: 'Instruksi Kerja Pemeliharaan',

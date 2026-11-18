@@ -39,10 +39,10 @@ export default function OperasiLaporanPengusahaan({
 
     return (
         <>
-            <Head title="Dokumen Laporan Pengusahaan Pembangkit Operasi" />
+            <Head title="Dokumen Laporan Operasi" />
             <DocumentEditor
-                title="Laporan Pengusahaan Pembangkit (Operasi)"
-                description="Laporan terisi otomatis dari menu Pengusahaan Operasi (Ikhtisar Sentral s/d TUG 9), dalam satu PDF portrait & landscape. Simpan, lalu ajukan: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan. Selama proses persetujuan dokumen dikunci."
+                title="Laporan Operasi"
+                description="Laporan terisi otomatis dari menu Operasi (Ikhtisar Sentral s/d TUG 9), dalam satu PDF portrait & landscape. Simpan, lalu ajukan: Staf mengajukan → Team Leader menyetujui → Manager UL mengesahkan. Selama proses persetujuan dokumen dikunci."
                 backUrl={backUrl}
                 backLabel="Kembali"
                 numberLabel="No. Dokumen"
@@ -60,7 +60,7 @@ export default function OperasiLaporanPengusahaan({
                 xlsxHeaderLines={[
                     { text: 'PT PLN NUSANTARA POWER', bold: true },
                     { text: 'UNIT PELAKSANA PENGENDALIAN PEMBANGKITAN KENDARI', bold: true },
-                    { text: 'LAPORAN PENGUSAHAAN PEMBANGKIT (OPERASI)' },
+                    { text: 'LAPORAN OPERASI' },
                 ]}
                 saveUrl={pengusahaan.store().url}
                 regenerateUrl={pengusahaan.regenerate().url}
@@ -74,6 +74,6 @@ OperasiLaporanPengusahaan.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Laporan Operasi Pembangkit', href: laporan.index() },
-        { title: 'Laporan Pengusahaan Pembangkit', href: laporan.index() },
+        { title: 'Laporan Operasi', href: laporan.index() },
     ],
 };

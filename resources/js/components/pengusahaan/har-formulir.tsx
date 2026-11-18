@@ -262,7 +262,7 @@ export function HarFormulirPage({
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                         {!inShell && (
-                            <Button variant="outline" size="icon" onClick={() => router.get(harPengusahaan.index('formulir').url)} title="Kembali ke Formulir Pengusahaan Pemeliharaan" className="shrink-0">
+                            <Button variant="outline" size="icon" onClick={() => router.get(harPengusahaan.index('formulir').url)} title="Kembali ke Formulir Pemeliharaan" className="shrink-0">
                                 <ArrowLeft className="size-4" />
                             </Button>
                         )}

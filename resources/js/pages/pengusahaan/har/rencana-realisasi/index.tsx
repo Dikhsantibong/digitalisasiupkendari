@@ -116,7 +116,7 @@ const normalize = (scopes: Props['scopes']): Record<Scope, MachineRow[]> => {
 };
 
 /**
- * Akses 2 — Pengusahaan: Rencana & Realisasi pemeliharaan rutin, pengukuran
+ * Akses 2 — Rencana & Realisasi pemeliharaan rutin, pengukuran
  * air and monitoring pelumas. Six sheets (tabs) laid out like the paper
  * forms; every sheet is edited in place and all are saved together. The
  * signatures come later with the Laporan.
@@ -466,7 +466,7 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
                 <div className="no-print flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                         {!inShell && (
-                            <Button variant="outline" size="icon" onClick={() => router.get(harPengusahaan.index('input').url)} title="Kembali ke Input Pengusahaan Pemeliharaan" className="shrink-0">
+                            <Button variant="outline" size="icon" onClick={() => router.get(harPengusahaan.index('input').url)} title="Kembali ke Input Pemeliharaan" className="shrink-0">
                                 <ArrowLeft className="size-4" />
                             </Button>
                         )}
@@ -679,7 +679,7 @@ function Legend({ children }: { children: ReactNode }) {
 RencanaRealisasiPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Input Pengusahaan Pemeliharaan', href: harPengusahaan.index('input') },
+        { title: 'Input Pemeliharaan', href: harPengusahaan.index('input') },
         { title: 'Rencana & Realisasi', href: rencanaRealisasi.index() },
     ],
 };

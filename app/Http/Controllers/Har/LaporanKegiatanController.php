@@ -18,7 +18,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Akses 2 — Pengusahaan: Laporan Kegiatan Pemeliharaan Mesin Pembangkit and
+ * Akses 2 — Laporan Kegiatan Pemeliharaan Mesin Pembangkit and
  * Laporan Kegiatan Pemeliharaan Listrik & Kontrol Pembangkit
  * (FMKD-314-10.3.3-A3). A report month holds numbered entries; saving a report
  * replaces its entries for the unit & month.

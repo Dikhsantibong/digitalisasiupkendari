@@ -82,7 +82,7 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                             <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
                                 <div>
                                     <h2 className="text-base font-semibold text-foreground">
-                                        Laporan K3 Lingkungan Pembangkit
+                                        Laporan Project K3 Lingkungan
                                     </h2>
                                     <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                         Tersusun sesuai daftar isi (I–VII) dan
@@ -112,11 +112,11 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                                 <div>
                                     <div className="flex items-center justify-between gap-2">
                                         <h2 className="text-base font-semibold text-foreground">
-                                            Laporan Pengusahaan Pembangkit
+                                            Laporan K3 &amp; KAM
                                         </h2>
                                     </div>
                                     <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                                        Laporan pengusahaan K3 &amp; KAM
+                                        Laporan K3 &amp; KAM
                                         mencakup sampul resmi, evaluasi
                                         keselamatan kerja, checklist patroli,
                                         APAR, emergency facility, sertifikasi

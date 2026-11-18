@@ -7,7 +7,7 @@ use App\Services\Operasi\TugBbmDocument;
 use App\Services\Operasi\TugDocument;
 
 /**
- * Pengusahaan Operasi — TUG 9 BBM: the monthly Rekap Bon Pemakaian Energi
+ * Operasi — TUG 9 BBM: the monthly Rekap Bon Pemakaian Energi
  * Primer (HSD/MFO/Batubara) per mesin, from Pemakaian Bahan Bakar.
  */
 class PengusahaanTugBbmController extends TugController

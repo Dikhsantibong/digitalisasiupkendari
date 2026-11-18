@@ -1,4 +1,7 @@
-import { LogistikJadwalSheetPage, logistikSheetBreadcrumbs } from '@/components/logistik/jadwal-sheet-page';
+import {
+    LogistikJadwalSheetPage,
+    logistikSheetBreadcrumbs,
+} from '@/components/logistik/jadwal-sheet-page';
 import type { LogistikJadwalSheetPageProps } from '@/components/logistik/jadwal-sheet-page';
 
 /**
@@ -9,5 +12,9 @@ export default function Inspeksi5s5rSheet(props: LogistikJadwalSheetPageProps) {
 }
 
 Inspeksi5s5rSheet.layout = {
-    breadcrumbs: logistikSheetBreadcrumbs('input', 'inspeksi-5s5r', 'Laporan Inspeksi Checklist 5S5R Logistik & Gudang'),
+    breadcrumbs: logistikSheetBreadcrumbs(
+        'input',
+        'inspeksi-5s5r',
+        'Laporan Inspeksi Checklist 5S5R Logistik & Gudang',
+    ),
 };

@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The operators fill the Pengusahaan Operasi inputs (operasi.pengusahaan.input)
+ * The operators fill the Operasi inputs (operasi.pengusahaan.input)
  * only for a unit where Master Unit allows it (units.operator_pengusahaan —
  * off for the containerized units). Users holding the TL/Staf permission
  * (operasi.pengusahaan.view / .write) are not affected.
@@ -31,7 +31,7 @@ class EnsureOperatorPengusahaanUnit
             ? Unit::query()->find($request->integer('unit_id'))
             : Unit::query()->visibleTo($user)->where('is_active', true)->orderBy('name')->first();
 
-        abort_if($unit !== null && ! $unit->operator_pengusahaan, 403, 'Input Pengusahaan Operasi tidak diaktifkan untuk unit ini (Master Unit).');
+        abort_if($unit !== null && ! $unit->operator_pengusahaan, 403, 'Input Operasi tidak diaktifkan untuk unit ini (Master Unit).');
 
         return $next($request);
     }

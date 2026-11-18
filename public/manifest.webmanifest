@@ -1,7 +1,7 @@
 {
-    "name": "Management Pelaporan Pembangkit",
-    "short_name": "Pelaporan KIT",
-    "description": "Pelaporan pembangkit UP Kendari — jadwal, input, laporan, dan pengingat.",
+    "name": "KIT-SIPP (Sistem Informasi Pelaporan Pembangkit)",
+    "short_name": "KIT-SIPP",
+    "description": "KIT-SIPP (Sistem Informasi Pelaporan Pembangkit) UP Kendari — jadwal, input, laporan, dan pengingat.",
     "start_url": "/dashboard",
     "scope": "/",
     "display": "standalone",

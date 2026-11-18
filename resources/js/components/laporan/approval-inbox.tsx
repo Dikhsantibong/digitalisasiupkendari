@@ -38,7 +38,10 @@ import reportWorkflow from '@/routes/report-workflow';
 type Links = { view_url: string; download_url: string; document_url: string };
 
 export type QueueItem = Links & {
-    key: number;
+    key: number | string;
+    /** Laporan UL: its own approve/ratify & reject endpoints (a Laporan Pembangkit uses report-workflow). */
+    action_url?: string;
+    reject_url?: string;
     module: string;
     unit_id: number;
     month: number;
@@ -359,11 +362,13 @@ export function ReportQueue({
                     onClose={() => setDialog(null)}
                     onSubmit={(text, done, fail) => {
                         const { item, reject } = dialog;
-                        const route = reject
-                            ? reportWorkflow.reject(item.module)
-                            : reportWorkflow[item.action](item.module);
+                        const url = reject
+                            ? (item.reject_url ??
+                              reportWorkflow.reject(item.module).url)
+                            : (item.action_url ??
+                              reportWorkflow[item.action](item.module).url);
                         router.post(
-                            route.url,
+                            url,
                             {
                                 unit_id: item.unit_id,
                                 month: item.month,

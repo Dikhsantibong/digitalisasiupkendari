@@ -24,7 +24,7 @@ const TONES = [
 ];
 
 /**
- * Phone menus of Akses 2 — Pengusahaan Operasi (TL & Staf Operasi): every
+ * Phone menus of Akses 2 — Operasi (TL & Staf Operasi): every
  * Operasi page of the Pengusahaan registry (the daily inputs and Berita Acara)
  * plus the Laporan page. A page added to the registry shows up here without
  * further changes.
@@ -48,7 +48,7 @@ export const OPERASI_PENGUSAHAAN_MENUS: MobileMenu[] = [
         group: 'op-laporan',
         title: 'Laporan Operasi',
         short: 'Laporan',
-        description: 'Laporan Pembangkit & Laporan Pengusahaan Operasi',
+        description: 'Laporan Project & Laporan Operasi',
         icon: FileBarChart,
         tone: 'bg-primary/10 text-primary',
         href: operasiLaporan.index().url,

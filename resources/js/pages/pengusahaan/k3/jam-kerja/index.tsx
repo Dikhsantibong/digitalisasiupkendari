@@ -212,7 +212,7 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('input').url)}
-                            title="Kembali ke Input Pengusahaan K3"
+                            title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -229,7 +229,7 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Pengusahaan: Perhitungan hari kerja, jam reguler, lembur, dan absensi seluruh karyawan unit (Formulir FMZ-08.4.4.10).
+                                Akses 2 — Perhitungan hari kerja, jam reguler, lembur, dan absensi seluruh karyawan unit (Formulir FMZ-08.4.4.10).
                             </p>
                         </div>
                     </div>
@@ -779,7 +779,7 @@ function NumInput({
 PengusahaanJamKerjaPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Input Pengusahaan K3', href: k3Pengusahaan.index('input') },
+        { title: 'Input K3', href: k3Pengusahaan.index('input') },
         { title: 'Hari & Jam Kerja Karyawan', href: k3PengusahaanJamKerja.index() },
     ],
 };

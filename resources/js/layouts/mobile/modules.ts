@@ -28,7 +28,7 @@ export type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
  *   shown only to users holding its permission, which a Super Admin grants or
  *   withdraws per role in Role & Akses.
  */
-/** The Pengusahaan Operasi section of the field roles' phone menu, kept apart from their regular inputs. */
+/** The Operasi section of the field roles' phone menu, kept apart from their regular inputs. */
 const PENGUSAHAAN_GROUP: Partial<
     Record<MobileMenu['group'], MobileMenu['group']>
 > = {
@@ -42,7 +42,7 @@ const PENGUSAHAAN_GROUP: Partial<
 /**
  * The operators' & Project Leader's Operasi cards, in two parts on the phone:
  * - "Input Operasi (Laporan Project)": the field inputs (operasi.lapangan.*);
- * - "Pengusahaan · …": the Pengusahaan Operasi inputs (operasi.pengusahaan.input —
+ * - "Operasi · …": the Operasi inputs (operasi.pengusahaan.input —
  *   not the Berita Acara nor the Laporan). The Pengusahaan pages that are also
  *   field inputs (Input Harian, Stand Meter, Pemakaian Pelumas) sit here once,
  *   open to either permission.
@@ -86,7 +86,7 @@ export const MOBILE_MODULES: MobileModule[] = [
         roles: ['operator', 'project_leader_operasi', 'harmes', 'harlist'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
-        // The operators also fill the Pengusahaan Operasi inputs (not the Berita Acara / Laporan Pengusahaan).
+        // The operators also fill the Operasi inputs (not the Berita Acara / Laporan Pengusahaan).
         menus: [
             ...UMUM_MENUS,
             ...OPERATOR_OPERASI_MENUS,
@@ -106,11 +106,11 @@ export const MOBILE_MODULES: MobileModule[] = [
         menus: OPERASI_PROJECT_MENUS,
     },
     {
-        // Akses 2 — Pengusahaan Operasi on a phone: TL & Staf Operasi (Manager UL keeps the full app).
+        // Akses 2 — Operasi on a phone: TL & Staf Operasi (Manager UL keeps the full app).
         key: 'operasi-pengusahaan',
         enabled: true,
         title: 'Operasi',
-        subtitle: 'Input harian, berita acara & laporan pengusahaan',
+        subtitle: 'Input harian, berita acara & laporan operasi',
         roles: ['tl_operasi', 'staf_operasi'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
@@ -132,7 +132,7 @@ export const MOBILE_MODULES: MobileModule[] = [
         key: 'har-pengusahaan',
         enabled: true,
         title: 'Pemeliharaan',
-        subtitle: 'Work order, service request & formulir pengusahaan',
+        subtitle: 'Work order, service request & formulir pemeliharaan',
         roles: ['tl_pemeliharaan', 'staf_pemeliharaan'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
@@ -150,11 +150,11 @@ export const MOBILE_MODULES: MobileModule[] = [
         menus: K3_PROJECT_MENUS,
     },
     {
-        // Akses 2 — Pengusahaan K3 on a phone: TL K3 & Staf K3.
+        // Akses 2 — K3 on a phone: TL K3 & Staf K3.
         key: 'k3-pengusahaan',
         enabled: true,
         title: 'K3 & Keamanan',
-        subtitle: 'Input pengusahaan K3 sesuai peran Anda',
+        subtitle: 'Input K3 sesuai peran Anda',
         roles: ['tl_k3', 'staf_k3'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,

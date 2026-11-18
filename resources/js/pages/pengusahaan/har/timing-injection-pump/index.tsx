@@ -36,7 +36,7 @@ export default function TimingInjectionPumpPage(props: HarFormulirProps) {
 TimingInjectionPumpPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Timing Injection Pump', href: timingInjectionPumpRoutes.index() },
     ],
 };

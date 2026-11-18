@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * The stock sheets of Pengusahaan Operasi: Persediaan Bahan Bakar (one block
+ * The stock sheets of Operasi: Persediaan Bahan Bakar (one block
  * per jenis BBM of the unit) and Persediaan Pelumas (one block per jenis
  * pelumas of the unit).
  */

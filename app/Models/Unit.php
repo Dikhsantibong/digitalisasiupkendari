@@ -24,7 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string $slug
  * @property UnitType $type
  * @property UnitContract|null $contract kontrak 11 KIT / 6 KIT
- * @property bool $operator_pengusahaan the operators fill the Pengusahaan Operasi inputs (off for containerized units)
+ * @property bool $operator_pengusahaan the operators fill the Operasi inputs (off for containerized units)
  * @property string|null $installed_capacity_mw
  * @property string|null $location
  * @property string|null $latitude

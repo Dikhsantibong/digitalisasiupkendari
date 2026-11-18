@@ -19,7 +19,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Akses 2 — Pengusahaan Operasi (TL & Staf Operasi; operators through their
+ * Akses 2 — Operasi (TL & Staf Operasi; operators through their
  * operasi.lapangan.* page permission). Page: pengusahaan/operasi/feeder-readings/index.
  *
  * Daily feeder meter readings (modul OPERASI, menu Input): rows are calendar

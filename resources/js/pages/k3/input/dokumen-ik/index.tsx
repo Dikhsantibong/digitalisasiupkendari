@@ -1,16 +1,49 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowDown, ArrowUp, Copy, Eye, FileDown, FilePlus2, FileText, PencilLine, Plus, Printer, Save, Trash2 } from 'lucide-react';
+import {
+    ArrowDown,
+    ArrowUp,
+    Copy,
+    FileDown,
+    FilePlus2,
+    FileText,
+    Plus,
+    Printer,
+    Save,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ClipboardEvent, KeyboardEvent, ReactNode } from 'react';
+import {
+    A4Sheet,
+    AutoText,
+    EDITABLE,
+    EditorTips,
+    PART_FRAME,
+    PART_TOOLS,
+    ToolButton,
+    ToolDivider,
+    useFieldFocus,
+    useSaveShortcut,
+    useUnsavedWarning,
+    EditorViewTabs,
+    PdfPreview,
+} from '@/components/instruksi-kerja/visual-editor';
+import type { EditorView } from '@/components/instruksi-kerja/visual-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -20,7 +53,12 @@ import type { IdName } from '@/types';
 
 type Style = 'butir' | 'huruf' | 'angka' | 'paragraf';
 
-type ServerSection = { judul: string; gaya: Style; pengantar: string; butir: string[] };
+type ServerSection = {
+    judul: string;
+    gaya: Style;
+    pengantar: string;
+    butir: string[];
+};
 
 type ServerDoc = {
     id: number;
@@ -34,10 +72,24 @@ type ServerDoc = {
     updated_at: string | null;
 };
 
-type Template = { key: string; judul: string; no_dokumen: string; deskripsi: string; sections: ServerSection[] };
+type Template = {
+    key: string;
+    judul: string;
+    no_dokumen: string;
+    deskripsi: string;
+    sections: ServerSection[];
+};
 
-/** On screen the points of a section are one text: a line per point. */
-type Section = { key: number; judul: string; gaya: Style; pengantar: string; teks: string };
+/** A point of a part, with a stable key for focus & React. */
+type Point = { key: number; text: string };
+
+type Section = {
+    key: number;
+    judul: string;
+    gaya: Style;
+    pengantar: string;
+    points: Point[];
+};
 
 type Draft = {
     id: number | null;
@@ -61,10 +113,10 @@ type Props = {
 };
 
 const STYLES: { value: Style; label: string; hint: string }[] = [
-    { value: 'butir', label: '• Butir', hint: 'Daftar bertanda •' },
-    { value: 'huruf', label: 'a. b. c.', hint: 'Langkah berurutan huruf' },
-    { value: 'angka', label: '1. 2. 3.', hint: 'Langkah berurutan angka' },
-    { value: 'paragraf', label: '¶ Paragraf', hint: 'Kalimat biasa tanpa tanda' },
+    { value: 'butir', label: '•', hint: 'Daftar bertanda •' },
+    { value: 'huruf', label: 'a.', hint: 'Langkah berurutan huruf (a. b. c.)' },
+    { value: 'angka', label: '1.', hint: 'Langkah berurutan angka (1. 2. 3.)' },
+    { value: 'paragraf', label: '¶', hint: 'Paragraf biasa tanpa tanda' },
 ];
 
 const QUICK_SECTIONS: { judul: string; gaya: Style }[] = [
@@ -78,7 +130,19 @@ const QUICK_SECTIONS: { judul: string; gaya: Style }[] = [
 
 let nextKey = 1;
 
-const toSection = (s: ServerSection): Section => ({ key: nextKey++, judul: s.judul, gaya: s.gaya, pengantar: s.pengantar ?? '', teks: (s.butir ?? []).join('\n') });
+const point = (text = ''): Point => ({ key: nextKey++, text });
+
+const toSection = (s: ServerSection): Section => {
+    const butir = (s.butir ?? []).filter((b) => b.trim() !== '');
+
+    return {
+        key: nextKey++,
+        judul: s.judul,
+        gaya: s.gaya,
+        pengantar: s.pengantar ?? '',
+        points: (butir.length ? butir : ['']).map((b) => point(b)),
+    };
+};
 
 const toDraft = (doc: ServerDoc): Draft => ({
     id: doc.id,
@@ -93,38 +157,50 @@ const toDraft = (doc: ServerDoc): Draft => ({
 
 const today = (): string => new Date().toISOString().slice(0, 10);
 
-const points = (teks: string): string[] =>
-    teks
-        .split('\n')
-        .map((line) => line.replace(/^\s*(?:[-•*]|[a-z]\.|\d+[.)])\s+/i, '').trim())
-        .filter(Boolean);
+/** A pasted line without its own marker ("- ", "• ", "a. ", "1) "). */
+const clean = (line: string): string =>
+    line.replace(/^\s*(?:[-•*]|[a-z]\.|\d+[.)])\s+/i, '').trim();
 
-const marker = (gaya: Style, index: number): string => (gaya === 'huruf' ? `${String.fromCharCode(97 + (index % 26))}.` : gaya === 'angka' ? `${index + 1}.` : gaya === 'butir' ? '•' : '');
+const filled = (points: Point[]): string[] =>
+    points.map((p) => p.text.trim()).filter(Boolean);
 
-const formatDate = (iso: string): string => {
-    if (!iso) {
-        return '';
-    }
-
-    const [y, m, d] = iso.split('-');
-
-    return `${d}-${m}-${y}`;
-};
+const marker = (gaya: Style, index: number): string =>
+    gaya === 'huruf'
+        ? `${String.fromCharCode(97 + (index % 26))}.`
+        : gaya === 'angka'
+          ? `${index + 1}.`
+          : gaya === 'butir'
+            ? '•'
+            : '';
 
 /**
- * Input Dokumen IK K3 (Akses 1): the Instruksi Kerja documents of a period.
- * Pick a template, adjust the identity and the numbered parts (a line per
- * point), and see the official form live on the right. Saved IKs are printed
- * as PDF and attached to the Laporan K3.
+ * Input Dokumen IK K3 (Akses 1): the Instruksi Kerja documents of a period,
+ * written straight on one A4 sheet that looks like the print
+ * (resources/views/k3/dokumen-ik/document.blade.php). Enter adds a point,
+ * Backspace at the start of a point joins it to the previous one, pasting
+ * several lines makes several points; each part has its own style (•, a., 1.,
+ * ¶) and can be moved. Saved IKs are printed as PDF and attached to the
+ * Laporan K3.
  */
-export default function DokumenIkPage({ unit, filters, options, docs, selected_id, templates, can_write }: Props) {
+export default function DokumenIkPage({
+    unit,
+    filters,
+    options,
+    docs,
+    selected_id,
+    templates,
+    can_write,
+}: Props) {
     const compact = useCompactLayout();
-    const initialDoc = docs.find((d) => d.id === selected_id) ?? docs[0] ?? null;
-    const [draft, setDraft] = useState<Draft | null>(() => (initialDoc ? toDraft(initialDoc) : null));
+    const initialDoc =
+        docs.find((d) => d.id === selected_id) ?? docs[0] ?? null;
+    const [draft, setDraft] = useState<Draft | null>(() =>
+        initialDoc ? toDraft(initialDoc) : null,
+    );
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
-    const [mobileView, setMobileView] = useState<'isi' | 'pratinjau'>('isi');
+    const [view, setView] = useState<EditorView>('edit');
 
     // New server data (saved / switched period) replaces the working copy.
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}-${selected_id}-${docs.map((d) => `${d.id}:${d.updated_at}`).join(',')}`;
@@ -136,11 +212,19 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
         setDirty(false);
     }
 
-    const confirmLeave = (): boolean => !dirty || window.confirm('Perubahan pada IK ini belum disimpan. Tetap lanjut?');
+    useUnsavedWarning(dirty);
+
+    const confirmLeave = (): boolean =>
+        !dirty ||
+        window.confirm('Perubahan pada IK ini belum disimpan. Tetap lanjut?');
 
     const visit = (patch: Partial<Props['filters']>) => {
         if (confirmLeave()) {
-            router.get(dokumenIk.index().url, { ...filters, ...patch }, { preserveScroll: true, replace: true });
+            router.get(
+                dokumenIk.index().url,
+                { ...filters, ...patch },
+                { preserveScroll: true, replace: true },
+            );
         }
     };
 
@@ -151,7 +235,6 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
 
         setDraft(toDraft(doc));
         setDirty(false);
-        setMobileView('isi');
     };
 
     const startFromTemplate = (template: Template) => {
@@ -171,7 +254,6 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
         });
         setDirty(true);
         setPickerOpen(false);
-        setMobileView('isi');
     };
 
     const change = (patch: Partial<Draft>) => {
@@ -179,67 +261,60 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
         setDirty(true);
     };
 
-    const changeSection = (key: number, patch: Partial<Section>) =>
-        change({ sections: (draft?.sections ?? []).map((s) => (s.key === key ? { ...s, ...patch } : s)) });
-
-    const moveSection = (index: number, delta: number) => {
-        const list = [...(draft?.sections ?? [])];
-        const target = index + delta;
-
-        if (target < 0 || target >= list.length) {
-            return;
-        }
-
-        [list[index], list[target]] = [list[target], list[index]];
-        change({ sections: list });
-    };
-
-    const removeSection = (key: number) => {
-        const section = draft?.sections.find((s) => s.key === key);
-
-        if (section && (section.teks.trim() === '' || window.confirm(`Hapus bagian "${section.judul}"?`))) {
-            change({ sections: (draft?.sections ?? []).filter((s) => s.key !== key) });
-        }
-    };
-
-    const addSection = (judul = '', gaya: Style = 'butir') =>
-        change({ sections: [...(draft?.sections ?? []), { key: nextKey++, judul, gaya, pengantar: '', teks: '' }] });
+    /** The document as sent to store and to the PDF preview. */
+    const payload = (doc: Draft) => ({
+        unit_id: filters.unit_id,
+        month: filters.month,
+        year: filters.year,
+        id: doc.id,
+        sistem: doc.sistem,
+        judul: doc.judul,
+        no_dokumen: doc.no_dokumen,
+        tanggal: doc.tanggal || null,
+        revisi: doc.revisi,
+        halaman: doc.halaman,
+        sections: doc.sections.map((s) => ({
+            judul: s.judul,
+            gaya: s.gaya,
+            pengantar: s.pengantar,
+            butir: filled(s.points),
+        })),
+    });
 
     const save = () => {
-        if (!draft) {
+        if (!draft || saving || !draft.judul.trim()) {
             return;
         }
 
         setSaving(true);
-        router.post(
-            dokumenIk.store().url,
-            {
-                unit_id: filters.unit_id,
-                month: filters.month,
-                year: filters.year,
-                id: draft.id,
-                sistem: draft.sistem,
-                judul: draft.judul,
-                no_dokumen: draft.no_dokumen,
-                tanggal: draft.tanggal || null,
-                revisi: draft.revisi,
-                halaman: draft.halaman,
-                sections: draft.sections.map((s) => ({ judul: s.judul, gaya: s.gaya, pengantar: s.pengantar, butir: points(s.teks) })),
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => setDirty(false),
-                onFinish: () => setSaving(false),
-            },
-        );
+        router.post(dokumenIk.store().url, payload(draft), {
+            preserveScroll: true,
+            onSuccess: () => setDirty(false),
+            onFinish: () => setSaving(false),
+        });
     };
+
+    useSaveShortcut(() => {
+        if (can_write && dirty) {
+            save();
+        }
+    });
 
     const duplicate = () => {
         if (!draft) {
             return;
         }
 
-        setDraft({ ...draft, id: null, judul: `${draft.judul} (Salinan)`, sections: draft.sections.map((s) => ({ ...s, key: nextKey++ })) });
+        setDraft({
+            ...draft,
+            id: null,
+            judul: `${draft.judul} (Salinan)`,
+            sections: draft.sections.map((s) => ({
+                ...s,
+                key: nextKey++,
+                points: s.points.map((p) => point(p.text)),
+            })),
+        });
         setDirty(true);
     };
 
@@ -257,148 +332,66 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
             return;
         }
 
-        if (window.confirm(`Hapus dokumen "${draft.judul}"? Tindakan ini tidak dapat dibatalkan.`)) {
-            router.delete(dokumenIk.destroy(draft.id).url, { preserveScroll: true });
+        if (
+            window.confirm(
+                `Hapus dokumen "${draft.judul}"? Tindakan ini tidak dapat dibatalkan.`,
+            )
+        ) {
+            router.delete(dokumenIk.destroy(draft.id).url, {
+                preserveScroll: true,
+            });
         }
     };
 
-    const pdfUrl = (id?: number) => dokumenIk.pdf({ query: { unit_id: filters.unit_id, month: filters.month, year: filters.year, ...(id ? { doc: id } : {}) } }).url;
+    const pdfUrl = (id?: number) =>
+        dokumenIk.pdf({
+            query: {
+                unit_id: filters.unit_id,
+                month: filters.month,
+                year: filters.year,
+                ...(id ? { doc: id } : {}),
+            },
+        }).url;
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1] ?? ''} ${filters.year}`;
 
     const saveButton = can_write && draft && (
-        <Button onClick={save} disabled={saving || !dirty || !draft.judul.trim()} className="gap-1.5">
+        <Button
+            onClick={save}
+            disabled={saving || !dirty || !draft.judul.trim()}
+            className="gap-1.5"
+            title="Simpan (Ctrl+S)"
+        >
             <Save className="size-4" />
-            {saving ? 'Menyimpan…' : draft.id === null ? 'Simpan IK Baru' : 'Simpan'}
+            {saving
+                ? 'Menyimpan…'
+                : draft.id === null
+                  ? 'Simpan IK Baru'
+                  : 'Simpan'}
         </Button>
-    );
-
-    const editor = draft && (
-        <div className="flex flex-col gap-4">
-            <Card title="1. Identitas Dokumen" hint="Muncul di kotak kepala dokumen IK.">
-                <Field label="Judul Instruksi Kerja">
-                    <Input value={draft.judul} onChange={(e) => change({ judul: e.target.value })} disabled={!can_write} placeholder="mis. INSTRUKSI KERJA PELAKSANAAN EVAKUASI" className="font-semibold" />
-                </Field>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <Field label="Sistem / Level">
-                        <Input value={draft.sistem} onChange={(e) => change({ sistem: e.target.value })} disabled={!can_write} />
-                    </Field>
-                    <Field label="No. Dokumen">
-                        <Input value={draft.no_dokumen} onChange={(e) => change({ no_dokumen: e.target.value })} disabled={!can_write} placeholder="SMK3/IK/.." />
-                    </Field>
-                    <Field label="Tanggal">
-                        <Input type="date" value={draft.tanggal} onChange={(e) => change({ tanggal: e.target.value })} disabled={!can_write} />
-                    </Field>
-                    <Field label="Revisi">
-                        <Input value={draft.revisi} onChange={(e) => change({ revisi: e.target.value })} disabled={!can_write} placeholder="00" />
-                    </Field>
-                    <Field label="Halaman">
-                        <Input value={draft.halaman} onChange={(e) => change({ halaman: e.target.value })} disabled={!can_write} placeholder="1/1" />
-                    </Field>
-                </div>
-            </Card>
-
-            <Card title="2. Isi Instruksi Kerja" hint="Tulis satu poin per baris — tanda •, a. b. c. atau 1. 2. 3. dibuat otomatis sesuai gaya.">
-                {draft.sections.map((section, index) => (
-                    <div key={section.key} className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-primary text-[13px] font-bold text-primary-foreground">{index + 1}</span>
-                            <Input
-                                value={section.judul}
-                                onChange={(e) => changeSection(section.key, { judul: e.target.value.toUpperCase() })}
-                                disabled={!can_write}
-                                placeholder="JUDUL BAGIAN (mis. ALAT)"
-                                className="h-9 min-w-40 flex-1 font-semibold uppercase"
-                                aria-label={`Judul bagian ${index + 1}`}
-                            />
-                            <Select value={section.gaya} onValueChange={(v) => changeSection(section.key, { gaya: v as Style })} disabled={!can_write}>
-                                <SelectTrigger className="h-9 w-32" aria-label={`Gaya poin bagian ${index + 1}`}>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {STYLES.map((s) => (
-                                        <SelectItem key={s.value} value={s.value} title={s.hint}>
-                                            {s.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {can_write && (
-                                <div className="flex items-center">
-                                    <IconButton label="Naikkan bagian" onClick={() => moveSection(index, -1)} disabled={index === 0}>
-                                        <ArrowUp className="size-4" />
-                                    </IconButton>
-                                    <IconButton label="Turunkan bagian" onClick={() => moveSection(index, 1)} disabled={index === draft.sections.length - 1}>
-                                        <ArrowDown className="size-4" />
-                                    </IconButton>
-                                    <IconButton label="Hapus bagian" onClick={() => removeSection(section.key)} danger>
-                                        <Trash2 className="size-4" />
-                                    </IconButton>
-                                </div>
-                            )}
-                        </div>
-                        <Textarea
-                            value={section.pengantar}
-                            onChange={(e) => changeSection(section.key, { pengantar: e.target.value })}
-                            disabled={!can_write}
-                            rows={section.pengantar ? 2 : 1}
-                            placeholder="(Opsional) Kalimat pembuka sebelum poin, mis. “Bila terdengar bunyi sirine … maka segera dilakukan :”"
-                            className="min-h-9 text-sm"
-                        />
-                        <Textarea
-                            value={section.teks}
-                            onChange={(e) => changeSection(section.key, { teks: e.target.value })}
-                            disabled={!can_write}
-                            rows={Math.max(3, section.teks.split('\n').length + 1)}
-                            placeholder={section.gaya === 'paragraf' ? 'Tulis paragraf; satu baris = satu paragraf' : 'Satu baris = satu poin\nmis.\nTandu\nKendaraan'}
-                            className="font-mono text-sm leading-6"
-                            aria-label={`Poin bagian ${index + 1}`}
-                        />
-                        <p className="text-[11px] text-muted-foreground">{points(section.teks).length} poin</p>
-                    </div>
-                ))}
-
-                {can_write && (
-                    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border p-3">
-                        <span className="text-xs font-medium text-muted-foreground">Tambah bagian:</span>
-                        <div className="flex flex-wrap gap-1.5">
-                            {QUICK_SECTIONS.filter((q) => !draft.sections.some((s) => s.judul === q.judul)).map((q) => (
-                                <Button key={q.judul} variant="outline" size="sm" onClick={() => addSection(q.judul, q.gaya)} className="h-8 gap-1 text-xs">
-                                    <Plus className="size-3.5" />
-                                    {q.judul}
-                                </Button>
-                            ))}
-                            <Button variant="outline" size="sm" onClick={() => addSection()} className="h-8 gap-1 text-xs">
-                                <Plus className="size-3.5" />
-                                Bagian lain
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </Card>
-        </div>
-    );
-
-    const preview = draft && (
-        <div className="2xl:sticky 2xl:top-4">
-            <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Eye className="size-3.5" />
-                Pratinjau dokumen (sama dengan hasil cetak)
-            </div>
-            <IkPreview draft={draft} unitName={unit.name} />
-        </div>
     );
 
     return (
         <>
             <Head title={`Dokumen IK K3 — ${unit.name}`} />
-            <div className={cn('flex flex-1 flex-col gap-4 p-4 md:p-6', compact && can_write && 'pb-28')}>
+            <div
+                className={cn(
+                    'flex flex-1 flex-col gap-4 p-4 md:p-6',
+                    compact && can_write && 'pb-28',
+                )}
+            >
                 <PageHeader
                     title="Dokumen IK K3 Lingkungan Pembangkit"
-                    description="Susun Instruksi Kerja (IK) dari template, sesuaikan isinya, lalu cetak. IK yang tersimpan otomatis dilampirkan di Laporan K3 periode ini."
+                    description="Pilih template, lalu klik langsung pada dokumen untuk mengubah isinya — tampilan sama dengan hasil cetak. IK yang tersimpan otomatis dilampirkan di Laporan K3 periode ini."
                     actions={
                         docs.length > 0 ? (
-                            <Button variant="outline" onClick={() => window.open(pdfUrl(), '_blank', 'noopener')} className="gap-1.5">
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    window.open(pdfUrl(), '_blank', 'noopener')
+                                }
+                                className="gap-1.5"
+                            >
                                 <Printer className="size-4" />
                                 Cetak Semua IK ({docs.length})
                             </Button>
@@ -406,28 +399,74 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
                     }
                 />
 
-                <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-end">
-                    <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full sm:w-48" />
-                    <OperasiSelect label="Bulan Laporan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, i) => ({ value: String(i + 1), label }))} className="w-full sm:w-40" />
-                    <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full sm:w-32" />
+                <div className="flex flex-col gap-3 rounded-md border border-border bg-secondary p-3 sm:flex-row sm:flex-wrap sm:items-end">
+                    <OperasiSelect
+                        label="Unit"
+                        value={String(filters.unit_id)}
+                        onChange={(v) => visit({ unit_id: Number(v) })}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
+                        className="w-full sm:w-48"
+                    />
+                    <OperasiSelect
+                        label="Bulan Laporan"
+                        value={String(filters.month)}
+                        onChange={(v) => visit({ month: Number(v) })}
+                        options={OPERASI_MONTHS.map((label, i) => ({
+                            value: String(i + 1),
+                            label,
+                        }))}
+                        className="w-full sm:w-40"
+                    />
+                    <OperasiSelect
+                        label="Tahun"
+                        value={String(filters.year)}
+                        onChange={(v) => visit({ year: Number(v) })}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
+                        className="w-full sm:w-32"
+                    />
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
                     {/* IK list */}
                     <aside className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-semibold text-foreground">Daftar IK · {periodLabel}</h2>
+                            <h2 className="text-sm font-semibold text-foreground">
+                                Daftar IK · {periodLabel}
+                            </h2>
                             <Badge variant="secondary">{docs.length}</Badge>
                         </div>
                         {can_write && (
-                            <Button onClick={() => setPickerOpen(true)} className="w-full gap-1.5">
+                            <Button
+                                onClick={() => setPickerOpen(true)}
+                                className="w-full gap-1.5"
+                            >
                                 <FilePlus2 className="size-4" />
                                 Buat IK Baru
                             </Button>
                         )}
-                        <div className={cn('flex gap-2', compact ? '-mx-4 overflow-x-auto px-4 pb-1' : 'flex-col')}>
+                        <div
+                            className={cn(
+                                'flex gap-2',
+                                compact
+                                    ? '-mx-4 overflow-x-auto px-4 pb-1'
+                                    : 'flex-col',
+                            )}
+                        >
                             {draft?.id === null && (
-                                <ListItem active title={draft.judul || 'IK baru'} subtitle="Draf — belum disimpan" draft compact={compact} onClick={() => undefined} />
+                                <ListItem
+                                    active
+                                    title={draft.judul || 'IK baru'}
+                                    subtitle="Draf — belum disimpan"
+                                    draft
+                                    compact={compact}
+                                    onClick={() => undefined}
+                                />
                             )}
                             {docs.map((doc) => (
                                 <ListItem
@@ -440,43 +479,99 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
                                     onClick={() => open(doc)}
                                 />
                             ))}
-                            {docs.length === 0 && draft === null && <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">Belum ada IK pada periode ini.</p>}
+                            {docs.length === 0 && draft === null && (
+                                <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                                    Belum ada IK pada periode ini.
+                                </p>
+                            )}
                         </div>
                     </aside>
 
                     {/* Workspace */}
                     <section className="min-w-0">
                         {draft === null ? (
-                            <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border p-6 text-center">
+                            <div className="flex flex-col gap-4 rounded-md border border-dashed border-border p-6 text-center">
                                 <FileText className="mx-auto size-10 text-muted-foreground" />
                                 <div>
-                                    <p className="font-semibold text-foreground">Mulai dari template IK</p>
-                                    <p className="text-sm text-muted-foreground">Pilih template, lalu sesuaikan judul, nomor dokumen dan poin-poinnya.</p>
+                                    <p className="font-semibold text-foreground">
+                                        Mulai dari template IK
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Pilih template, lalu ubah judul, nomor
+                                        dokumen dan poin-poinnya langsung pada
+                                        dokumen.
+                                    </p>
                                 </div>
-                                {can_write && <TemplateGrid templates={templates} onPick={startFromTemplate} />}
+                                {can_write && (
+                                    <TemplateGrid
+                                        templates={templates}
+                                        onPick={startFromTemplate}
+                                    />
+                                )}
                             </div>
                         ) : (
                             <div className="flex flex-col gap-3">
-                                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2.5">
+                                <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2.5">
                                     <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-semibold text-foreground">{draft.judul || 'IK baru'}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {draft.id === null ? 'Belum disimpan' : dirty ? 'Ada perubahan belum disimpan' : 'Tersimpan · ikut dilampirkan di Laporan K3'}
+                                        <p className="truncate text-sm font-semibold text-foreground">
+                                            {draft.judul || 'IK baru'}
+                                        </p>
+                                        <p
+                                            className={cn(
+                                                'text-xs',
+                                                dirty
+                                                    ? 'text-amber-600 dark:text-amber-400'
+                                                    : 'text-muted-foreground',
+                                            )}
+                                        >
+                                            {draft.id === null
+                                                ? 'Belum disimpan'
+                                                : dirty
+                                                  ? 'Ada perubahan belum disimpan'
+                                                  : 'Tersimpan · ikut dilampirkan di Laporan K3'}
                                         </p>
                                     </div>
                                     {draft.id !== null && (
-                                        <Button variant="outline" size="sm" onClick={() => window.open(pdfUrl(draft.id ?? undefined), '_blank', 'noopener')} className="gap-1.5" title={dirty ? 'PDF memakai data yang sudah tersimpan' : undefined}>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                window.open(
+                                                    pdfUrl(
+                                                        draft.id ?? undefined,
+                                                    ),
+                                                    '_blank',
+                                                    'noopener',
+                                                )
+                                            }
+                                            className="gap-1.5"
+                                            title={
+                                                dirty
+                                                    ? 'PDF memakai data yang sudah tersimpan'
+                                                    : undefined
+                                            }
+                                        >
                                             <FileDown className="size-4" />
                                             PDF
                                         </Button>
                                     )}
                                     {can_write && (
                                         <>
-                                            <Button variant="outline" size="sm" onClick={duplicate} className="gap-1.5">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={duplicate}
+                                                className="gap-1.5"
+                                            >
                                                 <Copy className="size-4" />
                                                 Duplikat
                                             </Button>
-                                            <Button variant="ghost" size="sm" onClick={remove} className="gap-1.5 text-muted-foreground hover:text-destructive">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={remove}
+                                                className="gap-1.5 text-muted-foreground hover:text-destructive"
+                                            >
                                                 <Trash2 className="size-4" />
                                                 Hapus
                                             </Button>
@@ -485,25 +580,40 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
                                     )}
                                 </div>
 
-                                {/* Phone & tablet: switch between the form and the preview. */}
-                                <div className="flex gap-1 rounded-lg bg-muted p-1 2xl:hidden">
-                                    {(['isi', 'pratinjau'] as const).map((view) => (
-                                        <button
-                                            key={view}
-                                            type="button"
-                                            onClick={() => setMobileView(view)}
-                                            className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-sm font-medium transition', mobileView === view ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground')}
-                                        >
-                                            {view === 'isi' ? <PencilLine className="size-4" /> : <Eye className="size-4" />}
-                                            {view === 'isi' ? 'Isi IK' : 'Pratinjau'}
-                                        </button>
-                                    ))}
-                                </div>
+                                <EditorViewTabs
+                                    view={view}
+                                    onChange={setView}
+                                />
 
-                                <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
-                                    <div className={cn(mobileView !== 'isi' && 'hidden 2xl:block')}>{editor}</div>
-                                    <div className={cn(mobileView !== 'pratinjau' && 'hidden 2xl:block')}>{preview}</div>
-                                </div>
+                                {view === 'pdf' ? (
+                                    <PdfPreview
+                                        previewUrl={dokumenIk.preview().url}
+                                        payload={payload(draft)}
+                                        savedUrl={
+                                            draft.id !== null
+                                                ? pdfUrl(draft.id)
+                                                : null
+                                        }
+                                        useSaved={
+                                            !can_write ||
+                                            (!dirty && draft.id !== null)
+                                        }
+                                    />
+                                ) : (
+                                    <>
+                                        {can_write && !compact && (
+                                            <EditorTips />
+                                        )}
+
+                                        <IkDocumentEditor
+                                            key={draft.id ?? 'baru'}
+                                            draft={draft}
+                                            unitName={unit.name}
+                                            editable={can_write}
+                                            onChange={change}
+                                        />
+                                    </>
+                                )}
                             </div>
                         )}
                     </section>
@@ -514,97 +624,601 @@ export default function DokumenIkPage({ unit, filters, options, docs, selected_i
                 <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
                     <DialogHeader>
                         <DialogTitle>Pilih Template IK</DialogTitle>
-                        <DialogDescription>Semua isi template bisa diubah setelah dipilih. Pilih “Kosong” untuk format standar tanpa isi.</DialogDescription>
+                        <DialogDescription>
+                            Semua isi template bisa diubah langsung pada dokumen
+                            setelah dipilih. Pilih “Kosong” untuk format standar
+                            tanpa isi.
+                        </DialogDescription>
                     </DialogHeader>
-                    <TemplateGrid templates={templates} onPick={startFromTemplate} />
+                    <TemplateGrid
+                        templates={templates}
+                        onPick={startFromTemplate}
+                    />
                 </DialogContent>
             </Dialog>
 
-            {compact && can_write && draft && <StickyActionBar>{saveButton}</StickyActionBar>}
+            {compact && can_write && draft && (
+                <StickyActionBar>{saveButton}</StickyActionBar>
+            )}
         </>
     );
 }
 
-/** The official IK form, as printed (same layout as resources/views/k3/dokumen-ik/document.blade.php). */
-function IkPreview({ draft, unitName }: { draft: Draft; unitName: string }) {
+/**
+ * The official IK form (as printed), edited in place on one A4 sheet: the
+ * identity box and every part's title, opening sentence and points are text
+ * fields that look like the document. A part's tools (style, move, delete)
+ * appear on hover or while one of its fields has the focus.
+ */
+function IkDocumentEditor({
+    draft,
+    unitName,
+    editable,
+    onChange,
+}: {
+    draft: Draft;
+    unitName: string;
+    editable: boolean;
+    onChange: (patch: Partial<Draft>) => void;
+}) {
+    const { register, focusNow, focusAfterRender } = useFieldFocus();
+
+    const sections = draft.sections;
+    const setSections = (next: Section[]) => onChange({ sections: next });
+    const patchSection = (key: number, patch: Partial<Section>) =>
+        setSections(
+            sections.map((s) => (s.key === key ? { ...s, ...patch } : s)),
+        );
+    const setPoints = (section: Section, next: Point[]) =>
+        patchSection(section.key, { points: next.length ? next : [point()] });
+
+    const moveSection = (index: number, delta: number) => {
+        const list = [...sections];
+        const target = index + delta;
+
+        if (target < 0 || target >= list.length) {
+            return;
+        }
+
+        [list[index], list[target]] = [list[target], list[index]];
+        setSections(list);
+    };
+
+    const removeSection = (section: Section) => {
+        if (
+            filled(section.points).length === 0 ||
+            window.confirm(
+                `Hapus bagian "${section.judul || 'tanpa judul'}" beserta isinya?`,
+            )
+        ) {
+            setSections(sections.filter((s) => s.key !== section.key));
+        }
+    };
+
+    const addSection = (judul = '', gaya: Style = 'butir') => {
+        const created: Section = {
+            key: nextKey++,
+            judul,
+            gaya,
+            pengantar: '',
+            points: [point()],
+        };
+        setSections([...sections, created]);
+        focusAfterRender({
+            id: judul ? `p-${created.points[0].key}` : `j-${created.key}`,
+            at: 'end',
+        });
+    };
+
+    const pointKeyDown =
+        (section: Section, index: number) =>
+        (event: KeyboardEvent<HTMLTextAreaElement>) => {
+            const field = event.currentTarget;
+            const current = section.points[index];
+
+            if (event.key === 'Enter' && !event.shiftKey) {
+                // Split at the caret: the rest of the line becomes the next point.
+                event.preventDefault();
+                const created = point(field.value.slice(field.selectionEnd));
+                const next = [...section.points];
+                next.splice(
+                    index,
+                    1,
+                    {
+                        ...current,
+                        text: field.value.slice(0, field.selectionStart),
+                    },
+                    created,
+                );
+                setPoints(section, next);
+                focusAfterRender({ id: `p-${created.key}`, at: 'start' });
+
+                return;
+            }
+
+            if (
+                event.key === 'Backspace' &&
+                field.selectionStart === 0 &&
+                field.selectionEnd === 0 &&
+                index > 0
+            ) {
+                // At the start of a point: join it to the previous one.
+                event.preventDefault();
+                const previous = section.points[index - 1];
+                const next = [...section.points];
+                next.splice(index - 1, 2, {
+                    ...previous,
+                    text: previous.text + current.text,
+                });
+                setPoints(section, next);
+                focusAfterRender({ id: `p-${previous.key}`, at: 'end' });
+
+                return;
+            }
+
+            if (
+                event.key === 'ArrowUp' &&
+                field.selectionStart === 0 &&
+                index > 0
+            ) {
+                event.preventDefault();
+                focusNow({
+                    id: `p-${section.points[index - 1].key}`,
+                    at: 'end',
+                });
+            } else if (
+                event.key === 'ArrowDown' &&
+                field.selectionStart === field.value.length &&
+                index < section.points.length - 1
+            ) {
+                event.preventDefault();
+                focusNow({
+                    id: `p-${section.points[index + 1].key}`,
+                    at: 'start',
+                });
+            }
+        };
+
+    const pointPaste =
+        (section: Section, index: number) =>
+        (event: ClipboardEvent<HTMLTextAreaElement>) => {
+            const lines = event.clipboardData
+                .getData('text')
+                .split(/\r?\n/)
+                .map(clean)
+                .filter(Boolean);
+
+            if (lines.length < 2) {
+                return;
+            }
+
+            // Several lines pasted: one point each.
+            event.preventDefault();
+            const field = event.currentTarget;
+            const current = section.points[index];
+            const before = field.value.slice(0, field.selectionStart);
+            const after = field.value.slice(field.selectionEnd);
+            const created = lines.map((line, i) =>
+                i === 0 ? { ...current, text: before + line } : point(line),
+            );
+            const last = created.length - 1;
+            created[last] = {
+                ...created[last],
+                text: created[last].text + after,
+            };
+            const next = [...section.points];
+            next.splice(index, 1, ...created);
+            setPoints(section, next);
+            focusAfterRender({ id: `p-${created[last].key}`, at: 'end' });
+        };
+
+    const identity: [
+        'no_dokumen' | 'tanggal' | 'revisi' | 'halaman',
+        string,
+        string,
+    ][] = [
+        ['no_dokumen', 'No. Dokumen', 'SMK3/IK/..'],
+        ['tanggal', 'Tanggal', ''],
+        ['revisi', 'Revisi', '00'],
+        ['halaman', 'Halaman', '1/1'],
+    ];
+
     return (
-        <div className="overflow-x-auto rounded-md bg-neutral-200 p-3 dark:bg-neutral-800">
-            <div className="mx-auto min-w-[520px] max-w-[720px] border border-black bg-white text-[11px] leading-relaxed text-black shadow-md">
-                <div className="grid grid-cols-[20%_1fr_20%] items-center border-b border-black">
+        <A4Sheet padding="sm:p-[14mm]">
+            <div className="flex flex-1 flex-col border border-black text-[12px] leading-relaxed">
+                {/* Kop (fixed) */}
+                <div className="grid grid-cols-[22%_1fr_22%] items-center border-b border-black">
                     <div className="p-2">
-                        <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-9 object-contain" />
+                        <img
+                            src="/logo/sidebar-logo.png"
+                            alt="PLN Nusantara Power"
+                            className="max-h-9 object-contain"
+                        />
                     </div>
-                    <div className="py-2 text-center leading-snug">
-                        <div>JASA PENDUKUNG TEKNIS UP KENDARI 11 &amp; 6 SITE -KIT</div>
+                    <div className="py-2 text-center text-[10px] leading-snug sm:text-[11px]">
+                        <div>
+                            JASA PENDUKUNG TEKNIS UP KENDARI 11 &amp; 6 SITE
+                            -KIT
+                        </div>
                         <div>{unitName.toUpperCase()}</div>
                         <div>LAPORAN PROJECT</div>
                         <div>DOKUMEN IK K3 LINGKUNGAN PEMBANGKIT</div>
                     </div>
                     <div className="p-2 text-right">
-                        <img src="/logo/mkp.jpg" alt="MKP" className="ml-auto max-h-9 object-contain" />
+                        <img
+                            src="/logo/mkp.jpg"
+                            alt="MKP"
+                            className="ml-auto max-h-9 object-contain"
+                        />
                     </div>
                 </div>
                 <div className="h-3 border-b border-black" />
-                <div className="grid grid-cols-[13%_1fr_34%] border-b border-black">
-                    <div className="flex items-center justify-center border-r border-black p-1.5 text-center whitespace-pre-line">{draft.sistem.replace(' LEVEL', '\nLEVEL')}</div>
-                    <div className="flex items-center justify-center border-r border-black p-2 text-center text-[12px]">{draft.judul.toUpperCase() || '—'}</div>
+
+                {/* Identity box */}
+                <div className="grid grid-cols-1 border-b border-black sm:grid-cols-[15%_1fr_36%]">
+                    <div className="flex items-center justify-center border-b border-black p-1.5 sm:border-r sm:border-b-0">
+                        <AutoText
+                            value={draft.sistem}
+                            onValue={(v) => onChange({ sistem: v })}
+                            disabled={!editable}
+                            placeholder="SMK3 LEVEL 3"
+                            className={cn(EDITABLE, 'text-center text-[11px]')}
+                            aria-label="Sistem / Level"
+                        />
+                    </div>
+                    <div className="flex items-center justify-center border-b border-black p-2 sm:border-r sm:border-b-0">
+                        <AutoText
+                            value={draft.judul}
+                            onValue={(v) =>
+                                onChange({ judul: v.toUpperCase() })
+                            }
+                            disabled={!editable}
+                            placeholder="JUDUL INSTRUKSI KERJA (wajib)"
+                            className={cn(
+                                EDITABLE,
+                                'text-center text-[13px] font-semibold uppercase',
+                                !draft.judul.trim() && 'bg-red-50',
+                            )}
+                            aria-label="Judul Instruksi Kerja"
+                        />
+                    </div>
                     <div>
-                        {[
-                            ['No. Dokumen', draft.no_dokumen],
-                            ['Tanggal', formatDate(draft.tanggal)],
-                            ['Revisi', draft.revisi],
-                            ['Halaman', draft.halaman],
-                        ].map(([label, value], i) => (
-                            <div key={label} className={cn('grid grid-cols-[34%_1fr]', i < 3 && 'border-b border-black')}>
-                                <span className="border-r border-black px-1.5 py-0.5">{label}</span>
-                                <span className="px-1.5 py-0.5">: {value}</span>
+                        {identity.map(([field, label, placeholder], i) => (
+                            <div
+                                key={field}
+                                className={cn(
+                                    'grid grid-cols-[36%_1fr] items-center',
+                                    i < identity.length - 1 &&
+                                        'border-b border-black',
+                                )}
+                            >
+                                <span className="self-stretch border-r border-black px-1.5 py-0.5">
+                                    {label}
+                                </span>
+                                <span className="flex items-center gap-0.5 px-1">
+                                    :
+                                    <input
+                                        type={
+                                            field === 'tanggal'
+                                                ? 'date'
+                                                : 'text'
+                                        }
+                                        value={draft[field]}
+                                        onChange={(e) =>
+                                            onChange({
+                                                [field]: e.target.value,
+                                            })
+                                        }
+                                        disabled={!editable}
+                                        placeholder={placeholder}
+                                        className={cn(EDITABLE, 'h-6 py-0')}
+                                        aria-label={label}
+                                    />
+                                </span>
                             </div>
                         ))}
                     </div>
                 </div>
-                <div className="min-h-64 px-4 pt-3 pb-5">
-                    {draft.sections.length === 0 && <p className="text-neutral-500">Belum ada bagian. Tambahkan bagian di sebelah kiri.</p>}
-                    {draft.sections.map((section, sIndex) => (
-                        <div key={section.key} className={sIndex === 0 ? 'mt-0.5' : 'mt-3'}>
-                            <div>
-                                {sIndex + 1}. {section.judul.toUpperCase() || '…'}
-                            </div>
-                            {section.pengantar.trim() && <p className="mt-1.5 mb-1 ml-4">{section.pengantar}</p>}
-                            {points(section.teks).map((point, pIndex) =>
-                                section.gaya === 'paragraf' ? (
-                                    <p key={pIndex} className="mt-1 ml-4">
-                                        {point}
-                                    </p>
-                                ) : (
-                                    <div key={pIndex} className="mt-1 ml-4 flex gap-1.5">
-                                        <span className="w-4 shrink-0">{marker(section.gaya, pIndex)}</span>
-                                        <span>{point}</span>
+
+                {/* Content */}
+                <div className="flex-1 px-3 pt-3 pb-6 sm:px-5">
+                    {sections.length === 0 && (
+                        <p className="text-neutral-500">
+                            Belum ada bagian. Tambahkan bagian dengan tombol di
+                            bawah.
+                        </p>
+                    )}
+
+                    {sections.map((section, sIndex) => (
+                        <div
+                            key={section.key}
+                            className={cn(
+                                'group/section relative rounded-sm',
+                                sIndex === 0 ? 'mt-0.5' : 'mt-4',
+                                editable && PART_FRAME,
+                            )}
+                        >
+                            <div className="flex items-start gap-1">
+                                <span className="shrink-0 pt-px">
+                                    {sIndex + 1}.
+                                </span>
+                                <AutoText
+                                    ref={register(`j-${section.key}`)}
+                                    value={section.judul}
+                                    onValue={(v) =>
+                                        patchSection(section.key, {
+                                            judul: v.toUpperCase(),
+                                        })
+                                    }
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter') {
+                                            event.preventDefault();
+                                            focusNow({
+                                                id: `p-${section.points[0].key}`,
+                                                at: 'start',
+                                            });
+                                        }
+                                    }}
+                                    disabled={!editable}
+                                    placeholder="JUDUL BAGIAN (mis. ALAT)"
+                                    className={cn(
+                                        EDITABLE,
+                                        'font-medium uppercase',
+                                    )}
+                                    aria-label={`Judul bagian ${sIndex + 1}`}
+                                />
+
+                                {editable && (
+                                    <div className={PART_TOOLS}>
+                                        {STYLES.map((style) => (
+                                            <ToolButton
+                                                key={style.value}
+                                                label={`Gaya: ${style.hint}`}
+                                                active={
+                                                    section.gaya === style.value
+                                                }
+                                                onClick={() =>
+                                                    patchSection(section.key, {
+                                                        gaya: style.value,
+                                                    })
+                                                }
+                                            >
+                                                {style.label}
+                                            </ToolButton>
+                                        ))}
+                                        <ToolDivider />
+                                        <ToolButton
+                                            label="Naikkan bagian"
+                                            onClick={() =>
+                                                moveSection(sIndex, -1)
+                                            }
+                                            disabled={sIndex === 0}
+                                        >
+                                            <ArrowUp className="size-3.5" />
+                                        </ToolButton>
+                                        <ToolButton
+                                            label="Turunkan bagian"
+                                            onClick={() =>
+                                                moveSection(sIndex, 1)
+                                            }
+                                            disabled={
+                                                sIndex === sections.length - 1
+                                            }
+                                        >
+                                            <ArrowDown className="size-3.5" />
+                                        </ToolButton>
+                                        <ToolButton
+                                            label="Hapus bagian"
+                                            onClick={() =>
+                                                removeSection(section)
+                                            }
+                                            danger
+                                        >
+                                            <Trash2 className="size-3.5" />
+                                        </ToolButton>
                                     </div>
-                                ),
+                                )}
+                            </div>
+
+                            {/* Opening sentence (optional): shown when filled, or while editing the part. */}
+                            {(section.pengantar.trim() !== '' || editable) && (
+                                <div
+                                    className={cn(
+                                        'ml-4',
+                                        section.pengantar.trim() === '' &&
+                                            'hidden group-focus-within/section:block group-hover/section:block',
+                                    )}
+                                >
+                                    <AutoText
+                                        value={section.pengantar}
+                                        onValue={(v) =>
+                                            patchSection(section.key, {
+                                                pengantar: v,
+                                            })
+                                        }
+                                        disabled={!editable}
+                                        placeholder="+ Kalimat pembuka (opsional), mis. “Bila terdengar bunyi sirine … maka segera dilakukan :”"
+                                        className={cn(EDITABLE, 'mt-1')}
+                                        aria-label={`Kalimat pembuka bagian ${sIndex + 1}`}
+                                    />
+                                </div>
+                            )}
+
+                            {section.points.map((p, pIndex) => (
+                                <div
+                                    key={p.key}
+                                    className="mt-0.5 ml-4 flex items-start gap-1"
+                                >
+                                    {section.gaya !== 'paragraf' && (
+                                        <span className="w-5 shrink-0 pt-px">
+                                            {marker(section.gaya, pIndex)}
+                                        </span>
+                                    )}
+                                    <AutoText
+                                        ref={register(`p-${p.key}`)}
+                                        value={p.text}
+                                        onValue={(v) =>
+                                            setPoints(
+                                                section,
+                                                section.points.map((x) =>
+                                                    x.key === p.key
+                                                        ? {
+                                                              ...x,
+                                                              text: v.replace(
+                                                                  /\r?\n/g,
+                                                                  ' ',
+                                                              ),
+                                                          }
+                                                        : x,
+                                                ),
+                                            )
+                                        }
+                                        onKeyDown={pointKeyDown(
+                                            section,
+                                            pIndex,
+                                        )}
+                                        onPaste={pointPaste(section, pIndex)}
+                                        disabled={!editable}
+                                        placeholder={
+                                            pIndex === 0
+                                                ? section.gaya === 'paragraf'
+                                                    ? 'Tulis paragraf…'
+                                                    : 'Tulis poin pertama, Enter untuk poin berikutnya…'
+                                                : 'Poin…'
+                                        }
+                                        className={EDITABLE}
+                                        aria-label={`Bagian ${sIndex + 1}, poin ${pIndex + 1}`}
+                                    />
+                                    {editable && section.points.length > 1 && (
+                                        <button
+                                            type="button"
+                                            tabIndex={-1}
+                                            title="Hapus poin"
+                                            aria-label={`Hapus poin ${pIndex + 1}`}
+                                            onClick={() =>
+                                                setPoints(
+                                                    section,
+                                                    section.points.filter(
+                                                        (x) => x.key !== p.key,
+                                                    ),
+                                                )
+                                            }
+                                            className="mt-0.5 shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover/section:opacity-100 hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100"
+                                        >
+                                            <Trash2 className="size-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+
+                            {editable && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const created = point();
+                                        setPoints(section, [
+                                            ...section.points,
+                                            created,
+                                        ]);
+                                        focusAfterRender({
+                                            id: `p-${created.key}`,
+                                            at: 'start',
+                                        });
+                                    }}
+                                    className="mt-0.5 ml-4 hidden items-center gap-1 rounded px-1 text-[11px] text-sky-700 group-focus-within/section:inline-flex group-hover/section:inline-flex hover:bg-sky-50"
+                                >
+                                    <Plus className="size-3" />
+                                    Tambah{' '}
+                                    {section.gaya === 'paragraf'
+                                        ? 'paragraf'
+                                        : 'poin'}
+                                </button>
                             )}
                         </div>
                     ))}
+
+                    {editable && (
+                        <AddPartBar>
+                            {QUICK_SECTIONS.filter(
+                                (q) =>
+                                    !sections.some((s) => s.judul === q.judul),
+                            ).map((q) => (
+                                <AddPartButton
+                                    key={q.judul}
+                                    onClick={() => addSection(q.judul, q.gaya)}
+                                >
+                                    {q.judul}
+                                </AddPartButton>
+                            ))}
+                            <AddPartButton onClick={() => addSection()}>
+                                Bagian lain
+                            </AddPartButton>
+                        </AddPartBar>
+                    )}
                 </div>
             </div>
+        </A4Sheet>
+    );
+}
+
+function AddPartBar({ children }: { children: ReactNode }) {
+    return (
+        <div className="mt-6 flex flex-wrap items-center gap-1.5 border-t border-dashed border-neutral-300 pt-3">
+            <span className="text-[11px] text-neutral-500">Tambah bagian:</span>
+            {children}
         </div>
     );
 }
 
-function TemplateGrid({ templates, onPick }: { templates: Template[]; onPick: (template: Template) => void }) {
+function AddPartButton({
+    onClick,
+    children,
+}: {
+    onClick: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="inline-flex items-center gap-1 rounded border border-neutral-300 px-2 py-0.5 text-[11px] text-neutral-700 hover:border-sky-500 hover:bg-sky-50"
+        >
+            <Plus className="size-3" />
+            {children}
+        </button>
+    );
+}
+
+function TemplateGrid({
+    templates,
+    onPick,
+}: {
+    templates: Template[];
+    onPick: (template: Template) => void;
+}) {
     return (
         <div className="grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
             {templates.map((t) => {
-                const pointCount = t.sections.reduce((n, s) => n + s.butir.filter(Boolean).length, 0);
+                const pointCount = t.sections.reduce(
+                    (n, s) => n + s.butir.filter(Boolean).length,
+                    0,
+                );
 
                 return (
                     <button
                         key={t.key}
                         type="button"
                         onClick={() => onPick(t)}
-                        className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-3 text-left transition hover:border-primary hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-3 text-left transition hover:border-primary hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     >
-                        <span className="text-sm font-semibold text-foreground">{t.key === 'kosong' ? 'Kosong (format standar)' : t.judul.replace('INSTRUKSI KERJA ', '')}</span>
-                        <span className="text-xs text-muted-foreground">{t.deskripsi}</span>
+                        <span className="text-sm font-semibold text-foreground">
+                            {t.key === 'kosong'
+                                ? 'Kosong (format standar)'
+                                : t.judul.replace('INSTRUKSI KERJA ', '')}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                            {t.deskripsi}
+                        </span>
                         <span className="text-[11px] text-muted-foreground">
                             {t.sections.map((s) => s.judul).join(' · ')}
                             {pointCount > 0 ? ` — ${pointCount} poin` : ''}
@@ -616,53 +1230,46 @@ function TemplateGrid({ templates, onPick }: { templates: Template[]; onPick: (t
     );
 }
 
-function ListItem({ title, subtitle, active, unsaved = false, draft = false, compact, onClick }: { title: string; subtitle: string; active: boolean; unsaved?: boolean; draft?: boolean; compact: boolean; onClick: () => void }) {
+function ListItem({
+    title,
+    subtitle,
+    active,
+    unsaved = false,
+    draft = false,
+    compact,
+    onClick,
+}: {
+    title: string;
+    subtitle: string;
+    active: boolean;
+    unsaved?: boolean;
+    draft?: boolean;
+    compact: boolean;
+    onClick: () => void;
+}) {
     return (
         <button
             type="button"
             onClick={onClick}
             className={cn(
-                'flex flex-col gap-0.5 rounded-lg border p-2.5 text-left transition',
+                'flex flex-col gap-0.5 rounded-md border p-2.5 text-left transition',
                 compact ? 'w-56 shrink-0' : 'w-full',
-                active ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-muted',
+                active
+                    ? 'border-primary bg-primary/10'
+                    : 'border-border bg-card hover:bg-muted',
                 draft && 'border-dashed',
             )}
         >
             <span className="line-clamp-2 text-[13px] font-medium text-foreground">
-                {unsaved && <span className="mr-1 inline-block size-2 rounded-full bg-amber-500 align-middle" />}
+                {unsaved && (
+                    <span className="mr-1 inline-block size-2 rounded-full bg-amber-500 align-middle" />
+                )}
                 {title.replace('INSTRUKSI KERJA ', 'IK ')}
             </span>
-            <span className="truncate text-[11px] text-muted-foreground">{subtitle}</span>
+            <span className="truncate text-[11px] text-muted-foreground">
+                {subtitle}
+            </span>
         </button>
-    );
-}
-
-function Card({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
-    return (
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-            <div>
-                <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-                <p className="text-xs text-muted-foreground">{hint}</p>
-            </div>
-            {children}
-        </div>
-    );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            {label}
-            {children}
-        </label>
-    );
-}
-
-function IconButton({ label, onClick, disabled = false, danger = false, children }: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: ReactNode }) {
-    return (
-        <Button type="button" variant="ghost" size="icon" onClick={onClick} disabled={disabled} title={label} aria-label={label} className={cn('size-9 text-muted-foreground', danger ? 'hover:text-destructive' : 'hover:text-foreground')}>
-            {children}
-        </Button>
     );
 }
 

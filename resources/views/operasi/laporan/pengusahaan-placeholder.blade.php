@@ -13,7 +13,7 @@
     @include('operasi.partials.kop-pengusahaan', ['unit' => $unit])
     <div class="title">{{ $title }}<br>BULAN {{ strtoupper($period_label) }}</div>
     <div class="note">
-        Bagian <b>{{ $title }}</b> belum memiliki menu input di Pengusahaan Operasi.<br>
+        Bagian <b>{{ $title }}</b> belum memiliki menu input Operasi.<br>
         Halaman ini akan terisi otomatis setelah menunya tersedia.
     </div>
 </body>

@@ -178,7 +178,7 @@ const INPUT: Entry[] = [
     ],
 ];
 
-/** Input pemeliharaan — Akses 2 Pengusahaan (pages/pengusahaan/har). */
+/** Input pemeliharaan — Akses 2 (pages/pengusahaan/har). */
 const INPUT_PENGUSAHAAN: Entry[] = [
     [
         'schedule',
@@ -192,7 +192,7 @@ const INPUT_PENGUSAHAAN: Entry[] = [
     ],
 ];
 
-/** Formulir teknis pemeliharaan — Akses 2 Pengusahaan (pages/pengusahaan/har). */
+/** Formulir teknis pemeliharaan — Akses 2 (pages/pengusahaan/har). */
 const FORMULIR_PENGUSAHAAN: Entry[] = [
     [
         'prelube_test',

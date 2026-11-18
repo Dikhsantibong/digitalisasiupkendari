@@ -3,7 +3,7 @@ import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { cn } from '@/lib/utils';
 
 /**
- * Shared cells of the Akses 2 — Pengusahaan K3 input sheets (APAR/APAB, APAT,
+ * Shared cells of the Akses 2 — K3 input sheets (APAR/APAB, APAT,
  * Hydrant …): table-cell dropdowns and inputs with one readable font size, and
  * the DD/MM/YYYY ↔ date-picker conversion the sheets store dates in.
  */

@@ -70,7 +70,7 @@ class UnitRequest extends FormRequest
             'installed_capacity_mw' => 'kapasitas terpasang',
             'location' => 'lokasi',
             'is_active' => 'status aktif',
-            'operator_pengusahaan' => 'input pengusahaan oleh operator',
+            'operator_pengusahaan' => 'input operasi oleh operator',
         ];
     }
 }

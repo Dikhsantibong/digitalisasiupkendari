@@ -157,7 +157,7 @@ class K3DocumentGridBuilder
     }
 
     /**
-     * The Laporan Pengusahaan (K3 & KAM) as a grid: every pengusahaan section
+     * The Laporan K3 & KAM as a grid: every pengusahaan section
      * ({@see K3PengusahaanReport}) with its header & body cells, colspans and
      * rowspans turned into merges.
      *
@@ -186,7 +186,7 @@ class K3DocumentGridBuilder
         };
 
         $full($this->c((string) ($report['unit']['service_unit'] ?? 'UNIT LAYANAN'), true, 'c'));
-        $full($this->c('LAPORAN PENGUSAHAAN PEMBANGKIT (K3 & KAM) — '.$report['unit']['name'].' · '.$report['period']['label'], true, 'c'));
+        $full($this->c('LAPORAN K3 & KAM — '.$report['unit']['name'].' · '.$report['period']['label'], true, 'c'));
         $rows[] = [$this->c('')];
 
         foreach ($sections as $section) {
@@ -241,7 +241,7 @@ class K3DocumentGridBuilder
         }
 
         return [
-            'name' => 'Laporan Pengusahaan K3',
+            'name' => 'Laporan K3',
             'cols' => $width,
             'col_widths' => [40, 200, ...array_fill(0, max(0, $width - 2), 70)],
             'merges' => $merges,

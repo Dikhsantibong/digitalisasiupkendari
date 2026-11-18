@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 
 /**
  * Ikhtisar Sentral is not typed in: its figures come from the other
- * Pengusahaan Operasi sheets, and any of them may be corrected (the
+ * Operasi sheets, and any of them may be corrected (the
  * correction is kept, keyed by its path, in operasi_rekaps "ikhtisar-sentral").
  *
  * - kWh dibangkit & PS per mesin / unit: Stand kWh Harian;

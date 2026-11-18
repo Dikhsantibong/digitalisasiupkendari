@@ -1,4 +1,7 @@
-import { LogistikFormInputPage, logistikFormBreadcrumbs } from '@/components/logistik/form-input-page';
+import {
+    LogistikFormInputPage,
+    logistikFormBreadcrumbs,
+} from '@/components/logistik/form-input-page';
 import type { LogistikFormInputPageProps } from '@/components/logistik/form-input-page';
 
 /**
@@ -9,5 +12,8 @@ export default function UnsafeInput(props: LogistikFormInputPageProps) {
 }
 
 UnsafeInput.layout = {
-    breadcrumbs: logistikFormBreadcrumbs('unsafe', 'Laporan Unsafe Action dan Unsafe Condition'),
+    breadcrumbs: logistikFormBreadcrumbs(
+        'unsafe',
+        'Laporan Unsafe Action dan Unsafe Condition',
+    ),
 };

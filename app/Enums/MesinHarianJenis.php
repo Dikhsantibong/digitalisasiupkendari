@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * Daily per-machine sheets of Pengusahaan Operasi that are not hours:
+ * Daily per-machine sheets of Operasi that are not hours:
  * the highest load of the day (kW), the number of disturbances (kali) and
  * the tara kalor (kCal/kWh, typed in, not linked to other data).
  */

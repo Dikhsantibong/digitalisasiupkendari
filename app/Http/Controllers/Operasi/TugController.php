@@ -23,7 +23,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — TUG 9 (Rekap Bon Pemakaian Energi Primer) per mesin,
+ * Operasi — TUG 9 (Rekap Bon Pemakaian Energi Primer) per mesin,
  * shared by TUG Pelumas and TUG BBM. The amounts come from the month's sheet
  * (see {@see TugDocument}); the page edits each machine's TUG header and
  * prints it (one machine, or every machine of the unit at once).

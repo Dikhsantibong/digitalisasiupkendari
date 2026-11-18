@@ -16,10 +16,10 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\View;
 
 /**
- * The Laporan Pengusahaan Pembangkit (Operasi) document: its data (unit,
+ * The Laporan Operasi document: its data (unit,
  * period, signers and the {@see OperasiPengusahaanReport} sections), the text
  * body, styles, letterhead and the spreadsheet grid — the same layout as the
- * Laporan Pengusahaan K3 (shared cover & section partials).
+ * Laporan K3 (shared cover & section partials).
  */
 class OperasiPengusahaanDocument
 {
@@ -44,7 +44,7 @@ class OperasiPengusahaanDocument
         return [
             'document' => [
                 'number' => OperasiPengusahaanReport::documentNumber($unit, $month, $year),
-                'title' => 'LAPORAN PENGUSAHAAN PEMBANGKIT',
+                'title' => 'LAPORAN OPERASI',
             ],
             'report' => [
                 'unit' => [
@@ -214,7 +214,7 @@ class OperasiPengusahaanDocument
         };
 
         $full($this->c((string) $report['unit']['service_unit'], true, 'c'));
-        $full($this->c('LAPORAN PENGUSAHAAN PEMBANGKIT (OPERASI) — '.$report['unit']['name'].' · '.$report['period']['label'], true, 'c'));
+        $full($this->c('LAPORAN OPERASI — '.$report['unit']['name'].' · '.$report['period']['label'], true, 'c'));
         $rows[] = [$this->c('')];
 
         foreach ($sections as $section) {
@@ -265,7 +265,7 @@ class OperasiPengusahaanDocument
         }
 
         return [
-            'name' => 'Laporan Pengusahaan Operasi',
+            'name' => 'Laporan Operasi',
             'cols' => $width,
             'col_widths' => [40, 200, ...array_fill(0, max(0, $width - 2), 80)],
             'merges' => $merges,

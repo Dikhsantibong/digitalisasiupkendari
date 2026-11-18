@@ -39,9 +39,9 @@ class PortalController extends Controller
 {
     /** Pengusahaan reports per area: area => [module key, label, pdf route, saved-document query]. */
     private const PENGUSAHAAN = [
-        'operasi' => ['operasi', 'Laporan Pengusahaan Operasi', 'operasi.laporan.pengusahaan.pdf', PermissionName::OperasiPengusahaanView],
-        'pemeliharaan' => ['har', 'Laporan Pengusahaan Pemeliharaan', 'har.laporan.pengusahaan.pdf', PermissionName::HarPengusahaanView],
-        'k3' => ['k3', 'Laporan Pengusahaan K3 & KAM', 'k3.laporan.pengusahaan.pdf', PermissionName::K3PengusahaanView],
+        'operasi' => ['operasi', 'Laporan Operasi', 'operasi.laporan.pengusahaan.pdf', PermissionName::OperasiPengusahaanView],
+        'pemeliharaan' => ['har', 'Laporan Pemeliharaan', 'har.laporan.pengusahaan.pdf', PermissionName::HarPengusahaanView],
+        'k3' => ['k3', 'Laporan K3 & KAM', 'k3.laporan.pengusahaan.pdf', PermissionName::K3PengusahaanView],
     ];
 
     public function __construct(

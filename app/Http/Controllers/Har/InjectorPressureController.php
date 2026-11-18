@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarInjectorPressurePdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pengukuran Tekanan Pengabutan Injektor (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pengukuran Tekanan Pengabutan Injektor (per mesin & tanggal uji).
  */
 class InjectorPressureController extends HarFormulirController
 {

@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pengukuran Kualitas Pelumas (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pengukuran Kualitas Pelumas (per mesin & tanggal uji).
  */
 class LubeQualityController extends HarFormulirController
 {

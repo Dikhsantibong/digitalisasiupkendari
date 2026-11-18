@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Daftar Monitoring Sertifikasi Peralatan (Akses 2 — Pengusahaan K3) per unit.
+ * Daftar Monitoring Sertifikasi Peralatan (Akses 2 — K3) per unit.
  *
  * @property int $id
  * @property int $unit_id

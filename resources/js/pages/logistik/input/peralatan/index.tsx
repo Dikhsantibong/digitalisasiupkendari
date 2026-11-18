@@ -1,4 +1,7 @@
-import { LogistikFormInputPage, logistikFormBreadcrumbs } from '@/components/logistik/form-input-page';
+import {
+    LogistikFormInputPage,
+    logistikFormBreadcrumbs,
+} from '@/components/logistik/form-input-page';
 import type { LogistikFormInputPageProps } from '@/components/logistik/form-input-page';
 
 /**
@@ -9,5 +12,8 @@ export default function PeralatanInput(props: LogistikFormInputPageProps) {
 }
 
 PeralatanInput.layout = {
-    breadcrumbs: logistikFormBreadcrumbs('peralatan', 'Laporan Peralatan, Material dan Tools Logistik & Gudang'),
+    breadcrumbs: logistikFormBreadcrumbs(
+        'peralatan',
+        'Laporan Peralatan, Material dan Tools Logistik & Gudang',
+    ),
 };

@@ -3,7 +3,7 @@
 namespace App\Enums;
 
 /**
- * The machine-hour sheets of Pengusahaan Operasi that are typed in (the Jam
+ * The machine-hour sheets of Operasi that are typed in (the Jam
  * Pembangkit menu): per mesin per day Operasi + PO + MO + Gangguan + Standby
  * make 24 jam. Jam Siap Operasi is not one of them: it is 24 jam minus the
  * outage-or-running hours ({@see self::countsAgainstSiap()}), i.e. the standby.

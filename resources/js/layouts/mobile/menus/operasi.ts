@@ -148,7 +148,7 @@ const ENTRIES: Entry[] = [
     ],
 ];
 
-/** Pages that moved to Akses 2 — Pengusahaan Operasi (pages/pengusahaan/operasi/{page}). */
+/** Pages that moved to Akses 2 — Operasi (pages/pengusahaan/operasi/{page}). */
 const PENGUSAHAAN_PAGES = [
     'daily-report',
     'stand-meter',

@@ -40,7 +40,7 @@ export default function VibrationPage(props: HarFormulirProps) {
 VibrationPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Tekanan Vibrasi', href: vibrationRoutes.index() },
     ],
 };

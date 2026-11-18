@@ -61,7 +61,71 @@ class DokumenIkController extends Controller
         $user = $request->user();
         abort_unless($user->hasPermissionTo(PermissionName::K3InputWrite), 403);
 
-        $validated = $request->validate([
+        $validated = $this->validateDocument($request);
+
+        $unit = Unit::query()->findOrFail($validated['unit_id']);
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $doc = ! empty($validated['id'])
+            ? K3DokumenIk::query()->where('unit_id', $unit->id)->findOrFail($validated['id'])
+            : new K3DokumenIk([
+                'unit_id' => $unit->id,
+                'year' => $validated['year'],
+                'month' => $validated['month'],
+                'sort_order' => (int) K3DokumenIk::query()->where('unit_id', $unit->id)->where('year', $validated['year'])->where('month', $validated['month'])->max('sort_order') + 1,
+            ]);
+
+        $doc->fill([
+            ...$this->attributes($validated),
+            'input_by' => $user->id,
+        ])->save();
+
+        $this->activityLogger->log(
+            ActivityEvent::Updated,
+            "Menyimpan Dokumen IK K3 \"{$doc->judul}\" {$unit->name} {$doc->month}/{$doc->year}",
+            $doc,
+            unit: $unit->id,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen IK disimpan.']);
+
+        return to_route('k3.input.dokumen-ik.index', [
+            'unit_id' => $unit->id,
+            'month' => $doc->month,
+            'year' => $doc->year,
+            'doc' => $doc->id,
+        ]);
+    }
+
+    /**
+     * PDF of the IK as currently edited (not saved): the editor's "Pratinjau PDF"
+     * tab, rendered exactly like the saved {@see Pdf()}.
+     */
+    public function preview(Request $request): HttpResponse
+    {
+        $user = $request->user();
+        abort_unless($this->canView($user), 403);
+
+        $validated = $this->validateDocument($request);
+        $unit = Unit::query()->findOrFail($validated['unit_id']);
+        abort_unless($user->canAccessUnit($unit), 403);
+
+        $doc = array_map(fn ($value) => $value ?? '', $this->attributes($validated));
+
+        $html = view('k3.dokumen-ik.pdf', [
+            'docs' => [[...$doc, 'id' => null, 'updated_at' => null]],
+            'unitName' => $unit->name,
+        ])->render();
+
+        return Pdf::loadHTML($this->embedAssets($html))->setPaper('a4', 'portrait')->stream('Pratinjau_IK_K3.pdf');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function validateDocument(Request $request): array
+    {
+        return $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'between:2000,2100'],
@@ -82,20 +146,17 @@ class DokumenIkController extends Controller
             'judul.required' => 'Judul IK wajib diisi.',
             'sections.*.judul.required' => 'Setiap bagian harus punya judul (mis. ALAT).',
         ]);
+    }
 
-        $unit = Unit::query()->findOrFail($validated['unit_id']);
-        abort_unless($user->canAccessUnit($unit), 403);
-
-        $doc = ! empty($validated['id'])
-            ? K3DokumenIk::query()->where('unit_id', $unit->id)->findOrFail($validated['id'])
-            : new K3DokumenIk([
-                'unit_id' => $unit->id,
-                'year' => $validated['year'],
-                'month' => $validated['month'],
-                'sort_order' => (int) K3DokumenIk::query()->where('unit_id', $unit->id)->where('year', $validated['year'])->where('month', $validated['month'])->max('sort_order') + 1,
-            ]);
-
-        $doc->fill([
+    /**
+     * The stored fields of a Dokumen IK from the validated input (empty points dropped).
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function attributes(array $validated): array
+    {
+        return [
             'sistem' => trim($validated['sistem']),
             'judul' => trim($validated['judul']),
             'no_dokumen' => $this->text($validated['no_dokumen'] ?? null),
@@ -112,24 +173,7 @@ class DokumenIkController extends Controller
                     ->values()
                     ->all(),
             ])->values()->all(),
-            'input_by' => $user->id,
-        ])->save();
-
-        $this->activityLogger->log(
-            ActivityEvent::Updated,
-            "Menyimpan Dokumen IK K3 \"{$doc->judul}\" {$unit->name} {$doc->month}/{$doc->year}",
-            $doc,
-            unit: $unit->id,
-        );
-
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen IK disimpan.']);
-
-        return to_route('k3.input.dokumen-ik.index', [
-            'unit_id' => $unit->id,
-            'month' => $doc->month,
-            'year' => $doc->year,
-            'doc' => $doc->id,
-        ]);
+        ];
     }
 
     public function destroy(Request $request, K3DokumenIk $dokumenIk): RedirectResponse

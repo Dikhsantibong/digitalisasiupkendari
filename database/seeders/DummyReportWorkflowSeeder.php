@@ -100,7 +100,7 @@ class DummyReportWorkflowSeeder extends Seeder
         $docHtml = fn (string $title): string => "<div class=\"report-doc\"><h2>{$title} — {$unit->name}</h2><p>Periode: ".sprintf('%02d/%d', $month, $year).'</p><p>Seluruh data operasional, pemeliharaan, K3, logistik, dan PdM telah direkapitulasi sesuai realisasi unit.</p></div>';
 
         // 1. Operasi (bulanan & pengusahaan)
-        foreach (['laporan-operasi-bulanan' => 'LAPORAN OPERASI PEMBANGKIT', 'pengusahaan' => 'LAPORAN PENGUSAHAAN OPERASI'] as $code => $title) {
+        foreach (['laporan-operasi-bulanan' => 'LAPORAN OPERASI PEMBANGKIT', 'pengusahaan' => 'LAPORAN OPERASI'] as $code => $title) {
             OperasiReportDocument::query()->updateOrCreate(
                 ['unit_id' => $unit->id, 'report_code' => $code, 'engine_id' => null, 'month' => $month, 'year' => $year],
                 [
@@ -116,7 +116,7 @@ class DummyReportWorkflowSeeder extends Seeder
         }
 
         // 2. HAR (bulanan & pengusahaan)
-        foreach (['bulanan' => 'LAPORAN PEMELIHARAAN PEMBANGKIT', 'pengusahaan' => 'LAPORAN PENGUSAHAAN PEMELIHARAAN'] as $type => $title) {
+        foreach (['bulanan' => 'LAPORAN PEMELIHARAAN PEMBANGKIT', 'pengusahaan' => 'LAPORAN PEMELIHARAAN'] as $type => $title) {
             HarDocumentRecord::query()->updateOrCreate(
                 ['unit_id' => $unit->id, 'type' => $type, 'month' => $month, 'year' => $year],
                 [
@@ -133,7 +133,7 @@ class DummyReportWorkflowSeeder extends Seeder
         }
 
         // 3. K3 (bulanan & pengusahaan)
-        foreach (['bulanan' => 'LAPORAN K3 & KEAMANAN PEMBANGKIT', 'pengusahaan' => 'LAPORAN PENGUSAHAAN K3 & KEAMANAN'] as $type => $title) {
+        foreach (['bulanan' => 'LAPORAN K3 & KEAMANAN PEMBANGKIT', 'pengusahaan' => 'LAPORAN K3 & KEAMANAN'] as $type => $title) {
             K3DocumentRecord::query()->updateOrCreate(
                 ['unit_id' => $unit->id, 'type' => $type, 'month' => $month, 'year' => $year],
                 [

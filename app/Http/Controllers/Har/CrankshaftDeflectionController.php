@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarCrankshaftDeflectionPdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pengukuran Defleksi Crankshaft (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pengukuran Defleksi Crankshaft (per mesin & tanggal uji).
  */
 class CrankshaftDeflectionController extends HarFormulirController
 {

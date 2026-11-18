@@ -21,7 +21,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Pemakaian Bahan Bakar: liters of BBM used per jenis
+ * Operasi — Pemakaian Bahan Bakar: liters of BBM used per jenis
  * BBM × mesin per tanggal, for the whole month (no periods). The jenis BBM
  * and machines come from the unit's master; the page can take the daily
  * PEMAKAIAN of Stand Flow Meter as a starting point. Feeds TUG BBM.

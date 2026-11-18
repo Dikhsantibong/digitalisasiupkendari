@@ -218,4 +218,24 @@ class InstruksiKerjaTest extends TestCase
             ->assertNotFound();
         $this->assertModelExists($har);
     }
+
+    public function test_the_pdf_preview_renders_the_unsaved_ik_without_storing_it(): void
+    {
+        $unit = Unit::factory()->create();
+        $koordinator = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+
+        $this->actingAs($koordinator)->postJson(route('operasi.input.instruksi-kerja.preview'), $this->payload($unit))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->assertSame(0, OperasiInstruksiKerja::query()->count());
+
+        $this->actingAs($koordinator)->postJson(route('operasi.input.instruksi-kerja.preview'), $this->payload($unit, ['judul' => '']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('judul');
+
+        // Viewing is enough (read-only TL), another division or unit is not.
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $unit))->postJson(route('operasi.input.instruksi-kerja.preview'), $this->payload($unit))->assertOk();
+        $this->actingAs($this->userWithRole(RoleName::StafPemeliharaan, $unit))->postJson(route('operasi.input.instruksi-kerja.preview'), $this->payload($unit))->assertForbidden();
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, Unit::factory()->create()))->postJson(route('operasi.input.instruksi-kerja.preview'), $this->payload($unit))->assertForbidden();
+    }
 }

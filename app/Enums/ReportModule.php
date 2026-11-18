@@ -32,14 +32,14 @@ enum ReportModule: string
     public function label(): string
     {
         return match ($this) {
-            self::Operasi => 'Laporan Operasi Pembangkit',
-            self::Har => 'Laporan Pemeliharaan Pembangkit',
-            self::K3 => 'Laporan K3 & Keamanan',
-            self::Logistik => 'Laporan Logistik & Gudang',
-            self::Pdm => 'Laporan PdM',
-            self::OperasiPengusahaan => 'Laporan Pengusahaan Operasi',
-            self::HarPengusahaan => 'Laporan Pengusahaan Pemeliharaan',
-            self::K3Pengusahaan => 'Laporan Pengusahaan K3 & Keamanan',
+            self::Operasi => 'Laporan Project Operasi',
+            self::Har => 'Laporan Project Pemeliharaan',
+            self::K3 => 'Laporan Project K3 & Keamanan',
+            self::Logistik => 'Laporan Project Logistik & Gudang',
+            self::Pdm => 'Laporan Project PdM',
+            self::OperasiPengusahaan => 'Laporan Operasi',
+            self::HarPengusahaan => 'Laporan Pemeliharaan',
+            self::K3Pengusahaan => 'Laporan K3 & Keamanan',
         };
     }
 
@@ -61,7 +61,7 @@ enum ReportModule: string
     }
 
     /**
-     * Akses 2 — Pengusahaan: the permission that opens the module's
+     * Akses 2 — the permission that opens the module's
      * Pengusahaan menus (TL & Staf); null for a module without one yet.
      */
     public function pengusahaanPermission(): ?PermissionName

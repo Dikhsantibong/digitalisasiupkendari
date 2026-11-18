@@ -229,7 +229,7 @@
             <td style="width: 50%;">
                 Kendari, {{ date('d') }} {{ $period_label }}<br>
                 Diperiksa oleh,<br>
-                <strong>Operator / Staf Pengusahaan</strong>
+                <strong>Operator / Staf Operasi</strong>
                 <div style="height: 40px;"></div>
                 ( .................................................. )
             </td>

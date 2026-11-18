@@ -24,7 +24,7 @@ use Inertia\Response;
  * Start Stop Engine (modul Operator): the runs of each machine of a month —
  * start, CBG on, CBG off and stop per tanggal, several a day — filled like a
  * spreadsheet and saved at once. Stops caused by a gangguan are the Jumlah
- * Kali Gangguan of Pengusahaan Operasi.
+ * Kali Gangguan of Operasi.
  *
  * Uses the logsheet permissions: operators & Project Leader write, TL /
  * Manager read.

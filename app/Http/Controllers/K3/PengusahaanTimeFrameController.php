@@ -185,12 +185,12 @@ class PengusahaanTimeFrameController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Time Frame Pengusahaan K3 & Keamanan {$unit->name} {$month}/{$year}",
+            "Menyimpan Time Frame K3 & Keamanan {$unit->name} {$month}/{$year}",
             $unit,
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Time Frame Pengusahaan berhasil disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Time Frame K3 & Keamanan berhasil disimpan.']);
 
         return back();
     }

@@ -21,8 +21,8 @@ use App\Services\K3\K3PengusahaanReport;
 use Illuminate\Support\Carbon;
 
 /**
- * The content of the Laporan Pengusahaan Pembangkit (Operasi): every Akses 2 —
- * Pengusahaan Operasi input of a unit and month (pages/pengusahaan/operasi —
+ * The content of the Laporan Operasi: every Akses 2 —
+ * Operasi input of a unit and month (pages/pengusahaan/operasi —
  * Input Harian, Star-Stop, Feeder, Pasokan Cadangan, Penerimaan BBM, Resource
  * Pembangkit, Berita Acara), each as a generic table section in the same shape
  * as {@see K3PengusahaanReport}, so the shared section partial
@@ -118,8 +118,8 @@ class OperasiPengusahaanReport
             $this->cell($s['filled'] ? 'Terisi' : 'Belum diisi', 'c', true),
         ], $sections);
 
-        return ['no' => 1] + $this->section('rekap', 'Rekapitulasi Pengisian Input Pengusahaan Operasi', 'portrait', [[
-            $this->h('No', w: '6%'), $this->h('Bagian Laporan'), $this->h('Sumber Input (Pengusahaan Operasi)', w: '30%'), $this->h('Status', w: '14%'),
+        return ['no' => 1] + $this->section('rekap', 'Rekapitulasi Pengisian Input Operasi', 'portrait', [[
+            $this->h('No', w: '6%'), $this->h('Bagian Laporan'), $this->h('Sumber Input (Operasi)', w: '30%'), $this->h('Status', w: '14%'),
         ]], $rows, true, source: 'Rekap');
     }
 
@@ -187,7 +187,7 @@ class OperasiPengusahaanReport
 
         $filled = $produksi > 0 || $receipts->isNotEmpty() || $resource !== null;
 
-        return $this->section('kinerja', 'Ringkasan Kinerja Pengusahaan Pembangkit', 'portrait', [[
+        return $this->section('kinerja', 'Ringkasan Kinerja Pembangkit', 'portrait', [[
             $this->h('No', w: '6%'), $this->h('Uraian'), $this->h('Satuan', w: '14%'), $this->h('Realisasi', w: '24%'),
         ]], $rows, $filled, 'Dihitung otomatis dari Input Harian (stand meter & faktor kalibrasi), Star-Stop, Feeder, Pasokan Cadangan, Penerimaan BBM dan Resource Pembangkit.', source: 'Seluruh input');
     }
@@ -455,7 +455,7 @@ class OperasiPengusahaanReport
     }
 
     /**
-     * Pemakaian Pelumas sheet (Pengusahaan Operasi): per jenis pelumas × mesin
+     * Pemakaian Pelumas sheet (Operasi): per jenis pelumas × mesin
      * per periode, with a total per jenis pelumas.
      *
      * @return array<string, mixed>
@@ -543,7 +543,7 @@ class OperasiPengusahaanReport
 
         return $this->section('berita-acara', 'Status Berita Acara (BBM, Pelumas & Feeder)', 'portrait', [[
             $this->h('No', w: '6%'), $this->h('Berita Acara'), $this->h('No. Dokumen', w: '26%'), $this->h('Status', w: '14%'), $this->h('Tgl Disetujui', w: '16%'),
-        ]], $rows, $records->isNotEmpty(), 'Dokumen lengkap tiap Berita Acara dicetak dari menu Pengusahaan Operasi → Berita Acara.', source: 'Berita Acara');
+        ]], $rows, $records->isNotEmpty(), 'Dokumen lengkap tiap Berita Acara dicetak dari menu Operasi → Berita Acara.', source: 'Berita Acara');
     }
 
     /**

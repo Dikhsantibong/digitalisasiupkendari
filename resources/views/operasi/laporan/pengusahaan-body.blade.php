@@ -1,6 +1,6 @@
 @php
     /**
-     * Laporan Pengusahaan Pembangkit (Operasi): sampul, lembar pengesahan,
+     * Laporan Operasi: sampul, lembar pengesahan,
      * daftar isi, then every chapter of OperasiPengusahaanBook in the unit's
      * filing order. Each part is one `.op-p-section` block (with
      * `.op-p-landscape` when it prints landscape); the PDF export renders them
@@ -20,7 +20,7 @@
 
 <div class="op-p-section" id="bab-sampul">
     @include('reports.partials.pengusahaan-cover', [
-        'title' => 'LAPORAN PENGUSAHAAN PEMBANGKIT',
+        'title' => 'LAPORAN OPERASI',
         'subtitle' => 'BIDANG OPERASI',
         'unitName' => $unit['name'] ?? '',
         'monthName' => $period['month_name'] ?? '',
@@ -37,7 +37,7 @@
                 <td class="page-kop-logo"><img src="/logo/sidebar-logo.png" alt="PLN"></td>
                 <td class="page-kop-center">
                     <div class="pk-unit">PT PLN NUSANTARA POWER &bull; UP KENDARI</div>
-                    <div class="pk-title">LEMBAR PENGESAHAN LAPORAN PENGUSAHAAN PEMBANGKIT (OPERASI)</div>
+                    <div class="pk-title">LEMBAR PENGESAHAN LAPORAN OPERASI</div>
                     <div style="font-size: 8.5px; color: #475569;">Unit: {{ $unit['name'] ?? '' }} &bull; Periode: {{ $period['label'] ?? '' }}</div>
                 </td>
                 <td class="page-kop-meta">
@@ -49,13 +49,13 @@
 
         <div style="margin: 25px 0 20px 0; font-size: 9.5px; line-height: 1.6; text-align: justify;">
             <p>
-                Dokumen <strong>Laporan Pengusahaan Pembangkit Bidang Operasi</strong> ini memuat ikhtisar sentral, berita acara,
+                Dokumen <strong>Laporan Operasi</strong> ini memuat ikhtisar sentral, berita acara,
                 rekap dan rincian bahan bakar &amp; pelumas, neraca daya, beban, data kinerja, jam operasi / pemeliharaan / gangguan,
                 kWh, tara kalor, SFC dan TUG 9 pada <strong>{{ $unit['name'] ?? 'Unit Pembangkit' }}</strong> untuk periode
                 <strong>{{ $period['label'] ?? '' }}</strong>.
             </p>
             <p style="margin-top: 10px;">
-                Setiap bagian adalah lembar dari menu Pengusahaan Operasi yang bersangkutan, telah diperiksa kebenarannya,
+                Setiap bagian adalah lembar dari menu Operasi yang bersangkutan, telah diperiksa kebenarannya,
                 dan disahkan oleh pejabat yang berwenang di bawah ini.
             </p>
         </div>

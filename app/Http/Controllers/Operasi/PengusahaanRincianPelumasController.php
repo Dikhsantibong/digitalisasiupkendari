@@ -22,7 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Perincian Minyak Pelumas and Rekap Pelumas
+ * Operasi — Perincian Minyak Pelumas and Rekap Pelumas
  * (Pemakaian Pelumas & Grease): monthly views of Persediaan / Pemakaian
  * Pelumas, with the sheet passed as the route's `jenis` default. Only what no
  * other sheet holds is typed in here.

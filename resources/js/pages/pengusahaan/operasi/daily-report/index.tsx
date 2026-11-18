@@ -177,7 +177,7 @@ function flatten(
 /**
  * Ikhtisar Sentral — not typed in: kWh, jam jalan, BBM (per jenis BBM of the
  * unit's master), pelumas, beban puncak malam and the receipts come from the
- * other Pengusahaan Operasi sheets. Every computed figure can be corrected
+ * other Operasi sheets. Every computed figure can be corrected
  * (marked, with a reset); beban puncak pagi, jam jalan per hari, sewa SMP,
  * non operasi and pengiriman stay manual.
  */

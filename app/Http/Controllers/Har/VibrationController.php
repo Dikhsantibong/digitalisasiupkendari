@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pengukuran Tekanan Vibrasi (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pengukuran Tekanan Vibrasi (per mesin & tanggal uji).
  */
 class VibrationController extends HarFormulirController
 {

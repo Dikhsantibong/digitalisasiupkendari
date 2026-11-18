@@ -30,7 +30,7 @@ class MonthlyEngineReport implements OperasiReport
 
     public function title(): string
     {
-        return 'Laporan Operasi Pembangkit';
+        return 'Laporan Project Operasi';
     }
 
     public function description(): string

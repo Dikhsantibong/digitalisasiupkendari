@@ -25,7 +25,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Akses 2 — Pengusahaan Operasi (TL & Staf Operasi). Pages:
+ * Akses 2 — Operasi (TL & Staf Operasi). Pages:
  * pengusahaan/operasi/berita-acara/{index,editor,preview}.
  *
  * Menu Berita Acara (modul OPERASI).

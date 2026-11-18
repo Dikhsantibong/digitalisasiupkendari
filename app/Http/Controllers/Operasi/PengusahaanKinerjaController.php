@@ -22,7 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Kinerja Unit Mesin: filled automatically from Master
+ * Operasi — Kinerja Unit Mesin: filled automatically from Master
  * Mesin, Beban Tertinggi and the Jam sheets; a TL / Staf may correct any value
  * (only the corrections are stored) or reset it to the automatic one.
  */

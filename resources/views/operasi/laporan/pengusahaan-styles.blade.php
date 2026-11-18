@@ -1,4 +1,4 @@
-{{-- Laporan Pengusahaan Pembangkit (Operasi): the same page, cover, kop and table styles as the Laporan Pengusahaan K3. --}}
+{{-- Laporan Operasi: the same page, cover, kop and table styles as the Laporan K3. --}}
 @include('k3.laporan.pengusahaan-styles')
 <style>
     .ba-org { font-size: 10px; font-weight: bold; line-height: 1.35; }

@@ -16,6 +16,7 @@ import { request } from '@/routes/password';
 type Props = {
     status?: string;
     canResetPassword: boolean;
+    serviceUnits?: string[];
 };
 
 /** The three bidang the application covers, shown beside the sign-in form. */
@@ -40,95 +41,19 @@ const MODULES = [
     },
 ] as const;
 
-export default function Login({ status, canResetPassword }: Props) {
+export default function Login({
+    status,
+    canResetPassword,
+    serviceUnits = [],
+}: Props) {
     const currentYear = new Date().getFullYear();
 
     return (
-        <div className="min-h-dvh w-full bg-background text-foreground lg:grid lg:grid-cols-12">
+        <div className="flex min-h-dvh w-full flex-col bg-background text-foreground lg:grid lg:grid-cols-12">
             <Head title="Masuk" />
 
-            {/* Identity panel: the UP Kendari building under a solid brand overlay. */}
-            <aside className="relative hidden flex-col justify-between overflow-hidden p-10 lg:col-span-7 lg:flex 2xl:col-span-8">
-                <div
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{
-                        backgroundImage: "url('/background/bg-login.jpeg')",
-                    }}
-                    aria-hidden
-                />
-                <div className="absolute inset-0 bg-[#0A2638]/90" aria-hidden />
-
-                <div className="relative flex items-center justify-between border-b border-white/15 pb-4">
-                    <Link href={home()} className="flex items-center gap-2">
-                        <span className="rounded-sm bg-white px-3 py-1.5">
-                            <img
-                                src="/logo/sidebar-logo.png"
-                                alt="PLN Nusantara Power"
-                                className="h-6 w-auto"
-                            />
-                        </span>
-                        <span className="rounded-sm bg-white px-2 py-1.5">
-                            <img
-                                src="/logo/k3.png"
-                                alt="K3"
-                                className="h-6 w-auto"
-                            />
-                        </span>
-                    </Link>
-                    <div className="text-right leading-tight">
-                        <p className="text-[13px] font-semibold text-white">
-                            PT PLN Nusantara Power
-                        </p>
-                        <p className="text-[13px] text-white/70">UP Kendari</p>
-                    </div>
-                </div>
-
-                <div className="relative max-w-2xl">
-                    <p className="text-[13px] font-semibold tracking-wide text-white/70 uppercase">
-                        Digitalisasi Unit
-                    </p>
-                    <h1 className="mt-2 text-[28px] leading-tight font-semibold text-white">
-                        Sistem Informasi Operasi, Pemeliharaan & K3 Pembangkit
-                    </h1>
-                    <p className="mt-2 text-sm text-white/75">
-                        Pencatatan harian unit, verifikasi berjenjang, dan
-                        laporan bulanan dalam satu aplikasi.
-                    </p>
-
-                    <ul className="mt-8 divide-y divide-white/15 border-y border-white/15">
-                        {MODULES.map((module) => (
-                            <li
-                                key={module.title}
-                                className="flex items-start gap-3 py-4"
-                            >
-                                <module.icon className="mt-0.5 size-5 shrink-0 text-white/80" />
-                                <div>
-                                    <p className="text-sm font-semibold text-white">
-                                        {module.title}
-                                    </p>
-                                    <p className="text-[13px] text-white/70">
-                                        {module.description}
-                                    </p>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                <p className="relative flex items-center gap-2 border-t border-white/15 pt-4 text-[13px] text-white/70">
-                    <Building2 className="size-4 shrink-0" />
-                    <span>
-                        <span className="font-medium text-white">
-                            Unit Layanan:
-                        </span>{' '}
-                        PLTD Poasia · PLTD Wua-Wua · PLTD Kolaka · PLTD Bau-Bau
-                        · PLTD Cummins
-                    </span>
-                </p>
-            </aside>
-
-            <main className="flex min-h-dvh flex-col justify-between p-4 sm:p-10 lg:col-span-5 2xl:col-span-4">
-                <div className="flex items-center justify-between border-b border-border pb-4 lg:hidden">
+            <main className="flex flex-1 flex-col justify-between gap-6 px-4 py-6 sm:gap-8 sm:px-8 sm:py-8 lg:col-span-6 lg:min-h-dvh lg:px-10 lg:py-8 xl:col-span-5 xl:px-12 xl:py-10">
+                <div className="mx-auto flex w-full max-w-md items-center justify-between gap-3 border-b border-border pb-4">
                     <Link href={home()} className="flex items-center gap-2">
                         <span className="rounded-sm border border-border bg-card p-1">
                             <img
@@ -150,19 +75,19 @@ export default function Login({ status, canResetPassword }: Props) {
                     </span>
                 </div>
 
-                <div className="mx-auto my-10 w-full max-w-sm">
-                    <div className="rounded-md border border-border bg-card p-6 sm:p-8">
-                        <div className="mb-6 border-b border-border pb-4">
+                <div className="mx-auto flex w-full max-w-md flex-1 items-center">
+                    <div className="w-full rounded-md border border-border bg-card p-5 sm:p-8">
+                        <div className="mb-5 border-b border-border pb-4 sm:mb-6">
                             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
                                 Masuk ke Akun
                             </h2>
-                            <p className="mt-1 text-[13px] text-muted-foreground">
+                            <p className="mt-1.5 text-[13px] text-muted-foreground">
                                 Masukkan email dan kata sandi akun Anda.
                             </p>
                         </div>
 
                         {status && (
-                            <div className="mb-4 rounded-md border border-primary/30 bg-secondary px-3 py-2 text-[13px] text-secondary-foreground">
+                            <div className="mb-5 rounded-md border border-primary/30 bg-secondary px-3 py-2 text-[13px] text-secondary-foreground">
                                 {status}
                             </div>
                         )}
@@ -174,7 +99,7 @@ export default function Login({ status, canResetPassword }: Props) {
                         >
                             {({ processing, errors }) => (
                                 <>
-                                    <div className="flex flex-col gap-1.5">
+                                    <div className="flex flex-col gap-2">
                                         <Label htmlFor="email">
                                             Email{' '}
                                             <span className="text-destructive">
@@ -198,24 +123,13 @@ export default function Login({ status, canResetPassword }: Props) {
                                         <InputError message={errors.email} />
                                     </div>
 
-                                    <div className="flex flex-col gap-1.5">
-                                        <div className="flex items-center justify-between">
-                                            <Label htmlFor="password">
-                                                Kata Sandi{' '}
-                                                <span className="text-destructive">
-                                                    *
-                                                </span>
-                                            </Label>
-                                            {canResetPassword && (
-                                                <TextLink
-                                                    href={request()}
-                                                    className="text-[13px]"
-                                                    tabIndex={5}
-                                                >
-                                                    Lupa kata sandi?
-                                                </TextLink>
-                                            )}
-                                        </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Label htmlFor="password">
+                                            Kata Sandi{' '}
+                                            <span className="text-destructive">
+                                                *
+                                            </span>
+                                        </Label>
                                         <div className="relative">
                                             <Lock className="pointer-events-none absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2 text-muted-foreground" />
                                             <PasswordInput
@@ -230,23 +144,34 @@ export default function Login({ status, canResetPassword }: Props) {
                                         <InputError message={errors.password} />
                                     </div>
 
-                                    <div className="flex items-center gap-2">
-                                        <Checkbox
-                                            id="remember"
-                                            name="remember"
-                                            tabIndex={3}
-                                        />
-                                        <Label
-                                            htmlFor="remember"
-                                            className="cursor-pointer font-normal text-muted-foreground"
-                                        >
-                                            Ingat saya
-                                        </Label>
+                                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Checkbox
+                                                id="remember"
+                                                name="remember"
+                                                tabIndex={3}
+                                            />
+                                            <Label
+                                                htmlFor="remember"
+                                                className="cursor-pointer font-normal text-muted-foreground"
+                                            >
+                                                Ingat saya
+                                            </Label>
+                                        </div>
+                                        {canResetPassword && (
+                                            <TextLink
+                                                href={request()}
+                                                className="text-[13px]"
+                                                tabIndex={5}
+                                            >
+                                                Lupa kata sandi?
+                                            </TextLink>
+                                        )}
                                     </div>
 
                                     <Button
                                         type="submit"
-                                        className="mt-2 h-10 w-full"
+                                        className="mt-1 h-10 w-full"
                                         tabIndex={4}
                                         disabled={processing}
                                         data-test="login-button"
@@ -264,19 +189,92 @@ export default function Login({ status, canResetPassword }: Props) {
                             )}
                         </Form>
 
-                        <InstallAppLink />
+                        <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5">
+                            <InstallAppLink className="mt-0" />
 
-                        <p className="mt-5 rounded-md border border-border bg-secondary px-3 py-2 text-[13px] text-muted-foreground">
-                            Akses terbatas untuk pengguna terdaftar PT PLN
-                            Nusantara Power UP Kendari.
-                        </p>
+                            <p className="rounded-md border border-border bg-secondary px-3 py-2 text-[13px] text-muted-foreground">
+                                Akses terbatas untuk pengguna terdaftar PT PLN
+                                Nusantara Power UP Kendari.
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                <p className="text-center text-[13px] text-muted-foreground">
+                <p className="mx-auto hidden w-full max-w-md border-t border-border pt-4 text-center text-[13px] text-muted-foreground lg:block">
                     &copy; {currentYear} PT PLN Nusantara Power — UP Kendari
                 </p>
             </main>
+
+            {/* Identity panel: the UP Kendari building under a solid brand overlay. */}
+            <aside className="relative flex flex-col overflow-hidden px-4 py-8 sm:px-8 sm:py-10 lg:col-span-6 lg:min-h-dvh lg:px-10 lg:py-8 xl:col-span-7 xl:px-14 xl:py-10">
+                <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={{
+                        backgroundImage: "url('/background/bg-login.jpeg')",
+                    }}
+                    aria-hidden
+                />
+                <div className="absolute inset-0 bg-[#0A2638]/90" aria-hidden />
+
+                <div className="relative mx-auto flex w-full max-w-md flex-1 flex-col justify-between gap-8 sm:max-w-3xl lg:max-w-2xl">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-white/15 pb-4 leading-tight">
+                        <p className="text-[13px] font-semibold text-white">
+                            PT PLN Nusantara Power
+                        </p>
+                        <p className="text-[13px] text-white/70">UP Kendari</p>
+                    </div>
+
+                    <div className="my-auto flex flex-col gap-6 sm:gap-8">
+                        <div className="max-w-2xl">
+                            <p className="text-[13px] font-semibold tracking-wide text-white/70 uppercase">
+                                KIT-SIPP
+                            </p>
+                            <h1 className="mt-2 text-[28px] leading-tight font-semibold text-white">
+                                Sistem Informasi Pelaporan Pembangkit
+                            </h1>
+                            <p className="mt-2.5 text-sm text-white/75">
+                                Pencatatan harian unit, verifikasi berjenjang,
+                                dan laporan bulanan dalam satu aplikasi.
+                            </p>
+                        </div>
+
+                        <ul className="grid grid-cols-1 divide-y divide-white/15 border-y border-white/15 sm:grid-cols-3 sm:gap-6 sm:divide-y-0 sm:py-5 lg:grid-cols-1 lg:gap-0 lg:divide-y lg:py-0">
+                            {MODULES.map((module) => (
+                                <li
+                                    key={module.title}
+                                    className="flex items-start gap-3 py-4 sm:py-0 lg:py-4"
+                                >
+                                    <module.icon className="mt-0.5 size-5 shrink-0 text-white/80" />
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-white">
+                                            {module.title}
+                                        </p>
+                                        <p className="mt-1 text-[13px] text-white/70">
+                                            {module.description}
+                                        </p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {serviceUnits.length > 0 && (
+                        <p className="flex items-start gap-2 border-t border-white/15 pt-4 text-[13px] text-white/70 sm:items-center">
+                            <Building2 className="mt-0.5 size-4 shrink-0 sm:mt-0" />
+                            <span>
+                                <span className="font-medium text-white">
+                                    Unit Layanan:
+                                </span>{' '}
+                                {serviceUnits.join(' · ')}
+                            </span>
+                        </p>
+                    )}
+                </div>
+            </aside>
+
+            <footer className="border-t border-border px-4 py-4 text-center text-[13px] text-muted-foreground sm:px-8 lg:hidden">
+                &copy; {currentYear} PT PLN Nusantara Power — UP Kendari
+            </footer>
         </div>
     );
 }

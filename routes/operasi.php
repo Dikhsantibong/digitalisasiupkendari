@@ -98,6 +98,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/instruksi-kerja', [InstruksiKerjaController::class, 'index'])->name('input.instruksi-kerja.index');
         Route::post('input/instruksi-kerja', [InstruksiKerjaController::class, 'store'])->name('input.instruksi-kerja.store');
         Route::get('input/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('input.instruksi-kerja.pdf');
+        Route::post('input/instruksi-kerja/pratinjau', [InstruksiKerjaController::class, 'preview'])->name('input.instruksi-kerja.preview');
         Route::delete('input/instruksi-kerja/{instruksiKerja}', [InstruksiKerjaController::class, 'destroy'])->whereNumber('instruksiKerja')->name('input.instruksi-kerja.destroy');
 
         Route::get('input/kondisi-abnormal', [KondisiAbnormalController::class, 'index'])

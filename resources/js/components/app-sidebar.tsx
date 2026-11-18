@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
     BadgeCheck,
+    Target,
     BarChart3,
     Building2,
     CalendarRange,
@@ -80,6 +81,7 @@ import k3Input from '@/routes/k3/input';
 import k3Jadwal from '@/routes/k3/jadwal';
 import k3Laporan from '@/routes/k3/laporan';
 import k3Master from '@/routes/k3/master';
+import laporanUl from '@/routes/laporan-ul';
 import logistikInput from '@/routes/logistik/input';
 import logistikJadwal from '@/routes/logistik/jadwal';
 import logistikLaporan from '@/routes/logistik/laporan';
@@ -101,6 +103,7 @@ import startStop from '@/routes/operator/start-stop';
 import pdmInput from '@/routes/pdm/input';
 import pdmJadwal from '@/routes/pdm/jadwal';
 import pdmLaporan from '@/routes/pdm/laporan';
+import sla from '@/routes/sla';
 import type { Auth, NavGroup } from '@/types';
 
 export function AppSidebar() {
@@ -127,21 +130,17 @@ export function AppSidebar() {
 
     const approvalCount = (usePage().props.auth as Auth).approvals ?? null;
 
-    // Akses 2 — Pengusahaan (TL & Staf) menus of a module, listed inside the
-    // module's own group before its Laporan (registry: lib/pengusahaan-menus.ts,
-    // shown to holders of `*.pengusahaan.view`). Someone holding Akses 1 too
-    // sees them suffixed "Pengusahaan" so the two Input menus stay apart.
-    const pengusahaanItems = (
-        key: PengusahaanModuleKey,
-        akses1Permission: string,
-    ): NavGroup['items'] => {
+    // Akses 2 (TL & Staf) menus of a module, listed inside the module's own
+    // group before its Laporan (registry: lib/pengusahaan-menus.ts, shown to
+    // holders of `*.pengusahaan.view`), named by the divisi only (user,
+    // 2026-11-17: no "Pengusahaan"). Someone holding Akses 1 too sees the Akses 1
+    // Input / Formulir suffixed "Project" (projectTitle) so the menus stay apart.
+    const pengusahaanItems = (key: PengusahaanModuleKey): NavGroup['items'] => {
         const module = PENGUSAHAAN_MODULES.find((item) => item.key === key)!;
 
         if (!can(module.permission)) {
             return [];
         }
-
-        const suffix = can(akses1Permission) ? ' Pengusahaan' : '';
 
         // A section shows only when the module has pages in it; Operasi names its Formulir "Berita Acara".
         // (only the sections with a page the user may open: the operators get Input, not Berita Acara).
@@ -152,11 +151,26 @@ export function AppSidebar() {
                     menu.section === section.key &&
                     can(menu.permission),
             ),
-        ).map((section) => ({
-            title: pengusahaanSection(section.key, key).title + suffix,
-            href: module.hub(section.key),
-            icon: pengusahaanSection(section.key, key).icon,
-        }));
+        ).map((section) => {
+            const { title, icon } = pengusahaanSection(section.key, key);
+
+            return {
+                // Named after the divisi ("Input Operasi", "Formulir Pemeliharaan") so it never reads
+                // as the Akses 1 "Input Project"; a module's own name (Berita Acara) stays as is.
+                title: section.modules?.[key]
+                    ? title
+                    : `${title} ${module.title}`,
+                href: module.hub(section.key),
+                icon,
+            };
+        });
+    };
+
+    /** An Akses 1 (Laporan Project) menu title, suffixed "Project" when the Akses 2 menus of the divisi show too. */
+    const projectTitle = (title: string, key: PengusahaanModuleKey): string => {
+        const module = PENGUSAHAAN_MODULES.find((item) => item.key === key)!;
+
+        return can(module.permission) ? `${title} Project` : title;
     };
 
     const groups: NavGroup[] = [
@@ -328,16 +342,25 @@ export function AppSidebar() {
                     icon: CalendarRange,
                 },
                 can('operasi.input.view') && {
-                    title: 'Input',
+                    title: projectTitle('Input', 'operasi'),
                     href: operasiInput.index(),
                     icon: SquarePen,
                 },
-                ...pengusahaanItems('operasi', 'operasi.input.view'),
+                ...pengusahaanItems('operasi'),
                 can(['operasi.laporan.view', 'operasi.pengusahaan.view']) && {
                     title: 'Laporan',
                     href: laporan.index(),
                     icon: FileBarChart,
                 },
+                isSuperAdmin &&
+                    can([
+                        'operasi.laporan.view',
+                        'operasi.pengusahaan.view',
+                    ]) && {
+                        title: 'SLA',
+                        href: sla.show('operasi'),
+                        icon: Target,
+                    },
             ].filter(Boolean) as NavGroup['items'],
         },
         {
@@ -349,12 +372,12 @@ export function AppSidebar() {
                     icon: CalendarRange,
                 },
                 can('har.input.view') && {
-                    title: 'Input',
+                    title: projectTitle('Input', 'har'),
                     href: harInput.index(),
                     icon: SquarePen,
                 },
                 can('har.input.view') && {
-                    title: 'Formulir',
+                    title: projectTitle('Formulir', 'har'),
                     href: harFormulir.index(),
                     icon: ClipboardCheck,
                 },
@@ -365,12 +388,18 @@ export function AppSidebar() {
                         href: harFormulir.dailyMeeting.index(),
                         icon: ClipboardCheck,
                     },
-                ...pengusahaanItems('har', 'har.input.view'),
+                ...pengusahaanItems('har'),
                 can(['har.laporan.view', 'har.pengusahaan.view']) && {
                     title: 'Laporan',
                     href: harLaporan.index(),
                     icon: FileBarChart,
                 },
+                isSuperAdmin &&
+                    can(['har.laporan.view', 'har.pengusahaan.view']) && {
+                        title: 'SLA',
+                        href: sla.show('pemeliharaan'),
+                        icon: Target,
+                    },
             ].filter(Boolean) as NavGroup['items'],
         },
         {
@@ -382,21 +411,27 @@ export function AppSidebar() {
                     icon: CalendarRange,
                 },
                 can('k3.input.view') && {
-                    title: 'Input',
+                    title: projectTitle('Input', 'k3'),
                     href: k3Input.index(),
                     icon: SquarePen,
                 },
                 can('k3.input.view') && {
-                    title: 'Formulir',
+                    title: projectTitle('Formulir', 'k3'),
                     href: k3Formulir.index(),
                     icon: ClipboardCheck,
                 },
-                ...pengusahaanItems('k3', 'k3.input.view'),
+                ...pengusahaanItems('k3'),
                 can(['k3.laporan.view', 'k3.pengusahaan.view']) && {
                     title: 'Laporan',
                     href: k3Laporan.index(),
                     icon: FileBarChart,
                 },
+                isSuperAdmin &&
+                    can(['k3.laporan.view', 'k3.pengusahaan.view']) && {
+                        title: 'SLA',
+                        href: sla.show('k3'),
+                        icon: Target,
+                    },
             ].filter(Boolean) as NavGroup['items'],
         },
         {
@@ -417,6 +452,12 @@ export function AppSidebar() {
                     href: logistikLaporan.index(),
                     icon: FileBarChart,
                 },
+                isSuperAdmin &&
+                    can('logistik.laporan.view') && {
+                        title: 'SLA',
+                        href: sla.show('logistik'),
+                        icon: Target,
+                    },
             ].filter(Boolean) as NavGroup['items'],
         },
         {
@@ -436,6 +477,23 @@ export function AppSidebar() {
                     title: 'Laporan',
                     href: pdmLaporan.index(),
                     icon: FileBarChart,
+                },
+                isSuperAdmin &&
+                    can('pdm.laporan.view') && {
+                        title: 'SLA',
+                        href: sla.show('pdm'),
+                        icon: Target,
+                    },
+            ].filter(Boolean) as NavGroup['items'],
+        },
+        // Admin UL (& Super Admin): Laporan Pengusahaan Pembangkit, Logistik, K3L & PPT bulanan of the UL — just above Administrasi (user, 2026-11-18).
+        {
+            label: 'Laporan UL',
+            items: [
+                can('laporan_ul.view') && {
+                    title: 'Laporan UL',
+                    href: laporanUl.index(),
+                    icon: Building2,
                 },
             ].filter(Boolean) as NavGroup['items'],
         },

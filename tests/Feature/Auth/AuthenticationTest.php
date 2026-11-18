@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\ServiceUnit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
+use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Fortify\Features;
 use Tests\TestCase;
 
@@ -14,9 +16,16 @@ class AuthenticationTest extends TestCase
 
     public function test_login_screen_can_be_rendered()
     {
+        ServiceUnit::factory()->create(['name' => 'UL PLTD Poasia']);
+        ServiceUnit::factory()->create(['name' => 'UL PLTD Bau-Bau']);
+        ServiceUnit::factory()->inactive()->create(['name' => 'UL Nonaktif']);
+
         $response = $this->get(route('login'));
 
-        $response->assertOk();
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('auth/login')
+            ->where('serviceUnits', ['UL PLTD Bau-Bau', 'UL PLTD Poasia'])
+        );
     }
 
     public function test_users_can_authenticate_using_the_login_screen()

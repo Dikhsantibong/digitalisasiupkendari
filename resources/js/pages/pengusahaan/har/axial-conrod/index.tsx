@@ -37,7 +37,7 @@ export default function AxialConrodPage(props: HarFormulirProps) {
 AxialConrodPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Axial Conrod', href: axialConrodRoutes.index() },
     ],
 };

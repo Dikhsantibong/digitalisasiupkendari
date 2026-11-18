@@ -1,8 +1,8 @@
 import { useSidebar } from '@/components/ui/sidebar';
 
 /**
- * Sidebar logo: the PLN icon with "Management Pembangkit" stacked beside it;
- * the folded (icon-only) sidebar shows the icon alone.
+ * Sidebar logo: the PLN icon with "KIT-SIPP" and "Pelaporan Pembangkit"
+ * stacked beside it; the folded (icon-only) sidebar shows the icon alone.
  */
 export default function AppLogo() {
     const { state, isMobile } = useSidebar();
@@ -18,9 +18,12 @@ export default function AppLogo() {
                 />
             </div>
             {!isCollapsed && (
-                <div className="flex min-w-0 flex-col leading-tight">
-                    <span className="truncate text-[15px] font-bold tracking-wide uppercase">Management</span>
-                    <span className="truncate text-[11px] font-semibold tracking-[0.2em] uppercase opacity-80">Pembangkit</span>
+                <div
+                    className="flex min-w-0 flex-col leading-tight"
+                    title="KIT-SIPP (Sistem Informasi Pelaporan Pembangkit)"
+                >
+                    <span className="truncate text-[15px] font-bold tracking-wide uppercase">KIT-SIPP</span>
+                    <span className="truncate text-[10px] font-semibold tracking-[0.12em] uppercase opacity-80">Pelaporan Pembangkit</span>
                 </div>
             )}
         </div>

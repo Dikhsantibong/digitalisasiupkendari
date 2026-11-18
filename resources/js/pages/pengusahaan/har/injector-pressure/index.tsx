@@ -37,7 +37,7 @@ export default function InjectorPressurePage(props: HarFormulirProps) {
 InjectorPressurePage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Tekanan Pengabutan Injektor', href: injectorPressureRoutes.index() },
     ],
 };

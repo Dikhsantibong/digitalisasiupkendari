@@ -123,19 +123,19 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                                 className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
                                             >
                                                 <FilePenLine className="size-4" />
-                                                Buka Dokumen Operasi (Lihat,
+                                                Buka Dokumen Laporan Project (Lihat,
                                                 Edit &amp; Cetak)
                                             </Button>
                                         </div>
                                     </div>
                                 ))}
 
-                            {/* Laporan Pengusahaan Pembangkit (Akses 2 — data dari input Pengusahaan Operasi) */}
+                            {/* Laporan Operasi (Akses 2 — data dari input Operasi) */}
                             {can('operasi.pengusahaan.view') && (
                                 <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
                                     <div>
                                         <h2 className="text-base font-semibold text-foreground">
-                                            Laporan Pengusahaan Pembangkit
+                                            Laporan Operasi
                                         </h2>
                                         <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                             Ringkasan kinerja, produksi &amp;
@@ -143,8 +143,8 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                             pelumas, feeder, pasokan cadangan,
                                             star-stop, resource pembangkit dan
                                             status berita acara — terisi
-                                            otomatis dari input Pengusahaan
-                                            Operasi (gabungan Portrait &amp;
+                                            otomatis dari input Operasi
+                                            (gabungan Portrait &amp;
                                             Landscape).
                                         </p>
                                     </div>
@@ -160,7 +160,7 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                             className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
                                         >
                                             <Building2 className="size-4" />
-                                            Buka Dokumen Pengusahaan (Lihat,
+                                            Buka Dokumen Laporan Operasi (Lihat,
                                             Edit &amp; Cetak)
                                         </Button>
                                     </div>

@@ -24,7 +24,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Akses 2 — Pengusahaan: Rencana & Realisasi pemeliharaan rutin, pengukuran air
+ * Akses 2 — Rencana & Realisasi pemeliharaan rutin, pengukuran air
  * and monitoring pelumas (six sheets, one per scope × plan type). Each sheet
  * is a month × machine day matrix stored in maintenance_schedules: the day
  * values (P0–P5 codes for HAR, a "v" mark for air / pelumas), the realised

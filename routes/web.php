@@ -3,6 +3,7 @@
 use App\Enums\ReportModule;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LaporanUlController;
 use App\Http\Controllers\ModuleResumeController;
 use App\Http\Controllers\Monitoring\MonitoringController;
 use App\Http\Controllers\NotificationController;
@@ -10,7 +11,10 @@ use App\Http\Controllers\Portal\PortalController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\ReportWorkflowController;
 use App\Http\Controllers\SignatureVerificationController;
+use App\Http\Controllers\SlaController;
 use App\Services\Reports\ModuleResume;
+use App\Services\Reports\SlaCatalog;
+use App\Services\Reports\UlReport;
 use Illuminate\Support\Facades\Route;
 
 // No landing page: guests go straight to the login page, signed-in users to their dashboard.
@@ -63,6 +67,36 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         ->group(function (): void {
             Route::get('/', [ModuleResumeController::class, 'show'])->name('show');
             Route::get('pdf', [ModuleResumeController::class, 'pdf'])->name('pdf');
+        });
+
+    // Laporan UL (Admin UL & Super Admin): Pengusahaan Pembangkit, Logistik, K3L dari seluruh unit di bawah UL + PPT bulanan — PRD.md §8.13.
+    Route::prefix('laporan-ul')->name('laporan-ul.')->group(function (): void {
+        Route::get('/', [LaporanUlController::class, 'index'])->name('index');
+        Route::get('ppt-data', [LaporanUlController::class, 'pptData'])->name('ppt-data');
+        Route::prefix('{kind}')->whereIn('kind', array_keys(UlReport::KINDS))->group(function (): void {
+            // Dokumen (Teks / Excel / Pratinjau PDF), seperti Laporan Project.
+            Route::get('/', [LaporanUlController::class, 'show'])->name('show');
+            Route::get('pdf', [LaporanUlController::class, 'pdf'])->name('pdf');
+            Route::post('dokumen', [LaporanUlController::class, 'store'])->name('store');
+            Route::post('dokumen/muat-ulang', [LaporanUlController::class, 'regenerate'])->name('regenerate');
+            // Persetujuan berjenjang: Admin UL ajukan → TL per bidang setujui → Manager UL sahkan.
+            Route::post('ajukan', [LaporanUlController::class, 'submit'])->name('workflow.submit');
+            Route::post('setujui', [LaporanUlController::class, 'approve'])->name('workflow.approve');
+            Route::post('sahkan', [LaporanUlController::class, 'ratify'])->name('workflow.ratify');
+            Route::post('tolak', [LaporanUlController::class, 'reject'])->name('workflow.reject');
+        });
+    });
+
+    // SLA bulanan per divisi (dihitung dari inputan), PDF; Excel diunduh dari halaman — PRD.md §8.12.
+    // Laporan SLA gabungan (sampul + seluruh divisi + rekapitulasi dalam 1 file).
+    Route::get('sla/gabungan/pdf', [SlaController::class, 'combinedPdf'])->name('sla.combined.pdf');
+    Route::get('sla/gabungan/data', [SlaController::class, 'combinedData'])->name('sla.combined.data');
+    Route::prefix('sla/{divisi}')
+        ->name('sla.')
+        ->whereIn('divisi', array_keys(SlaCatalog::DIVISI))
+        ->group(function (): void {
+            Route::get('/', [SlaController::class, 'show'])->name('show');
+            Route::get('pdf', [SlaController::class, 'pdf'])->name('pdf');
         });
 
     // Workflow Laporan Pembangkit (ajukan → verifikasi Koordinator → setujui TL Pemeliharaan → sahkan Manager UL → final),

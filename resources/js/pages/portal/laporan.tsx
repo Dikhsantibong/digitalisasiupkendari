@@ -89,7 +89,7 @@ export default function PortalLaporan({
             <div className="flex min-w-0 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title="Laporan"
-                    description={`Laporan Pembangkit (Project) dan Laporan Pengusahaan — lihat atau unduh PDF. ${period_label}.`}
+                    description={`Laporan Project dan Laporan Divisi (Operasi, Pemeliharaan, K3) — lihat atau unduh PDF. ${period_label}.`}
                 />
 
                 <div className="-mx-4 flex [scrollbar-width:none] gap-2 overflow-x-auto px-4 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
@@ -97,7 +97,7 @@ export default function PortalLaporan({
                         [
                             ['pembangkit', 'Laporan Pembangkit (Project)'],
                             ...(has_pengusahaan
-                                ? [['pengusahaan', 'Laporan Pengusahaan']]
+                                ? [['pengusahaan', 'Laporan Divisi']]
                                 : []),
                         ] as [Filters['jenis'], string][]
                     ).map(([key, label]) => (

@@ -21,7 +21,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Perincian Bahan Bakar and Rekap Bahan Bakar, with the
+ * Operasi — Perincian Bahan Bakar and Rekap Bahan Bakar, with the
  * sheet passed as the route's `jenis` default. Both share one stored record
  * ({@see RincianBbmSheet}); each page saves only its own parts: Perincian the
  * pengembalian, koreksi and physical stock, Rekap the non-mesin pemakaian.

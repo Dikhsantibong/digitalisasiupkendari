@@ -23,6 +23,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
 import formRoutes from '@/routes/logistik/input/form';
+import instruksiKerja from '@/routes/logistik/input/instruksi-kerja';
 import rekomendasi from '@/routes/logistik/input/rekomendasi';
 import inputSheet from '@/routes/logistik/input/sheet';
 import jadwalSheet from '@/routes/logistik/jadwal/sheet';
@@ -185,6 +186,18 @@ export const LOGISTIK_MENUS: MobileMenu[] = [
             'Jadwal Logistik & Gudang',
             'logistik.input.view',
         ),
+    ),
+    menu(
+        'instruksi-kerja',
+        'log-input',
+        'Instruksi Kerja (IK) Logistik & Gudang',
+        'Instruksi Kerja',
+        FileText,
+        7,
+        instruksiKerja.index().url,
+        'logistik/input/instruksi-kerja/index',
+        'Input Logistik & Gudang',
+        'logistik.input.view',
     ),
     menu(
         'rekomendasi',

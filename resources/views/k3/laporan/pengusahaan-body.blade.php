@@ -4,7 +4,7 @@
     $unit = $report['unit'] ?? [];
     $period = $report['period'] ?? [];
     $signatories = $report['signatories'] ?? [];
-    /** @var list<array<string, mixed>> $sections  every Akses 2 — Pengusahaan K3 input & formulir (K3PengusahaanReport) */
+    /** @var list<array<string, mixed>> $sections  every Akses 2 — K3 input & formulir (K3PengusahaanReport) */
     $sections = $data['pengusahaan'] ?? [];
     $portrait = array_values(array_filter($sections, fn (array $s): bool => $s['orientation'] === 'portrait'));
     $landscape = array_values(array_filter($sections, fn (array $s): bool => $s['orientation'] === 'landscape'));
@@ -17,7 +17,7 @@
     {{-- HALAMAN 1: SAMPUL --}}
     @include('reports.partials.pengusahaan-cover', [
         'title' => 'LAPORAN KINERJA K3 & KAM',
-        'subtitle' => 'LAPORAN PENGUSAHAAN PEMBANGKIT',
+        'subtitle' => 'LAPORAN K3 & KAM',
         'unitName' => $unit['name'] ?? '',
         'monthName' => $period['month_name'] ?? '',
         'year' => $period['year'] ?? '',

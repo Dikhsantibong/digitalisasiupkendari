@@ -32,7 +32,7 @@ use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
- * The chapters of the Laporan Pengusahaan Pembangkit (Operasi), in the order
+ * The chapters of the Laporan Operasi, in the order
  * the unit files them (Ikhtisar Sentral … TUG 9). Each chapter is the PDF page
  * of its Pengusahaan menu itself — the controller's pdf action is run with a
  * {@see PdfViewRecorder} so the report prints exactly what the menu prints —

@@ -7,7 +7,7 @@ use App\Services\Operasi\TugDocument;
 use App\Services\Operasi\TugPelumasDocument;
 
 /**
- * Pengusahaan Operasi — TUG 9 Pelumas: the monthly Rekap Bon Pemakaian
+ * Operasi — TUG 9 Pelumas: the monthly Rekap Bon Pemakaian
  * Energi Primer (Pelumas) per mesin, from Pemakaian Pelumas.
  */
 class PengusahaanTugPelumasController extends TugController

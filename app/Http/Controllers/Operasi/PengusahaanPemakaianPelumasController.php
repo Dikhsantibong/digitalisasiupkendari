@@ -22,7 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Pemakaian Pelumas: the monthly sheet of pelumas used
+ * Operasi — Pemakaian Pelumas: the monthly sheet of pelumas used
  * per jenis pelumas × mesin per tanggal. The jenis pelumas come from the
  * unit's master (Data Master Operasi → Jenis Pelumas), so every unit has its
  * own columns; TL & Staf Operasi fill it, Manager UL and the UP read it.

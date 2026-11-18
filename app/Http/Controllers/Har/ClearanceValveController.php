@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarClearanceValvePdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pengukuran Clearance Valve (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pengukuran Clearance Valve (per mesin & tanggal uji).
  */
 class ClearanceValveController extends HarFormulirController
 {

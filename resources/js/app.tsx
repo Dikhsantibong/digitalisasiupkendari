@@ -9,7 +9,7 @@ import SettingsLayout from '@/layouts/settings/layout';
 import '@/lib/install-prompt';
 import { registerServiceWorker } from '@/lib/notifications';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'KIT-SIPP';
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

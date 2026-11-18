@@ -1,4 +1,7 @@
-import { LogistikFormInputPage, logistikFormBreadcrumbs } from '@/components/logistik/form-input-page';
+import {
+    LogistikFormInputPage,
+    logistikFormBreadcrumbs,
+} from '@/components/logistik/form-input-page';
 import type { LogistikFormInputPageProps } from '@/components/logistik/form-input-page';
 
 /**
@@ -9,5 +12,8 @@ export default function PermitToWorkInput(props: LogistikFormInputPageProps) {
 }
 
 PermitToWorkInput.layout = {
-    breadcrumbs: logistikFormBreadcrumbs('permit-to-work', 'Laporan Permit To Work Pembangkit'),
+    breadcrumbs: logistikFormBreadcrumbs(
+        'permit-to-work',
+        'Laporan Permit To Work Pembangkit',
+    ),
 };

@@ -168,7 +168,7 @@ class PengusahaanKecelakaanInstalasiController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Laporan Bulanan Kecelakaan Instalasi Pengusahaan {$unit->name} {$month}/{$year}",
+            "Menyimpan Laporan Bulanan Kecelakaan Instalasi {$unit->name} {$month}/{$year}",
             $unit,
             unit: $unit->id,
         );

@@ -20,7 +20,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Akses 2 — Pengusahaan Operasi (TL & Staf Operasi; operators through their
+ * Akses 2 — Operasi (TL & Staf Operasi; operators through their
  * operasi.lapangan.* page permission). Page: pengusahaan/operasi/star-stop/index.
  *
  * The Star-Stop log (modul OPERASI, menu Input): the single source of machine

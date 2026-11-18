@@ -23,8 +23,8 @@ use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
 /**
- * Laporan Pengusahaan Pembangkit (Operasi) — Akses 2: the document built from
- * every Pengusahaan Operasi input (see {@see OperasiPengusahaanDocument}),
+ * Laporan Operasi — Akses 2: the document built from
+ * every Operasi input (see {@see OperasiPengusahaanDocument}),
  * viewed by TL / Staf Operasi & Manager UL (operasi.pengusahaan.view), edited
  * and saved by TL / Staf (operasi.pengusahaan.write). Saved as an
  * operasi_report_documents row with report_code "pengusahaan".
@@ -39,7 +39,7 @@ class LaporanPengusahaanController extends Controller
 
     private const BODY_VERSION = 4;
 
-    private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PENGUSAHAAN PEMBANGKIT (OPERASI)';
+    private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN OPERASI';
 
     public function __construct(
         private readonly OperasiPengusahaanDocument $document,
@@ -145,8 +145,8 @@ class LaporanPengusahaanController extends Controller
         $record->snapshot = $data['report'];
         $record->save();
 
-        $this->activityLogger->log(ActivityEvent::Created, "Menyimpan Laporan Pengusahaan Operasi {$unit->name} periode {$month}/{$year}", $record, unit: $unit->id);
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan Pengusahaan Operasi berhasil disimpan.']);
+        $this->activityLogger->log(ActivityEvent::Created, "Menyimpan Laporan Operasi {$unit->name} periode {$month}/{$year}", $record, unit: $unit->id);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan Operasi berhasil disimpan.']);
 
         return back();
     }
@@ -169,8 +169,8 @@ class LaporanPengusahaanController extends Controller
         $record->snapshot = $data['report'];
         $record->save();
 
-        $this->activityLogger->log(ActivityEvent::Updated, "Memuat ulang Laporan Pengusahaan Operasi {$unit->name} periode {$month}/{$year}", $record, unit: $unit->id);
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen Laporan Pengusahaan Operasi dimuat ulang dari data terbaru.']);
+        $this->activityLogger->log(ActivityEvent::Updated, "Memuat ulang Laporan Operasi {$unit->name} periode {$month}/{$year}", $record, unit: $unit->id);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen Laporan Operasi dimuat ulang dari data terbaru.']);
 
         return back();
     }

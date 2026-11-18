@@ -29,13 +29,13 @@ class InputCatalog
 {
     /** Group key => label, in display order. */
     public const GROUPS = [
-        'operasi' => 'Operasi — Akses 1',
-        'operasi_pengusahaan' => 'Operasi — Pengusahaan',
+        'operasi' => 'Operasi — Project',
+        'operasi_pengusahaan' => 'Operasi',
         'operator' => 'Operator',
-        'har' => 'Pemeliharaan — Akses 1',
-        'har_pengusahaan' => 'Pemeliharaan — Pengusahaan',
-        'k3' => 'K3 & Keamanan — Akses 1',
-        'k3_pengusahaan' => 'K3 & Keamanan — Pengusahaan',
+        'har' => 'Pemeliharaan — Project',
+        'har_pengusahaan' => 'Pemeliharaan',
+        'k3' => 'K3 & Keamanan — Project',
+        'k3_pengusahaan' => 'K3 & Keamanan',
         'logistik' => 'Logistik & Gudang',
         'pdm' => 'PdM & Maturity Level',
     ];

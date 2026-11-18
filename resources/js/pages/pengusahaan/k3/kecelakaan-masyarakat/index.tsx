@@ -199,7 +199,7 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('input').url)}
-                            title="Kembali ke Input Pengusahaan K3"
+                            title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -219,7 +219,7 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Pengusahaan: Laporan bulanan kecelakaan masyarakat umum dan kerugian material (Kepdir PT PLN No. 0252.P/DIR/2016).
+                                Akses 2 — Laporan bulanan kecelakaan masyarakat umum dan kerugian material (Kepdir PT PLN No. 0252.P/DIR/2016).
                             </p>
                         </div>
                     </div>

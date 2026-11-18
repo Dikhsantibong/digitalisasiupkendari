@@ -280,7 +280,7 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('formulir').url)}
-                            title="Kembali ke Formulir Pengusahaan K3"
+                            title="Kembali ke Formulir K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -297,7 +297,7 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Pengusahaan: Metode pemeriksaan, pengujian berkala, dan verifikasi sertifikasi peralatan keselamatan kerja.
+                                Akses 2 — Metode pemeriksaan, pengujian berkala, dan verifikasi sertifikasi peralatan keselamatan kerja.
                             </p>
                         </div>
                     </div>
@@ -408,7 +408,7 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
 
                 {/* Printable container */}
                 <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
-                    {/* KOP Dokumen Pengusahaan K3 */}
+                    {/* KOP Dokumen K3 */}
                     <div className="border-b border-border p-3">
                         <table className="metode-header-box w-full border-collapse border border-black dark:border-border">
                             <tbody>
@@ -806,7 +806,7 @@ function TestCellSelect({
 PengusahaanMetodePengujianPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan K3', href: k3Pengusahaan.index('formulir') },
+        { title: 'Formulir K3', href: k3Pengusahaan.index('formulir') },
         { title: 'Metode Pengujian Peralatan', href: k3PengusahaanMetodePengujian.index() },
     ],
 };

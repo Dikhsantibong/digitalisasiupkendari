@@ -169,7 +169,7 @@ class AccessControl
             ->unique()
             ->values();
 
-        // The operators' Pengusahaan Operasi inputs need a unit where Master Unit
+        // The operators' Operasi inputs need a unit where Master Unit
         // allows them (units.operator_pengusahaan — off for the containerized units).
         $input = PermissionName::OperasiPengusahaanInput->value;
         if ($names->contains($input) && ! Unit::query()->whereIn('id', $this->accessibleUnitIds($user))->where('operator_pengusahaan', true)->exists()) {

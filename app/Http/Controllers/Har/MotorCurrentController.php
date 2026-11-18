@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 /**
- * Akses 2 — Pengusahaan: Data Pengukuran Arus Kerja Elektro Motor (per mesin & tanggal uji).
+ * Akses 2 — Data Pengukuran Arus Kerja Elektro Motor (per mesin & tanggal uji).
  */
 class MotorCurrentController extends HarFormulirController
 {

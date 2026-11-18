@@ -50,7 +50,7 @@ export default function BatteryVoltagePage(props: HarFormulirProps) {
 BatteryVoltagePage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Tegangan Baterai', href: batteryVoltageRoutes.index() },
     ],
 };

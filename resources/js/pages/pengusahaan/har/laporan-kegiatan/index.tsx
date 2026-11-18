@@ -116,7 +116,7 @@ const printDate = (iso: string): string => {
 };
 
 /**
- * Akses 2 — Pengusahaan: Laporan Kegiatan Pemeliharaan Mesin Pembangkit and
+ * Akses 2 — Laporan Kegiatan Pemeliharaan Mesin Pembangkit and
  * Listrik & Kontrol Pembangkit. Each numbered entry has one or more machine
  * groups (title, jenis HAR and activity lines) and shared result, material and
  * keterangan columns — laid out like the paper form, printed A4 landscape.
@@ -315,7 +315,7 @@ export default function LaporanKegiatanPage({ filters, reports, machines, docume
                 <div className="no-print flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
                         {!inShell && (
-                            <Button variant="outline" size="icon" onClick={() => router.get(harPengusahaan.index('input').url)} title="Kembali ke Input Pengusahaan Pemeliharaan" className="shrink-0">
+                            <Button variant="outline" size="icon" onClick={() => router.get(harPengusahaan.index('input').url)} title="Kembali ke Input Pemeliharaan" className="shrink-0">
                                 <ArrowLeft className="size-4" />
                             </Button>
                         )}
@@ -697,7 +697,7 @@ function IconButton({ label, onClick, danger = false, children }: { label: strin
 LaporanKegiatanPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Input Pengusahaan Pemeliharaan', href: harPengusahaan.index('input') },
+        { title: 'Input Pemeliharaan', href: harPengusahaan.index('input') },
         { title: 'Laporan Kegiatan Pemeliharaan', href: laporanKegiatan.index() },
     ],
 };

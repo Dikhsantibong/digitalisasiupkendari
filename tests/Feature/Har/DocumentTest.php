@@ -79,7 +79,9 @@ class DocumentTest extends TestCase
             ->assertRedirect();
 
         $pengRecord = HarDocumentRecord::query()->where('unit_id', $unit->id)->where('type', 'pengusahaan')->where('month', 9)->firstOrFail();
-        $this->assertStringContainsString('LAPORAN PENGUSAHAAN', (string) $pengRecord->content_html);
+        // Akses 2 carries the divisi name, never "Pengusahaan" (user, 2026-11-17).
+        $this->assertStringContainsString('LAPORAN PEMELIHARAAN', (string) $pengRecord->content_html);
+        $this->assertStringNotContainsString('LAPORAN PENGUSAHAAN', (string) $pengRecord->content_html);
         $this->assertStringContainsString('Executive Summary', (string) $pengRecord->content_html);
         // The Laporan Pengusahaan has no Lembar Pengesahan (only the Laporan Pemeliharaan has one).
         $this->assertStringNotContainsString('LEMBAR PENGESAHAN', (string) $pengRecord->content_html);

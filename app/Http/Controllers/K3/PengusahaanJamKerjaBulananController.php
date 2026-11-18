@@ -139,7 +139,7 @@ class PengusahaanJamKerjaBulananController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Laporan Bulanan Jumlah Jam Kerja Karyawan Pengusahaan {$unit->name} {$month}/{$year}",
+            "Menyimpan Laporan Bulanan Jumlah Jam Kerja Karyawan {$unit->name} {$month}/{$year}",
             $unit,
             unit: $unit->id,
         );

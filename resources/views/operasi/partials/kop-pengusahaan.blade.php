@@ -1,5 +1,5 @@
 {{--
-    Letterhead of every Pengusahaan Operasi PDF: the PLN Nusantara Power logo
+    Letterhead of every Operasi PDF: the PLN Nusantara Power logo
     (public/logo/sidebar-logo.png, inlined because dompdf cannot fetch URLs)
     and the three-line unit name, as on the field Excel sheets.
     Params: $unit (App\Models\Unit).

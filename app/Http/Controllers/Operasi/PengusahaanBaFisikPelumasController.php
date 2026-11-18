@@ -21,7 +21,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Berita Acara Pemeriksaan Fisik Pelumas: the stock
+ * Operasi — Berita Acara Pemeriksaan Fisik Pelumas: the stock
  * figures come from Perincian Minyak Pelumas; the BA number, the inspection
  * day and time, the signers and the counted stock (drum, cm, liter) are typed
  * in ({@see BaFisikPelumasSheet}).

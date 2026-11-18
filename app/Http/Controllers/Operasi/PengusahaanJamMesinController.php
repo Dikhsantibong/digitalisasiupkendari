@@ -22,7 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Jam Operasi, Jam Pemeliharaan (PO) and Jam Gangguan:
+ * Operasi — Jam Operasi, Jam Pemeliharaan (PO) and Jam Gangguan:
  * hours per mesin per tanggal. Each route passes its sheet as the `jenis`
  * default; the page can take the hours recorded in Star-Stop as a starting
  * point. Jam Siap Operasi is derived from the three ({@see PengusahaanJamSiapOpsController}).

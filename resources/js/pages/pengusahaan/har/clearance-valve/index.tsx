@@ -44,7 +44,7 @@ export default function ClearanceValvePage(props: HarFormulirProps) {
 ClearanceValvePage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Clearance Valve', href: clearanceValveRoutes.index() },
     ],
 };

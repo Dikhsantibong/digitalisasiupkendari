@@ -153,7 +153,7 @@ export default function AbsensiMeetingPage({ meeting }: Props) {
                     )}
 
                     <p className="text-center text-xs text-muted-foreground">
-                        Digitalisasi Unit UP Kendari · Pemeliharaan
+                        KIT-SIPP · UP Kendari · Pemeliharaan
                     </p>
                 </div>
             </div>

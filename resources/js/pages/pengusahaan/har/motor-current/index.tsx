@@ -37,7 +37,7 @@ export default function MotorCurrentPage(props: HarFormulirProps) {
 MotorCurrentPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Arus Elektro Motor', href: motorCurrentRoutes.index() },
     ],
 };

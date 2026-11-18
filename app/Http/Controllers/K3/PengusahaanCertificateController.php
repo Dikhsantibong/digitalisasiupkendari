@@ -132,12 +132,12 @@ class PengusahaanCertificateController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Daftar Sertifikasi Peralatan Pengusahaan {$unit->name}",
+            "Menyimpan Daftar Sertifikasi Peralatan {$unit->name}",
             $unit,
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Daftar Sertifikasi Peralatan Pengusahaan berhasil disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Daftar Sertifikasi Peralatan berhasil disimpan.']);
 
         return back();
     }

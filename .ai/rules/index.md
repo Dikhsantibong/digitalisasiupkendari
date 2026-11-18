@@ -15,11 +15,15 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/** | .ai/rules/controllers.md |
 | app/Services/Dashboard/** | .ai/rules/dashboard.md |
 | resources/js/components/document/** | .ai/rules/document.md |
+| resources/js/components/instruksi-kerja/**, resources/js/pages/k3/input/dokumen-ik/** | .ai/rules/dokumen-ik.md |
 | app/Enums/** | .ai/rules/enums.md |
 | resources/js/pages/har/jadwal/** | .ai/rules/har-jadwal.md |
 | app/Services/Har/** | .ai/rules/har.md |
+| resources/js/components/instruksi-kerja/**, resources/js/pages/k3/input/dokumen-ik/**, app/Http/Controllers/BaseInstruksiKerjaController.php, app/Http/Controllers/K3/DokumenIkController.php | .ai/rules/http-controllers-k3.md |
+| app/Services/Reports/**, app/Http/Controllers/LaporanUlController.php | .ai/rules/http-controllers.md |
 | resources/js/pages/k3/input/** | .ai/rules/input.md |
 | resources/js/pages/k3/jadwal/** | .ai/rules/jadwal.md |
+| resources/js/components/app-sidebar.tsx | .ai/rules/js-components.md |
 | resources/js/** | .ai/rules/js.md |
 | app/Services/K3/** | .ai/rules/k3.md |
 | app/Http/Controllers/Logistik/** | .ai/rules/logistik.md |

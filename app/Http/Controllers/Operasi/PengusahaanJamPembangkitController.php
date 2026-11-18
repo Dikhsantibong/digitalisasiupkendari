@@ -22,7 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Jam Pembangkit: Jam Operasi, Jam Pemeliharaan (PO),
+ * Operasi — Jam Pembangkit: Jam Operasi, Jam Pemeliharaan (PO),
  * Jam MO, Jam Gangguan and Jam Standby of every mesin in one sheet (a column
  * each) with their TOTAL, which must be 24 jam on every filled day. Saved into
  * one {@see OperasiJamMesin} record per jenis — the records the separate

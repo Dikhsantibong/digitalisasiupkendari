@@ -3,6 +3,7 @@
 use App\Http\Controllers\Pdm\DocumentController;
 use App\Http\Controllers\Pdm\FormInputController;
 use App\Http\Controllers\Pdm\InputHubController;
+use App\Http\Controllers\Pdm\InstruksiKerjaController;
 use App\Http\Controllers\Pdm\JadwalController;
 use App\Http\Controllers\Pdm\JadwalHarianController;
 use App\Http\Controllers\Pdm\JadwalMeetingController;
@@ -41,6 +42,11 @@ Route::middleware(['auth', 'verified'])
         Route::post('jadwal/meeting', [JadwalMeetingController::class, 'store'])->name('jadwal.meeting.store');
         Route::get('jadwal/meeting/pdf', [JadwalMeetingController::class, 'pdf'])->name('jadwal.meeting.pdf');
         Route::get('input', [InputHubController::class, 'index'])->name('input.index');
+        Route::get('input/instruksi-kerja', [InstruksiKerjaController::class, 'index'])->name('input.instruksi-kerja.index');
+        Route::post('input/instruksi-kerja', [InstruksiKerjaController::class, 'store'])->name('input.instruksi-kerja.store');
+        Route::get('input/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('input.instruksi-kerja.pdf');
+        Route::post('input/instruksi-kerja/pratinjau', [InstruksiKerjaController::class, 'preview'])->name('input.instruksi-kerja.preview');
+        Route::delete('input/instruksi-kerja/{instruksiKerja}', [InstruksiKerjaController::class, 'destroy'])->whereNumber('instruksiKerja')->name('input.instruksi-kerja.destroy');
         Route::get('input/kesiapan-apd', [KesiapanApdController::class, 'index'])->name('input.kesiapan-apd.index');
         Route::post('input/kesiapan-apd', [KesiapanApdController::class, 'store'])->name('input.kesiapan-apd.store');
         Route::get('input/kesiapan-apd/pdf', [KesiapanApdController::class, 'pdf'])->name('input.kesiapan-apd.pdf');

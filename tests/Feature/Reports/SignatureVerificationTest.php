@@ -86,14 +86,14 @@ class SignatureVerificationTest extends TestCase
         $target = ['unit_id' => $this->unit->id, 'month' => 11, 'year' => 2026];
 
         // Draft: zero QR codes.
-        $this->assertSame(0, substr_count($this->fetchContent($this->maker, $target), 'data:image/png;base64,'));
+        $this->assertSame(0, $this->signatureImages($this->fetchContent($this->maker, $target)));
 
         $this->actingAs($this->maker)->post(route('report-workflow.submit', 'operasi'), $target)->assertRedirect();
         $this->actingAs($this->koordinator)->post(route('report-workflow.verify', 'operasi'), $target)->assertRedirect();
 
         // Step 1 approved -> 1 QR in Memeriksa cell, without extra text clutter underneath.
         $afterVerify = $this->fetchContent($this->maker, $target);
-        $this->assertSame(1, substr_count($afterVerify, 'data:image/png;base64,'));
+        $this->assertSame(1, $this->signatureImages($afterVerify));
         $this->assertStringNotContainsString('Ditandatangani secara elektronik', $afterVerify);
         $verifyUrls = $this->extractVerifyUrls($afterVerify);
         $this->assertCount(1, $verifyUrls);
@@ -109,11 +109,11 @@ class SignatureVerificationTest extends TestCase
 
         // Step 2 approved -> 2 QRs; Step 3 ratified (FINAL) -> all 5 QRs (3 pengesahan + 2 laporan).
         $this->actingAs($this->teamLeader)->post(route('report-workflow.approve', 'operasi'), $target)->assertRedirect();
-        $this->assertSame(2, substr_count($this->fetchContent($this->maker, $target), 'data:image/png;base64,'));
+        $this->assertSame(2, $this->signatureImages($this->fetchContent($this->maker, $target)));
 
         $this->actingAs($this->managerUl)->post(route('report-workflow.ratify', 'operasi'), $target)->assertRedirect();
         $finalHtml = $this->fetchContent($this->maker, $target);
-        $this->assertSame(5, substr_count($finalHtml, 'data:image/png;base64,'));
+        $this->assertSame(5, $this->signatureImages($finalHtml));
         $this->assertCount(5, $this->extractVerifyUrls($finalHtml));
 
         // Tampered token shows invalid state.
@@ -145,7 +145,7 @@ class SignatureVerificationTest extends TestCase
         ])->assertRedirect();
 
         $afterReject = $this->fetchContent($this->maker, $target);
-        $this->assertSame(0, substr_count($afterReject, 'data:image/png;base64,'));
+        $this->assertSame(0, $this->signatureImages($afterReject));
 
         auth()->logout();
         $this->get($verifyUrls[0])
@@ -176,7 +176,7 @@ class SignatureVerificationTest extends TestCase
         // Text mode: zero PNG images anywhere, only electronic timestamps.
         config(['reports.signature_mode' => SignatureMode::Text->value]);
         $textModeHtml = $this->fetchContent($this->maker, $target);
-        $this->assertSame(0, substr_count($textModeHtml, 'data:image/png;base64,'));
+        $this->assertSame(0, $this->signatureImages($textModeHtml));
         $this->assertSame(5, substr_count($textModeHtml, 'Ditandatangani secara elektronik'));
     }
 
@@ -208,7 +208,7 @@ class SignatureVerificationTest extends TestCase
 
         $this->assertStringContainsString('id="ttd-pengusahaan"', $html);
         // Submitted creator (staf) + approved TL = 2 QR codes; Manager UL remains pending.
-        $this->assertSame(2, substr_count($html, 'data:image/png;base64,'));
+        $this->assertSame(2, $this->signatureImages($html));
         $this->assertStringNotContainsString('Ditandatangani secara elektronik', $html);
 
         $urls = $this->extractVerifyUrls($html);
@@ -230,6 +230,15 @@ class SignatureVerificationTest extends TestCase
     /**
      * @param  array<string, int>  $target
      */
+    /**
+     * PNG signature images (QR / uploaded tanda tangan) in the document — not
+     * the report's 3D charts (alt "Grafik …"), which are PNG data URIs too.
+     */
+    private function signatureImages(string $html): int
+    {
+        return preg_match_all('/<img src="data:image\/png;base64,[^"]*" alt="(?!Grafik)/', $html);
+    }
+
     private function fetchContent(User $user, array $target): string
     {
         $html = '';

@@ -91,25 +91,25 @@ enum RoleName: string
         return match ($this) {
             self::SuperAdmin => 'Kontrol penuh atas sistem: manajemen akses, pemantauan aktivitas, dan seluruh unit.',
             self::ManagerUl => 'Memimpin satu unit layanan dan memantau seluruh unit pembangkit di bawahnya.',
-            self::TeamLeaderOperasi => 'Akses 2 — Pengusahaan operasi (menu & Laporan Pengusahaan), serta menyetujui Laporan Operasi Pembangkit pada unit yang ditugaskan.',
-            self::TeamLeaderPemeliharaan => 'Akses 2 — Pengusahaan pemeliharaan (menu & Laporan Pengusahaan), serta menyetujui Laporan Pemeliharaan Pembangkit pada unit yang ditugaskan.',
-            self::TeamLeaderK3 => 'Akses 2 — Pengusahaan K3 & keamanan (menu & Laporan Pengusahaan), serta menyetujui Laporan K3 Pembangkit pada unit yang ditugaskan.',
+            self::TeamLeaderOperasi => 'Akses 2 — Operasi (menu & laporan divisi), serta menyetujui Laporan Project Operasi pada unit yang ditugaskan.',
+            self::TeamLeaderPemeliharaan => 'Akses 2 — Pemeliharaan (menu & laporan divisi), serta menyetujui Laporan Project Pemeliharaan pada unit yang ditugaskan.',
+            self::TeamLeaderK3 => 'Akses 2 — K3 & keamanan (menu & laporan divisi), serta menyetujui Laporan K3 Pembangkit pada unit yang ditugaskan.',
             self::KoordinatorLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan dan memverifikasi Laporan Logistik (disetujui TL Pemeliharaan).',
             self::KoordinatorPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan dan memverifikasi Laporan PdM (disetujui TL Pemeliharaan).',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
             self::ProjectLeaderOperasi => 'Project Leader: Akses 1 — melihat seluruh Laporan Project (Operasi, Pemeliharaan, K3, Logistik, PdM), serta menjadwalkan shift regu & mengelola absensi pada unit pembangkit yang ditugaskan.',
-            self::KoordinatorOperasi => 'Akses 1 — Laporan Project operasi (Koordinator & Office): jadwal, input, berita acara, master dan Laporan Operasi Pembangkit, serta mengawasi logsheet & jadwal shift operator.',
-            self::KoordinatorPemeliharaan => 'Akses 1 — Laporan Project pemeliharaan (Koordinator & Office): jadwal, input, formulir, master dan Laporan Pemeliharaan Pembangkit.',
+            self::KoordinatorOperasi => 'Akses 1 — Laporan Project operasi (Koordinator & Office): jadwal, input, berita acara, master dan Laporan Project Operasi, serta mengawasi logsheet & jadwal shift operator.',
+            self::KoordinatorPemeliharaan => 'Akses 1 — Laporan Project pemeliharaan (Koordinator & Office): jadwal, input, formulir, master dan Laporan Project Pemeliharaan.',
             self::KoordinatorK3 => 'Akses 1 — Laporan Project K3 & keamanan (Koordinator & Office): jadwal, input, formulir, monitoring, master dan Laporan K3 Pembangkit.',
-            self::StafOperasi => 'Akses 2 — Pengusahaan operasi: menu & Laporan Pengusahaan operasi pada unit yang ditugaskan.',
-            self::StafPemeliharaan => 'Akses 2 — Pengusahaan pemeliharaan: menu & Laporan Pengusahaan pemeliharaan pada unit yang ditugaskan.',
-            self::StafK3 => 'Akses 2 — Pengusahaan K3 & keamanan: menu & Laporan Pengusahaan K3 pada unit yang ditugaskan.',
+            self::StafOperasi => 'Akses 2 — Operasi: menu & Laporan Operasi pada unit yang ditugaskan.',
+            self::StafPemeliharaan => 'Akses 2 — Pemeliharaan: menu & Laporan Pemeliharaan pada unit yang ditugaskan.',
+            self::StafK3 => 'Akses 2 — K3 & keamanan: menu & Laporan K3 pada unit yang ditugaskan.',
             self::Operator => 'Operator shift (termasuk Leader Shift) divisi Operasi di bawah Koordinator Operasi: mencatat logsheet harian dan absen pada unit pembangkit yang ditugaskan.',
             self::Harmes => 'Teknisi pemeliharaan mesin divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
             self::AdminUl => 'Akun unit yang diberi peran admin Unit Layanan: semua divisi seperti Akun Unit, untuk seluruh unit pembangkit di bawah UL unit bawaannya.',
-            self::AkunUnit => 'Akun unit pembangkit untuk semua divisi (Operasi, Operator, Pemeliharaan, K3, Logistik, PdM): melihat dan mengisi input, jadwal, formulir, Pengusahaan dan laporan — hanya data unit yang ditugaskan.',
+            self::AkunUnit => 'Akun unit pembangkit untuk semua divisi (Operasi, Operator, Pemeliharaan, K3, Logistik, PdM): melihat dan mengisi input, jadwal, formulir, input divisi dan laporan — hanya data unit yang ditugaskan.',
             self::Harlist => 'Teknisi pemeliharaan listrik divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
-            self::ManagerUp => 'Kantor induk UP Kendari: melihat & mengunduh seluruh input dan laporan (Operasi, Pemeliharaan, K3, Logistik, PdM — Laporan Project & Pengusahaan) di semua unit. Hanya melihat.',
+            self::ManagerUp => 'Kantor induk UP Kendari: melihat & mengunduh seluruh input dan laporan (Operasi, Pemeliharaan, K3, Logistik, PdM — Laporan Project & Laporan Divisi) di semua unit. Hanya melihat.',
             self::TeamLeaderOperasiUp => 'Kantor induk UP Kendari: melihat input, monitoring & laporan final bidang Operasi di semua unit. Hanya melihat.',
             self::TeamLeaderPemeliharaanUp => 'Kantor induk UP Kendari: melihat input, monitoring & laporan final bidang Pemeliharaan (termasuk Logistik & PdM) di semua unit. Hanya melihat.',
             self::TeamLeaderK3Up => 'Kantor induk UP Kendari: melihat input, monitoring & laporan final bidang K3 & Lingkungan di semua unit. Hanya melihat.',
@@ -404,7 +404,7 @@ enum RoleName: string
                 PermissionName::OperasiLapanganChecklistCommissioning,
                 PermissionName::OperasiLapanganUnsafeCondition,
                 PermissionName::OperasiLapanganProgram5s5r,
-                // No Pengusahaan Operasi inputs for now (user, 2026-10-30): the operator fills the
+                // No Operasi inputs for now (user, 2026-10-30): the operator fills the
                 // core Operator menus and the Input Operasi (Laporan Project) pages only.
             ],
 
@@ -422,8 +422,9 @@ enum RoleName: string
             ],
 
             // A unit's own account: every divisi of that unit, view & input (no master data management, users or approvals).
-            self::AkunUnit,
-            self::AdminUl => self::unitAccountPermissions(),
+            self::AkunUnit => self::unitAccountPermissions(),
+            // Admin UL: like the unit account, plus the Laporan UL of its service unit.
+            self::AdminUl => [...self::unitAccountPermissions(), PermissionName::LaporanUlView],
 
             // Kantor induk UP Kendari: view permissions of their bidang + Portal & read-only.
             self::TeamLeaderOperasiUp,

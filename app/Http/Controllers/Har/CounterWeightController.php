@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarCounterWeightPdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pemeriksaan Kekencangan Baut Counter Weight (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pemeriksaan Kekencangan Baut Counter Weight (per mesin & tanggal uji).
  */
 class CounterWeightController extends HarFormulirController
 {

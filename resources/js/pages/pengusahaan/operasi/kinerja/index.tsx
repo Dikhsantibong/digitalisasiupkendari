@@ -238,7 +238,7 @@ export default function KinerjaIndex({
             <div className="flex min-w-0 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title="Kinerja Unit Mesin"
-                    description={`Pengusahaan pembangkitan ${unit.name}, ${period_label}. Terisi otomatis dari Master Mesin, Beban Tertinggi, dan Jam Operasi/Pemeliharaan/Gangguan — nilai bisa dikoreksi.`}
+                    description={`Kinerja pembangkitan ${unit.name}, ${period_label}. Terisi otomatis dari Master Mesin, Beban Tertinggi, dan Jam Operasi/Pemeliharaan/Gangguan — nilai bisa dikoreksi.`}
                     actions={
                         <>
                             <Button variant="outline" asChild>

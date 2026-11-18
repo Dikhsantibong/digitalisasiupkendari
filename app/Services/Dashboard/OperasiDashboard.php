@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
- * The Operasi section of the dashboard, read from the Pengusahaan Operasi
+ * The Operasi section of the dashboard, read from the Operasi
  * sheets of the visible units (PRD.md §10.1): Stand kWh Harian (kWh produksi /
  * PS / netto), Beban Tertinggi, Tara Kalor, Pemakaian Bahan Bakar (SFC netto =
  * liter ÷ kWh netto), Jam Pembangkit, Persediaan Bahan Bakar, Pemakaian

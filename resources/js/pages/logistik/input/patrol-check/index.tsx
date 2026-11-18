@@ -1,4 +1,7 @@
-import { LogistikJadwalSheetPage, logistikSheetBreadcrumbs } from '@/components/logistik/jadwal-sheet-page';
+import {
+    LogistikJadwalSheetPage,
+    logistikSheetBreadcrumbs,
+} from '@/components/logistik/jadwal-sheet-page';
 import type { LogistikJadwalSheetPageProps } from '@/components/logistik/jadwal-sheet-page';
 
 /**
@@ -9,5 +12,9 @@ export default function PatrolCheckSheet(props: LogistikJadwalSheetPageProps) {
 }
 
 PatrolCheckSheet.layout = {
-    breadcrumbs: logistikSheetBreadcrumbs('input', 'patrol-check', 'Laporan Patrol Checklist Logistik & Gudang'),
+    breadcrumbs: logistikSheetBreadcrumbs(
+        'input',
+        'patrol-check',
+        'Laporan Patrol Checklist Logistik & Gudang',
+    ),
 };

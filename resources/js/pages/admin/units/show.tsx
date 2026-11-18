@@ -69,7 +69,7 @@ export default function UnitShow({ unit, assignments, activity }: Props) {
                             {unit.status_label}
                         </StatusBadge>
                     </Detail>
-                    <Detail label="Input Pengusahaan Operator">
+                    <Detail label="Input Operasi oleh Operator">
                         {unit.operator_pengusahaan ? 'Aktif' : 'Tidak aktif'}
                     </Detail>
                     <Detail label="Kontrak">

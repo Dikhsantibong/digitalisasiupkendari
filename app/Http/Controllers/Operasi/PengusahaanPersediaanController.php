@@ -22,7 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Persediaan Bahan Bakar and Persediaan Pelumas: the
+ * Operasi — Persediaan Bahan Bakar and Persediaan Pelumas: the
  * daily stock per jenis, with the sheet passed as the route's `jenis` default.
  * Penerimaan and pengiriman (BBM: TUG 8, Pinjam THAS; pelumas: TUG 8, TUG 10,
  * Over Flow) are typed in, pemakaian comes from the Pemakaian

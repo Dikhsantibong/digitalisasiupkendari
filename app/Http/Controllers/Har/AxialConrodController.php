@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarAxialConrodPdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pemeriksaan Axial Conrod & Baut Conrod (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pemeriksaan Axial Conrod & Baut Conrod (per mesin & tanggal uji).
  */
 class AxialConrodController extends HarFormulirController
 {

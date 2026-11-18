@@ -37,7 +37,7 @@ export default function CombustionPressurePage(props: HarFormulirProps) {
 CombustionPressurePage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Tekanan Pembakaran', href: combustionPressureRoutes.index() },
     ],
 };

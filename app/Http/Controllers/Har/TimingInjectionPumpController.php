@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarTimingInjectionPumpPdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Checklist Timing Injection Pump (per mesin & tanggal uji).
+ * Akses 2 — Formulir Checklist Timing Injection Pump (per mesin & tanggal uji).
  */
 class TimingInjectionPumpController extends HarFormulirController
 {

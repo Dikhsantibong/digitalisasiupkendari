@@ -2,7 +2,10 @@ import { Head, router } from '@inertiajs/react';
 import { Download, FileSpreadsheet, Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { CompactField, MobileCompactRows } from '@/components/mobile/compact-rows';
+import {
+    CompactField,
+    MobileCompactRows,
+} from '@/components/mobile/compact-rows';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -39,7 +42,11 @@ type Props = {
 
 const COLUMNS: { key: TextKey; label: string; className: string }[] = [
     { key: 'uraian', label: 'Uraian', className: 'w-[20%]' },
-    { key: 'kondisi_existing', label: 'Kondisi Existing', className: 'w-[27%]' },
+    {
+        key: 'kondisi_existing',
+        label: 'Kondisi Existing',
+        className: 'w-[27%]',
+    },
     { key: 'tindak_lanjut', label: 'Tindak Lanjut', className: 'w-[27%]' },
     { key: 'keterangan', label: 'Keterangan', className: '' },
 ];
@@ -47,37 +54,69 @@ const COLUMNS: { key: TextKey; label: string; className: string }[] = [
 const cellTextarea =
     'block min-h-14 w-full resize-y rounded-none border-0 bg-transparent px-1.5 py-1 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none disabled:opacity-100';
 
-const blankRow = (no: number): Row => ({ id: null, no_urut: no, uraian: '', kondisi_existing: '', tindak_lanjut: '', keterangan: '' });
+const blankRow = (no: number): Row => ({
+    id: null,
+    no_urut: no,
+    uraian: '',
+    kondisi_existing: '',
+    tindak_lanjut: '',
+    keterangan: '',
+});
 
 /**
  * Input Logistik & Gudang "Rekomendasi Logistik & Gudang": uraian, kondisi
  * existing, tindak lanjut and keterangan per unit & month, with PDF & Excel.
  */
-export default function LogistikRekomendasiInput({ unit, filters, options, rows: initialRows, has_saved, can_write }: Props) {
+export default function LogistikRekomendasiInput({
+    unit,
+    filters,
+    options,
+    rows: initialRows,
+    has_saved,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<Row[]>(initialRows);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [exporting, setExporting] = useState(false);
     const compact = useCompactLayout();
-    const [focus, setFocus] = useState<{ index: number; nonce: number } | null>(null);
+    const [focus, setFocus] = useState<{ index: number; nonce: number } | null>(
+        null,
+    );
 
     const periodLabel = `${OPERASI_MONTHS[filters.month - 1]} Tahun ${filters.year}`;
-    const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
+    const query = {
+        unit_id: filters.unit_id,
+        month: filters.month,
+        year: filters.year,
+    };
 
     const visit = (patch: Partial<PdmInputFilters>) => {
-        if (dirty && !window.confirm('Perubahan belum disimpan akan hilang. Lanjutkan?')) {
+        if (
+            dirty &&
+            !window.confirm('Perubahan belum disimpan akan hilang. Lanjutkan?')
+        ) {
             return;
         }
 
-        router.get(rekomendasi.index().url, { ...filters, ...patch }, { preserveScroll: true });
+        router.get(
+            rekomendasi.index().url,
+            { ...filters, ...patch },
+            { preserveScroll: true },
+        );
     };
 
     const update = (index: number, key: TextKey, value: string) => {
-        setRows((current) => current.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
+        setRows((current) =>
+            current.map((row, i) =>
+                i === index ? { ...row, [key]: value } : row,
+            ),
+        );
         setDirty(true);
     };
 
-    const renumber = (list: Row[]) => list.map((row, i) => ({ ...row, no_urut: i + 1 }));
+    const renumber = (list: Row[]) =>
+        list.map((row, i) => ({ ...row, no_urut: i + 1 }));
 
     const addRow = () => {
         setFocus({ index: rows.length, nonce: (focus?.nonce ?? 0) + 1 });
@@ -94,8 +133,27 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
         setSaving(true);
         router.post(
             rekomendasi.store().url,
-            { ...query, rows: rows.map(({ uraian, kondisi_existing, tindak_lanjut, keterangan }) => ({ uraian, kondisi_existing, tindak_lanjut, keterangan })) },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            {
+                ...query,
+                rows: rows.map(
+                    ({
+                        uraian,
+                        kondisi_existing,
+                        tindak_lanjut,
+                        keterangan,
+                    }) => ({
+                        uraian,
+                        kondisi_existing,
+                        tindak_lanjut,
+                        keterangan,
+                    }),
+                ),
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setDirty(false),
+                onFinish: () => setSaving(false),
+            },
         );
     };
 
@@ -103,7 +161,12 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
         setExporting(true);
 
         try {
-            await downloadRekomendasiWorkbook(unit.name, periodLabel, rows, `Rekomendasi_Logistik_Gudang_${unit.name.replace(/\s+/g, '_')}_${filters.month}_${filters.year}.xlsx`);
+            await downloadRekomendasiWorkbook(
+                unit.name,
+                periodLabel,
+                rows,
+                `Rekomendasi_Logistik_Gudang_${unit.name.replace(/\s+/g, '_')}_${filters.month}_${filters.year}.xlsx`,
+            );
         } catch {
             toast.error('Gagal membuat file Excel.');
         } finally {
@@ -116,42 +179,98 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
         return (
             <>
                 <Head title="Rekomendasi Logistik & Gudang" />
-                <div className={`flex flex-1 flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
-                    <PageHeader title="Rekomendasi Logistik & Gudang" description={`${unit.name} · ${periodLabel}`} />
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}
+                >
+                    <PageHeader
+                        title="Rekomendasi Logistik & Gudang"
+                        description={`${unit.name} · ${periodLabel}`}
+                    />
                     <div className="grid grid-cols-2 gap-2">
-                        <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
+                        <Button
+                            variant="outline"
+                            onClick={exportExcel}
+                            disabled={exporting}
+                            className="gap-1.5"
+                        >
                             <FileSpreadsheet className="size-4 text-emerald-600" />
                             {exporting ? 'Menyiapkan…' : 'Excel'}
                         </Button>
-                        <Button variant="outline" onClick={() => window.open(rekomendasi.pdf({ query }).url, '_blank')} className="gap-1.5">
+                        <Button
+                            variant="outline"
+                            onClick={() =>
+                                window.open(
+                                    rekomendasi.pdf({ query }).url,
+                                    '_blank',
+                                )
+                            }
+                            className="gap-1.5"
+                        >
                             <Download className="size-4 text-rose-600" />
                             PDF
                         </Button>
                     </div>
-                    <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
-                    {!has_saved && <p className="text-[12px] text-muted-foreground">Belum ada rekomendasi tersimpan — uraian standar sudah disiapkan.</p>}
+                    <PdmInputToolbar
+                        filters={filters}
+                        options={options}
+                        onChange={visit}
+                        dirty={dirty}
+                    />
+                    {!has_saved && (
+                        <p className="text-[12px] text-muted-foreground">
+                            Belum ada rekomendasi tersimpan — uraian standar
+                            sudah disiapkan.
+                        </p>
+                    )}
                     <MobileCompactRows
                         canWrite={can_write}
                         focus={focus}
                         rows={rows.map((row, index) => ({
                             key: index,
                             index,
-                            title: row.uraian || 'Uraian baru — ketuk untuk mengisi',
-                            subtitle: [row.kondisi_existing && `Kondisi: ${row.kondisi_existing}`, row.tindak_lanjut && `Tindak lanjut: ${row.tindak_lanjut}`].filter(Boolean).join(' · '),
+                            title:
+                                row.uraian ||
+                                'Uraian baru — ketuk untuk mengisi',
+                            subtitle: [
+                                row.kondisi_existing &&
+                                    `Kondisi: ${row.kondisi_existing}`,
+                                row.tindak_lanjut &&
+                                    `Tindak lanjut: ${row.tindak_lanjut}`,
+                            ]
+                                .filter(Boolean)
+                                .join(' · '),
                             searchText: `${row.uraian} ${row.kondisi_existing} ${row.tindak_lanjut} ${row.keterangan}`,
                             empty: !row.uraian,
                         }))}
                         renderEditor={(index) =>
                             COLUMNS.map((column) => (
-                                <CompactField key={column.key} label={column.label}>
-                                    <Textarea rows={2} value={rows[index][column.key]} onChange={(e) => update(index, column.key, e.target.value)} disabled={!can_write} />
+                                <CompactField
+                                    key={column.key}
+                                    label={column.label}
+                                >
+                                    <Textarea
+                                        rows={2}
+                                        value={rows[index][column.key]}
+                                        onChange={(e) =>
+                                            update(
+                                                index,
+                                                column.key,
+                                                e.target.value,
+                                            )
+                                        }
+                                        disabled={!can_write}
+                                    />
                                 </CompactField>
                             ))
                         }
                         onRemove={removeRow}
                     />
                     {can_write && (
-                        <Button variant="outline" onClick={addRow} className="gap-1.5">
+                        <Button
+                            variant="outline"
+                            onClick={addRow}
+                            className="gap-1.5"
+                        >
                             <Plus className="size-4" />
                             Tambah Baris
                         </Button>
@@ -159,9 +278,17 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
                 </div>
                 {can_write && (
                     <StickyActionBar>
-                        <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                        <Button
+                            onClick={save}
+                            disabled={saving || !dirty}
+                            className="h-11 w-full gap-1.5"
+                        >
                             <Save className="size-4" />
-                            {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                            {saving
+                                ? 'Menyimpan…'
+                                : dirty
+                                  ? 'Simpan'
+                                  : 'Tersimpan'}
                         </Button>
                     </StickyActionBar>
                 )}
@@ -178,17 +305,42 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
                     description={`Kondisi existing, tindak lanjut, dan keterangan tiap uraian logistik & gudang — ${unit.name} · ${periodLabel}.`}
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => router.get(logistikInput.index().url)}>Kembali</Button>
-                            <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    router.get(logistikInput.index().url)
+                                }
+                            >
+                                Kembali
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={exportExcel}
+                                disabled={exporting}
+                                className="gap-1.5"
+                            >
                                 <FileSpreadsheet className="size-4 text-emerald-600" />
                                 {exporting ? 'Menyiapkan…' : 'Excel'}
                             </Button>
-                            <Button variant="outline" onClick={() => window.open(rekomendasi.pdf({ query }).url, '_blank')} className="gap-1.5">
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    window.open(
+                                        rekomendasi.pdf({ query }).url,
+                                        '_blank',
+                                    )
+                                }
+                                className="gap-1.5"
+                            >
                                 <Download className="size-4 text-rose-600" />
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button
+                                    onClick={save}
+                                    disabled={saving || !dirty}
+                                    className="gap-1.5"
+                                >
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>
@@ -197,11 +349,18 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
                     }
                 />
 
-                <PdmInputToolbar filters={filters} options={options} onChange={visit} dirty={dirty} />
+                <PdmInputToolbar
+                    filters={filters}
+                    options={options}
+                    onChange={visit}
+                    dirty={dirty}
+                />
 
                 {!has_saved && (
                     <p className="text-[13px] text-muted-foreground">
-                        Belum ada rekomendasi tersimpan untuk periode ini — uraian standar sudah disiapkan. Baris yang seluruh kolomnya kosong tidak ikut disimpan.
+                        Belum ada rekomendasi tersimpan untuk periode ini —
+                        uraian standar sudah disiapkan. Baris yang seluruh
+                        kolomnya kosong tidak ikut disimpan.
                     </p>
                 )}
 
@@ -209,23 +368,43 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
                     <table className="excel-sheet w-full min-w-[860px] border-collapse text-xs">
                         <thead className="bg-[#9dd9f3] text-center text-[12px] font-semibold text-slate-900">
                             <tr>
-                                <th className="w-12 border border-slate-400 p-2">NO.</th>
+                                <th className="w-12 border border-slate-400 p-2">
+                                    NO.
+                                </th>
                                 {COLUMNS.map((column) => (
-                                    <th key={column.key} className={`border border-slate-400 p-2 ${column.className}`}>{column.label}</th>
+                                    <th
+                                        key={column.key}
+                                        className={`border border-slate-400 p-2 ${column.className}`}
+                                    >
+                                        {column.label}
+                                    </th>
                                 ))}
-                                {can_write && <th className="w-10 border border-slate-400 p-2" />}
+                                {can_write && (
+                                    <th className="w-10 border border-slate-400 p-2" />
+                                )}
                             </tr>
                         </thead>
                         <tbody>
                             {rows.map((row, index) => (
                                 <tr key={index} className="hover:bg-muted/30">
-                                    <td className="border border-border p-1 text-center align-middle">{row.no_urut}</td>
+                                    <td className="border border-border p-1 text-center align-middle">
+                                        {row.no_urut}
+                                    </td>
                                     {COLUMNS.map((column) => (
-                                        <td key={column.key} className="border border-border p-0 align-top">
+                                        <td
+                                            key={column.key}
+                                            className="border border-border p-0 align-top"
+                                        >
                                             <textarea
                                                 rows={2}
                                                 value={row[column.key]}
-                                                onChange={(e) => update(index, column.key, e.target.value)}
+                                                onChange={(e) =>
+                                                    update(
+                                                        index,
+                                                        column.key,
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 className={cellTextarea}
                                                 disabled={!can_write}
                                                 aria-label={`${column.label} baris ${row.no_urut}`}
@@ -234,7 +413,13 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
                                     ))}
                                     {can_write && (
                                         <td className="border border-border p-0 text-center align-middle">
-                                            <Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(index)} title="Hapus baris">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="size-7 text-muted-foreground hover:text-destructive"
+                                                onClick={() => removeRow(index)}
+                                                title="Hapus baris"
+                                            >
                                                 <Trash2 className="size-3.5" />
                                             </Button>
                                         </td>
@@ -247,7 +432,12 @@ export default function LogistikRekomendasiInput({ unit, filters, options, rows:
 
                 {can_write && (
                     <div>
-                        <Button variant="outline" size="sm" onClick={addRow} className="gap-1.5">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="gap-1.5"
+                        >
                             <Plus className="size-4" />
                             Tambah Baris
                         </Button>

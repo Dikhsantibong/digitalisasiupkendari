@@ -37,7 +37,7 @@ export default function PrelubeTestPage(props: HarFormulirProps) {
 PrelubeTestPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Prelube Test', href: prelubeTestRoutes.index() },
     ],
 };

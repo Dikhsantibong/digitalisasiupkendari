@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarCombustionPressurePdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pengukuran Tekanan Pembakaran (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pengukuran Tekanan Pembakaran (per mesin & tanggal uji).
  */
 class CombustionPressureController extends HarFormulirController
 {

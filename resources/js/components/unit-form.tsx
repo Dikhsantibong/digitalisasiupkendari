@@ -279,8 +279,8 @@ export function UnitForm({ action, unit, options, submitLabel }: Props) {
                             </p>
                         </div>
                         <FormField
-                            label="Input Pengusahaan Operasi oleh Operator"
-                            hint="Matikan untuk unit containerized: operator & project leader unit ini tidak membuka input Pengusahaan Operasi (TL & Staf tidak terpengaruh)."
+                            label="Input Operasi oleh Operator"
+                            hint="Matikan untuk unit containerized: operator & project leader unit ini tidak membuka input Operasi (TL & Staf tidak terpengaruh)."
                             error={errors.operator_pengusahaan}
                         >
                             <label className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
@@ -297,7 +297,7 @@ export function UnitForm({ action, unit, options, submitLabel }: Props) {
                                     }
                                 />
                                 <span className="text-[13px]">
-                                    Operator mengisi input Pengusahaan Operasi
+                                    Operator mengisi input Operasi
                                 </span>
                             </label>
                         </FormField>

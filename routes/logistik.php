@@ -3,6 +3,7 @@
 use App\Http\Controllers\Logistik\DocumentController;
 use App\Http\Controllers\Logistik\FormController;
 use App\Http\Controllers\Logistik\InputHubController;
+use App\Http\Controllers\Logistik\InstruksiKerjaController;
 use App\Http\Controllers\Logistik\JadwalController;
 use App\Http\Controllers\Logistik\JadwalSheetController;
 use App\Http\Controllers\Logistik\LaporanController;
@@ -28,6 +29,11 @@ Route::middleware(['auth', 'verified'])
         Route::post('jadwal/{jadwal}', [JadwalSheetController::class, 'store'])->name('jadwal.sheet.store')->whereIn('jadwal', LogistikJadwal::keysFor('jadwal'));
         Route::get('jadwal/{jadwal}/pdf', [JadwalSheetController::class, 'pdf'])->name('jadwal.sheet.pdf')->whereIn('jadwal', LogistikJadwal::keysFor('jadwal'));
         Route::get('input', [InputHubController::class, 'index'])->name('input.index');
+        Route::get('input/instruksi-kerja', [InstruksiKerjaController::class, 'index'])->name('input.instruksi-kerja.index');
+        Route::post('input/instruksi-kerja', [InstruksiKerjaController::class, 'store'])->name('input.instruksi-kerja.store');
+        Route::get('input/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('input.instruksi-kerja.pdf');
+        Route::post('input/instruksi-kerja/pratinjau', [InstruksiKerjaController::class, 'preview'])->name('input.instruksi-kerja.preview');
+        Route::delete('input/instruksi-kerja/{instruksiKerja}', [InstruksiKerjaController::class, 'destroy'])->whereNumber('instruksiKerja')->name('input.instruksi-kerja.destroy');
         Route::get('input/rekomendasi', [RekomendasiController::class, 'index'])->name('input.rekomendasi.index');
         Route::post('input/rekomendasi', [RekomendasiController::class, 'store'])->name('input.rekomendasi.store');
         Route::get('input/rekomendasi/pdf', [RekomendasiController::class, 'pdf'])->name('input.rekomendasi.pdf');

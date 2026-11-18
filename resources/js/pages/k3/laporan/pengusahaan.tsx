@@ -37,10 +37,10 @@ export default function K3LaporanPengusahaan({
 }: Props) {
     return (
         <>
-            <Head title="Dokumen Laporan Pengusahaan Pembangkit K3" />
+            <Head title="Dokumen Laporan K3 & KAM" />
             <DocumentEditor
-                title="Laporan Pengusahaan Pembangkit (K3 & KAM)"
-                description="Laporan kinerja K3 & KAM terisi otomatis dari seluruh input & formulir Pengusahaan K3 (Time Frame, APAR, Hydrant, Buku Tamu, Jam Kerja, P3K, Sertifikasi, dll.). Edit sebagai teks atau spreadsheet, simpan, lalu unduh PDF multi-orientasi (Portrait & Landscape). Dokumen yang sudah disimpan: tekan Muat Ulang dari Data untuk mengambil isi terbaru."
+                title="Laporan K3 & KAM"
+                description="Laporan kinerja K3 & KAM terisi otomatis dari seluruh input & formulir K3 (Time Frame, APAR, Hydrant, Buku Tamu, Jam Kerja, P3K, Sertifikasi, dll.). Edit sebagai teks atau spreadsheet, simpan, lalu unduh PDF multi-orientasi (Portrait & Landscape). Dokumen yang sudah disimpan: tekan Muat Ulang dari Data untuk mengambil isi terbaru."
                 backUrl={laporan.index().url}
                 backLabel="Kembali"
                 numberLabel="No. Dokumen"
@@ -72,6 +72,6 @@ K3LaporanPengusahaan.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Laporan K3 Lingkungan Pembangkit', href: laporan.index() },
-        { title: 'Laporan Pengusahaan Pembangkit', href: laporan.index() },
+        { title: 'Laporan K3 & KAM', href: laporan.index() },
     ],
 };

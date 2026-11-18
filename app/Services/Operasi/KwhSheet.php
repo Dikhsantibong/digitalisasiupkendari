@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 /**
- * The kWh sheets of Pengusahaan Operasi, all read from one input — the daily
+ * The kWh sheets of Operasi, all read from one input — the daily
  * kWh meter stands per mesin (Stand kWh Harian, stored on DailyEngineReport):
  *
  * - Stand kWh Harian: per day the PROD and PS stands (awal = yesterday's

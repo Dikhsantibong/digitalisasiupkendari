@@ -36,7 +36,7 @@ export default function HydrotestPage(props: HarFormulirProps) {
 HydrotestPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Hydrotest', href: hydrotestRoutes.index() },
     ],
 };

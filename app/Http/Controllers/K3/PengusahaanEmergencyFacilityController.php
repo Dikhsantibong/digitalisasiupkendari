@@ -220,7 +220,7 @@ class PengusahaanEmergencyFacilityController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Pemeriksaan Emergency Facility Pengusahaan {$unit->name} Periode {$periode} {$month}/{$year}",
+            "Menyimpan Pemeriksaan Emergency Facility {$unit->name} Periode {$periode} {$month}/{$year}",
             $unit,
             unit: $unit->id,
         );
@@ -311,7 +311,7 @@ class PengusahaanEmergencyFacilityController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyalin Pemeriksaan Emergency Facility Pengusahaan {$unit->name} dari {$validated['source_periode']} ke {$validated['target_periode']}",
+            "Menyalin Pemeriksaan Emergency Facility {$unit->name} dari {$validated['source_periode']} ke {$validated['target_periode']}",
             $unit,
             unit: $unit->id,
         );

@@ -134,23 +134,7 @@ class ModuleResume
                 ['label' => 'Kelengkapan Input', 'value' => $completenessSummary],
                 ['label' => 'Waktu Pembuatan Resume', 'value' => Carbon::now()->timezone(config('app.timezone'))->format('d/m/Y H:i').' WITA'],
             ],
-            'kpis' => array_map(function (array $kpi): array {
-                $unitSuffix = ($kpi['unit'] ?? '') !== '' ? ' '.$kpi['unit'] : '';
-                $sparkValues = array_values(array_map('floatval', $kpi['spark'] ?? []));
-                $nonZero = array_values(array_filter($sparkValues, fn (float $v): bool => $v > 0));
-
-                return [
-                    'label' => $kpi['label'],
-                    'value' => $kpi['value'] === null ? '—' : trim($this->format($kpi['value'], $kpi['format']).$unitSuffix),
-                    'previous' => ($kpi['previous'] ?? null) === null ? '—' : trim($this->format($kpi['previous'], $kpi['format']).$unitSuffix),
-                    'good' => $kpi['good'],
-                    'target_label' => $kpi['good'] === 'up' ? 'Makin tinggi makin baik' : 'Makin rendah makin baik',
-                    'avg' => $nonZero === [] ? '—' : trim($this->format(array_sum($nonZero) / count($nonZero), $kpi['format']).$unitSuffix),
-                    'max' => $sparkValues === [] ? '—' : trim($this->format(max($sparkValues), $kpi['format']).$unitSuffix),
-                    ...$this->direction($kpi),
-                    'spark' => $sparkValues,
-                ];
-            }, $data['kpis']),
+            'kpis' => $this->formatKpis($data['kpis']),
             'insights' => $this->insights($module, $data),
             // Every chart is drawn as a 3D PNG (Chart3d): the page, the PDF and the Excel show the same image.
             'charts' => array_map(
@@ -163,6 +147,87 @@ class ModuleResume
                 $completenessSection,
             ],
         ];
+    }
+
+    /**
+     * The module's figures for several units at once (Laporan UL): the
+     * dashboard data of every unit accumulated — formatted KPIs with their
+     * direction, the raw KPIs, insights, the tables and (optionally) the 3D
+     * charts, the same as a unit's resume.
+     *
+     * @param  Collection<int, Unit>  $units
+     * @return array{kpis: list<array<string, mixed>>, raw_kpis: list<array<string, mixed>>, insights: list<array<string, mixed>>, charts: list<array<string, mixed>>, sections: list<array<string, mixed>>}
+     */
+    public function aggregate(string $module, Collection $units, int $month, int $year, bool $withCharts = true): array
+    {
+        $start = Carbon::create($year, $month, 1)->startOfDay();
+        $now = $start->isSameMonth(Carbon::now()) ? Carbon::now() : $start->copy()->endOfMonth();
+
+        $data = match ($module) {
+            'operasi' => $this->operasi->build(
+                $units,
+                $now,
+                collect($units)->flatMap(fn (Unit $unit): array => $this->fuels($unit))->unique('code')->values()->all(),
+                collect($units)->flatMap(fn (Unit $unit): array => $this->lubricants($unit))->unique()->values()->all(),
+            ),
+            'pemeliharaan' => $this->har->build($units, $now),
+            'k3' => $this->k3->build($units, $now),
+            'logistik' => $this->logistik->build($units, $now),
+            'pdm' => $this->pdm->build($units, $now),
+        };
+
+        return [
+            'kpis' => $this->formatKpis($data['kpis']),
+            'raw_kpis' => $data['kpis'],
+            'insights' => $this->insights($module, $data),
+            'charts' => $withCharts ? array_map(
+                fn (array $chart): array => [...$chart, 'image' => $this->image($chart)],
+                $this->charts($module, $data, array_column(DashboardSupport::months($now), 'label')),
+            ) : [],
+            'sections' => match ($module) {
+                'operasi' => $this->operasiSections($data),
+                'pemeliharaan' => $this->harSections($data),
+                'k3' => $this->k3Sections($data),
+                'logistik' => $this->logistikSections($data),
+                'pdm' => $this->pdmSections($data),
+            },
+        ];
+    }
+
+    /**
+     * A value in the resume's number format (Laporan UL tables).
+     */
+    public function formatValue(float|int|null $value, string $format = 'number'): string
+    {
+        return $this->format($value, $format);
+    }
+
+    /**
+     * Dashboard KPIs as shown in the resume: formatted value, previous month,
+     * average & peak of the trend, and their direction.
+     *
+     * @param  list<array<string, mixed>>  $kpis
+     * @return list<array<string, mixed>>
+     */
+    private function formatKpis(array $kpis): array
+    {
+        return array_map(function (array $kpi): array {
+            $unitSuffix = ($kpi['unit'] ?? '') !== '' ? ' '.$kpi['unit'] : '';
+            $sparkValues = array_values(array_map('floatval', $kpi['spark'] ?? []));
+            $nonZero = array_values(array_filter($sparkValues, fn (float $v): bool => $v > 0));
+
+            return [
+                'label' => $kpi['label'],
+                'value' => $kpi['value'] === null ? '—' : trim($this->format($kpi['value'], $kpi['format']).$unitSuffix),
+                'previous' => ($kpi['previous'] ?? null) === null ? '—' : trim($this->format($kpi['previous'], $kpi['format']).$unitSuffix),
+                'good' => $kpi['good'],
+                'target_label' => $kpi['good'] === 'up' ? 'Makin tinggi makin baik' : 'Makin rendah makin baik',
+                'avg' => $nonZero === [] ? '—' : trim($this->format(array_sum($nonZero) / count($nonZero), $kpi['format']).$unitSuffix),
+                'max' => $sparkValues === [] ? '—' : trim($this->format(max($sparkValues), $kpi['format']).$unitSuffix),
+                ...$this->direction($kpi),
+                'spark' => $sparkValues,
+            ];
+        }, $kpis);
     }
 
     /**

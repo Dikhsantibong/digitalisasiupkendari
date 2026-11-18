@@ -44,6 +44,7 @@ import type {
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { SummaryCard } from '@/components/summary-card';
+import type { SummaryCardPalette } from '@/components/summary-card';
 import {
     Table,
     TableBody,
@@ -132,7 +133,7 @@ type Props = {
             /** Null when the unit has no jam operasi this month. */
             eaf: number | null;
         } & Status)[];
-        /** Real: completeness of each Pengusahaan Operasi menu this month. */
+        /** Real: completeness of each Operasi menu this month. */
         completeness: { label: string; percent: number | null; url: string }[];
     } | null;
     har?: {
@@ -276,6 +277,38 @@ const STATUS_COLORS = [
     'text-rose-500',
     'text-slate-400',
 ];
+
+const SUMMARY_CARD_PALETTES: Record<
+    'units' | 'serviceUnits' | 'capacity' | 'users',
+    SummaryCardPalette
+> = {
+    units: {
+        card: 'border-[#B6D7EC] border-t-[3px] border-t-[#0C7DBB] bg-[#EAF4FB]',
+        label: 'text-[#0B5580]',
+        value: 'text-[#0E2F44]',
+        hint: 'text-[#2C5C7A]',
+    },
+    serviceUnits: {
+        card: 'border-[#B2DDD1] border-t-[3px] border-t-[#157F6B] bg-[#E9F6F2]',
+        label: 'text-[#0E594B]',
+        value: 'text-[#0D2E27]',
+        hint: 'text-[#2D6257]',
+    },
+    capacity: {
+        card: 'border-[#E8CE8E] border-t-[3px] border-t-[#C2820A] bg-[#FDF6E3]',
+        label: 'text-[#825107]',
+        value: 'text-[#3F2603]',
+        unit: 'text-[#734C10]',
+        hint: 'text-[#734C10]',
+    },
+    users: {
+        card: 'border-[#E5BFB7] border-t-[3px] border-t-[#B84A39] bg-[#FBF0EE]',
+        label: 'text-[#862E22]',
+        value: 'text-[#3D140E]',
+        hint: 'text-[#7A382E]',
+    },
+};
+
 const MODULE_ORDER: ModuleKey[] = ['operasi', 'har', 'k3', 'logistik', 'pdm'];
 
 function NoData({ text = 'Belum ada data.' }: { text?: string }) {
@@ -862,10 +895,12 @@ export default function Dashboard(props: Props) {
                         label="Unit Pembangkit"
                         value={summary.units}
                         hint={`${summary.activeUnits} unit aktif`}
+                        palette={SUMMARY_CARD_PALETTES.units}
                     />
                     <SummaryCard
                         label="Unit Layanan"
                         value={summary.serviceUnits}
+                        palette={SUMMARY_CARD_PALETTES.serviceUnits}
                     />
                     <SummaryCard
                         label="Kapasitas Terpasang"
@@ -878,6 +913,7 @@ export default function Dashboard(props: Props) {
                                 ? 'Data kapasitas belum diisi'
                                 : undefined
                         }
+                        palette={SUMMARY_CARD_PALETTES.capacity}
                     />
                     <SummaryCard
                         label="Pengguna"
@@ -887,6 +923,7 @@ export default function Dashboard(props: Props) {
                                 ? 'Di luar hak akses Anda'
                                 : undefined
                         }
+                        palette={SUMMARY_CARD_PALETTES.users}
                     />
                 </div>
 
@@ -1185,7 +1222,7 @@ export default function Dashboard(props: Props) {
                                         </div>
                                     </Panel>
                                     <Panel
-                                        title="Kelengkapan Input Pengusahaan"
+                                        title="Kelengkapan Input Operasi"
                                         subtitle="Bulan berjalan — data nyata"
                                         className="lg:col-span-4"
                                     >

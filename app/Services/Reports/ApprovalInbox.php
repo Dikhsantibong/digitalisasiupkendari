@@ -155,7 +155,7 @@ class ApprovalInbox
         $names = $units?->pluck('name', 'id') ?? collect();
         $actions = [1 => 'verify', 2 => 'approve', 3 => 'ratify'];
 
-        return ReportWorkflow::query()
+        $queue = ReportWorkflow::query()
             ->whereIn('status', [ReportStatus::Diajukan->value, ReportStatus::Verifikasi->value, ReportStatus::Disetujui->value])
             ->whereHas('steps', fn ($q) => $q->where('employee_id', $employee->id)->whereNull('signed_at'))
             ->with(['steps.employee:id,name', 'submitter:id,name'])
@@ -199,6 +199,9 @@ class ApprovalInbox
                 ];
             })
             ->filter()->values()->all();
+
+        // Laporan UL waiting for this TL / Manager UL (their own approval chain, with action URLs).
+        return [...$queue, ...app(UlReportWorkflow::class)->queue($user)];
     }
 
     /**

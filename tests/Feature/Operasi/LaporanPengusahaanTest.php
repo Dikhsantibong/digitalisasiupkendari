@@ -93,7 +93,7 @@ class LaporanPengusahaanTest extends TestCase
                 ->missing('grid')
                 ->loadDeferredProps('document', fn ($page) => $page
                     ->where('document_number', OperasiPengusahaanReport::documentNumber($this->unit, 8, 2026))
-                    ->where('content', fn (string $html): bool => str_contains($html, 'DAFTAR ISI') && str_contains($html, 'IKHTISAR SENTRAL') && str_contains($html, 'LAPORAN PENGUSAHAAN PEMBANGKIT'))
+                    ->where('content', fn (string $html): bool => str_contains($html, 'DAFTAR ISI') && str_contains($html, 'IKHTISAR SENTRAL') && str_contains($html, 'LAPORAN OPERASI'))
                     ->has('grid.rows')
                 ));
 

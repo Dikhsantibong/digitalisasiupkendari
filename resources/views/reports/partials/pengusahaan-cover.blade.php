@@ -1,5 +1,5 @@
 {{--
-    Sampul Laporan Pengusahaan Pembangkit — shared by HAR, K3 & Operasi.
+    Sampul laporan divisi (Operasi, Pemeliharaan, K3) — shared by HAR, K3 & Operasi.
     Params: $title (e.g. "LAPORAN KINERJA K3 & KAM"), $unitName, $monthName, $year,
     optional $id (anchor of the cover), $subtitle (line under the title) and
     $rightLogo / $rightLogoAlt (default the K3 logo).

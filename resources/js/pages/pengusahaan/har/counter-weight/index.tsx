@@ -35,7 +35,7 @@ export default function CounterWeightPage(props: HarFormulirProps) {
 CounterWeightPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Baut Counter Weight', href: counterWeightRoutes.index() },
     ],
 };

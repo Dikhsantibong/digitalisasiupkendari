@@ -31,7 +31,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Akses 2 — Pengusahaan Operasi (TL & Staf Operasi).
+ * Akses 2 — Operasi (TL & Staf Operasi).
  * Page: pengusahaan/operasi/daily-report/index.
  *
  * Menampilkan dan mengelola input bulanan:

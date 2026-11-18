@@ -1,10 +1,10 @@
 import { Head, Link } from '@inertiajs/react';
-import type {
-    ClipboardList} from 'lucide-react';
+import type { ClipboardList } from 'lucide-react';
 import {
     Boxes,
     ClipboardCheck,
     FileSignature,
+    FileText,
     FolderOpen,
     TriangleAlert,
     Gauge,
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import logistikInput from '@/routes/logistik/input';
 import formRoutes from '@/routes/logistik/input/form';
+import instruksiKerja from '@/routes/logistik/input/instruksi-kerja';
 import rekomendasi from '@/routes/logistik/input/rekomendasi';
 import inputSheet from '@/routes/logistik/input/sheet';
 
@@ -32,6 +33,13 @@ type InputCard = {
 };
 
 const INPUT_MENUS: InputCard[] = [
+    {
+        title: 'Instruksi Kerja (IK) Logistik & Gudang',
+        description:
+            'Buat dokumen IK dari template (penerimaan material, stok opname, dll.) dan ketik langsung pada lembar A4 — dicetak PDF format MKP.',
+        icon: FileText,
+        href: instruksiKerja.index().url,
+    },
     {
         title: 'Rekomendasi Logistik & Gudang',
         description:
@@ -162,14 +170,18 @@ export default function LogistikInputIndex() {
                                 <div className="space-y-1.5 pt-2">
                                     {item.href ? (
                                         <>
-                                            <Button asChild className="w-full justify-center gap-2">
+                                            <Button
+                                                asChild
+                                                className="w-full justify-center gap-2"
+                                            >
                                                 <Link href={item.href}>
                                                     <Icon className="size-4" />
                                                     Buka Formulir
                                                 </Link>
                                             </Button>
                                             <p className="text-center text-[11px] text-muted-foreground">
-                                                Input data, simpan, cetak PDF &amp; unduh Excel
+                                                Input data, simpan, cetak PDF
+                                                &amp; unduh Excel
                                             </p>
                                         </>
                                     ) : (
@@ -184,8 +196,8 @@ export default function LogistikInputIndex() {
                                                 Buka Formulir
                                             </Button>
                                             <p className="text-center text-[11px] text-muted-foreground italic">
-                                                * Tombol belum difungsikan (halaman
-                                                sedang disusun)
+                                                * Tombol belum difungsikan
+                                                (halaman sedang disusun)
                                             </p>
                                         </>
                                     )}

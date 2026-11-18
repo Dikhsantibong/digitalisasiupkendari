@@ -189,7 +189,7 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('input').url)}
-                            title="Kembali ke Input Pengusahaan K3"
+                            title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -206,7 +206,7 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Pengusahaan: Ringkasan 14 uraian jam kerja standar, lembur, absensi, realisasi, dan kumulatif bulanan (Formulir FMZ-08.4.4.11).
+                                Akses 2 — Ringkasan 14 uraian jam kerja standar, lembur, absensi, realisasi, dan kumulatif bulanan (Formulir FMZ-08.4.4.11).
                             </p>
                         </div>
                     </div>

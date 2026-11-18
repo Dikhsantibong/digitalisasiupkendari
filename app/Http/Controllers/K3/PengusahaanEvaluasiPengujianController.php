@@ -137,7 +137,7 @@ class PengusahaanEvaluasiPengujianController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Formulir Evaluasi Hasil Pengujian Peralatan Pengusahaan {$unit->name} {$year}",
+            "Menyimpan Formulir Evaluasi Hasil Pengujian Peralatan {$unit->name} {$year}",
             $unit,
             unit: $unit->id,
         );

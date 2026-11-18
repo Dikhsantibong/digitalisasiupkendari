@@ -17,7 +17,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Jam Siap Operasi: never typed in, it is 24 jam minus
+ * Operasi — Jam Siap Operasi: never typed in, it is 24 jam minus
  * Jam Operasi, Jam Pemeliharaan and Jam Gangguan of the day, per mesin.
  */
 class PengusahaanJamSiapOpsController extends Controller

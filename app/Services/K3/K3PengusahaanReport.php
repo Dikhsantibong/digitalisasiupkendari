@@ -30,7 +30,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
- * The content of the Laporan Pengusahaan Pembangkit (K3 & KAM): every Akses 2 —
+ * The content of the Laporan K3 & KAM: every Akses 2 —
  * Pengusahaan K3 input and formulir of a unit and month (pages/pengusahaan/k3),
  * each as a generic table section the report body (Blade) and its spreadsheet
  * grid both render. A section is portrait when narrow, landscape when wide.
@@ -116,11 +116,11 @@ class K3PengusahaanReport
         return [
             'key' => 'rekap',
             'no' => 1,
-            'title' => 'Rekapitulasi Pengisian Input & Formulir Pengusahaan K3 & KAM',
+            'title' => 'Rekapitulasi Pengisian Input & Formulir K3 & KAM',
             'number' => 'FMKD-314-10.3.3',
             'orientation' => 'portrait',
             'meta' => [],
-            'head' => [[$this->h('No', w: '6%'), $this->h('Input / Formulir Pengusahaan'), $this->h('No. Dokumen', w: '20%'), $this->h('Status', w: '14%'), $this->h('Isi', w: '12%')]],
+            'head' => [[$this->h('No', w: '6%'), $this->h('Input / Formulir K3'), $this->h('No. Dokumen', w: '20%'), $this->h('Status', w: '14%'), $this->h('Isi', w: '12%')]],
             'rows' => $rows,
             'filled' => true,
             'note' => null,

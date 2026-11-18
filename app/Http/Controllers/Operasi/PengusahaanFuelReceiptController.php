@@ -18,7 +18,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Akses 2 — Pengusahaan Operasi (TL & Staf Operasi; operators through their
+ * Akses 2 — Operasi (TL & Staf Operasi; operators through their
  * operasi.lapangan.* page permission). Page: pengusahaan/operasi/fuel-receipts/index.
  *
  * Fuel-delivery register (modul OPERASI, menu Input): manual entries of BBM

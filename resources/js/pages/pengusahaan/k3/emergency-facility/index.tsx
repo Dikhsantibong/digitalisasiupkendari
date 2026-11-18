@@ -303,7 +303,7 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('input').url)}
-                            title="Kembali ke Input Pengusahaan K3"
+                            title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -323,7 +323,7 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Pengusahaan: Matriks kesiapan fasilitas darurat per periode mingguan (M1-M4) & Bulanan.
+                                Akses 2 — Matriks kesiapan fasilitas darurat per periode mingguan (M1-M4) & Bulanan.
                             </p>
                         </div>
                     </div>

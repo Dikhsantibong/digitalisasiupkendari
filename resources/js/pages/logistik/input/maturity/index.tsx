@@ -1,4 +1,7 @@
-import { LogistikJadwalSheetPage, logistikSheetBreadcrumbs } from '@/components/logistik/jadwal-sheet-page';
+import {
+    LogistikJadwalSheetPage,
+    logistikSheetBreadcrumbs,
+} from '@/components/logistik/jadwal-sheet-page';
 import type { LogistikJadwalSheetPageProps } from '@/components/logistik/jadwal-sheet-page';
 
 /**
@@ -9,5 +12,9 @@ export default function MaturitySheet(props: LogistikJadwalSheetPageProps) {
 }
 
 MaturitySheet.layout = {
-    breadcrumbs: logistikSheetBreadcrumbs('input', 'maturity', 'Maturity Level Logistik & Gudang'),
+    breadcrumbs: logistikSheetBreadcrumbs(
+        'input',
+        'maturity',
+        'Maturity Level Logistik & Gudang',
+    ),
 };

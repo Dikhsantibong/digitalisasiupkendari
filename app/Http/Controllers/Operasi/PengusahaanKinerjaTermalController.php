@@ -21,7 +21,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Data Kinerja Pembangkit Termal: CF, OF, SF, EAF, POF,
+ * Operasi — Data Kinerja Pembangkit Termal: CF, OF, SF, EAF, POF,
  * FOF, FOR, SOF, EFOR, SdOF and EFF per machine, computed from the other
  * sheets ({@see KinerjaTermalSheet}); any figure may be corrected (only the
  * corrections are stored) or reset to the computed one.

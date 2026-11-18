@@ -29,7 +29,7 @@ const STAT_TONE: Record<NonNullable<SheetStat['tone']>, string> = {
 };
 
 /**
- * The frame of an Akses 2 — Pengusahaan K3 input sheet (APAR/APAB, APAT,
+ * The frame of an Akses 2 — K3 input sheet (APAR/APAB, APAT,
  * Hydrant …): header with Simpan / Reset / Cetak, unit & period filter,
  * summary, the official kop with the document number, the sheet table and
  * Catatan. On a phone (or inside the mobile shell) the table is swapped for

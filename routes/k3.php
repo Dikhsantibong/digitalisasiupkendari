@@ -154,6 +154,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/dokumen-ik', [DokumenIkController::class, 'index'])->name('input.dokumen-ik.index');
         Route::post('input/dokumen-ik', [DokumenIkController::class, 'store'])->name('input.dokumen-ik.store');
         Route::get('input/dokumen-ik/pdf', [DokumenIkController::class, 'pdf'])->name('input.dokumen-ik.pdf');
+        Route::post('input/dokumen-ik/pratinjau', [DokumenIkController::class, 'preview'])->name('input.dokumen-ik.preview');
         Route::delete('input/dokumen-ik/{dokumenIk}', [DokumenIkController::class, 'destroy'])->name('input.dokumen-ik.destroy');
 
         Route::get('input/certificate', [CertificateController::class, 'index'])->name('input.certificate.index');

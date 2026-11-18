@@ -182,6 +182,9 @@ enum PermissionName: string
     case ReportProjectApprove = 'report_project.approve';
     case ReportProjectExport = 'report_project.export';
 
+    /** Laporan UL: Pengusahaan Pembangkit, Logistik, K3L & PPT bulanan of the service unit (Admin UL). */
+    case LaporanUlView = 'laporan_ul.view';
+
     case SettingManage = 'setting.manage';
 
     case MonitoringView = 'monitoring.view';
@@ -352,7 +355,8 @@ enum PermissionName: string
             self::ReportProjectDelete,
             self::ReportProjectSubmit,
             self::ReportProjectApprove,
-            self::ReportProjectExport => PermissionGroup::ReportProject,
+            self::ReportProjectExport,
+            self::LaporanUlView => PermissionGroup::ReportProject,
 
             self::SettingManage => PermissionGroup::System,
 
@@ -427,9 +431,9 @@ enum PermissionName: string
             self::OperasiMasterViewAny => 'Melihat master data operasi',
             self::OperasiMasterManage => 'Mengelola master data operasi',
             self::OperasiMaterialPeralatanKelola => 'Menyusun daftar & stok Material & Peralatan (operator hanya mengecek kelengkapan)',
-            self::OperasiPengusahaanView => 'Membuka menu & Laporan Pengusahaan operasi',
-            self::OperasiPengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan operasi',
-            self::OperasiPengusahaanInput => 'Mengisi input Pengusahaan operasi (operator; tanpa Berita Acara & Laporan Pengusahaan)',
+            self::OperasiPengusahaanView => 'Membuka menu & Laporan Operasi',
+            self::OperasiPengusahaanWrite => 'Mengisi & menyimpan Laporan Operasi',
+            self::OperasiPengusahaanInput => 'Mengisi input Operasi (operator; tanpa Berita Acara & Laporan Operasi)',
             self::OperasiLapanganDailyReport => 'Input lapangan: Input Harian',
             self::OperasiLapanganStarStop => 'Input lapangan: Star-Stop Mesin',
             self::OperasiLapanganFeeder => 'Input lapangan: Feeder',
@@ -458,8 +462,8 @@ enum PermissionName: string
             self::HarExecutiveView => 'Melihat executive summary pemeliharaan',
             self::HarMasterViewAny => 'Melihat master data pemeliharaan',
             self::HarMasterManage => 'Mengelola master data pemeliharaan',
-            self::HarPengusahaanView => 'Membuka menu & Laporan Pengusahaan pemeliharaan',
-            self::HarPengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan pemeliharaan',
+            self::HarPengusahaanView => 'Membuka menu & Laporan Pemeliharaan',
+            self::HarPengusahaanWrite => 'Mengisi & menyimpan Laporan Pemeliharaan',
             self::HarLapanganWorkOrder => 'Input lapangan: Work Order',
             self::HarLapanganServiceRequest => 'Input lapangan: Service Request',
             self::HarLapanganActivity => 'Input lapangan: Log Kegiatan',
@@ -495,8 +499,8 @@ enum PermissionName: string
             self::K3MonitoringView => 'Melihat monitoring status K3 (sertifikat/APAR)',
             self::K3MasterViewAny => 'Melihat master data K3 & keamanan',
             self::K3MasterManage => 'Mengelola master data K3 & keamanan',
-            self::K3PengusahaanView => 'Membuka menu & Laporan Pengusahaan K3 & keamanan',
-            self::K3PengusahaanWrite => 'Mengisi & menyimpan Laporan Pengusahaan K3 & keamanan',
+            self::K3PengusahaanView => 'Membuka menu & Laporan K3 & keamanan',
+            self::K3PengusahaanWrite => 'Mengisi & menyimpan Laporan K3 & keamanan',
 
             self::LogistikInputView => 'Melihat input logistik & gudang',
             self::LogistikInputWrite => 'Mengisi input logistik & gudang (patrol check, inventaris, stok, permit to work)',
@@ -525,6 +529,7 @@ enum PermissionName: string
             self::ReportProjectSubmit => 'Mengajukan laporan project',
             self::ReportProjectApprove => 'Menyetujui laporan project',
             self::ReportProjectExport => 'Mengekspor laporan project',
+            self::LaporanUlView => 'Melihat & mengunduh Laporan UL (Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan)',
 
             self::SettingManage => 'Mengelola pengaturan aplikasi',
 

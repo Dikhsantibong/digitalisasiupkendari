@@ -221,7 +221,7 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('input').url)}
-                            title="Kembali ke Input Pengusahaan K3"
+                            title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -247,7 +247,7 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                                 )}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Pengusahaan: Daftar inventaris dan pemantauan kondisi kesiapan alat tanggap darurat (SMT-FM-AK3-03.03).
+                                Akses 2 — Daftar inventaris dan pemantauan kondisi kesiapan alat tanggap darurat (SMT-FM-AK3-03.03).
                             </p>
                         </div>
                     </div>

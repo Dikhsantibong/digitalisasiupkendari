@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Pengukuran Tegangan Baterai (per mesin & tanggal uji).
+ * Akses 2 — Formulir Pengukuran Tegangan Baterai (per mesin & tanggal uji).
  */
 class BatteryVoltageController extends HarFormulirController
 {

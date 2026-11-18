@@ -1,4 +1,7 @@
-import { LogistikFormInputPage, logistikFormBreadcrumbs } from '@/components/logistik/form-input-page';
+import {
+    LogistikFormInputPage,
+    logistikFormBreadcrumbs,
+} from '@/components/logistik/form-input-page';
 import type { LogistikFormInputPageProps } from '@/components/logistik/form-input-page';
 
 /**
@@ -9,5 +12,8 @@ export default function KondisiStokInput(props: LogistikFormInputPageProps) {
 }
 
 KondisiStokInput.layout = {
-    breadcrumbs: logistikFormBreadcrumbs('kondisi-stok', 'Laporan Kondisi Stok Tools dan Material'),
+    breadcrumbs: logistikFormBreadcrumbs(
+        'kondisi-stok',
+        'Laporan Kondisi Stok Tools dan Material',
+    ),
 };

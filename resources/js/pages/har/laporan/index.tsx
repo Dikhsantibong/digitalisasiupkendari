@@ -82,7 +82,7 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                             <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
                                 <div>
                                     <h2 className="text-base font-semibold text-foreground">
-                                        Laporan Pemeliharaan Pembangkit
+                                        Laporan Project Pemeliharaan
                                     </h2>
                                     <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                         Lembar pengesahan, resume statistik, dan
@@ -111,7 +111,7 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                             <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
                                 <div>
                                     <h2 className="text-base font-semibold text-foreground">
-                                        Laporan Pengusahaan Pembangkit
+                                        Laporan Pemeliharaan
                                     </h2>
                                     <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                         Executive summary, istilah &amp;
@@ -130,7 +130,7 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                                         className="max-w-full max-sm:h-auto max-sm:py-2 max-sm:text-left max-sm:whitespace-normal"
                                     >
                                         <Building2 className="size-4" />
-                                        Buka Dokumen Pengusahaan (Lihat, Edit
+                                        Buka Dokumen Laporan Pemeliharaan (Lihat, Edit
                                         &amp; Cetak)
                                     </Button>
                                 </div>

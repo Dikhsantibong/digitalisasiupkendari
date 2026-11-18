@@ -29,7 +29,7 @@ class LaporanPengusahaanController extends Controller
     use EmbedsReportLogo;
     use InteractsWithReportWorkflow;
 
-    /** v2 = Lembar Pengesahan removed from the Laporan Pengusahaan K3. */
+    /** v2 = Lembar Pengesahan removed from the Laporan K3. */
     private const BODY_VERSION = 2;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN KINERJA K3 & KAM';
@@ -164,12 +164,12 @@ class LaporanPengusahaanController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Created,
-            "Menyimpan Laporan Pengusahaan K3 {$unit->name} periode {$month}/{$year}",
+            "Menyimpan Laporan K3 {$unit->name} periode {$month}/{$year}",
             $record,
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan Pengusahaan K3 berhasil disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan K3 berhasil disimpan.']);
 
         return back();
     }
@@ -201,12 +201,12 @@ class LaporanPengusahaanController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Memuat ulang Laporan Pengusahaan K3 {$unit->name} periode {$month}/{$year}",
+            "Memuat ulang Laporan K3 {$unit->name} periode {$month}/{$year}",
             $record,
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen Laporan Pengusahaan K3 dimuat ulang dari data terbaru.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen Laporan K3 dimuat ulang dari data terbaru.']);
 
         return back();
     }

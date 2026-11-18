@@ -285,10 +285,10 @@
     ];
 @endphp
 
-{{-- 1. COVER (sampul yang sama dengan Laporan Pengusahaan K3 & Operasi) --}}
+{{-- 1. COVER (sampul yang sama dengan Laporan K3 & Operasi) --}}
 @include('reports.partials.pengusahaan-cover', [
     'id' => 'sec-1',
-    'title' => 'LAPORAN PENGUSAHAAN PEMBANGKIT',
+    'title' => 'LAPORAN PEMELIHARAAN',
     'subtitle' => 'PEMELIHARAAN',
     'unitName' => $report['unit']['name'] ?? '',
     'monthName' => \App\Support\Indonesian::monthName((int) ($report['period']['month'] ?? 1)),

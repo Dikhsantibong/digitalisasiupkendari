@@ -23,7 +23,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — kWh: Stand kWh Harian (the only input: the daily PROD
+ * Operasi — kWh: Stand kWh Harian (the only input: the daily PROD
  * and PS kWh meter stands per mesin, kept on DailyEngineReport so the Laporan
  * Pengusahaan and every kWh sheet read the same numbers), Stand kWh Meter
  * untuk Transfer Pricing, kWh Rekap, SFC Netto, Energi Dibangkit and Energi

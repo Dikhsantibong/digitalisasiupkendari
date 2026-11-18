@@ -41,7 +41,7 @@ export default function CrankshaftDeflectionPage(props: HarFormulirProps) {
 CrankshaftDeflectionPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pengusahaan Pemeliharaan', href: harPengusahaan.index('formulir') },
+        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
         { title: 'Defleksi Crankshaft', href: crankshaftDeflectionRoutes.index() },
     ],
 };

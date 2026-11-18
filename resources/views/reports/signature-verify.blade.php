@@ -215,7 +215,7 @@
         @endif
 
         <div class="footer">
-            Diverifikasi melalui sistem Digitalisasi Unit UP Kendari · Halaman publik resmi
+            Diverifikasi melalui sistem KIT-SIPP (Sistem Informasi Pelaporan Pembangkit) UP Kendari · Halaman publik resmi
         </div>
     </div>
 </body>

@@ -39,7 +39,7 @@ export const HAR_PENGUSAHAAN_MENUS: MobileMenu[] = [
         group: 'har-laporan',
         title: 'Laporan Pemeliharaan',
         short: 'Laporan',
-        description: 'Laporan Pembangkit & Laporan Pengusahaan Pemeliharaan',
+        description: 'Laporan Project & Laporan Pemeliharaan',
         icon: FileBarChart,
         tone: 'bg-primary/10 text-primary',
         href: harLaporan.index().url,

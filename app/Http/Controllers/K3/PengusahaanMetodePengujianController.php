@@ -157,14 +157,14 @@ class PengusahaanMetodePengujianController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Formulir Metode Pengujian Peralatan Pengusahaan {$unit->name} {$month}/{$year}",
+            "Menyimpan Formulir Metode Pengujian Peralatan {$unit->name} {$month}/{$year}",
             $unit,
             unit: $unit->id,
         );
 
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Formulir Metode Pengujian Peralatan Pengusahaan berhasil disimpan.',
+            'message' => 'Formulir Metode Pengujian Peralatan berhasil disimpan.',
         ]);
 
         return back();

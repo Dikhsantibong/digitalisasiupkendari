@@ -22,7 +22,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Beban Tertinggi and Jumlah Kali Gangguan per mesin
+ * Operasi — Beban Tertinggi and Jumlah Kali Gangguan per mesin
  * per tanggal. Each route passes its sheet as the `jenis` default.
  */
 class PengusahaanMesinHarianController extends Controller

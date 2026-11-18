@@ -1,5 +1,5 @@
 {{--
-    One section of the Laporan Pengusahaan (K3 & KAM): an Akses 2 — Pengusahaan K3
+    One section of the Laporan K3 & KAM: an Akses 2 — K3
     input / formulir built by App\Services\K3\K3PengusahaanReport. Header & body
     cells: t (text), c (colspan), r (rowspan), w (width), a (l|c|r), b (bold),
     s (section row), i (italic), red (day off), fill (rencana|realisasi mark).
@@ -86,7 +86,7 @@
             @empty
                 <tr>
                     <td colspan="{{ max(1, (int) array_sum(array_map(fn (array $c): int => (int) ($c['c'] ?? 1), $section['head'][0] ?? []))) }}" class="text-center text-muted">
-                        {{ $emptyText ?? 'Belum diisi pada periode ini (menu Pengusahaan K3).' }}
+                        {{ $emptyText ?? 'Belum diisi pada periode ini (menu K3).' }}
                     </td>
                 </tr>
             @endforelse

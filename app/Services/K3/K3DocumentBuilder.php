@@ -23,8 +23,8 @@ class K3DocumentBuilder
     ) {}
 
     /**
-     * The Laporan Pengusahaan Pembangkit (K3 & KAM): the kop, cover & pengesahan
-     * data plus every Akses 2 — Pengusahaan K3 input & formulir as a section.
+     * The Laporan K3 & KAM: the kop, cover & pengesahan
+     * data plus every Akses 2 — K3 input & formulir as a section.
      *
      * @return array<string, mixed>
      */

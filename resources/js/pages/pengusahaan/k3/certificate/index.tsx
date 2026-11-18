@@ -229,7 +229,7 @@ export default function PengusahaanCertificateIndex({
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('input').url)}
-                            title="Kembali ke Input Pengusahaan K3"
+                            title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
@@ -320,7 +320,7 @@ export default function PengusahaanCertificateIndex({
 
                 {/* Printable container */}
                 <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
-                    {/* KOP Dokumen Pengusahaan K3 */}
+                    {/* KOP Dokumen K3 */}
                     <div className="border-b border-border p-3">
                         <table className="w-full border-collapse border border-black dark:border-border">
                             <tbody>

@@ -30,7 +30,7 @@ class LaporanPengusahaanController extends Controller
     use InteractsWithReportWorkflow;
     use RendersReportPdf;
 
-    /** v8 = Lembar Pengesahan removed from the Laporan Pengusahaan Pemeliharaan. */
+    /** v8 = Lembar Pengesahan removed from the Laporan Pemeliharaan. */
     private const BODY_VERSION = 8;
 
     public function __construct(
@@ -152,12 +152,12 @@ class LaporanPengusahaanController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Created,
-            "Menyimpan Laporan Pengusahaan {$unit->name} periode {$month}/{$year}",
+            "Menyimpan Laporan Pemeliharaan {$unit->name} periode {$month}/{$year}",
             $record,
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan Pengusahaan Pembangkit disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan Pemeliharaan disimpan.']);
 
         return back();
     }
@@ -192,12 +192,12 @@ class LaporanPengusahaanController extends Controller
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Memuat ulang Laporan Pengusahaan {$unit->name} periode {$month}/{$year}",
+            "Memuat ulang Laporan Pemeliharaan {$unit->name} periode {$month}/{$year}",
             $record,
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen pengusahaan dimuat ulang dari data terbaru.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Dokumen laporan dimuat ulang dari data terbaru.']);
 
         return back();
     }

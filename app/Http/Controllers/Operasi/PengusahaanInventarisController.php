@@ -21,7 +21,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Pengusahaan Operasi — Daftar Inventarisasi Mesin: the Master Mesin data of
+ * Operasi — Daftar Inventarisasi Mesin: the Master Mesin data of
  * the unit with the month's daya mampu & beban tertinggi (Beban Tertinggi);
  * mampu / beban can be corrected and each machine gets a keterangan.
  */

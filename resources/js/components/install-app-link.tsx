@@ -14,13 +14,14 @@ import {
     onInstallChange,
     promptInstall,
 } from '@/lib/install-prompt';
+import { cn } from '@/lib/utils';
 
 /**
  * "Install Aplikasi": opens the browser's install prompt where there is one
  * (Chrome, Edge, Android) and otherwise explains how to add the app to the
  * home screen. Hidden once the app runs installed.
  */
-export function InstallAppLink() {
+export function InstallAppLink({ className }: { className?: string }) {
     const [installed, setInstalled] = useState(isInstalled);
     const [, refresh] = useState(0);
     const [help, setHelp] = useState(false);
@@ -55,7 +56,7 @@ export function InstallAppLink() {
             <Button
                 type="button"
                 variant="outline"
-                className="mt-3 h-10 w-full"
+                className={cn('mt-3 h-10 w-full', className)}
                 onClick={install}
             >
                 <Download className="size-4" />

@@ -5,6 +5,7 @@ import {
     ClipboardCheck,
     Droplets,
     FileCheck2,
+    FileText,
     FlaskConical,
     Gauge,
     HardHat,
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { dashboard } from '@/routes';
 import pdmInput from '@/routes/pdm/input';
 import pdmForms from '@/routes/pdm/input/forms';
+import instruksiKerja from '@/routes/pdm/input/instruksi-kerja';
 import kesiapanApd from '@/routes/pdm/input/kesiapan-apd';
 import permitToWork from '@/routes/pdm/input/permit-to-work';
 import realisasiPrediktif from '@/routes/pdm/input/realisasi-prediktif';
@@ -34,6 +36,14 @@ type InputCard = {
 };
 
 const INPUT_MENUS: InputCard[] = [
+    {
+        title: 'Instruksi Kerja (IK) PdM',
+        description:
+            'Buat dokumen IK dari template (pengukuran vibrasi, pengambilan sampel pelumas, dll.) dan ketik langsung pada lembar A4 — dicetak PDF format MKP.',
+        category: 'Dokumen',
+        icon: FileText,
+        href: instruksiKerja.index().url,
+    },
     {
         title: 'Kesiapan APD Bagian PdM Pembangkit',
         description:
@@ -141,7 +151,7 @@ export default function PdmInputIndex() {
                         return (
                             <div
                                 key={item.title}
-                                className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4.5 transition-all hover:border-primary/40 shadow-xs"
+                                className="flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-4.5 shadow-xs transition-all hover:border-primary/40"
                             >
                                 <div>
                                     <div className="mb-2.5 flex items-center justify-between gap-2">
@@ -169,25 +179,29 @@ export default function PdmInputIndex() {
                                             )}
                                         </div>
                                     </div>
-                                    <h2 className="text-sm font-semibold text-foreground leading-snug">
+                                    <h2 className="text-sm leading-snug font-semibold text-foreground">
                                         {item.title}
                                     </h2>
-                                    <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">
+                                    <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
                                         {item.description}
                                     </p>
                                 </div>
 
-                                <div className="space-y-1.5 pt-2 border-t border-border/60">
+                                <div className="space-y-1.5 border-t border-border/60 pt-2">
                                     {item.href ? (
                                         <>
-                                            <Button asChild className="w-full justify-center gap-2 text-xs">
+                                            <Button
+                                                asChild
+                                                className="w-full justify-center gap-2 text-xs"
+                                            >
                                                 <Link href={item.href}>
                                                     <Icon className="size-3.5" />
                                                     Input Formulir
                                                 </Link>
                                             </Button>
                                             <p className="text-center text-[10.5px] text-muted-foreground">
-                                                Input data, simpan, cetak PDF &amp; unduh Excel
+                                                Input data, simpan, cetak PDF
+                                                &amp; unduh Excel
                                             </p>
                                         </>
                                     ) : (
@@ -202,7 +216,8 @@ export default function PdmInputIndex() {
                                                 Input Formulir
                                             </Button>
                                             <p className="text-center text-[10.5px] text-muted-foreground italic">
-                                                * Tombol belum difungsikan (formulir sedang disusun)
+                                                * Tombol belum difungsikan
+                                                (formulir sedang disusun)
                                             </p>
                                         </>
                                     )}

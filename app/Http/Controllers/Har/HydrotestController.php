@@ -9,7 +9,7 @@ use App\Models\Unit;
 use App\Services\Har\HarHydrotestPdfBuilder;
 
 /**
- * Akses 2 — Pengusahaan: Formulir Checklist Hydrotest (per mesin & tanggal uji).
+ * Akses 2 — Formulir Checklist Hydrotest (per mesin & tanggal uji).
  */
 class HydrotestController extends HarFormulirController
 {

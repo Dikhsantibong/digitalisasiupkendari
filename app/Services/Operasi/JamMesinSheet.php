@@ -10,7 +10,7 @@ use App\Models\Unit;
 use Illuminate\Support\Carbon;
 
 /**
- * The machine-hour sheets of Pengusahaan Operasi: Jam Operasi, Jam
+ * The machine-hour sheets of Operasi: Jam Operasi, Jam
  * Pemeliharaan (PO) and Jam Gangguan are typed in (or taken from Star-Stop)
  * per mesin per tanggal; Jam Siap Operasi is derived — 24 jam minus the three
  * of that day. Readings are keyed by machine id then day.

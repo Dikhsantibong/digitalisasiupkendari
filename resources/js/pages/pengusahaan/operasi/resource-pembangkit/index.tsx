@@ -543,7 +543,7 @@ export default function ResourcePembangkitInput({
 ResourcePembangkitInput.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Pengusahaan Operasi', href: operasiPengusahaan.index('input') },
+        { title: 'Operasi', href: operasiPengusahaan.index('input') },
         {
             title: 'Resource Pembangkit',
             href: resourcePembangkitRoutes.index(),

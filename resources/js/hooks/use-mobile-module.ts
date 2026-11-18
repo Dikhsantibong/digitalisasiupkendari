@@ -53,7 +53,7 @@ export type ResolvedMobileModule = {
  */
 const SUB_PAGE_TITLES: Record<string, string> = {
     document: 'Dokumen Laporan',
-    pengusahaan: 'Laporan Pengusahaan',
+    pengusahaan: 'Laporan Divisi',
     monthly: 'Laporan Bulanan',
     spreadsheet: 'Spreadsheet Laporan',
     editor: 'Isi Berita Acara',

@@ -40,7 +40,7 @@ class PengusahaanController extends Controller
     {
         $module = (string) $request->route('module');
         $permission = ReportModule::from($module)->pengusahaanPermission();
-        // The operators open the Pengusahaan Operasi Input hub (not the Berita Acara).
+        // The operators open the Operasi Input hub (not the Berita Acara).
         $operatorInput = $module === 'operasi' && $section === 'input' && $request->user()->hasPermissionTo(PermissionName::OperasiPengusahaanInput);
         abort_unless($permission !== null && ($request->user()->hasPermissionTo($permission) || $operatorInput), 403);
 

@@ -3,12 +3,10 @@ import {
     ArrowDown,
     ArrowUp,
     Copy,
-    Eye,
+    CornerDownRight,
     FileDown,
     FilePlus2,
     FileText,
-    Info,
-    PencilLine,
     Plus,
     Printer,
     Save,
@@ -16,13 +14,29 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ClipboardEvent, KeyboardEvent, ReactNode } from 'react';
+import {
+    A4Sheet,
+    AutoText,
+    EDITABLE,
+    EditorTips,
+    Kbd,
+    PART_FRAME,
+    PART_TOOLS,
+    ToolButton,
+    ToolDivider,
+    useFieldFocus,
+    useSaveShortcut,
+    useUnsavedWarning,
+    EditorViewTabs,
+    PdfPreview,
+} from '@/components/instruksi-kerja/visual-editor';
+import type { EditorView } from '@/components/instruksi-kerja/visual-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     Dialog,
     DialogContent,
@@ -31,14 +45,6 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
 import type { IdName } from '@/types';
@@ -84,8 +90,10 @@ type Template = {
     sections: ServerSection[];
 };
 
-/** On screen the points of a part are one text: a line per point, "- …" lines are sub-points. */
-type Section = Omit<ServerSection, 'butir'> & { key: number; teks: string };
+/** On screen a part's points are lines; a sub-point (`sub`) belongs to the point above it. */
+type Line = { key: number; text: string; sub: boolean };
+
+type Section = Omit<ServerSection, 'butir'> & { key: number; lines: Line[] };
 
 type Draft = Omit<ServerDoc, 'id' | 'sections' | 'updated_at'> & {
     id: number | null;
@@ -98,6 +106,8 @@ export type InstruksiKerjaRoutes = {
     store: string;
     pdf: (query: { unit_id: number; doc?: number }) => string;
     destroy: (id: number) => string;
+    /** POST: PDF of the IK as currently edited (not saved). */
+    preview: string;
 };
 
 /** Module texts of the IK input. */
@@ -123,13 +133,13 @@ export type InstruksiKerjaPageProps = {
 
 const DEFAULT_KOP = 'JASA PENDUKUNG TEKNIS 6 SITE -KIT UP KENDARI';
 
-const STYLES: { value: Style; label: string }[] = [
-    { value: 'angka', label: '1. 2. 3.' },
-    { value: 'huruf', label: 'a. b. c.' },
-    { value: 'butir', label: '• Butir' },
-    { value: 'panah', label: '➢ Panah' },
-    { value: 'strip', label: '– Strip' },
-    { value: 'paragraf', label: '¶ Paragraf' },
+const STYLES: { value: Style; label: string; hint: string }[] = [
+    { value: 'angka', label: '1.', hint: 'Langkah bernomor 1. 2. 3.' },
+    { value: 'huruf', label: 'a.', hint: 'Langkah berhuruf a. b. c.' },
+    { value: 'butir', label: '•', hint: 'Butir •' },
+    { value: 'panah', label: '➢', hint: 'Panah ➢' },
+    { value: 'strip', label: '–', hint: 'Strip –' },
+    { value: 'paragraf', label: '¶', hint: 'Paragraf tanpa tanda' },
 ];
 
 const QUICK_SECTIONS: { judul: string; bernomor: boolean; gaya: Style }[] = [
@@ -147,37 +157,46 @@ const QUICK_SECTIONS: { judul: string; bernomor: boolean; gaya: Style }[] = [
 
 let nextKey = 1;
 
-const toText = (points: Point[]): string =>
-    points
-        .map((p) => [p.teks, ...p.sub.map((s) => `  - ${s}`)].join('\n'))
-        .join('\n');
+const line = (text = '', sub = false): Line => ({ key: nextKey++, text, sub });
 
-/** A line starting with "-" (or indented) is a sub-point of the point above it. */
-const parse = (text: string): Point[] => {
+const toLines = (points: Point[]): Line[] => {
+    const lines = points.flatMap((p) => [
+        line(p.teks),
+        ...p.sub.map((s) => line(s, true)),
+    ]);
+
+    return lines.length ? lines : [line()];
+};
+
+/** Lines back to points: a sub-point joins the point above it (a leading sub-point becomes a point). */
+const toPoints = (lines: Line[]): Point[] => {
     const points: Point[] = [];
 
-    for (const raw of text.split('\n')) {
-        if (!raw.trim()) {
+    for (const l of lines) {
+        const text = l.text.trim();
+
+        if (!text) {
             continue;
         }
 
-        const isSub = /^\s+\S/.test(raw) || /^\s*-/.test(raw);
-        const clean = raw
-            .replace(/^\s*(?:-+\.?|[•➢*]|\d+[.)]|[a-z]\.)\s*/i, '')
-            .trim();
-
-        if (!clean) {
-            continue;
-        }
-
-        if (isSub && points.length > 0) {
-            points[points.length - 1].sub.push(clean);
+        if (l.sub && points.length > 0) {
+            points[points.length - 1].sub.push(text);
         } else {
-            points.push({ teks: clean, sub: [] });
+            points.push({ teks: text, sub: [] });
         }
     }
 
     return points;
+};
+
+/** A pasted line: its own marker removed, "-" / indented = sub-point. */
+const pastedLine = (raw: string): Line | null => {
+    const sub = /^\s+\S/.test(raw) || /^\s*-/.test(raw);
+    const text = raw
+        .replace(/^\s*(?:-+\.?|[•➢*–]|\d+[.)]|[a-z]\.)\s*/i, '')
+        .trim();
+
+    return text ? line(text, sub) : null;
 };
 
 const toSection = (s: ServerSection): Section => ({
@@ -187,7 +206,7 @@ const toSection = (s: ServerSection): Section => ({
     gaya: s.gaya,
     lanjut: s.lanjut,
     pengantar: s.pengantar ?? '',
-    teks: toText(s.butir ?? []),
+    lines: toLines(s.butir ?? []),
 });
 
 const toDraft = (doc: ServerDoc): Draft => ({
@@ -207,7 +226,7 @@ const marker = (gaya: Style, n: number): string =>
         paragraf: '',
     })[gaya];
 
-/** "**tebal**" → bold. */
+/** "**tebal**" → bold (the list and template cards). */
 function Rich({ text }: { text: string }) {
     return (
         <>
@@ -228,12 +247,13 @@ function Rich({ text }: { text: string }) {
 
 /**
  * Shared Instruksi Kerja (IK) input of a module (Pemeliharaan, Operasi …): the
- * unit's IK library. Start from a template, adjust everything (numbered parts,
- * bold sub-headings, point style, sub-points, continued numbering, signatures)
- * and check the printed form live. Printed as A4 PDF in the MKP layout
- * (resources/views/har/instruksi-kerja/document.blade.php — keep IkPreview in
- * sync). Each module page (e.g. pages/har/input/instruksi-kerja/index.tsx)
- * only passes its routes and texts.
+ * unit's IK library, written straight on one A4 sheet in the MKP layout
+ * (resources/views/har/instruksi-kerja/document.blade.php — keep the sheet in
+ * sync). Start from a template, then edit everything in place: kop, title,
+ * numbered parts or bold sub-headings, point style, sub-points (Tab), bold
+ * (**…**, Ctrl+B), continued numbering and the signature box. Each module page
+ * (e.g. pages/har/input/instruksi-kerja/index.tsx) only passes its routes and
+ * texts.
  */
 export function InstruksiKerjaEditorPage({
     unit,
@@ -260,7 +280,7 @@ export function InstruksiKerjaEditorPage({
     const [saving, setSaving] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const [view, setView] = useState<'isi' | 'pratinjau'>('isi');
+    const [view, setView] = useState<EditorView>('edit');
 
     const signature = `${filters.unit_id}-${selected_id}-${docs.map((d) => `${d.id}:${d.updated_at}`).join(',')}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -271,6 +291,8 @@ export function InstruksiKerjaEditorPage({
         setDirty(false);
     }
 
+    useUnsavedWarning(dirty);
+
     const confirmLeave = (): boolean =>
         !dirty ||
         window.confirm('Perubahan pada IK ini belum disimpan. Tetap lanjut?');
@@ -279,7 +301,6 @@ export function InstruksiKerjaEditorPage({
         if (draft?.id !== doc.id && confirmLeave()) {
             setDraft(toDraft(doc));
             setDirty(false);
-            setView('isi');
         }
     };
 
@@ -301,7 +322,6 @@ export function InstruksiKerjaEditorPage({
         });
         setDirty(true);
         setPickerOpen(false);
-        setView('isi');
     };
 
     const change = (patch: Partial<Draft>) => {
@@ -309,90 +329,48 @@ export function InstruksiKerjaEditorPage({
         setDirty(true);
     };
 
-    const changeSection = (key: number, patch: Partial<Section>) =>
-        change({
-            sections: (draft?.sections ?? []).map((s) =>
-                s.key === key ? { ...s, ...patch } : s,
-            ),
-        });
-
-    const moveSection = (index: number, delta: number) => {
-        const list = [...(draft?.sections ?? [])];
-        const target = index + delta;
-
-        if (target >= 0 && target < list.length) {
-            [list[index], list[target]] = [list[target], list[index]];
-            change({ sections: list });
-        }
-    };
-
-    const removeSection = (key: number) => {
-        const section = draft?.sections.find((s) => s.key === key);
-
-        if (
-            section &&
-            (section.teks.trim() === '' ||
-                window.confirm(`Hapus bagian "${section.judul}"?`))
-        ) {
-            change({
-                sections: (draft?.sections ?? []).filter((s) => s.key !== key),
-            });
-        }
-    };
-
-    const addSection = (judul = '', bernomor = false, gaya: Style = 'angka') =>
-        change({
-            sections: [
-                ...(draft?.sections ?? []),
-                {
-                    key: nextKey++,
-                    judul,
-                    bernomor,
-                    gaya,
-                    lanjut: false,
-                    pengantar: '',
-                    teks: '',
-                },
-            ],
-        });
+    /** The document as sent to store and to the PDF preview. */
+    const payload = (doc: Draft) => ({
+        unit_id: filters.unit_id,
+        id: doc.id,
+        kop: doc.kop,
+        judul: doc.judul,
+        mesin: doc.mesin,
+        no_dokumen: doc.no_dokumen,
+        tanggal: doc.tanggal || null,
+        revisi: doc.revisi,
+        sections: doc.sections.map((s) => ({
+            judul: s.judul,
+            bernomor: s.bernomor,
+            gaya: s.gaya,
+            lanjut: s.lanjut,
+            pengantar: s.pengantar,
+            butir: toPoints(s.lines),
+        })),
+        dibuat_jabatan: doc.dibuat_jabatan,
+        dibuat_nama: doc.dibuat_nama,
+        disetujui_jabatan: doc.disetujui_jabatan,
+        disetujui_nama: doc.disetujui_nama,
+    });
 
     const save = () => {
-        if (!draft) {
+        if (!draft || saving || !draft.judul.trim()) {
             return;
         }
 
         setSaving(true);
-        router.post(
-            routes.store,
-            {
-                unit_id: filters.unit_id,
-                id: draft.id,
-                kop: draft.kop,
-                judul: draft.judul,
-                mesin: draft.mesin,
-                no_dokumen: draft.no_dokumen,
-                tanggal: draft.tanggal || null,
-                revisi: draft.revisi,
-                sections: draft.sections.map((s) => ({
-                    judul: s.judul,
-                    bernomor: s.bernomor,
-                    gaya: s.gaya,
-                    lanjut: s.lanjut,
-                    pengantar: s.pengantar,
-                    butir: parse(s.teks),
-                })),
-                dibuat_jabatan: draft.dibuat_jabatan,
-                dibuat_nama: draft.dibuat_nama,
-                disetujui_jabatan: draft.disetujui_jabatan,
-                disetujui_nama: draft.disetujui_nama,
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => setDirty(false),
-                onFinish: () => setSaving(false),
-            },
-        );
+        router.post(routes.store, payload(draft), {
+            preserveScroll: true,
+            onSuccess: () => setDirty(false),
+            onFinish: () => setSaving(false),
+        });
     };
+
+    useSaveShortcut(() => {
+        if (can_write && dirty) {
+            save();
+        }
+    });
 
     const duplicate = () => {
         if (draft) {
@@ -400,7 +378,11 @@ export function InstruksiKerjaEditorPage({
                 ...draft,
                 id: null,
                 judul: `${draft.judul} (Salinan)`,
-                sections: draft.sections.map((s) => ({ ...s, key: nextKey++ })),
+                sections: draft.sections.map((s) => ({
+                    ...s,
+                    key: nextKey++,
+                    lines: s.lines.map((l) => line(l.text, l.sub)),
+                })),
             });
             setDirty(true);
         }
@@ -425,9 +407,7 @@ export function InstruksiKerjaEditorPage({
                 'Hapus Instruksi Kerja ini? Tindakan ini tidak dapat dibatalkan.',
             )
         ) {
-            router.delete(routes.destroy(draft.id), {
-                preserveScroll: true,
-            });
+            router.delete(routes.destroy(draft.id), { preserveScroll: true });
         }
     };
 
@@ -449,6 +429,7 @@ export function InstruksiKerjaEditorPage({
             onClick={save}
             disabled={saving || !dirty || !draft.judul.trim()}
             className="gap-1.5"
+            title="Simpan (Ctrl+S)"
         >
             <Save className="size-4" />
             {saving
@@ -457,350 +438,6 @@ export function InstruksiKerjaEditorPage({
                   ? 'Simpan IK Baru'
                   : 'Simpan'}
         </Button>
-    );
-
-    const editor = draft && (
-        <div className="flex flex-col gap-4">
-            <Card
-                title="1. Identitas IK"
-                hint="Kop dan judul yang tampil di bagian atas dokumen."
-            >
-                <Field label="Judul pekerjaan (setiap baris tampil sebagai baris judul)">
-                    <Textarea
-                        value={draft.judul}
-                        onChange={(e) => change({ judul: e.target.value })}
-                        disabled={!can_write}
-                        rows={2}
-                        placeholder={copy.judulPlaceholder}
-                        className="font-semibold uppercase"
-                    />
-                </Field>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field label="Mesin / Peralatan (untuk pencarian)">
-                        <Input
-                            value={draft.mesin}
-                            onChange={(e) => change({ mesin: e.target.value })}
-                            disabled={!can_write}
-                            placeholder={copy.mesinPlaceholder}
-                        />
-                    </Field>
-                    <Field label="Kop">
-                        <Input
-                            value={draft.kop}
-                            onChange={(e) => change({ kop: e.target.value })}
-                            disabled={!can_write}
-                        />
-                    </Field>
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                    <Field label="No. Dokumen (opsional)">
-                        <Input
-                            value={draft.no_dokumen}
-                            onChange={(e) =>
-                                change({ no_dokumen: e.target.value })
-                            }
-                            disabled={!can_write}
-                        />
-                    </Field>
-                    <Field label="Revisi (opsional)">
-                        <Input
-                            value={draft.revisi}
-                            onChange={(e) => change({ revisi: e.target.value })}
-                            disabled={!can_write}
-                        />
-                    </Field>
-                    <Field label="Tanggal (opsional)">
-                        <Input
-                            type="date"
-                            value={draft.tanggal}
-                            onChange={(e) =>
-                                change({ tanggal: e.target.value })
-                            }
-                            disabled={!can_write}
-                        />
-                    </Field>
-                </div>
-            </Card>
-
-            <Card
-                title="2. Isi Instruksi Kerja"
-                hint="Bagian bernomor (1. ALAT …) atau subjudul tebal (PERSIAPAN AWAL …). Nomor & tanda poin dibuat otomatis."
-            >
-                <div className="flex gap-2 rounded-md bg-sky-50 p-2.5 text-xs text-sky-900 dark:bg-sky-500/10 dark:text-sky-200">
-                    <Info className="mt-0.5 size-4 shrink-0" />
-                    <span>
-                        Satu baris = satu poin. Awali baris dengan <b>-</b>{' '}
-                        untuk <b>sub-poin</b> (seperti langkah “Buka Filter
-                        bahan bakar”). Tulis <b>**kata**</b> untuk huruf{' '}
-                        <b>tebal</b>.
-                    </span>
-                </div>
-                {draft.sections.map((section, index) => (
-                    <div
-                        key={section.key}
-                        className="flex flex-col gap-2 rounded-lg border border-border bg-muted/20 p-3"
-                    >
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span
-                                className={cn(
-                                    'flex h-7 shrink-0 items-center justify-center rounded-md px-2 text-[12px] font-bold',
-                                    section.bernomor
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted text-foreground',
-                                )}
-                            >
-                                {section.bernomor
-                                    ? `No. ${draft.sections.slice(0, index + 1).filter((s) => s.bernomor).length}`
-                                    : 'Subjudul'}
-                            </span>
-                            <Input
-                                value={section.judul}
-                                onChange={(e) =>
-                                    changeSection(section.key, {
-                                        judul: e.target.value.toUpperCase(),
-                                    })
-                                }
-                                disabled={!can_write}
-                                placeholder="JUDUL BAGIAN"
-                                className="h-9 min-w-44 flex-1 font-semibold uppercase"
-                                aria-label={`Judul bagian ${index + 1}`}
-                            />
-                            {can_write && (
-                                <div className="flex items-center">
-                                    <IconButton
-                                        label="Naikkan"
-                                        onClick={() => moveSection(index, -1)}
-                                        disabled={index === 0}
-                                    >
-                                        <ArrowUp className="size-4" />
-                                    </IconButton>
-                                    <IconButton
-                                        label="Turunkan"
-                                        onClick={() => moveSection(index, 1)}
-                                        disabled={
-                                            index === draft.sections.length - 1
-                                        }
-                                    >
-                                        <ArrowDown className="size-4" />
-                                    </IconButton>
-                                    <IconButton
-                                        label="Hapus bagian"
-                                        onClick={() =>
-                                            removeSection(section.key)
-                                        }
-                                        danger
-                                    >
-                                        <Trash2 className="size-4" />
-                                    </IconButton>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-                            <Select
-                                value={section.bernomor ? 'nomor' : 'sub'}
-                                onValueChange={(v) =>
-                                    changeSection(section.key, {
-                                        bernomor: v === 'nomor',
-                                    })
-                                }
-                                disabled={!can_write}
-                            >
-                                <SelectTrigger
-                                    className="h-8 w-44"
-                                    aria-label={`Jenis judul bagian ${index + 1}`}
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="nomor">
-                                        Judul bernomor (1. ALAT)
-                                    </SelectItem>
-                                    <SelectItem value="sub">
-                                        Subjudul tebal
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Select
-                                value={section.gaya}
-                                onValueChange={(v) =>
-                                    changeSection(section.key, {
-                                        gaya: v as Style,
-                                    })
-                                }
-                                disabled={!can_write}
-                            >
-                                <SelectTrigger
-                                    className="h-8 w-32"
-                                    aria-label={`Gaya poin bagian ${index + 1}`}
-                                >
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {STYLES.map((s) => (
-                                        <SelectItem
-                                            key={s.value}
-                                            value={s.value}
-                                        >
-                                            {s.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {numbered(section.gaya) && index > 0 && (
-                                <label className="flex items-center gap-1.5 text-muted-foreground">
-                                    <Checkbox
-                                        checked={section.lanjut}
-                                        onCheckedChange={(v) =>
-                                            changeSection(section.key, {
-                                                lanjut: v === true,
-                                            })
-                                        }
-                                        disabled={!can_write}
-                                    />
-                                    Lanjutkan nomor dari bagian sebelumnya
-                                </label>
-                            )}
-                        </div>
-                        <Textarea
-                            value={section.pengantar}
-                            onChange={(e) =>
-                                changeSection(section.key, {
-                                    pengantar: e.target.value,
-                                })
-                            }
-                            disabled={!can_write}
-                            rows={section.pengantar ? 2 : 1}
-                            placeholder="(Opsional) kalimat pembuka sebelum poin"
-                            className="min-h-9 text-sm"
-                        />
-                        <Textarea
-                            value={section.teks}
-                            onChange={(e) =>
-                                changeSection(section.key, {
-                                    teks: e.target.value,
-                                })
-                            }
-                            disabled={!can_write}
-                            rows={Math.max(
-                                3,
-                                section.teks.split('\n').length + 1,
-                            )}
-                            placeholder={
-                                'Satu baris = satu poin\nBuka Filter bahan bakar\n- Tutup keran bahan bakar (sub-poin)'
-                            }
-                            className="font-mono text-sm leading-6"
-                            aria-label={`Poin bagian ${index + 1}`}
-                        />
-                        <p className="text-[11px] text-muted-foreground">
-                            {parse(section.teks).length} poin
-                            {parse(section.teks).some((p) => p.sub.length > 0)
-                                ? ` · ${parse(section.teks).reduce((n, p) => n + p.sub.length, 0)} sub-poin`
-                                : ''}
-                        </p>
-                    </div>
-                ))}
-                {can_write && (
-                    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border p-3">
-                        <span className="text-xs font-medium text-muted-foreground">
-                            Tambah bagian:
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                            {QUICK_SECTIONS.filter(
-                                (q) =>
-                                    !draft.sections.some(
-                                        (s) => s.judul === q.judul,
-                                    ),
-                            ).map((q) => (
-                                <Button
-                                    key={q.judul}
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        addSection(q.judul, q.bernomor, q.gaya)
-                                    }
-                                    className="h-8 gap-1 text-xs"
-                                >
-                                    <Plus className="size-3.5" />
-                                    {q.judul}
-                                </Button>
-                            ))}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addSection('', true)}
-                                className="h-8 gap-1 text-xs"
-                            >
-                                <Plus className="size-3.5" />
-                                Bagian bernomor
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => addSection('', false)}
-                                className="h-8 gap-1 text-xs"
-                            >
-                                <Plus className="size-3.5" />
-                                Subjudul
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </Card>
-
-            <Card
-                title="3. Tanda Tangan"
-                hint="Kotak Dibuat / Disetujui di akhir dokumen. Kosongkan kedua jabatan untuk menyembunyikan kotak."
-            >
-                <div className="grid grid-cols-2 gap-3">
-                    <Field label="Dibuat — jabatan">
-                        <Input
-                            value={draft.dibuat_jabatan}
-                            onChange={(e) =>
-                                change({ dibuat_jabatan: e.target.value })
-                            }
-                            disabled={!can_write}
-                        />
-                    </Field>
-                    <Field label="Disetujui — jabatan">
-                        <Input
-                            value={draft.disetujui_jabatan}
-                            onChange={(e) =>
-                                change({ disetujui_jabatan: e.target.value })
-                            }
-                            disabled={!can_write}
-                        />
-                    </Field>
-                    <Field label="Dibuat — nama">
-                        <Input
-                            value={draft.dibuat_nama}
-                            onChange={(e) =>
-                                change({ dibuat_nama: e.target.value })
-                            }
-                            disabled={!can_write}
-                        />
-                    </Field>
-                    <Field label="Disetujui — nama">
-                        <Input
-                            value={draft.disetujui_nama}
-                            onChange={(e) =>
-                                change({ disetujui_nama: e.target.value })
-                            }
-                            disabled={!can_write}
-                        />
-                    </Field>
-                </div>
-            </Card>
-        </div>
-    );
-
-    const preview = draft && (
-        <div className="2xl:sticky 2xl:top-4">
-            <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <Eye className="size-3.5" />
-                Pratinjau (sama dengan hasil cetak PDF)
-            </div>
-            <IkPreview draft={draft} />
-        </div>
     );
 
     return (
@@ -832,7 +469,7 @@ export function InstruksiKerjaEditorPage({
                 />
 
                 {options.units.length > 1 && (
-                    <div className="flex rounded-lg border border-border bg-card p-3">
+                    <div className="flex rounded-md border border-border bg-secondary p-3">
                         <OperasiSelect
                             label="Unit"
                             value={String(filters.unit_id)}
@@ -853,7 +490,7 @@ export function InstruksiKerjaEditorPage({
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
                     <aside className="flex flex-col gap-2">
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-foreground">
@@ -913,7 +550,7 @@ export function InstruksiKerjaEditorPage({
                                 />
                             ))}
                             {docs.length === 0 && draft === null && (
-                                <p className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                                <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
                                     Belum ada Instruksi Kerja.
                                 </p>
                             )}
@@ -922,15 +559,16 @@ export function InstruksiKerjaEditorPage({
 
                     <section className="min-w-0">
                         {draft === null ? (
-                            <div className="flex flex-col gap-4 rounded-xl border border-dashed border-border p-6 text-center">
+                            <div className="flex flex-col gap-4 rounded-md border border-dashed border-border p-6 text-center">
                                 <FileText className="mx-auto size-10 text-muted-foreground" />
                                 <div>
                                     <p className="font-semibold text-foreground">
                                         Mulai dari template IK
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        Pilih template, lalu sesuaikan judul,
-                                        langkah dan tanda tangannya.
+                                        Pilih template, lalu ubah judul, langkah
+                                        dan tanda tangannya langsung pada
+                                        dokumen.
                                     </p>
                                 </div>
                                 {can_write && (
@@ -942,12 +580,19 @@ export function InstruksiKerjaEditorPage({
                             </div>
                         ) : (
                             <div className="flex flex-col gap-3">
-                                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card p-2.5">
+                                <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md border border-border bg-card p-2.5">
                                     <div className="min-w-0 flex-1">
                                         <p className="truncate text-sm font-semibold text-foreground">
                                             {title(draft.judul) || 'IK baru'}
                                         </p>
-                                        <p className="text-xs text-muted-foreground">
+                                        <p
+                                            className={cn(
+                                                'text-xs',
+                                                dirty
+                                                    ? 'text-amber-600 dark:text-amber-400'
+                                                    : 'text-muted-foreground',
+                                            )}
+                                        >
                                             {draft.id === null
                                                 ? 'Belum disimpan'
                                                 : dirty
@@ -1004,51 +649,74 @@ export function InstruksiKerjaEditorPage({
                                     )}
                                 </div>
 
-                                <div className="flex gap-1 rounded-lg bg-muted p-1 2xl:hidden">
-                                    {(['isi', 'pratinjau'] as const).map(
-                                        (v) => (
-                                            <button
-                                                key={v}
-                                                type="button"
-                                                onClick={() => setView(v)}
-                                                className={cn(
-                                                    'flex flex-1 items-center justify-center gap-1.5 rounded-md py-2 text-sm font-medium transition',
-                                                    view === v
-                                                        ? 'bg-background text-foreground shadow-sm'
-                                                        : 'text-muted-foreground',
-                                                )}
-                                            >
-                                                {v === 'isi' ? (
-                                                    <PencilLine className="size-4" />
-                                                ) : (
-                                                    <Eye className="size-4" />
-                                                )}
-                                                {v === 'isi'
-                                                    ? 'Isi IK'
-                                                    : 'Pratinjau'}
-                                            </button>
-                                        ),
-                                    )}
-                                </div>
+                                {/* Not printed: only for finding the IK in the list. */}
+                                <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground sm:flex-row sm:items-center sm:gap-2">
+                                    <span className="shrink-0">
+                                        Mesin / Peralatan (untuk pencarian,
+                                        tidak dicetak):
+                                    </span>
+                                    <Input
+                                        value={draft.mesin}
+                                        onChange={(e) =>
+                                            change({ mesin: e.target.value })
+                                        }
+                                        disabled={!can_write}
+                                        placeholder={copy.mesinPlaceholder}
+                                        className="h-8 sm:max-w-xs"
+                                    />
+                                </label>
 
-                                <div className="grid grid-cols-1 gap-4 2xl:grid-cols-2">
-                                    <div
-                                        className={cn(
-                                            view !== 'isi' &&
-                                                'hidden 2xl:block',
+                                <EditorViewTabs
+                                    view={view}
+                                    onChange={setView}
+                                />
+
+                                {view === 'pdf' ? (
+                                    <PdfPreview
+                                        previewUrl={routes.preview}
+                                        payload={payload(draft)}
+                                        savedUrl={
+                                            draft.id !== null
+                                                ? pdfUrl(draft.id)
+                                                : null
+                                        }
+                                        useSaved={
+                                            !can_write ||
+                                            (!dirty && draft.id !== null)
+                                        }
+                                    />
+                                ) : (
+                                    <>
+                                        {can_write && !compact && (
+                                            <EditorTips
+                                                extra={
+                                                    <>
+                                                        <span>
+                                                            <Kbd>Tab</Kbd> /{' '}
+                                                            <Kbd>Shift</Kbd>+
+                                                            <Kbd>Tab</Kbd>{' '}
+                                                            sub-poin
+                                                        </span>
+                                                        <span>
+                                                            <Kbd>Ctrl</Kbd>+
+                                                            <Kbd>B</Kbd> tebal
+                                                        </span>
+                                                    </>
+                                                }
+                                            />
                                         )}
-                                    >
-                                        {editor}
-                                    </div>
-                                    <div
-                                        className={cn(
-                                            view !== 'pratinjau' &&
-                                                'hidden 2xl:block',
-                                        )}
-                                    >
-                                        {preview}
-                                    </div>
-                                </div>
+
+                                        <IkSheetEditor
+                                            key={draft.id ?? 'baru'}
+                                            draft={draft}
+                                            editable={can_write}
+                                            judulPlaceholder={
+                                                copy.judulPlaceholder
+                                            }
+                                            onChange={change}
+                                        />
+                                    </>
+                                )}
                             </div>
                         )}
                     </section>
@@ -1062,7 +730,8 @@ export function InstruksiKerjaEditorPage({
                             Pilih Template Instruksi Kerja
                         </DialogTitle>
                         <DialogDescription>
-                            Semua isi template bisa diubah setelah dipilih.
+                            Semua isi template bisa diubah langsung pada dokumen
+                            setelah dipilih.
                         </DialogDescription>
                     </DialogHeader>
                     <TemplateGrid
@@ -1079,178 +748,859 @@ export function InstruksiKerjaEditorPage({
     );
 }
 
-/** The MKP IK form as printed (mirrors resources/views/har/instruksi-kerja/document.blade.php). */
-function IkPreview({ draft }: { draft: Draft }) {
+/**
+ * The MKP IK form edited in place on one A4 sheet (16 × 18 mm margins as the
+ * PDF): kop, title lines, document data, every part (heading, opening
+ * sentence, points & sub-points) and the Dibuat / Disetujui box are text
+ * fields that look like the print. A part's tools appear on hover / focus.
+ */
+function IkSheetEditor({
+    draft,
+    editable,
+    judulPlaceholder,
+    onChange,
+}: {
+    draft: Draft;
+    editable: boolean;
+    judulPlaceholder: string;
+    onChange: (patch: Partial<Draft>) => void;
+}) {
+    const { register, focusNow, focusAfterRender } = useFieldFocus();
+
+    const sections = draft.sections;
+    const setSections = (next: Section[]) => onChange({ sections: next });
+    const patchSection = (key: number, patch: Partial<Section>) =>
+        setSections(
+            sections.map((s) => (s.key === key ? { ...s, ...patch } : s)),
+        );
+    const setLines = (section: Section, next: Line[]) =>
+        patchSection(section.key, { lines: next.length ? next : [line()] });
+
     // Heading number and first point number per part ("lanjut" continues the previous count).
-    const laidOut: {
-        section: Section;
-        points: Point[];
-        heading: number;
-        start: number;
-    }[] = [];
+    const layout: { heading: number; start: number }[] = [];
     let heading = 0;
     let counter = 0;
 
-    for (const section of draft.sections) {
-        const points = parse(section.teks);
+    for (const section of sections) {
         heading += section.bernomor ? 1 : 0;
         counter = section.lanjut ? counter : 0;
-        laidOut.push({ section, points, heading, start: counter });
-        counter += numbered(section.gaya) ? points.length : 0;
+        layout.push({ heading, start: counter });
+        counter += numbered(section.gaya)
+            ? section.lines.filter((l) => !l.sub).length
+            : 0;
     }
 
-    const meta = [
-        ['No. Dokumen', draft.no_dokumen],
-        ['Revisi', draft.revisi],
-        [
-            'Tanggal',
-            draft.tanggal ? draft.tanggal.split('-').reverse().join('-') : '',
-        ],
-    ].filter(([, v]) => v);
+    const moveSection = (index: number, delta: number) => {
+        const list = [...sections];
+        const target = index + delta;
+
+        if (target >= 0 && target < list.length) {
+            [list[index], list[target]] = [list[target], list[index]];
+            setSections(list);
+        }
+    };
+
+    const removeSection = (section: Section) => {
+        if (
+            toPoints(section.lines).length === 0 ||
+            window.confirm(
+                `Hapus bagian "${section.judul || 'tanpa judul'}" beserta isinya?`,
+            )
+        ) {
+            setSections(sections.filter((s) => s.key !== section.key));
+        }
+    };
+
+    const addSection = (
+        judul = '',
+        bernomor = false,
+        gaya: Style = 'angka',
+    ) => {
+        const created: Section = {
+            key: nextKey++,
+            judul,
+            bernomor,
+            gaya,
+            lanjut: false,
+            pengantar: '',
+            lines: [line()],
+        };
+        setSections([...sections, created]);
+        focusAfterRender({
+            id: judul ? `l-${created.lines[0].key}` : `j-${created.key}`,
+            at: 'end',
+        });
+    };
+
+    /** Wraps the selection (or the word at the caret) in **…** for bold. */
+    const toggleBold = (
+        section: Section,
+        current: Line,
+        field: HTMLTextAreaElement,
+    ) => {
+        const { selectionStart: from, selectionEnd: to, value } = field;
+        const text =
+            from === to
+                ? value
+                : value.slice(0, from) +
+                  `**${value.slice(from, to)}**` +
+                  value.slice(to);
+        const next =
+            from === to
+                ? /^\*\*.*\*\*$/.test(value)
+                    ? value.slice(2, -2)
+                    : `**${value}**`
+                : text;
+        setLines(
+            section,
+            section.lines.map((l) =>
+                l.key === current.key ? { ...l, text: next } : l,
+            ),
+        );
+        focusAfterRender({ id: `l-${current.key}`, at: 'end' });
+    };
+
+    const lineKeyDown =
+        (section: Section, index: number) =>
+        (event: KeyboardEvent<HTMLTextAreaElement>) => {
+            const field = event.currentTarget;
+            const current = section.lines[index];
+            const replace = (
+                next: Line[],
+                focus: { key: number; at: 'start' | 'end' },
+            ) => {
+                setLines(section, next);
+                focusAfterRender({ id: `l-${focus.key}`, at: focus.at });
+            };
+
+            if (event.key === 'Enter' && !event.shiftKey) {
+                // Split at the caret: the rest becomes the next point (same level).
+                event.preventDefault();
+                const created = line(
+                    field.value.slice(field.selectionEnd),
+                    current.sub,
+                );
+                const next = [...section.lines];
+                next.splice(
+                    index,
+                    1,
+                    {
+                        ...current,
+                        text: field.value.slice(0, field.selectionStart),
+                    },
+                    created,
+                );
+                replace(next, { key: created.key, at: 'start' });
+
+                return;
+            }
+
+            if (event.key === 'Tab') {
+                // Tab: sub-point of the point above · Shift+Tab: back to a point.
+                const sub = !event.shiftKey;
+
+                if (sub === current.sub || (sub && index === 0)) {
+                    return;
+                }
+
+                event.preventDefault();
+                replace(
+                    section.lines.map((l) =>
+                        l.key === current.key ? { ...l, sub } : l,
+                    ),
+                    {
+                        key: current.key,
+                        at: field.selectionStart === 0 ? 'start' : 'end',
+                    },
+                );
+
+                return;
+            }
+
+            if (
+                event.key === 'Backspace' &&
+                field.selectionStart === 0 &&
+                field.selectionEnd === 0
+            ) {
+                if (current.sub) {
+                    // A sub-point first goes back to a point.
+                    event.preventDefault();
+                    replace(
+                        section.lines.map((l) =>
+                            l.key === current.key ? { ...l, sub: false } : l,
+                        ),
+                        { key: current.key, at: 'start' },
+                    );
+                } else if (index > 0) {
+                    // Join the point to the line above.
+                    event.preventDefault();
+                    const previous = section.lines[index - 1];
+                    const next = [...section.lines];
+                    next.splice(index - 1, 2, {
+                        ...previous,
+                        text: previous.text + current.text,
+                    });
+                    replace(next, { key: previous.key, at: 'end' });
+                }
+
+                return;
+            }
+
+            if (
+                (event.ctrlKey || event.metaKey) &&
+                event.key.toLowerCase() === 'b'
+            ) {
+                event.preventDefault();
+                toggleBold(section, current, field);
+
+                return;
+            }
+
+            if (
+                event.key === 'ArrowUp' &&
+                field.selectionStart === 0 &&
+                index > 0
+            ) {
+                event.preventDefault();
+                focusNow({
+                    id: `l-${section.lines[index - 1].key}`,
+                    at: 'end',
+                });
+            } else if (
+                event.key === 'ArrowDown' &&
+                field.selectionStart === field.value.length &&
+                index < section.lines.length - 1
+            ) {
+                event.preventDefault();
+                focusNow({
+                    id: `l-${section.lines[index + 1].key}`,
+                    at: 'start',
+                });
+            }
+        };
+
+    const linePaste =
+        (section: Section, index: number) =>
+        (event: ClipboardEvent<HTMLTextAreaElement>) => {
+            const pasted = event.clipboardData
+                .getData('text')
+                .split(/\r?\n/)
+                .map(pastedLine)
+                .filter((l): l is Line => l !== null);
+
+            if (pasted.length < 2) {
+                return;
+            }
+
+            // Several lines pasted: one point each ("-" lines = sub-points).
+            event.preventDefault();
+            const field = event.currentTarget;
+            const current = section.lines[index];
+            const before = field.value.slice(0, field.selectionStart);
+            const after = field.value.slice(field.selectionEnd);
+            pasted[0] = {
+                ...pasted[0],
+                key: current.key,
+                text: before + pasted[0].text,
+                sub: current.sub || pasted[0].sub,
+            };
+            const last = pasted.length - 1;
+            pasted[last] = { ...pasted[last], text: pasted[last].text + after };
+            const next = [...section.lines];
+            next.splice(index, 1, ...pasted);
+            setLines(section, next);
+            focusAfterRender({ id: `l-${pasted[last].key}`, at: 'end' });
+        };
+
+    const meta: ['no_dokumen' | 'revisi' | 'tanggal', string][] = [
+        ['no_dokumen', 'No. Dokumen'],
+        ['revisi', 'Revisi'],
+        ['tanggal', 'Tanggal'],
+    ];
+    const showSignatures = Boolean(
+        draft.dibuat_jabatan || draft.disetujui_jabatan,
+    );
 
     return (
-        <div className="overflow-x-auto rounded-md bg-neutral-200 p-3 dark:bg-neutral-800">
-            <div className="mx-auto max-w-[720px] min-w-[520px] bg-white px-10 py-8 text-[12px] leading-relaxed text-black shadow-md">
+        <A4Sheet padding="sm:px-[18mm] sm:py-[16mm]">
+            <div className="flex flex-1 flex-col text-[12px] leading-relaxed">
+                {/* Kop */}
                 <div className="text-center">
                     <img
                         src="/logo/mkp.jpg"
                         alt="MKP Mitra Karya Prima"
                         className="mx-auto max-h-16 object-contain"
                     />
-                    <div className="mt-2.5 text-[16px] font-bold tracking-wide">
-                        {draft.kop}
-                    </div>
+                    <AutoText
+                        value={draft.kop}
+                        onValue={(v) =>
+                            onChange({ kop: v.replace(/\r?\n/g, ' ') })
+                        }
+                        disabled={!editable}
+                        placeholder="KOP"
+                        className={cn(
+                            EDITABLE,
+                            'mt-2.5 text-center text-[16px] font-bold tracking-wide',
+                        )}
+                        aria-label="Kop"
+                    />
                 </div>
                 <div className="mt-2 mb-3 border-b border-neutral-500" />
+
+                {/* Title: one printed line per line */}
                 <div className="text-center text-[15px] leading-snug font-bold">
                     <div>INSTRUKSI KERJA (IK)</div>
-                    {draft.judul
-                        .split('\n')
-                        .filter((l) => l.trim())
-                        .map((line, i) => (
-                            <div key={i}>{line.trim().toUpperCase()}</div>
-                        ))}
+                    <AutoText
+                        value={draft.judul}
+                        onValue={(v) => onChange({ judul: v.toUpperCase() })}
+                        disabled={!editable}
+                        placeholder={judulPlaceholder}
+                        className={cn(
+                            EDITABLE,
+                            'text-center uppercase',
+                            !draft.judul.trim() && 'bg-red-50',
+                        )}
+                        aria-label="Judul pekerjaan (Enter = baris baru)"
+                        title="Enter = baris judul berikutnya"
+                    />
                 </div>
-                {meta.length > 0 && (
-                    <div className="mt-1 text-center text-[10px] text-neutral-600">
-                        {meta.map(([k, v]) => `${k}: ${v}`).join('   ·   ')}
-                    </div>
-                )}
 
-                <div className="mt-3">
-                    {laidOut.map(
-                        ({ section, points, heading: number, start }) => {
-                            const indent = section.bernomor ? 'ml-8' : 'ml-11';
-
-                            return (
-                                <div key={section.key} className="mt-2">
-                                    {section.bernomor ? (
-                                        <div className="flex font-bold">
-                                            <span className="w-7 shrink-0">
-                                                {number}.
-                                            </span>
-                                            <span>
-                                                {section.judul.toUpperCase() ||
-                                                    '…'}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-2.5 font-bold">
-                                            {section.judul.toUpperCase() || '…'}
-                                        </div>
+                {/* Document data (printed only when filled) */}
+                <div className="mt-1 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-neutral-600">
+                    {meta.map(([field, label]) =>
+                        editable || draft[field] ? (
+                            <label
+                                key={field}
+                                className="flex items-center gap-1"
+                            >
+                                {label}:
+                                <input
+                                    type={field === 'tanggal' ? 'date' : 'text'}
+                                    value={draft[field]}
+                                    onChange={(e) =>
+                                        onChange({ [field]: e.target.value })
+                                    }
+                                    disabled={!editable}
+                                    placeholder="(opsional)"
+                                    className={cn(
+                                        EDITABLE,
+                                        'h-5 py-0',
+                                        field === 'tanggal' ? 'w-32' : 'w-28',
                                     )}
-                                    {section.pengantar.trim() && (
-                                        <p className="mt-0.5 ml-7">
-                                            <Rich text={section.pengantar} />
-                                        </p>
-                                    )}
-                                    {points.map((point, i) => (
-                                        <div key={i}>
-                                            {section.gaya === 'paragraf' ? (
-                                                <p className="mt-0.5 ml-7">
-                                                    <Rich text={point.teks} />
-                                                </p>
-                                            ) : (
-                                                <div
-                                                    className={cn(
-                                                        'mt-0.5 flex',
-                                                        indent,
-                                                    )}
-                                                >
-                                                    <span
-                                                        className={cn(
-                                                            'w-6 shrink-0 pr-1.5',
-                                                            numbered(
-                                                                section.gaya,
-                                                            ) && 'text-right',
-                                                        )}
-                                                    >
-                                                        {marker(
-                                                            section.gaya,
-                                                            start + i + 1,
-                                                        )}
-                                                    </span>
-                                                    <span>
-                                                        <Rich
-                                                            text={point.teks}
-                                                        />
-                                                    </span>
-                                                </div>
-                                            )}
-                                            {point.sub.map((sub, j) => (
-                                                <div
-                                                    key={j}
-                                                    className={cn(
-                                                        'mt-0.5 flex',
-                                                        section.bernomor
-                                                            ? 'ml-16'
-                                                            : 'ml-[4.75rem]',
-                                                    )}
-                                                >
-                                                    <span className="w-3.5 shrink-0">
-                                                        -
-                                                    </span>
-                                                    <span>
-                                                        <Rich text={sub} />
-                                                    </span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        },
+                                />
+                            </label>
+                        ) : null,
                     )}
                 </div>
 
-                {(draft.dibuat_jabatan || draft.disetujui_jabatan) && (
-                    <div className="mt-7 grid grid-cols-[34%_1fr_34%] border border-black text-center text-[11px]">
-                        <div className="border-r border-b border-black py-0.5">
-                            Dibuat
+                {/* Parts */}
+                <div className="mt-3 flex-1">
+                    {sections.map((section, sIndex) => {
+                        const { heading: number, start } = layout[sIndex];
+                        const mainIndent = section.bernomor ? 'ml-8' : 'ml-11';
+                        let main = 0;
+
+                        return (
+                            <div
+                                key={section.key}
+                                className={cn(
+                                    'group/section relative mt-2 rounded-sm',
+                                    editable && PART_FRAME,
+                                )}
+                            >
+                                <div className="flex items-start gap-1 font-bold">
+                                    {section.bernomor && (
+                                        <span className="w-6 shrink-0 pt-px">
+                                            {number}.
+                                        </span>
+                                    )}
+                                    <AutoText
+                                        ref={register(`j-${section.key}`)}
+                                        value={section.judul}
+                                        onValue={(v) =>
+                                            patchSection(section.key, {
+                                                judul: v
+                                                    .toUpperCase()
+                                                    .replace(/\r?\n/g, ' '),
+                                            })
+                                        }
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                focusNow({
+                                                    id: `l-${section.lines[0].key}`,
+                                                    at: 'start',
+                                                });
+                                            }
+                                        }}
+                                        disabled={!editable}
+                                        placeholder={
+                                            section.bernomor
+                                                ? 'JUDUL BAGIAN (mis. ALAT)'
+                                                : 'SUBJUDUL (mis. PROSEDUR PEKERJAAN)'
+                                        }
+                                        className={cn(
+                                            EDITABLE,
+                                            'uppercase',
+                                            !section.bernomor && 'mt-1',
+                                        )}
+                                        aria-label={`Judul bagian ${sIndex + 1}`}
+                                    />
+
+                                    {editable && (
+                                        <div
+                                            className={cn(
+                                                PART_TOOLS,
+                                                'font-normal',
+                                            )}
+                                        >
+                                            <ToolButton
+                                                label="Judul bernomor (1. ALAT)"
+                                                active={section.bernomor}
+                                                onClick={() =>
+                                                    patchSection(section.key, {
+                                                        bernomor: true,
+                                                    })
+                                                }
+                                            >
+                                                No.
+                                            </ToolButton>
+                                            <ToolButton
+                                                label="Subjudul tebal tanpa nomor"
+                                                active={!section.bernomor}
+                                                onClick={() =>
+                                                    patchSection(section.key, {
+                                                        bernomor: false,
+                                                    })
+                                                }
+                                            >
+                                                Sub
+                                            </ToolButton>
+                                            <ToolDivider />
+                                            {STYLES.map((style) => (
+                                                <ToolButton
+                                                    key={style.value}
+                                                    label={`Gaya poin: ${style.hint}`}
+                                                    active={
+                                                        section.gaya ===
+                                                        style.value
+                                                    }
+                                                    onClick={() =>
+                                                        patchSection(
+                                                            section.key,
+                                                            {
+                                                                gaya: style.value,
+                                                            },
+                                                        )
+                                                    }
+                                                >
+                                                    {style.label}
+                                                </ToolButton>
+                                            ))}
+                                            {numbered(section.gaya) &&
+                                                sIndex > 0 && (
+                                                    <ToolButton
+                                                        label="Lanjutkan nomor dari bagian sebelumnya"
+                                                        active={section.lanjut}
+                                                        onClick={() =>
+                                                            patchSection(
+                                                                section.key,
+                                                                {
+                                                                    lanjut: !section.lanjut,
+                                                                },
+                                                            )
+                                                        }
+                                                    >
+                                                        <CornerDownRight className="size-3.5" />
+                                                    </ToolButton>
+                                                )}
+                                            <ToolDivider />
+                                            <ToolButton
+                                                label="Naikkan bagian"
+                                                onClick={() =>
+                                                    moveSection(sIndex, -1)
+                                                }
+                                                disabled={sIndex === 0}
+                                            >
+                                                <ArrowUp className="size-3.5" />
+                                            </ToolButton>
+                                            <ToolButton
+                                                label="Turunkan bagian"
+                                                onClick={() =>
+                                                    moveSection(sIndex, 1)
+                                                }
+                                                disabled={
+                                                    sIndex ===
+                                                    sections.length - 1
+                                                }
+                                            >
+                                                <ArrowDown className="size-3.5" />
+                                            </ToolButton>
+                                            <ToolButton
+                                                label="Hapus bagian"
+                                                onClick={() =>
+                                                    removeSection(section)
+                                                }
+                                                danger
+                                            >
+                                                <Trash2 className="size-3.5" />
+                                            </ToolButton>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {(section.pengantar.trim() !== '' ||
+                                    editable) && (
+                                    <div
+                                        className={cn(
+                                            'ml-7',
+                                            section.pengantar.trim() === '' &&
+                                                'hidden group-focus-within/section:block group-hover/section:block',
+                                        )}
+                                    >
+                                        <AutoText
+                                            value={section.pengantar}
+                                            onValue={(v) =>
+                                                patchSection(section.key, {
+                                                    pengantar: v,
+                                                })
+                                            }
+                                            disabled={!editable}
+                                            placeholder="+ Kalimat pembuka (opsional)"
+                                            className={cn(EDITABLE, 'mt-0.5')}
+                                            aria-label={`Kalimat pembuka bagian ${sIndex + 1}`}
+                                        />
+                                    </div>
+                                )}
+
+                                {section.lines.map((l, lIndex) => {
+                                    const isMain = !l.sub;
+
+                                    if (isMain) {
+                                        main++;
+                                    }
+
+                                    const indent = l.sub
+                                        ? section.bernomor
+                                            ? 'ml-16'
+                                            : 'ml-[4.75rem]'
+                                        : section.gaya === 'paragraf'
+                                          ? 'ml-7'
+                                          : mainIndent;
+                                    const mark = l.sub
+                                        ? '-'
+                                        : section.gaya === 'paragraf'
+                                          ? ''
+                                          : marker(section.gaya, start + main);
+
+                                    return (
+                                        <div
+                                            key={l.key}
+                                            className={cn(
+                                                'mt-0.5 flex items-start',
+                                                indent,
+                                            )}
+                                        >
+                                            {mark !== '' && (
+                                                <span
+                                                    className={cn(
+                                                        'shrink-0 pt-px pr-1.5',
+                                                        l.sub ? 'w-3.5' : 'w-6',
+                                                        !l.sub &&
+                                                            numbered(
+                                                                section.gaya,
+                                                            ) &&
+                                                            'text-right',
+                                                    )}
+                                                >
+                                                    {mark}
+                                                </span>
+                                            )}
+                                            <AutoText
+                                                ref={register(`l-${l.key}`)}
+                                                value={l.text}
+                                                onValue={(v) =>
+                                                    setLines(
+                                                        section,
+                                                        section.lines.map(
+                                                            (x) =>
+                                                                x.key === l.key
+                                                                    ? {
+                                                                          ...x,
+                                                                          text: v.replace(
+                                                                              /\r?\n/g,
+                                                                              ' ',
+                                                                          ),
+                                                                      }
+                                                                    : x,
+                                                        ),
+                                                    )
+                                                }
+                                                onKeyDown={lineKeyDown(
+                                                    section,
+                                                    lIndex,
+                                                )}
+                                                onPaste={linePaste(
+                                                    section,
+                                                    lIndex,
+                                                )}
+                                                disabled={!editable}
+                                                placeholder={
+                                                    lIndex === 0
+                                                        ? 'Tulis langkah pertama, Enter untuk langkah berikutnya…'
+                                                        : l.sub
+                                                          ? 'Sub-poin…'
+                                                          : 'Langkah…'
+                                                }
+                                                className={cn(
+                                                    EDITABLE,
+                                                    /\*\*/.test(l.text) &&
+                                                        'font-mono text-[11px]',
+                                                )}
+                                                aria-label={`Bagian ${sIndex + 1}, ${l.sub ? 'sub-poin' : 'poin'} ${lIndex + 1}`}
+                                            />
+                                            {editable &&
+                                                section.lines.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        tabIndex={-1}
+                                                        title="Hapus poin"
+                                                        aria-label={`Hapus baris ${lIndex + 1}`}
+                                                        onClick={() =>
+                                                            setLines(
+                                                                section,
+                                                                section.lines.filter(
+                                                                    (x) =>
+                                                                        x.key !==
+                                                                        l.key,
+                                                                ),
+                                                            )
+                                                        }
+                                                        className="mt-0.5 shrink-0 rounded p-0.5 text-neutral-300 opacity-0 group-hover/section:opacity-100 hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100"
+                                                    >
+                                                        <Trash2 className="size-3.5" />
+                                                    </button>
+                                                )}
+                                        </div>
+                                    );
+                                })}
+
+                                {editable && (
+                                    <div
+                                        className={cn(
+                                            'mt-0.5 hidden gap-1 group-focus-within/section:flex group-hover/section:flex',
+                                            mainIndent,
+                                        )}
+                                    >
+                                        <InlineAdd
+                                            onClick={() => {
+                                                const created = line();
+                                                setLines(section, [
+                                                    ...section.lines,
+                                                    created,
+                                                ]);
+                                                focusAfterRender({
+                                                    id: `l-${created.key}`,
+                                                    at: 'start',
+                                                });
+                                            }}
+                                        >
+                                            Tambah{' '}
+                                            {section.gaya === 'paragraf'
+                                                ? 'paragraf'
+                                                : 'langkah'}
+                                        </InlineAdd>
+                                        <InlineAdd
+                                            onClick={() => {
+                                                const created = line('', true);
+                                                setLines(section, [
+                                                    ...section.lines,
+                                                    created,
+                                                ]);
+                                                focusAfterRender({
+                                                    id: `l-${created.key}`,
+                                                    at: 'start',
+                                                });
+                                            }}
+                                        >
+                                            Tambah sub-poin
+                                        </InlineAdd>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {editable && (
+                        <div className="mt-6 flex flex-wrap items-center gap-1.5 border-t border-dashed border-neutral-300 pt-3">
+                            <span className="text-[11px] text-neutral-500">
+                                Tambah bagian:
+                            </span>
+                            {QUICK_SECTIONS.filter(
+                                (q) =>
+                                    !sections.some((s) => s.judul === q.judul),
+                            ).map((q) => (
+                                <AddPartButton
+                                    key={q.judul}
+                                    onClick={() =>
+                                        addSection(q.judul, q.bernomor, q.gaya)
+                                    }
+                                >
+                                    {q.judul}
+                                </AddPartButton>
+                            ))}
+                            <AddPartButton onClick={() => addSection('', true)}>
+                                Bagian bernomor
+                            </AddPartButton>
+                            <AddPartButton
+                                onClick={() => addSection('', false)}
+                            >
+                                Subjudul
+                            </AddPartButton>
                         </div>
-                        <div className="border-r border-b border-black" />
-                        <div className="border-b border-black py-0.5">
-                            Disetujui
+                    )}
+                </div>
+
+                {/* Dibuat / Disetujui (printed when a jabatan is filled) */}
+                {(showSignatures || editable) && (
+                    <div
+                        className={cn('mt-7', !showSignatures && 'opacity-60')}
+                    >
+                        <div className="grid grid-cols-[34%_1fr_34%] border border-black text-center text-[11px]">
+                            <div className="border-r border-b border-black py-0.5">
+                                Dibuat
+                            </div>
+                            <div className="border-r border-b border-black" />
+                            <div className="border-b border-black py-0.5">
+                                Disetujui
+                            </div>
+                            <div className="border-r border-black px-1 py-0.5">
+                                <SignField
+                                    value={draft.dibuat_jabatan}
+                                    onValue={(v) =>
+                                        onChange({ dibuat_jabatan: v })
+                                    }
+                                    editable={editable}
+                                    placeholder="Jabatan"
+                                    label="Dibuat — jabatan"
+                                />
+                            </div>
+                            <div className="border-r border-black" />
+                            <div className="px-1 py-0.5">
+                                <SignField
+                                    value={draft.disetujui_jabatan}
+                                    onValue={(v) =>
+                                        onChange({ disetujui_jabatan: v })
+                                    }
+                                    editable={editable}
+                                    placeholder="Jabatan"
+                                    label="Disetujui — jabatan"
+                                />
+                            </div>
+                            <div className="h-12 border-r border-black" />
+                            <div className="border-r border-black" />
+                            <div />
+                            <div className="border-r border-black px-1 py-0.5">
+                                <SignField
+                                    value={draft.dibuat_nama}
+                                    onValue={(v) =>
+                                        onChange({ dibuat_nama: v })
+                                    }
+                                    editable={editable}
+                                    placeholder="NAMA"
+                                    label="Dibuat — nama"
+                                    upper
+                                />
+                            </div>
+                            <div className="border-r border-black" />
+                            <div className="px-1 py-0.5">
+                                <SignField
+                                    value={draft.disetujui_nama}
+                                    onValue={(v) =>
+                                        onChange({ disetujui_nama: v })
+                                    }
+                                    editable={editable}
+                                    placeholder="NAMA"
+                                    label="Disetujui — nama"
+                                    upper
+                                />
+                            </div>
                         </div>
-                        <div className="border-r border-black py-0.5">
-                            {draft.dibuat_jabatan}
-                        </div>
-                        <div className="border-r border-black" />
-                        <div className="py-0.5">{draft.disetujui_jabatan}</div>
-                        <div className="h-12 border-r border-black" />
-                        <div className="border-r border-black" />
-                        <div />
-                        <div className="border-r border-black py-0.5">
-                            {draft.dibuat_nama.toUpperCase()}
-                        </div>
-                        <div className="border-r border-black" />
-                        <div className="py-0.5">
-                            {draft.disetujui_nama.toUpperCase()}
-                        </div>
+                        {editable && !showSignatures && (
+                            <p className="mt-1 text-center text-[10px] text-neutral-500 italic">
+                                Kotak tanda tangan tidak dicetak selama kedua
+                                jabatan kosong.
+                            </p>
+                        )}
                     </div>
                 )}
             </div>
-        </div>
+        </A4Sheet>
+    );
+}
+
+function SignField({
+    value,
+    onValue,
+    editable,
+    placeholder,
+    label,
+    upper = false,
+}: {
+    value: string;
+    onValue: (value: string) => void;
+    editable: boolean;
+    placeholder: string;
+    label: string;
+    upper?: boolean;
+}) {
+    return (
+        <input
+            value={upper ? value.toUpperCase() : value}
+            onChange={(e) => onValue(e.target.value)}
+            disabled={!editable}
+            placeholder={placeholder}
+            aria-label={label}
+            className={cn(EDITABLE, 'h-5 py-0 text-center')}
+        />
+    );
+}
+
+function InlineAdd({
+    onClick,
+    children,
+}: {
+    onClick: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="inline-flex items-center gap-1 rounded px-1 text-[11px] text-sky-700 hover:bg-sky-50"
+        >
+            <Plus className="size-3" />
+            {children}
+        </button>
+    );
+}
+
+function AddPartButton({
+    onClick,
+    children,
+}: {
+    onClick: () => void;
+    children: ReactNode;
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className="inline-flex items-center gap-1 rounded border border-neutral-300 px-2 py-0.5 text-[11px] text-neutral-700 hover:border-sky-500 hover:bg-sky-50"
+        >
+            <Plus className="size-3" />
+            {children}
+        </button>
     );
 }
 
@@ -1274,10 +1624,10 @@ function TemplateGrid({
                         key={t.key}
                         type="button"
                         onClick={() => onPick(t)}
-                        className="flex flex-col gap-1.5 rounded-lg border border-border bg-card p-3 text-left transition hover:border-primary hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                        className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-3 text-left transition hover:border-primary hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     >
                         <span className="text-sm font-semibold text-foreground">
-                            {t.nama}
+                            <Rich text={t.nama} />
                         </span>
                         <span className="text-xs text-muted-foreground">
                             {t.deskripsi}
@@ -1315,7 +1665,7 @@ function ListItem({
             type="button"
             onClick={onClick}
             className={cn(
-                'flex flex-col gap-0.5 rounded-lg border p-2.5 text-left transition',
+                'flex flex-col gap-0.5 rounded-md border p-2.5 text-left transition',
                 compact ? 'w-60 shrink-0' : 'w-full',
                 active
                     ? 'border-primary bg-primary/10'
@@ -1333,68 +1683,5 @@ function ListItem({
                 {subtitle}
             </span>
         </button>
-    );
-}
-
-function Card({
-    title,
-    hint,
-    children,
-}: {
-    title: string;
-    hint: string;
-    children: ReactNode;
-}) {
-    return (
-        <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
-            <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                    {title}
-                </h3>
-                <p className="text-xs text-muted-foreground">{hint}</p>
-            </div>
-            {children}
-        </div>
-    );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-    return (
-        <label className="flex flex-col gap-1 text-xs font-medium text-muted-foreground">
-            {label}
-            {children}
-        </label>
-    );
-}
-
-function IconButton({
-    label,
-    onClick,
-    disabled = false,
-    danger = false,
-    children,
-}: {
-    label: string;
-    onClick: () => void;
-    disabled?: boolean;
-    danger?: boolean;
-    children: ReactNode;
-}) {
-    return (
-        <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onClick}
-            disabled={disabled}
-            title={label}
-            aria-label={label}
-            className={cn(
-                'size-9 text-muted-foreground',
-                danger ? 'hover:text-destructive' : 'hover:text-foreground',
-            )}
-        >
-            {children}
-        </Button>
     );
 }

@@ -75,7 +75,7 @@ const xlInput =
     'h-7 w-full min-w-11 bg-transparent px-1 text-center text-xs tabular-nums outline-none focus:bg-yellow-50 focus:ring-0 disabled:cursor-not-allowed dark:focus:bg-yellow-950/40';
 
 /**
- * Pengusahaan Operasi — Jam Pembangkit: Jam Operasi, Jam Pemeliharaan (PO),
+ * Operasi — Jam Pembangkit: Jam Operasi, Jam Pemeliharaan (PO),
  * Jam MO, Jam Gangguan and Jam Standby of every mesin in one sheet, a column
  * each, with their Total beside them — a filled day must make 24 jam. Phones
  * pick a tanggal and fill the five hours per mesin.

@@ -56,6 +56,8 @@ export default function PatrolInput({ filters, days, rows: initialRows, options,
         setDirty(false);
     }
 
+    const gridHeight = Math.min(Math.max(rows.length, 3) * 35 + 53, 620);
+
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
             patrol.index().url,
@@ -194,7 +196,7 @@ export default function PatrolInput({ filters, days, rows: initialRows, options,
                             <style>{OPERASI_GRID_STYLES}</style>
                             <DataGrid
                                 className="rdg-light"
-                                style={{ blockSize: '60vh' }}
+                                style={{ blockSize: `${gridHeight}px` }}
                                 columns={columns}
                                 rows={rows}
                                 rowKeyGetter={(row) => row.location_id}

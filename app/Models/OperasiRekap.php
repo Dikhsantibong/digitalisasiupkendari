@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
 /**
- * The manual corrections of a Pengusahaan Operasi recap (e.g. Kinerja Unit
+ * The manual corrections of a Operasi recap (e.g. Kinerja Unit
  * Mesin). A recap is computed from the other sheets; only the values a user
  * overrides are stored here, keyed by row (machine id) then field.
  *

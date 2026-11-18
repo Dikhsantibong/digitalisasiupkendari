@@ -26,7 +26,7 @@
         $num = fn (float $value, int $decimals = 0): string => number_format($value, $decimals, ',', '.');
     @endphp
 
-    <div class="title">PENGUSAHAAN PEMBANGKITAN<br><small>BULAN {{ strtoupper($period_label) }}</small></div>
+    <div class="title">KINERJA PEMBANGKITAN<br><small>BULAN {{ strtoupper($period_label) }}</small></div>
 
     <table class="k">
         <thead>

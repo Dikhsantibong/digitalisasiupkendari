@@ -126,4 +126,28 @@ class DokumenIkTest extends TestCase
         $this->actingAs($koordinator)->get(route('k3.input.dokumen-ik.index', ['unit_id' => $foreign->id]))->assertForbidden();
         $this->actingAs($koordinator)->delete(route('k3.input.dokumen-ik.destroy', $doc))->assertForbidden();
     }
+
+    public function test_the_pdf_preview_renders_the_unsaved_document_without_storing_it(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $payload = [
+            'unit_id' => $unit->id, 'month' => 8, 'year' => 2026,
+            'sistem' => 'SMK3 LEVEL 3', 'judul' => 'INSTRUKSI KERJA PENGGUNAAN APAR', 'no_dokumen' => '', 'tanggal' => null, 'revisi' => '00', 'halaman' => '1/1',
+            'sections' => [['judul' => 'ALAT', 'gaya' => 'butir', 'pengantar' => '', 'butir' => ['APAR', '']]],
+        ];
+        $koordinator = $this->userWithRole(RoleName::KoordinatorK3, $unit);
+
+        $this->actingAs($koordinator)->postJson(route('k3.input.dokumen-ik.preview'), $payload)
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+        $this->assertSame(0, K3DokumenIk::query()->count());
+
+        // Invalid content answers 422 with the message shown in the preview tab.
+        $this->actingAs($koordinator)->postJson(route('k3.input.dokumen-ik.preview'), [...$payload, 'judul' => ''])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('judul');
+
+        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))->postJson(route('k3.input.dokumen-ik.preview'), $payload)->assertForbidden();
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, Unit::factory()->create()))->postJson(route('k3.input.dokumen-ik.preview'), $payload)->assertForbidden();
+    }
 }

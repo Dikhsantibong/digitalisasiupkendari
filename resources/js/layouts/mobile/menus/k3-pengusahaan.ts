@@ -15,7 +15,7 @@ const TONES = [
 ];
 
 /**
- * Phone menus of Akses 2 — Pengusahaan K3 (TL & Staf K3): every K3 page of the
+ * Phone menus of Akses 2 — K3 (TL & Staf K3): every K3 page of the
  * Pengusahaan registry (lib/pengusahaan-menus.ts) plus the Laporan page. A page
  * added to the registry shows up here without further changes.
  */
@@ -38,7 +38,7 @@ export const K3_PENGUSAHAAN_MENUS: MobileMenu[] = [
         group: 'k3-laporan',
         title: 'Laporan K3 & Keamanan',
         short: 'Laporan',
-        description: 'Laporan Pembangkit & Laporan Pengusahaan K3',
+        description: 'Laporan Project & Laporan K3',
         icon: FileBarChart,
         tone: 'bg-primary/10 text-primary',
         href: k3Laporan.index().url,

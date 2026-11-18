@@ -113,7 +113,7 @@ import operasiPengusahaanTaraKalor from '@/routes/operasi/pengusahaan/tara-kalor
 import operasiPengusahaanTugBbm from '@/routes/operasi/pengusahaan/tug-bbm';
 import operasiPengusahaanTugPelumas from '@/routes/operasi/pengusahaan/tug-pelumas';
 
-/** The operators' permission to fill the Pengusahaan Operasi inputs. */
+/** The operators' permission to fill the Operasi inputs. */
 export const OPERATOR_PENGUSAHAAN_INPUT = 'operasi.pengusahaan.input';
 
 /**
@@ -145,7 +145,7 @@ export const PENGUSAHAAN_MODULES: {
     {
         key: 'operasi',
         title: 'Operasi',
-        // The operators fill the Pengusahaan Operasi inputs too (operasi.pengusahaan.input).
+        // The operators fill the Operasi inputs too (operasi.pengusahaan.input).
         permission: ['operasi.pengusahaan.view', OPERATOR_PENGUSAHAAN_INPUT],
         hub: (section) => operasiPengusahaan.index(section).url,
     },
@@ -577,7 +577,7 @@ const MENUS: PengusahaanMenu[] = [
     {
         module: 'k3',
         section: 'input',
-        title: 'Time Frame Pengusahaan',
+        title: 'Time Frame K3 & Keamanan',
         description:
             'Matriks rencana dan realisasi time frame kinerja K3 dan keamanan bulanan.',
         icon: CalendarClock,
@@ -964,7 +964,7 @@ const MENUS: PengusahaanMenu[] = [
 ];
 
 /**
- * Every Akses 2 page. The Pengusahaan Operasi Input pages are also open to the
+ * Every Akses 2 page. The Operasi Input pages are also open to the
  * operators (operasi.pengusahaan.input); the Berita Acara stays with TL & Staf.
  */
 export const PENGUSAHAAN_MENUS: PengusahaanMenu[] = MENUS.map((menu) =>

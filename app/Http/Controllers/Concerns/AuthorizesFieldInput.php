@@ -22,7 +22,7 @@ trait AuthorizesFieldInput
     }
 
     /**
-     * The Pengusahaan Operasi input pages (gated here with the TL/Staf
+     * The Operasi input pages (gated here with the TL/Staf
      * permission) are also filled by the operators, who hold
      * operasi.pengusahaan.input. The Berita Acara and the Laporan Pengusahaan
      * check the TL/Staf permission directly, so they stay with TL & Staf.

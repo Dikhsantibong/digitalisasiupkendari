@@ -277,14 +277,14 @@ return;
                             variant="outline"
                             size="icon"
                             onClick={() => router.get(k3Pengusahaan.index('input').url)}
-                            title="Kembali ke Input Pengusahaan K3"
+                            title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
                         </Button>
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-xl font-bold text-foreground">
-                                    Time Frame Pengusahaan K3 &amp; Keamanan
+                                    Time Frame K3 &amp; Keamanan
                                 </h1>
                                 <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
                                     {unit.name}
@@ -696,6 +696,6 @@ PengusahaanTimeFrameIndex.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Input K3 & Keamanan', href: k3Pengusahaan.index('input').url },
-        { title: 'Time Frame Pengusahaan', href: k3PengusahaanTimeFrame.index().url },
+        { title: 'Time Frame K3 & Keamanan', href: k3PengusahaanTimeFrame.index().url },
     ],
 };
