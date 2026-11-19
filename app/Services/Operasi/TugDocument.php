@@ -2,10 +2,12 @@
 
 namespace App\Services\Operasi;
 
+use App\Enums\EmployeePosition;
 use App\Enums\TugJenis;
 use App\Models\Machine;
 use App\Models\OperasiTug;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
 
@@ -49,7 +51,7 @@ abstract class TugDocument
      *     totals: array<string, float>,
      *     grand_total: float,
      *     has_sheet: bool,
-     *     signatories: array{manager: string|null, tl_operasi: string|null}
+     *     signatories: array{manager: string|null, tl_operasi: string|null, tl_operasi_jabatan: string}
      * }
      */
     public function build(Unit $unit, Machine $machine, int $month, int $year): array
@@ -92,7 +94,8 @@ abstract class TugDocument
             'has_sheet' => $source['has_sheet'],
             'signatories' => [
                 'manager' => $unit->manager()?->name,
-                'tl_operasi' => $unit->employees()->where('is_active', true)->where('position', 'like', '%Team Leader Operasi%')->orderBy('id')->value('name'),
+                'tl_operasi' => app(ReportSignatories::class)->holder($unit, EmployeePosition::TeamLeaderOperasi)?->name,
+                'tl_operasi_jabatan' => app(ReportSignatories::class)->positionLabel($unit, EmployeePosition::TeamLeaderOperasi),
             ],
         ];
     }

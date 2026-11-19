@@ -4,6 +4,7 @@ namespace App\Services\Operasi;
 
 use App\Enums\BeritaAcaraType;
 use App\Enums\CalibrationFactorType;
+use App\Enums\EmployeePosition;
 use App\Enums\StockItemType;
 use App\Models\BbmType;
 use App\Models\CalibrationFactor;
@@ -17,6 +18,7 @@ use App\Models\LubricantType;
 use App\Models\Machine;
 use App\Models\PhysicalStockTake;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
 
@@ -480,7 +482,8 @@ class BeritaAcaraBuilder
             'print_place_date' => 'Kendari, '.Indonesian::longDate($today),
             'signers' => [
                 'manajer' => $this->employeeName($unit, 'manajer'),
-                'tl_operasi' => $this->employeeName($unit, 'operasi'),
+                // TL Operasi — or the TL Ophar / Project Leader by the unit's TL structure.
+                'tl_operasi' => app(ReportSignatories::class)->holder($unit, EmployeePosition::TeamLeaderOperasi)?->name,
             ],
         ];
     }

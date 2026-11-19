@@ -1,5 +1,5 @@
-import { Head, Link } from '@inertiajs/react';
-import { Pencil } from 'lucide-react';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { KeyRound, Pencil } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
@@ -41,8 +41,16 @@ type Props = {
     }[];
 };
 
+type ProvisionedAccounts = {
+    password: string;
+    accounts: { email: string; name: string; role: string }[];
+};
+
 export default function UnitShow({ unit, assignments, activity }: Props) {
     const { can } = usePermissions();
+    // Shown once, right after the unit was added with its accounts.
+    const provisioned = (usePage().flash as Record<string, unknown>)
+        ?.provisioned_accounts as ProvisionedAccounts | undefined;
 
     return (
         <>
@@ -63,11 +71,69 @@ export default function UnitShow({ unit, assignments, activity }: Props) {
                     }
                 />
 
+                {provisioned && provisioned.accounts.length > 0 && (
+                    <section className="flex flex-col gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/40">
+                        <div className="flex items-start gap-2">
+                            <KeyRound className="mt-0.5 size-4 text-amber-700 dark:text-amber-300" />
+                            <div>
+                                <h2 className="text-base font-semibold text-foreground">
+                                    {provisioned.accounts.length} akun unit
+                                    dibuat
+                                </h2>
+                                <p className="text-[13px] text-muted-foreground">
+                                    Kata sandi awal semua akun:{' '}
+                                    <code className="rounded bg-card px-1.5 py-0.5 font-mono text-[13px] font-semibold text-foreground">
+                                        {provisioned.password}
+                                    </code>{' '}
+                                    — minta pengguna menggantinya setelah
+                                    masuk.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse text-[13px]">
+                                <thead>
+                                    <tr>
+                                        {['Nama', 'E-mail', 'Role'].map(
+                                            (column) => (
+                                                <th
+                                                    key={column}
+                                                    className="border border-border bg-card px-2 py-1.5 text-left font-semibold text-foreground"
+                                                >
+                                                    {column}
+                                                </th>
+                                            ),
+                                        )}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {provisioned.accounts.map((account) => (
+                                        <tr key={account.email}>
+                                            <td className="border border-border bg-card px-2 py-1 text-foreground">
+                                                {account.name}
+                                            </td>
+                                            <td className="border border-border bg-card px-2 py-1 font-mono text-foreground">
+                                                {account.email}
+                                            </td>
+                                            <td className="border border-border bg-card px-2 py-1 text-foreground">
+                                                {account.role}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                )}
+
                 <section className="grid gap-4 rounded-md border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-3">
                     <Detail label="Status Operasi">
                         <StatusBadge tone={unit.status_tone}>
                             {unit.status_label}
                         </StatusBadge>
+                    </Detail>
+                    <Detail label="Struktur Team Leader">
+                        {unit.tl_structure_label ?? '—'}
                     </Detail>
                     <Detail label="Input Operasi oleh Operator">
                         {unit.operator_pengusahaan ? 'Aktif' : 'Tidak aktif'}

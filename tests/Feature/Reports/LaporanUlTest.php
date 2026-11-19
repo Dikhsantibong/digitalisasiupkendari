@@ -72,6 +72,8 @@ class LaporanUlTest extends TestCase
             $this->assertSame($keys, array_column($report['parts'], 'key'));
             foreach ($report['parts'] as $part) {
                 $this->assertNotEmpty($part['kpis']);
+                // Each indicator with its average per unit (user, 2026-11-18).
+                $this->assertTrue(collect($part['kpis'])->every(fn (array $kpi): bool => isset($kpi['average'])));
                 $this->assertCount(2, $part['unit_table']['rows']);
                 $this->assertSame('TOTAL / AKUMULASI UL', $part['unit_table']['footer'][0]);
                 $this->assertTrue(collect($part['charts'])->every(fn (array $chart): bool => str_starts_with($chart['image'], 'data:image/png;base64,')));
@@ -98,7 +100,10 @@ class LaporanUlTest extends TestCase
                     ->where('workflow.action_urls.submit', fn (string $url): bool => str_contains($url, "/laporan-ul/{$kind}/ajukan"))
                     ->missing('content')
                     ->loadDeferredProps('document', fn ($page) => $page
-                        ->where('content', fn (string $html): bool => str_contains($html, 'LEMBAR PENGESAHAN') && str_contains($html, mb_strtoupper(UlReport::KINDS[$kind][0])) && str_contains($html, 'id="ul-ttd"'))
+                        ->where('content', fn (string $html): bool => str_contains($html, 'LEMBAR PENGESAHAN') && str_contains($html, mb_strtoupper(UlReport::KINDS[$kind][0])) && str_contains($html, 'id="ul-ttd"')
+                            // No MKP logo in the Laporan UL (user, 2026-11-18).
+                            && ! str_contains($html, 'mkp.jpg'))
+                        ->where('letterhead', fn (string $html): bool => ! str_contains($html, 'mkp.jpg'))
                         ->where('document_number', fn (string $number): bool => str_starts_with($number, 'LAP-UL-'))
                         ->has('grid.rows')));
         }

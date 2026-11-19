@@ -1,4 +1,5 @@
 import { Form, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import { FormField } from '@/components/form-field';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -22,6 +23,7 @@ type Props = {
         types: Option[];
         contracts: Option[];
         statuses: Option[];
+        tlStructures: Option[];
     };
     submitLabel: string;
 };
@@ -29,7 +31,21 @@ type Props = {
 const NO_SERVICE_UNIT = 'none';
 const NO_CONTRACT = 'none';
 
+/** The TL structure a unit name suggests: containerized units have no TL, the rest a TL Ophar. */
+const suggestedStructure = (name: string): string =>
+    name.toLowerCase().includes('containerized') ? 'containerized' : 'ophar';
+
 export function UnitForm({ action, unit, options, submitLabel }: Props) {
+    const isNew = unit === undefined;
+    const [structure, setStructure] = useState(
+        unit?.tl_structure ?? suggestedStructure(''),
+    );
+    // A new unit follows its name until the structure is picked by hand.
+    const [structurePicked, setStructurePicked] = useState(!isNew);
+    const structureOption = options.tlStructures.find(
+        (option) => option.value === structure,
+    );
+
     return (
         <Form
             {...action}
@@ -79,6 +95,15 @@ export function UnitForm({ action, unit, options, submitLabel }: Props) {
                                     defaultValue={unit?.name ?? ''}
                                     autoComplete="off"
                                     required
+                                    onChange={(event) => {
+                                        if (!structurePicked) {
+                                            setStructure(
+                                                suggestedStructure(
+                                                    event.target.value,
+                                                ),
+                                            );
+                                        }
+                                    }}
                                 />
                             </FormField>
 
@@ -264,6 +289,75 @@ export function UnitForm({ action, unit, options, submitLabel }: Props) {
                                     </span>
                                 </label>
                             </FormField>
+                        </div>
+                    </section>
+
+                    <section className="flex flex-col gap-4 rounded-md border border-border bg-card p-4">
+                        <div>
+                            <h2 className="text-base font-semibold text-foreground">
+                                Struktur Team Leader
+                            </h2>
+                            <p className="text-[13px] text-muted-foreground">
+                                Menentukan siapa yang menyetujui laporan unit
+                                ini. Nama unit yang memuat kata
+                                &quot;Containerized&quot; otomatis memakai
+                                struktur containerized.
+                            </p>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <FormField
+                                label="Struktur TL"
+                                required
+                                hint={structureOption?.description}
+                                error={errors.tl_structure}
+                            >
+                                <Select
+                                    name="tl_structure"
+                                    value={structure}
+                                    onValueChange={(value) => {
+                                        setStructure(value);
+                                        setStructurePicked(true);
+                                    }}
+                                >
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Pilih struktur" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {options.tlStructures.map((option) => (
+                                            <SelectItem
+                                                key={option.value}
+                                                value={option.value}
+                                            >
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormField>
+
+                            {isNew && (
+                                <FormField
+                                    label="Akun Unit"
+                                    hint="Akun Unit, Project Leader, Team Leader sesuai struktur, serta Koordinator & Office tiap divisi — dengan data pegawainya. Kata sandi awal semua akun: password."
+                                    error={errors.create_accounts}
+                                >
+                                    <label className="flex min-h-9 items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2">
+                                        <input
+                                            type="hidden"
+                                            name="create_accounts"
+                                            value="0"
+                                        />
+                                        <Checkbox
+                                            name="create_accounts"
+                                            value="1"
+                                            defaultChecked
+                                        />
+                                        <span className="text-[13px]">
+                                            Buat akun pengguna unit otomatis
+                                        </span>
+                                    </label>
+                                </FormField>
+                            )}
                         </div>
                     </section>
 

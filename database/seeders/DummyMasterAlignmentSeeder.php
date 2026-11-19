@@ -10,6 +10,7 @@ use App\Enums\TankFuelType;
 use App\Enums\TankJenis;
 use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
+use App\Enums\UnitTlStructure;
 use App\Models\AuxiliarySource;
 use App\Models\BbmType;
 use App\Models\Employee;
@@ -450,6 +451,16 @@ class DummyMasterAlignmentSeeder extends Seeder
                 [23, EmployeePosition::OfficePdm->value, RoleName::KoordinatorPdm, "office-pdm.{$slug}@upkendari.co.id", 'pdm'],
                 [24, EmployeePosition::PicPdm->value, RoleName::KoordinatorPdm, "pic-pdm.{$slug}@upkendari.co.id", 'pdm'],
             ];
+
+            // Team Leaders by the unit's TL structure: the TL Operasi row is the TL Ophar (same e-mail) and
+            // there is no TL Pemeliharaan in an Ophar unit; a containerized unit has no Team Leader.
+            $structure = $unit->tlStructure();
+            $requiredPositions = array_values(array_filter(array_map(fn (array $row): ?array => match (true) {
+                ! in_array($row[0], [7, 8, 9], true) || $structure === UnitTlStructure::Terpisah => $row,
+                $structure === UnitTlStructure::Containerized, $row[0] === 7 => null,
+                $row[0] === 8 => [8, EmployeePosition::TeamLeaderOphar->value, RoleName::TeamLeaderOphar, $row[3], 'pemeliharaan'],
+                default => $row,
+            }, $requiredPositions)));
 
             foreach ($requiredPositions as [$suffix, $posValue, $role, $email, $div]) {
                 $existingByPos = Employee::query()

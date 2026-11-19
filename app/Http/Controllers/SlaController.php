@@ -24,8 +24,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Logistik, PdM, K3L and Project Leader — scored from the unit's inputs
  * ({@see SlaReport}); a page with the PDF (landscape) and Excel downloads.
  * Open to whoever may view the divisi's laporan, for the units they can access.
- * The Laporan SLA gabungan (cover + every divisi + rekapitulasi, one file) is
- * for accounts that may open every divisi (Super Admin).
+ * The Laporan SLA gabungan (cover + every divisi + rekapitulasi, one file —
+ * one unit or every accessible unit) is for the Super Admin and the holders
+ * of sla.gabungan (Project Leader).
  */
 class SlaController extends Controller
 {
@@ -60,20 +61,62 @@ class SlaController extends Controller
     }
 
     /**
-     * Laporan SLA gabungan: the cover (portrait) then every divisi's SLA one
-     * under another and the Rekapitulasi (landscape), in one PDF.
+     * Laporan SLA gabungan page (Project Leader & Super Admin): one unit or
+     * every accessible unit ("Semua unit"), with the rekap per divisi and the
+     * PDF / Excel downloads in one file.
+     */
+    public function combinedIndex(Request $request): InertiaResponse
+    {
+        [$units, $selected, $month, $year, $tagihan, $all] = $this->combinedTarget($request);
+        $now = Carbon::now();
+
+        return Inertia::render('laporan/sla-gabungan', [
+            'filters' => ['unit_id' => $all ? 'all' : $selected->first()->id, 'month' => $month, 'year' => $year, 'tagihan' => $tagihan],
+            'options' => [
+                'units' => $units->map(fn (Unit $u): array => ['id' => $u->id, 'name' => $u->name])->values()->all(),
+                'years' => range($now->year - 3, $now->year + 1),
+            ],
+            'period' => Indonesian::monthName($month).' '.$year,
+            'recap' => $selected->map(fn (Unit $unit): array => [
+                'unit' => $unit->name,
+                'rows' => array_map(fn (array $sla): array => [
+                    'number' => $sla['number'],
+                    'title' => $sla['title'],
+                    'bobot' => $sla['total']['bobot'],
+                    'percent' => $sla['total']['percent'],
+                    'denda_count' => $sla['total']['denda_count'],
+                    'measured' => $sla['total']['measured'],
+                    'denda_bobot' => $sla['total']['denda_bobot'],
+                ], $this->combined($unit, $month, $year)),
+            ])->values()->all(),
+        ]);
+    }
+
+    /**
+     * Laporan SLA gabungan: per unit the cover (portrait) then every divisi's
+     * SLA one under another and the Rekapitulasi (landscape) — one unit, or
+     * every accessible unit one after another — in one PDF.
      */
     public function combinedPdf(Request $request, SlaCover $cover): Response
     {
-        [, $unit, $month, $year, $tagihan] = $this->target($request, null);
-        $slas = $this->combined($unit, $month, $year);
+        [, $selected, $month, $year, $tagihan, $all] = $this->combinedTarget($request);
 
-        $coverPdf = Pdf::loadView('reports.sla-cover', ['cover' => $cover->png($unit->name, Indonesian::monthName($month), $year)])->setPaper('a4', 'portrait')->output();
-        $bodyPdf = Pdf::loadView('reports.sla-pdf', ['slas' => $slas, 'tagihan' => $tagihan, 'recap' => true, 'printedAt' => Carbon::now()])->setPaper('a4', 'landscape')->output();
+        // "Semua unit" of the Super Admin spans every unit (cover + six divisi each, ~100 MB peak per
+        // dompdf render): allow the time and memory it takes, for this request only.
+        if ($selected->count() > 3) {
+            set_time_limit(max(120, 20 * $selected->count()));
+            ini_set('memory_limit', '1024M');
+        }
 
-        $file = Str::slug("laporan sla {$unit->name} {$month} {$year}").'.pdf';
+        $pdfs = [];
+        foreach ($selected as $unit) {
+            $pdfs[] = Pdf::loadView('reports.sla-cover', ['cover' => $cover->png($unit->name, Indonesian::monthName($month), $year)])->setPaper('a4', 'portrait')->output();
+            $pdfs[] = Pdf::loadView('reports.sla-pdf', ['slas' => $this->combined($unit, $month, $year), 'tagihan' => $tagihan, 'recap' => true, 'printedAt' => Carbon::now()])->setPaper('a4', 'landscape')->output();
+        }
 
-        return response($this->merge([$coverPdf, $bodyPdf]), 200, [
+        $file = Str::slug('laporan sla '.($all ? 'semua unit' : $selected->first()->name)." {$month} {$year}").'.pdf';
+
+        return response($this->merge($pdfs), 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename="'.$file.'"',
         ]);
@@ -81,16 +124,20 @@ class SlaController extends Controller
 
     /**
      * Payload of the Laporan SLA gabungan's Excel (built in the browser): the
-     * cover image and every divisi's SLA.
+     * cover image and every divisi's SLA — for "Semua unit", one entry per unit.
      */
     public function combinedData(Request $request, SlaCover $cover): JsonResponse
     {
-        [, $unit, $month, $year] = $this->target($request, null);
-
-        return response()->json([
+        [, $selected, $month, $year, , $all] = $this->combinedTarget($request);
+        $payload = fn (Unit $unit): array => [
+            'unit' => $unit->name,
             'cover' => $cover->png($unit->name, Indonesian::monthName($month), $year),
             'slas' => $this->combined($unit, $month, $year),
-        ]);
+        ];
+
+        return response()->json($all
+            ? ['units' => $selected->map($payload)->values()->all()]
+            : $payload($selected->first()));
     }
 
     /**
@@ -120,6 +167,41 @@ class SlaController extends Controller
         }
 
         return $merged->Output('', 'S');
+    }
+
+    /**
+     * The Laporan SLA gabungan target: one accessible unit, or every one ("unit_id=all").
+     *
+     * @return array{0: Collection<int, Unit>, 1: Collection<int, Unit>, 2: int, 3: int, 4: float|null, 5: bool}
+     */
+    private function combinedTarget(Request $request): array
+    {
+        $user = $request->user();
+        abort_unless(SlaReport::allowsCombined($user), 403);
+
+        $validated = $request->validate([
+            'unit_id' => ['nullable', 'regex:/^(all|\d+)$/'],
+            'month' => ['nullable', 'integer', 'between:1,12'],
+            'year' => ['nullable', 'integer', 'between:2000,2100'],
+            'tagihan' => ['nullable', 'numeric', 'min:0', 'max:1000000000000'],
+        ]);
+
+        $units = Unit::query()->visibleTo($user)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'service_unit_id', 'status']);
+        abort_if($units->isEmpty(), 403, 'Anda belum ditugaskan pada unit manapun.');
+
+        $unitId = $validated['unit_id'] ?? null;
+        $all = $unitId === 'all';
+        if ($all) {
+            $selected = Unit::query()->whereIn('id', $units->pluck('id'))->orderBy('name')->get();
+        } else {
+            $unit = $unitId === null ? $units->first() : $units->firstWhere('id', (int) $unitId);
+            abort_if($unit === null, 403);
+            $selected = new Collection([Unit::query()->findOrFail($unit->id)]);
+        }
+
+        $now = Carbon::now();
+
+        return [$units, $selected, (int) ($validated['month'] ?? $now->month), (int) ($validated['year'] ?? $now->year), isset($validated['tagihan']) ? (float) $validated['tagihan'] : null, $all];
     }
 
     /**

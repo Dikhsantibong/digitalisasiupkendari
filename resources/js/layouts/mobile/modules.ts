@@ -106,6 +106,17 @@ export const MOBILE_MODULES: MobileModule[] = [
         menus: OPERASI_PROJECT_MENUS,
     },
     {
+        // TL Ophar (TL Operasi + TL Pemeliharaan in one, user 2026-11-18): both Akses 2 on one phone home.
+        key: 'ophar-pengusahaan',
+        enabled: true,
+        title: 'Operasi & Pemeliharaan',
+        subtitle: 'Input, berita acara, formulir & laporan',
+        roles: ['tl_ophar'],
+        homeComponents: ['dashboard'],
+        homeHref: dashboard().url,
+        menus: [...OPERASI_PENGUSAHAAN_MENUS, ...HAR_PENGUSAHAAN_MENUS],
+    },
+    {
         // Akses 2 — Operasi on a phone: TL & Staf Operasi (Manager UL keeps the full app).
         key: 'operasi-pengusahaan',
         enabled: true,

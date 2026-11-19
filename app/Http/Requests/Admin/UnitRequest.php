@@ -4,10 +4,12 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
+use App\Enums\UnitTlStructure;
 use App\Enums\UnitType;
 use App\Models\Unit;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -40,6 +42,9 @@ class UnitRequest extends FormRequest
             'location' => ['nullable', 'string', 'max:160'],
             'is_active' => ['required', 'boolean'],
             'operator_pengusahaan' => ['sometimes', 'boolean'],
+            'tl_structure' => ['sometimes', Rule::enum(UnitTlStructure::class)],
+            // Adding a unit: make its accounts (Akun Unit, Project Leader, TL, Koordinator & Office).
+            'create_accounts' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -48,8 +53,12 @@ class UnitRequest extends FormRequest
      */
     public function validatedAttributes(): array
     {
-        $validated = $this->validated();
+        $validated = Arr::except($this->validated(), ['create_accounts']);
         $validated['code'] = Str::upper($validated['code']);
+        // A new unit without a choice: containerized by its name, otherwise TL Ophar.
+        if (! $this->route('unit') instanceof Unit && ! isset($validated['tl_structure'])) {
+            $validated['tl_structure'] = UnitTlStructure::suggestFor($validated['name'])->value;
+        }
         $validated['slug'] = Str::slug($validated['name']);
 
         return $validated;
@@ -71,6 +80,8 @@ class UnitRequest extends FormRequest
             'location' => 'lokasi',
             'is_active' => 'status aktif',
             'operator_pengusahaan' => 'input operasi oleh operator',
+            'tl_structure' => 'struktur team leader',
+            'create_accounts' => 'buat akun unit',
         ];
     }
 }

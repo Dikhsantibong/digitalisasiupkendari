@@ -2,9 +2,10 @@
 
 namespace App\Services\Operasi;
 
-use App\Models\Employee;
+use App\Enums\EmployeePosition;
 use App\Models\OperasiRekap;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
 
@@ -72,12 +73,9 @@ class BaFisikPelumasSheet
             ];
         }
 
-        $tl = Employee::query()
-            ->where('is_active', true)
-            ->where('unit_id', $unit->id)
-            ->where(fn ($query) => $query->where('position', 'like', '%team leader operasi%')->orWhere('position', 'like', '%tl operasi%'))
-            ->orderBy('name')
-            ->first();
+        // TL Operasi — or the TL Ophar / Project Leader by the unit's TL structure.
+        $signatories = app(ReportSignatories::class);
+        $tl = $signatories->holder($unit, EmployeePosition::TeamLeaderOperasi);
 
         return [
             'lubricants' => $data['lubricants'],
@@ -90,7 +88,7 @@ class BaFisikPelumasSheet
                 'mengetahui' => (string) ($stored['header']['mengetahui'] ?? $unit->manager()?->name ?? ''),
                 'mengetahui_jabatan' => (string) ($stored['header']['mengetahui_jabatan'] ?? 'Manajer'),
                 'dibuat' => (string) ($stored['header']['dibuat'] ?? $tl?->name ?? ''),
-                'dibuat_jabatan' => (string) ($stored['header']['dibuat_jabatan'] ?? 'Team Leader Operasi'),
+                'dibuat_jabatan' => (string) ($stored['header']['dibuat_jabatan'] ?? $signatories->positionLabel($unit, EmployeePosition::TeamLeaderOperasi)),
             ],
             'items' => $this->items($stored['items'] ?? [], $keys),
             'record' => $record,

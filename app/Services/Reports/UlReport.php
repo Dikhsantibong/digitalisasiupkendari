@@ -52,6 +52,7 @@ class UlReport
         private readonly Chart3d $chart3d,
         private readonly InputCompleteness $completeness,
         private readonly ReportWorkflowService $workflows,
+        private readonly UlInputLogistik $inputLogistik,
     ) {}
 
     /** Whether the user may open the Laporan UL (Admin UL & Super Admin). */
@@ -147,14 +148,25 @@ class UlReport
             ];
         }
 
+        // Laporan Logistik: the TL's Input Logistik (Pemeliharaan Akses 2) of every unit goes in too.
+        $extra = $module === 'logistik' ? $this->inputLogistik->build($units, $month, $year) : ['sections' => [], 'insights' => []];
+
         return [
             'key' => $module,
             'title' => $title,
-            'kpis' => $total['kpis'],
-            'insights' => $total['insights'],
+            // Each indicator also with its average per unit (mean of the units' own values).
+            'kpis' => array_map(function (array $kpi, int $index) use ($perUnit, $total): array {
+                $raw = $total['raw_kpis'][$index] ?? null;
+                $values = $perUnit->map(fn (array $row): ?float => isset($row['kpis'][$index]['value']) ? (float) $row['kpis'][$index]['value'] : null)->filter(fn (?float $v): bool => $v !== null);
+
+                return [...$kpi, 'average' => $raw === null || $values->isEmpty()
+                    ? '—'
+                    : trim($this->resume->formatValue($values->avg(), $raw['format']).(($raw['unit'] ?? '') !== '' ? ' '.$raw['unit'] : ''))];
+            }, $total['kpis'], array_keys($total['kpis'])),
+            'insights' => [...$total['insights'], ...$extra['insights']],
             'charts' => [...$compare, ...array_slice($total['charts'], 0, self::PART_CHARTS)],
             'unit_table' => $unitTable,
-            'sections' => $total['sections'],
+            'sections' => [...$extra['sections'], ...$total['sections']],
         ];
     }
 

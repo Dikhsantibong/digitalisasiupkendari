@@ -29,7 +29,7 @@ class UlReportDocumentBuilder
     ) {}
 
     /**
-     * @return array{report: array<string, mixed>, document_number: string, tempat_tanggal: string, signatures: string}
+     * @return array{report: array<string, mixed>, document_number: string, tempat_tanggal: string, signatures: string, validation: string}
      */
     public function build(string $kind, ServiceUnit $ul, int $month, int $year, ?UlReportDocument $document, ?User $user = null): array
     {
@@ -38,6 +38,9 @@ class UlReportDocumentBuilder
             'document_number' => self::documentNumber($kind, $ul, $month, $year),
             'tempat_tanggal' => 'Kendari, '.Indonesian::longDate(Carbon::create($year, $month, 1)->addMonth()),
             'signatures' => $this->signatures($ul, $kind, $document, $user),
+            'validation' => in_array($kind, UlReportWorkflow::TL_MAKES, true)
+                ? 'Laporan ini telah dibuat oleh Team Leader Operasi dan disahkan oleh Manager UL'
+                : 'Laporan ini telah diperiksa dan disetujui oleh Team Leader bidang terkait serta disahkan oleh Manager UL',
         ];
     }
 
@@ -91,6 +94,14 @@ class UlReportDocumentBuilder
                 'signed_at' => null,
             ], $this->workflow->chain($ul, $kind));
 
+        // Laporan Pengusahaan Pembangkit: the TL Operasi is the maker ("Dibuat Oleh"), the Admin UL is not printed.
+        if (in_array($kind, UlReportWorkflow::TL_MAKES, true)) {
+            return View::make('reports.ul-document.signatures', ['signers' => array_map(
+                fn (array $signer): array => [...$signer, 'caption' => $signer['caption'] === 'Membuat' ? 'Dibuat Oleh' : $signer['caption']],
+                $approvers,
+            )])->render();
+        }
+
         return View::make('reports.ul-document.signatures', ['signers' => [
             ['caption' => 'Dibuat Oleh', 'position' => 'Admin UL', 'name' => $maker, 'signed_at' => $format($document?->submitted_at)],
             ...$approvers,
@@ -124,8 +135,8 @@ class UlReportDocumentBuilder
             if ($part['kpis'] !== []) {
                 $tables[] = [
                     'title' => "{$part['title']} — Indikator Utama (Akumulasi UL)",
-                    'columns' => ['Indikator', 'Bulan Ini', 'Bulan Lalu', 'Perubahan (%)'],
-                    'rows' => array_map(fn (array $kpi): array => [$kpi['label'], $kpi['value'], $kpi['previous'], $kpi['delta'] === null ? '—' : number_format((float) $kpi['delta'], 1, ',', '.')], $part['kpis']),
+                    'columns' => ['Indikator', 'Bulan Ini (Akumulasi UL)', 'Rata-rata per Unit', 'Bulan Lalu', 'Perubahan (%)'],
+                    'rows' => array_map(fn (array $kpi): array => [$kpi['label'], $kpi['value'], $kpi['average'] ?? '—', $kpi['previous'], $kpi['delta'] === null ? '—' : number_format((float) $kpi['delta'], 1, ',', '.')], $part['kpis']),
                 ];
             }
             if ($part['unit_table'] !== null) {

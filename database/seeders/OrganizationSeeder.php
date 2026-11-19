@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UnitTlStructure;
 use App\Enums\UnitType;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
@@ -91,7 +92,7 @@ class OrganizationSeeder extends Seeder
         }
 
         foreach (self::UNITS as $unit) {
-            Unit::query()->updateOrCreate(
+            $model = Unit::query()->updateOrCreate(
                 ['code' => $unit['code']],
                 [
                     'service_unit_id' => $unit['service_unit'] === null
@@ -103,6 +104,11 @@ class OrganizationSeeder extends Seeder
                     'is_active' => true,
                 ],
             );
+
+            // A new unit's TL structure (TL Ophar except the four separate & the containerized units); kept on re-runs.
+            if ($model->wasRecentlyCreated) {
+                $model->forceFill(['tl_structure' => UnitTlStructure::initialFor($unit['code'], $unit['name'])])->save();
+            }
         }
 
         $this->seedEmployees();

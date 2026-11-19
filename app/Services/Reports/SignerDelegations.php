@@ -35,6 +35,7 @@ class SignerDelegations
             EmployeePosition::KoordinatorLogistik,
             EmployeePosition::TeamLeaderOperasi,
             EmployeePosition::TeamLeaderPemeliharaan,
+            EmployeePosition::TeamLeaderOphar,
             EmployeePosition::TeamLeaderK3,
             EmployeePosition::ManagerUl,
             EmployeePosition::ProjectLeader,

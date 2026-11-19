@@ -122,7 +122,7 @@ class HarMotorCurrentPdfBuilder
 
             'tl_har_id' => $tlHar?->id,
             'tl_har_name' => $signatories->nameFor($input, 'tl_har', $tlHar),
-            'tl_har_title' => $input['tl_har_title'] ?? 'Team Leader Pemeliharaan',
+            'tl_har_title' => $input['tl_har_title'] ?? $signatories->positionLabel($unit, EmployeePosition::TeamLeaderPemeliharaan),
             'tl_har_signature' => $this->resolveSignatureBase64($tlHar),
 
             'staff_har_id' => $staffHar?->id,

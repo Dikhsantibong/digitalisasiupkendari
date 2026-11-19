@@ -1,7 +1,7 @@
 @php
     /**
-     * Official 3-column kop (PLN logo · organisation lines · MKP logo) of the
-     * Laporan UL pages.
+     * Official kop (PLN logo · organisation lines) of the Laporan UL pages —
+     * without the MKP logo (user, 2026-11-18).
      *
      * @var string $title
      * @var string $ulName
@@ -13,9 +13,6 @@
             <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" style="max-height: 42px; max-width: 120px;">
         </td>
         <td class="kop-center-cell">JASA PENDUKUNG TEKNIS UP KENDARI 11 &amp; 6 SITE - KIT</td>
-        <td rowspan="4" class="kop-logo-right pdm-kop-logo-right">
-            <img src="/logo/mkp.jpg" alt="Mitra Karya Prima">
-        </td>
     </tr>
     <tr><td class="kop-center-cell">{{ mb_strtoupper($ulName) }}</td></tr>
     <tr><td class="kop-center-cell">LAPORAN UNIT LAYANAN</td></tr>

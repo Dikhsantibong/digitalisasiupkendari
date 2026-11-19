@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Operasi;
 
 use App\Enums\ActivityEvent;
+use App\Enums\EmployeePosition;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,7 @@ use App\Models\OperasiStandMeter;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Services\Operasi\UnitFuelTypes;
+use App\Services\Reports\ReportSignatories;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -265,6 +267,7 @@ class PengusahaanStandMeterController extends Controller
             'readings' => $readings,
             'totals' => $totals,
             'catatan' => $catatan,
+            'tl_jabatan' => app(ReportSignatories::class)->positionLabel($unit, EmployeePosition::TeamLeaderOperasi),
         ])->setPaper('a4', 'landscape');
 
         $filename = "Stand_Flow_Meter_{$fuelName}_{$unit->name}_{$month}_{$year}.pdf";

@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use App\Enums\PermissionName;
 use App\Enums\ReportModule;
 use App\Enums\ReportStatus;
 use App\Models\Unit;
@@ -42,7 +43,9 @@ class SlaReport
     /** Whether the user may download the Laporan SLA gabungan: every divisi's SLA. */
     public static function allowsCombined(User $user): bool
     {
-        return collect(array_keys(SlaCatalog::DIVISI))->every(fn (string $divisi): bool => self::allows($user, $divisi));
+        // Every divisi (Super Admin), or the Laporan SLA gabungan alone (Project Leader, user 2026-11-18).
+        return $user->hasPermissionTo(PermissionName::SlaGabungan)
+            || collect(array_keys(SlaCatalog::DIVISI))->every(fn (string $divisi): bool => self::allows($user, $divisi));
     }
 
     /**

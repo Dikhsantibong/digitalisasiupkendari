@@ -55,6 +55,9 @@ export type UnitRow = {
     is_active: boolean;
     /** Operators of the unit fill the Operasi inputs (off for containerized units). */
     operator_pengusahaan?: boolean;
+    /** TL structure: terpisah | ophar (TL Ophar) | containerized (no TL, led by the Project Leader). */
+    tl_structure?: string;
+    tl_structure_label?: string;
     service_unit_id: number | null;
     service_unit: string | null;
     machines_count?: number | null;

@@ -125,7 +125,6 @@ class SlaReportTest extends TestCase
 
         foreach ([RoleName::TeamLeaderK3, RoleName::ProjectLeaderOperasi] as $role) {
             $user = $this->userWithRole($role, $unit);
-            $this->assertFalse(SlaReport::allowsCombined($user));
 
             foreach (array_keys(SlaCatalog::DIVISI) as $divisi) {
                 $this->assertFalse(SlaReport::allows($user, $divisi), "{$role->value} / {$divisi}");
@@ -133,9 +132,14 @@ class SlaReportTest extends TestCase
 
             $this->actingAs($user)->get(route('sla.show', ['divisi' => 'k3', 'unit_id' => $unit->id]))->assertForbidden();
             $this->actingAs($user)->get(route('sla.pdf', ['divisi' => 'k3', 'unit_id' => $unit->id]))->assertForbidden();
-            $this->actingAs($user)->get(route('sla.combined.pdf', ['unit_id' => $unit->id]))->assertForbidden();
-            $this->actingAs($user)->get(route('sla.combined.data', ['unit_id' => $unit->id]))->assertForbidden();
         }
+
+        // The Laporan SLA gabungan: the Project Leader prints it (sla.gabungan, user 2026-11-18), a TL does not.
+        $tl = $this->userWithRole(RoleName::TeamLeaderK3, $unit);
+        $this->assertFalse(SlaReport::allowsCombined($tl));
+        $this->actingAs($tl)->get(route('sla.combined.pdf', ['unit_id' => $unit->id]))->assertForbidden();
+        $this->actingAs($tl)->get(route('sla.combined.data', ['unit_id' => $unit->id]))->assertForbidden();
+        $this->assertTrue(SlaReport::allowsCombined($this->userWithRole(RoleName::ProjectLeaderOperasi, $unit)));
     }
 
     public function test_the_super_admin_downloads_the_combined_sla_in_one_file(): void

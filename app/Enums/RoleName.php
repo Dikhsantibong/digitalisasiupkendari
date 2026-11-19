@@ -22,6 +22,8 @@ enum RoleName: string
     case TeamLeaderOperasi = 'tl_operasi';
     case TeamLeaderPemeliharaan = 'tl_pemeliharaan';
     case TeamLeaderK3 = 'tl_k3';
+    // TL Operasi + TL Pemeliharaan in one account, in the units with UnitTlStructure::Ophar (user, 2026-11-18).
+    case TeamLeaderOphar = 'tl_ophar';
     // Logistik & PdM are run by their Koordinator (user, 2026-11-09: the TL Logistik / TL PdM roles were dropped);
     // their reports are approved by the TL Pemeliharaan.
     case KoordinatorLogistik = 'koordinator_logistik';
@@ -61,6 +63,7 @@ enum RoleName: string
             self::TeamLeaderOperasi => 'TL Operasi',
             self::TeamLeaderPemeliharaan => 'TL Pemeliharaan',
             self::TeamLeaderK3 => 'TL K3 & Keamanan',
+            self::TeamLeaderOphar => 'TL Ophar',
             self::KoordinatorLogistik => 'Koordinator Logistik & Gudang',
             self::KoordinatorPdm => 'Koordinator PdM & Maturity Level',
             self::SiteLeader => 'Site Leader',
@@ -94,6 +97,7 @@ enum RoleName: string
             self::TeamLeaderOperasi => 'Akses 2 — Operasi (menu & laporan divisi), serta menyetujui Laporan Project Operasi pada unit yang ditugaskan.',
             self::TeamLeaderPemeliharaan => 'Akses 2 — Pemeliharaan (menu & laporan divisi), serta menyetujui Laporan Project Pemeliharaan pada unit yang ditugaskan.',
             self::TeamLeaderK3 => 'Akses 2 — K3 & keamanan (menu & laporan divisi), serta menyetujui Laporan K3 Pembangkit pada unit yang ditugaskan.',
+            self::TeamLeaderOphar => 'TL Operasi & Pemeliharaan digabung: Akses 2 — Operasi dan Pemeliharaan (menu & laporan divisi), serta menyetujui Laporan Project Operasi, Pemeliharaan, Logistik & PdM pada unit yang ditugaskan.',
             self::KoordinatorLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan dan memverifikasi Laporan Logistik (disetujui TL Pemeliharaan).',
             self::KoordinatorPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan dan memverifikasi Laporan PdM (disetujui TL Pemeliharaan).',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
@@ -135,6 +139,7 @@ enum RoleName: string
             self::TeamLeaderOperasi,
             self::TeamLeaderPemeliharaan,
             self::TeamLeaderK3,
+            self::TeamLeaderOphar,
             self::KoordinatorLogistik,
             self::KoordinatorPdm,
             self::SiteLeader,
@@ -287,6 +292,13 @@ enum RoleName: string
                 PermissionName::K3MonitoringView,
             ],
 
+            // TL Ophar: everything the TL Operasi and the TL Pemeliharaan hold.
+            self::TeamLeaderOphar => collect([...self::TeamLeaderOperasi->defaultPermissions(), ...self::TeamLeaderPemeliharaan->defaultPermissions()])
+                ->unique(fn (PermissionName $permission): string => $permission->value)
+                ->reject(fn (PermissionName $permission): bool => in_array($permission, PermissionName::notifications(), true))
+                ->values()
+                ->all(),
+
             self::StafPemeliharaan => [
                 ...$this->stafBasePermissions(),
                 PermissionName::HarPengusahaanView,
@@ -383,6 +395,10 @@ enum RoleName: string
                 // The Project Leader also holds (creates) the Daily Meeting
                 // Pemeliharaan and shows its QR attendance code.
                 PermissionName::HarLapanganDailyMeeting,
+                // One Laporan menu with every report by module, and the
+                // Laporan SLA gabungan (user, 2026-11-18).
+                PermissionName::LaporanHub,
+                PermissionName::SlaGabungan,
             ],
 
             self::Operator => [

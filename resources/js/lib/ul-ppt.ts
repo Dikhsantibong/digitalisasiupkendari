@@ -35,27 +35,26 @@ export async function downloadUlPpt(
     pptx.company = 'PT PLN Nusantara Power — UP Kendari';
     pptx.title = `Laporan Bulanan ${first.ul.name} — ${first.period.label}`;
 
+    // Laporan UL: the PLN Nusantara Power logo only, no MKP logo (user, 2026-11-18).
     const pln = await loadImageBase64('/logo/sidebar-logo.png');
-    const mkp = await loadImageBase64('/logo/mkp.jpg');
+    // Power-plant / technology backgrounds: dark for cover, dividers & closing, light for content slides.
+    const asBackground = (base64: string | null) =>
+        base64 ? `image/png;base64,${base64}` : null;
+    const bgDark = asBackground(
+        await loadImageBase64('/images/ul/ppt-bg-dark.png'),
+    );
+    const bgLight = asBackground(
+        await loadImageBase64('/images/ul/ppt-bg-light.png'),
+    );
     const logos = (slide: Slide, small = true) => {
         const h = small ? 0.42 : 0.8;
 
         if (pln) {
             slide.addImage({
                 data: `data:image/png;base64,${pln}`,
-                x: small ? 0.35 : 0.8,
+                x: small ? 0.35 : (W - h * 3.4) / 2,
                 y: small ? 0.18 : 0.6,
                 w: h * 3.4,
-                h,
-            });
-        }
-
-        if (mkp) {
-            slide.addImage({
-                data: `data:image/jpeg;base64,${mkp}`,
-                x: W - (small ? 0.35 : 0.8) - h * 1.4,
-                y: small ? 0.18 : 0.6,
-                w: h * 1.4,
                 h,
             });
         }
@@ -66,7 +65,7 @@ export async function downloadUlPpt(
     const content = (title: string, subtitle?: string): Slide => {
         page++;
         const slide = pptx.addSlide();
-        slide.background = { color: 'FFFFFF' };
+        slide.background = bgLight ? { data: bgLight } : { color: 'FFFFFF' };
         logos(slide);
         slide.addShape(pptx.ShapeType.rect, {
             x: 0,
@@ -218,78 +217,71 @@ export async function downloadUlPpt(
         }
     };
 
-    // 1. Cover
+    // 1. Cover — power-plant / technology background (public/images/ul/ppt-bg-dark.png).
     page++;
     const cover = pptx.addSlide();
-    cover.background = { color: 'FFFFFF' };
-    cover.addShape(pptx.ShapeType.rect, {
-        x: 0,
-        y: H - 2.2,
-        w: W,
-        h: 2.2,
-        fill: { color: DARK },
-        line: { color: DARK },
-    });
-    cover.addShape(pptx.ShapeType.rect, {
-        x: 0,
-        y: H - 2.3,
-        w: W,
-        h: 0.1,
-        fill: { color: ACCENT },
-        line: { color: ACCENT },
+    cover.background = bgDark ? { data: bgDark } : { color: DARK };
+    cover.addShape(pptx.ShapeType.roundRect, {
+        x: (W - 3.4) / 2,
+        y: 0.45,
+        w: 3.4,
+        h: 1.0,
+        fill: { color: 'FFFFFF' },
+        line: { color: 'FFFFFF' },
+        rectRadius: 0.1,
     });
     logos(cover, false);
     cover.addText('LAPORAN BULANAN UNIT LAYANAN', {
         x: 0.8,
-        y: 2.0,
+        y: 1.75,
         w: W - 1.6,
         h: 0.7,
         fontFace: FONT,
         fontSize: 34,
         bold: true,
-        color: DARK,
+        color: 'FFFFFF',
         align: 'center',
     });
     cover.addText(first.ul.name.toUpperCase(), {
         x: 0.8,
-        y: 2.75,
+        y: 2.5,
         w: W - 1.6,
         h: 0.6,
         fontFace: FONT,
         fontSize: 26,
         bold: true,
-        color: NAVY,
+        color: ACCENT,
         align: 'center',
     });
     cover.addText(`Periode ${first.period.label}`, {
         x: 0.8,
-        y: 3.4,
+        y: 3.15,
         w: W - 1.6,
         h: 0.45,
         fontFace: FONT,
         fontSize: 18,
-        color: '334155',
+        color: 'E2E8F0',
         align: 'center',
     });
     cover.addText(first.units.map((u) => u.name).join(' · ') || '—', {
         x: 0.8,
-        y: 3.9,
+        y: 3.6,
         w: W - 1.6,
         h: 0.4,
         fontFace: FONT,
         fontSize: 13,
-        color: '64748B',
+        color: 'CBD5E1',
         align: 'center',
     });
     cover.addText(
         'PT PLN Nusantara Power — UP Kendari · Jasa Pendukung Teknis 6 Site Pembangkit',
         {
             x: 0.8,
-            y: H - 1.4,
+            y: H - 0.45,
             w: W - 1.6,
-            h: 0.5,
+            h: 0.35,
             fontFace: FONT,
-            fontSize: 14,
+            fontSize: 11,
             color: 'FFFFFF',
             align: 'center',
         },
@@ -319,7 +311,7 @@ export async function downloadUlPpt(
         // Divider
         page++;
         const divider = pptx.addSlide();
-        divider.background = { color: DARK };
+        divider.background = bgDark ? { data: bgDark } : { color: DARK };
         divider.addText(String(index + 1).padStart(2, '0'), {
             x: 0.8,
             y: 2.2,
@@ -363,7 +355,7 @@ export async function downloadUlPpt(
                     x,
                     y: 1.75,
                     w: cardW,
-                    h: 1.45,
+                    h: 1.55,
                     fill: { color: 'F8FAFC' },
                     line: { color: 'CBD5E1' },
                     rectRadius: 0.08,
@@ -388,11 +380,21 @@ export async function downloadUlPpt(
                     color: DARK,
                     fit: 'shrink',
                 });
+                slide.addText(`Rata-rata per unit: ${kpi.average ?? '—'}`, {
+                    x: x + 0.1,
+                    y: 2.66,
+                    w: cardW - 0.2,
+                    h: 0.25,
+                    fontFace: FONT,
+                    fontSize: 9,
+                    bold: true,
+                    color: '334155',
+                });
                 slide.addText(kpiTrend(kpi), {
                     x: x + 0.1,
-                    y: 2.7,
+                    y: 2.9,
                     w: cardW - 0.2,
-                    h: 0.45,
+                    h: 0.38,
                     fontFace: FONT,
                     fontSize: 9,
                     color:
@@ -422,16 +424,14 @@ export async function downloadUlPpt(
                 color: NAVY,
             });
             slide.addText(
-                part.insights
-                    .slice(0, 8)
-                    .map((line) => ({
-                        text: line.text,
-                        options: {
-                            bullet: { characterCode: '25CF' },
-                            color: tone[line.tone] ?? '334155',
-                            breakLine: true,
-                        },
-                    })),
+                part.insights.slice(0, 8).map((line) => ({
+                    text: line.text,
+                    options: {
+                        bullet: { characterCode: '25CF' },
+                        color: tone[line.tone] ?? '334155',
+                        breakLine: true,
+                    },
+                })),
                 {
                     x: 0.5,
                     y: 3.8,
@@ -462,7 +462,7 @@ export async function downloadUlPpt(
     // Closing
     page++;
     const closing = pptx.addSlide();
-    closing.background = { color: DARK };
+    closing.background = bgDark ? { data: bgDark } : { color: DARK };
     closing.addText('TERIMA KASIH', {
         x: 0.8,
         y: 2.8,

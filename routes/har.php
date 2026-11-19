@@ -14,6 +14,7 @@ use App\Http\Controllers\Har\FormulirController;
 use App\Http\Controllers\Har\HydrotestController;
 use App\Http\Controllers\Har\InjectorPressureController;
 use App\Http\Controllers\Har\InputHubController;
+use App\Http\Controllers\Har\InputLogistikController;
 use App\Http\Controllers\Har\InstruksiKerjaController;
 use App\Http\Controllers\Har\JadwalController;
 use App\Http\Controllers\Har\JadwalHarianController;
@@ -102,6 +103,10 @@ Route::middleware(['auth', 'verified'])
         Route::post('pengusahaan/rencana-realisasi', [ScheduleController::class, 'store'])->name('pengusahaan.rencana-realisasi.store');
         Route::get('pengusahaan/laporan-kegiatan', [LaporanKegiatanController::class, 'index'])->name('pengusahaan.laporan-kegiatan.index');
         Route::post('pengusahaan/laporan-kegiatan', [LaporanKegiatanController::class, 'store'])->name('pengusahaan.laporan-kegiatan.store');
+        // Akses 2 — Input Logistik (TL Pemeliharaan / TL Ophar & Staf, not the Project Leader or Koordinator).
+        Route::get('pengusahaan/input-logistik', [InputLogistikController::class, 'index'])->name('pengusahaan.input-logistik.index');
+        Route::post('pengusahaan/input-logistik', [InputLogistikController::class, 'store'])->name('pengusahaan.input-logistik.store');
+        Route::get('pengusahaan/input-logistik/pdf', [InputLogistikController::class, 'pdf'])->name('pengusahaan.input-logistik.pdf');
 
         // Akses 2 — Pengusahaan (TL & Staf): formulir teknis pemeliharaan per mesin & tanggal uji.
         foreach ([

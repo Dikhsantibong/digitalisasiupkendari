@@ -219,7 +219,8 @@ class ReportMonitoring
         return $units->map(fn (Unit $unit): array => [
             'unit' => $unit->name,
             'positions' => $positions->filter(fn (EmployeePosition $p): bool => $this->signatories->holder($unit, $p) === null)
-                ->map(fn (EmployeePosition $p): string => $p->value)->values()->all(),
+                // Named as held in this unit (TL Ophar / Project Leader by its TL structure).
+                ->map(fn (EmployeePosition $p): string => $this->signatories->positionLabel($unit, $p))->unique()->values()->all(),
         ])->filter(fn (array $row): bool => $row['positions'] !== [])->values()->all();
     }
 

@@ -27,6 +27,7 @@ import {
     HardHat,
     LifeBuoy,
     NotebookPen,
+    PackageSearch,
     Plug,
     Ruler,
     ShieldAlert,
@@ -52,6 +53,7 @@ import harPengusahaanCounterWeight from '@/routes/har/pengusahaan/counter-weight
 import harPengusahaanCrankshaftDeflection from '@/routes/har/pengusahaan/crankshaft-deflection';
 import harPengusahaanHydrotest from '@/routes/har/pengusahaan/hydrotest';
 import harPengusahaanInjectorPressure from '@/routes/har/pengusahaan/injector-pressure';
+import harPengusahaanInputLogistik from '@/routes/har/pengusahaan/input-logistik';
 import harPengusahaanLaporanKegiatan from '@/routes/har/pengusahaan/laporan-kegiatan';
 import harPengusahaanLubeQuality from '@/routes/har/pengusahaan/lube-quality';
 import harPengusahaanMotorCurrent from '@/routes/har/pengusahaan/motor-current';
@@ -834,6 +836,17 @@ const MENUS: PengusahaanMenu[] = [
             'Kegiatan pemeliharaan mesin serta listrik & kontrol pembangkit per bulan: uraian per mesin, jenis HAR, material dan keterangan.',
         icon: NotebookPen,
         href: harPengusahaanLaporanKegiatan.index().url,
+        permission: 'har.pengusahaan.view',
+    },
+    {
+        // TL Pemeliharaan / TL Ophar & Staf — not the Project Leader or the Koordinator (user, 2026-11-19).
+        module: 'har',
+        section: 'input',
+        title: 'Input Logistik',
+        description:
+            'Kondisi stok tools & material dengan dasar stok (Cashcard, SPPL, Internal, Kontrak) dan nomor surat / kontrak.',
+        icon: PackageSearch,
+        href: harPengusahaanInputLogistik.index().url,
         permission: 'har.pengusahaan.view',
     },
     {

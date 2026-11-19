@@ -185,6 +185,12 @@ enum PermissionName: string
     /** Laporan UL: Pengusahaan Pembangkit, Logistik, K3L & PPT bulanan of the service unit (Admin UL). */
     case LaporanUlView = 'laporan_ul.view';
 
+    /** One "Laporan" menu with every report by module instead of a Laporan menu per module (Project Leader). */
+    case LaporanHub = 'laporan.hub';
+
+    /** Print the Laporan SLA gabungan (every divisi, one PDF / Excel) of the accessible units (Project Leader). */
+    case SlaGabungan = 'sla.gabungan';
+
     case SettingManage = 'setting.manage';
 
     case MonitoringView = 'monitoring.view';
@@ -356,7 +362,9 @@ enum PermissionName: string
             self::ReportProjectSubmit,
             self::ReportProjectApprove,
             self::ReportProjectExport,
-            self::LaporanUlView => PermissionGroup::ReportProject,
+            self::LaporanUlView,
+            self::LaporanHub,
+            self::SlaGabungan => PermissionGroup::ReportProject,
 
             self::SettingManage => PermissionGroup::System,
 
@@ -530,6 +538,8 @@ enum PermissionName: string
             self::ReportProjectApprove => 'Menyetujui laporan project',
             self::ReportProjectExport => 'Mengekspor laporan project',
             self::LaporanUlView => 'Melihat & mengunduh Laporan UL (Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan)',
+            self::LaporanHub => 'Satu menu Laporan berisi seluruh laporan per modul (menggantikan menu Laporan tiap modul)',
+            self::SlaGabungan => 'Mencetak Laporan SLA gabungan seluruh divisi (PDF & Excel) unit yang diakses',
 
             self::SettingManage => 'Mengelola pengaturan aplikasi',
 

@@ -117,9 +117,17 @@ class DemoAccountSeeder extends Seeder
             $slug = $this->slug($unit->code ?? $unit->name ?? (string) $unit->id);
             $name = $unit->name ?? $slug;
 
-            $this->account("tl-operasi.{$slug}@".self::DOMAIN, "TL Operasi {$name}", 'Team Leader Operasi', RoleName::TeamLeaderOperasi, $unit, EmployeePosition::TeamLeaderOperasi);
-            $this->account("tl-har.{$slug}@".self::DOMAIN, "TL Pemeliharaan {$name}", 'Team Leader Pemeliharaan', RoleName::TeamLeaderPemeliharaan, $unit, EmployeePosition::TeamLeaderPemeliharaan);
-            $this->account("tl-k3.{$slug}@".self::DOMAIN, "TL K3 & Keamanan {$name}", 'Team Leader K3 & Keamanan', RoleName::TeamLeaderK3, $unit, EmployeePosition::TeamLeaderK3);
+            // Team Leaders by the unit's TL structure: TL Ophar in place of TL Operasi + TL Pemeliharaan
+            // (an existing tl-operasi.* account keeps its e-mail); none in a containerized unit.
+            foreach ($unit->tlStructure()->teamLeaderPositions() as $position) {
+                [$prefix, $role, $label] = match ($position) {
+                    EmployeePosition::TeamLeaderOperasi => ['tl-operasi', RoleName::TeamLeaderOperasi, 'TL Operasi'],
+                    EmployeePosition::TeamLeaderPemeliharaan => ['tl-har', RoleName::TeamLeaderPemeliharaan, 'TL Pemeliharaan'],
+                    EmployeePosition::TeamLeaderOphar => [User::query()->where('email', "tl-operasi.{$slug}@".self::DOMAIN)->exists() ? 'tl-operasi' : 'tl-ophar', RoleName::TeamLeaderOphar, 'TL Ophar'],
+                    default => ['tl-k3', RoleName::TeamLeaderK3, 'TL K3 & Keamanan'],
+                };
+                $this->account("{$prefix}.{$slug}@".self::DOMAIN, "{$label} {$name}", $position->value, $role, $unit, $position);
+            }
             $this->account("site-leader.{$slug}@".self::DOMAIN, "Site Leader {$name}", 'Site Leader', RoleName::SiteLeader, $unit);
             $this->account("project-leader.{$slug}@".self::DOMAIN, "Project Leader {$name}", 'Project Leader Operasi', RoleName::ProjectLeaderOperasi, $unit, EmployeePosition::ProjectLeader);
 

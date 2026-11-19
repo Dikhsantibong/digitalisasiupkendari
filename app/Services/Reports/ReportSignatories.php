@@ -3,6 +3,7 @@
 namespace App\Services\Reports;
 
 use App\Enums\EmployeePosition;
+use App\Enums\UnitTlStructure;
 use App\Models\Employee;
 use App\Models\ReportSignerDelegation;
 use App\Models\Unit;
@@ -26,13 +27,51 @@ class ReportSignatories
     /** @var array<string, ReportSignerDelegation>|null unit_id|position => delegation */
     private ?array $delegations = null;
 
+    /** @var array<int, UnitTlStructure> */
+    private array $structures = [];
+
     public function holder(Unit $unit, EmployeePosition $position): ?Employee
     {
+        $position = $this->effectivePosition($unit, $position);
         $delegation = $this->delegation($unit, $position);
 
         return $delegation !== null
             ? $this->ownHolder($delegation->sourceUnit, $position)
             : $this->ownHolder($unit, $position);
+    }
+
+    /**
+     * The jabatan that holds a TL jabatan in the unit, by its TL structure
+     * ({@see UnitTlStructure}): TL Operasi/Pemeliharaan → TL Ophar in an Ophar
+     * unit, every TL → Project Leader in a containerized unit. Every other
+     * jabatan (and every jabatan of a Terpisah unit) is unchanged.
+     */
+    public function effectivePosition(Unit $unit, EmployeePosition $position): EmployeePosition
+    {
+        return $this->structureOf($unit)->holderPosition($position);
+    }
+
+    /**
+     * The unit's TL structure — read from the database when the unit was
+     * loaded without that column (e.g. a select of id & name only).
+     */
+    public function structureOf(Unit $unit): UnitTlStructure
+    {
+        if (array_key_exists('tl_structure', $unit->getAttributes()) || ! $unit->exists) {
+            return $unit->tlStructure();
+        }
+
+        return $this->structures[$unit->id] ??= Unit::query()->whereKey($unit->id)->first(['id', 'tl_structure'])?->tlStructure()
+            ?? UnitTlStructure::Terpisah;
+    }
+
+    /**
+     * The jabatan text printed for a signer of the unit (e.g. "Team Leader
+     * Ophar" where the TL Pemeliharaan is asked in an Ophar unit).
+     */
+    public function positionLabel(Unit $unit, EmployeePosition $position): string
+    {
+        return $this->effectivePosition($unit, $position)->value;
     }
 
     /**
@@ -52,7 +91,7 @@ class ReportSignatories
      */
     public function ownHolder(Unit $unit, EmployeePosition $position): ?Employee
     {
-        $key = $position->singletonKey($unit->id, $unit->service_unit_id);
+        $key = $this->effectivePosition($unit, $position)->singletonKey($unit->id, $unit->service_unit_id);
         if ($key === null) {
             return null;
         }
@@ -104,6 +143,7 @@ class ReportSignatories
     {
         $this->holders = [];
         $this->delegations = null;
+        $this->structures = [];
     }
 
     /**

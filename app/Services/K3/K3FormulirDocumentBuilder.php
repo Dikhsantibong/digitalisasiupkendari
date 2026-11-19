@@ -2,8 +2,10 @@
 
 namespace App\Services\K3;
 
+use App\Enums\EmployeePosition;
 use App\Models\Employee;
 use App\Models\Unit;
+use App\Services\Reports\ReportSignatories;
 use App\Support\K3FormulirRegistry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -91,6 +93,11 @@ class K3FormulirDocumentBuilder
                 default => null,
             };
             $defaultTitle = $signer['title'] !== '' ? $signer['title'] : 'Manager '.$ulLabel;
+            // A TL jabatan held by someone else in this unit's TL structure (containerized: Project Leader).
+            $first = EmployeePosition::tryFrom($signer['positions'][0] ?? '');
+            if ($first !== null && $this->effectivePosition($unit, $first) !== $first) {
+                $defaultTitle = $this->effectivePosition($unit, $first)->value;
+            }
 
             $data[$key.'_id'] = $employee?->id;
             // A name typed on the form wins (e.g. a Plh.); the jabatan saved as a name by earlier versions does not.
@@ -283,11 +290,20 @@ class K3FormulirDocumentBuilder
             ->all();
     }
 
+    private function effectivePosition(Unit $unit, EmployeePosition $position): EmployeePosition
+    {
+        return app(ReportSignatories::class)->effectivePosition($unit, $position);
+    }
+
     /**
      * @param  list<string>  $positions
      */
     private function unitEmployeeByPosition(Unit $unit, array $positions): ?Employee
     {
+        $positions = array_map(fn (string $position): string => ($canonical = EmployeePosition::tryFrom($position)) !== null
+            ? $this->effectivePosition($unit, $canonical)->value
+            : $position, $positions);
+
         return $unit->employees()
             ->where('is_active', true)
             ->whereIn('position', $positions)

@@ -12,6 +12,7 @@ type Props = {
         types: Option[];
         contracts: Option[];
         statuses: Option[];
+        tlStructures: Option[];
     };
 };
 

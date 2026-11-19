@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ActivityEvent;
 use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
+use App\Enums\UnitTlStructure;
 use App\Enums\UnitType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UnitRequest;
@@ -12,6 +13,7 @@ use App\Models\ActivityLog;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Master\UnitAccountProvisioner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,7 +21,10 @@ use Inertia\Response;
 
 class UnitController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly UnitAccountProvisioner $accounts,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -73,6 +78,28 @@ class UnitController extends Controller
             $unit,
             unit: $unit,
         );
+
+        // The unit's accounts, made with it when the form asks (its checkbox starts ticked).
+        if ($request->boolean('create_accounts')) {
+            $provisioned = $this->accounts->provision($unit->fresh(), $request->user());
+
+            if ($provisioned['accounts'] !== []) {
+                $this->activityLogger->log(
+                    ActivityEvent::Created,
+                    'Membuat '.count($provisioned['accounts'])." akun untuk unit {$unit->name}",
+                    $unit,
+                    properties: ['emails' => array_column($provisioned['accounts'], 'email')],
+                    unit: $unit,
+                );
+
+                // Shown once on the unit page: the accounts and their initial password.
+                Inertia::flash('provisioned_accounts', $provisioned);
+            }
+
+            Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit pembangkit ditambahkan beserta '.count($provisioned['accounts']).' akunnya.']);
+
+            return to_route('admin.units.show', $unit);
+        }
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit pembangkit berhasil ditambahkan.']);
 
@@ -187,6 +214,8 @@ class UnitController extends Controller
             'location' => $unit->location,
             'is_active' => $unit->is_active,
             'operator_pengusahaan' => $unit->operator_pengusahaan,
+            'tl_structure' => $unit->tlStructure()->value,
+            'tl_structure_label' => $unit->tlStructure()->label(),
             'service_unit_id' => $unit->service_unit_id,
             'service_unit' => $unit->relationLoaded('serviceUnit') ? $unit->serviceUnit?->name : null,
             'machines_count' => $unit->machines_count ?? null,
@@ -217,6 +246,7 @@ class UnitController extends Controller
             'contracts' => collect(UnitContract::cases())
                 ->map(fn (UnitContract $contract): array => ['value' => $contract->value, 'label' => $contract->label()])
                 ->all(),
+            'tlStructures' => UnitTlStructure::options(),
             'statuses' => collect(UnitStatus::cases())
                 ->map(fn (UnitStatus $status): array => [
                     'value' => $status->value,

@@ -13,6 +13,8 @@ enum EmployeePosition: string
     case TeamLeaderPemeliharaan = 'Team Leader Pemeliharaan';
     case TeamLeaderOperasi = 'Team Leader Operasi';
     case TeamLeaderK3 = 'Team Leader K3 & Keamanan';
+    // TL Operasi + TL Pemeliharaan in one person ({@see UnitTlStructure::Ophar}).
+    case TeamLeaderOphar = 'Team Leader Ophar';
     case KoordinatorPemeliharaan = 'Koordinator Pemeliharaan';
     case KoordinatorOperasi = 'Koordinator Operasi';
     case KoordinatorK3 = 'Koordinator K3';
@@ -34,12 +36,21 @@ enum EmployeePosition: string
     {
         return match ($this) {
             self::ManagerUl, self::ProjectLeader => null,
-            self::TeamLeaderPemeliharaan, self::KoordinatorPemeliharaan, self::OfficePemeliharaan => 'pemeliharaan',
+            // The TL Ophar is counted with Pemeliharaan (staff lists), and also holds Operasi.
+            self::TeamLeaderPemeliharaan, self::TeamLeaderOphar, self::KoordinatorPemeliharaan, self::OfficePemeliharaan => 'pemeliharaan',
             self::TeamLeaderOperasi, self::KoordinatorOperasi, self::OfficeOperasi => 'operasi',
             self::TeamLeaderK3, self::KoordinatorK3, self::OfficeK3 => 'k3',
             self::KoordinatorPdm, self::OfficePdm, self::PicPdm => 'pdm',
             self::KoordinatorLogistik, self::OfficeLogistik => 'logistik',
         };
+    }
+
+    /**
+     * The Team Leader jabatan of a unit (Operasi, Pemeliharaan, Ophar, K3).
+     */
+    public function isTeamLeader(): bool
+    {
+        return in_array($this, [self::TeamLeaderOperasi, self::TeamLeaderPemeliharaan, self::TeamLeaderOphar, self::TeamLeaderK3], true);
     }
 
     /**

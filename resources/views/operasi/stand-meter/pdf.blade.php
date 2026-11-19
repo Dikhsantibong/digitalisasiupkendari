@@ -222,7 +222,7 @@
         <tr>
             <td style="width: 50%;">
                 Mengetahui,<br>
-                <strong>Team Leader Operasi</strong>
+                <strong>{{ $tl_jabatan ?? 'Team Leader Operasi' }}</strong>
                 <div style="height: 40px;"></div>
                 ( .................................................. )
             </td>

@@ -9,6 +9,7 @@ use App\Models\HarInstruksiKerja;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\Reports\ReportSignatories;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -289,10 +290,16 @@ abstract class BaseInstruksiKerjaController extends Controller
      */
     protected function signatories(Unit $unit): array
     {
+        // A TL jabatan follows the unit's TL structure (TL Ophar / Project Leader).
+        $signatories = app(ReportSignatories::class);
+        $effective = fn (EmployeePosition $position): EmployeePosition => $signatories->effectivePosition($unit, $position);
         $holder = fn (EmployeePosition $position): string => (string) $unit->employees()
-            ->where('is_active', true)->where('position', $position->value)->orderBy('id')->value('name');
+            ->where('is_active', true)->where('position', $effective($position)->value)->orderBy('id')->value('name');
         [$jabatan, $position] = $this->preparedBy();
         [$approverJabatan, $approver] = $this->approvedBy();
+        if ($effective($approver) !== $approver) {
+            $approverJabatan = $effective($approver)->value;
+        }
 
         return [
             'dibuat_jabatan' => $jabatan,

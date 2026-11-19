@@ -108,9 +108,10 @@ async function writeSlaSheet(
     slas: SlaData[],
     tagihan: number | null,
     recap: boolean,
+    sheetName = 'SLA',
 ): Promise<void> {
     const first = slas[0];
-    const sheet = workbook.addWorksheet('SLA', {
+    const sheet = workbook.addWorksheet(sheetName, {
         views: [{ showGridLines: false }],
         pageSetup: PAGE_SETUP,
     });
@@ -414,21 +415,16 @@ export async function downloadSlaWorkbook(
     await downloadWorkbook(workbook, filename);
 }
 
-/** Payload of the Laporan SLA gabungan (SlaController::combinedData). */
-export type SlaCombinedData = { cover: string; slas: SlaData[] };
+/** Payload of the Laporan SLA gabungan of one unit (SlaController::combinedData). */
+export type SlaCombinedData = { unit?: string; cover: string; slas: SlaData[] };
 
-/**
- * Excel of the Laporan SLA gabungan: sheet "Sampul" with the cover image
- * (App\Services\Reports\SlaCover, A4 portrait) and sheet "SLA" with every
- * divisi and the Rekapitulasi.
- */
-export async function downloadSlaCombinedWorkbook(
-    data: SlaCombinedData,
-    tagihan: number | null,
-    filename: string,
-): Promise<void> {
-    const workbook = new ExcelJS.Workbook();
-    const cover = workbook.addWorksheet('Sampul', {
+/** The cover image (App\Services\Reports\SlaCover, A4 portrait) on its own sheet. */
+function addCoverSheet(
+    workbook: ExcelJS.Workbook,
+    cover: string,
+    name: string,
+): void {
+    const sheet = workbook.addWorksheet(name, {
         views: [{ showGridLines: false }],
         pageSetup: {
             ...PAGE_SETUP,
@@ -445,14 +441,57 @@ export async function downloadSlaCombinedWorkbook(
         },
     });
     const image = workbook.addImage({
-        base64: data.cover.replace(/^data:image\/png;base64,/, ''),
+        base64: cover.replace(/^data:image\/png;base64,/, ''),
         extension: 'png',
     });
-    cover.addImage(image, {
+    sheet.addImage(image, {
         tl: { col: 0, row: 0 },
         ext: { width: 620, height: 877 },
     });
+}
 
+/**
+ * Excel of the Laporan SLA gabungan: sheet "Sampul" with the cover image and
+ * sheet "SLA" with every divisi and the Rekapitulasi.
+ */
+export async function downloadSlaCombinedWorkbook(
+    data: SlaCombinedData,
+    tagihan: number | null,
+    filename: string,
+): Promise<void> {
+    const workbook = new ExcelJS.Workbook();
+    addCoverSheet(workbook, data.cover, 'Sampul');
     await writeSlaSheet(workbook, data.slas, tagihan, true);
+    await downloadWorkbook(workbook, filename);
+}
+
+/** An Excel sheet name: at most 31 characters, none of : \ / ? * [ ]. */
+const sheetName = (text: string): string =>
+    text.replace(/[:\\/?*[\]]/g, ' ').slice(0, 31);
+
+/**
+ * Excel of the Laporan SLA gabungan of every accessible unit ("Semua unit")
+ * in one file: per unit a "Sampul" sheet and an "SLA" sheet (every divisi +
+ * Rekapitulasi), in unit order.
+ */
+export async function downloadSlaCombinedUnitsWorkbook(
+    units: SlaCombinedData[],
+    tagihan: number | null,
+    filename: string,
+): Promise<void> {
+    const workbook = new ExcelJS.Workbook();
+
+    for (const [index, unit] of units.entries()) {
+        const label = `${index + 1}. ${unit.unit ?? unit.slas[0]?.unit.name ?? 'Unit'}`;
+        addCoverSheet(workbook, unit.cover, sheetName(`Sampul ${label}`));
+        await writeSlaSheet(
+            workbook,
+            unit.slas,
+            tagihan,
+            true,
+            sheetName(`SLA ${label}`),
+        );
+    }
+
     await downloadWorkbook(workbook, filename);
 }

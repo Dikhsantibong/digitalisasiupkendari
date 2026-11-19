@@ -31,10 +31,9 @@
         <div class="k3-cover-content">
             <div class="k3-cover-logos">
                 <table class="k3-logos-table">
+                    {{-- Laporan UL: PLN Nusantara Power only, no MKP logo (user, 2026-11-18). --}}
                     <tr>
-                        <td class="k3-logo-cell-left"><img src="/logo/sidebar-logo.png" class="k3-logo-pln" alt="PLN Nusantara Power"></td>
-                        <td class="k3-logo-divider-cell"><div class="k3-logo-vdiv"></div></td>
-                        <td class="k3-logo-cell-right"><img src="/logo/mkp.jpg" class="k3-logo-mkp" alt="Mitra Karya Prima"></td>
+                        <td style="vertical-align: middle; text-align: center;"><img src="/logo/sidebar-logo.png" class="k3-logo-pln" alt="PLN Nusantara Power"></td>
                     </tr>
                 </table>
             </div>
@@ -110,7 +109,7 @@
         <div style="margin-bottom: 14px;">Dengan ini menyatakan bahwa :</div>
         <div style="font-weight: bold; margin-bottom: 16px;">1. {{ mb_strtoupper($report['title']) }} — {{ mb_strtoupper($ulName) }}</div>
         <div style="margin-bottom: 16px; text-align: justify; line-height: 1.6;">Telah disusun berdasarkan data input Laporan Project dan Laporan Divisi seluruh unit pembangkit di bawah {{ $ulName }} ({{ collect($report['units'])->pluck('name')->join(', ') ?: '-' }}) periode {{ $report['period']['label'] }}.</div>
-        <div style="margin-bottom: 16px; text-align: justify; line-height: 1.6;">Laporan ini telah diperiksa dan disetujui oleh Team Leader bidang terkait serta disahkan oleh Manager UL untuk digunakan sebagai dokumen pelaporan dan evaluasi kinerja Unit Layanan.</div>
+        <div style="margin-bottom: 16px; text-align: justify; line-height: 1.6;">{{ $data['validation'] }} untuk digunakan sebagai dokumen pelaporan dan evaluasi kinerja Unit Layanan.</div>
         <div style="margin-bottom: 22px; text-align: justify; line-height: 1.6;">Demikian lembar pengesahan ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</div>
 
         <div style="margin-top: 26px; margin-bottom: 16px; text-align: right; padding-right: 15px; font-size: 10.5pt;">{{ $data['tempat_tanggal'] }}</div>
@@ -127,11 +126,12 @@
         @if ($part['kpis'] !== [])
             <div class="ul-h">A. Indikator Utama (Akumulasi UL)</div>
             <table class="ul-table">
-                <tr><th>Indikator</th><th>Bulan Ini</th><th>Bulan Lalu</th><th>Perubahan</th><th>Penilaian</th></tr>
+                <tr><th>Indikator</th><th>Bulan Ini (Akumulasi UL)</th><th>Rata-rata per Unit</th><th>Bulan Lalu</th><th>Perubahan</th><th>Penilaian</th></tr>
                 @foreach ($part['kpis'] as $kpi)
                     <tr>
                         <td>{{ $kpi['label'] }}</td>
                         <td class="r"><strong>{{ $kpi['value'] }}</strong></td>
+                        <td class="r">{{ $kpi['average'] ?? '—' }}</td>
                         <td class="r">{{ $kpi['previous'] }}</td>
                         <td class="c">{{ $kpi['delta'] === null ? '—' : ($kpi['trend'] === 'naik' ? '▲ ' : ($kpi['trend'] === 'turun' ? '▼ ' : '■ ')).number_format(abs($kpi['delta']), 1, ',', '.').'%' }}</td>
                         <td class="c">{{ $kpi['assessment'] ? ucfirst($kpi['assessment']) : '—' }}</td>

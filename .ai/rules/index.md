@@ -9,6 +9,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/components/mobile/** | .ai/rules/components-mobile.md |
 | resources/js/pages/**, resources/js/components/** | .ai/rules/components.md |
 | app/Http/Controllers/Har/** | .ai/rules/controllers-har.md |
+| resources/js/components/app-sidebar.tsx, app/Http/Controllers/LaporanHubController.php, app/Http/Controllers/SlaController.php | .ai/rules/controllers-http-controllers.md |
 | app/Http/Controllers/K3/** | .ai/rules/controllers-k3.md |
 | app/Http/Controllers/Operasi/** | .ai/rules/controllers-operasi.md |
 | app/Http/Controllers/Operator/**, app/Services/Operator/** | .ai/rules/controllers-operator.md |

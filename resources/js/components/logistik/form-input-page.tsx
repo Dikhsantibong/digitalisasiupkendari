@@ -30,6 +30,12 @@ export type LogistikFormInputPageProps = {
     summary: FormSummary;
     has_saved: boolean;
     can_write: boolean;
+    /**
+     * Where the page loads, saves, prints and goes back to — for a form served
+     * outside Logistik & Gudang (e.g. the Input Logistik of Pemeliharaan
+     * Akses 2). Defaults to the Logistik & Gudang form routes.
+     */
+    urls?: { index: string; store: string; pdf: string; back: string };
 };
 
 const cellInput = 'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 dark:focus:bg-yellow-950/40';
@@ -49,7 +55,14 @@ const normalize = (list: FormRow[]): FormRow[] => list.map((row) => ({ ...row, d
  * date & tick-box cells, Simpan, PDF, Excel. Each form has its own thin page at
  * resources/js/pages/logistik/input/{form}/index.tsx that renders this component.
  */
-export function LogistikFormInputPage({ form, unit, filters, options, rows: initialRows, summary, has_saved, can_write }: LogistikFormInputPageProps) {
+export function LogistikFormInputPage({ form, unit, filters, options, rows: initialRows, summary, has_saved, can_write, urls: customUrls }: LogistikFormInputPageProps) {
+    const urls = customUrls ?? {
+        index: formRoutes.index(form.key).url,
+        store: formRoutes.store(form.key).url,
+        pdf: formRoutes.pdf(form.key).url,
+        back: logistikInput.index().url,
+    };
+    const pdfUrl = (query: Record<string, string | number>) => `${urls.pdf}?${new URLSearchParams(Object.entries(query).map(([k, v]) => [k, String(v)])).toString()}`;
     const [rows, setRows] = useState<FormRow[]>(() => normalize(initialRows));
     // New photos per row index & image column, uploaded on Simpan.
     const [uploads, setUploads] = useState<Record<number, Record<string, File>>>({});
@@ -71,7 +84,7 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
             return;
         }
 
-        router.get(formRoutes.index(form.key).url, { ...filters, ...patch }, { preserveScroll: true });
+        router.get(urls.index, { ...filters, ...patch }, { preserveScroll: true });
     };
 
     const setValue = (index: number, key: string, value: FormValue) => {
@@ -144,7 +157,7 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
         }));
 
         setSaving(true);
-        router.post(formRoutes.store(form.key).url, { ...query, rows: payload }, {
+        router.post(urls.store, { ...query, rows: payload }, {
             forceFormData: hasFiles,
             preserveScroll: true,
             onSuccess: (page) => {
@@ -284,7 +297,7 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
                             <FileSpreadsheet className="size-4 text-emerald-600" />
                             {exporting ? 'Menyiapkan…' : 'Excel'}
                         </Button>
-                        <Button variant="outline" onClick={() => window.open(formRoutes.pdf(form.key, { query }).url, '_blank')} className="gap-1.5">
+                        <Button variant="outline" onClick={() => window.open(pdfUrl(query), '_blank')} className="gap-1.5">
                             <Download className="size-4 text-rose-600" />
                             PDF
                         </Button>
@@ -390,12 +403,12 @@ export function LogistikFormInputPage({ form, unit, filters, options, rows: init
                     description={`${form.description} — ${unit.name} · ${periodLabel}.`}
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => router.get(logistikInput.index().url)}>Kembali</Button>
+                            <Button variant="outline" onClick={() => router.get(urls.back)}>Kembali</Button>
                             <Button variant="outline" onClick={exportExcel} disabled={exporting} className="gap-1.5">
                                 <FileSpreadsheet className="size-4 text-emerald-600" />
                                 {exporting ? 'Menyiapkan…' : 'Excel'}
                             </Button>
-                            <Button variant="outline" onClick={() => window.open(formRoutes.pdf(form.key, { query }).url, '_blank')} className="gap-1.5">
+                            <Button variant="outline" onClick={() => window.open(pdfUrl(query), '_blank')} className="gap-1.5">
                                 <Download className="size-4 text-rose-600" />
                                 PDF
                             </Button>

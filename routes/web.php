@@ -3,6 +3,7 @@
 use App\Enums\ReportModule;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LaporanHubController;
 use App\Http\Controllers\LaporanUlController;
 use App\Http\Controllers\ModuleResumeController;
 use App\Http\Controllers\Monitoring\MonitoringController;
@@ -69,6 +70,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             Route::get('pdf', [ModuleResumeController::class, 'pdf'])->name('pdf');
         });
 
+    // Satu menu Laporan (Project Leader): seluruh laporan per modul untuk satu unit & bulan.
+    Route::get('laporan', [LaporanHubController::class, 'index'])->name('laporan.hub');
+
     // Laporan UL (Admin UL & Super Admin): Pengusahaan Pembangkit, Logistik, K3L dari seluruh unit di bawah UL + PPT bulanan — PRD.md §8.13.
     Route::prefix('laporan-ul')->name('laporan-ul.')->group(function (): void {
         Route::get('/', [LaporanUlController::class, 'index'])->name('index');
@@ -89,6 +93,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 
     // SLA bulanan per divisi (dihitung dari inputan), PDF; Excel diunduh dari halaman — PRD.md §8.12.
     // Laporan SLA gabungan (sampul + seluruh divisi + rekapitulasi dalam 1 file).
+    Route::get('sla/gabungan', [SlaController::class, 'combinedIndex'])->name('sla.combined.index');
     Route::get('sla/gabungan/pdf', [SlaController::class, 'combinedPdf'])->name('sla.combined.pdf');
     Route::get('sla/gabungan/data', [SlaController::class, 'combinedData'])->name('sla.combined.data');
     Route::prefix('sla/{divisi}')

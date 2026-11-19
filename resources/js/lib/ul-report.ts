@@ -1,12 +1,14 @@
 /**
- * Payload of a Laporan UL (App\Services\Reports\UlReport::build): shared by
- * the page, the Excel (lib/ul-excel.ts) and the PPT bulanan (lib/ul-ppt.ts).
+ * Payload of a Laporan UL (App\Services\Reports\UlReport::build) as read by
+ * the PPT bulanan (lib/ul-ppt.ts, from LaporanUlController::pptData).
  */
 
 export type UlKpi = {
     label: string;
     value: string;
     previous: string;
+    /** Average per unit under the UL (mean of the units' own values). */
+    average?: string;
     delta: number | null;
     trend: 'naik' | 'turun' | 'tetap' | null;
     assessment: 'membaik' | 'memburuk' | 'stabil' | null;

@@ -31,10 +31,19 @@ class UlReportWorkflow
      * @var array<string, list<EmployeePosition>>
      */
     public const CHAINS = [
-        'pengusahaan' => [EmployeePosition::TeamLeaderOperasi, EmployeePosition::TeamLeaderPemeliharaan, EmployeePosition::TeamLeaderK3],
+        // Laporan Pengusahaan Pembangkit: dibuat TL Operasi, disahkan Manager UL (user, 2026-11-18).
+        'pengusahaan' => [EmployeePosition::TeamLeaderOperasi],
         'logistik' => [EmployeePosition::TeamLeaderPemeliharaan],
         'k3l' => [EmployeePosition::TeamLeaderK3],
     ];
+
+    /**
+     * Reports whose TL step is the maker ("Membuat" / Dibuat Oleh) rather than an
+     * approver: the Admin UL only prepares & submits and is not printed.
+     *
+     * @var list<string>
+     */
+    public const TL_MAKES = ['pengusahaan'];
 
     /** The first approval step (the panel has no Koordinator step 1). */
     private const FIRST_SEQUENCE = 2;
@@ -84,8 +93,9 @@ class UlReportWorkflow
 
         return array_map(fn (EmployeePosition $position, int $i): array => [
             'sequence' => self::FIRST_SEQUENCE + $i,
-            'caption' => $position === EmployeePosition::ManagerUl ? 'Mengesahkan' : 'Menyetujui',
-            'position' => $position,
+            'caption' => $position === EmployeePosition::ManagerUl ? 'Mengesahkan' : (in_array($kind, self::TL_MAKES, true) ? 'Membuat' : 'Menyetujui'),
+            // The jabatan holding it at the induk unit (TL Ophar / Project Leader by its TL structure).
+            'position' => $induk === null ? $position : $this->signatories->effectivePosition($induk, $position),
             'employee' => $induk === null ? null : $this->signatories->holder($induk, $position),
         ], $positions, array_keys($positions));
     }

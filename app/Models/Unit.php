@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UnitContract;
 use App\Enums\UnitStatus;
+use App\Enums\UnitTlStructure;
 use App\Enums\UnitType;
 use Database\Factories\UnitFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property UnitType $type
  * @property UnitContract|null $contract kontrak 11 KIT / 6 KIT
  * @property bool $operator_pengusahaan the operators fill the Operasi inputs (off for containerized units)
+ * @property UnitTlStructure|null $tl_structure TL Operasi & Pemeliharaan terpisah, digabung (TL Ophar) or none (containerized)
  * @property string|null $installed_capacity_mw
  * @property string|null $location
  * @property string|null $latitude
@@ -44,6 +46,7 @@ use Illuminate\Support\Carbon;
     'type',
     'contract',
     'operator_pengusahaan',
+    'tl_structure',
     'installed_capacity_mw',
     'location',
     'latitude',
@@ -68,8 +71,20 @@ class Unit extends Model
             'status' => UnitStatus::class,
             'is_active' => 'boolean',
             'operator_pengusahaan' => 'boolean',
+            'tl_structure' => UnitTlStructure::class,
             'attendance_radius_m' => 'integer',
         ];
+    }
+
+    /**
+     * The TL structure; a unit without one (not saved yet) counts as
+     * Terpisah, the behaviour before TL Ophar existed.
+     */
+    public function tlStructure(): UnitTlStructure
+    {
+        $structure = $this->getAttribute('tl_structure');
+
+        return $structure instanceof UnitTlStructure ? $structure : UnitTlStructure::Terpisah;
     }
 
     /** Whether Super Admin has pinned the office coordinates used for absen masuk/pulang. */

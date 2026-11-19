@@ -1,10 +1,11 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     BookCopy,
     Download,
     FileSpreadsheet,
     FileText,
     LoaderCircle,
+    Target,
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -332,6 +333,20 @@ export default function SlaPage({
                                     <FileSpreadsheet className="size-4" />
                                 )}
                                 Unduh Excel
+                            </Button>
+                            <Button variant="secondary" asChild>
+                                <Link
+                                    href={
+                                        slaRoutes.combined.index({
+                                            query: {
+                                                ...query(),
+                                                unit_id: 'all',
+                                            },
+                                        }).url
+                                    }
+                                >
+                                    <Target className="size-4" /> Semua Unit
+                                </Link>
                             </Button>
                         </div>
                     </div>

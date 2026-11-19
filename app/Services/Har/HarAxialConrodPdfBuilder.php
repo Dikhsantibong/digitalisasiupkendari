@@ -123,7 +123,7 @@ class HarAxialConrodPdfBuilder
 
             'tl_har_id' => $tlHar?->id,
             'tl_har_name' => $tlName,
-            'tl_har_title' => $input['tl_har_title'] ?? 'Team Leader Pemeliharaan',
+            'tl_har_title' => $input['tl_har_title'] ?? $signatories->positionLabel($unit, EmployeePosition::TeamLeaderPemeliharaan),
             'tl_har_signature' => $tlSignature,
 
             'staff_har_id' => $staffHar?->id,

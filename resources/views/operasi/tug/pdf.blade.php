@@ -167,7 +167,7 @@
         <table class="sign" style="margin-top: 4px;">
             <tr>
                 <td style="width: 50%;">Diperiksa<br>Manager {{ $unit->name }}</td>
-                <td>Dibuat Oleh<br>Team Leader Operasi</td>
+                <td>Dibuat Oleh<br>{{ $doc['signatories']['tl_operasi_jabatan'] ?? 'Team Leader Operasi' }}</td>
             </tr>
             <tr>
                 <td class="name">{{ $doc['signatories']['manager'] ? strtoupper($doc['signatories']['manager']) : '( ................................ )' }}</td>

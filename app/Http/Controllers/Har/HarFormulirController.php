@@ -12,6 +12,7 @@ use App\Models\Machine;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\Reports\ReportSignatories;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -420,7 +421,8 @@ abstract class HarFormulirController extends Controller
 
         $signatories = [
             'manager_ul_id' => $unit->manager()?->id,
-            'tl_har_id' => $holder(EmployeePosition::TeamLeaderPemeliharaan->value)?->id,
+            // The TL Pemeliharaan, or the TL Ophar / Project Leader by the unit's TL structure.
+            'tl_har_id' => app(ReportSignatories::class)->holder($unit, EmployeePosition::TeamLeaderPemeliharaan)?->id,
             'staff_har_id' => $staff?->id,
         ];
 

@@ -364,7 +364,8 @@ class ReportWorkflowService
                     'stage' => $stage,
                     'sequence' => $signer['sequence'] ?? $index + 1,
                     'caption' => $signer['caption'],
-                    'position' => $signer['position'],
+                    // The jabatan that holds it in this unit: TL Ophar / Project Leader by the unit's TL structure.
+                    'position' => $this->signatories->effectivePosition($unit, $signer['position']),
                     'employee' => $this->signatories->holder($unit, $signer['position']),
                 ];
             }

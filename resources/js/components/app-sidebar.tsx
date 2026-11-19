@@ -81,6 +81,7 @@ import k3Input from '@/routes/k3/input';
 import k3Jadwal from '@/routes/k3/jadwal';
 import k3Laporan from '@/routes/k3/laporan';
 import k3Master from '@/routes/k3/master';
+import laporanHubRoutes from '@/routes/laporan';
 import laporanUl from '@/routes/laporan-ul';
 import logistikInput from '@/routes/logistik/input';
 import logistikJadwal from '@/routes/logistik/jadwal';
@@ -106,8 +107,13 @@ import pdmLaporan from '@/routes/pdm/laporan';
 import sla from '@/routes/sla';
 import type { Auth, NavGroup } from '@/types';
 
+/** A menu longer than this many rows becomes collapsible groups (user, 2026-11-19). */
+const LONG_MENU_ROWS = 18;
+
 export function AppSidebar() {
     const { can, isSuperAdmin } = usePermissions();
+    // Project Leader (laporan.hub): one "Laporan" menu with every report instead of one per module (user, 2026-11-18).
+    const laporanHub = can('laporan.hub') && !isSuperAdmin;
     const { pinned, togglePinned, setPeek } = useSidebarPin();
     const { open: peeking } = useSidebar();
     const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -347,11 +353,15 @@ export function AppSidebar() {
                     icon: SquarePen,
                 },
                 ...pengusahaanItems('operasi'),
-                can(['operasi.laporan.view', 'operasi.pengusahaan.view']) && {
-                    title: 'Laporan',
-                    href: laporan.index(),
-                    icon: FileBarChart,
-                },
+                !laporanHub &&
+                    can([
+                        'operasi.laporan.view',
+                        'operasi.pengusahaan.view',
+                    ]) && {
+                        title: 'Laporan',
+                        href: laporan.index(),
+                        icon: FileBarChart,
+                    },
                 isSuperAdmin &&
                     can([
                         'operasi.laporan.view',
@@ -389,11 +399,12 @@ export function AppSidebar() {
                         icon: ClipboardCheck,
                     },
                 ...pengusahaanItems('har'),
-                can(['har.laporan.view', 'har.pengusahaan.view']) && {
-                    title: 'Laporan',
-                    href: harLaporan.index(),
-                    icon: FileBarChart,
-                },
+                !laporanHub &&
+                    can(['har.laporan.view', 'har.pengusahaan.view']) && {
+                        title: 'Laporan',
+                        href: harLaporan.index(),
+                        icon: FileBarChart,
+                    },
                 isSuperAdmin &&
                     can(['har.laporan.view', 'har.pengusahaan.view']) && {
                         title: 'SLA',
@@ -421,11 +432,12 @@ export function AppSidebar() {
                     icon: ClipboardCheck,
                 },
                 ...pengusahaanItems('k3'),
-                can(['k3.laporan.view', 'k3.pengusahaan.view']) && {
-                    title: 'Laporan',
-                    href: k3Laporan.index(),
-                    icon: FileBarChart,
-                },
+                !laporanHub &&
+                    can(['k3.laporan.view', 'k3.pengusahaan.view']) && {
+                        title: 'Laporan',
+                        href: k3Laporan.index(),
+                        icon: FileBarChart,
+                    },
                 isSuperAdmin &&
                     can(['k3.laporan.view', 'k3.pengusahaan.view']) && {
                         title: 'SLA',
@@ -447,11 +459,12 @@ export function AppSidebar() {
                     href: logistikInput.index(),
                     icon: SquarePen,
                 },
-                can('logistik.laporan.view') && {
-                    title: 'Laporan',
-                    href: logistikLaporan.index(),
-                    icon: FileBarChart,
-                },
+                !laporanHub &&
+                    can('logistik.laporan.view') && {
+                        title: 'Laporan',
+                        href: logistikLaporan.index(),
+                        icon: FileBarChart,
+                    },
                 isSuperAdmin &&
                     can('logistik.laporan.view') && {
                         title: 'SLA',
@@ -473,15 +486,34 @@ export function AppSidebar() {
                     href: pdmInput.index(),
                     icon: SquarePen,
                 },
-                can('pdm.laporan.view') && {
-                    title: 'Laporan',
-                    href: pdmLaporan.index(),
-                    icon: FileBarChart,
-                },
+                !laporanHub &&
+                    can('pdm.laporan.view') && {
+                        title: 'Laporan',
+                        href: pdmLaporan.index(),
+                        icon: FileBarChart,
+                    },
                 isSuperAdmin &&
                     can('pdm.laporan.view') && {
                         title: 'SLA',
                         href: sla.show('pdm'),
+                        icon: Target,
+                    },
+            ].filter(Boolean) as NavGroup['items'],
+        },
+        // Project Leader: the single Laporan menu and the Laporan SLA gabungan.
+        // Super Admin: the SLA gabungan of every module in one file too (user, 2026-11-19).
+        {
+            label: 'Laporan',
+            items: [
+                laporanHub && {
+                    title: 'Laporan',
+                    href: laporanHubRoutes.hub(),
+                    icon: FileBarChart,
+                },
+                (laporanHub || isSuperAdmin) &&
+                    can('sla.gabungan') && {
+                        title: isSuperAdmin ? 'SLA Gabungan' : 'SLA',
+                        href: sla.combined.index(),
                         icon: Target,
                     },
             ].filter(Boolean) as NavGroup['items'],
@@ -523,6 +555,20 @@ export function AppSidebar() {
             ].filter(Boolean) as NavGroup['items'],
         },
     ].filter((group) => group.items.length > 0);
+
+    // Rows a flat menu would take (group headings, items, sub-items): past this it needs scrolling
+    // on a laptop screen, so the groups become dropdowns like the Super Admin's.
+    const menuRows = groups.reduce(
+        (rows, group) =>
+            rows +
+            1 +
+            group.items.reduce(
+                (count, item) => count + 1 + (item.items?.length ?? 0),
+                0,
+            ),
+        0,
+    );
+    const collapsibleGroups = isSuperAdmin || menuRows > LONG_MENU_ROWS;
 
     return (
         <>
@@ -572,9 +618,10 @@ export function AppSidebar() {
                 </SidebarHeader>
 
                 <SidebarContent>
-                    {/* Only the Super Admin (every menu) gets collapsible groups; other roles see a short, flat menu. */}
+                    {/* The Super Admin — and any role whose menu is long enough to scroll (user, 2026-11-19) —
+                        gets collapsible groups (the one holding the current page opens); a short menu stays flat. */}
                     {groups.map((group) =>
-                        group.label === 'Umum' || !isSuperAdmin ? (
+                        group.label === 'Umum' || !collapsibleGroups ? (
                             <NavMain
                                 key={group.label}
                                 label={group.label}

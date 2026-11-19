@@ -200,9 +200,15 @@ PLN UP Kendari (kantor induk)
   Leader unit itu mengisi input Pengusahaan Operasi (default aktif; unit
   containerized default nonaktif).
 - **Titik absensi** per unit: lintang, bujur, radius (default 300 m).
+- **Struktur Team Leader** per unit (`units.tl_structure`, Master Unit):
+  | Struktur | Unit | Team Leader |
+  |---|---|---|
+  | Terpisah | **PLTD Poasia, PLTD Wua-Wua, PLTD Bau-Bau, PLTD Kolaka** | TL Operasi, TL Pemeliharaan, TL K3 & Keamanan |
+  | TL Ophar | seluruh unit lainnya | **TL Ophar** (TL Operasi + TL Pemeliharaan digabung, memegang Operasi **dan** Pemeliharaan termasuk Logistik & PdM) + TL K3 & Keamanan |
+  | Containerized | unit yang namanya memuat "Containerized" (PLTD Poasia Containerized) | **Tidak ada TL** — dipimpin Project Leader, yang mengambil seluruh langkah TL (Operasi, Pemeliharaan, K3) |
 - Satu unit memiliki jabatan tunggal (singleton) per unit: Manager UL (per UL),
-  TL Operasi/Pemeliharaan/K3, Koordinator ×5, Project Leader, Office ×5, PIC PdM.
-  Jabatan aktif yang sama tidak boleh dipegang dua pegawai.
+  TL Operasi/Pemeliharaan/Ophar/K3 (sesuai struktur), Koordinator ×5, Project Leader,
+  Office ×5, PIC PdM. Jabatan aktif yang sama tidak boleh dipegang dua pegawai.
 
 ---
 
@@ -233,6 +239,7 @@ satu pintu: menu **Laporan** modul.
 | Manager UL (`manager_ul`) | Unit Layanan | Lihat unit/mesin/pegawai di UL-nya, kelola mesin & pegawai, ubah unit, lihat user & log aktivitas, lihat semua laporan modul & Pengusahaan, lihat Operator, Portal & Monitoring, **mengesahkan** laporan |
 | TL Operasi (`tl_operasi`) | Unit | Akses 2 Operasi (tulis), menyetujui Laporan Operasi, lihat logsheet/mutasi/jadwal shift operator |
 | TL Pemeliharaan (`tl_pemeliharaan`) | Unit | Akses 2 Pemeliharaan (tulis), menyetujui Laporan Pemeliharaan (juga Logistik & PdM), lihat Executive Summary |
+| TL Ophar (`tl_ophar`) | Unit | **TL Operasi + TL Pemeliharaan digabung** (unit berstruktur TL Ophar): seluruh izin kedua role itu — Akses 2 Operasi **dan** Pemeliharaan (tulis), menyetujui Laporan Operasi, Pemeliharaan, Logistik & PdM, lihat logsheet/mutasi/jadwal shift, Executive Summary |
 | TL K3 & Keamanan (`tl_k3`) | Unit | Akses 2 K3 (tulis), menyetujui Laporan K3, Monitoring K3 |
 | Staf Operasi / Pemeliharaan / K3 (`staf_*`) | Unit | Akses 2 divisi (tulis), mengajukan Laporan Pengusahaan |
 | Koordinator Operasi (`koordinator_operasi`) | Unit | Akses 1 Operasi penuh + master Operasi; awasi logsheet/mutasi; **kelola Jadwal Shift & absensi** |
@@ -240,7 +247,7 @@ satu pintu: menu **Laporan** modul.
 | Koordinator K3 (`koordinator_k3`) | Unit | Akses 1 K3 penuh + master K3 + Monitoring K3 |
 | Koordinator Logistik & Gudang (`koordinator_logistik`) | Unit | Modul Logistik penuh (akun Koordinator/Office Logistik); Koordinator Logistik **memverifikasi** Laporan Logistik, disetujui **TL Pemeliharaan** |
 | Koordinator PdM & Maturity Level (`koordinator_pdm`) | Unit | Modul PdM penuh (akun Koordinator/PIC PdM); Koordinator PDM **memverifikasi** Laporan PdM, disetujui **TL Pemeliharaan** |
-| Project Leader (`project_leader_operasi`) | Unit | Semua hak operator + kelola Jadwal Shift & absensi + presensi + input Operasi lapangan + input Pengusahaan Operasi + kelola daftar Material & Peralatan + lihat **semua** Laporan Project (tanda tangan "Mengetahui") + membuat Daily Meeting Pemeliharaan |
+| Project Leader (`project_leader_operasi`) | Unit | Semua hak operator + kelola Jadwal Shift & absensi + presensi + input Operasi lapangan + input Pengusahaan Operasi + kelola daftar Material & Peralatan + lihat **semua** Laporan Project (tanda tangan "Mengetahui") lewat **satu menu Laporan** (`laporan.hub`) + **Laporan SLA Gabungan** (`sla.gabungan`) + membuat Daily Meeting Pemeliharaan |
 | Operator (`operator`) | Unit | Menu Operator (absen, logsheet, start stop, mutasi, pengajuan, resume) + Input Operasi lapangan; **tanpa** Master Data dan **tanpa** input Pengusahaan |
 | Akun Unit (`akun_unit`) | Unit | Satu akun per unit (`unit.{kode-unit}@upkendari.co.id`) untuk **semua divisi**: lihat & isi input, jadwal, formulir, Pengusahaan, Operator logsheet, dan laporan — hanya data unit itu; tanpa kelola master, pengguna, atau pengesahan laporan |
 | Admin UL (`admin_ul`) | Unit Layanan | Seperti Akun Unit untuk **seluruh unit di bawah UL-nya** (lihat & isi semua divisi) + **Laporan UL** (`laporan_ul.view`: Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan). Satu akun per UL: `admin.{slug-UL}@upkendari.co.id` (mis. `admin.ul-pltd-poasia@…`), dibuat `AdminUlAccountSeeder` lewat migrasi; kata sandi awal sama dengan akun contoh, wajib diganti |
@@ -258,15 +265,18 @@ Catatan:
   role per menu** di Administrasi → Role & Akses tanpa deploy ulang.
 - Satu user boleh memegang lebih dari satu penugasan (`role_assignments`,
   ke UL atau ke unit sesuai scope role).
+- TL Operasi & TL Pemeliharaan hanya ada di unit berstruktur **Terpisah**; unit
+  **TL Ophar** memakai `tl_ophar`; unit **containerized** tidak punya role TL
+  (langkah TL dikerjakan Project Leader) — §4.
 
-### 5.3 Katalog permission (149)
+### 5.3 Katalog permission (151)
 
 | Grup | Permission |
 |---|---|
 | Master Data | `service_unit.*`, `unit.*`, `machine.*`, `employee.*` (`view_any`, `view`, `create`, `update`, `delete`) |
 | Manajemen Akses | `user.*`, `role.*` (+ `role.assign`) |
 | Monitoring | `activity_log.view_any`, `activity_log.export`, `monitoring.view` |
-| Laporan Unit, Project, Laporan Project | `report_unit.*`, `project.*`, `report_project.*` (termasuk submit/approve/export), `laporan_ul.view` (Laporan UL — Admin UL & Super Admin, §8.13) |
+| Laporan Unit, Project, Laporan Project | `report_unit.*`, `project.*`, `report_project.*` (termasuk submit/approve/export), `laporan_ul.view` (Laporan UL — Admin UL & Super Admin, §8.13), `laporan.hub` (satu menu Laporan — Project Leader), `sla.gabungan` (Laporan SLA Gabungan — Project Leader) |
 | Operator | `operator.logsheet.view|write`, `operator.absensi.view|write`, `operator.presensi`, `operator.mutasi.view|write` |
 | Operasi — Akses 1 | `operasi.input.view|write`, `operasi.laporan.view`, `operasi.master.view_any|manage`, `operasi.material_peralatan.kelola` |
 | Operasi — Akses 2 | `operasi.pengusahaan.view|write|input` |
@@ -324,6 +334,7 @@ Aturan tambahan:
 | K3 & Keamanan | Jadwal, Input Project, Formulir Project, Input K3 & Keamanan, Formulir K3 & Keamanan, Laporan, SLA* |
 | Logistik & Gudang | Jadwal, Input, Laporan, SLA* |
 | PdM & Maturity Level | Jadwal, Input, Laporan, SLA* |
+| Laporan | Project Leader (`laporan.hub`): **Laporan** (satu halaman `/laporan` berisi seluruh laporan per modul) dan **SLA** (Laporan SLA Gabungan `/sla/gabungan`); menu Laporan per modul disembunyikan untuk akun ini. Super Admin: **SLA Gabungan** (seluruh modul, satu/semua unit, 1 file PDF/Excel) |
 | Laporan UL | Laporan UL (`laporan_ul.view`) — grup sendiri di bawah, tepat sebelum Administrasi |
 | Administrasi | Pengguna, Role & Akses, Penanda Tangan Laporan, Lokasi Absensi |
 
@@ -334,14 +345,19 @@ Aturan tambahan:
   Acara"). Menu Akses 1 bernama "Input Project" / "Formulir Project" bila akun
   memegang kedua akses. Kata "Pengusahaan" tidak pernah tampil ke pengguna.
 - \*SLA: sementara hanya tampil untuk Super Admin (§8.12).
+- **Grup dropdown**: Super Admin, dan **role lain yang menunya panjang** (lebih dari 18 baris
+  — judul grup + menu + submenu — sehingga perlu digulir di layar laptop), melihat setiap grup
+  (kecuali Umum) sebagai **dropdown**; grup yang memuat halaman aktif terbuka otomatis. Role
+  dengan menu pendek tetap tampil rata (keputusan user 2026-11-19).
 - Kantor induk & Manager UL diarahkan ke **Portal Pemantauan** (`/pantau`).
 
 ### 6.2 Tampilan HP
 
 - Setiap kelompok role memiliki "shell" HP sendiri (`layouts/mobile/modules.ts`):
-  operator, operasi-project, operasi-pengusahaan, har-project, har-pengusahaan,
-  k3-project, k3-pengusahaan, logistik, pdm. Manager UL tidak punya shell HP
-  (memakai aplikasi penuh, baca saja).
+  operator, operasi-project, ophar-pengusahaan (TL Ophar: menu Operasi **dan**
+  Pemeliharaan dalam satu beranda), operasi-pengusahaan, har-project,
+  har-pengusahaan, k3-project, k3-pengusahaan, logistik, pdm. Manager UL tidak
+  punya shell HP (memakai aplikasi penuh, baca saja).
 - Beranda HP: header biru ringkas → pencarian → chip grup → kartu menu per grup
   (tanpa Akses Cepat — dihapus 2026-11-05).
 - Halaman input, jadwal, dan formulir di HP **langsung bisa diisi** (semua modul):
@@ -427,7 +443,7 @@ Aturan tambahan:
 | Menu | Isi | Akses default |
 |---|---|---|
 | Unit Layanan | Kode, nama, deskripsi, aktif | Super Admin (Manager UL lihat) |
-| Unit Pembangkit | Kode, nama, tipe, UL, kapasitas, lokasi, status, kontrak (11/6 KIT), titik absensi, **Hak Akses Unit** | Super Admin; Manager UL ubah |
+| Unit Pembangkit | Kode, nama, tipe, UL, kapasitas, lokasi, status, kontrak (11/6 KIT), **Struktur Team Leader** (Terpisah / TL Ophar / Containerized), titik absensi, **Hak Akses Unit** | Super Admin; Manager UL ubah |
 | Master Mesin | Mesin per unit, jenis BBM (`fuel_type`), jenis pelumas (pivot), data penggerak & generator, daya | Super Admin, Manager UL |
 | Master Pegawai | NIP, nama, jabatan (`EmployeePosition`), unit, akun user, **regu A–D**, Leader Shift, tanda tangan | Super Admin, Manager UL |
 | Master Operasi | Feeder, Pasokan Cadangan, Tangki BBM (+ **Jenis Tangki**: Storage / Setlink / Transfer / Service), Jenis Pelumas, **kWh Meter** (kategori kWh Produksi / kWh PS / Susut Trafo, opsional mesin), Faktor Kalibrasi, Jenis BBM, Kode Status (global), Kode Absensi/Shift (global), Pola Shift per Regu | `operasi.master.*` |
@@ -435,6 +451,16 @@ Aturan tambahan:
 | Master K3 & Keamanan | Jenis Kegiatan K3, Kategori APD, Kategori Alat Sertifikasi (global); Lokasi Patroli, Pos Keamanan, Fasilitas Darurat, Item APD, APAR/APAB, Kotak P3K, Item Checklist Inspeksi (per unit) | `k3.master.*` |
 
 Aturan:
+- **Tambah unit**: Struktur TL otomatis **Containerized** bila nama unit memuat
+  "Containerized", selain itu **TL Ophar** (dapat diubah). Opsi **Buat akun pengguna
+  unit otomatis** (default dicentang) membuat akun + data pegawai jabatannya:
+  Akun Unit, Project Leader, Team Leader sesuai struktur (Terpisah: TL Operasi,
+  TL Pemeliharaan, TL K3; TL Ophar: TL Ophar, TL K3; Containerized: tanpa TL),
+  Koordinator ×5, Office ×4, PIC PdM — e-mail `{prefix}.{kode-unit}@upkendari.co.id`
+  (`UnitAccountProvisioner`). E-mail yang sudah dipakai tidak diubah. Semua akun baru
+  memakai kata sandi awal **`password`** (keputusan user 2026-11-19, sama dengan akun
+  contoh lain), ditampilkan bersama daftar akunnya di halaman unit setelah disimpan;
+  pengguna wajib menggantinya.
 - Satu Leader Shift aktif per unit + regu; leader wajib punya regu.
 - Jumlah anggota regu tidak dibatasi.
 - Master turunan memakai satu engine generik (skema field → validasi & form
@@ -449,7 +475,9 @@ Aturan:
   dikelompokkan per grup (§5.3).
 - **Penanda Tangan Laporan** — delegasi jabatan penanda tangan suatu unit ke
   pemegang jabatan yang sama di unit lain (satu tingkat, tanpa rantai), mis.
-  TL Pemeliharaan PLTD Poasia juga menandatangani PLTD Poasia Containerized.
+  mis. TL Pemeliharaan unit A juga menandatangani unit B. Delegasi dibaca **setelah**
+  struktur TL unit (unit containerized: langkah TL = Project Leader, sehingga delegasi
+  TL lama untuk PLTD Poasia Containerized tidak dipakai lagi).
   Delegasi dapat memberi role unit-scope penanda tangan di unit itu dan
   mencabutnya kembali saat delegasi dihapus.
 - **Lokasi Absensi** — titik koordinat & radius per unit (`setting.manage`).
@@ -640,7 +668,7 @@ Detail penting:
 ### 8.5 Pemeliharaan — Akses 2 (Pengusahaan)
 
 - **Input:** Work Order · Service Request · **Rencana & Realisasi** · **Laporan
-  Kegiatan Pemeliharaan**.
+  Kegiatan Pemeliharaan** · **Input Logistik**.
 - **Formulir teknis (13):** Checklist Prelube Test · Checklist Hydrotest · Timing
   Injection Pump · Defleksi Crankshaft · Baut Counter Weight · Axial Conrod & Baut
   Conrod · Clearance Valve · Tekanan Pembakaran · Tekanan Pengabutan Injektor ·
@@ -655,6 +683,15 @@ Detail:
 - **Laporan Kegiatan Pemeliharaan** (FMKD-314-10.3.3-A3) — kategori Mesin dan
   Listrik & Kontrol; grup per mesin/judul/jenis HAR/uraian; No. SR atau BA;
   No. WO atau SPKI. Terpisah dari Log Kegiatan HARMES Akses 1.
+- **Input Logistik** (`har.pengusahaan.input-logistik.*`, halaman
+  `pengusahaan/har/input-logistik`) — diisi **TL Pemeliharaan / TL Ophar & Staf
+  Pemeliharaan** (`har.pengusahaan.view|write`), **bukan** Project Leader maupun
+  Koordinator & bawahannya. Tabel sama dengan Laporan Kondisi Stok Tools dan
+  Material Logistik (A. Peralatan, B. Material; stok awal, masuk, keluar, stok akhir
+  otomatis, satuan, harga, pemakaian rata-rata, safety stock, ILT, ROP otomatis, RoQ)
+  **ditambah kolom Dasar Stok** (pilihan Cashcard · SPPL · Internal · Kontrak) dan
+  **Nomor Surat / Kontrak**. Disimpan per unit & bulan (form `input-logistik`,
+  terpisah dari Kondisi Stok milik Koordinator Logistik); Excel & PDF.
 - **Formulir teknis** — per unit + mesin + tanggal uji; kop statis; penanda
   tangan dihitung ulang tiap simpan dari Manager UL, TL Pemeliharaan, Staf
   Pemeliharaan unit; bisa diisi juga oleh Harmes/Harlist.
@@ -847,8 +884,15 @@ PdM (segera hadir)*.
 - Tagihan bulan berjalan (opsional, isian di halaman) → Nilai Denda Rp per kriteria & total.
   Unduh **PDF** (`reports/sla-pdf.blade.php`, A4 landscape) dan **Excel**
   (`resources/js/lib/sla-excel.ts`, landscape).
-- Akses: **sementara hanya Super Admin** (keputusan user 2026-11-17; saklar
-  `SlaReport::SUPER_ADMIN_ONLY`). Bila dibuka: izin lihat laporan modul divisi
+- Akses: halaman SLA per divisi **sementara hanya Super Admin** (keputusan user 2026-11-17;
+  saklar `SlaReport::SUPER_ADMIN_ONLY`). **Laporan SLA Gabungan** untuk **Project Leader**
+  (`sla.gabungan`, 2026-11-18) **dan Super Admin** (2026-11-19: menu **Laporan → SLA Gabungan**,
+  plus tombol **Semua Unit** di panel gabungan halaman SLA per divisi; unduhan "Semua unit"
+  Super Admin mencakup seluruh unit aktif — batas waktu & memori diperpanjang hanya untuk
+  unduhan lebih dari 3 unit; 22 unit ±1 menit, PDF ±35 MB).
+  Menu SLA → `/sla/gabungan` dengan pilihan unit, bulan, tahun,
+  tagihan, dan rekap. Unduhan dalam **1 file PDF** (sampul + 6 divisi + rekap per unit) atau
+  **Excel** (sheet Sampul & SLA per unit), untuk satu unit atau **Semua unit** yang diakses. Bila dibuka: izin lihat laporan modul divisi
   (= `ModuleResume::allows`) + cakupan unit; SLA Project Leader butuh izin lihat laporan kelima modul.
 - **Laporan SLA Gabungan** (akun yang boleh membuka keenam divisi, mis. Super Admin):
   panel di halaman SLA → **1 file**:
@@ -873,15 +917,25 @@ PdM (segera hadir)*.
   mis. UL PLTD Poasia = PLTD Poasia 11 KIT + Containerized 6 KIT):
   1. **Laporan Pengusahaan Pembangkit**: Laporan Kinerja (Operasi), Laporan Pemeliharaan (HAR),
      Laporan K3L.
-  2. **Laporan Logistik**.
+  2. **Laporan Logistik** — termasuk **Input Logistik TL** (Input Pemeliharaan Akses 2, §8.5)
+     seluruh unit secara otomatis (`UlInputLogistik`): tabel **Rekap Stok Tools & Material per
+     Unit** (jumlah item, nilai stok = stok akhir × harga satuan, item ≤ ROP, jumlah item per
+     Dasar Stok Cashcard/SPPL/Internal/Kontrak, baris TOTAL UL) dan **Rincian** (unit, kelompok,
+     nama, dasar stok, nomor surat/kontrak, stok awal/masuk/keluar/akhir, satuan, harga, ROP,
+     RoQ), plus catatan arah data (item perlu dipesan ulang, unit yang belum mengisi). Tampil di
+     dokumen, PDF & Excel; hanya baris yang disimpan yang dihitung. Dokumen UL yang sudah
+     disimpan tidak berubah sendiri (isi yang sudah disahkan tetap) — pakai muat ulang dari data.
   3. **Laporan K3 Lingkungan**.
   4. **Laporan Administrasi Keuangan**: kartu nonaktif "Segera Hadir" (menu input menyusul).
   5. **PPT Rutin Bulanan**.
 - Per bagian:
-  - KPI **akumulasi UL** dengan arah vs bulan lalu dan Ringkasan Arah Data;
+  - KPI **akumulasi UL** dengan arah vs bulan lalu dan Ringkasan Arah Data, plus kolom
+    **Rata-rata per Unit** (rerata nilai tiap unit; dokumen, Excel & PPT);
   - tabel **perbandingan per unit** + baris TOTAL;
   - grafik 3D perbandingan antar unit + grafik modul (`ModuleResume::aggregate`, data input
     Laporan Project & input divisi TL);
+  - **tanpa logo MKP** (keputusan user 2026-11-18): sampul, kop halaman, kop Excel dan PPT
+    hanya memakai logo PLN Nusantara Power;
   - lampiran tabel rincian;
   - status laporan unit (Project & divisi TL);
   - kelengkapan input per unit.
@@ -897,12 +951,13 @@ PdM (segera hadir)*.
   - disimpan di `ul_report_documents` (per UL + jenis + bulan); PDF = isi yang diedit
     (portrait/landscape digabung), Excel dari mode spreadsheet.
 - **Persetujuan berjenjang** (`UlReportWorkflow`, terpisah dari alur laporan unit):
-  - Admin UL **Ajukan** → **Menyetujui**: satu TL per bidang dari **unit induk UL** (unit
-    aktif pertama), bergiliran:
-    - Pengusahaan Pembangkit: TL Operasi → TL Pemeliharaan → TL K3 & Keamanan;
-    - Logistik: TL Pemeliharaan;
-    - K3L: TL K3 & Keamanan.
-  - → **Mengesahkan** Manager UL → **Final**.
+  - Admin UL menyusun & **Ajukan**, lalu pejabat dari **unit induk UL** (unit aktif pertama):
+    - **Laporan Pengusahaan Pembangkit**: **Dibuat oleh TL Operasi** (tahap "Membuat") →
+      **Disahkan Manager UL**. TL Pemeliharaan & TL K3 tidak ikut, dan Admin UL tidak tercetak
+      di lembar pengesahan (keputusan user 2026-11-18).
+    - Logistik: Dibuat Admin UL → Menyetujui TL Pemeliharaan → Mengesahkan Manager UL.
+    - K3L: Dibuat Admin UL → Menyetujui TL K3 & Keamanan → Mengesahkan Manager UL.
+  - Status setelah tahap TL: Disetujui → Manager UL Sahkan → **Final**.
   - Penyetuju dibekukan saat Ajukan. Pengalihan ke TL unit lain lewat menu Penanda Tangan
     Laporan pada unit induk.
   - Tolak (pemegang tahap terbuka, wajib alasan) → **Ditolak**: Admin UL memperbaiki lalu
@@ -915,6 +970,10 @@ PdM (segera hadir)*.
 - **PPT** 16:9 (`lib/ul-ppt.ts`, pptxgenjs, data `laporan-ul.ppt-data`): sampul, agenda, divider
   per laporan, slide KPI + arah data, tabel per unit, grafik (2/slide), status &
   kelengkapan, penutup.
+  - Latar **bertema teknologi pembangkit listrik**: menara transmisi, pembangkit, jalur
+    sirkuit, gelombang listrik.
+  - `public/images/ul/ppt-bg-dark.png` untuk sampul/pembatas/penutup;
+    `ppt-bg-light.png` (tipis) untuk slide isi.
 
 ---
 
@@ -978,6 +1037,15 @@ Draft ──Ajukan──▶ Diajukan ──Verifikasi (Koordinator)──▶ Ver
 - Lembar Pengesahan: Memeriksa (Koordinator divisi) · Menyetujui (Team Leader:
   TL Operasi untuk Operasi, TL K3 untuk K3, TL Pemeliharaan untuk HAR, Logistik,
   PdM) · Mengesahkan (Manager UL).
+- **Struktur TL unit** (§4) menentukan pemegang langkah TL, dipetakan terpusat di
+  `ReportSignatories::holder()` / `effectivePosition()`:
+  - unit **TL Ophar**: langkah TL Operasi & TL Pemeliharaan → **TL Ophar** (jabatan
+    tercetak "Team Leader Ophar"); TL K3 tetap.
+  - unit **containerized**: semua langkah TL (Operasi, Pemeliharaan, K3) → **Project
+    Leader** unit.
+  - Berlaku juga untuk Laporan Pengusahaan, Laporan UL (unit induk UL), formulir HAR,
+    IK Logistik/PdM, jadwal PdM, Berita Acara/TUG/BA Fisik Pelumas/Stand Meter Operasi,
+    formulir K3, dan pemantauan penanda tangan yang belum terdaftar.
 - Blok tanda tangan di dalam laporan: **Mengetahui** Project Leader · **Dibuat**
   Office divisi; untuk PdM: Koordinator Pemeliharaan + PIC PdM.
 
@@ -990,8 +1058,8 @@ Draft ──Ajukan──▶ Diajukan ──Verifikasi (Koordinator)──▶ Ver
 **Laporan UL** (§8.13, tabel & servis terpisah: `ul_report_*`, `UlReportWorkflow`)
 
 ```text
-Draft ──Ajukan (Admin UL)──▶ Diajukan ──Setujui (TL bidang ke-1 … ke-n)──▶ Disetujui
-      ──Sahkan (Manager UL)──▶ Final
+Draft ──Ajukan (Admin UL)──▶ Diajukan ──TL (Pengusahaan: TL Operasi "Membuat";
+      Logistik: TL Pemeliharaan; K3L: TL K3 "Menyetujui")──▶ Disetujui ──Sahkan (Manager UL)──▶ Final
                     └────────────── Tolak (tahap terbuka) ──▶ Ditolak — Perlu Perbaikan
 ```
 
@@ -1124,7 +1192,7 @@ Draft ──Ajukan (Admin UL)──▶ Diajukan ──Setujui (TL bidang ke-1 �
 |---|---|
 | PDF | dompdf, A4; orientasi mengikuti form (mayoritas landscape) |
 | Excel | Dibuat di browser (ExcelJS) dari data halaman, tata letak sama dengan PDF; editor dokumen memakai SheetJS untuk .xlsx. **Setiap halaman input/jadwal/formulir punya Excel**: halaman tanpa ekspor khusus mendapat tombol Excel generik di bilah atas desktop yang mengekspor tabel halaman apa adanya (berkop, sel gabungan, nilai isian & centang) |
-| Kop | Logo PLN (`public/logo/sidebar-logo.png`) kiri + logo mitra (`public/logo/mkp.jpg`) kanan, di-embed sebagai data URI base64 (bukan path relatif) |
+| Kop | Logo PLN (`public/logo/sidebar-logo.png`) kiri + logo mitra (`public/logo/mkp.jpg`) kanan, di-embed sebagai data URI base64 (bukan path relatif). **Pengecualian: Laporan UL tanpa logo MKP** — sampul, kop, Excel dan PPT hanya logo PLN (§8.13) |
 | Identitas | Nama unit/UL dari master; tidak disalin ke tabel modul |
 | No. Dokumen ISO | Tetap per jenis form (mis. FMKD-314-…, SMT-FM-AK3-…, SMT-FM-EPI-01.04, FMZ-…), default dari config, editable di dokumen; tidak auto-generate |
 | Nomor surat BA | Tetap per template, default global + override per unit |
@@ -1182,7 +1250,7 @@ Draft ──Ajukan (Admin UL)──▶ Diajukan ──Setujui (TL bidang ke-1 �
 service_units   id, code, name, slug, description, is_active
 units           id, service_unit_id?, code, name, slug, type, contract, installed_capacity_mw,
                 location, status, is_active, latitude, longitude, attendance_radius_m,
-                operator_pengusahaan
+                operator_pengusahaan, tl_structure (terpisah | ophar | containerized)
 machines        id, unit_id, name, fuel_type, … (+ machine_lubricant_type)
 employees       id, unit_id, user_id?, employee_id (NIP), name, position, division,
                 singleton_key, regu?, is_shift_leader, signature_path, is_active
@@ -1293,6 +1361,13 @@ Aturan data:
 | 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
+| 2026-11-19 | Sidebar: role dengan menu panjang (> 18 baris) memakai **grup dropdown** seperti Super Admin; menu pendek tetap rata. Build produksi (`public/build`) dibuat ulang — sebelumnya belum memuat Laporan UL sehingga menu itu tidak tampil saat Vite dev tidak berjalan |
+| 2026-11-19 | Hasil **Input Logistik TL** otomatis masuk **Laporan Logistik** di Laporan UL (rekap per unit + rincian dasar stok & nomor surat/kontrak; dokumen UL yang belum disimpan langsung memuatnya, dokumen yang sudah disimpan/disahkan tetap — muat ulang lewat tombol muat ulang dari data). **Super Admin** mendapat menu **SLA Gabungan**: SLA seluruh modul dalam 1 file PDF/Excel, untuk satu unit atau semua unit |
+| 2026-11-19 | **Input Logistik** di Input Pemeliharaan (Akses 2) untuk TL Pemeliharaan / TL Ophar & Staf Pemeliharaan (bukan Project Leader / Koordinator): tabel kondisi stok tools & material + kolom **Dasar Stok** (Cashcard, SPPL, Internal, Kontrak) dan **Nomor Surat / Kontrak**. Akun unit baru memakai kata sandi awal `password` |
+| 2026-11-19 | **TL Ophar**: di seluruh unit kecuali **PLTD Poasia, PLTD Wua-Wua, PLTD Bau-Bau, PLTD Kolaka**, TL Operasi & TL Pemeliharaan digabung menjadi **TL Ophar** (role `tl_ophar`, izin gabungan keduanya — dapat membuka Operasi **dan** Pemeliharaan, menyetujui laporan Operasi, Pemeliharaan, Logistik & PdM). Unit **containerized tidak punya TL** — dipimpin Project Leader yang mengambil langkah TL. Migrasi data: pegawai & akun TL Operasi unit Ophar menjadi TL Ophar (e-mail login tetap); pegawai & akun TL Pemeliharaan unit Ophar serta seluruh TL unit containerized **dinonaktifkan** (tidak dihapus); langkah persetujuan yang belum ditandatangani dialihkan ke pemegang baru. Master Unit: pilihan **Struktur TL** (otomatis containerized dari nama) dan **pembuatan akun unit otomatis** saat tambah unit |
+| 2026-11-18 | Laporan UL: kolom **Rata-rata per Unit** di Indikator Utama; PPT memakai **latar teknologi bertema pembangkit listrik**. **Project Leader**: menu Laporan per modul diganti **satu menu Laporan** berisi seluruh laporan per modul, plus menu **SLA** untuk mencetak Laporan SLA Gabungan (semua divisi, satu/semua unit) dalam 1 PDF atau Excel |
+| 2026-11-18 | Validasi **Laporan Pengusahaan Pembangkit (UL)**: **dibuat oleh TL Operasi, disahkan Manager UL** (TL Pemeliharaan & TL K3 tidak ikut; Admin UL hanya menyusun & mengajukan). Logistik & K3L tetap: Admin UL → TL bidang → Manager UL |
+| 2026-11-18 | Logo **MKP dihapus dari seluruh Laporan UL** (sampul, kop, Excel, PDF, PPT); laporan lain tetap memakai logo MKP |
 | 2026-11-18 | **Laporan UL** ditampilkan sebagai **dokumen** seperti Laporan Project (Teks/Excel/Pratinjau PDF, sampul, daftar isi, lembar pengesahan) dengan **persetujuan berjenjang**: Admin UL ajukan → TL per bidang (unit induk UL) menyetujui → Manager UL mengesahkan; masuk kotak Persetujuan TL/Manager UL (§8.13, §9.3) |
 | 2026-11-18 | **Akun Admin UL** dibuat satu per UL (`admin.{slug-UL}@upkendari.co.id`); menu Laporan UL dipindah ke grup sendiri di bawah sidebar, sebelum Administrasi |
 | 2026-11-18 | **Laporan UL** untuk Admin UL (& Super Admin): Laporan Pengusahaan Pembangkit (Kinerja, HAR, K3L), Laporan Logistik, Laporan K3L — akumulasi seluruh unit di bawah UL + perbandingan per unit; PDF, Excel, **PPT rutin bulanan**; Laporan Administrasi Keuangan disiapkan (belum aktif) (§8.13) |

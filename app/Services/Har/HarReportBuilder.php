@@ -645,7 +645,8 @@ class HarReportBuilder
         $signatories = app(ReportSignatories::class);
         $signer = fn (EmployeePosition $position): array => [
             'name' => (string) ($signatories->holder($unit, $position)?->name ?? ''),
-            'position' => $position->value,
+            // TL Ophar / Project Leader where the unit's TL structure says so.
+            'position' => $signatories->positionLabel($unit, $position),
             'signature' => null,
         ];
 

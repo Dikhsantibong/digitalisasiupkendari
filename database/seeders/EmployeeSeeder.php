@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\EmployeePosition;
+use App\Enums\UnitTlStructure;
 use App\Models\Employee;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
@@ -67,6 +68,27 @@ class EmployeeSeeder extends Seeder
     ];
 
     /**
+     * A roster member as the unit's TL structure has it: in a TL Ophar unit
+     * the TL Operasi is the TL Ophar and there is no TL Pemeliharaan; a
+     * containerized unit has no Team Leader. Null = not in that unit.
+     *
+     * @param  array{suffix: int, position: string, regu: ?string, label: string, division: ?string}  $person
+     * @return array{suffix: int, position: string, regu: ?string, label: string, division: ?string}|null
+     */
+    public static function forStructure(array $person, UnitTlStructure $structure): ?array
+    {
+        $position = EmployeePosition::tryFrom($person['position']);
+
+        return match (true) {
+            $position === null || ! $position->isTeamLeader() || $structure === UnitTlStructure::Terpisah => $person,
+            $structure === UnitTlStructure::Containerized => null,
+            $position === EmployeePosition::TeamLeaderOperasi => [...$person, 'position' => EmployeePosition::TeamLeaderOphar->value, 'label' => 'TL Ophar'],
+            $position === EmployeePosition::TeamLeaderPemeliharaan => null,
+            default => $person,
+        };
+    }
+
+    /**
      * The NIP of a roster member of a unit, e.g. "PLTD-POASIA-PEG-025".
      */
     public static function nip(Unit $unit, int $suffix): string
@@ -82,6 +104,11 @@ class EmployeeSeeder extends Seeder
         // 1. Seed the unit-level roster
         foreach (Unit::query()->orderBy('id')->get() as $unit) {
             foreach (self::UNIT_ROSTER as $person) {
+                $person = self::forStructure($person, $unit->tlStructure());
+                if ($person === null) {
+                    continue;
+                }
+
                 $this->seed(self::nip($unit, $person['suffix']), [
                     'unit_id' => $unit->id,
                     'service_unit_id' => null,

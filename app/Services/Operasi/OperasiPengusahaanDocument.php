@@ -109,7 +109,7 @@ class OperasiPengusahaanDocument
 
             return [
                 'name' => $step?->employee?->name ?? (string) ($this->signatories->holder($unit, $position)?->name ?? ''),
-                'position' => $position->value,
+                'position' => $step?->position ?? $this->signatories->positionLabel($unit, $position),
                 ...$mark,
             ];
         };

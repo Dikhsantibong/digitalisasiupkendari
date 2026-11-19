@@ -52,21 +52,24 @@ class LaporanUlWorkflowTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_the_admin_ul_submits_then_each_tl_approves_and_the_manager_ul_ratifies(): void
+    public function test_the_pengusahaan_report_is_made_by_the_tl_operasi_and_ratified_by_the_manager_ul(): void
     {
         $admin = $this->userWithRole(RoleName::AdminUl, $this->ul);
         $tlOperasi = $this->signer(EmployeePosition::TeamLeaderOperasi, RoleName::TeamLeaderOperasi, $this->induk, 'Adi Yusuf');
+        // TL Pemeliharaan & TL K3 are not in the Laporan Pengusahaan Pembangkit (user, 2026-11-18).
         $tlHar = $this->signer(EmployeePosition::TeamLeaderPemeliharaan, RoleName::TeamLeaderPemeliharaan, $this->induk, 'Muh Isyak');
-        $tlK3 = $this->signer(EmployeePosition::TeamLeaderK3, RoleName::TeamLeaderK3, $this->induk, 'Muh Amin');
         $manager = $this->signer(EmployeePosition::ManagerUl, RoleName::ManagerUl, $this->ul, 'Zulkifli');
-        // The other unit's TL is not in the chain (one TL per bidang, from the induk unit).
+        // The other unit's TL Operasi is not in the chain (the induk unit's holder).
         $otherTl = $this->signer(EmployeePosition::TeamLeaderOperasi, RoleName::TeamLeaderOperasi, $this->second, 'Kurniawan');
         $query = ['kind' => 'pengusahaan', 'ul_id' => $this->ul->id, ...self::PERIOD];
 
-        // The chain is shown before submitting.
+        // The chain is shown before submitting: TL Operasi (Membuat) → Manager UL (Mengesahkan).
         $this->actingAs($admin)->get(route('laporan-ul.show', $query))->assertInertia(fn ($page) => $page
-            ->where('workflow.steps', fn ($steps): bool => collect($steps)->pluck('position')->all() === ['Team Leader Operasi', 'Team Leader Pemeliharaan', 'Team Leader K3 & Keamanan', 'Manager UL']
-                && collect($steps)->pluck('name')->all() === ['Adi Yusuf', 'Muh Isyak', 'Muh Amin', 'Zulkifli']));
+            ->where('workflow.steps', fn ($steps): bool => collect($steps)->pluck('position')->all() === ['Team Leader Operasi', 'Manager UL']
+                && collect($steps)->pluck('caption')->all() === ['Membuat', 'Mengesahkan']
+                && collect($steps)->pluck('name')->all() === ['Adi Yusuf', 'Zulkifli'])
+            ->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $html): bool => str_contains($html, 'dibuat oleh Team Leader Operasi dan disahkan oleh Manager UL')
+                && str_contains($html, 'Dibuat Oleh,') && ! str_contains($html, 'Admin UL</div>'))));
 
         // Save, then submit: the document is frozen.
         $this->actingAs($admin)->post(route('laporan-ul.store', $query), ['format' => 'html', 'content_html' => '<div class="ul-section"><p>Isi diedit Admin UL</p><table id="ul-ttd"><tr><td></td></tr></table></div>'])->assertRedirect();
@@ -76,20 +79,18 @@ class LaporanUlWorkflowTest extends TestCase
         $this->assertStringContainsString('Isi diedit Admin UL', (string) $document->content_html);
         $this->actingAs($admin)->post(route('laporan-ul.store', $query), ['format' => 'html', 'content_html' => '<p>ubah</p>'])->assertStatus(422);
 
-        // Turn by turn: only the open step's TL; the next TL, the other unit's TL and the Manager UL wait.
+        // Only the TL Operasi of the induk unit acts first; others and the Manager UL wait.
         $this->actingAs($tlHar)->post(route('laporan-ul.workflow.approve', $query))->assertForbidden();
+        $this->actingAs($tlHar)->get(route('laporan-ul.show', $query))->assertForbidden();
         $this->actingAs($otherTl)->get(route('laporan-ul.show', $query))->assertForbidden();
         $this->actingAs($manager)->post(route('laporan-ul.workflow.ratify', $query))->assertForbidden();
 
-        // The TL finds it in the Persetujuan inbox, with the Laporan UL action URL.
+        // The TL Operasi finds it in the Persetujuan inbox, with the Laporan UL action URL.
         $this->actingAs($tlOperasi)->get(route('approvals.index'))->assertOk()->assertInertia(fn ($page) => $page
             ->where('queue', fn ($items): bool => collect($items)->contains(fn ($item): bool => $item['title'] === 'Laporan Pengusahaan Pembangkit (Laporan UL)'
-                && str_contains($item['action_url'], '/laporan-ul/pengusahaan/setujui') && $item['action'] === 'approve')));
+                && str_contains($item['action_url'], '/laporan-ul/pengusahaan/setujui') && $item['action'] === 'approve' && $item['action_label'] === 'Membuat')));
 
         $this->actingAs($tlOperasi)->post(route('laporan-ul.workflow.approve', $query))->assertSessionHasNoErrors();
-        $this->assertSame(ReportStatus::Diajukan, $document->fresh()->status);
-        $this->actingAs($tlHar)->post(route('laporan-ul.workflow.approve', $query))->assertSessionHasNoErrors();
-        $this->actingAs($tlK3)->post(route('laporan-ul.workflow.approve', $query))->assertSessionHasNoErrors();
         $this->assertSame(ReportStatus::Disetujui, $document->fresh()->status);
 
         $this->actingAs($manager)->get(route('laporan-ul.show', $query))->assertOk()->assertInertia(fn ($page) => $page
@@ -99,13 +100,24 @@ class LaporanUlWorkflowTest extends TestCase
         $document->refresh();
         $this->assertSame(ReportStatus::Final, $document->status);
         $this->assertNotNull($document->finalized_at);
-        $this->assertSame(['ajukan', 'setujui', 'setujui', 'setujui', 'sahkan'], $document->logs()->pluck('action')->all());
+        $this->assertSame(['ajukan', 'setujui', 'sahkan'], $document->logs()->pluck('action')->all());
 
         // The PDF of the final document prints the signers' marks.
         $response = $this->actingAs($manager)->get(route('laporan-ul.pdf', $query));
         $response->assertOk()->assertHeader('content-type', 'application/pdf');
         $reader = new Fpdi;
         $this->assertGreaterThan(0, $reader->setSourceFile(StreamReader::createByString((string) $response->getContent())));
+    }
+
+    public function test_the_logistik_report_keeps_admin_ul_as_maker_and_the_tl_pemeliharaan_as_approver(): void
+    {
+        $admin = $this->userWithRole(RoleName::AdminUl, $this->ul);
+        $this->signer(EmployeePosition::TeamLeaderPemeliharaan, RoleName::TeamLeaderPemeliharaan, $this->induk, 'Muh Isyak');
+        $this->signer(EmployeePosition::ManagerUl, RoleName::ManagerUl, $this->ul, 'Zulkifli');
+
+        $this->actingAs($admin)->get(route('laporan-ul.show', ['kind' => 'logistik', 'ul_id' => $this->ul->id, ...self::PERIOD]))->assertInertia(fn ($page) => $page
+            ->where('workflow.steps', fn ($steps): bool => collect($steps)->pluck('caption')->all() === ['Menyetujui', 'Mengesahkan'])
+            ->loadDeferredProps('document', fn ($page) => $page->where('content', fn (string $html): bool => str_contains($html, 'Admin UL</div>'))));
     }
 
     public function test_a_rejection_returns_the_report_to_the_admin_ul_who_resubmits(): void
