@@ -43,12 +43,12 @@ class PoasiaStaffSeederTest extends TestCase
         $this->assertSame(['A' => 1, 'B' => 1, 'C' => 1, 'D' => 1], $operators->where('is_shift_leader', true)->countBy('regu')->sortKeys()->all());
         $operators->each(fn (Employee $operator) => $this->assertTrue($operator->user->hasRole(RoleName::Operator) && $operator->user->canAccessUnit($poasia)));
         $this->assertSame('Jemmy', $operators->where('regu', 'D')->firstWhere('is_shift_leader', true)->name);
-        $this->assertSame(1, User::query()->where('email', 'muh-zainuddin.pltd-poasia@upkendari.co.id')->count());
+        $this->assertSame(1, User::query()->where('email', 'muh-zainuddin.poasia@upkendari.co.id')->count());
 
         // Signer jabatan keep their account, which takes the person's name.
         $picPdm = $employee(24);
         $this->assertSame('Laode Irsad', $picPdm->name);
-        $this->assertSame('pic-pdm.pltd-poasia@upkendari.co.id', $picPdm->user->email);
+        $this->assertSame('pic.pdm.poasia@upkendari.co.id', $picPdm->user->email);
         $this->assertSame('Laode Irsad', $picPdm->user->name);
         $this->assertSame('pdm', $picPdm->division);
         $this->assertNotNull($picPdm->singleton_key);
@@ -70,15 +70,15 @@ class PoasiaStaffSeederTest extends TestCase
 
         // Placeholders without a person are deactivated, never deleted.
         $this->assertFalse($employee(29)->is_active);
-        $this->assertFalse(User::query()->where('email', 'operator1.pltd-poasia@upkendari.co.id')->sole()->is_active);
-        $this->assertFalse(User::query()->where('email', 'harmes2.pltd-poasia@upkendari.co.id')->sole()->is_active);
+        $this->assertFalse(User::query()->where('email', 'op1.poasia@upkendari.co.id')->sole()->is_active);
+        $this->assertFalse(User::query()->where('email', 'harmes2.poasia@upkendari.co.id')->sole()->is_active);
 
         // The TL, the unnamed signers and the other units stay as they were.
         $this->assertStringStartsWith('TL Operasi', $employee(8)->name);
         $this->assertTrue($employee(15)->is_active);
         $this->assertStringStartsWith('Koordinator K3', $employee(15)->name);
         $this->assertStringStartsWith('Operator 1', Employee::query()->where('nip', EmployeeSeeder::nip($kolaka, 1))->sole()->name);
-        $this->assertTrue(User::query()->where('email', 'operator1.pltd-kolaka@upkendari.co.id')->sole()->is_active);
+        $this->assertTrue(User::query()->where('email', 'op1.kolaka@upkendari.co.id')->sole()->is_active);
     }
 
     public function test_the_containerized_staff_get_two_operators_per_regu_and_three_harmes(): void
@@ -98,7 +98,7 @@ class PoasiaStaffSeederTest extends TestCase
         $this->assertSame(['A' => 2, 'B' => 2, 'C' => 2, 'D' => 2], $operators->countBy('regu')->sortKeys()->all());
         $this->assertSame(['Sarono', 'Aswadi', 'R. Yusuf', 'Muhlis'], $operators->where('is_shift_leader', true)->sortBy('regu')->pluck('name')->values()->all());
         $operators->each(fn (Employee $operator) => $this->assertTrue($operator->user->hasRole(RoleName::Operator) && $operator->user->canAccessUnit($container)));
-        $this->assertSame('muhlis.pltd-poasia-cont@upkendari.co.id', $employee(30)->user->email);
+        $this->assertSame('muhlis.poasiacont@upkendari.co.id', $employee(30)->user->email);
 
         $this->assertSame('Herwin Syahputra', $employee(18)->user->name);
         $this->assertSame('Sudoyo Age', $employee(21)->name);

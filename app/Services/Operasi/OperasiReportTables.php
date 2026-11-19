@@ -14,11 +14,13 @@ use App\Http\Controllers\Operasi\JadwalPerformanceTestController;
 use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\MaterialPeralatanController;
 use App\Http\Controllers\Operasi\MeetingShiftController;
+use App\Http\Controllers\Operasi\PatrolCheckMesinController;
 use App\Http\Controllers\Operasi\PembuatanIkController;
 use App\Http\Controllers\Operasi\PengusahaanResourcePembangkitController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
 use App\Models\OperasiInstruksiKerja;
+use App\Models\OperasiPatrolCheckMesin;
 use App\Models\Unit;
 use App\Services\Reports\Chart3d;
 use App\Services\Reports\ReportWorkflowService;
@@ -87,11 +89,47 @@ class OperasiReportTables
             $tables[$key] = ['title' => $title, 'scope' => $scope, 'body' => $fragment['body']];
         }
 
+        // 12. Pembuatan Patrol Check: the Patrol Check Mesin input (Input Project) of every machine
+        // saved for the month, each its own PDF view — empty body when none is saved.
+        $patrol = $this->patrolChecks($unit, $month, $year);
+        if ($patrol['css'] !== '') {
+            $styles[$patrol['scope']] = $patrol['css'];
+        }
+        $tables['patrol_check'] = ['title' => 'Patrol Check Mesin', 'scope' => $patrol['scope'], 'body' => $patrol['body']];
+
         return [
             'tables' => $tables,
             'styles' => implode("\n", $styles),
             'resume' => $this->resume($unit, $payloads, $month, $year, $engineDaysFilled),
         ];
+    }
+
+    /**
+     * The saved Patrol Check Mesin sheets of the month (one per machine, by
+     * machine name), each rendered from the input's own PDF view, one after
+     * another.
+     *
+     * @return array{scope: string, css: string, body: string}
+     */
+    private function patrolChecks(Unit $unit, int $month, int $year): array
+    {
+        $scope = 'op-v-operasi-input-patrol-check-mesin-pdf';
+        $css = '';
+        $bodies = [];
+
+        $machines = OperasiPatrolCheckMesin::query()
+            ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
+            ->orderBy('nama_mesin')->orderBy('id')
+            ->pluck('nama_mesin')->filter(fn (?string $name): bool => trim((string) $name) !== '')->unique()->values();
+
+        foreach ($machines as $name) {
+            [$view, $data] = app(PatrolCheckMesinController::class)->pdfView($unit, $year, $month, null, (string) $name);
+            $fragment = $this->fragments->extract(View::make($view, $data)->render(), $scope);
+            $css = $fragment['css'];
+            $bodies[] = $fragment['body'];
+        }
+
+        return ['scope' => $scope, 'css' => $css, 'body' => implode('<div class="op-patrol-gap" style="height: 10px;"></div>', $bodies)];
     }
 
     /**

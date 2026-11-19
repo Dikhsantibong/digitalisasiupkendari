@@ -112,23 +112,20 @@ export default function LaporanUlIndex({
                     options={options}
                 />
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2">
                     {reports.map((report) => {
                         const Icon = ICONS[report.kind] ?? FileBarChart;
 
                         return (
                             <div
                                 key={report.kind}
-                                className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-primary bg-card p-5"
+                                className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-primary bg-card p-5 shadow-xs"
                             >
                                 <div>
-                                    <div className="mb-3 flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                                        <Icon className="size-5" />
-                                    </div>
-                                    <h2 className="text-base font-semibold text-foreground">
-                                        {report.title}
-                                    </h2>
-                                    <div className="mt-1.5">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h2 className="text-base font-semibold text-foreground">
+                                            {report.title}
+                                        </h2>
                                         <StatusBadge tone={report.status_tone}>
                                             {report.status}
                                         </StatusBadge>
@@ -136,17 +133,11 @@ export default function LaporanUlIndex({
                                     <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                         {DESCRIPTIONS[report.kind]}
                                     </p>
-                                    <div className="mt-2 flex flex-wrap gap-1">
-                                        {report.parts.map((part) => (
-                                            <Badge
-                                                key={part}
-                                                variant="secondary"
-                                                className="text-[11px]"
-                                            >
-                                                {part}
-                                            </Badge>
-                                        ))}
-                                    </div>
+                                    {report.parts.length > 1 && (
+                                        <p className="mt-1.5 text-[12px] text-muted-foreground">
+                                            Isi: {report.parts.join(' · ')}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     <Button asChild>
@@ -183,12 +174,12 @@ export default function LaporanUlIndex({
                     })}
 
                     {/* Rencana pengembangan: menu & isi menyusul (user, 2026-11-18). */}
-                    <div className="flex flex-col justify-between gap-4 rounded-md border border-dashed border-border bg-card p-5">
+                    <div className="flex flex-col justify-between gap-4 rounded-md border border-dashed border-border bg-card p-5 shadow-xs">
                         <div>
-                            <div className="mb-3 flex items-center justify-between">
-                                <div className="flex size-10 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                                    <Wallet className="size-5" />
-                                </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h2 className="text-base font-semibold text-foreground">
+                                    Laporan Administrasi Keuangan
+                                </h2>
                                 <Badge
                                     variant="outline"
                                     className="text-[11px] text-muted-foreground"
@@ -196,9 +187,6 @@ export default function LaporanUlIndex({
                                     Segera Hadir
                                 </Badge>
                             </div>
-                            <h2 className="text-base font-semibold text-foreground">
-                                Laporan Administrasi Keuangan
-                            </h2>
                             <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
                                 Laporan administrasi & keuangan UL. Menu
                                 inputnya sedang disiapkan — laporan akan
@@ -216,11 +204,8 @@ export default function LaporanUlIndex({
                         </Button>
                     </div>
 
-                    <div className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-amber-500 bg-card p-5">
+                    <div className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-primary bg-card p-5 shadow-xs">
                         <div>
-                            <div className="mb-3 flex size-10 items-center justify-center rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                <Presentation className="size-5" />
-                            </div>
                             <h2 className="text-base font-semibold text-foreground">
                                 PPT Rutin Bulanan
                             </h2>

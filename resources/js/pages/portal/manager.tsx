@@ -5,6 +5,7 @@ import {
     FileCheck2,
     Inbox,
 } from 'lucide-react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ReportQueue, SignedList } from '@/components/laporan/approval-inbox';
 import type {
@@ -17,6 +18,7 @@ import {
 } from '@/components/operasi/filter-select';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import resume from '@/routes/laporan/resume';
 import portal from '@/routes/portal';
@@ -92,12 +94,39 @@ function Stat({
     value,
     tone,
     hint,
+    compact = false,
 }: {
     label: string;
     value: number;
     tone: 'primary' | 'success' | 'warning' | 'danger' | 'muted';
     hint: string;
+    compact?: boolean;
 }) {
+    if (compact) {
+        return (
+            <div
+                className="flex flex-col items-center gap-0.5 rounded-md border border-border bg-card px-1.5 py-2 text-center"
+                title={hint}
+            >
+                <p
+                    className={cn(
+                        'text-[20px] leading-none font-semibold tabular-nums',
+                        tone === 'primary' && 'text-primary',
+                        tone === 'success' && 'text-emerald-700',
+                        tone === 'warning' && 'text-amber-700',
+                        tone === 'danger' && 'text-red-700',
+                        tone === 'muted' && 'text-foreground',
+                    )}
+                >
+                    {value}
+                </p>
+                <p className="text-[10.5px] leading-tight font-medium text-muted-foreground">
+                    {label}
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-3.5">
             <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -138,6 +167,12 @@ export default function PortalManager({
     resume_modules,
     options,
 }: Props) {
+    // Phone (user, 2026-11-19): compact counters and one section at a time behind tabs.
+    const isMobile = useIsMobile();
+    const [tab, setTab] = useState<'queue' | 'status' | 'history' | 'resume'>(
+        'queue',
+    );
+    const shows = (key: typeof tab) => !isMobile || tab === key;
     const visit = (patch: Partial<{ month: number; year: number }>) =>
         router.get(
             portal.index().url,
@@ -161,38 +196,51 @@ export default function PortalManager({
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+                <div
+                    className={cn(
+                        'grid',
+                        isMobile
+                            ? 'grid-cols-3 gap-2'
+                            : 'grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6',
+                    )}
+                >
                     <Stat
+                        compact={isMobile}
                         label="Menunggu Anda"
                         value={counts.waiting}
                         tone={counts.waiting > 0 ? 'primary' : 'muted'}
                         hint="Perlu review & tanda tangan"
                     />
                     <Stat
+                        compact={isMobile}
                         label="Ditandatangani"
                         value={counts.signed_this_month}
                         tone="success"
                         hint={`Oleh Anda, ${period.label}`}
                     />
                     <Stat
+                        compact={isMobile}
                         label="Final"
                         value={counts.final}
                         tone="success"
                         hint={`Laporan ${period.label}`}
                     />
                     <Stat
+                        compact={isMobile}
                         label="Dalam proses"
                         value={counts.in_progress}
                         tone="muted"
                         hint="Belum sampai ke Anda / di tahap lain"
                     />
                     <Stat
+                        compact={isMobile}
                         label="Ditolak"
                         value={counts.rejected}
                         tone={counts.rejected > 0 ? 'danger' : 'muted'}
                         hint="Dikembalikan untuk perbaikan"
                     />
                     <Stat
+                        compact={isMobile}
                         label="Tertahan ≥ 3 hari"
                         value={counts.stuck}
                         tone={counts.stuck > 0 ? 'warning' : 'muted'}
@@ -200,84 +248,115 @@ export default function PortalManager({
                     />
                 </div>
 
-                <Section
-                    title="Perlu Pengesahan Anda"
-                    icon={<Inbox className="size-5" />}
-                    count={queue.length}
-                >
-                    <ReportQueue
-                        items={queue}
-                        emptyHint="Laporan akan muncul di sini (dan lewat notifikasi) setelah disetujui Team Leader."
-                    />
-                </Section>
+                {isMobile && (
+                    <div className="sticky top-0 z-10 -mx-4 grid grid-cols-4 gap-1 border-b border-border bg-background/95 px-4 py-2 backdrop-blur">
+                        {(
+                            [
+                                ['queue', `Sahkan (${queue.length})`],
+                                ['status', 'Status'],
+                                ['history', 'Riwayat'],
+                                ['resume', 'Resume'],
+                            ] as const
+                        ).map(([key, label]) => (
+                            <button
+                                key={key}
+                                type="button"
+                                onClick={() => setTab(key)}
+                                className={cn(
+                                    'rounded-md px-1 py-2 text-[12.5px] font-semibold',
+                                    tab === key
+                                        ? 'bg-primary text-primary-foreground'
+                                        : 'bg-secondary text-muted-foreground',
+                                )}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
-                <Section
-                    title={`Status Laporan — ${period.label}`}
-                    icon={<FileCheck2 className="size-5" />}
-                    action={
-                        <div className="flex items-end gap-2">
-                            <OperasiSelect
-                                label="Bulan"
-                                value={String(period.month)}
-                                onChange={(value) =>
-                                    visit({ month: Number(value) })
-                                }
-                                options={OPERASI_MONTHS.map((label, index) => ({
-                                    value: String(index + 1),
-                                    label,
-                                }))}
-                            />
-                            <OperasiSelect
-                                label="Tahun"
-                                value={String(period.year)}
-                                onChange={(value) =>
-                                    visit({ year: Number(value) })
-                                }
-                                options={options.years.map((y) => ({
-                                    value: String(y),
-                                    label: String(y),
-                                }))}
-                            />
-                        </div>
-                    }
-                >
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-[13px]">
-                            <thead>
-                                <tr className="border-b border-border bg-muted/50 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                                    <th className="px-4 py-2">Unit</th>
-                                    {status.modules.map((m) => (
-                                        <th key={m.key} className="px-3 py-2">
-                                            {m.label.replace('Laporan ', '')}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody>
+                {shows('queue') && (
+                    <Section
+                        title="Perlu Pengesahan Anda"
+                        icon={<Inbox className="size-5" />}
+                        count={queue.length}
+                    >
+                        <ReportQueue
+                            items={queue}
+                            emptyHint="Laporan akan muncul di sini (dan lewat notifikasi) setelah disetujui Team Leader."
+                        />
+                    </Section>
+                )}
+
+                {shows('status') && (
+                    <Section
+                        title={`Status Laporan — ${period.label}`}
+                        icon={<FileCheck2 className="size-5" />}
+                        action={
+                            <div
+                                className={cn(
+                                    isMobile
+                                        ? 'grid w-full grid-cols-2 gap-2'
+                                        : 'flex items-end gap-2',
+                                )}
+                            >
+                                <OperasiSelect
+                                    className={isMobile ? 'w-full' : undefined}
+                                    label="Bulan"
+                                    value={String(period.month)}
+                                    onChange={(value) =>
+                                        visit({ month: Number(value) })
+                                    }
+                                    options={OPERASI_MONTHS.map(
+                                        (label, index) => ({
+                                            value: String(index + 1),
+                                            label,
+                                        }),
+                                    )}
+                                />
+                                <OperasiSelect
+                                    className={isMobile ? 'w-full' : undefined}
+                                    label="Tahun"
+                                    value={String(period.year)}
+                                    onChange={(value) =>
+                                        visit({ year: Number(value) })
+                                    }
+                                    options={options.years.map((y) => ({
+                                        value: String(y),
+                                        label: String(y),
+                                    }))}
+                                />
+                            </div>
+                        }
+                    >
+                        {isMobile ? (
+                            <div className="flex flex-col divide-y divide-border">
                                 {status.matrix.map((row) => (
-                                    <tr
+                                    <div
                                         key={row.id}
-                                        className="border-b border-border last:border-0"
+                                        className="flex flex-col gap-1.5 px-4 py-3"
                                     >
-                                        <td className="px-4 py-2 font-medium whitespace-nowrap text-foreground">
+                                        <p className="text-[14px] font-semibold text-foreground">
                                             {row.name}
-                                        </td>
+                                        </p>
                                         {status.modules.map((m) => {
                                             const cell = row.cells[m.key];
 
                                             return (
-                                                <td
+                                                <div
                                                     key={m.key}
-                                                    className="px-3 py-2 align-top"
+                                                    className="flex flex-col gap-1 text-[13px]"
                                                 >
+                                                    <span className="text-muted-foreground">
+                                                        {m.label.replace(
+                                                            'Laporan ',
+                                                            '',
+                                                        )}
+                                                    </span>
                                                     {cell ? (
                                                         <Link
                                                             href={cell.url}
-                                                            className="flex flex-col gap-0.5 hover:opacity-80"
-                                                            title={
-                                                                cell.waiting_for ??
-                                                                undefined
-                                                            }
+                                                            className="flex min-w-0 flex-col items-start gap-0.5 [&>[data-slot=badge]]:h-auto [&>[data-slot=badge]]:max-w-full [&>[data-slot=badge]]:py-0.5 [&>[data-slot=badge]]:text-left [&>[data-slot=badge]]:whitespace-normal [&>span]:max-w-full [&>span]:whitespace-normal"
                                                         >
                                                             <StatusBadge
                                                                 tone={
@@ -301,63 +380,147 @@ export default function PortalManager({
                                                             —
                                                         </span>
                                                     )}
-                                                </td>
+                                                </div>
                                             );
                                         })}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Section>
-
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                    <Section
-                        title="Riwayat Tanda Tangan Anda"
-                        icon={<CheckCircle2 className="size-5" />}
-                        count={history.length}
-                    >
-                        <SignedList
-                            items={history}
-                            emptyText="Belum ada laporan yang Anda tanda tangani."
-                        />
-                    </Section>
-
-                    <Section
-                        title="Resume Bulanan (Grafik & Akumulasi)"
-                        icon={<ChartNoAxesCombined className="size-5" />}
-                    >
-                        <div className="flex flex-col gap-2 p-4">
-                            <p className="text-[13px] text-muted-foreground">
-                                Ringkasan grafik, akumulasi & arah data per
-                                modul untuk bahan review — bisa diunduh PDF /
-                                Excel.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {resume_modules.map((m) => (
-                                    <Button
-                                        key={m.key}
-                                        size="sm"
-                                        variant="outline"
-                                        asChild
-                                    >
-                                        <Link
-                                            href={
-                                                resume.show(m.key, {
-                                                    query: {
-                                                        month: period.month,
-                                                        year: period.year,
-                                                    },
-                                                }).url
-                                            }
-                                        >
-                                            {m.label}
-                                        </Link>
-                                    </Button>
+                                    </div>
                                 ))}
                             </div>
-                        </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-[13px]">
+                                    <thead>
+                                        <tr className="border-b border-border bg-muted/50 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                            <th className="px-4 py-2">Unit</th>
+                                            {status.modules.map((m) => (
+                                                <th
+                                                    key={m.key}
+                                                    className="px-3 py-2"
+                                                >
+                                                    {m.label.replace(
+                                                        'Laporan ',
+                                                        '',
+                                                    )}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {status.matrix.map((row) => (
+                                            <tr
+                                                key={row.id}
+                                                className="border-b border-border last:border-0"
+                                            >
+                                                <td className="px-4 py-2 font-medium whitespace-nowrap text-foreground">
+                                                    {row.name}
+                                                </td>
+                                                {status.modules.map((m) => {
+                                                    const cell =
+                                                        row.cells[m.key];
+
+                                                    return (
+                                                        <td
+                                                            key={m.key}
+                                                            className="px-3 py-2 align-top"
+                                                        >
+                                                            {cell ? (
+                                                                <Link
+                                                                    href={
+                                                                        cell.url
+                                                                    }
+                                                                    className="flex flex-col gap-0.5 hover:opacity-80"
+                                                                    title={
+                                                                        cell.waiting_for ??
+                                                                        undefined
+                                                                    }
+                                                                >
+                                                                    <StatusBadge
+                                                                        tone={
+                                                                            cell.stuck
+                                                                                ? 'warning'
+                                                                                : cell.tone
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            cell.label
+                                                                        }
+                                                                    </StatusBadge>
+                                                                    {cell.waiting_for && (
+                                                                        <span className="text-[11px] text-muted-foreground">
+                                                                            {
+                                                                                cell.waiting_for
+                                                                            }
+                                                                        </span>
+                                                                    )}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">
+                                                                    —
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </Section>
+                )}
+
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                    {shows('history') && (
+                        <Section
+                            title="Riwayat Tanda Tangan Anda"
+                            icon={<CheckCircle2 className="size-5" />}
+                            count={history.length}
+                        >
+                            <SignedList
+                                items={history}
+                                emptyText="Belum ada laporan yang Anda tanda tangani."
+                            />
+                        </Section>
+                    )}
+
+                    {shows('resume') && (
+                        <Section
+                            title="Resume Bulanan (Grafik & Akumulasi)"
+                            icon={<ChartNoAxesCombined className="size-5" />}
+                        >
+                            <div className="flex flex-col gap-2 p-4">
+                                <p className="text-[13px] text-muted-foreground">
+                                    Ringkasan grafik, akumulasi & arah data per
+                                    modul untuk bahan review — bisa diunduh PDF
+                                    / Excel.
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                    {resume_modules.map((m) => (
+                                        <Button
+                                            key={m.key}
+                                            size="sm"
+                                            variant="outline"
+                                            asChild
+                                        >
+                                            <Link
+                                                href={
+                                                    resume.show(m.key, {
+                                                        query: {
+                                                            month: period.month,
+                                                            year: period.year,
+                                                        },
+                                                    }).url
+                                                }
+                                            >
+                                                {m.label}
+                                            </Link>
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        </Section>
+                    )}
                 </div>
             </div>
         </>

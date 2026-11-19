@@ -18,6 +18,7 @@ use App\Models\OperasiFlmJadwal;
 use App\Models\OperasiFlmMonitoring;
 use App\Models\OperasiInventarisJadwal;
 use App\Models\OperasiMeetingShiftJadwal;
+use App\Models\OperasiPatrolCheckMesin;
 use App\Models\OperasiPembuatanIk;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
@@ -83,7 +84,7 @@ class LaporanDocumentStructureTest extends TestCase
             $this->assertStringContainsString('class="op-v-', $section, 'sec-4-'.$point);
         }
 
-        // Pembuatan patrol check has no input yet.
+        // Pembuatan patrol check: no Patrol Check Mesin saved this month → red line.
         $this->assertStringContainsString('op-red-line', $this->section($html, 'sec-4-12'));
         $this->assertStringContainsString('<div class="op-section" id="sec-5">', $html);
     }
@@ -215,6 +216,30 @@ class LaporanDocumentStructureTest extends TestCase
     /**
      * @return array{0: Unit, 1: Machine}
      */
+    public function test_the_pembuatan_patrol_check_shows_the_patrol_check_mesin_of_every_machine(): void
+    {
+        [$unit, $engine] = $this->unitWithEngine();
+        foreach (['DEUTZ BV #1', 'DAIHATSU #3'] as $name) {
+            OperasiPatrolCheckMesin::query()->create([
+                'unit_id' => $unit->id, 'machine_id' => null, 'nama_mesin' => $name, 'year' => 2026, 'month' => 8,
+                'items' => [['no' => 1, 'system' => 'LUBRICATING SYSTEM', 'peralatan' => 'Lube Oil Line Pipe', 'checks' => ['1' => 'v']]],
+                'shift_pagi' => [], 'shift_sore' => [], 'shift_malam' => [], 'catatan' => 'Kebocoran kecil',
+            ]);
+        }
+        // Another month and another unit stay out.
+        OperasiPatrolCheckMesin::query()->create(['unit_id' => $unit->id, 'nama_mesin' => 'MESIN JULI', 'year' => 2026, 'month' => 7, 'items' => []]);
+
+        $section = $this->section($this->content($unit, $engine), 'sec-4-12');
+
+        $this->assertStringNotContainsString('op-red-line', $section);
+        $this->assertStringContainsString('class="op-v-operasi-input-patrol-check-mesin-pdf"', $section);
+        $this->assertStringContainsString('DAIHATSU #3', $section);
+        $this->assertStringContainsString('DEUTZ BV #1', $section);
+        $this->assertStringContainsString('Lube Oil Line Pipe', $section);
+        $this->assertStringNotContainsString('MESIN JULI', $section);
+        $this->assertLessThan(strpos($section, 'DEUTZ BV #1'), strpos($section, 'DAIHATSU #3'));
+    }
+
     private function unitWithEngine(): array
     {
         $unit = Unit::factory()->create();

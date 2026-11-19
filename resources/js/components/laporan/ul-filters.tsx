@@ -29,7 +29,7 @@ export function UlFilters({
         );
 
     return (
-        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-secondary p-3">
+        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
             {options.uls.length > 1 && (
                 <OperasiSelect
                     label="Unit Layanan (UL)"

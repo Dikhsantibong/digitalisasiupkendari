@@ -247,10 +247,10 @@ satu pintu: menu **Laporan** modul.
 | Koordinator K3 (`koordinator_k3`) | Unit | Akses 1 K3 penuh + master K3 + Monitoring K3 |
 | Koordinator Logistik & Gudang (`koordinator_logistik`) | Unit | Modul Logistik penuh (akun Koordinator/Office Logistik); Koordinator Logistik **memverifikasi** Laporan Logistik, disetujui **TL Pemeliharaan** |
 | Koordinator PdM & Maturity Level (`koordinator_pdm`) | Unit | Modul PdM penuh (akun Koordinator/PIC PdM); Koordinator PDM **memverifikasi** Laporan PdM, disetujui **TL Pemeliharaan** |
-| Project Leader (`project_leader_operasi`) | Unit | Semua hak operator + kelola Jadwal Shift & absensi + presensi + input Operasi lapangan + input Pengusahaan Operasi + kelola daftar Material & Peralatan + lihat **semua** Laporan Project (tanda tangan "Mengetahui") lewat **satu menu Laporan** (`laporan.hub`) + **Laporan SLA Gabungan** (`sla.gabungan`) + membuat Daily Meeting Pemeliharaan |
+| **Project Leader** (`project_leader_operasi`; tampil "Project Leader", bukan "Project Leader Operasi" sejak 2026-11-19) | Unit | **Akses 1 penuh di kelima modul unitnya** — Operasi, Pemeliharaan, K3 & Keamanan, Logistik & Gudang, PdM & Maturity Level: jadwal, input, formulir, master (lihat & kelola), Laporan Project, Monitoring, logsheet operator (`RoleName::projectLeaderModulePermissions`; menu Akses 2 TL tetap milik Team Leader) + semua hak operator + kelola Jadwal Shift & absensi + presensi + input Operasi lapangan + input Pengusahaan Operasi + kelola daftar Material & Peralatan + lihat **semua** Laporan Project (tanda tangan "Mengetahui") lewat **satu menu Laporan** (`laporan.hub`) + **Laporan SLA Gabungan** (`sla.gabungan`) + membuat Daily Meeting Pemeliharaan |
 | Operator (`operator`) | Unit | Menu Operator (absen, logsheet, start stop, mutasi, pengajuan, resume) + Input Operasi lapangan; **tanpa** Master Data dan **tanpa** input Pengusahaan |
-| Akun Unit (`akun_unit`) | Unit | Satu akun per unit (`unit.{kode-unit}@upkendari.co.id`) untuk **semua divisi**: lihat & isi input, jadwal, formulir, Pengusahaan, Operator logsheet, dan laporan — hanya data unit itu; tanpa kelola master, pengguna, atau pengesahan laporan |
-| Admin UL (`admin_ul`) | Unit Layanan | Seperti Akun Unit untuk **seluruh unit di bawah UL-nya** (lihat & isi semua divisi) + **Laporan UL** (`laporan_ul.view`: Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan). Satu akun per UL: `admin.{slug-UL}@upkendari.co.id` (mis. `admin.ul-pltd-poasia@…`), dibuat `AdminUlAccountSeeder` lewat migrasi; kata sandi awal sama dengan akun contoh, wajib diganti |
+| Akun Unit (`akun_unit`) | Unit | Satu akun per unit (`unit.{unit}@upkendari.co.id`, mis. `unit.poasia@…`) untuk **semua divisi**: lihat & isi input, jadwal, formulir, Pengusahaan, Operator logsheet, dan laporan — hanya data unit itu; tanpa kelola master, pengguna, atau pengesahan laporan |
+| Admin UL (`admin_ul`) | Unit Layanan | Seperti Akun Unit untuk **seluruh unit di bawah UL-nya** (lihat & isi semua divisi) + **Laporan UL** (`laporan_ul.view`: Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan). Satu akun per UL: `admin.{UL}@upkendari.co.id` (mis. `admin.poasia@…`), dibuat `AdminUlAccountSeeder` lewat migrasi; kata sandi awal sama dengan akun contoh, wajib diganti |
 | Harmes / Harlist (`harmes`, `harlist`) | Unit | Absen + halaman Input/Formulir Pemeliharaan lapangan (per halaman) |
 | Site Leader (`site_leader`) | Unit | Role warisan Fase 1 (laporan unit/project generik) |
 | Manager UP (`manager_up`) | Global | Portal; lihat & unduh seluruh input dan laporan semua modul di semua unit — **hanya melihat** |
@@ -354,10 +354,15 @@ Aturan tambahan:
 ### 6.2 Tampilan HP
 
 - Setiap kelompok role memiliki "shell" HP sendiri (`layouts/mobile/modules.ts`):
-  operator, operasi-project, ophar-pengusahaan (TL Ophar: menu Operasi **dan**
+  **project-leader** (2026-11-19: Absensi & menu operator, Jadwal/Input/Formulir kelima modul,
+  grup **Laporan & SLA** — Laporan semua modul & SLA Gabungan; nama grup lengkap, mis.
+  "Jadwal Operasi"), operator (Operator, Harmes, Harlist), operasi-project, ophar-pengusahaan (TL Ophar: menu Operasi **dan**
   Pemeliharaan dalam satu beranda), operasi-pengusahaan, har-project,
-  har-pengusahaan, k3-project, k3-pengusahaan, logistik, pdm. Manager UL tidak
-  punya shell HP (memakai aplikasi penuh, baca saja).
+  har-pengusahaan, k3-project, k3-pengusahaan, logistik, pdm.
+- **Manager UL** memakai Portal Pemantauan (bar atas + tab bawah). Beranda HP-nya (2026-11-19)
+  ringkas: 6 angka dalam grid 3 kolom, lalu tab **Sahkan / Status / Riwayat / Resume** (satu
+  bagian sekali tampil), status laporan per unit sebagai kartu (bukan tabel lebar). Tampilan
+  desktop tidak berubah.
 - Beranda HP: header biru ringkas → pencarian → chip grup → kartu menu per grup
   (tanpa Akses Cepat — dihapus 2026-11-05).
 - Halaman input, jadwal, dan formulir di HP **langsung bisa diisi** (semua modul):
@@ -383,6 +388,18 @@ Aturan tambahan:
   page publik).
 - Lupa/reset kata sandi, verifikasi email, **2FA (TOTP + recovery code)**, dan
   **passkey (WebAuthn)** — Laravel Fortify.
+- **E-mail login pendek** (keputusan user 2026-11-19, `App\Support\AccountEmail`):
+  `{jabatan}.{unit}@upkendari.co.id` — jabatan disingkat (`pl` Project Leader, `sl` Site Leader,
+  `tl.ops` / `tl.har` / `tl.ophar` / `tl.k3`, `koord.ops|har|k3|log|pdm`, `ofc.ops|har|k3|log|pdm`,
+  `pic.pdm`, `staf.ops|har|k3`, `op1`… operator, `harmes1`/`harlist1`, `unit`), unit = kode tanpa
+  awalan PLTD & tanda hubung (`poasia`, `poasiacont`, `baubau`; tipe lain tetap berawalan, mis.
+  `pltgkolaka`, `pltmrongi`); UL: `admin.{UL}` dan `mgr.{UL}` (mis. `admin.poasia`, `mgr.baubau`).
+  Contoh: `koord.log.poasiacont@upkendari.co.id` (dulu
+  `koordinator-logistik.pltd-poasia-cont@…`). Akun perorangan tetap memakai nama lengkap
+  (`nama-orang.{unit}`) agar tidak ada yang sama. Akun lama diganti lewat migrasi
+  `shorten_account_emails` (kata sandi tidak berubah); **e-mail lama tetap bisa dipakai login**
+  dan diarahkan ke akun yang sama. Akun kantor induk (`manager-up@…` dst.) & e-mail pribadi
+  tidak berubah.
 - Akun nonaktif ditolak; login terakhir (waktu & IP) dicatat.
 - Profil: ubah nama/email, kata sandi, 2FA, passkey, preferensi notifikasi,
   dan perangkat push.
@@ -456,7 +473,7 @@ Aturan:
   unit otomatis** (default dicentang) membuat akun + data pegawai jabatannya:
   Akun Unit, Project Leader, Team Leader sesuai struktur (Terpisah: TL Operasi,
   TL Pemeliharaan, TL K3; TL Ophar: TL Ophar, TL K3; Containerized: tanpa TL),
-  Koordinator ×5, Office ×4, PIC PdM — e-mail `{prefix}.{kode-unit}@upkendari.co.id`
+  Koordinator ×5, Office ×4, PIC PdM — e-mail pendek `{jabatan}.{unit}@upkendari.co.id` (§7.1)
   (`UnitAccountProvisioner`). E-mail yang sudah dipakai tidak diubah. Semua akun baru
   memakai kata sandi awal **`password`** (keputusan user 2026-11-19, sama dengan akun
   contoh lain), ditampilkan bersama daftar akunnya di halaman unit setelah disimpan;
@@ -870,6 +887,14 @@ PdM (segera hadir)*.
   MKP, unit, periode; kolom No, Kriteria, Target Kinerja, Eviden, Jenis SLA, Bobot,
   Perhitungan Konsekuensi/Denda, Perhitungan Kinerja (Nilai & % Target, Nilai & %
   Pencapaian), Status Consequence (Denda / Tidak Denda), baris TOTAL.
+- **Dokumen yang bisa diedit** (keputusan user 2026-11-19): halaman SLA per divisi dan
+  Laporan SLA Gabungan memakai **editor dokumen** seperti laporan lain — tab **Teks (PDF)**
+  (editor visual), **Excel**, **Pratinjau PDF**; tombol Simpan, Unduh PDF, Muat Ulang dari Data
+  (`SlaDocumentBuilder`, tabel `sla_documents`: scope divisi/`gabungan`, unit atau semua unit,
+  bulan, tahun). Nilai hitung otomatis bisa diubah langsung; setelah **disimpan**, PDF mencetak
+  dokumen yang diedit (sampul gabungan per unit tetap otomatis). Tanpa dokumen tersimpan PDF
+  sama seperti sebelumnya. Kartu ringkasan, panel gabungan, tombol **Excel SLA (data)** (Excel
+  berformat dari hasil hitung) dan tabel **Rincian perhitungan & sumber data** (lipat) tetap ada.
 - Kriteria & sumber data di `App\Services\Reports\SlaCatalog` (mudah direvisi); hitung di
   `SlaReport`:
   - Bobot dari jenis: jenis 1 = bobot 2, jenis 2 = bobot 1; denda =
@@ -910,8 +935,8 @@ PdM (segera hadir)*.
   `laporan_ul.view` — **Admin UL** (UL-nya sendiri) & **Super Admin** (semua UL).
   Manager UL dan TL tidak membuka menu ini; mereka hanya membuka **laporan yang mereka
   setujui/sahkan** (dari kotak Persetujuan). Periode bawaan: bulan lalu.
-- **Akun Admin UL**: satu per UL (`admin.ul-pltd-bau-bau`, `admin.ul-pltd-kolaka`,
-  `admin.ul-pltd-poasia`, `admin.ul-pltd-wua-wua` @upkendari.co.id), dibuat migrasi
+- **Akun Admin UL**: satu per UL (`admin.baubau`, `admin.kolaka`, `admin.poasia`,
+  `admin.wuawua` @upkendari.co.id — e-mail pendek §7.1), dibuat migrasi
   `create_admin_ul_accounts` (`AdminUlAccountSeeder`, idempoten — jalankan ulang bila ada UL baru).
 - Isi (`App\Services\Reports\UlReport`, disusun otomatis dari **seluruh unit aktif di bawah UL**,
   mis. UL PLTD Poasia = PLTD Poasia 11 KIT + Containerized 6 KIT):
@@ -983,7 +1008,7 @@ PdM (segera hadir)*.
 
 | Laporan | Modul | Penyusun | Isi utama |
 |---|---|---|---|
-| Laporan Operasi Pembangkit | Operasi (Akses 1) | Koordinator/Office Operasi | I Sampul · II Daftar Isi · III Lembar Pengesahan · IV Resume Statistik (10 kegiatan + grafik batang & lingkaran 3D) · V Laporan Operasi (semua jadwal/input, landscape, termasuk Jadwal Shift Operator) · VI Lampiran |
+| Laporan Operasi Pembangkit | Operasi (Akses 1) | Koordinator/Office Operasi | I Sampul · II Daftar Isi · III Lembar Pengesahan · IV Resume Statistik (10 kegiatan + grafik batang & lingkaran 3D) · V Laporan Operasi (semua jadwal/input, landscape, termasuk Jadwal Shift Operator; poin **12 Pembuatan Patrol Check** = input **Patrol Check Mesin** (Input Project) setiap mesin yang diisi bulan itu, urut nama mesin — garis merah bila belum ada) · VI Lampiran |
 | Laporan Pemeliharaan Pembangkit | HAR (Akses 1) | Koordinator/Office Pemeliharaan | Executive Summary, SR & WO Summary, rekap WO per jenis, WO tertunda, akumulasi biaya, Rencana vs Realisasi, Log Kegiatan HARMES, lampiran foto, seluruh jadwal/formulir/input |
 | Laporan K3 Lingkungan Pembangkit | K3 (Akses 1) | Koordinator/Office K3 | Semua input & formulir (formulir portrait, tabel lain landscape), Dokumen IK, matriks Pembuatan IK tahunan |
 | Laporan Logistik & Gudang | Logistik | Office Logistik | I Sampul · II Lembar Pengesahan · III Daftar Isi · IV Jadwal · V Input |
@@ -1361,6 +1386,11 @@ Aturan data:
 | 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
+| 2026-11-19 | **Tampilan HP Project Leader** (shell sendiri: semua modul + Laporan & SLA) dan **Manager UL** (beranda Portal ringkas dengan tab Sahkan/Status/Riwayat/Resume); desktop tidak berubah (§6.2) |
+| 2026-11-19 | **E-mail login dipersingkat**: `{jabatan}.{unit}@upkendari.co.id` (mis. `pl.baubau`, `koord.log.poasiacont`, `tl.ophar.raha`, `admin.poasia`); seluruh akun lama diganti lewat migrasi, e-mail lama tetap bisa login (§7.1) |
+| 2026-11-19 | **SLA per divisi & Laporan SLA Gabungan** menjadi dokumen yang bisa diedit (editor visual Teks / Excel / Pratinjau PDF, Simpan & Muat Ulang dari Data); PDF mencetak nilai yang diedit setelah disimpan (§8.12) |
+| 2026-11-19 | Halaman **Laporan UL** memakai tata letak yang sama dengan halaman Laporan modul (2 kolom kartu: judul + status, deskripsi, tombol; bar filter latar kartu) |
+| 2026-11-19 | Laporan Project Operasi poin **12 Pembuatan Patrol Check** kini mengambil data **Patrol Check Mesin** (Input Project) seluruh mesin pada bulan itu. Role **Project Leader** (nama tampil "Project Leader") mendapat **Akses 1 penuh** modul Operasi, Pemeliharaan, K3 & Keamanan, Logistik & Gudang, PdM & Maturity Level sesuai unitnya (migrasi `grant_project_leader_full_module_access`, tanpa mencabut izin lain; menu Akses 2 TL tidak termasuk) |
 | 2026-11-19 | Sidebar: role dengan menu panjang (> 18 baris) memakai **grup dropdown** seperti Super Admin; menu pendek tetap rata. Build produksi (`public/build`) dibuat ulang — sebelumnya belum memuat Laporan UL sehingga menu itu tidak tampil saat Vite dev tidak berjalan |
 | 2026-11-19 | Hasil **Input Logistik TL** otomatis masuk **Laporan Logistik** di Laporan UL (rekap per unit + rincian dasar stok & nomor surat/kontrak; dokumen UL yang belum disimpan langsung memuatnya, dokumen yang sudah disimpan/disahkan tetap — muat ulang lewat tombol muat ulang dari data). **Super Admin** mendapat menu **SLA Gabungan**: SLA seluruh modul dalam 1 file PDF/Excel, untuk satu unit atau semua unit |
 | 2026-11-19 | **Input Logistik** di Input Pemeliharaan (Akses 2) untuk TL Pemeliharaan / TL Ophar & Staf Pemeliharaan (bukan Project Leader / Koordinator): tabel kondisi stok tools & material + kolom **Dasar Stok** (Cashcard, SPPL, Internal, Kontrak) dan **Nomor Surat / Kontrak**. Akun unit baru memakai kata sandi awal `password` |

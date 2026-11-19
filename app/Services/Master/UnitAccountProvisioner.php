@@ -7,6 +7,7 @@ use App\Enums\RoleName;
 use App\Models\Employee;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -19,7 +20,7 @@ use Illuminate\Support\Str;
  * its employee (jabatan) in Master Pegawai, so the approval chain works right
  * away.
  *
- * E-mails follow the existing pattern ({prefix}.{kode-unit}@upkendari.co.id);
+ * E-mails are the short ones of {@see AccountEmail} (e.g. pl.baubau@upkendari.co.id);
  * an e-mail already in use is left untouched. Every new account starts with
  * the password "password" for now (user, 2026-11-19), like the other unit
  * accounts — to be changed after the first sign-in.
@@ -69,12 +70,13 @@ class UnitAccountProvisioner
     public function provision(Unit $unit, ?User $actor = null): array
     {
         $password = self::INITIAL_PASSWORD;
-        $slug = Str::slug($unit->code ?: $unit->name) ?: 'unit-'.$unit->id;
+        $code = (string) ($unit->code ?: $unit->name ?: 'unit-'.$unit->id);
         $created = [];
 
-        DB::transaction(function () use ($unit, $actor, $password, $slug, &$created): void {
-            $make = function (string $prefix, string $name, RoleName $role, ?EmployeePosition $position) use ($unit, $actor, $password, $slug, &$created): void {
-                $account = $this->account("{$prefix}.{$slug}@".self::DOMAIN, $name, $role, $position, $unit, $actor, $password);
+        DB::transaction(function () use ($unit, $actor, $password, $code, &$created): void {
+            $make = function (string $prefix, string $name, RoleName $role, ?EmployeePosition $position) use ($unit, $actor, $password, $code, &$created): void {
+                // Short login e-mail, e.g. koord.log.poasiacont@upkendari.co.id (AccountEmail).
+                $account = $this->account(AccountEmail::forUnit($prefix, $code), $name, $role, $position, $unit, $actor, $password);
                 if ($account !== null) {
                     $created[] = ['email' => $account->email, 'name' => $account->name, 'role' => $role->label()];
                 }

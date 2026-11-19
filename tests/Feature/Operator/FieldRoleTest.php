@@ -176,13 +176,14 @@ class FieldRoleTest extends TestCase
                 $role === RoleName::ProjectLeaderOperasi ? $response->assertOk() : $response->assertForbidden();
             }
 
-            // The Koordinator's hub stays closed, and the HAR pages belong to Harmes / Harlist
-            // (the Project Leader, reading every Laporan Project, only sees them read-only).
-            $this->actingAs($user)->get(route('operasi.input.index'))->assertForbidden();
+            // The operator: the Koordinator's hub stays closed and the HAR pages belong to Harmes / Harlist.
+            // The Project Leader holds the full Akses 1 of every module of its unit (user, 2026-11-19).
             if ($role === RoleName::Operator) {
+                $this->actingAs($user)->get(route('operasi.input.index'))->assertForbidden();
                 $this->actingAs($user)->get(route('har.input.abnormal-gangguan.index', $query))->assertForbidden();
             } else {
-                $this->actingAs($user)->get(route('har.input.abnormal-gangguan.index', $query))->assertInertia(fn ($page) => $page->where('can_write', false));
+                $this->actingAs($user)->get(route('operasi.input.index', $query))->assertOk();
+                $this->actingAs($user)->get(route('har.input.abnormal-gangguan.index', $query))->assertInertia(fn ($page) => $page->where('can_write', true));
             }
         }
 

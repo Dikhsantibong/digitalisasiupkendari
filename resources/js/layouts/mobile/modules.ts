@@ -9,6 +9,11 @@ import { OPERASI_PENGUSAHAAN_MENUS } from '@/layouts/mobile/menus/operasi-pengus
 import { OPERASI_PROJECT_MENUS } from '@/layouts/mobile/menus/operasi-project';
 import { PDM_MENUS } from '@/layouts/mobile/menus/pdm';
 import { PEMELIHARAAN_MENUS } from '@/layouts/mobile/menus/pemeliharaan';
+import {
+    MODULE_LAPORAN_PAGES,
+    PROJECT_LEADER_LAPORAN_MENUS,
+    uniqueMenus,
+} from '@/layouts/mobile/menus/project-leader';
 import { UMUM_MENUS } from '@/layouts/mobile/menus/umum';
 import type { MobileMenu, MobileModule } from '@/layouts/mobile/types';
 import { OPERATOR_PENGUSAHAAN_INPUT } from '@/lib/pengusahaan-menus';
@@ -79,11 +84,37 @@ const OPERATOR_OPERASI_MENUS: MobileMenu[] = (() => {
 
 export const MOBILE_MODULES: MobileModule[] = [
     {
+        // Project Leader (user, 2026-11-19): the full Akses 1 of every module of its unit
+        // — Jadwal, Input & Formulir of Operasi, Pemeliharaan, K3, Logistik and PdM —
+        // plus its operator & field menus, and one "Laporan & SLA" group (no Laporan per module).
+        key: 'project-leader',
+        enabled: true,
+        title: 'Project Leader',
+        subtitle: 'Seluruh modul unit Anda',
+        roles: ['project_leader_operasi'],
+        homeComponents: ['dashboard'],
+        homeHref: dashboard().url,
+        fullGroupLabels: true,
+        menus: uniqueMenus(
+            [
+                ...PROJECT_LEADER_LAPORAN_MENUS,
+                ...UMUM_MENUS,
+                ...OPERASI_PROJECT_MENUS,
+                ...OPERATOR_OPERASI_MENUS,
+                ...HAR_PROJECT_MENUS,
+                ...PEMELIHARAAN_MENUS,
+                ...K3_PROJECT_MENUS,
+                ...LOGISTIK_MENUS,
+                ...PDM_MENUS,
+            ].filter((menu) => !MODULE_LAPORAN_PAGES.has(menu.component)),
+        ),
+    },
+    {
         key: 'operator',
         enabled: true,
         title: 'Operator',
         subtitle: 'Menu lapangan sesuai peran Anda',
-        roles: ['operator', 'project_leader_operasi', 'harmes', 'harlist'],
+        roles: ['operator', 'harmes', 'harlist'],
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         // The operators also fill the Operasi inputs (not the Berita Acara / Laporan Pengusahaan).
@@ -196,6 +227,9 @@ export const MOBILE_MODULES: MobileModule[] = [
 ];
 
 /** Module pages opened to field staff, reused by the desktop sidebar (see MobileMenu.coveredBy). */
-export const FIELD_MENUS: MobileMenu[] = MOBILE_MODULES.flatMap(
-    (module) => module.menus,
-).filter((menu) => menu.coveredBy !== undefined);
+// The Project Leader shell only repeats menus of the other shells: left out so the sidebar stays as it was.
+export const FIELD_MENUS: MobileMenu[] = MOBILE_MODULES.filter(
+    (module) => module.key !== 'project-leader',
+)
+    .flatMap((module) => module.menus)
+    .filter((menu) => menu.coveredBy !== undefined);

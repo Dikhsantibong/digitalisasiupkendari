@@ -450,12 +450,16 @@
 
 <div class="page-break"></div>
 
-{{-- 12. Pembuatan patrol check (belum ada input) --}}
+{{-- 12. Pembuatan patrol check: the Patrol Check Mesin input (Input Project) of every machine of the month --}}
 <div class="op-section op-landscape" id="sec-4-12">
-    @include('operasi.laporan.partials.kop', $kop + ['title' => 'PEMBUATAN PATROL CHECK'])
+    @if(trim($table('patrol_check')['body']) !== '')
+        @include('operasi.laporan.partials.table-fragment', ['part' => $table('patrol_check')])
+    @else
+        @include('operasi.laporan.partials.kop', $kop + ['title' => 'PEMBUATAN PATROL CHECK'])
 
-    <div class="op-sub-title">12. Pembuatan Patrol Check</div>
-    @include('operasi.laporan.partials.no-data')
+        <div class="op-sub-title">12. Pembuatan Patrol Check — {{ $periodLabel }}</div>
+        @include('operasi.laporan.partials.no-data', ['message' => 'Belum ada Patrol Check Mesin yang diisi pada periode ini.'])
+    @endif
 </div>
 
 <div class="page-break"></div>

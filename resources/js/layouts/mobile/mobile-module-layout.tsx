@@ -139,12 +139,17 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
         () =>
             MOBILE_MENU_GROUPS.map((group) => ({
                 key: group.key,
-                label: mobileGroupHomeLabel(group),
+                // A multi-module shell: the more descriptive of the two names (never a bare "Jadwal").
+                label: resolved.module.fullGroupLabels
+                    ? [group.label, mobileGroupHomeLabel(group)].sort(
+                          (a, b) => b.length - a.length,
+                      )[0]
+                    : mobileGroupHomeLabel(group),
                 menus: resolved.menus.filter(
                     (menu) => menu.group === group.key,
                 ),
             })).filter((group) => group.menus.length > 0),
-        [resolved.menus],
+        [resolved.menus, resolved.module.fullGroupLabels],
     );
     const withFilters = resolved.menus.length >= FILTER_FROM;
     const search = query.trim().toLowerCase();

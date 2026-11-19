@@ -29,7 +29,7 @@ class UnitAccountTest extends TestCase
         $this->seed(UnitAccountSeeder::class);
         $this->seed(UnitAccountSeeder::class);
 
-        $account = User::query()->where('email', 'unit.pltd-poasia@upkendari.co.id')->sole();
+        $account = User::query()->where('email', 'unit.poasia@upkendari.co.id')->sole();
         $this->assertSame(2, User::query()->where('email', 'like', 'unit.%')->count(), 'Re-running keeps one account per unit.');
         $this->assertTrue($account->hasRole(RoleName::AkunUnit));
         $this->assertSame([$poasia->id], Unit::query()->visibleTo($account)->pluck('id')->all());
@@ -73,13 +73,13 @@ class UnitAccountTest extends TestCase
         $this->seed(UnitAccountSeeder::class);
 
         $admin = $this->userWithRole(RoleName::SuperAdmin);
-        $account = User::query()->where('email', 'unit.pltd-poasia@upkendari.co.id')->sole();
+        $account = User::query()->where('email', 'unit.poasia@upkendari.co.id')->sole();
         $adminUl = Role::query()->where('name', RoleName::AdminUl->value)->sole();
         $assign = fn (User $user, int $serviceUnitId) => $this->actingAs($admin)->post(route('admin.users.assignments.store', $user), ['role_id' => $adminUl->id, 'service_unit_id' => $serviceUnitId]);
 
         // Only the UL of the account's own unit.
         $assign($account, $ulKolaka->id)->assertSessionHasErrors('service_unit_id');
-        $assign(User::query()->where('email', 'unit.pltd-wuawua@upkendari.co.id')->sole(), $ulPoasia->id)->assertSessionHasErrors('role_id');
+        $assign(User::query()->where('email', 'unit.wuawua@upkendari.co.id')->sole(), $ulPoasia->id)->assertSessionHasErrors('role_id');
         $assign($account, $ulPoasia->id)->assertSessionHasNoErrors();
 
         $account->refresh()->forgetAccessCache();

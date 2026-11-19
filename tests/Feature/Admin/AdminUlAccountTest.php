@@ -32,13 +32,13 @@ class AdminUlAccountTest extends TestCase
 
         $this->seed(AdminUlAccountSeeder::class);
 
-        $admin = User::query()->where('email', 'admin.ul-pltd-poasia@upkendari.co.id')->sole();
+        $admin = User::query()->where('email', 'admin.poasia@upkendari.co.id')->sole();
         $this->assertSame('Admin UL PLTD Poasia', $admin->name);
         $this->assertTrue(Hash::check('password', $admin->password));
         $this->assertTrue($admin->hasPermissionTo(PermissionName::LaporanUlView));
         $this->assertTrue($admin->canAccessUnit($mine));
         $this->assertFalse($admin->canAccessUnit($other));
-        $this->assertSame(1, User::query()->where('email', 'admin.ul-pltd-kolaka@upkendari.co.id')->count());
+        $this->assertSame(1, User::query()->where('email', 'admin.kolaka@upkendari.co.id')->count());
 
         $this->actingAs($admin)->get(route('laporan-ul.index'))
             ->assertOk()

@@ -67,7 +67,8 @@ enum RoleName: string
             self::KoordinatorLogistik => 'Koordinator Logistik & Gudang',
             self::KoordinatorPdm => 'Koordinator PdM & Maturity Level',
             self::SiteLeader => 'Site Leader',
-            self::ProjectLeaderOperasi => 'Project Leader Operasi',
+            // Shown as "Project Leader" (user, 2026-11-19); the code stays project_leader_operasi.
+            self::ProjectLeaderOperasi => 'Project Leader',
             self::KoordinatorOperasi => 'Koordinator Operasi',
             self::KoordinatorPemeliharaan => 'Koordinator Pemeliharaan',
             self::KoordinatorK3 => 'Koordinator K3 & Keamanan',
@@ -101,7 +102,7 @@ enum RoleName: string
             self::KoordinatorLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan dan memverifikasi Laporan Logistik (disetujui TL Pemeliharaan).',
             self::KoordinatorPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan dan memverifikasi Laporan PdM (disetujui TL Pemeliharaan).',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
-            self::ProjectLeaderOperasi => 'Project Leader: Akses 1 — melihat seluruh Laporan Project (Operasi, Pemeliharaan, K3, Logistik, PdM), serta menjadwalkan shift regu & mengelola absensi pada unit pembangkit yang ditugaskan.',
+            self::ProjectLeaderOperasi => 'Project Leader: Akses 1 penuh pada unit yang ditugaskan — jadwal, input, formulir, master & Laporan Project modul Operasi, Pemeliharaan, K3 & Keamanan, Logistik & Gudang, PdM & Maturity Level — serta menjadwalkan shift regu & mengelola absensi.',
             self::KoordinatorOperasi => 'Akses 1 — Laporan Project operasi (Koordinator & Office): jadwal, input, berita acara, master dan Laporan Project Operasi, serta mengawasi logsheet & jadwal shift operator.',
             self::KoordinatorPemeliharaan => 'Akses 1 — Laporan Project pemeliharaan (Koordinator & Office): jadwal, input, formulir, master dan Laporan Project Pemeliharaan.',
             self::KoordinatorK3 => 'Akses 1 — Laporan Project K3 & keamanan (Koordinator & Office): jadwal, input, formulir, monitoring, master dan Laporan K3 Pembangkit.',
@@ -399,6 +400,9 @@ enum RoleName: string
                 // Laporan SLA gabungan (user, 2026-11-18).
                 PermissionName::LaporanHub,
                 PermissionName::SlaGabungan,
+                // Akses 1 penuh di semua modul unitnya (user, 2026-11-19) — not the Akses 2 (TL) menus;
+                // only what the list above does not hold yet.
+                ...self::projectLeaderModulePermissions(),
             ],
 
             self::Operator => [
@@ -462,6 +466,9 @@ enum RoleName: string
         };
 
         // Every role gets the reminder notifications; the Super Admin already holds all cases.
+        // Each permission once (a role may combine overlapping lists, e.g. the Project Leader).
+        $granted = array_values(array_unique($granted, SORT_REGULAR));
+
         return $this === self::SuperAdmin ? $granted : [...$granted, ...PermissionName::notifications()];
     }
 
@@ -514,6 +521,60 @@ enum RoleName: string
             PermissionName::PdmInputWrite,
             PermissionName::PdmLaporanView,
             PermissionName::PdmMasterViewAny,
+        ];
+    }
+
+    /**
+     * The Project Leader's full Akses 1 (Laporan Project) of every module in
+     * its unit: Operasi, Pemeliharaan, K3 & Keamanan, Logistik & Gudang and
+     * PdM & Maturity Level — jadwal, input, formulir, master and laporan, plus
+     * the operator logsheet & monitoring (user, 2026-11-19). The Akses 2 (TL &
+     * Staf, `*.pengusahaan.*`) menus stay with the Team Leaders.
+     *
+     * @return list<PermissionName>
+     */
+    public static function projectLeaderModulePermissions(): array
+    {
+        return [
+            PermissionName::UnitViewAny,
+            PermissionName::UnitView,
+            PermissionName::MachineViewAny,
+            PermissionName::MachineView,
+            PermissionName::EmployeeViewAny,
+            PermissionName::EmployeeView,
+            PermissionName::MonitoringView,
+            PermissionName::OperasiInputView,
+            PermissionName::OperasiInputWrite,
+            PermissionName::OperasiLaporanView,
+            PermissionName::OperasiMasterViewAny,
+            PermissionName::OperasiMasterManage,
+            PermissionName::OperatorLogsheetView,
+            PermissionName::OperatorLogsheetWrite,
+            PermissionName::OperatorMutasiView,
+            PermissionName::OperatorAbsensiView,
+            PermissionName::OperatorAbsensiWrite,
+            PermissionName::HarInputView,
+            PermissionName::HarInputWrite,
+            PermissionName::HarLaporanView,
+            PermissionName::HarExecutiveView,
+            PermissionName::HarMasterViewAny,
+            PermissionName::HarMasterManage,
+            PermissionName::K3InputView,
+            PermissionName::K3InputWrite,
+            PermissionName::K3LaporanView,
+            PermissionName::K3MonitoringView,
+            PermissionName::K3MasterViewAny,
+            PermissionName::K3MasterManage,
+            PermissionName::LogistikInputView,
+            PermissionName::LogistikInputWrite,
+            PermissionName::LogistikLaporanView,
+            PermissionName::LogistikMasterViewAny,
+            PermissionName::LogistikMasterManage,
+            PermissionName::PdmInputView,
+            PermissionName::PdmInputWrite,
+            PermissionName::PdmLaporanView,
+            PermissionName::PdmMasterViewAny,
+            PermissionName::PdmMasterManage,
         ];
     }
 

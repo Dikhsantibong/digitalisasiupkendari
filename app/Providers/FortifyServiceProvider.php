@@ -5,8 +5,11 @@ namespace App\Providers;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Models\ServiceUnit;
+use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -42,6 +45,16 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+
+        // The account e-mails were shortened (user, 2026-11-19): a legacy address typed at login
+        // (e.g. project-leader.pltd-baubau@…) still reaches the same account (pl.baubau@…).
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $email = Str::lower(trim((string) $request->input(Fortify::username())));
+            $user = User::query()->where('email', $email)->first()
+                ?? User::query()->whereIn('email', array_unique([AccountEmail::short($email), AccountEmail::short($email, ophar: true)]))->first();
+
+            return $user !== null && Hash::check((string) $request->input('password'), $user->password) ? $user : null;
+        });
     }
 
     /**

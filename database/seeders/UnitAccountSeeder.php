@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\RoleName;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -48,6 +49,7 @@ class UnitAccountSeeder extends Seeder
 
     public static function emailFor(Unit $unit): string
     {
-        return 'unit.'.(Str::slug($unit->code ?? $unit->name ?? (string) $unit->id) ?: 'unit').'@'.self::DOMAIN;
+        // Short login e-mail, e.g. unit.poasia@upkendari.co.id (AccountEmail).
+        return AccountEmail::forUnit('unit', (string) ($unit->code ?? $unit->name ?? $unit->id));
     }
 }

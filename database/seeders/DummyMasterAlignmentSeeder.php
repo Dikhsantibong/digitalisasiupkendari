@@ -23,6 +23,7 @@ use App\Models\Role;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -336,7 +337,7 @@ class DummyMasterAlignmentSeeder extends Seeder
             ];
             foreach ($customPoasiaTls as $tl) {
                 $user = User::query()->updateOrCreate(
-                    ['email' => $tl['email']],
+                    ['email' => AccountEmail::short($tl['email'])],
                     [
                         'name' => $tl['name'],
                         'password' => $password,
@@ -385,7 +386,7 @@ class DummyMasterAlignmentSeeder extends Seeder
                 'email' => 'manager.'.strtolower(str_replace(' ', '-', $su->code)).'@upkendari.co.id',
             ];
             $user = User::query()->updateOrCreate(
-                ['email' => $cfg['email']],
+                ['email' => AccountEmail::short($cfg['email'])],
                 [
                     'name' => $cfg['name'],
                     'password' => $password,
@@ -473,7 +474,7 @@ class DummyMasterAlignmentSeeder extends Seeder
                 $emp = $existingByPos ?? Employee::query()->where('nip', $nip)->first();
 
                 $personName = ($emp && $emp->name !== '' && ! str_contains($emp->name, '—')) ? $emp->name : $nextName();
-                $userEmail = $emp?->user?->email ?: $email;
+                $userEmail = AccountEmail::short($emp?->user?->email ?: $email);
 
                 $user = User::query()->updateOrCreate(
                     ['email' => $userEmail],
@@ -528,7 +529,7 @@ class DummyMasterAlignmentSeeder extends Seeder
                     $nip = sprintf('%s-PEG-%03d', $unit->code, $suffix);
                     $emp = Employee::query()->where('nip', $nip)->first();
                     $personName = ($emp && $emp->name !== '' && ! str_contains($emp->name, '—')) ? $emp->name : $nextName();
-                    $email = "operator{$suffix}.{$slug}@upkendari.co.id";
+                    $email = AccountEmail::short("operator{$suffix}.{$slug}@upkendari.co.id");
 
                     $user = User::query()->updateOrCreate(
                         ['email' => $email],

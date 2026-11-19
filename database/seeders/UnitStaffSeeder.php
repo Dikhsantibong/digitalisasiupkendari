@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Models\Employee;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -76,7 +77,7 @@ abstract class UnitStaffSeeder extends Seeder
             ]);
 
             $user = isset($person['account'])
-                ? User::query()->where('email', "{$person['account']}.{$slug}@".self::DOMAIN)->first()
+                ? User::query()->where('email', AccountEmail::short("{$person['account']}.{$slug}@".self::DOMAIN))->first()
                 : $this->personalAccount($person, $nip, $slug, $unit);
 
             if ($user !== null) {
@@ -94,7 +95,7 @@ abstract class UnitStaffSeeder extends Seeder
             ->each(fn (Employee $employee) => $employee->forceFill(['is_active' => false, 'user_id' => null])->save());
 
         $placeholders = User::query()
-            ->whereIn('email', array_map(fn (string $prefix): string => "{$prefix}.{$slug}@".self::DOMAIN, static::INACTIVE_ACCOUNTS))
+            ->whereIn('email', array_map(fn (string $prefix): string => AccountEmail::short("{$prefix}.{$slug}@".self::DOMAIN), static::INACTIVE_ACCOUNTS))
             ->get();
         Employee::query()->whereIn('user_id', $placeholders->modelKeys())->update(['user_id' => null]);
         User::query()->whereKey($placeholders->modelKeys())->update(['is_active' => false]);
@@ -107,7 +108,7 @@ abstract class UnitStaffSeeder extends Seeder
      */
     private function personalAccount(array $person, string $nip, string $slug, Unit $unit): User
     {
-        $user = User::query()->firstOrNew(['email' => Str::slug($person['name']).".{$slug}@".self::DOMAIN]);
+        $user = User::query()->firstOrNew(['email' => AccountEmail::short(Str::slug($person['name']).".{$slug}@".self::DOMAIN)]);
         $user->fill([
             'name' => $person['name'],
             'position' => $person['role']?->label(),

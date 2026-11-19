@@ -96,6 +96,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('sla/gabungan', [SlaController::class, 'combinedIndex'])->name('sla.combined.index');
     Route::get('sla/gabungan/pdf', [SlaController::class, 'combinedPdf'])->name('sla.combined.pdf');
     Route::get('sla/gabungan/data', [SlaController::class, 'combinedData'])->name('sla.combined.data');
+    // The SLA (per divisi & gabungan) as an editable document: Simpan & Muat Ulang dari Data (user, 2026-11-19).
+    Route::post('sla/dokumen', [SlaController::class, 'storeDocument'])->name('sla.document.store');
+    Route::post('sla/dokumen/muat-ulang', [SlaController::class, 'regenerateDocument'])->name('sla.document.regenerate');
     Route::prefix('sla/{divisi}')
         ->name('sla.')
         ->whereIn('divisi', array_keys(SlaCatalog::DIVISI))

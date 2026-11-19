@@ -1,16 +1,15 @@
 import { Head, router } from '@inertiajs/react';
-import {
-    Download,
-    FileSpreadsheet,
-    FileText,
-    LoaderCircle,
-} from 'lucide-react';
+import { FileSpreadsheet, LoaderCircle } from 'lucide-react';
 import { useState } from 'react';
+import { SlaDocument } from '@/components/laporan/sla-document';
+import type {
+    SlaDocumentBody,
+    SlaDocumentState,
+} from '@/components/laporan/sla-document';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
-import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -40,23 +39,27 @@ type RecapRow = {
     denda_bobot: number;
 };
 
-type Props = {
+type Props = SlaDocumentBody & {
     filters: Filters;
     options: { units: IdName[]; years: number[] };
     period: string;
     recap: { unit: string; rows: RecapRow[] }[];
+    document: SlaDocumentState;
 };
 
 /**
- * Laporan SLA gabungan (Project Leader): every divisi's SLA — cover,
- * 1.1.a … 1.2.b and the Rekapitulasi — of one unit or every accessible unit
- * ("Semua unit"), printed in one PDF or one Excel file.
+ * Laporan SLA gabungan (Project Leader & Super Admin): every divisi's SLA —
+ * cover, 1.1.a … 1.2.b and the Rekapitulasi — of one unit or every accessible
+ * unit ("Semua unit"), as an editable document (Teks / Excel / Pratinjau PDF,
+ * user 2026-11-19) printed in one PDF, plus the Excel of the computed SLA.
  */
 export default function SlaGabungan({
     filters,
     options,
     period,
     recap,
+    document,
+    ...body
 }: Props) {
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -132,48 +135,7 @@ export default function SlaGabungan({
     return (
         <>
             <Head title="Laporan SLA Gabungan" />
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                <PageHeader
-                    title="Laporan SLA Gabungan"
-                    description={`Seluruh SLA (1.1.a Operasi … 1.2.b Project Leader) dengan sampul dan rekapitulasi, periode ${period} — cetak dalam 1 file PDF atau Excel, untuk satu unit atau semua unit.`}
-                    actions={
-                        <>
-                            <Button variant="outline" asChild>
-                                <a
-                                    href={
-                                        slaRoutes.combined.pdf({
-                                            query: query(),
-                                        }).url
-                                    }
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    <FileText className="size-4" /> Lihat PDF
-                                </a>
-                            </Button>
-                            <Button variant="outline" asChild>
-                                <a
-                                    href={
-                                        slaRoutes.combined.pdf({
-                                            query: { ...query(), download: 1 },
-                                        }).url
-                                    }
-                                >
-                                    <Download className="size-4" /> Unduh PDF
-                                </a>
-                            </Button>
-                            <Button onClick={exportExcel} disabled={exporting}>
-                                {exporting ? (
-                                    <LoaderCircle className="size-4 animate-spin" />
-                                ) : (
-                                    <FileSpreadsheet className="size-4" />
-                                )}
-                                Unduh Excel
-                            </Button>
-                        </>
-                    }
-                />
-
+            <div className="flex flex-col gap-3 px-4 pt-4 md:px-6 md:pt-6">
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-secondary p-3">
                     <OperasiSelect
                         label="Unit"
@@ -244,6 +206,20 @@ export default function SlaGabungan({
                             Terapkan
                         </Button>
                     </form>
+                    <Button
+                        variant="outline"
+                        onClick={exportExcel}
+                        disabled={exporting}
+                        className="ml-auto"
+                        title="Excel berformat SLA dari hasil hitung otomatis (sampul & sheet per unit)"
+                    >
+                        {exporting ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                            <FileSpreadsheet className="size-4" />
+                        )}
+                        Excel SLA (data)
+                    </Button>
                 </div>
 
                 {error && (
@@ -252,6 +228,16 @@ export default function SlaGabungan({
                     </p>
                 )}
 
+            </div>
+
+            <SlaDocument
+                document={document}
+                body={body}
+                period={period}
+                backUrl={dashboard().url}
+            />
+
+            <div className="flex flex-col gap-4 px-4 pb-6 md:px-6">
                 {recap.map((unit) => (
                     <section
                         key={unit.unit}

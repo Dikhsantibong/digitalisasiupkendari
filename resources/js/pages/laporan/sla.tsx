@@ -3,16 +3,19 @@ import {
     BookCopy,
     Download,
     FileSpreadsheet,
-    FileText,
     LoaderCircle,
     Target,
 } from 'lucide-react';
 import { useState } from 'react';
+import { SlaDocument } from '@/components/laporan/sla-document';
+import type {
+    SlaDocumentBody,
+    SlaDocumentState,
+} from '@/components/laporan/sla-document';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
-import { PageHeader } from '@/components/page-header';
 import { SummaryCard } from '@/components/summary-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,8 +39,9 @@ type Filters = {
     tagihan: number | null;
 };
 
-type Props = {
+type Props = SlaDocumentBody & {
     sla: SlaData;
+    document: SlaDocumentState;
     filters: Filters;
     options: { units: IdName[]; years: number[] };
     divisions: { key: string; number: string; label: string }[];
@@ -61,6 +65,8 @@ export default function SlaPage({
     options,
     divisions,
     can_combined,
+    document,
+    ...body
 }: Props) {
     const [exporting, setExporting] = useState(false);
     const [exportingCombined, setExportingCombined] = useState(false);
@@ -140,48 +146,7 @@ export default function SlaPage({
     return (
         <>
             <Head title={`SLA ${sla.title} - ${sla.unit.name}`} />
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                <PageHeader
-                    title={`SLA — ${sla.title}`}
-                    description={`${sla.number} · ${sla.unit.name} · periode ${sla.period.label} — dihitung otomatis dari inputan aplikasi.`}
-                    actions={
-                        <>
-                            <Button variant="outline" asChild>
-                                <a
-                                    href={
-                                        slaRoutes.pdf(sla.divisi, {
-                                            query: query(),
-                                        }).url
-                                    }
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    <FileText className="size-4" /> Lihat PDF
-                                </a>
-                            </Button>
-                            <Button variant="outline" asChild>
-                                <a
-                                    href={
-                                        slaRoutes.pdf(sla.divisi, {
-                                            query: { ...query(), download: 1 },
-                                        }).url
-                                    }
-                                >
-                                    <Download className="size-4" /> Unduh PDF
-                                </a>
-                            </Button>
-                            <Button onClick={exportExcel} disabled={exporting}>
-                                {exporting ? (
-                                    <LoaderCircle className="size-4 animate-spin" />
-                                ) : (
-                                    <FileSpreadsheet className="size-4" />
-                                )}
-                                Unduh Excel
-                            </Button>
-                        </>
-                    }
-                />
-
+            <div className="flex flex-col gap-3 px-4 pt-4 md:px-6 md:pt-6">
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-secondary p-3">
                     {divisions.length > 1 && (
                         <OperasiSelect
@@ -251,6 +216,20 @@ export default function SlaPage({
                             Hitung Denda
                         </Button>
                     </form>
+                    <Button
+                        variant="outline"
+                        onClick={exportExcel}
+                        disabled={exporting}
+                        className="ml-auto"
+                        title="Excel berformat SLA dari hasil hitung otomatis"
+                    >
+                        {exporting ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                            <FileSpreadsheet className="size-4" />
+                        )}
+                        Excel SLA (data)
+                    </Button>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -352,6 +331,20 @@ export default function SlaPage({
                     </div>
                 )}
 
+            </div>
+
+            <SlaDocument
+                document={document}
+                body={body}
+                period={sla.period.label}
+                backUrl={dashboard().url}
+            />
+
+            <details className="group mx-4 mb-6 rounded-md border border-border bg-card md:mx-6">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-foreground">
+                    Rincian perhitungan &amp; sumber data per kriteria
+                </summary>
+                <div className="flex flex-col gap-4 border-t border-border p-4">
                 {sla.period.state !== 'past' && (
                     <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
                         {sla.period.state === 'future'
@@ -610,7 +603,8 @@ export default function SlaPage({
                     % Pencapaian di bawah 100% = Denda (bobot/10 × 9% × tagihan
                     bulan berjalan).
                 </p>
-            </div>
+                </div>
+            </details>
         </>
     );
 }

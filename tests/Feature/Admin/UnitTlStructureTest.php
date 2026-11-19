@@ -13,6 +13,7 @@ use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Reports\ReportSignatories;
+use App\Support\AccountEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -47,17 +48,17 @@ class UnitTlStructureTest extends TestCase
         // Without a choice a new unit is TL Ophar.
         $this->assertSame(UnitTlStructure::Ophar, $unit->tl_structure);
 
-        $ophar = User::query()->where('email', 'tl-ophar.pltd-baru@upkendari.co.id')->firstOrFail();
+        $ophar = User::query()->where('email', 'tl.ophar.baru@upkendari.co.id')->firstOrFail();
         $this->assertTrue($ophar->hasRole(RoleName::TeamLeaderOphar));
         $this->assertSame([$unit->id], $ophar->roleAssignments()->pluck('unit_id')->all());
         $this->assertSame(EmployeePosition::TeamLeaderOphar->value, $ophar->employee->position);
         $this->assertSame("unit:{$unit->id}:Team Leader Ophar", $ophar->employee->singleton_key);
 
         foreach (['unit', 'project-leader', 'tl-k3', 'koordinator-operasi', 'koordinator-har', 'koordinator-k3', 'koordinator-logistik', 'koordinator-pdm', 'office-operasi', 'office-har', 'office-k3', 'office-logistik', 'pic-pdm'] as $prefix) {
-            $this->assertDatabaseHas('users', ['email' => "{$prefix}.pltd-baru@upkendari.co.id", 'is_active' => true]);
+            $this->assertDatabaseHas('users', ['email' => AccountEmail::forUnit($prefix, 'PLTD-BARU'), 'is_active' => true]);
         }
-        $this->assertDatabaseMissing('users', ['email' => 'tl-operasi.pltd-baru@upkendari.co.id']);
-        $this->assertDatabaseMissing('users', ['email' => 'tl-har.pltd-baru@upkendari.co.id']);
+        $this->assertDatabaseMissing('users', ['email' => 'tl.ops.baru@upkendari.co.id']);
+        $this->assertDatabaseMissing('users', ['email' => 'tl.har.baru@upkendari.co.id']);
 
         // Every new account starts with the password "password" for now (shown on the unit page).
         $this->assertSame('password', session('inertia.flash_data')['provisioned_accounts']['password'] ?? null);
@@ -77,22 +78,22 @@ class UnitTlStructureTest extends TestCase
 
         $unit = Unit::query()->where('code', 'PLTD-KENDARI-CONT')->firstOrFail();
         $this->assertSame(UnitTlStructure::Containerized, $unit->tl_structure);
-        $this->assertSame(0, User::query()->where('email', 'like', 'tl-%.pltd-kendari-cont@%')->count());
-        $this->assertDatabaseHas('users', ['email' => 'project-leader.pltd-kendari-cont@upkendari.co.id']);
+        $this->assertSame(0, User::query()->where('email', 'like', 'tl.%.kendaricont@%')->count());
+        $this->assertDatabaseHas('users', ['email' => 'pl.kendaricont@upkendari.co.id']);
         $this->assertSame(0, Employee::query()->where('unit_id', $unit->id)->where('position', 'like', 'Team Leader%')->count());
     }
 
     public function test_the_structure_is_chosen_and_changed_and_accounts_are_only_made_when_asked(): void
     {
         $superAdmin = $this->userWithRole(RoleName::SuperAdmin);
-        User::factory()->create(['email' => 'unit.pltd-pilih@upkendari.co.id', 'name' => 'Sudah Ada']);
+        User::factory()->create(['email' => 'unit.pilih@upkendari.co.id', 'name' => 'Sudah Ada']);
 
         $this->actingAs($superAdmin)->post(route('admin.units.store'), $this->payload([
             'code' => 'pltd-pilih', 'name' => 'PLTD Pilih', 'tl_structure' => 'terpisah',
         ]))->assertRedirect(route('admin.units.index'));
         $unit = Unit::query()->where('code', 'PLTD-PILIH')->firstOrFail();
         $this->assertSame(UnitTlStructure::Terpisah, $unit->tl_structure);
-        $this->assertSame(1, User::query()->where('email', 'like', '%.pltd-pilih@%')->count());
+        $this->assertSame(1, User::query()->where('email', 'like', '%.pilih@%')->count());
 
         $this->actingAs($superAdmin)->put(route('admin.units.update', $unit), $this->payload([
             'code' => 'pltd-pilih', 'name' => 'PLTD Pilih', 'tl_structure' => 'ophar',
@@ -107,7 +108,7 @@ class UnitTlStructureTest extends TestCase
             'code' => 'pltd-pilih-2', 'name' => 'PLTD Pilih 2', 'create_accounts' => '1',
         ]));
         $other->assertSessionHasNoErrors();
-        $this->assertSame('Sudah Ada', User::query()->where('email', 'unit.pltd-pilih@upkendari.co.id')->value('name'));
+        $this->assertSame('Sudah Ada', User::query()->where('email', 'unit.pilih@upkendari.co.id')->value('name'));
 
         $this->actingAs($superAdmin)->get(route('admin.units.edit', $unit))
             ->assertInertia(fn ($page) => $page->where('unit.tl_structure', 'ophar')->has('options.tlStructures', 3));

@@ -119,4 +119,27 @@ class LaporanHubTest extends TestCase
 
         $this->actingAs($superAdmin)->getJson(route('sla.combined.data', $query))->assertOk()->assertJsonCount(2, 'units')->assertJsonCount(6, 'units.0.slas');
     }
+
+    public function test_the_project_leader_has_full_akses_1_of_every_module_of_its_unit(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $other = Unit::factory()->create(['is_active' => true]);
+        $projectLeader = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
+
+        // Named "Project Leader" (not "Project Leader Operasi").
+        $this->assertSame('Project Leader', RoleName::ProjectLeaderOperasi->label());
+
+        foreach (['operasi', 'har', 'k3', 'logistik', 'pdm'] as $module) {
+            foreach (['input.view', 'input.write', 'laporan.view', 'master.view_any', 'master.manage'] as $ability) {
+                $this->assertTrue($projectLeader->hasPermissionTo("{$module}.{$ability}"), "{$module}.{$ability}");
+            }
+            $this->actingAs($projectLeader)->get(route("{$module}.jadwal.index", ['unit_id' => $unit->id]))->assertOk();
+            $this->actingAs($projectLeader)->get(route("{$module}.input.index", ['unit_id' => $unit->id]))->assertOk();
+        }
+
+        // Only its own unit, and not the Akses 2 (TL) menus — e.g. the Input Logistik of Pemeliharaan.
+        $this->actingAs($projectLeader)->get(route('logistik.input.form.index', ['form' => 'kondisi-stok', 'unit_id' => $other->id]))->assertForbidden();
+        $this->assertFalse($projectLeader->hasPermissionTo('har.pengusahaan.view'));
+        $this->actingAs($projectLeader)->get(route('har.pengusahaan.input-logistik.index', ['unit_id' => $unit->id]))->assertForbidden();
+    }
 }

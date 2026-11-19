@@ -8,6 +8,7 @@ use App\Models\Employee;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\AccountEmail;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -123,13 +124,13 @@ class DemoAccountSeeder extends Seeder
                 [$prefix, $role, $label] = match ($position) {
                     EmployeePosition::TeamLeaderOperasi => ['tl-operasi', RoleName::TeamLeaderOperasi, 'TL Operasi'],
                     EmployeePosition::TeamLeaderPemeliharaan => ['tl-har', RoleName::TeamLeaderPemeliharaan, 'TL Pemeliharaan'],
-                    EmployeePosition::TeamLeaderOphar => [User::query()->where('email', "tl-operasi.{$slug}@".self::DOMAIN)->exists() ? 'tl-operasi' : 'tl-ophar', RoleName::TeamLeaderOphar, 'TL Ophar'],
+                    EmployeePosition::TeamLeaderOphar => ['tl-ophar', RoleName::TeamLeaderOphar, 'TL Ophar'],
                     default => ['tl-k3', RoleName::TeamLeaderK3, 'TL K3 & Keamanan'],
                 };
                 $this->account("{$prefix}.{$slug}@".self::DOMAIN, "{$label} {$name}", $position->value, $role, $unit, $position);
             }
             $this->account("site-leader.{$slug}@".self::DOMAIN, "Site Leader {$name}", 'Site Leader', RoleName::SiteLeader, $unit);
-            $this->account("project-leader.{$slug}@".self::DOMAIN, "Project Leader {$name}", 'Project Leader Operasi', RoleName::ProjectLeaderOperasi, $unit, EmployeePosition::ProjectLeader);
+            $this->account("project-leader.{$slug}@".self::DOMAIN, "Project Leader {$name}", 'Project Leader', RoleName::ProjectLeaderOperasi, $unit, EmployeePosition::ProjectLeader);
 
             foreach (self::SIGNER_ACCOUNTS as $prefix => [$position, $role]) {
                 $this->account("{$prefix}.{$slug}@".self::DOMAIN, "{$position->value} {$name}", $position->value, $role, $unit, $position);
@@ -151,6 +152,8 @@ class DemoAccountSeeder extends Seeder
 
     private function account(string $email, string $name, string $position, RoleName $role, ServiceUnit|Unit|null $scope, ?EmployeePosition $employeePosition = null): User
     {
+        // Short login e-mail (AccountEmail), e.g. pl.baubau@upkendari.co.id.
+        $email = AccountEmail::short($email);
         $user = User::query()->firstOrNew(['email' => $email]);
         $user->fill([
             'name' => $name,

@@ -7,6 +7,8 @@ import type { LucideIcon } from 'lucide-react';
  */
 export const MOBILE_MENU_GROUPS = [
     { key: 'umum', label: 'Umum' },
+    // Project Leader: one Laporan page & the SLA gabungan (like its desktop sidebar).
+    { key: 'pl-laporan', label: 'Laporan & SLA' },
     // The field roles' phone menu: the regular inputs (Laporan Project) apart from the Pengusahaan ones.
     {
         key: 'operasi',
@@ -106,4 +108,9 @@ export type MobileModule = {
     /** Home URL the shell's back button returns to. */
     homeHref: string;
     menus: MobileMenu[];
+    /**
+     * A shell spanning several modules (Project Leader): its home shows each
+     * section's full name ("Jadwal Operasi") instead of the short one ("Jadwal").
+     */
+    fullGroupLabels?: boolean;
 };

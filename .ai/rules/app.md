@@ -17,3 +17,6 @@ Manager UP, TL/Asman Operasi/Pemeliharaan/K3 UP are Global-scope roles with `por
 
 ## PRD.md is the only application-flow document
 Keputusan user (2026-11-04): seluruh dokumen alur (concept.md, modul-*.md, prompt-implementasi-*.md) digabung ke `PRD.md` di root. Setiap perubahan alur, role, permission, menu, atau modul WAJIB di-update di PRD.md (bagian modul di §8, aturan hitung §10, isu terbuka §15, keputusan user di §16 Riwayat Keputusan). JANGAN membuat lagi file modul-*.md / prompt-implementasi-*.md terpisah. `design.md` tetap terpisah (design system UI). Komentar kode merujuk ke PRD.md §x.
+
+## Short account e-mails (App\Support\AccountEmail)
+Keputusan user (2026-11-19): application accounts use `{jabatan}.{unit}@upkendari.co.id` with abbreviations (pl, sl, tl.ops/har/ophar/k3, koord.*, ofc.*, pic.pdm, staf.*, opN, unit; unit = code without the PLTD prefix and hyphens, other types keep theirs: poasiacont, pltgkolaka; UL accounts admin.{UL} / mgr.{UL}). Never build an account e-mail by hand: use AccountEmail::forUnit($prefix, $unitCode) or AccountEmail::short($email) (idempotent; personal names keep the full name to stay unique). Existing accounts were renamed by migration 2026_11_19_121442; FortifyServiceProvider::authenticateUsing also accepts a legacy address (mapped with AccountEmail::short, incl. the TL Ophar variant) — keep that fallback.
