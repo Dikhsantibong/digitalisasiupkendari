@@ -55,7 +55,7 @@ class AccountEmail
     ];
 
     /** Legacy prefix of a UL account => short prefix. */
-    private const UL_PREFIXES = ['admin' => 'admin', 'manager' => 'mgr'];
+    private const UL_PREFIXES = ['admin' => 'admin', 'manager' => 'mgr', 'jof' => 'jof'];
 
     /**
      * The short form of an account e-mail (unchanged when it is not one of

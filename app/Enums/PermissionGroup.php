@@ -26,6 +26,7 @@ enum PermissionGroup: string
     case K3Pengusahaan = 'k3_pengusahaan';
     case Logistik = 'logistik';
     case Pdm = 'pdm';
+    case Keuangan = 'keuangan';
     case Project = 'project';
     case ReportProject = 'report_project';
     case Notifikasi = 'notifikasi';
@@ -50,6 +51,7 @@ enum PermissionGroup: string
             self::K3Pengusahaan => 'K3 & Keamanan — Akses 2',
             self::Logistik => 'Logistik & Gudang',
             self::Pdm => 'PdM & Maturity Level',
+            self::Keuangan => 'Administrasi & Keuangan',
             self::Project => 'Project',
             self::ReportProject => 'Laporan Project',
             self::Notifikasi => 'Notifikasi',

@@ -150,7 +150,6 @@ Prinsip pembangunan: **Modular → Scalable → Auditable → Terkontrol.**
 ### 3.2 Dalam lingkup — belum selesai
 
 - **Log Sheet PdM** — kartu "Segera Hadir".
-- **Laporan Administrasi Keuangan** (Laporan UL) — kartu "Segera Hadir", menu input menyusul dari user (§8.13).
 - Ekspor PDF/Excel dan rekap bulanan untuk **Opname BBM / Pelumas / kWh** (input
   harian sudah berjalan, §8.1).
 
@@ -250,7 +249,8 @@ satu pintu: menu **Laporan** modul.
 | **Project Leader** (`project_leader_operasi`; tampil "Project Leader", bukan "Project Leader Operasi" sejak 2026-11-19) | Unit | **Akses 1 penuh di kelima modul unitnya** — Operasi, Pemeliharaan, K3 & Keamanan, Logistik & Gudang, PdM & Maturity Level: jadwal, input, formulir, master (lihat & kelola), Laporan Project, Monitoring, logsheet operator (`RoleName::projectLeaderModulePermissions`; menu Akses 2 TL tetap milik Team Leader) + semua hak operator + kelola Jadwal Shift & absensi + presensi + input Operasi lapangan + input Pengusahaan Operasi + kelola daftar Material & Peralatan + lihat **semua** Laporan Project (tanda tangan "Mengetahui") lewat **satu menu Laporan** (`laporan.hub`) + **Laporan SLA Gabungan** (`sla.gabungan`) + membuat Daily Meeting Pemeliharaan |
 | Operator (`operator`) | Unit | Menu Operator (absen, logsheet, start stop, mutasi, pengajuan, resume) + Input Operasi lapangan; **tanpa** Master Data dan **tanpa** input Pengusahaan |
 | Akun Unit (`akun_unit`) | Unit | Satu akun per unit (`unit.{unit}@upkendari.co.id`, mis. `unit.poasia@…`) untuk **semua divisi**: lihat & isi input, jadwal, formulir, Pengusahaan, Operator logsheet, dan laporan — hanya data unit itu; tanpa kelola master, pengguna, atau pengesahan laporan |
-| Admin UL (`admin_ul`) | Unit Layanan | Seperti Akun Unit untuk **seluruh unit di bawah UL-nya** (lihat & isi semua divisi) + **Laporan UL** (`laporan_ul.view`: Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan). Satu akun per UL: `admin.{UL}@upkendari.co.id` (mis. `admin.poasia@…`), dibuat `AdminUlAccountSeeder` lewat migrasi; kata sandi awal sama dengan akun contoh, wajib diganti |
+| Admin UL (`admin_ul`) | Unit Layanan | Seperti Akun Unit untuk **seluruh unit di bawah UL-nya** (lihat & isi semua divisi) + **Laporan UL** (`laporan_ul.view`: Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan). Membaca Administrasi & Keuangan UL (`keuangan.view`). Satu akun per UL: `admin.{UL}@upkendari.co.id` (mis. `admin.poasia@…`), dibuat `AdminUlAccountSeeder` lewat migrasi; kata sandi awal sama dengan akun contoh, wajib diganti |
+| **JOF Administrasi Umum** (`jof_administrasi_umum`) | Unit Layanan | **Administrasi & Keuangan** UL (2026-11-20): mengisi **Laporan Realisasi Cash Card**, mencetak bukti kas kecil & lampiran, mengelola **Master Supplier** (`keuangan.view|write|supplier.manage`). Satu akun per UL `jof.{UL}@upkendari.co.id` (mis. `jof.poasia@…`) + pegawai berjabatan "JOF Administrasi Umum" (jabatan tingkat UL), dibuat migrasi `grant_keuangan_access_and_jof_accounts` (`JofAccountSeeder`); kata sandi awal `password` |
 | Harmes / Harlist (`harmes`, `harlist`) | Unit | Absen + halaman Input/Formulir Pemeliharaan lapangan (per halaman) |
 | Site Leader (`site_leader`) | Unit | Role warisan Fase 1 (laporan unit/project generik) |
 | Manager UP (`manager_up`) | Global | Portal; lihat & unduh seluruh input dan laporan semua modul di semua unit — **hanya melihat** |
@@ -269,7 +269,7 @@ Catatan:
   **TL Ophar** memakai `tl_ophar`; unit **containerized** tidak punya role TL
   (langkah TL dikerjakan Project Leader) — §4.
 
-### 5.3 Katalog permission (151)
+### 5.3 Katalog permission (154)
 
 | Grup | Permission |
 |---|---|
@@ -277,6 +277,7 @@ Catatan:
 | Manajemen Akses | `user.*`, `role.*` (+ `role.assign`) |
 | Monitoring | `activity_log.view_any`, `activity_log.export`, `monitoring.view` |
 | Laporan Unit, Project, Laporan Project | `report_unit.*`, `project.*`, `report_project.*` (termasuk submit/approve/export), `laporan_ul.view` (Laporan UL — Admin UL & Super Admin, §8.13), `laporan.hub` (satu menu Laporan — Project Leader), `sla.gabungan` (Laporan SLA Gabungan — Project Leader) |
+| Administrasi & Keuangan | `keuangan.view` (lihat cash card, bukti & lampiran — JOF, Manager UL, Admin UL), `keuangan.write` (isi cash card — JOF), `keuangan.supplier.manage` (Master Supplier — JOF) |
 | Operator | `operator.logsheet.view|write`, `operator.absensi.view|write`, `operator.presensi`, `operator.mutasi.view|write` |
 | Operasi — Akses 1 | `operasi.input.view|write`, `operasi.laporan.view`, `operasi.master.view_any|manage`, `operasi.material_peralatan.kelola` |
 | Operasi — Akses 2 | `operasi.pengusahaan.view|write|input` |
@@ -335,6 +336,7 @@ Aturan tambahan:
 | Logistik & Gudang | Jadwal, Input, Laporan, SLA* |
 | PdM & Maturity Level | Jadwal, Input, Laporan, SLA* |
 | Laporan | Project Leader (`laporan.hub`): **Laporan** (satu halaman `/laporan` berisi seluruh laporan per modul) dan **SLA** (Laporan SLA Gabungan `/sla/gabungan`); menu Laporan per modul disembunyikan untuk akun ini. Super Admin: **SLA Gabungan** (seluruh modul, satu/semua unit, 1 file PDF/Excel) |
+| Administrasi & Keuangan | Laporan Cash Card, Master Supplier (`keuangan.view`) — sebelum Laporan UL |
 | Laporan UL | Laporan UL (`laporan_ul.view`) — grup sendiri di bawah, tepat sebelum Administrasi |
 | Administrasi | Pengguna, Role & Akses, Penanda Tangan Laporan, Lokasi Absensi |
 
@@ -951,7 +953,9 @@ PdM (segera hadir)*.
      dokumen, PDF & Excel; hanya baris yang disimpan yang dihitung. Dokumen UL yang sudah
      disimpan tidak berubah sendiri (isi yang sudah disahkan tetap) — pakai muat ulang dari data.
   3. **Laporan K3 Lingkungan**.
-  4. **Laporan Administrasi Keuangan**: kartu nonaktif "Segera Hadir" (menu input menyusul).
+  4. **Laporan Administrasi Keuangan** (aktif 2026-11-20): kartu membuka **dokumen Laporan
+     Administrasi Keuangan** UL periode yang dipilih (Buka Dokumen = halaman edit & cetak, PDF) —
+     §8.14; butuh `keuangan.view`.
   5. **PPT Rutin Bulanan**.
 - Per bagian:
   - KPI **akumulasi UL** dengan arah vs bulan lalu dan Ringkasan Arah Data, plus kolom
@@ -999,6 +1003,44 @@ PdM (segera hadir)*.
     sirkuit, gelombang listrik.
   - `public/images/ul/ppt-bg-dark.png` untuk sampul/pembatas/penutup;
     `ppt-bg-light.png` (tipis) untuk slide isi.
+
+### 8.14 Administrasi & Keuangan (per UL)
+
+Keputusan user 2026-11-20. Modul per **Unit Layanan**, diisi role **JOF Administrasi Umum**
+(`jof_administrasi_umum`); Manager UL & Admin UL hanya melihat; Super Admin semua. Menu sidebar
+**Administrasi & Keuangan**: Laporan Cash Card (`/keuangan/cash-card`) dan Master Supplier
+(`/keuangan/supplier`).
+
+- **Master Supplier** (tabel `suppliers`, per UL): nama toko/supplier, email, **NPWP**, **foto KTP**,
+  aktif. Supplier yang sudah dipakai di cash card hanya dinonaktifkan (tidak dihapus) agar lampiran
+  lama tetap tercetak.
+- **Laporan Realisasi Cash Card** (`cash_card_reports` per UL + bulan, `cash_card_entries`):
+  - **Saldo awal** (otomatis dari saldo akhir bulan sebelumnya bila belum disimpan);
+  - baris: No, Tanggal, Period, No. Entry, Uraian, **Supplier** (pilih dari Master Supplier; uraian
+    tercetak "… / NAMA SUPPLIER"), Nilai Penerimaan, Nilai Pengeluaran, **Saldo berjalan**
+    (otomatis), kolom bukti opsional (Kode Perkiraan, Kode SAP, Cost Centre), **Lampiran foto**
+    (nota/barang, maks. 8 foto per baris);
+  - baris TOTAL, Saldo Awal / Penerimaan / Pengeluaran / Saldo Akhir; baris kosong tidak disimpan;
+    foto yang dihapus dari baris ikut dihapus dari penyimpanan.
+- **PDF Laporan** (`keuangan/cash-card-pdf`, A4 portrait, format lembar kertas): logo PLN NP, "UP KENDARI /
+  ULPLTD …", judul & periode "01 S/D {akhir bulan}", tabel, total (hijau), ringkasan saldo, tanda
+  tangan **Disetujui Manager UL** & **Dibuat Oleh JOF Administrasi Umum** (nama dari Master Pegawai).
+- **Bukti & Lampiran otomatis per baris** (`keuangan/bukti-pdf`, tombol *Bukti* per baris atau *Semua
+  Bukti & Lampiran*): halaman **Bukti Penerimaan Kas Kecil** — nomor bukti (= No. Entry), terima dari
+  (supplier), **terbilang** otomatis, jumlah, uraian, kode perkiraan, tanggal, kode SAP, cost centre,
+  tanda tangan Mengetahui Manager UL · Diperiksa Oleh JOF Administrasi Umum · Yang Menerima
+  (TERLAMPIR); lalu halaman **Lampiran** — foto nota/barang baris itu + **foto KTP, EMAIL & NPWP
+  supplier** diambil otomatis dari Master Supplier.
+- **Dokumen Laporan Administrasi Keuangan** (`/keuangan/dokumen`, 2026-11-20): dibuka dari kartu
+  Laporan UL atau tombol *Dokumen Laporan (Edit & Cetak)* di halaman Cash Card — halaman edit & cetak
+  seperti laporan lain (Teks seperti Word / Excel / Pratinjau PDF, Simpan, Muat Ulang dari Data, Unduh
+  PDF). Isi: **halaman pertama tabel Laporan Realisasi Cash Card**, lalu **per transaksi Bukti
+  Penerimaan Kas Kecil + Lampiran** (foto nota/barang, KTP, email & NPWP supplier). Tersimpan per UL +
+  bulan (`keuangan_documents`); JOF Administrasi Umum mengedit, Manager UL & Admin UL hanya melihat &
+  mencetak. Nomor dokumen `KEU/{UL}/{bulan}/{tahun}`.
+- Kode: `Keuangan\CashCardController`, `Keuangan\SupplierController`, `Keuangan\DocumentController`,
+  `Services\Keuangan\CashCardDocument`, `Services\Keuangan\KeuanganDocumentBuilder`, route `keuangan.*`
+  (`routes/keuangan.php`).
 
 ---
 
@@ -1286,6 +1328,10 @@ work_modules    registry modul: operasi, pemeliharaan, k3, logistik, pdm, operat
 ul_report_documents (+ ul_report_steps, ul_report_logs)   dokumen & persetujuan Laporan UL per UL/jenis/bulan
 report_workflows (+ _steps, _logs)   status & tanda tangan laporan
 report_signer_delegations            delegasi penanda tangan antar-unit
+suppliers                            Master Supplier per UL (nama, email, npwp, ktp_path)
+cash_card_reports (+ cash_card_entries)  Laporan Realisasi Cash Card per UL/bulan (baris, supplier, nilai, foto)
+keuangan_documents                       Dokumen Laporan Administrasi Keuangan tersimpan per UL/bulan (html/grid)
+sla_documents                        dokumen SLA yang diedit (per divisi/gabungan, unit, bulan)
 notifications, push_subscriptions, reminder_logs
 ```
 
@@ -1321,7 +1367,6 @@ Aturan data:
 | Laporan resmi PLN 1–14 (Operasi) | Belum | Tambah lewat report registry |
 | Master Logistik & asesmen Maturity Level PdM | Belum dirancang | Dirancang bersama user |
 | Tanda tangan input PdM/Logistik | Belum | Bersama fitur verifikasi |
-| Laporan Administrasi Keuangan (Laporan UL) | Kartu nonaktif "Segera Hadir" | Menu input & laporan dibuat setelah user menyiapkan menunya |
 | Kriteria & sumber data SLA | Draf `SlaCatalog` (sebagian kriteria "Belum terukur") | Direvisi user; akses SLA dibuka ke role lain bila diputuskan |
 | Menu Pengusahaan Operasi yang dikeluarkan | Star-Stop, Feeder, Pasokan Cadangan, Penerimaan BBM, Resource Pembangkit | Akan dibangun ulang oleh user |
 
@@ -1386,6 +1431,7 @@ Aturan data:
 | 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
+| 2026-11-20 | Modul baru **Administrasi & Keuangan** per UL (§8.14): role **JOF Administrasi Umum** (akun `jof.{UL}` per UL), **Master Supplier** (nama, email, NPWP, foto KTP), **Laporan Realisasi Cash Card** (saldo berjalan, supplier dari master, foto lampiran per baris) dengan PDF laporan dan **Bukti Penerimaan Kas Kecil + Lampiran** otomatis per baris (foto + KTP/email/NPWP supplier). Kartu **Laporan Administrasi Keuangan** di Laporan UL diaktifkan dan membuka **dokumen edit & cetak** (halaman 1 tabel Cash Card, berikutnya Bukti + Lampiran per transaksi; Teks/Excel/Pratinjau PDF) |
 | 2026-11-19 | **Tampilan HP Project Leader** (shell sendiri: semua modul + Laporan & SLA) dan **Manager UL** (beranda Portal ringkas dengan tab Sahkan/Status/Riwayat/Resume); desktop tidak berubah (§6.2) |
 | 2026-11-19 | **E-mail login dipersingkat**: `{jabatan}.{unit}@upkendari.co.id` (mis. `pl.baubau`, `koord.log.poasiacont`, `tl.ophar.raha`, `admin.poasia`); seluruh akun lama diganti lewat migrasi, e-mail lama tetap bisa login (§7.1) |
 | 2026-11-19 | **SLA per divisi & Laporan SLA Gabungan** menjadi dokumen yang bisa diedit (editor visual Teks / Excel / Pratinjau PDF, Simpan & Muat Ulang dari Data); PDF mencetak nilai yang diedit setelah disimpan (§8.12) |

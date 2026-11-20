@@ -191,6 +191,12 @@ enum PermissionName: string
     /** Print the Laporan SLA gabungan (every divisi, one PDF / Excel) of the accessible units (Project Leader). */
     case SlaGabungan = 'sla.gabungan';
 
+    /** Administrasi & Keuangan per UL (user, 2026-11-20): Laporan Realisasi Cash Card, bukti kas kecil & lampiran. */
+    case KeuanganView = 'keuangan.view';
+    case KeuanganWrite = 'keuangan.write';
+    /** Master Supplier (nama, email, NPWP, foto KTP) of the UL. */
+    case KeuanganSupplierManage = 'keuangan.supplier.manage';
+
     case SettingManage = 'setting.manage';
 
     case MonitoringView = 'monitoring.view';
@@ -366,6 +372,10 @@ enum PermissionName: string
             self::LaporanHub,
             self::SlaGabungan => PermissionGroup::ReportProject,
 
+            self::KeuanganView,
+            self::KeuanganWrite,
+            self::KeuanganSupplierManage => PermissionGroup::Keuangan,
+
             self::SettingManage => PermissionGroup::System,
 
             self::MonitoringView => PermissionGroup::Monitoring,
@@ -539,6 +549,9 @@ enum PermissionName: string
             self::ReportProjectExport => 'Mengekspor laporan project',
             self::LaporanUlView => 'Melihat & mengunduh Laporan UL (Pengusahaan Pembangkit, Logistik, K3L, PPT bulanan)',
             self::LaporanHub => 'Satu menu Laporan berisi seluruh laporan per modul (menggantikan menu Laporan tiap modul)',
+            self::KeuanganView => 'Melihat Laporan Realisasi Cash Card, bukti kas kecil & lampiran UL',
+            self::KeuanganWrite => 'Mengisi Laporan Realisasi Cash Card UL (baris, saldo, foto lampiran)',
+            self::KeuanganSupplierManage => 'Mengelola Master Supplier UL (nama, email, NPWP, foto KTP)',
             self::SlaGabungan => 'Mencetak Laporan SLA gabungan seluruh divisi (PDF & Excel) unit yang diakses',
 
             self::SettingManage => 'Mengelola pengaturan aplikasi',

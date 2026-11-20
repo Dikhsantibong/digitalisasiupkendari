@@ -31,6 +31,8 @@ import {
     Fuel,
     Droplets,
     Zap,
+    Store,
+    Wallet,
 } from 'lucide-react';
 import { useRef } from 'react';
 import AppLogo from '@/components/app-logo';
@@ -81,6 +83,8 @@ import k3Input from '@/routes/k3/input';
 import k3Jadwal from '@/routes/k3/jadwal';
 import k3Laporan from '@/routes/k3/laporan';
 import k3Master from '@/routes/k3/master';
+import keuanganCashCard from '@/routes/keuangan/cash-card';
+import keuanganSupplier from '@/routes/keuangan/supplier';
 import laporanHubRoutes from '@/routes/laporan';
 import laporanUl from '@/routes/laporan-ul';
 import logistikInput from '@/routes/logistik/input';
@@ -516,6 +520,22 @@ export function AppSidebar() {
                         href: sla.combined.index(),
                         icon: Target,
                     },
+            ].filter(Boolean) as NavGroup['items'],
+        },
+        // Administrasi & Keuangan per UL (user, 2026-11-20): JOF Administrasi Umum (Manager UL & Admin UL read).
+        {
+            label: 'Administrasi & Keuangan',
+            items: [
+                can('keuangan.view') && {
+                    title: 'Laporan Cash Card',
+                    href: keuanganCashCard.index(),
+                    icon: Wallet,
+                },
+                can('keuangan.view') && {
+                    title: 'Master Supplier',
+                    href: keuanganSupplier.index(),
+                    icon: Store,
+                },
             ].filter(Boolean) as NavGroup['items'],
         },
         // Admin UL (& Super Admin): Laporan Pengusahaan Pembangkit, Logistik, K3L & PPT bulanan of the UL — just above Administrasi (user, 2026-11-18).

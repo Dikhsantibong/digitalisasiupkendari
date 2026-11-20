@@ -91,8 +91,21 @@ class SlaDocumentBuilder
      */
     public function contentStyles(string $css): string
     {
+        // Editor only (the PDF uses the template's own sizes, made for A4 landscape): the 7.6px
+        // print type is scaled up so the document reads like the other reports in the editor.
         return $css."\n"
             .'.sla-doc-unit { background: #fff; }'."\n"
+            .'.sla-doc-unit .sla-doc { font-size: 12px; line-height: 1.35; }'."\n"
+            .'.sla-doc-unit .sla-doc .kop .t1 { font-size: 18px; }'."\n"
+            .'.sla-doc-unit .sla-doc .kop .t2 { font-size: 13px; margin-top: 3px; }'."\n"
+            .'.sla-doc-unit .sla-doc .kop img { height: 56px !important; }'."\n"
+            .'.sla-doc-unit .sla-doc table.sla { margin-top: 10px; }'."\n"
+            .'.sla-doc-unit .sla-doc table.sla th { font-size: 11.5px; padding: 5px 6px; }'."\n"
+            .'.sla-doc-unit .sla-doc table.sla td { font-size: 12px; padding: 4px 6px; }'."\n"
+            .'.sla-doc-unit .sla-doc table.sla .section td { font-size: 14px; padding-top: 8px; }'."\n"
+            .'.sla-doc-unit .sla-doc .tick { font-size: 14px; }'."\n"
+            .'.sla-doc-unit .sla-doc h2 { font-size: 15px; margin-top: 16px; }'."\n"
+            .'.sla-doc-unit .sla-doc .note { font-size: 11px; }'."\n"
             .'.mce-content-body .sla-doc-unit + .sla-doc-unit { margin-top: 24px; padding-top: 12px; border-top: 2px dashed #cbd5e1; }';
     }
 

@@ -46,6 +46,9 @@ enum RoleName: string
     // An Akun Unit raised by the Super Admin to see every unit of its UL.
     case AdminUl = 'admin_ul';
 
+    // Administrasi & Keuangan of a UL: Laporan Realisasi Cash Card & Master Supplier (user, 2026-11-20).
+    case JofAdministrasiUmum = 'jof_administrasi_umum';
+
     // Kantor induk UP Kendari — membawahi seluruh unit, hanya melihat (Portal Pemantauan).
     case ManagerUp = 'manager_up';
     case TeamLeaderOperasiUp = 'tl_operasi_up';
@@ -80,6 +83,7 @@ enum RoleName: string
             self::Harlist => 'Harlist (Pemeliharaan Listrik)',
             self::AkunUnit => 'Akun Unit',
             self::AdminUl => 'Admin UL',
+            self::JofAdministrasiUmum => 'JOF Administrasi Umum',
             self::ManagerUp => 'Manager UP Kendari',
             self::TeamLeaderOperasiUp => 'TL Operasi UP Kendari',
             self::TeamLeaderPemeliharaanUp => 'TL Pemeliharaan UP Kendari',
@@ -111,6 +115,7 @@ enum RoleName: string
             self::StafK3 => 'Akses 2 — K3 & keamanan: menu & Laporan K3 pada unit yang ditugaskan.',
             self::Operator => 'Operator shift (termasuk Leader Shift) divisi Operasi di bawah Koordinator Operasi: mencatat logsheet harian dan absen pada unit pembangkit yang ditugaskan.',
             self::Harmes => 'Teknisi pemeliharaan mesin divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
+            self::JofAdministrasiUmum => 'Administrasi & Keuangan Unit Layanan: mengisi Laporan Realisasi Cash Card, mencetak bukti kas kecil & lampiran, dan mengelola Master Supplier UL-nya.',
             self::AdminUl => 'Akun unit yang diberi peran admin Unit Layanan: semua divisi seperti Akun Unit, untuk seluruh unit pembangkit di bawah UL unit bawaannya.',
             self::AkunUnit => 'Akun unit pembangkit untuk semua divisi (Operasi, Operator, Pemeliharaan, K3, Logistik, PdM): melihat dan mengisi input, jadwal, formulir, input divisi dan laporan — hanya data unit yang ditugaskan.',
             self::Harlist => 'Teknisi pemeliharaan listrik divisi Pemeliharaan di bawah Koordinator Pemeliharaan pada unit pembangkit yang ditugaskan.',
@@ -136,7 +141,8 @@ enum RoleName: string
             self::AsmanPemeliharaan,
             self::AsmanK3 => RoleScope::Global,
             self::ManagerUl,
-            self::AdminUl => RoleScope::ServiceUnit,
+            self::AdminUl,
+            self::JofAdministrasiUmum => RoleScope::ServiceUnit,
             self::TeamLeaderOperasi,
             self::TeamLeaderPemeliharaan,
             self::TeamLeaderK3,
@@ -223,6 +229,8 @@ enum RoleName: string
                 // Portal Pemantauan layout & Monitoring of the UL (not read-only: the Manager UL still mengesahkan & manages master data).
                 PermissionName::PortalView,
                 PermissionName::MonitoringView,
+                // Reads (and approves on paper) the UL's Laporan Realisasi Cash Card.
+                PermissionName::KeuanganView,
             ],
 
             // Akses 1 — Laporan Project: the Koordinator (and Office) of the
@@ -443,8 +451,15 @@ enum RoleName: string
 
             // A unit's own account: every divisi of that unit, view & input (no master data management, users or approvals).
             self::AkunUnit => self::unitAccountPermissions(),
-            // Admin UL: like the unit account, plus the Laporan UL of its service unit.
-            self::AdminUl => [...self::unitAccountPermissions(), PermissionName::LaporanUlView],
+            // Admin UL: like the unit account, plus the Laporan UL of its service unit (and reads its Administrasi & Keuangan).
+            self::AdminUl => [...self::unitAccountPermissions(), PermissionName::LaporanUlView, PermissionName::KeuanganView],
+            // JOF Administrasi Umum: the UL's Laporan Realisasi Cash Card, bukti kas kecil & Master Supplier.
+            self::JofAdministrasiUmum => [
+                PermissionName::ServiceUnitView,
+                PermissionName::KeuanganView,
+                PermissionName::KeuanganWrite,
+                PermissionName::KeuanganSupplierManage,
+            ],
 
             // Kantor induk UP Kendari: view permissions of their bidang + Portal & read-only.
             self::TeamLeaderOperasiUp,

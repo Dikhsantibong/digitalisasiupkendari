@@ -27,6 +27,8 @@ enum EmployeePosition: string
     case OfficePdm = 'Office PDM';
     case OfficeLogistik = 'Office Logistik';
     case PicPdm = 'PIC PDM';
+    // Administrasi & Keuangan of a UL: makes the Laporan Realisasi Cash Card (user, 2026-11-20).
+    case JofAdministrasiUmum = 'JOF Administrasi Umum';
 
     /**
      * The divisi (work_modules.code) the jabatan belongs to; null for the
@@ -35,7 +37,7 @@ enum EmployeePosition: string
     public function division(): ?string
     {
         return match ($this) {
-            self::ManagerUl, self::ProjectLeader => null,
+            self::ManagerUl, self::ProjectLeader, self::JofAdministrasiUmum => null,
             // The TL Ophar is counted with Pemeliharaan (staff lists), and also holds Operasi.
             self::TeamLeaderPemeliharaan, self::TeamLeaderOphar, self::KoordinatorPemeliharaan, self::OfficePemeliharaan => 'pemeliharaan',
             self::TeamLeaderOperasi, self::KoordinatorOperasi, self::OfficeOperasi => 'operasi',
@@ -59,7 +61,7 @@ enum EmployeePosition: string
      */
     public function isServiceUnitLevel(): bool
     {
-        return $this === self::ManagerUl;
+        return in_array($this, [self::ManagerUl, self::JofAdministrasiUmum], true);
     }
 
     /**

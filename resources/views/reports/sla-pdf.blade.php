@@ -74,7 +74,8 @@
         @php
             $dendaTotal = 0.0;
         @endphp
-        <table class="sla">
+        {{-- Gabungan: each divisi starts on a new page, so its multi-row header is never split by a page break. --}}
+        <table class="sla"@if (! $loop->first) style="page-break-before: always;"@endif>
             <thead>
                 <tr class="section"><td colspan="{{ $cols }}">{{ $sla['number'] }} {{ $sla['title'] }}</td></tr>
                 <tr>

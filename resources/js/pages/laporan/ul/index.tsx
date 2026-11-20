@@ -13,11 +13,12 @@ import { UlFilters } from '@/components/laporan/ul-filters';
 import type { UlFiltersValue } from '@/components/laporan/ul-filters';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/hooks/use-permissions';
 import { downloadUlPpt } from '@/lib/ul-ppt';
 import type { UlReportData } from '@/lib/ul-report';
 import { dashboard } from '@/routes';
+import keuanganDocument from '@/routes/keuangan/document';
 import laporanUl from '@/routes/laporan-ul';
 import type { IdName, Tone } from '@/types';
 
@@ -62,6 +63,12 @@ export default function LaporanUlIndex({
     options,
     reports,
 }: Props) {
+    const { can } = usePermissions();
+    const keuanganQuery = {
+        ul_id: ul.id,
+        month: filters.month,
+        year: filters.year,
+    };
     const [makingPpt, setMakingPpt] = useState(false);
     const [pptError, setPptError] = useState<string | null>(null);
     const query = { query: filters };
@@ -173,35 +180,61 @@ export default function LaporanUlIndex({
                         );
                     })}
 
-                    {/* Rencana pengembangan: menu & isi menyusul (user, 2026-11-18). */}
-                    <div className="flex flex-col justify-between gap-4 rounded-md border border-dashed border-border bg-card p-5 shadow-xs">
+                    {/* Administrasi & Keuangan (user, 2026-11-20): the UL's Laporan Realisasi Cash Card. */}
+                    <div className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-primary bg-card p-5 shadow-xs">
                         <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-base font-semibold text-foreground">
-                                    Laporan Administrasi Keuangan
-                                </h2>
-                                <Badge
-                                    variant="outline"
-                                    className="text-[11px] text-muted-foreground"
-                                >
-                                    Segera Hadir
-                                </Badge>
-                            </div>
+                            <h2 className="text-base font-semibold text-foreground">
+                                Laporan Administrasi Keuangan
+                            </h2>
                             <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                                Laporan administrasi & keuangan UL. Menu
-                                inputnya sedang disiapkan — laporan akan
-                                tersedia setelah menu tersebut aktif.
+                                Dokumen Laporan Realisasi Cash Card UL bulan ini
+                                (lihat, edit &amp; cetak): tabel transaksi &amp;
+                                saldo, lalu bukti kas kecil &amp; lampiran (foto
+                                nota/barang, KTP, email &amp; NPWP supplier).
+                                Data dari input JOF Administrasi Umum.
                             </p>
                         </div>
-                        <Button
-                            variant="outline"
-                            disabled
-                            className="w-fit cursor-not-allowed"
-                            title="Belum difungsikan — menu sedang disiapkan"
-                        >
-                            <Wallet className="size-4" />
-                            Buka Laporan
-                        </Button>
+                        {can('keuangan.view') ? (
+                            <div className="flex flex-wrap gap-2">
+                                <Button asChild>
+                                    <Link
+                                        href={
+                                            keuanganDocument.show({
+                                                query: keuanganQuery,
+                                            }).url
+                                        }
+                                    >
+                                        <Wallet className="size-4" />
+                                        Buka Dokumen
+                                    </Link>
+                                </Button>
+                                <Button variant="outline" asChild>
+                                    <a
+                                        href={
+                                            keuanganDocument.pdf({
+                                                query: {
+                                                    ...keuanganQuery,
+                                                    download: 1,
+                                                },
+                                            }).url
+                                        }
+                                    >
+                                        <Download className="size-4" />
+                                        PDF
+                                    </a>
+                                </Button>
+                            </div>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                disabled
+                                className="w-fit cursor-not-allowed"
+                                title="Akun ini belum diberi akses Administrasi & Keuangan"
+                            >
+                                <Wallet className="size-4" />
+                                Buka Laporan
+                            </Button>
+                        )}
                     </div>
 
                     <div className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-primary bg-card p-5 shadow-xs">

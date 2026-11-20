@@ -128,4 +128,5 @@ require __DIR__.'/har.php';
 require __DIR__.'/k3.php';
 require __DIR__.'/logistik.php';
 require __DIR__.'/pdm.php';
+require __DIR__.'/keuangan.php';
 require __DIR__.'/settings.php';
