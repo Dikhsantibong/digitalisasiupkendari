@@ -29,6 +29,7 @@ use App\Models\FuelTank;
 use App\Models\KondisiAbnormal;
 use App\Models\KwhMeter;
 use App\Models\LogsheetParameter;
+use App\Models\LogsheetTemplate;
 use App\Models\LubricantType;
 use App\Models\Machine;
 use App\Models\Operasi5s5rJadwal;
@@ -88,9 +89,9 @@ class DummyOperatorAndOperasiSeeder extends Seeder
         $units = Unit::query()->where('is_active', true)->orderBy('id')->get();
         $attendanceCodes = AttendanceCode::query()->pluck('id', 'code');
         $statusCodes = UnitStatusCode::query()->pluck('id', 'code');
-        $loadParam = LogsheetParameter::query()->where('code', 'LOAD')->first();
-        $kwhParam = LogsheetParameter::query()->where('code', 'KWH_METER')->first();
-        $rpmParam = LogsheetParameter::query()->where('code', 'RPM')->first();
+        $loadParam = LogsheetParameter::query()->ofTemplate(LogsheetTemplate::default())->where('code', 'LOAD')->first();
+        $kwhParam = LogsheetParameter::query()->ofTemplate(LogsheetTemplate::default())->where('code', 'KWH_METER')->first();
+        $rpmParam = LogsheetParameter::query()->ofTemplate(LogsheetTemplate::default())->where('code', 'RPM')->first();
 
         foreach ($units as $unit) {
             $machines = Machine::query()->where('unit_id', $unit->id)->where('is_active', true)->orderBy('id')->get();

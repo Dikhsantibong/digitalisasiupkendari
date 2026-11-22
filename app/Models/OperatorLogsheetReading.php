@@ -14,9 +14,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $time_slot
  * @property int $parameter_id
  * @property string|null $value
+ * @property string|null $value_text
  * @property string|null $note
  */
-#[Fillable(['logsheet_id', 'time_slot', 'parameter_id', 'value', 'note'])]
+#[Fillable(['logsheet_id', 'time_slot', 'parameter_id', 'value', 'value_text', 'note'])]
 class OperatorLogsheetReading extends Model
 {
     /**

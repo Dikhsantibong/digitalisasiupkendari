@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Operator\AbsensiController;
 use App\Http\Controllers\Operator\LogsheetController;
+use App\Http\Controllers\Operator\LogsheetTemplateController;
 use App\Http\Controllers\Operator\MutasiController;
 use App\Http\Controllers\Operator\OpnameController;
 use App\Http\Controllers\Operator\PengajuanController;
@@ -27,6 +28,11 @@ Route::middleware(['auth', 'verified'])
         Route::post('logsheet', [LogsheetController::class, 'store'])->name('logsheet.store');
         Route::post('logsheet/lembar', [LogsheetController::class, 'storeSheet'])->name('logsheet.sheet');
         Route::get('logsheet/pdf', [LogsheetController::class, 'pdf'])->name('logsheet.pdf');
+        // Template Form Mesin: logsheet (& patrol check) per jenis mesin — Super Admin edits, Master Operasi reads.
+        Route::get('template-logsheet', [LogsheetTemplateController::class, 'index'])->name('logsheet-template.index');
+        Route::post('template-logsheet', [LogsheetTemplateController::class, 'store'])->name('logsheet-template.store');
+        Route::put('template-logsheet/{template}', [LogsheetTemplateController::class, 'update'])->whereNumber('template')->name('logsheet-template.update');
+        Route::delete('template-logsheet/{template}', [LogsheetTemplateController::class, 'destroy'])->whereNumber('template')->name('logsheet-template.destroy');
 
         // Start Stop Engine: start, CBG on/off and stop of each run per mesin; gangguan stops feed Jumlah Kali Gangguan.
         Route::get('start-stop', [StartStopController::class, 'index'])->name('start-stop.index');

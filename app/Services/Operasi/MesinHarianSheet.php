@@ -159,8 +159,9 @@ class MesinHarianSheet
      */
     public function bebanFromLogsheet(Unit $unit, int $month, int $year, array $machines): array
     {
-        $loadId = LogsheetParameter::query()->where('code', 'LOAD')->value('id');
-        if ($loadId === null || $machines === []) {
+        // Every logsheet template (jenis mesin) has its own LOAD parameter.
+        $loadIds = LogsheetParameter::query()->where('code', 'LOAD')->pluck('id')->all();
+        if ($loadIds === [] || $machines === []) {
             return [];
         }
 
@@ -170,7 +171,7 @@ class MesinHarianSheet
             ->whereIn('operator_logsheets.engine_id', array_column($machines, 'id'))
             ->whereYear('operator_logsheets.log_date', $year)
             ->whereMonth('operator_logsheets.log_date', $month)
-            ->where('operator_logsheet_readings.parameter_id', $loadId)
+            ->whereIn('operator_logsheet_readings.parameter_id', $loadIds)
             ->whereNotNull('operator_logsheet_readings.value')
             ->get(['operator_logsheets.engine_id', 'operator_logsheets.log_date', 'operator_logsheet_readings.value']);
 

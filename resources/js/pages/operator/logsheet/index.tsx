@@ -15,13 +15,26 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { headerRows, referenceRows } from '@/lib/logsheet-layout';
 import { downloadLogsheetWorkbook } from '@/lib/operator-logsheet-excel';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import logsheet from '@/routes/operator/logsheet';
 import type { IdName } from '@/types';
 
-type Parameter = { id: number; name: string; sub_channel: string | null; label: string; unit_of_measure: string | null };
+type Parameter = {
+    id: number;
+    name: string;
+    sub_channel: string | null;
+    label: string;
+    unit_of_measure: string | null;
+    group_label?: string | null;
+    input_type?: 'number' | 'text' | 'choice';
+    options?: string[];
+    normal_value?: string | null;
+    alarm_value?: string | null;
+    trip_value?: string | null;
+};
 type Values = Record<string, number | string | null>;
 type Row = { time_slot: string; values: Values; filled: boolean };
 
@@ -38,9 +51,33 @@ type Props = {
     options: { units: IdName[]; machines: IdName[] };
     can_write: boolean;
     is_submitted: boolean;
+    /** The machine's logsheet template (jenis mesin); the default one keeps the original sheet. */
+    template?: { id: number; name: string; is_default: boolean } | null;
 };
 
-type Group = { name: string; members: Parameter[]; hasSub: boolean };
+type Group = { name: string; group: string | null; members: Parameter[]; hasSub: boolean };
+
+/** One logsheet cell by the parameter's input type: a number, a short text or a choice. */
+function CellInput({ parameter, value, onChange, label, className }: { parameter: Parameter; value: string; onChange: (value: string) => void; label: string; className: string }) {
+    if (parameter.input_type === 'choice' && (parameter.options ?? []).length > 0) {
+        return (
+            <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label} className={className}>
+                <option value="">–</option>
+                {(parameter.options ?? []).map((option) => (
+                    <option key={option} value={option}>
+                        {option}
+                    </option>
+                ))}
+            </select>
+        );
+    }
+
+    if (parameter.input_type === 'text') {
+        return <input value={value} maxLength={60} onChange={(e) => onChange(e.target.value)} aria-label={label} className={className} />;
+    }
+
+    return <input inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value.replace(',', '.'))} aria-label={label} className={className} />;
+}
 
 const toStr = (v: number | string | null | undefined) => (v === null || v === undefined ? '' : String(v));
 
@@ -56,7 +93,7 @@ const sheetInput =
 const gridOf = (rows: Row[], parameters: Parameter[]): Record<string, Record<string, string>> =>
     Object.fromEntries(rows.map((row) => [row.time_slot, Object.fromEntries(parameters.map((p) => [`p_${p.id}`, toStr(row.values[`p_${p.id}`])]))]));
 
-export default function LogsheetInput({ filters, stats, header, parameters, rows, slots, shifts, options, can_write, is_submitted }: Props) {
+export default function LogsheetInput({ filters, stats, header, parameters, rows, slots, shifts, options, can_write, is_submitted, template }: Props) {
     const [shift, setShift] = useState(header.shift ?? '');
     const [open, setOpen] = useState(false);
     const [slot, setSlot] = useState<string>(slots[0] ?? '');
@@ -104,10 +141,10 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
         for (const p of parameters) {
             const last = out[out.length - 1];
 
-            if (last && last.name === p.name) {
+            if (last && last.name === p.name && last.group === (p.group_label ?? null)) {
                 last.members.push(p);
             } else {
-                out.push({ name: p.name, members: [p], hasSub: false });
+                out.push({ name: p.name, group: p.group_label ?? null, members: [p], hasSub: false });
             }
         }
 
@@ -124,6 +161,11 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     const mainGroups = useMemo(() => groups.filter((g) => g.name !== BEARING), [groups]);
     const mainParameters = useMemo(() => parameters.filter((p) => p.name !== BEARING), [parameters]);
     const bearingParam = useMemo(() => parameters.find((p) => p.name === BEARING) ?? null, [parameters]);
+
+    // Another jenis mesin (e.g. Mirrlees PLTD Poasia): its own grouped head + Normal / Alarm / Trip rows.
+    const grouped = !!template && !template.is_default;
+    const head = useMemo(() => headerRows(parameters), [parameters]);
+    const references = useMemo(() => referenceRows(parameters), [parameters]);
 
     const visit = (patch: Partial<Props['filters']>) => {
         if (dirtySlots.length > 0 && !window.confirm('Isian yang belum disimpan akan hilang. Lanjutkan?')) {
@@ -192,7 +234,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
 
         try {
             await downloadLogsheetWorkbook(
-                { unit: unitName, engine: engineName, hariTanggal: dateLabel, shift: header.shift, status: is_submitted ? 'Terkirim' : 'Draft', parameters, rows, stats },
+                { unit: unitName, engine: engineName, hariTanggal: dateLabel, shift: header.shift, status: is_submitted ? 'Terkirim' : 'Draft', parameters, rows, stats, grouped, templateName: template?.name },
                 `${exportName}.xlsx`,
             );
         } finally {
@@ -347,6 +389,92 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                             })}
                         </div>
                     </div>
+                ) : grouped ? (
+                    <div className="overflow-x-auto rounded-md border border-border bg-card">
+                        <div className="border-b border-border px-3 py-1.5 text-[12px] text-muted-foreground">
+                            Form logsheet: <span className="font-medium text-foreground">{template?.name}</span>
+                        </div>
+                        <table className="w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                            <thead>
+                                {head.map((cells, level) => (
+                                    <tr key={level}>
+                                        {level === 0 && (
+                                            <th rowSpan={head.length + 1} className={cn(sheetTh, sheetJamTh, 'sticky left-0 z-20 w-16 min-w-16')}>
+                                                JAM
+                                            </th>
+                                        )}
+                                        {cells.map((cell, i) => (
+                                            <th
+                                                key={`${level}-${i}`}
+                                                colSpan={cell.colspan}
+                                                rowSpan={cell.rowspan}
+                                                className={cn(sheetTh, level > 0 && sheetSubTh, cell.colspan === 1 ? 'min-w-14' : '')}
+                                            >
+                                                {cell.label}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                ))}
+                                <tr>
+                                    {parameters.map((p) => (
+                                        <th key={p.id} className={cn(sheetTh, sheetSubTh, 'font-medium normal-case')}>
+                                            {p.unit_of_measure ?? '–'}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {references.map((reference) => (
+                                    <tr key={reference.field} className="bg-muted/60">
+                                        <td className={cn(sheetTd, 'sticky left-0 z-10 bg-muted text-[10px] font-semibold whitespace-nowrap uppercase')}>{reference.label}</td>
+                                        {parameters.map((p) => (
+                                            <td key={p.id} className={cn(sheetTd, 'text-[11px] font-medium whitespace-nowrap text-muted-foreground')}>
+                                                {p[reference.field] ?? ''}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                                {rows.map((row) => {
+                                    const filledNow = Object.values(grid[row.time_slot] ?? {}).some((value) => value !== '');
+
+                                    return (
+                                        <tr key={row.time_slot} className="group hover:bg-muted/40">
+                                            <td
+                                                className={cn(
+                                                    sheetTd,
+                                                    'sticky left-0 z-10 font-semibold tabular-nums',
+                                                    filledNow ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-amber-50 dark:bg-card',
+                                                )}
+                                            >
+                                                {row.time_slot}
+                                                {dirtySlots.includes(row.time_slot) && <span className="ml-0.5 text-amber-600">•</span>}
+                                            </td>
+                                            {parameters.map((p) => {
+                                                const key = `p_${p.id}`;
+                                                const error = errors[`sheet.${row.time_slot}.${key}`];
+
+                                                return (
+                                                    <td key={p.id} className={cn(sheetTd, 'p-0', error && 'bg-destructive/10')} title={error}>
+                                                        {can_write ? (
+                                                            <CellInput
+                                                                parameter={p}
+                                                                value={grid[row.time_slot]?.[key] ?? ''}
+                                                                onChange={(value) => setCell(row.time_slot, key, value)}
+                                                                label={`${p.group_label ? `${p.group_label} ` : ''}${p.label} jam ${row.time_slot}`}
+                                                                className={sheetInput}
+                                                            />
+                                                        ) : (
+                                                            <span className="block px-1.5 tabular-nums">{toStr(row.values[key])}</span>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 ) : (
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
                         {/* Spreadsheet look like the Patrol Check sheet: black grid, sticky JAM column, compact cells. */}
@@ -427,7 +555,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     </div>
                 )}
 
-                {!noEngine && !compact && bearingParam && (
+                {!noEngine && !compact && !grouped && bearingParam && (
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
                         <table className="w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
@@ -502,8 +630,9 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
 
                             <div className="grid gap-3 sm:grid-cols-2">
                                 {groups.map((g) => (
-                                    <div key={g.name} className="rounded-md border border-border p-2">
+                                    <div key={`${g.group ?? ''}|${g.name}`} className="rounded-md border border-border p-2">
                                         <div className="mb-1 text-[12px] font-medium text-foreground">
+                                            {g.group ? `${g.group} — ` : ''}
                                             {g.name}
                                             {g.members[0].unit_of_measure ? ` (${g.members[0].unit_of_measure})` : ''}
                                         </div>
@@ -511,13 +640,24 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                             {g.members.map((m) => (
                                                 <label key={m.id} className="flex flex-col gap-1 text-[12px]">
                                                     {m.sub_channel && <span className="text-muted-foreground">{m.sub_channel}</span>}
-                                                    <Input
-                                                        type="number"
-                                                        step="any"
-                                                        inputMode="decimal"
-                                                        value={form[`p_${m.id}`] ?? ''}
-                                                        onChange={(e) => setForm((current) => ({ ...current, [`p_${m.id}`]: e.target.value }))}
-                                                    />
+                                                    {m.input_type === 'choice' || m.input_type === 'text' ? (
+                                                        <CellInput
+                                                            parameter={m}
+                                                            value={form[`p_${m.id}`] ?? ''}
+                                                            onChange={(value) => setForm((current) => ({ ...current, [`p_${m.id}`]: value }))}
+                                                            label={m.label}
+                                                            className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                                                        />
+                                                    ) : (
+                                                        <Input
+                                                            type="number"
+                                                            step="any"
+                                                            inputMode="decimal"
+                                                            value={form[`p_${m.id}`] ?? ''}
+                                                            onChange={(e) => setForm((current) => ({ ...current, [`p_${m.id}`]: e.target.value }))}
+                                                        />
+                                                    )}
+                                                    {m.normal_value && <span className="text-[10px] text-muted-foreground">Normal {m.normal_value}</span>}
                                                 </label>
                                             ))}
                                         </div>

@@ -17,6 +17,7 @@
         .grid th { background: #d9d9d9; font-weight: bold; font-size: 6.5px; }
         .grid th.uom { background: #f2f2f2; font-weight: normal; font-size: 6px; }
         .grid td.jam { font-weight: bold; background: #f2f2f2; }
+        .grid tr.ref td { background: #f7f7f7; font-size: 6.5px; }
         .grid tr.peak td { background: #fff7e0; }
         .stats td { border: 1px solid #000; padding: 2px 4px; font-size: 7.5px; }
     </style>
@@ -27,7 +28,7 @@
             <td style="width: 20%;">@if($logoLeft)<img src="{{ $logoLeft }}" alt="PLN Nusantara Power">@endif</td>
             <td>
                 <div class="title">LOGSHEET OPERATOR {{ strtoupper($unit->name) }}</div>
-                <div class="sub">{{ strtoupper($engine->name) }} — {{ $hariTanggal }}</div>
+                <div class="sub">{{ strtoupper($engine->name) }} — {{ $hariTanggal }}@if(!empty($groupedHead) && !empty($templateName)) · Form {{ $templateName }}@endif</div>
             </td>
             <td style="width: 20%; text-align: right;">@if($logoRight)<img src="{{ $logoRight }}" alt="Mitra Karya Prima">@endif</td>
         </tr>
@@ -42,12 +43,24 @@
 
     <table class="grid">
         <thead>
+            @if(!empty($groupedHead) && count($headerRows ?? []) > 1)
+                {{-- Multi-level head of the machine's logsheet template (group → name → sub). --}}
+                @foreach($headerRows as $level => $cells)
+                    <tr>
+                        @if($level === 0)<th rowspan="{{ count($headerRows) + 1 }}" style="width: 30px;">JAM</th>@endif
+                        @foreach($cells as $cell)
+                            <th colspan="{{ $cell['colspan'] }}" rowspan="{{ $cell['rowspan'] }}">{{ $cell['label'] }}</th>
+                        @endforeach
+                    </tr>
+                @endforeach
+            @else
             <tr>
                 <th rowspan="2" style="width: 30px;">JAM</th>
                 @foreach($parameters as $parameter)
                     <th>{{ $parameter->label() }}</th>
                 @endforeach
             </tr>
+            @endif
             <tr>
                 @foreach($parameters as $parameter)
                     <th class="uom">{{ $parameter->unit_of_measure ?: '-' }}</th>
@@ -55,6 +68,14 @@
             </tr>
         </thead>
         <tbody>
+            @foreach($referenceRows ?? [] as $reference)
+                <tr class="ref">
+                    <td class="jam">{{ $reference['label'] }}</td>
+                    @foreach($parameters as $parameter)
+                        <td>{{ $parameter->{$reference['field']} }}</td>
+                    @endforeach
+                </tr>
+            @endforeach
             @foreach($rows as $row)
                 <tr class="{{ in_array($row['time_slot'], ['17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'], true) ? 'peak' : '' }}">
                     <td class="jam">{{ $row['time_slot'] }}</td>

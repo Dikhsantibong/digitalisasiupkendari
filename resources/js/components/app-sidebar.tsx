@@ -10,6 +10,7 @@ import {
     FilePen,
     Cog,
     Database,
+    FileCog,
     Factory,
     FileBarChart,
     FileCheck2,
@@ -97,6 +98,7 @@ import laporan from '@/routes/operasi/laporan';
 import master from '@/routes/operasi/master';
 import absensi from '@/routes/operator/absensi';
 import logsheet from '@/routes/operator/logsheet';
+import logsheetTemplate from '@/routes/operator/logsheet-template';
 import mutasiOperator from '@/routes/operator/mutasi';
 import opnameBbm from '@/routes/operator/opname-bbm';
 import opnameKwh from '@/routes/operator/opname-kwh';
@@ -256,6 +258,11 @@ export function AppSidebar() {
                     title: 'Master Operasi',
                     href: master.index('feeders'),
                     icon: Database,
+                },
+                (can('operasi.master.view_any') || can('setting.manage')) && {
+                    title: 'Template Form Mesin',
+                    href: logsheetTemplate.index(),
+                    icon: FileCog,
                 },
                 can('har.master.view_any') && {
                     title: 'Master Pemeliharaan',

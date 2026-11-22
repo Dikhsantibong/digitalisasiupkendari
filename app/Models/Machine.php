@@ -38,11 +38,14 @@ use Illuminate\Support\Carbon;
  * @property bool $is_active
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property int|null $logsheet_template_id
  * @property-read Unit $unit
+ * @property-read LogsheetTemplate|null $logsheetTemplate
  * @property-read Collection<int, LubricantType> $lubricantTypes
  */
 #[Fillable([
     'unit_id',
+    'logsheet_template_id',
     'name',
     'merk',
     'type',
@@ -91,6 +94,16 @@ class Machine extends Model
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
+    }
+
+    /**
+     * The logsheet form of this machine's jenis mesin (null = the default template).
+     *
+     * @return BelongsTo<LogsheetTemplate, $this>
+     */
+    public function logsheetTemplate(): BelongsTo
+    {
+        return $this->belongsTo(LogsheetTemplate::class);
     }
 
     /**

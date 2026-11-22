@@ -6,6 +6,7 @@ use App\Enums\LogsheetStatus;
 use App\Enums\RoleName;
 use App\Models\Employee;
 use App\Models\LogsheetParameter;
+use App\Models\LogsheetTemplate;
 use App\Models\Machine;
 use App\Models\OperatorLogsheet;
 use App\Models\Permission;
@@ -81,7 +82,7 @@ class LogsheetTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = $this->engineForUnit($unit);
-        $paramId = LogsheetParameter::query()->where('code', 'LOAD')->value('id');
+        $paramId = LogsheetParameter::query()->ofTemplate(LogsheetTemplate::default())->where('code', 'LOAD')->value('id');
         $operator = $this->userWithRole(RoleName::Operator, $unit);
 
         $this->actingAs($operator)->post(route('operator.logsheet.store'), [
@@ -113,7 +114,7 @@ class LogsheetTest extends TestCase
     {
         $unit = Unit::factory()->create();
         $engine = $this->engineForUnit($unit);
-        $load = LogsheetParameter::query()->where('code', 'LOAD')->value('id');
+        $load = LogsheetParameter::query()->ofTemplate(LogsheetTemplate::default())->where('code', 'LOAD')->value('id');
         $operator = $this->userWithRole(RoleName::Operator, $unit);
         $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10'];
 
@@ -243,7 +244,7 @@ class LogsheetTest extends TestCase
         $unit = Unit::factory()->create(['name' => 'PLTD Poasia']);
         $engine = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Cummins #6']);
         $operator = $this->userWithRole(RoleName::Operator, $unit);
-        $parameter = LogsheetParameter::query()->where('is_active', true)->orderBy('sort_order')->firstOrFail();
+        $parameter = LogsheetParameter::query()->ofTemplate(LogsheetTemplate::default())->where('is_active', true)->orderBy('sort_order')->firstOrFail();
 
         $this->actingAs($operator)->post(route('operator.logsheet.store'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10',

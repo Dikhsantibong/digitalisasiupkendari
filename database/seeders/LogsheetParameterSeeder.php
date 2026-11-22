@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\PlantType;
 use App\Models\LogsheetParameter;
+use App\Models\LogsheetTemplate;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -46,9 +47,12 @@ class LogsheetParameterSeeder extends Seeder
 
     public function run(): void
     {
+        // The shared set is the default (Cummins Containerized) logsheet template.
+        $templateId = LogsheetTemplate::default()?->id;
+
         foreach (self::PARAMETERS as $i => $parameter) {
             LogsheetParameter::query()->updateOrCreate(
-                ['plant_type' => PlantType::All->value, 'code' => $parameter['code']],
+                ['plant_type' => PlantType::All->value, 'code' => $parameter['code'], 'template_id' => $templateId],
                 [
                     'name' => $parameter['name'],
                     'unit_of_measure' => $parameter['unit_of_measure'],

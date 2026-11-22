@@ -7,6 +7,7 @@ use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
+use App\Models\LogsheetTemplate;
 use App\Models\Machine;
 use App\Models\OperasiPatrolCheckMesin;
 use App\Models\Unit;
@@ -83,7 +84,7 @@ class PatrolCheckMesinController extends Controller
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
         $daysInfo = $this->buildDaysInfo($year, $month, $daysInMonth);
 
-        $items = $this->resolveItems($record);
+        $items = $this->resolveItems($record, $selectedMachineId ? (int) $selectedMachineId : null, $unit->id);
 
         return Inertia::render('operasi/input/patrol-check-mesin/index', [
             'unit' => [
@@ -229,7 +230,7 @@ class PatrolCheckMesinController extends Controller
 
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
         $daysInfo = $this->buildDaysInfo($year, $month, $daysInMonth);
-        $items = $this->resolveItems($record);
+        $items = $this->resolveItems($record, $machineId ? (int) $machineId : null, $unit->id);
 
         $monthName = strtoupper(Indonesian::monthName($month));
         $periodLabel = "{$monthName} {$year}";
@@ -279,10 +280,22 @@ class PatrolCheckMesinController extends Controller
     /**
      * @return list<array{no: int, system: string, peralatan: string, checks: array<string, string>}>
      */
-    private function resolveItems(?OperasiPatrolCheckMesin $record): array
+    private function resolveItems(?OperasiPatrolCheckMesin $record, ?int $machineId = null, ?int $unitId = null): array
     {
         if ($record && ! empty($record->items)) {
             return $record->items;
+        }
+
+        // A new sheet starts from the items of the machine's jenis mesin (logsheet template) when it sets any.
+        $machine = $machineId === null ? null : Machine::query()->where('unit_id', $unitId)->find($machineId);
+        $templateItems = $machine === null ? [] : (LogsheetTemplate::forMachine($machine)?->patrol_items ?? []);
+        if ($templateItems !== []) {
+            return collect($templateItems)->values()->map(fn (array $item, int $i): array => [
+                'no' => $i + 1,
+                'system' => (string) $item['system'],
+                'peralatan' => (string) $item['peralatan'],
+                'checks' => [],
+            ])->all();
         }
 
         return collect(OperasiPatrolCheckMesin::DEFAULT_ITEMS)->map(fn ($item): array => [

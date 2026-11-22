@@ -157,7 +157,6 @@ Prinsip pembangunan: **Modular → Scalable → Auditable → Terkontrol.**
 
 - Integrasi langsung ke **WPC PLN** (Work Planning & Control) untuk WO/SR.
 - Penarikan otomatis logsheet operator ke data harian Operasi (`LogsheetAggregator`).
-- Parameter logsheet khusus PLTM/PLTG.
 - Modul **Project** dan **Laporan Unit/Project** generik (permission sudah ada,
   UI belum).
 - Laporan resmi PLN sheet bernomor 1–14 (EXSUM … REALPROD) dari workbook Operasi.
@@ -327,7 +326,7 @@ Aturan tambahan:
 |---|---|
 | Umum | Dashboard, Persetujuan (pemberi persetujuan) |
 | Monitoring | Ringkasan Monitoring, Kelengkapan Input, Verifikasi Laporan, Log Aktivitas |
-| Master Data | Unit Layanan, Unit Pembangkit, Master Mesin, Master Pegawai, Master Operasi, Master Pemeliharaan, Master K3 & Keamanan |
+| Master Data | Unit Layanan, Unit Pembangkit, Master Mesin, Master Pegawai, Master Operasi, **Template Form Mesin** (logsheet & patrol check per jenis mesin), Master Pemeliharaan, Master K3 & Keamanan |
 | Operator | Absensi, Logsheet Operator, Start Stop Engine, Opname BBM, Opname Pelumas, Opname kWh, Lembar Mutasi, Jadwal Shift, Pengajuan Absensi, Resume Statistik |
 | Input lapangan | Halaman Operasi/Pemeliharaan yang dibuka untuk petugas lapangan (hanya bila user tidak memegang izin modul penuh) |
 | Operasi | Jadwal, Input Project, Input Operasi, Berita Acara, Laporan, SLA* |
@@ -542,11 +541,30 @@ Layer input lapangan operator — modul tersendiri (bukan sub-Operasi).
 | **Resume Statistik** | Kehadiran, tukar shift, dan pekerjaan per pegawai (operator hanya melihat dirinya) | Operator, PL, pengawas |
 
 Detail Logsheet:
-- Parameter dari master `logsheet_parameters` (saat ini `plant_type = all`):
-  Load, Coolant Temp 1/2, Lube Oil Temp/Press, Winding Temp L1–L3, TEG Battery,
-  Ampere R/S/T, Cos Phi, Hour Meter, Freq, TEG, KVAR, kWh Meter, Flow Meter
-  IN/OUT, Daily Tank Level, Bearing Generator Temp.
-- Slot waktu = nilai: 01:00–24:00 + 17:30, 18:30, 19:30, 20:30, 21:30.
+- **Form logsheet per jenis mesin** (keputusan user 2026-11-21): setiap mesin memakai satu
+  **Template Form Mesin** (`logsheet_templates`, `machines.logsheet_template_id`); mesin tanpa template
+  memakai template **bawaan**. Template menentukan:
+  - **parameter** (`logsheet_parameters.template_id`) dengan judul kolom bertingkat **Grup → Nama → Sub**
+    (mis. Temperature Stud Main Bearing → Bank A → 1–9; kolom berurutan berjudul sama digabung), satuan,
+    baris acuan **Normal / Min-Alarm / Max-Trip**, dan **jenis input**: Angka (`value`), Teks (mis. "MAX -2")
+    atau Pilihan (mis. L/N/H) — keduanya di `operator_logsheet_readings.value_text`;
+  - **jam pembacaan** (slot waktu, mis. setiap jam 01:00–24:00);
+  - **item awal Patrol Check Mesin** (opsional; kosong = daftar bawaan; lembar tersimpan tidak berubah).
+- Template bawaan **Cummins (Containerized)** = set lama (Load, Coolant Temp 1/2, Lube Oil Temp/Press,
+  Winding Temp L1–L3, TEG Battery, Ampere R/S/T, Cos Phi, Hour Meter, Freq, TEG, KVAR, kWh Meter, Flow
+  Meter IN/OUT, Daily Tank Level, Bearing Generator Temp; slot 01:00–24:00 + 17:30, 18:30, 19:30, 20:30,
+  21:30) — tampilan, PDF & Excel-nya tidak berubah.
+- Template **Mirrlees (PLTD Poasia)** — "Laporan Isian Data Operator Lokal, Logsheet Lokal02": Beban (kW),
+  Temperature Stud Main Bearing Bank A & B (1–9), Temp. Ruangan, Temp Crankshaft Flywheel, Oil In To Engine,
+  Oil Out Engine, Level Oli Mesin/Carter (Run, Stop — teks), Filter Auto Back Wash (IN, OUT), Level Expansion
+  Tank (L/N/H), Trafo, Level Oil (L/N/H), Temp Oil; nilai Normal/Alarm/Trip dari form; setiap jam 01:00–24:00.
+  Dipakai mesin PLTD Poasia (MIRRLEES #1, #2, #4, #5).
+- Kode parameter **LOAD** (beban) dibaca Beban Tertinggi Operasi dari semua template; **KWH_METER** untuk
+  ringkasan kWh Meter Akhir.
+- **Template Form Mesin** (menu Master Data, `/operator/template-logsheet`): Super Admin (`setting.manage`)
+  membuat (kosong atau salin template lain), mengubah parameter/jam/item patrol check, memilih mesin yang
+  memakainya, dan menghapus template yang belum dipakai; pemegang `operasi.master.view_any` hanya melihat.
+  Parameter yang sudah berisi data tidak dihapus, hanya dinonaktifkan.
 - Shift A–D; di HP shift terisi otomatis dari regu pada Jadwal Shift (atau regu
   pegawai).
 - Status draft → submitted; lembar terkirim tidak bisa diubah operator.
@@ -1339,7 +1357,7 @@ Tabel modul (ringkas, semua ber-`unit_id`):
 
 | Modul | Tabel utama |
 |---|---|
-| Operator | `operator_logsheets` (+ `_readings`), `logsheet_parameters`, `operator_start_stops`, `operator_mutasis`, `operator_opnames`, `kwh_meters`, `work_schedules` (+ `_entries`), `attendance_codes`, `shift_patterns`, `holidays`, `employee_presences`, `attendance_requests` |
+| Operator | `operator_logsheets` (+ `_readings`), `logsheet_templates` (form per jenis mesin), `logsheet_parameters`, `operator_start_stops`, `operator_mutasis`, `operator_opnames`, `kwh_meters`, `work_schedules` (+ `_entries`), `attendance_codes`, `shift_patterns`, `holidays`, `employee_presences`, `attendance_requests` |
 | Operasi | `report_periods`, `feeders`, `auxiliary_sources`, `fuel_tanks`, `bbm_types`, `lubricant_types`, `calibration_factors`, `unit_status_codes`, `daily_engine_reports`, `engine_status_logs`, `daily_feeder_readings`, `daily_auxiliary_readings`, `fuel_receipts`, `operasi_jam_mesin`, `operasi_mesin_harian`, `operasi_persediaan`, `operasi_rekaps`, `operasi_tugs`, `document_templates`, `document_records`, `operasi_report_documents`, tabel jadwal/input `operasi_*` |
 | HAR | `maintenance_types`, `maintenance_cycles`, `wo_statuses`, `work_groups`, `sr_categories`, `work_orders`, `service_requests`, `maintenance_costs`, `har_material_peralatans`, `maintenance_activities` (+ tasks, materials), `maintenance_schedules`, `maintenance_attachments`, `har_unsafe_conditions`, `har_laporan_kegiatans`, `har_instruksi_kerjas`, `har_document_records`, tabel formulir/jadwal `har_*` |
 | K3 | master per §7.4, `k3_activity_plans`, `accident_reports`, `inspections` (+ results), `fire_extinguisher_checks`, `emergency_facility_checks`, `security_patrols`, `equipment_certificates`, `k3_attachments`, `k3_dokumen_iks`, `k3_document_records`, tabel `k3_*` lainnya |
@@ -1360,7 +1378,7 @@ Aturan data:
 |---|---|---|
 | WPC PLN (WO/SR) | Akses WO/SR hanya lewat interface `WorkOrderSource`; `ManualWorkOrderSource` aktif, `WpcWorkOrderSource` placeholder; kolom `source` manual/wpc; config WPC kosong | Ganti binding ke WPC setelah detail DB/skema/kredensial diterima — tanpa ubah controller/laporan; jangan hardcode IP |
 | Logsheet → data harian Operasi | `LogsheetAggregator` (TODO) + kolom `daily_engine_reports.source` (manual/logsheet) | Tarik beban puncak, stand kWh, jam, flow IN/OUT otomatis — hanya bila diminta |
-| Parameter PLTM/PLTG | `logsheet_parameters.plant_type` disiapkan, semua unit pakai `all` | Tambah set parameter per jenis pembangkit |
+| Form logsheet jenis mesin lain (PLTM/PLTG, unit lain) | Template Cummins (bawaan) & Mirrlees (PLTD Poasia) | Super Admin menambah template di menu Template Form Mesin sesuai form unit |
 | Opname BBM, Pelumas, kWh | Input harian berjalan | PDF/Excel, rekap bulanan, dan (bila diminta) tautan ke Persediaan/Stand kWh Pengusahaan |
 | Log Sheet PdM | Kartu "Segera Hadir" | Bangun input |
 | Modul Project & Laporan Unit/Project | Permission ada | Perencanaan, progres, milestone, ekspor |
@@ -1431,6 +1449,7 @@ Aturan data:
 | 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
+| 2026-11-21 | **Logsheet operator per jenis mesin**: menu **Template Form Mesin** (parameter bertingkat Grup → Nama → Sub, Normal/Alarm/Trip, input angka/teks/pilihan, jam pembacaan, item Patrol Check, mesin pemakai). PLTD Poasia memakai form **Mirrlees (Logsheet Lokal02)**, Containerized tetap form Cummins (§8.1) |
 | 2026-11-20 | Modul baru **Administrasi & Keuangan** per UL (§8.14): role **JOF Administrasi Umum** (akun `jof.{UL}` per UL), **Master Supplier** (nama, email, NPWP, foto KTP), **Laporan Realisasi Cash Card** (saldo berjalan, supplier dari master, foto lampiran per baris) dengan PDF laporan dan **Bukti Penerimaan Kas Kecil + Lampiran** otomatis per baris (foto + KTP/email/NPWP supplier). Kartu **Laporan Administrasi Keuangan** di Laporan UL diaktifkan dan membuka **dokumen edit & cetak** (halaman 1 tabel Cash Card, berikutnya Bukti + Lampiran per transaksi; Teks/Excel/Pratinjau PDF) |
 | 2026-11-19 | **Tampilan HP Project Leader** (shell sendiri: semua modul + Laporan & SLA) dan **Manager UL** (beranda Portal ringkas dengan tab Sahkan/Status/Riwayat/Resume); desktop tidak berubah (§6.2) |
 | 2026-11-19 | **E-mail login dipersingkat**: `{jabatan}.{unit}@upkendari.co.id` (mis. `pl.baubau`, `koord.log.poasiacont`, `tl.ophar.raha`, `admin.poasia`); seluruh akun lama diganti lewat migrasi, e-mail lama tetap bisa login (§7.1) |
