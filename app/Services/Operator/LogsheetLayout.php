@@ -56,6 +56,31 @@ class LogsheetLayout
     }
 
     /**
+     * MIN / MAX / RATA2 of every number column over the filled hours (the
+     * Logsheet Lokal 03 footer); a column without numbers stays empty.
+     *
+     * @param  Collection<int, LogsheetParameter>  $parameters
+     * @param  list<array{time_slot: string, values: array<string, string|null>}>  $rows
+     * @return list<array{label: string, values: array<string, string|null>}>
+     */
+    public static function summaryRows(Collection $parameters, array $rows): array
+    {
+        $out = ['MIN' => [], 'MAX' => [], 'RATA2' => []];
+        foreach ($parameters as $parameter) {
+            $key = 'p_'.$parameter->id;
+            $numbers = $parameter->isNumeric()
+                ? array_values(array_map('floatval', array_filter(array_column(array_column($rows, 'values'), $key), fn ($v): bool => is_numeric($v))))
+                : [];
+            $format = fn (?float $n): ?string => $n === null ? null : rtrim(rtrim(number_format($n, 2, '.', ''), '0'), '.');
+            $out['MIN'][$key] = $numbers === [] ? null : $format(min($numbers));
+            $out['MAX'][$key] = $numbers === [] ? null : $format(max($numbers));
+            $out['RATA2'][$key] = $numbers === [] ? null : $format(array_sum($numbers) / count($numbers));
+        }
+
+        return array_map(fn (string $label): array => ['label' => $label, 'values' => $out[$label]], array_keys($out));
+    }
+
+    /**
      * The reference rows printed under the head (only those the template fills).
      *
      * @param  Collection<int, LogsheetParameter>  $parameters

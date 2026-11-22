@@ -69,13 +69,16 @@ class LogsheetController extends Controller
         $logDate = ($request->date('log_date') ?? Carbon::now())->toDateString();
 
         $template = LogsheetTemplate::forMachine($engine);
-        $slots = $template?->slots() ?? LogsheetTemplate::DEFAULT_SLOTS;
-        [$parameters, $logsheet, $rows] = $this->sheet($engine, $logDate);
+        // The active lembar (sheet) of the form: PLTD Poasia has several, each with its own interval.
+        $activeSheet = $template?->sheet($request->string('lembar')->toString() ?: null);
+        $lembar = $activeSheet['key'] ?? null;
+        $slots = $this->slotsOf($engine, $lembar);
+        [$parameters, $logsheet, $rows] = $this->sheet($engine, $logDate, $lembar);
 
         $isSubmitted = $logsheet?->status === LogsheetStatus::Submitted;
 
         return Inertia::render('operator/logsheet/index', [
-            'filters' => ['unit_id' => $unit->id, 'engine_id' => $engine?->id, 'log_date' => $logDate],
+            'filters' => ['unit_id' => $unit->id, 'engine_id' => $engine?->id, 'log_date' => $logDate, 'lembar' => $lembar],
             'stats' => $engine === null ? [] : $this->dayStats($parameters, $logsheet, count($slots)),
             'header' => [
                 // A new sheet takes the operator's regu that day, so the phone needs no Shift picker.
@@ -96,6 +99,16 @@ class LogsheetController extends Controller
                 'trip_value' => $p->trip_value,
             ])->all(),
             'template' => $template === null ? null : ['id' => $template->id, 'name' => $template->name, 'is_default' => $template->is_default],
+            // The template's lembar (only shown when there is more than one) and the active one.
+            'sheets' => $template === null ? [] : array_map(fn (array $sheet): array => [
+                'key' => $sheet['key'], 'name' => $sheet['name'], 'interval' => $sheet['interval'], 'summary' => $sheet['summary'],
+                // Hours filled / due today — the phone shows them on the lembar cards.
+                'filled' => $this->filledSlots($template, $sheet, $logsheet),
+                'total' => count($sheet['slots']),
+            ], $template->sheetList()),
+            // The phone first asks which lembar (interval) to fill when the form has several.
+            'lembar_dipilih' => $request->filled('lembar'),
+            'active_sheet' => $activeSheet === null ? null : ['key' => $activeSheet['key'], 'name' => $activeSheet['name'], 'interval' => $activeSheet['interval'], 'summary' => $activeSheet['summary']],
             'rows' => $rows,
             'slots' => $slots,
             'shifts' => self::SHIFTS,
@@ -120,11 +133,12 @@ class LogsheetController extends Controller
 
         [$unit, $engine] = $this->resolveTarget($request);
 
-        $parameters = $this->parametersOf($engine);
+        $lembar = $this->lembarOf($request, $engine);
+        $parameters = $this->parametersOf($engine, $lembar);
         $validated = $request->validate([
             'log_date' => ['required', 'date'],
             'shift' => ['nullable', Rule::in(self::SHIFTS)],
-            'time_slot' => ['required', Rule::in($this->slotsOf($engine))],
+            'time_slot' => ['required', Rule::in($this->slotsOf($engine, $lembar))],
             'values' => ['array'],
             'values.*' => ['nullable', 'max:60'],
         ]);
@@ -140,7 +154,8 @@ class LogsheetController extends Controller
             }
             $logsheet->save();
 
-            $logsheet->readings()->where('time_slot', $validated['time_slot'])->delete();
+            // Only this lembar's parameters: another lembar may share the same hour.
+            $logsheet->readings()->where('time_slot', $validated['time_slot'])->whereIn('parameter_id', $parameters->pluck('id'))->delete();
             $this->createReadings($logsheet, $validated['time_slot'], $validated['values'] ?? [], $parameters);
         });
 
@@ -168,8 +183,9 @@ class LogsheetController extends Controller
 
         [$unit, $engine] = $this->resolveTarget($request);
 
-        $templateSlots = $this->slotsOf($engine);
-        $parameters = $this->parametersOf($engine);
+        $lembar = $this->lembarOf($request, $engine);
+        $templateSlots = $this->slotsOf($engine, $lembar);
+        $parameters = $this->parametersOf($engine, $lembar);
         $validated = $request->validate([
             'log_date' => ['required', 'date'],
             'shift' => ['nullable', Rule::in(self::SHIFTS)],
@@ -195,7 +211,7 @@ class LogsheetController extends Controller
             }
             $logsheet->save();
 
-            $logsheet->readings()->whereIn('time_slot', $slots)->delete();
+            $logsheet->readings()->whereIn('time_slot', $slots)->whereIn('parameter_id', $parameters->pluck('id'))->delete();
             foreach ($validated['sheet'] as $slot => $values) {
                 $this->createReadings($logsheet, (string) $slot, $values, $parameters);
             }
@@ -224,9 +240,11 @@ class LogsheetController extends Controller
 
         [$unit, $engine] = $this->resolveTarget($request);
         $logDate = ($request->date('log_date') ?? Carbon::now())->toDateString();
-        [$parameters, $logsheet, $rows] = $this->sheet($engine, $logDate);
+        $lembar = $this->lembarOf($request, $engine);
+        [$parameters, $logsheet, $rows] = $this->sheet($engine, $logDate, $lembar);
         $date = Carbon::parse($logDate);
         $template = LogsheetTemplate::forMachine($engine);
+        $activeSheet = $template?->sheet($lembar);
 
         $pdf = Pdf::loadView('operator.logsheet-pdf', [
             'unit' => $unit,
@@ -238,14 +256,17 @@ class LogsheetController extends Controller
             'headerRows' => LogsheetLayout::headerRows($parameters),
             'referenceRows' => LogsheetLayout::referenceRows($parameters),
             'templateName' => $template?->name,
+            'sheetInfo' => $template !== null && count($template->sheetList()) > 1 ? $activeSheet : null,
+            'summaryRows' => ($activeSheet['summary'] ?? false) ? LogsheetLayout::summaryRows($parameters, $rows) : [],
             // The default (Cummins) sheet keeps its flat head; other jenis mesin print the grouped one.
             'groupedHead' => $template !== null && ! $template->is_default,
             'rows' => $rows,
-            'stats' => $this->dayStats($parameters, $logsheet, count($template?->slots() ?? LogsheetTemplate::DEFAULT_SLOTS)),
+            'stats' => $this->dayStats($parameters, $logsheet, count($this->slotsOf($engine, $lembar))),
             ...JadwalPdf::logos(),
         ])->setPaper('a4', 'landscape');
 
-        $filename = sprintf('Logsheet_%s_%s_%s.pdf', str_replace(' ', '_', $unit->name), str_replace([' ', '#'], ['_', ''], $engine->name), $date->format('Ymd'));
+        $suffix = $template !== null && count($template->sheetList()) > 1 ? '_'.str_replace(' ', '_', $activeSheet['name']) : '';
+        $filename = sprintf('Logsheet_%s_%s_%s%s.pdf', str_replace(' ', '_', $unit->name), str_replace([' ', '#'], ['_', ''], $engine->name), $date->format('Ymd'), $suffix);
 
         return response($pdf->output(), 200, [
             'Content-Type' => 'application/pdf',
@@ -259,10 +280,10 @@ class LogsheetController extends Controller
      *
      * @return array{0: Collection<int, LogsheetParameter>, 1: OperatorLogsheet|null, 2: list<array{time_slot: string, values: array<string, string|null>, filled: bool}>}
      */
-    private function sheet(?Machine $engine, string $logDate): array
+    private function sheet(?Machine $engine, string $logDate, ?string $lembar = null): array
     {
-        $parameters = $this->parametersOf($engine);
-        $slots = $this->slotsOf($engine);
+        $parameters = $this->parametersOf($engine, $lembar);
+        $slots = $this->slotsOf($engine, $lembar);
 
         $logsheet = $engine === null ? null : OperatorLogsheet::query()
             ->with('readings')
@@ -292,10 +313,16 @@ class LogsheetController extends Controller
      *
      * @return Collection<int, LogsheetParameter>
      */
-    private function parametersOf(?Machine $engine): Collection
+    private function parametersOf(?Machine $engine, ?string $lembar = null): Collection
     {
+        $template = LogsheetTemplate::forMachine($engine);
+
         return LogsheetParameter::query()
-            ->ofTemplate(LogsheetTemplate::forMachine($engine))
+            ->when(
+                $template === null,
+                fn ($q) => $q->ofTemplate(null),
+                fn ($q) => $q->ofSheet($template, $template->sheet($lembar)['key']),
+            )
             ->where('is_active', true)
             ->orderBy('sort_order')->orderBy('id')->get();
     }
@@ -303,9 +330,34 @@ class LogsheetController extends Controller
     /**
      * @return list<string>
      */
-    private function slotsOf(?Machine $engine): array
+    private function slotsOf(?Machine $engine, ?string $lembar = null): array
     {
-        return LogsheetTemplate::forMachine($engine)?->slots() ?? LogsheetTemplate::DEFAULT_SLOTS;
+        return LogsheetTemplate::forMachine($engine)?->sheet($lembar)['slots'] ?? LogsheetTemplate::DEFAULT_SLOTS;
+    }
+
+    /**
+     * How many of a lembar's hours already have a reading.
+     *
+     * @param  array{key: string, slots: list<string>}  $sheet
+     */
+    private function filledSlots(LogsheetTemplate $template, array $sheet, ?OperatorLogsheet $logsheet): int
+    {
+        if ($logsheet === null) {
+            return 0;
+        }
+        $ids = LogsheetParameter::query()->ofSheet($template, $sheet['key'])->pluck('id')->all();
+
+        return $logsheet->readings->toBase()->whereIn('parameter_id', $ids)
+            ->map(fn ($r): string => substr((string) $r->time_slot, 0, 5))
+            ->unique()->intersect($sheet['slots'])->count();
+    }
+
+    /**
+     * The lembar (sheet) a request targets — `lembar` — else the template's first one.
+     */
+    private function lembarOf(Request $request, ?Machine $engine): ?string
+    {
+        return LogsheetTemplate::forMachine($engine)?->sheet($request->string('lembar')->toString() ?: null)['key'];
     }
 
     /**
@@ -379,7 +431,7 @@ class LogsheetController extends Controller
      */
     private function dayStats($parameters, ?OperatorLogsheet $logsheet, int $totalSlots): array
     {
-        $readings = $logsheet?->readings ?? collect();
+        $readings = ($logsheet?->readings ?? collect())->whereIn('parameter_id', $parameters->pluck('id')->all());
 
         $loadId = $parameters->firstWhere('code', 'LOAD')?->id;
         $kwhId = $parameters->firstWhere('code', 'KWH_METER')?->id;

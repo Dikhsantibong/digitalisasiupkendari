@@ -17,10 +17,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property string|null $description
  * @property list<string>|null $time_slots
+ * @property list<array{key: string, name: string, interval?: string|null, slots: list<string>, summary?: bool}>|null $sheets
  * @property list<array{system: string, peralatan: string}>|null $patrol_items
  * @property bool $is_default
  */
-#[Fillable(['code', 'name', 'description', 'time_slots', 'patrol_items', 'is_default'])]
+#[Fillable(['code', 'name', 'description', 'time_slots', 'sheets', 'patrol_items', 'is_default'])]
 class LogsheetTemplate extends Model
 {
     /**
@@ -43,6 +44,7 @@ class LogsheetTemplate extends Model
     {
         return [
             'time_slots' => 'array',
+            'sheets' => 'array',
             'patrol_items' => 'array',
             'is_default' => 'boolean',
         ];
@@ -91,4 +93,41 @@ class LogsheetTemplate extends Model
     {
         return $this->time_slots !== null && $this->time_slots !== [] ? array_values($this->time_slots) : self::DEFAULT_SLOTS;
     }
+
+    /**
+     * The sheets (lembar) of the form, each with its own interval and slots
+     * (user, 2026-11-22: PLTD Poasia Lokal 02 hourly, Lokal 03 & Cylinder Head
+     * every 2 hours). A template without sheets has one sheet: its time slots.
+     *
+     * @return list<array{key: string, name: string, interval: string|null, slots: list<string>, summary: bool}>
+     */
+    public function sheetList(): array
+    {
+        if (empty($this->sheets)) {
+            return [['key' => self::SINGLE_SHEET, 'name' => $this->name, 'interval' => null, 'slots' => $this->slots(), 'summary' => false]];
+        }
+
+        return array_values(array_map(fn (array $sheet): array => [
+            'key' => (string) $sheet['key'],
+            'name' => (string) $sheet['name'],
+            'interval' => $sheet['interval'] ?? null,
+            'slots' => array_values($sheet['slots'] ?? []) ?: self::DEFAULT_SLOTS,
+            'summary' => (bool) ($sheet['summary'] ?? false),
+        ], $this->sheets));
+    }
+
+    /**
+     * One sheet by key, else the first one.
+     *
+     * @return array{key: string, name: string, interval: string|null, slots: list<string>, summary: bool}
+     */
+    public function sheet(?string $key): array
+    {
+        $sheets = $this->sheetList();
+
+        return collect($sheets)->firstWhere('key', $key) ?? $sheets[0];
+    }
+
+    /** The key of the only sheet of a template without sheets. */
+    public const SINGLE_SHEET = 'utama';
 }

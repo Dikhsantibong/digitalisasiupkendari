@@ -29,6 +29,9 @@ export type LogsheetExcel = {
     /** Another jenis mesin's template: grouped head + Normal / Alarm / Trip rows (the default sheet stays flat). */
     grouped?: boolean;
     templateName?: string;
+    /** The lembar printed (forms with several sheets) and its MIN / MAX / RATA2 rows. */
+    sheet?: { name: string; interval: string | null } | null;
+    summaries?: { label: string; values: Record<string, string> }[];
 };
 
 const PEAK = [
@@ -140,7 +143,7 @@ export async function downloadLogsheetWorkbook(
         sheet,
         3,
         1,
-        `${data.engine.toUpperCase()} — ${data.hariTanggal} · Regu/Shift: ${data.shift ?? '-'} · Status: ${data.status}${data.grouped && data.templateName ? ` · Form ${data.templateName}` : ''}`,
+        `${data.engine.toUpperCase()} — ${data.hariTanggal} · Regu/Shift: ${data.shift ?? '-'} · Status: ${data.status}${data.grouped && data.templateName ? ` · Form ${data.templateName}` : ''}${data.sheet ? ` · ${data.sheet.name}${data.sheet.interval ? ` (${data.sheet.interval})` : ''}` : ''}`,
         { size: 9, align: 'center', italic: true },
     );
     mergeCells(sheet, 2, 0, 2, totalCols - 1);
@@ -216,6 +219,18 @@ export async function downloadLogsheetWorkbook(
             put(sheet, r, i + 2, numeric(row.values[`p_${p.id}`]), {
                 ...CELL,
                 fill,
+            }),
+        );
+        r++;
+    }
+
+    for (const summary of data.summaries ?? []) {
+        put(sheet, r, 1, summary.label, { ...CELL, bold: true, fill: 'EDEDED' });
+        data.parameters.forEach((p, i) =>
+            put(sheet, r, i + 2, numeric(summary.values[`p_${p.id}`]), {
+                ...CELL,
+                bold: true,
+                fill: 'F7F7F7',
             }),
         );
         r++;

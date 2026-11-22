@@ -80,3 +80,52 @@ export function referenceRows(parameters: LayoutParameter[]): ReferenceRow[] {
         parameters.some((p) => (p[row.field] ?? '') !== ''),
     );
 }
+
+export type SummaryRow = { label: string; values: Record<string, string> };
+
+/**
+ * MIN / MAX / RATA2 of every number column over the filled hours (the Logsheet
+ * Lokal 03 footer), from `grid` = time slot → `p_{id}` → value. Mirrors
+ * LogsheetLayout::summaryRows.
+ */
+export function summaryRows(
+    parameters: { id: number; input_type?: string }[],
+    grid: Record<string, Record<string, string | number | null | undefined>>,
+): SummaryRow[] {
+    const format = (n: number) => String(Math.round(n * 100) / 100);
+    const out: SummaryRow[] = [
+        { label: 'MIN', values: {} },
+        { label: 'MAX', values: {} },
+        { label: 'RATA2', values: {} },
+    ];
+
+    for (const p of parameters) {
+        if ((p.input_type ?? 'number') !== 'number') {
+            continue;
+        }
+
+        const key = `p_${p.id}`;
+        const numbers = Object.values(grid)
+            .map((values) => values?.[key])
+            .filter(
+                (v) =>
+                    v !== null &&
+                    v !== undefined &&
+                    v !== '' &&
+                    Number.isFinite(Number(v)),
+            )
+            .map(Number);
+
+        if (numbers.length === 0) {
+            continue;
+        }
+
+        out[0].values[key] = format(Math.min(...numbers));
+        out[1].values[key] = format(Math.max(...numbers));
+        out[2].values[key] = format(
+            numbers.reduce((a, b) => a + b, 0) / numbers.length,
+        );
+    }
+
+    return out;
+}

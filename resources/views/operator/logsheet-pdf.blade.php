@@ -28,6 +28,9 @@
             <td style="width: 20%;">@if($logoLeft)<img src="{{ $logoLeft }}" alt="PLN Nusantara Power">@endif</td>
             <td>
                 <div class="title">LOGSHEET OPERATOR {{ strtoupper($unit->name) }}</div>
+                @if(!empty($sheetInfo))
+                    <div class="sub" style="font-weight: bold;">{{ strtoupper($sheetInfo['name']) }}@if(!empty($sheetInfo['interval'])) — {{ strtoupper($sheetInfo['interval']) }}@endif</div>
+                @endif
                 <div class="sub">{{ strtoupper($engine->name) }} — {{ $hariTanggal }}@if(!empty($groupedHead) && !empty($templateName)) · Form {{ $templateName }}@endif</div>
             </td>
             <td style="width: 20%; text-align: right;">@if($logoRight)<img src="{{ $logoRight }}" alt="Mitra Karya Prima">@endif</td>
@@ -81,6 +84,14 @@
                     <td class="jam">{{ $row['time_slot'] }}</td>
                     @foreach($parameters as $parameter)
                         <td>{{ $row['values']['p_'.$parameter->id] ?? '' }}</td>
+                    @endforeach
+                </tr>
+            @endforeach
+            @foreach($summaryRows ?? [] as $summary)
+                <tr class="ref">
+                    <td class="jam">{{ $summary['label'] }}</td>
+                    @foreach($parameters as $parameter)
+                        <td><b>{{ $summary['values']['p_'.$parameter->id] ?? '' }}</b></td>
                     @endforeach
                 </tr>
             @endforeach

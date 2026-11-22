@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { CheckCircle2, Circle, FileDown, FileSpreadsheet, Plus, Save } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Circle, Clock, FileDown, FileSpreadsheet, Plus, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
-import { headerRows, referenceRows } from '@/lib/logsheet-layout';
+import { headerRows, referenceRows, summaryRows } from '@/lib/logsheet-layout';
 import { downloadLogsheetWorkbook } from '@/lib/operator-logsheet-excel';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -41,7 +41,7 @@ type Row = { time_slot: string; values: Values; filled: boolean };
 type Stat = { label: string; value: string; unit?: string; hint?: string };
 
 type Props = {
-    filters: { unit_id: number; engine_id: number | null; log_date: string };
+    filters: { unit_id: number; engine_id: number | null; log_date: string; lembar?: string | null };
     stats: Stat[];
     header: { shift: string | null; status: string };
     parameters: Parameter[];
@@ -53,7 +53,14 @@ type Props = {
     is_submitted: boolean;
     /** The machine's logsheet template (jenis mesin); the default one keeps the original sheet. */
     template?: { id: number; name: string; is_default: boolean } | null;
+    /** The lembar of the form (PLTD Poasia: Lokal 02 setiap jam, Lokal 03 & Cylinder Head setiap 2 jam). */
+    sheets?: Sheet[];
+    active_sheet?: Sheet | null;
+    /** Whether a lembar was picked (the phone asks for one first when the form has several). */
+    lembar_dipilih?: boolean;
 };
+
+type Sheet = { key: string; name: string; interval: string | null; summary: boolean; filled?: number; total?: number };
 
 type Group = { name: string; group: string | null; members: Parameter[]; hasSub: boolean };
 
@@ -93,7 +100,7 @@ const sheetInput =
 const gridOf = (rows: Row[], parameters: Parameter[]): Record<string, Record<string, string>> =>
     Object.fromEntries(rows.map((row) => [row.time_slot, Object.fromEntries(parameters.map((p) => [`p_${p.id}`, toStr(row.values[`p_${p.id}`])]))]));
 
-export default function LogsheetInput({ filters, stats, header, parameters, rows, slots, shifts, options, can_write, is_submitted, template }: Props) {
+export default function LogsheetInput({ filters, stats, header, parameters, rows, slots, shifts, options, can_write, is_submitted, template, sheets = [], active_sheet = null, lembar_dipilih = false }: Props) {
     const [shift, setShift] = useState(header.shift ?? '');
     const [open, setOpen] = useState(false);
     const [slot, setSlot] = useState<string>(slots[0] ?? '');
@@ -119,6 +126,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 unit_id: filters.unit_id,
                 engine_id: filters.engine_id,
                 log_date: filters.log_date,
+                lembar: filters.lembar ?? null,
                 shift: shift || null,
                 sheet: Object.fromEntries(dirtySlots.map((slotValue) => [slotValue, grid[slotValue]])),
             },
@@ -166,6 +174,11 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     const grouped = !!template && !template.is_default;
     const head = useMemo(() => headerRows(parameters), [parameters]);
     const references = useMemo(() => referenceRows(parameters), [parameters]);
+    const multiSheet = sheets.length > 1;
+    // Phone: a form with several lembar first shows the interval choice, then that lembar's hours.
+    const choosingSheet = compact && multiSheet && !lembar_dipilih;
+    // Logsheet Lokal 03: MIN / MAX / RATA2 of each column, live from what is typed.
+    const summaries = useMemo(() => (active_sheet?.summary ? summaryRows(parameters, grid) : []), [active_sheet, parameters, grid]);
 
     const visit = (patch: Partial<Props['filters']>) => {
         if (dirtySlots.length > 0 && !window.confirm('Isian yang belum disimpan akan hilang. Lanjutkan?')) {
@@ -209,6 +222,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 unit_id: filters.unit_id,
                 engine_id: filters.engine_id,
                 log_date: filters.log_date,
+                lembar: filters.lembar ?? null,
                 shift: shift || null,
                 time_slot: slot,
                 values: form,
@@ -226,7 +240,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     const engineName = options.machines.find((m) => m.id === filters.engine_id)?.name ?? '';
     const unitName = options.units.find((u) => u.id === filters.unit_id)?.name ?? '';
     const dateLabel = new Date(`${filters.log_date}T00:00:00`).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const exportName = `Logsheet_${unitName}_${engineName}_${filters.log_date.replaceAll('-', '')}`.replace(/[\s#]+/g, '_');
+    const exportName = `Logsheet_${unitName}_${engineName}_${filters.log_date.replaceAll('-', '')}${multiSheet && active_sheet ? `_${active_sheet.name}` : ''}`.replace(/[\s#]+/g, '_');
 
     /** Excel of the saved sheet (same content as the PDF). */
     const exportExcel = async () => {
@@ -234,7 +248,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
 
         try {
             await downloadLogsheetWorkbook(
-                { unit: unitName, engine: engineName, hariTanggal: dateLabel, shift: header.shift, status: is_submitted ? 'Terkirim' : 'Draft', parameters, rows, stats, grouped, templateName: template?.name },
+                { unit: unitName, engine: engineName, hariTanggal: dateLabel, shift: header.shift, status: is_submitted ? 'Terkirim' : 'Draft', parameters, rows, stats, grouped, templateName: template?.name, sheet: multiSheet ? active_sheet : null, summaries: active_sheet?.summary ? summaryRows(parameters, gridOf(rows, parameters)) : [] },
                 `${exportName}.xlsx`,
             );
         } finally {
@@ -267,7 +281,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
 
                 {!noEngine && !compact && (
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" onClick={() => window.open(logsheet.pdf({ query: { unit_id: filters.unit_id, engine_id: filters.engine_id, log_date: filters.log_date } }).url, '_blank')} className="gap-1.5">
+                        <Button variant="outline" size="sm" onClick={() => window.open(logsheet.pdf({ query: { unit_id: filters.unit_id, engine_id: filters.engine_id, log_date: filters.log_date, ...(multiSheet && filters.lembar ? { lembar: filters.lembar } : {}) } }).url, '_blank')} className="gap-1.5">
                             <FileDown className="size-4 text-rose-600" />
                             Export PDF
                         </Button>
@@ -282,7 +296,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     <OperasiSelect
                         label="Mesin"
                         value={filters.engine_id ? String(filters.engine_id) : ''}
-                        onChange={(value) => visit({ engine_id: Number(value) })}
+                        onChange={(value) => visit({ engine_id: Number(value), lembar: null })}
                         options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))}
                         className="w-full"
                     />
@@ -291,7 +305,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     <OperasiSelect
                         label="Unit"
                         value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value), engine_id: null })}
+                        onChange={(value) => visit({ unit_id: Number(value), engine_id: null, lembar: null })}
                         options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
                         className={compact ? 'w-full' : undefined}
                     />
@@ -332,12 +346,82 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     </div>
                 )}
 
+                {!noEngine && multiSheet && !compact && (
+                    <div className={cn('gap-2', compact ? 'grid grid-cols-2' : 'flex flex-wrap')} role="tablist" aria-label="Lembar logsheet">
+                        {sheets.map((sheet) => {
+                            const selected = sheet.key === active_sheet?.key;
+
+                            return (
+                                <button
+                                    key={sheet.key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={selected}
+                                    onClick={() => !selected && visit({ lembar: sheet.key })}
+                                    className={cn(
+                                        'flex min-w-0 shrink-0 flex-col items-start rounded-lg border px-3 py-2 text-left transition',
+                                        selected ? 'border-primary bg-primary/10 ring-1 ring-primary/30' : 'border-border bg-card hover:bg-muted/50',
+                                    )}
+                                >
+                                    <span className={cn('text-[13px] font-semibold', compact ? 'leading-tight' : 'whitespace-nowrap', selected ? 'text-primary' : 'text-foreground')}>{sheet.name}</span>
+                                    {sheet.interval && <span className="text-[11px] whitespace-nowrap text-muted-foreground">{sheet.interval}</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
                 {noEngine ? (
                     <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
                         Unit ini belum punya mesin aktif.
                     </div>
+                ) : choosingSheet ? (
+                    <div className="flex flex-col gap-2">
+                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">Pilih Lembar Logsheet</p>
+                        {sheets.map((sheet) => {
+                            const done = (sheet.total ?? 0) > 0 && sheet.filled === sheet.total;
+
+                            return (
+                                <button
+                                    key={sheet.key}
+                                    type="button"
+                                    onClick={() => visit({ lembar: sheet.key })}
+                                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-left transition active:scale-[0.98]"
+                                >
+                                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                        <Clock className="size-5" />
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block text-[15px] font-semibold">{sheet.interval ?? sheet.name}</span>
+                                        <span className="block truncate text-[12px] text-muted-foreground">{sheet.interval ? sheet.name : ''}</span>
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums',
+                                            done ? 'bg-emerald-600/10 text-emerald-700 dark:text-emerald-400' : 'bg-muted text-muted-foreground',
+                                        )}
+                                    >
+                                        {sheet.filled ?? 0}/{sheet.total ?? 0} jam
+                                    </span>
+                                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                                </button>
+                            );
+                        })}
+                    </div>
                 ) : compact ? (
                     <div className="flex flex-col gap-2">
+                        {multiSheet && active_sheet && (
+                            <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
+                                <Clock className="size-5 shrink-0 text-primary" />
+                                <span className="min-w-0 flex-1">
+                                    <span className="block text-[14px] font-semibold">{active_sheet.interval ?? active_sheet.name}</span>
+                                    <span className="block truncate text-[12px] text-muted-foreground">{active_sheet.interval ? active_sheet.name : ''}</span>
+                                </span>
+                                <Button variant="outline" size="sm" onClick={() => visit({ lembar: null })}>
+                                    Ganti
+                                </Button>
+                            </div>
+                        )}
                         <p className="flex items-center justify-between text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
                             Jam Pembacaan
                             <span className="rounded-full bg-emerald-600/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 normal-case dark:text-emerald-400">
@@ -393,6 +477,13 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                     <div className="overflow-x-auto rounded-md border border-border bg-card">
                         <div className="border-b border-border px-3 py-1.5 text-[12px] text-muted-foreground">
                             Form logsheet: <span className="font-medium text-foreground">{template?.name}</span>
+                            {multiSheet && active_sheet && (
+                                <>
+                                    {' · '}
+                                    <span className="font-medium text-foreground">{active_sheet.name}</span>
+                                    {active_sheet.interval ? ` (${active_sheet.interval})` : ''}
+                                </>
+                            )}
                         </div>
                         <table className="w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
                             <thead>
@@ -472,6 +563,16 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                         </tr>
                                     );
                                 })}
+                                {summaries.map((summary) => (
+                                    <tr key={summary.label} className="bg-muted/60">
+                                        <td className={cn(sheetTd, 'sticky left-0 z-10 bg-muted text-[11px] font-bold')}>{summary.label}</td>
+                                        {parameters.map((p) => (
+                                            <td key={p.id} className={cn(sheetTd, 'font-semibold tabular-nums')}>
+                                                {summary.values[`p_${p.id}`] ?? ''}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>
@@ -598,7 +699,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 )}
             </div>
 
-            {compact && can_write && !noEngine && (
+            {compact && can_write && !noEngine && !choosingSheet && (
                 <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-1 gap-2 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
                     <Button size="lg" onClick={() => openFor()}>
                         <Plus className="size-4" />
@@ -610,7 +711,10 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
             {can_write && compact && (
                 <Dialog open={open} onOpenChange={setOpen}>
                     <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
-                        <DialogTitle>Isi Data Logsheet</DialogTitle>
+                        <DialogTitle>
+                            Isi Data Logsheet
+                            {multiSheet && active_sheet && <span className="block text-[13px] font-normal text-muted-foreground">{active_sheet.name}{active_sheet.interval ? ` · ${active_sheet.interval}` : ''}</span>}
+                        </DialogTitle>
                         <div className="flex flex-col gap-4">
                             <label className="flex flex-col gap-1 text-[13px]">
                                 <span className="text-muted-foreground">Jam</span>

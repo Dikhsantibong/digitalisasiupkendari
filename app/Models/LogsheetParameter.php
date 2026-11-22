@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property int|null $template_id
+ * @property string|null $sheet_key
  * @property PlantType $plant_type
  * @property string $code
  * @property string|null $group_label
@@ -34,7 +35,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $sort_order
  * @property bool $is_active
  */
-#[Fillable(['template_id', 'plant_type', 'code', 'group_label', 'name', 'unit_of_measure', 'sub_channel', 'input_type', 'options', 'normal_value', 'alarm_value', 'trip_value', 'sort_order', 'is_active'])]
+#[Fillable(['template_id', 'sheet_key', 'plant_type', 'code', 'group_label', 'name', 'unit_of_measure', 'sub_channel', 'input_type', 'options', 'normal_value', 'alarm_value', 'trip_value', 'sort_order', 'is_active'])]
 class LogsheetParameter extends Model
 {
     /** @use HasFactory<LogsheetParameterFactory> */
@@ -78,6 +79,26 @@ class LogsheetParameter extends Model
             $q->where('template_id', $template->id);
             if ($template->is_default) {
                 $q->orWhereNull('template_id');
+            }
+        });
+    }
+
+    /**
+     * The parameters of one sheet of a template; rows without a sheet belong to its first sheet.
+     *
+     * @param  Builder<LogsheetParameter>  $query
+     */
+    public function scopeOfSheet(Builder $query, ?LogsheetTemplate $template, string $sheetKey): void
+    {
+        $query->ofTemplate($template);
+        if ($template === null) {
+            return;
+        }
+        $first = $template->sheetList()[0]['key'];
+        $query->where(function (Builder $q) use ($sheetKey, $first): void {
+            $q->where('sheet_key', $sheetKey);
+            if ($sheetKey === $first) {
+                $q->orWhereNull('sheet_key');
             }
         });
     }

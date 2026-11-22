@@ -52,8 +52,8 @@ export default function Login({
         <div className="flex min-h-dvh w-full flex-col bg-background text-foreground lg:grid lg:grid-cols-12">
             <Head title="Masuk" />
 
-            <main className="flex flex-1 flex-col justify-between gap-6 px-4 py-6 sm:gap-8 sm:px-8 sm:py-8 lg:col-span-6 lg:min-h-dvh lg:px-10 lg:py-8 xl:col-span-5 xl:px-12 xl:py-10">
-                <div className="mx-auto flex w-full max-w-md items-center justify-between gap-3 border-b border-border pb-4">
+            <main className="flex flex-1 flex-col justify-center gap-6 px-4 py-6 sm:gap-8 sm:px-8 sm:py-8 lg:col-span-6 lg:justify-between lg:min-h-dvh lg:px-10 lg:py-8 xl:col-span-5 xl:px-12 xl:py-10">
+                <div className="mx-auto flex w-full max-w-md items-center justify-between gap-3 pb-1 lg:border-b lg:border-border lg:pb-4">
                     <Link href={home()} className="flex items-center gap-2">
                         <span className="rounded-sm border border-border bg-card p-1">
                             <img
@@ -75,7 +75,7 @@ export default function Login({
                     </span>
                 </div>
 
-                <div className="mx-auto flex w-full max-w-md flex-1 items-center">
+                <div className="mx-auto flex w-full max-w-md items-center lg:flex-1">
                     <div className="w-full rounded-md border border-border bg-card p-5 sm:p-8">
                         <div className="mb-5 border-b border-border pb-4 sm:mb-6">
                             <h2 className="text-2xl font-semibold tracking-tight text-foreground">
@@ -192,7 +192,8 @@ export default function Login({
                         <div className="mt-6 flex flex-col gap-3 border-t border-border pt-5">
                             <InstallAppLink className="mt-0" />
 
-                            <p className="rounded-md border border-border bg-secondary px-3 py-2 text-[13px] text-muted-foreground">
+                            {/* Phone: only the sign-in form (user, 2026-11-22). */}
+                            <p className="hidden rounded-md border border-border bg-secondary px-3 py-2 text-[13px] text-muted-foreground lg:block">
                                 Akses terbatas untuk pengguna terdaftar PT PLN
                                 Nusantara Power UP Kendari.
                             </p>
@@ -206,7 +207,7 @@ export default function Login({
             </main>
 
             {/* Identity panel: the UP Kendari building under a solid brand overlay. */}
-            <aside className="relative flex flex-col overflow-hidden px-4 py-8 sm:px-8 sm:py-10 lg:col-span-6 lg:min-h-dvh lg:px-10 lg:py-8 xl:col-span-7 xl:px-14 xl:py-10">
+            <aside className="relative hidden flex-col overflow-hidden lg:flex px-4 py-8 sm:px-8 sm:py-10 lg:col-span-6 lg:min-h-dvh lg:px-10 lg:py-8 xl:col-span-7 xl:px-14 xl:py-10">
                 <div
                     className="absolute inset-0 bg-cover bg-center"
                     style={{
@@ -272,9 +273,6 @@ export default function Login({
                 </div>
             </aside>
 
-            <footer className="border-t border-border px-4 py-4 text-center text-[13px] text-muted-foreground sm:px-8 lg:hidden">
-                &copy; {currentYear} PT PLN Nusantara Power — UP Kendari
-            </footer>
         </div>
     );
 }

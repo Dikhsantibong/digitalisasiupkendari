@@ -17,6 +17,7 @@ type InputType = 'number' | 'text' | 'choice';
 type Parameter = {
     id?: number | null;
     key: string;
+    sheet_key: string;
     code: string;
     group_label: string;
     name: string;
@@ -32,6 +33,15 @@ type Parameter = {
 
 type PatrolItem = { key: string; system: string; peralatan: string };
 
+/** A lembar of the form: its own interval label, reading slots and MIN / MAX / RATA2 footer. */
+type SheetDef = {
+    key: string;
+    name: string;
+    interval: string | null;
+    summary: boolean;
+    slots: string[];
+};
+
 type Template = {
     id: number;
     code: string;
@@ -39,6 +49,7 @@ type Template = {
     description: string | null;
     is_default: boolean;
     time_slots: string[];
+    sheets: SheetDef[];
     patrol_items: { system: string; peralatan: string }[];
     parameters: (Omit<
         Parameter,
@@ -90,9 +101,10 @@ const toParameters = (template: Template): Parameter[] =>
         trip_value: p.trip_value ?? '',
     }));
 
-const blankParameter = (): Parameter => ({
+const blankParameter = (sheetKey: string): Parameter => ({
     id: null,
     key: nextKey(),
+    sheet_key: sheetKey,
     code: '',
     group_label: '',
     name: '',
@@ -240,8 +252,11 @@ function TemplateList({
                         </div>
                         <div className="mt-1 text-[12px] text-muted-foreground">
                             {t.parameters.filter((p) => p.is_active).length}{' '}
-                            parameter · {t.time_slots.length} jam · {count}{' '}
-                            mesin
+                            parameter ·{' '}
+                            {t.sheets.length > 1
+                                ? `${t.sheets.length} lembar`
+                                : `${t.time_slots.length} jam`}{' '}
+                            · {count} mesin
                         </div>
                     </button>
                 );
@@ -320,7 +335,76 @@ function TemplateEditor({
     const [parameters, setParameters] = useState<Parameter[]>(() =>
         toParameters(template),
     );
-    const [slots, setSlots] = useState<string[]>(template.time_slots);
+    const [sheets, setSheets] = useState<SheetDef[]>(() =>
+        template.sheets.map((sheet) => ({ ...sheet })),
+    );
+    const [activeSheet, setActiveSheet] = useState<string>(
+        template.sheets[0]?.key ?? 'utama',
+    );
+    const multiSheet = sheets.length > 1;
+    const currentSheet =
+        sheets.find((sheet) => sheet.key === activeSheet) ?? sheets[0];
+    const slots = currentSheet?.slots ?? [];
+    const setSlots = (next: string[] | ((list: string[]) => string[])) =>
+        setSheets((list) =>
+            list.map((sheet) =>
+                sheet.key === currentSheet?.key
+                    ? {
+                          ...sheet,
+                          slots:
+                              typeof next === 'function'
+                                  ? next(sheet.slots)
+                                  : next,
+                      }
+                    : sheet,
+            ),
+        );
+    const updateSheet = (key: string, patch: Partial<SheetDef>) =>
+        setSheets((list) =>
+            list.map((sheet) =>
+                sheet.key === key ? { ...sheet, ...patch } : sheet,
+            ),
+        );
+    const addSheet = () => {
+        let n = sheets.length + 1;
+
+        while (sheets.some((sheet) => sheet.key === `lembar-${n}`)) {
+            n++;
+        }
+
+        const key = `lembar-${n}`;
+        setSheets((list) => [
+            ...list,
+            {
+                key,
+                name: `Lembar ${n}`,
+                interval: 'Setiap Jam',
+                summary: false,
+                slots: slotOptions.filter((slot) => slot.endsWith(':00')),
+            },
+        ]);
+        setActiveSheet(key);
+    };
+    const removeSheet = (key: string) => {
+        const rest = sheets.filter((sheet) => sheet.key !== key);
+
+        if (
+            rest.length === 0 ||
+            !window.confirm(
+                'Hapus lembar ini? Parameternya pindah ke lembar pertama.',
+            )
+        ) {
+            return;
+        }
+
+        setSheets(rest);
+        setParameters((list) =>
+            list.map((p) =>
+                p.sheet_key === key ? { ...p, sheet_key: rest[0].key } : p,
+            ),
+        );
+        setActiveSheet(rest[0].key);
+    };
     const [patrol, setPatrol] = useState<PatrolItem[]>(() =>
         template.patrol_items.map((item) => ({ ...item, key: nextKey() })),
     );
@@ -331,9 +415,18 @@ function TemplateEditor({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const readOnly = !canManage;
 
+    // With several lembar, the table & preview show the selected lembar only.
+    const sheetParameters = useMemo(
+        () =>
+            multiSheet
+                ? parameters.filter((p) => p.sheet_key === currentSheet?.key)
+                : parameters,
+        [parameters, multiSheet, currentSheet],
+    );
     const active = useMemo(
-        () => parameters.filter((p) => p.is_active && p.name.trim() !== ''),
-        [parameters],
+        () =>
+            sheetParameters.filter((p) => p.is_active && p.name.trim() !== ''),
+        [sheetParameters],
     );
     const preview = useMemo(
         () =>
@@ -351,18 +444,24 @@ function TemplateEditor({
         setParameters((list) =>
             list.map((p) => (p.key === key ? { ...p, ...patch } : p)),
         );
-    const move = (index: number, delta: number) =>
+    // Swap with the neighbour shown in the same lembar.
+    const move = (index: number, delta: number) => {
+        const from = sheetParameters[index];
+        const to = sheetParameters[index + delta];
+
+        if (!from || !to) {
+            return;
+        }
+
         setParameters((list) => {
             const next = [...list];
-            const [item] = next.splice(index, 1);
-            next.splice(
-                Math.max(0, Math.min(next.length, index + delta)),
-                0,
-                item,
-            );
+            const a = next.findIndex((p) => p.key === from.key);
+            const b = next.findIndex((p) => p.key === to.key);
+            [next[a], next[b]] = [next[b], next[a]];
 
             return next;
         });
+    };
 
     const save = () => {
         setSaving(true);
@@ -372,13 +471,21 @@ function TemplateEditor({
             {
                 name,
                 description,
-                time_slots: slots,
+                time_slots: sheets[0]?.slots ?? [],
+                sheets: sheets.map((sheet) => ({
+                    key: sheet.key,
+                    name: sheet.name,
+                    interval: sheet.interval,
+                    summary: sheet.summary,
+                    slots: sheet.slots,
+                })),
                 patrol_items: patrol.map(({ system, peralatan }) => ({
                     system,
                     peralatan,
                 })),
                 parameters: parameters.map((p) => ({
                     id: p.id ?? null,
+                    sheet_key: p.sheet_key,
                     code: p.code,
                     group_label: p.group_label,
                     name: p.name,
@@ -403,6 +510,7 @@ function TemplateEditor({
 
                     if (saved) {
                         setParameters(toParameters(saved));
+                        setSheets(saved.sheets.map((sheet) => ({ ...sheet })));
                     }
                 },
                 onError: (errs) => setErrors(errs),
@@ -434,10 +542,46 @@ function TemplateEditor({
 
     const tabs: [Tab, string][] = [
         ['parameter', `Parameter Logsheet (${active.length})`],
-        ['jam', `Jam Pembacaan (${slots.length})`],
+        [
+            'jam',
+            multiSheet
+                ? `Lembar & Jam (${sheets.length} lembar)`
+                : `Lembar & Jam (${slots.length} jam)`,
+        ],
         ['patrol', `Item Patrol Check (${patrol.length || 'bawaan'})`],
         ['mesin', 'Mesin'],
     ];
+
+    const sheetPicker = multiSheet ? (
+        <div
+            className="flex flex-wrap gap-2"
+            role="tablist"
+            aria-label="Lembar"
+        >
+            {sheets.map((sheet) => (
+                <button
+                    key={sheet.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={sheet.key === currentSheet?.key}
+                    onClick={() => setActiveSheet(sheet.key)}
+                    className={cn(
+                        'rounded-md border px-3 py-1.5 text-left text-[12.5px]',
+                        sheet.key === currentSheet?.key
+                            ? 'border-primary bg-primary/10 font-semibold text-primary'
+                            : 'border-border hover:bg-muted/50',
+                    )}
+                >
+                    {sheet.name || '(tanpa nama)'}
+                    {sheet.interval && (
+                        <span className="ml-1 font-normal text-muted-foreground">
+                            · {sheet.interval}
+                        </span>
+                    )}
+                </button>
+            ))}
+        </div>
+    ) : null;
     const errorList = Object.values(errors);
 
     return (
@@ -511,6 +655,7 @@ function TemplateEditor({
                         Parameter yang sudah berisi data hanya dinonaktifkan
                         bila dihapus.
                     </p>
+                    {sheetPicker}
                     <div className="overflow-x-auto rounded-md border border-border">
                         <table className="w-full border-collapse text-[12.5px]">
                             <thead className="bg-muted/60 text-left text-[11.5px] text-muted-foreground uppercase">
@@ -540,7 +685,7 @@ function TemplateEditor({
                                 </tr>
                             </thead>
                             <tbody>
-                                {parameters.map((p, i) => (
+                                {sheetParameters.map((p, i) => (
                                     <tr
                                         key={p.key}
                                         className={cn(
@@ -719,7 +864,9 @@ function TemplateEditor({
                                 onClick={() =>
                                     setParameters((list) => [
                                         ...list,
-                                        blankParameter(),
+                                        blankParameter(
+                                            currentSheet?.key ?? 'utama',
+                                        ),
                                     ])
                                 }
                             >
@@ -783,8 +930,85 @@ function TemplateEditor({
 
             {tab === 'jam' && (
                 <div className="flex flex-col gap-3">
+                    <p className="text-[12.5px] text-muted-foreground">
+                        Satu form bisa punya beberapa <b>lembar</b> dengan
+                        interval sendiri (mis. Lokal 02 setiap jam, Lokal 03
+                        setiap 2 jam). Operator memilih lembar di halaman
+                        logsheet; template dengan satu lembar tampil seperti
+                        biasa.
+                    </p>
+                    {sheetPicker}
+                    {currentSheet && (
+                        <div className="flex flex-wrap items-end gap-3 rounded-md border border-border p-3">
+                            <label className="flex min-w-48 flex-1 flex-col gap-1 text-[13px]">
+                                <span className="text-muted-foreground">
+                                    Nama lembar
+                                </span>
+                                <Input
+                                    value={currentSheet.name}
+                                    disabled={readOnly}
+                                    onChange={(e) =>
+                                        updateSheet(currentSheet.key, {
+                                            name: e.target.value,
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label className="flex w-40 flex-col gap-1 text-[13px]">
+                                <span className="text-muted-foreground">
+                                    Interval
+                                </span>
+                                <Input
+                                    value={currentSheet.interval ?? ''}
+                                    placeholder="Setiap 2 Jam"
+                                    disabled={readOnly}
+                                    onChange={(e) =>
+                                        updateSheet(currentSheet.key, {
+                                            interval: e.target.value,
+                                        })
+                                    }
+                                />
+                            </label>
+                            <label className="flex h-9 items-center gap-2 text-[13px]">
+                                <Checkbox
+                                    checked={currentSheet.summary}
+                                    disabled={readOnly}
+                                    onCheckedChange={(v) =>
+                                        updateSheet(currentSheet.key, {
+                                            summary: v === true,
+                                        })
+                                    }
+                                />
+                                Baris MIN / MAX / RATA2
+                            </label>
+                            {canManage && (
+                                <div className="ml-auto flex gap-2">
+                                    {multiSheet && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() =>
+                                                removeSheet(currentSheet.key)
+                                            }
+                                        >
+                                            <Trash2 className="size-4" /> Hapus
+                                            Lembar
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={addSheet}
+                                    >
+                                        <Plus className="size-4" /> Tambah
+                                        Lembar
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-2 text-[12.5px] text-muted-foreground">
-                        Jam pembacaan yang tampil di logsheet.
+                        Jam pembacaan lembar ini.
                         {canManage && (
                             <>
                                 <Button
@@ -820,6 +1044,26 @@ function TemplateEditor({
                                     }
                                 >
                                     Setiap jam + beban puncak
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        setSlots(
+                                            slotOptions.filter((s) => {
+                                                const hour = Number(
+                                                    s.slice(0, 2),
+                                                );
+
+                                                return (
+                                                    s.endsWith(':00') &&
+                                                    hour % 2 === 1
+                                                );
+                                            }),
+                                        )
+                                    }
+                                >
+                                    Setiap 2 jam (01, 03 … 23)
                                 </Button>
                             </>
                         )}

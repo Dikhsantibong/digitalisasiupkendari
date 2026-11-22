@@ -9,6 +9,7 @@ use App\Models\Machine;
 use App\Models\OperatorLogsheet;
 use App\Models\Unit;
 use App\Services\Operasi\MesinHarianSheet;
+use App\Services\Operator\LogsheetLayout;
 use Database\Seeders\LogsheetParameterSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -113,7 +114,9 @@ class LogsheetTemplateTest extends TestCase
 
         $this->actingAs($admin)->post(route('operator.logsheet-template.store'), ['name' => 'SWD Kolaka', 'copy_from' => $this->mirrlees->id])->assertRedirect();
         $template = LogsheetTemplate::query()->where('name', 'SWD Kolaka')->sole();
-        $this->assertSame(31, $template->parameters()->count());
+        // Lokal 02 (31) + Lokal 03 (39) + Cylinder Head (17), with their lembar.
+        $this->assertSame(87, $template->parameters()->count());
+        $this->assertCount(3, $template->sheetList());
 
         $first = $template->parameters()->orderBy('sort_order')->first();
         $this->actingAs($admin)->put(route('operator.logsheet-template.update', $template), [
@@ -154,6 +157,96 @@ class LogsheetTemplateTest extends TestCase
         $this->actingAs($admin)->delete(route('operator.logsheet-template.destroy', $template));
         $this->assertNotNull($template->fresh());
         $this->actingAs($admin)->delete(route('operator.logsheet-template.destroy', LogsheetTemplate::default()))->assertStatus(422);
+    }
+
+    public function test_pltd_poasia_reads_three_lembar_each_with_its_own_interval(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'logsheet_template_id' => $this->mirrlees->id]);
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-11-22'];
+
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('sheets', 3)
+                ->where('sheets.0.name', 'Logsheet Lokal 02')
+                ->where('active_sheet.key', 'lokal-02')
+                ->has('rows', 24));
+
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period + ['lembar' => 'lokal-03']))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('active_sheet.interval', 'Setiap 2 Jam')
+                ->where('active_sheet.summary', true)
+                // Beban, cam & crank shaft door bank A/B (32), Autonic, 3 pressures, 2 asap.
+                ->has('parameters', 39)
+                ->where('parameters.1.group_label', 'Temperature Cam Shaft Door')
+                ->where('parameters.1.sub_channel', 'A1')
+                ->has('rows', 12)
+                ->where('rows.0.time_slot', '01:00')
+                ->where('rows.11.time_slot', '23:00'));
+
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period + ['lembar' => 'cylinder-head']))
+            ->assertInertia(fn (AssertableInertia $page) => $page->has('parameters', 17)->has('rows', 12));
+
+        // Lokal 03 and Lokal 02 share 01:00: saving one never clears the other; 02:00 is not a Lokal 03 slot.
+        $l03 = LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-03')->where('code', 'L03_BEBAN')->sole();
+        $l02 = $this->param($this->mirrlees, 'LOAD');
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-03', 'sheet' => ['01:00' => ['p_'.$l03->id => '2200'], '03:00' => ['p_'.$l03->id => '2400']]])
+            ->assertSessionHasNoErrors();
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['01:00' => ['p_'.$l02->id => '1500']]])->assertSessionHasNoErrors();
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), $period + ['lembar' => 'lokal-03', 'time_slot' => '02:00', 'values' => []])->assertSessionHasErrors('time_slot');
+
+        $sheet = OperatorLogsheet::query()->sole();
+        $this->assertSame(3, $sheet->readings()->count());
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period + ['lembar' => 'lokal-03']))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('rows.0.values.p_'.$l03->id, '2200')->where('stats.0.value', '2 / 12')->where('lembar_dipilih', true));
+
+        // The phone's lembar choice: filled hours per lembar; no lembar picked yet.
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period))
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('lembar_dipilih', false)
+                ->where('sheets.0.filled', 1)->where('sheets.0.total', 24)
+                ->where('sheets.1.filled', 2)->where('sheets.1.total', 12)
+                ->where('sheets.2.filled', 0));
+
+        // MIN / MAX / RATA2 of Lokal 03, printed on its PDF.
+        [$min, $max, $avg] = LogsheetLayout::summaryRows(collect([$l03]), [['time_slot' => '01:00', 'values' => ['p_'.$l03->id => '2200']], ['time_slot' => '03:00', 'values' => ['p_'.$l03->id => '2400']]]);
+        $this->assertSame(['2200', '2400', '2300'], [$min['values']['p_'.$l03->id], $max['values']['p_'.$l03->id], $avg['values']['p_'.$l03->id]]);
+        $this->actingAs($operator)->get(route('operator.logsheet.pdf', $period + ['lembar' => 'lokal-03']))->assertOk()->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_super_admin_edits_the_lembar_of_a_template(): void
+    {
+        $admin = $this->userWithRole(RoleName::SuperAdmin);
+        $this->actingAs($admin)->post(route('operator.logsheet-template.store'), ['name' => 'Deutz'])->assertRedirect();
+        $template = LogsheetTemplate::query()->where('name', 'Deutz')->sole();
+
+        $this->actingAs($admin)->put(route('operator.logsheet-template.update', $template), [
+            'name' => 'Deutz',
+            'sheets' => [
+                ['key' => 'utama', 'name' => 'Lokal 01', 'interval' => 'Setiap Jam', 'summary' => false, 'slots' => ['02:00', '01:00']],
+                ['key' => 'lembar-2', 'name' => 'Lokal 02', 'interval' => 'Setiap 2 Jam', 'summary' => true, 'slots' => ['01:00', '03:00']],
+            ],
+            'parameters' => [
+                ['sheet_key' => 'utama', 'code' => 'LOAD', 'name' => 'Beban', 'input_type' => 'number', 'is_active' => true],
+                ['sheet_key' => 'lembar-2', 'name' => 'Suhu', 'input_type' => 'number', 'is_active' => true],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $template->refresh();
+        $this->assertSame(['01:00', '02:00'], $template->sheet('utama')['slots']);
+        $this->assertTrue($template->sheet('lembar-2')['summary']);
+        $this->assertSame(['utama', 'lembar-2'], $template->parameters()->orderBy('sort_order')->pluck('sheet_key')->all());
+
+        // Back to one lembar: a plain template again.
+        $this->actingAs($admin)->put(route('operator.logsheet-template.update', $template), [
+            'name' => 'Deutz',
+            'sheets' => [['key' => 'utama', 'name' => 'Lokal 01', 'slots' => ['01:00']]],
+            'parameters' => [['name' => 'Beban', 'code' => 'LOAD', 'input_type' => 'number', 'is_active' => true]],
+        ])->assertSessionHasNoErrors();
+        $template->refresh();
+        $this->assertNull($template->sheets);
+        $this->assertSame(['01:00'], $template->time_slots);
     }
 
     public function test_only_super_admin_changes_templates(): void

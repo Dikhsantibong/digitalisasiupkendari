@@ -49,10 +49,15 @@ class LogsheetTemplateController extends Controller
                 'description' => $template->description,
                 'is_default' => $template->is_default,
                 'time_slots' => $template->slots(),
+                // Lembar (sheets) of the form, each with its interval & slots; one sheet when the template has none.
+                'sheets' => array_map(fn (array $sheet): array => [
+                    'key' => $sheet['key'], 'name' => $sheet['name'], 'interval' => $sheet['interval'], 'summary' => $sheet['summary'], 'slots' => $sheet['slots'],
+                ], $template->sheetList()),
                 'patrol_items' => array_values($template->patrol_items ?? []),
                 'parameters' => LogsheetParameter::query()->ofTemplate($template)->orderBy('sort_order')->orderBy('id')->get()
                     ->map(fn (LogsheetParameter $p): array => [
                         'id' => $p->id,
+                        'sheet_key' => $p->sheet_key ?? $template->sheetList()[0]['key'],
                         'code' => $p->code,
                         'group_label' => $p->group_label,
                         'name' => $p->name,
@@ -94,13 +99,14 @@ class LogsheetTemplateController extends Controller
                 'code' => $this->uniqueCode($validated['name']),
                 'name' => $validated['name'],
                 'time_slots' => $source?->time_slots,
+                'sheets' => $source?->sheets,
                 'patrol_items' => $source?->patrol_items,
                 'is_default' => false,
             ]);
             if ($source !== null) {
                 LogsheetParameter::query()->ofTemplate($source)->orderBy('sort_order')->orderBy('id')->get()
                     ->each(fn (LogsheetParameter $p) => $template->parameters()->create($p->only([
-                        'plant_type', 'code', 'group_label', 'name', 'sub_channel', 'unit_of_measure', 'input_type', 'options',
+                        'sheet_key', 'plant_type', 'code', 'group_label', 'name', 'sub_channel', 'unit_of_measure', 'input_type', 'options',
                         'normal_value', 'alarm_value', 'trip_value', 'sort_order', 'is_active',
                     ])));
             }
@@ -120,13 +126,21 @@ class LogsheetTemplateController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:500'],
-            'time_slots' => ['required', 'array', 'min:1'],
+            'time_slots' => ['required_without:sheets', 'array', 'min:1'],
             'time_slots.*' => ['string', Rule::in(self::slotOptions())],
+            'sheets' => ['nullable', 'array', 'min:1', 'max:10'],
+            'sheets.*.key' => ['required', 'alpha_dash', 'max:40', 'distinct'],
+            'sheets.*.name' => ['required', 'string', 'max:80'],
+            'sheets.*.interval' => ['nullable', 'string', 'max:40'],
+            'sheets.*.summary' => ['boolean'],
+            'sheets.*.slots' => ['required', 'array', 'min:1'],
+            'sheets.*.slots.*' => ['string', Rule::in(self::slotOptions())],
             'patrol_items' => ['array'],
             'patrol_items.*.system' => ['required', 'string', 'max:120'],
             'patrol_items.*.peralatan' => ['required', 'string', 'max:160'],
             'parameters' => ['required', 'array', 'min:1'],
             'parameters.*.id' => ['nullable', 'integer'],
+            'parameters.*.sheet_key' => ['nullable', 'string', 'max:40'],
             'parameters.*.code' => ['nullable', 'string', 'max:60'],
             'parameters.*.group_label' => ['nullable', 'string', 'max:120'],
             'parameters.*.name' => ['required', 'string', 'max:120'],
@@ -142,23 +156,37 @@ class LogsheetTemplateController extends Controller
             'machine_ids.*' => ['integer'],
         ], [
             'parameters.*.name.required' => 'Nama parameter wajib diisi.',
+            'sheets.*.name.required' => 'Nama lembar wajib diisi.',
+            'sheets.*.slots.required' => 'Pilih jam pembacaan setiap lembar.',
             'patrol_items.*.system.required' => 'Sistem wajib diisi.',
             'patrol_items.*.peralatan.required' => 'Peralatan wajib diisi.',
         ]);
 
         // Keep the slot order of the day (01:00 … 24:00), whatever order they were ticked in.
-        $slots = array_values(array_intersect(self::slotOptions(), $validated['time_slots']));
+        $order = fn (array $slots): array => array_values(array_intersect(self::slotOptions(), $slots));
+        $sheets = array_values(array_map(fn (array $sheet): array => [
+            'key' => (string) $sheet['key'],
+            'name' => trim($sheet['name']),
+            'interval' => self::clean($sheet['interval'] ?? null),
+            'slots' => $order($sheet['slots']),
+            'summary' => (bool) ($sheet['summary'] ?? false),
+        ], $validated['sheets'] ?? []));
+        // One lembar = a plain template (no sheets): its slots are the template's time slots.
+        $slots = $sheets !== [] ? $sheets[0]['slots'] : $order($validated['time_slots']);
+        $multiSheet = count($sheets) > 1;
+        $sheetKeys = array_column($sheets, 'key');
 
-        DB::transaction(function () use ($template, $validated, $slots, $request): void {
+        DB::transaction(function () use ($template, $validated, $slots, $request, $sheets, $multiSheet, $sheetKeys): void {
             $template->update([
                 'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
+                'sheets' => $multiSheet ? $sheets : null,
                 // The default template keeps "no slots" = the standard set while it equals it.
                 'time_slots' => $template->is_default && $slots === LogsheetTemplate::DEFAULT_SLOTS ? null : $slots,
                 'patrol_items' => array_values(array_map(fn (array $item): array => ['system' => trim($item['system']), 'peralatan' => trim($item['peralatan'])], $validated['patrol_items'] ?? [])) ?: null,
             ]);
 
-            $this->syncParameters($template, $validated['parameters']);
+            $this->syncParameters($template, $validated['parameters'], $multiSheet ? $sheetKeys : []);
 
             // Machines of the units the user sees: ticked ones use this template; unticked ones go back to the default.
             if (! $template->is_default) {
@@ -204,8 +232,9 @@ class LogsheetTemplateController extends Controller
      * parameter is deleted, or only deactivated when it already has readings.
      *
      * @param  list<array<string, mixed>>  $rows
+     * @param  list<string>  $sheetKeys  the lembar of a multi-sheet template (empty = one sheet)
      */
-    private function syncParameters(LogsheetTemplate $template, array $rows): void
+    private function syncParameters(LogsheetTemplate $template, array $rows, array $sheetKeys = []): void
     {
         $existing = LogsheetParameter::query()->ofTemplate($template)->get()->keyBy('id');
         $kept = [];
@@ -227,8 +256,11 @@ class LogsheetTemplateController extends Controller
                 ? array_values(array_filter(array_map('trim', explode(',', (string) ($row['options'] ?? ''))), fn (string $o): bool => $o !== ''))
                 : null;
 
+            $sheetKey = $sheetKeys === [] ? null : (in_array($row['sheet_key'] ?? null, $sheetKeys, true) ? $row['sheet_key'] : $sheetKeys[0]);
+
             $attributes = [
                 'template_id' => $template->id,
+                'sheet_key' => $sheetKey,
                 'code' => $code,
                 'group_label' => self::clean($row['group_label'] ?? null),
                 'name' => trim((string) $row['name']),

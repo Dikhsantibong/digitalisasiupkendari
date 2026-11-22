@@ -378,6 +378,9 @@ Aturan tambahan:
   diedit); matriks tanggal memakai pita tanggal / timeline.
 - Halaman jadwal di HP terbuka dalam **mode lihat**; mengubah lewat tombol
   "Ubah Jadwal".
+- **Login di HP** (keputusan user 2026-11-22): hanya logo dan form login (email, kata sandi, ingat saya,
+  lupa kata sandi, Masuk, Install Aplikasi); panel identitas KIT-SIPP, catatan akses, dan footer hanya
+  tampil di desktop.
 
 ---
 
@@ -549,20 +552,38 @@ Detail Logsheet:
     baris acuan **Normal / Min-Alarm / Max-Trip**, dan **jenis input**: Angka (`value`), Teks (mis. "MAX -2")
     atau Pilihan (mis. L/N/H) — keduanya di `operator_logsheet_readings.value_text`;
   - **jam pembacaan** (slot waktu, mis. setiap jam 01:00–24:00);
+  - **lembar** (keputusan user 2026-11-22, `logsheet_templates.sheets`, `logsheet_parameters.sheet_key`): satu
+    form bisa terdiri dari beberapa lembar, masing-masing dengan nama, label interval ("Setiap Jam",
+    "Setiap 2 Jam"), jam pembacaan sendiri, dan opsional baris **MIN / MAX / RATA2** (dihitung otomatis dari
+    isian angka). Operator memilih lembar lewat tab (desktop); di **HP**, unit yang punya beberapa lembar lebih
+    dulu menampilkan **pilihan interval** (mis. Setiap Jam / Setiap 2 Jam / Setiap 4 Jam, dengan jumlah jam
+    terisi), lalu daftar jam lembar itu (tombol **Ganti** untuk kembali); unit satu lembar langsung menampilkan
+    daftar jam. Simpan, PDF & Excel per lembar, dan
+    menyimpan satu lembar tidak menghapus lembar lain pada jam yang sama. Template satu lembar tampil seperti
+    biasa (tanpa tab);
   - **item awal Patrol Check Mesin** (opsional; kosong = daftar bawaan; lembar tersimpan tidak berubah).
 - Template bawaan **Cummins (Containerized)** = set lama (Load, Coolant Temp 1/2, Lube Oil Temp/Press,
   Winding Temp L1–L3, TEG Battery, Ampere R/S/T, Cos Phi, Hour Meter, Freq, TEG, KVAR, kWh Meter, Flow
   Meter IN/OUT, Daily Tank Level, Bearing Generator Temp; slot 01:00–24:00 + 17:30, 18:30, 19:30, 20:30,
   21:30) — tampilan, PDF & Excel-nya tidak berubah.
-- Template **Mirrlees (PLTD Poasia)** — "Laporan Isian Data Operator Lokal, Logsheet Lokal02": Beban (kW),
-  Temperature Stud Main Bearing Bank A & B (1–9), Temp. Ruangan, Temp Crankshaft Flywheel, Oil In To Engine,
-  Oil Out Engine, Level Oli Mesin/Carter (Run, Stop — teks), Filter Auto Back Wash (IN, OUT), Level Expansion
-  Tank (L/N/H), Trafo, Level Oil (L/N/H), Temp Oil; nilai Normal/Alarm/Trip dari form; setiap jam 01:00–24:00.
-  Dipakai mesin PLTD Poasia (MIRRLEES #1, #2, #4, #5).
+- Template **Mirrlees (PLTD Poasia)** — "Laporan Isian Data Operator Lokal", tiga lembar; dipakai mesin PLTD
+  Poasia (MIRRLEES #1, #2, #4, #5):
+  1. **Logsheet Lokal 02 — Setiap Jam** (01:00–24:00): Beban (kW), Temperature Stud Main Bearing Bank A & B
+     (1–9), Temp. Ruangan, Temp Crankshaft Flywheel, Oil In To Engine, Oil Out Engine, Level Oli Mesin/Carter
+     (Run, Stop — teks), Filter Auto Back Wash (IN, OUT), Level Expansion Tank (L/N/H), Trafo, Level Oil (L/N/H),
+     Temp Oil; Normal/Alarm/Trip dari form.
+  2. **Logsheet Lokal 03 — Setiap 2 Jam** (01:00, 03:00 … 23:00): Beban (N 2300 / A 1700 / T 2860),
+     Temperature Cam Shaft Door & Temperature Crank Shaft Door Bank A (A1–A8) & Bank B (B1–B8) (62/57/75 °C),
+     Autonic B1 (50/47/54 °C), Press C O C (5/3/7 bar), Press Cooling Tip (0,6/0,4/1,2 bar), Press T Service
+     Udara (26/20/30 bar), Kondisi Asap Silencer & Extraction (pilihan N/T/S); baris **MIN / MAX / RATA2**.
+  3. **Temperature Cylinder Head — Setiap 4 Jam** (baris form 01:00, 03:00 … 23:00): Beban (kW), Temperature
+     Cylinder Head Bank A (A1–A8) & Bank B (B1–B8).
+- PLTD Poasia Containerized tetap template Cummins satu lembar (tidak berubah).
 - Kode parameter **LOAD** (beban) dibaca Beban Tertinggi Operasi dari semua template; **KWH_METER** untuk
   ringkasan kWh Meter Akhir.
 - **Template Form Mesin** (menu Master Data, `/operator/template-logsheet`): Super Admin (`setting.manage`)
-  membuat (kosong atau salin template lain), mengubah parameter/jam/item patrol check, memilih mesin yang
+  membuat (kosong atau salin template lain), mengubah parameter (per lembar), lembar & jam (tambah/hapus lembar,
+  nama, interval, baris MIN/MAX/RATA2), item patrol check, memilih mesin yang
   memakainya, dan menghapus template yang belum dipakai; pemegang `operasi.master.view_any` hanya melihat.
   Parameter yang sudah berisi data tidak dihapus, hanya dinonaktifkan.
 - Shift A–D; di HP shift terisi otomatis dari regu pada Jadwal Shift (atau regu
@@ -1449,6 +1470,7 @@ Aturan data:
 | 2026-11-08 | Dashboard tidak lagi memakai data dummy: semua panel modul dibaca dari input nyata (§7.2), dimuat deferred |
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
+| 2026-11-22 | **Logsheet PLTD Poasia multi-lembar**: Lokal 02 (setiap jam), **Lokal 03 (setiap 2 jam, baris MIN/MAX/RATA2)** dan **Temperature Cylinder Head (setiap 4 jam)**; operator memilih lembar lewat tab (desktop) atau **pilihan interval lebih dulu di HP**; lembar diatur di Template Form Mesin. PLTD Poasia Containerized tetap (§8.1). **Login HP** disederhanakan: hanya form login (§6.2) |
 | 2026-11-21 | **Logsheet operator per jenis mesin**: menu **Template Form Mesin** (parameter bertingkat Grup → Nama → Sub, Normal/Alarm/Trip, input angka/teks/pilihan, jam pembacaan, item Patrol Check, mesin pemakai). PLTD Poasia memakai form **Mirrlees (Logsheet Lokal02)**, Containerized tetap form Cummins (§8.1) |
 | 2026-11-20 | Modul baru **Administrasi & Keuangan** per UL (§8.14): role **JOF Administrasi Umum** (akun `jof.{UL}` per UL), **Master Supplier** (nama, email, NPWP, foto KTP), **Laporan Realisasi Cash Card** (saldo berjalan, supplier dari master, foto lampiran per baris) dengan PDF laporan dan **Bukti Penerimaan Kas Kecil + Lampiran** otomatis per baris (foto + KTP/email/NPWP supplier). Kartu **Laporan Administrasi Keuangan** di Laporan UL diaktifkan dan membuka **dokumen edit & cetak** (halaman 1 tabel Cash Card, berikutnya Bukti + Lampiran per transaksi; Teks/Excel/Pratinjau PDF) |
 | 2026-11-19 | **Tampilan HP Project Leader** (shell sendiri: semua modul + Laporan & SLA) dan **Manager UL** (beranda Portal ringkas dengan tab Sahkan/Status/Riwayat/Resume); desktop tidak berubah (§6.2) |
