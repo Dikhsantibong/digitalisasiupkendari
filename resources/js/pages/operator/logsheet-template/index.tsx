@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { headerRows, referenceRows } from '@/lib/logsheet-layout';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -117,6 +124,14 @@ const blankParameter = (sheetKey: string): Parameter => ({
     trip_value: '',
     is_active: true,
 });
+
+const EMPTY_TEMPLATE_OPTION = '__empty__';
+
+const INPUT_TYPE_OPTIONS: { value: InputType; label: string }[] = [
+    { value: 'number', label: 'Angka' },
+    { value: 'text', label: 'Teks' },
+    { value: 'choice', label: 'Pilihan' },
+];
 
 const cellInput =
     'h-8 w-full min-w-16 rounded-none border-0 bg-transparent px-1.5 text-[12.5px] shadow-none focus-visible:ring-0';
@@ -284,18 +299,33 @@ function TemplateList({
                             <span className="text-muted-foreground">
                                 Salin parameter dari
                             </span>
-                            <select
-                                value={copyFrom}
-                                onChange={(e) => setCopyFrom(e.target.value)}
-                                className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                            <Select
+                                value={copyFrom || EMPTY_TEMPLATE_OPTION}
+                                onValueChange={(value) =>
+                                    setCopyFrom(
+                                        value === EMPTY_TEMPLATE_OPTION
+                                            ? ''
+                                            : value,
+                                    )
+                                }
                             >
-                                <option value="">— Kosong —</option>
-                                {templates.map((t) => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.name}
-                                    </option>
-                                ))}
-                            </select>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="— Kosong —" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value={EMPTY_TEMPLATE_OPTION}>
+                                        — Kosong —
+                                    </SelectItem>
+                                    {templates.map((t) => (
+                                        <SelectItem
+                                            key={t.id}
+                                            value={String(t.id)}
+                                        >
+                                            {t.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </label>
                         <div className="flex justify-end gap-2">
                             <Button
@@ -722,27 +752,44 @@ function TemplateEditor({
                                             </td>
                                         ))}
                                         <td className="border-l border-border p-0">
-                                            <select
+                                            <Select
                                                 value={p.input_type}
-                                                onChange={(e) =>
+                                                onValueChange={(value) =>
                                                     update(p.key, {
-                                                        input_type: e.target
-                                                            .value as InputType,
+                                                        input_type:
+                                                            value as InputType,
                                                     })
                                                 }
                                                 disabled={readOnly}
-                                                className="h-8 bg-transparent px-1 text-[12.5px]"
                                             >
-                                                <option value="number">
-                                                    Angka
-                                                </option>
-                                                <option value="text">
-                                                    Teks
-                                                </option>
-                                                <option value="choice">
-                                                    Pilihan
-                                                </option>
-                                            </select>
+                                                <SelectTrigger
+                                                    size="sm"
+                                                    aria-label={`Jenis Input ${p.name || i + 1}`}
+                                                    className={cn(
+                                                        cellInput,
+                                                        'min-w-24 gap-1.5 py-1 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset data-[size=sm]:h-8 dark:bg-transparent dark:hover:bg-transparent [&_svg:not([class*=size-])]:size-3.5',
+                                                    )}
+                                                >
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {INPUT_TYPE_OPTIONS.map(
+                                                        (option) => (
+                                                            <SelectItem
+                                                                key={
+                                                                    option.value
+                                                                }
+                                                                value={
+                                                                    option.value
+                                                                }
+                                                                className="text-[12.5px]"
+                                                            >
+                                                                {option.label}
+                                                            </SelectItem>
+                                                        ),
+                                                    )}
+                                                </SelectContent>
+                                            </Select>
                                         </td>
                                         <td className="border-l border-border p-0">
                                             <Input
