@@ -37,7 +37,6 @@ use App\Models\HarPrelubeTest;
 use App\Models\HarProgram5s5rItem;
 use App\Models\HarTabelRow;
 use App\Models\HarTimingInjectionPump;
-use App\Models\HarUnsafeCondition;
 use App\Models\HarVibration;
 use App\Models\Machine;
 use App\Models\MaintenanceActivity;
@@ -208,7 +207,6 @@ class DummyHarSeeder extends Seeder
 
         DB::table('work_orders')->where('unit_id', $unit->id)->where('report_period_id', $period->id)->delete();
         ServiceRequest::query()->where('unit_id', $unit->id)->where('report_period_id', $period->id)->delete();
-        HarUnsafeCondition::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
 
         $woSpecs = [
             ['PM', 'CLOSE', 'MECHD', 'P1', null, 2500000, 4800000, "PM Inspection Compresi Cylinder Head P1 {$firstMachine->name}"],
@@ -266,25 +264,6 @@ class DummyHarSeeder extends Seeder
                 'engine_id' => $machine->id,
                 'source' => 'manual',
                 'keterangan' => 'Telah ditindaklanjuti sesuai prosedur FLM/CM',
-                'input_by' => $inputUserId,
-            ]);
-        }
-
-        foreach (['har', 'operasi'] as $idx => $src) {
-            HarUnsafeCondition::query()->create([
-                'unit_id' => $unit->id,
-                'year' => $year,
-                'month' => $month,
-                'source' => $src,
-                'periode' => 'MINGGU KE - '.($idx + 1),
-                'kategori' => 'UNSAFE CONDITION',
-                'temuan' => 'Ceceran oli ringan di sekitar lantai pondasi pompa transfer',
-                'kondisi' => 'Lantai licin berpotensi terpeleset',
-                'tindak_lanjut' => 'Pembersihan dengan oil absorbent dan pengencangan nipel pipa',
-                'rekomendasi' => 'Monitoring rutin setiap shift',
-                'lokasi' => 'Power House / Ruang Mesin',
-                'keterangan' => 'close',
-                'sort_order' => $idx + 1,
                 'input_by' => $inputUserId,
             ]);
         }

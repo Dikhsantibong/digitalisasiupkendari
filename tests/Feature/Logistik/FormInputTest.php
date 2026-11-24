@@ -13,8 +13,6 @@ use App\Support\LogistikForms\PendukungForm;
 use App\Support\LogistikForms\PermitToWorkForm;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use setasign\Fpdi\Fpdi;
 use setasign\Fpdi\PdfParser\StreamReader;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -118,28 +116,19 @@ class FormInputTest extends TestCase
             );
     }
 
-    public function test_unsafe_photos_are_stored_and_temuan_counted(): void
+    public function test_unsafe_form_is_removed_from_logistik(): void
     {
-        Storage::fake('public');
         $unit = Unit::factory()->create(['is_active' => true]);
         $user = $this->userWithRole(RoleName::KoordinatorLogistik, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
 
         $this->actingAs($user)
-            ->post(route('logistik.input.form.store', ['form' => 'unsafe']), $period + ['rows' => [
-                ['section' => 'temuan', 'data' => ['periode' => 'MINGGU KE - 1', 'kategori' => 'UNSAFE ACTION', 'temuan' => 'Tidak memakai APD', 'eviden_sebelum' => 'logistik/lain/x.jpg'], 'files' => ['eviden_sebelum' => UploadedFile::fake()->image('sebelum.jpg')]],
-                ['section' => 'temuan', 'data' => ['periode' => 'MINGGU KE - 2', 'kategori' => 'UNSAFE CONDITION']],
-            ]])
-            ->assertRedirect();
-
-        $rows = LogistikFormRow::query()->where('form', 'unsafe')->get();
-        $this->assertCount(1, $rows);
-        $this->assertStringStartsWith("logistik/form/unsafe/{$unit->id}/", $rows[0]->data['eviden_sebelum']);
-        Storage::disk('public')->assertExists($rows[0]->data['eviden_sebelum']);
+            ->get(route('logistik.input.form.index', ['form' => 'unsafe', ...$period]))
+            ->assertNotFound();
 
         $this->actingAs($user)
-            ->get(route('logistik.input.form.index', ['form' => 'unsafe', ...$period]))
-            ->assertInertia(fn ($page) => $page->where('summary.rows.0', [1, 1, 0]));
+            ->post(route('logistik.input.form.store', ['form' => 'unsafe']), $period + ['rows' => []])
+            ->assertNotFound();
     }
 
     public function test_every_form_table_fits_the_printed_page(): void
@@ -286,13 +275,13 @@ class FormInputTest extends TestCase
             ->assertSessionHasErrors(['rows.0.data.tanggal', 'rows.0.data.open']);
     }
 
-    public function test_an_unknown_select_value_is_rejected(): void
+    public function test_an_unknown_form_key_is_rejected(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
 
         $this->actingAs($this->userWithRole(RoleName::KoordinatorLogistik, $unit))
-            ->post(route('logistik.input.form.store', ['form' => 'unsafe']), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['section' => 'temuan', 'data' => ['kategori' => 'LAINNYA']]]])
-            ->assertSessionHasErrors('rows.0.data.kategori');
+            ->post(route('logistik.input.form.store', ['form' => 'tidak-ada']), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => []])
+            ->assertNotFound();
     }
 
     public function test_a_role_without_logistik_input_cannot_save(): void

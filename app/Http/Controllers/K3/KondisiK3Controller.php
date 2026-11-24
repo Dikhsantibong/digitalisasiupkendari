@@ -10,6 +10,7 @@ use App\Models\K3KondisiK3Meta;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Services\K3\K3DivisionFeed;
+use App\Services\Notifications\EventNotifier;
 use App\Support\K3KondisiK3Form;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -106,7 +107,7 @@ class KondisiK3Controller extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, EventNotifier $events): RedirectResponse
     {
         $user = $request->user();
         abort_unless($user->hasPermissionTo(PermissionName::K3InputWrite), 403);
@@ -139,12 +140,23 @@ class KondisiK3Controller extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
 
-        DB::transaction(function () use ($unit, $month, $year, $validated, $user): void {
+        $previous = [];
+        foreach (K3KondisiK3::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->get() as $existing) {
+            $previous[EventNotifier::kondisiKey($existing)] = [
+                'keterangan' => (string) $existing->keterangan,
+                'input_by' => $existing->input_by,
+            ];
+        }
+
+        /** @var list<K3KondisiK3> $savedRows */
+        $savedRows = DB::transaction(function () use ($unit, $month, $year, $validated, $user, $previous): array {
             K3KondisiK3::query()
                 ->where('unit_id', $unit->id)
                 ->where('year', $year)
                 ->where('month', $month)
                 ->delete();
+
+            $created = [];
 
             foreach ($validated['rows'] as $index => $row) {
                 // Filter out empty placeholder rows
@@ -152,7 +164,13 @@ class KondisiK3Controller extends Controller
                     continue;
                 }
 
-                K3KondisiK3::query()->create([
+                $key = md5(strtolower(implode('|', [
+                    trim((string) $row['kategori']),
+                    trim((string) $row['temuan']),
+                    trim((string) ($row['lokasi'] ?? '')),
+                ])));
+
+                $created[] = K3KondisiK3::query()->create([
                     'unit_id' => $unit->id,
                     'year' => $year,
                     'month' => $month,
@@ -168,7 +186,7 @@ class KondisiK3Controller extends Controller
                     'eviden_sebelum' => $row['eviden_sebelum'] ?? null,
                     'eviden_sesudah' => $row['eviden_sesudah'] ?? null,
                     'sort_order' => $row['sort_order'] ?? $index,
-                    'input_by' => $user->id,
+                    'input_by' => $previous[$key]['input_by'] ?? $user->id,
                 ]);
             }
 
@@ -184,7 +202,11 @@ class KondisiK3Controller extends Controller
                     ]
                 );
             }
+
+            return $created;
         });
+
+        $events->k3KondisiChanges($unit, $month, $year, $savedRows, $previous, $user);
 
         $this->activityLogger->log(
             ActivityEvent::Updated,

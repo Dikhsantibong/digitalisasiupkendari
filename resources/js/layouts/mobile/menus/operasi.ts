@@ -6,7 +6,6 @@ import {
     FileCheck,
     Gauge,
     Package,
-    ShieldAlert,
     Sparkles,
     Wrench,
 } from 'lucide-react';
@@ -18,7 +17,6 @@ import materialPeralatan from '@/routes/operasi/input/material-peralatan';
 import patrolCheckMesin from '@/routes/operasi/input/patrol-check-mesin';
 import permitToWork from '@/routes/operasi/input/permit-to-work';
 import program5s5r from '@/routes/operasi/input/program-5s5r';
-import unsafeCondition from '@/routes/operasi/input/unsafe-condition';
 import dailyReport from '@/routes/operasi/pengusahaan/daily-report';
 import pemakaianPelumas from '@/routes/operasi/pengusahaan/pemakaian-pelumas';
 import standMeter from '@/routes/operasi/pengusahaan/stand-meter';
@@ -127,16 +125,6 @@ const ENTRIES: Entry[] = [
         'checklist-commissioning-mesin',
     ],
     [
-        'unsafe_condition',
-        'Unsafe Action & Condition',
-        'Unsafe',
-        'Temuan tindakan & kondisi tidak aman',
-        ShieldAlert,
-        'bg-red-500/10 text-red-600 dark:text-red-400',
-        unsafeCondition.index().url,
-        'unsafe-condition',
-    ],
-    [
         'program_5s5r',
         'Program 5S 5R Pengoperasian KIT',
         '5S 5R',
@@ -149,11 +137,7 @@ const ENTRIES: Entry[] = [
 ];
 
 /** Pages that moved to Akses 2 — Operasi (pages/pengusahaan/operasi/{page}). */
-const PENGUSAHAAN_PAGES = [
-    'daily-report',
-    'stand-meter',
-    'pemakaian-pelumas',
-];
+const PENGUSAHAAN_PAGES = ['daily-report', 'stand-meter', 'pemakaian-pelumas'];
 
 export const OPERASI_MENUS: MobileMenu[] = ENTRIES.map(
     ([key, title, short, description, icon, tone, href, page]) => ({

@@ -3,7 +3,7 @@
 namespace Tests\Feature\Notifications;
 
 use App\Enums\RoleName;
-use App\Models\HarUnsafeCondition;
+use App\Models\K3KondisiK3;
 use App\Models\KondisiAbnormal;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
@@ -70,28 +70,43 @@ class EventNotificationsTest extends TestCase
         $this->assertNull($tlHar->notifications()->first()->data['url'], 'TL Pemeliharaan cannot open the Operasi input page, so no link.');
     }
 
-    public function test_an_unsafe_finding_reaches_the_module_and_k3_and_closing_tells_the_reporter(): void
+    public function test_an_unsafe_finding_reaches_k3_and_closing_tells_the_reporter(): void
     {
-        $reporter = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $this->unit);
-        $koordinatorK3 = $this->userWithRole(RoleName::KoordinatorK3, $this->unit);
-        $tlHar = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit);
+        $reporter = $this->userWithRole(RoleName::KoordinatorK3, $this->unit);
+        $tlK3 = $this->userWithRole(RoleName::TeamLeaderK3, $this->unit);
+        $projectLeader = $this->userWithRole(RoleName::ProjectLeaderOperasi, $this->unit);
         $koordinatorOperasi = $this->userWithRole(RoleName::KoordinatorOperasi, $this->unit);
 
-        $payload = [
-            'unit_id' => $this->unit->id, 'month' => 10, 'year' => 2026, 'periode' => 'Minggu 1',
-            'kategori' => 'UNSAFE CONDITION', 'temuan' => 'Kabel terkelupas di panel', 'lokasi' => 'Ruang panel', 'keterangan' => 'open',
+        $row = [
+            'no_urut' => '1',
+            'periode' => 'Minggu 1',
+            'kategori' => 'Unsafe Condition',
+            'temuan' => 'Kabel terkelupas di panel',
+            'lokasi' => 'Ruang panel',
+            'keterangan' => 'Open',
         ];
-        $this->actingAs($reporter)->post(route('har.input.unsafe-condition.store'), $payload)->assertSessionHasNoErrors();
 
-        $this->assertSame(['Unsafe Condition baru · PLTD Uji'], $this->titles($koordinatorK3));
-        $this->assertSame(['Unsafe Condition baru · PLTD Uji'], $this->titles($tlHar));
+        $this->actingAs($reporter)->post(route('k3.input.kondisi-k3.store'), [
+            'unit_id' => $this->unit->id,
+            'month' => 10,
+            'year' => 2026,
+            'rows' => [$row],
+        ])->assertSessionHasNoErrors();
+
+        $this->assertSame(['Unsafe Condition baru · PLTD Uji'], $this->titles($tlK3));
+        $this->assertSame(['Unsafe Condition baru · PLTD Uji'], $this->titles($projectLeader));
         $this->assertSame([], $this->titles($koordinatorOperasi));
         $this->assertSame([], $this->titles($reporter));
 
-        $finding = HarUnsafeCondition::query()->firstOrFail();
-        $closer = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $this->unit);
-        $this->actingAs($closer)->post(route('har.input.unsafe-condition.update', $finding), ['keterangan' => 'close'] + $payload)->assertSessionHasNoErrors();
+        $closer = $this->userWithRole(RoleName::KoordinatorK3, $this->unit);
+        $this->actingAs($closer)->post(route('k3.input.kondisi-k3.store'), [
+            'unit_id' => $this->unit->id,
+            'month' => 10,
+            'year' => 2026,
+            'rows' => [['keterangan' => 'Closed', 'tindak_lanjut' => 'Isolasi diganti'] + $row],
+        ])->assertSessionHasNoErrors();
 
+        $this->assertSame('Closed', K3KondisiK3::query()->sole()->keterangan);
         $this->assertSame(['Temuan Anda sudah ditutup'], $this->titles($reporter));
     }
 

@@ -47,7 +47,7 @@ const DESCRIPTIONS: Record<string, string> = {
     pengusahaan:
         'Akumulasi seluruh unit di bawah UL: Laporan Kinerja (data input Operasi & Laporan Operasi TL), Laporan Pemeliharaan (HAR) dan Laporan K3L — KPI, arah data, grafik 3D dan perbandingan per unit.',
     logistik:
-        'Laporan Logistik & Gudang dari seluruh unit di bawah UL: persediaan, material, BBM & pelumas, unsafe condition — akumulasi dan per unit.',
+        'Laporan Logistik & Gudang dari seluruh unit di bawah UL: persediaan, material, BBM & pelumas — akumulasi dan per unit.',
     k3l: 'Laporan K3 & Lingkungan dari seluruh unit di bawah UL: kecelakaan, APAR, inspeksi, patrol dan kondisi lingkungan — akumulasi dan per unit.',
 };
 

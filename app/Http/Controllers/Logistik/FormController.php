@@ -10,12 +10,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
 use App\Services\Logistik\LogistikFormRows;
-use App\Services\Notifications\EventNotifier;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
 use App\Support\LogistikForms\LogistikForm;
 use App\Support\LogistikForms\LogistikForms;
-use App\Support\LogistikForms\UnsafeForm;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -24,10 +22,10 @@ use Inertia\Response;
 
 /**
  * Every Logistik & Gudang table form ({@see LogistikForms}): Laporan
- * Pendukung, Peralatan/Material/Tools, Kondisi Stok and Unsafe Action &
- * Condition. Rows are saved per unit & month ({@see LogistikFormRows}); before
- * anything is saved the form starts from its default rows. Each section always
- * shows at least its default + blank rows, like the paper form. PDF from
+ * Pendukung, Peralatan/Material/Tools, Kondisi Stok, Inventaris Lainnya and
+ * Permit to Work. Rows are saved per unit & month ({@see LogistikFormRows});
+ * before anything is saved the form starts from its default rows. Each section
+ * always shows at least its default + blank rows, like the paper form. PDF from
  * resources/views/logistik/input/form-pdf.blade.php, Excel from the page.
  */
 class FormController extends Controller
@@ -58,26 +56,12 @@ class FormController extends Controller
         ]);
     }
 
-    public function store(Request $request, string $form, EventNotifier $events): RedirectResponse
+    public function store(Request $request, string $form): RedirectResponse
     {
         $definition = $this->definition($form);
         [$unit, $month, $year] = $this->logistikWriteTarget($request);
 
-        // Unsafe Action & Condition temuan also land in the K3 module: tell K3 about the new ones.
-        $unsafe = $definition instanceof UnsafeForm;
-        $previous = $unsafe ? $this->unsafeKeys($definition, $unit, $month, $year) : [];
-
         $this->formRows->save($request, $definition, $unit, $month, $year);
-
-        if ($unsafe) {
-            $new = [];
-            foreach ($this->unsafeKeys($definition, $unit, $month, $year) as $key => $temuan) {
-                if (! array_key_exists($key, $previous)) {
-                    $new[] = $temuan;
-                }
-            }
-            $events->logistikUnsafeFound($unit, $month, $year, $new, $request->user());
-        }
 
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan {$definition->title()} {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
 
@@ -120,25 +104,5 @@ class FormController extends Controller
         abort_if($definition === null, 404);
 
         return $definition;
-    }
-
-    /**
-     * The saved unsafe temuan of the period keyed by kategori, temuan and
-     * lokasi — what tells a new temuan from one saved before (rows are
-     * re-created on every save).
-     *
-     * @return array<string, string> key => temuan
-     */
-    private function unsafeKeys(LogistikForm $definition, Unit $unit, int $month, int $year): array
-    {
-        $keys = [];
-        foreach ($this->formRows->query($definition, $unit, $month, $year)->get() as $row) {
-            $temuan = trim((string) ($row->data['temuan'] ?? ''));
-            if ($temuan !== '') {
-                $keys[md5(strtolower(implode('|', [$row->data['kategori'] ?? '', $temuan, trim((string) ($row->data['lokasi'] ?? ''))])))] = $temuan;
-            }
-        }
-
-        return $keys;
     }
 }

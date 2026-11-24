@@ -2,7 +2,6 @@
 
 namespace App\Support;
 
-use App\Enums\AttendanceCode;
 use App\Models\Employee;
 use App\Models\User;
 use App\Models\WorkScheduleEntry;
@@ -194,8 +193,9 @@ final class OperasiProgram5s5r
         $employee = Employee::query()
             ->where(function ($q) use ($user): void {
                 $q->where('user_id', $user->id);
-                if ($user->nip !== null && trim((string) $user->nip) !== '') {
-                    $q->orWhere('nip', $user->nip);
+                $staffNumber = trim((string) ($user->employee_id ?? ''));
+                if ($staffNumber !== '') {
+                    $q->orWhere('nip', $staffNumber);
                 }
             })
             ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
@@ -207,25 +207,37 @@ final class OperasiProgram5s5r
             : null;
 
         if ($employee !== null) {
-            $scheduleCode = WorkScheduleEntry::query()
+            $scheduleEntry = WorkScheduleEntry::query()
+                ->with('attendanceCode')
                 ->where('employee_id', $employee->id)
                 ->whereDate('work_date', $tanggal)
                 ->whereHas('schedule', fn ($q) => $q->where('unit_id', $unitId))
-                ->value('attendance_code');
+                ->first();
 
-            $scheduledShift = match ($scheduleCode) {
-                AttendanceCode::Pagi->value => 'Pagi',
-                AttendanceCode::Sore->value => 'Sore',
-                AttendanceCode::Malam->value => 'Malam',
-                default => null,
-            };
+            if ($scheduleEntry !== null) {
+                $entryRegu = trim((string) ($scheduleEntry->regu ?? ''));
+                if ($entryRegu !== '') {
+                    $regu = 'Shift '.$entryRegu;
+                }
 
-            if ($scheduledShift !== null) {
-                return [
-                    'shift' => $scheduledShift,
-                    'operator_name' => $operatorName,
-                    'regu' => $regu,
-                ];
+                $attendanceCode = $scheduleEntry->attendanceCode;
+                $scheduleCode = $attendanceCode !== null ? strtoupper(trim($attendanceCode->code)) : '';
+                $scheduleLabel = $attendanceCode !== null ? trim($attendanceCode->label) : '';
+
+                $scheduledShift = match (true) {
+                    $scheduleCode === 'P' || strcasecmp($scheduleLabel, 'Pagi') === 0 => 'Pagi',
+                    $scheduleCode === 'S' || strcasecmp($scheduleLabel, 'Sore') === 0 => 'Sore',
+                    $scheduleCode === 'M' || strcasecmp($scheduleLabel, 'Malam') === 0 => 'Malam',
+                    default => null,
+                };
+
+                if ($scheduledShift !== null) {
+                    return [
+                        'shift' => $scheduledShift,
+                        'operator_name' => $operatorName,
+                        'regu' => $regu,
+                    ];
+                }
             }
         }
 

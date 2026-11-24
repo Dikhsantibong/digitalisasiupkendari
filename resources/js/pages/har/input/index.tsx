@@ -9,7 +9,6 @@ import {
     Image,
     NotebookPen,
     Package,
-    ShieldAlert,
     ShieldCheck,
     Sparkles,
 } from 'lucide-react';
@@ -27,7 +26,6 @@ import harMaterialPeralatan from '@/routes/har/input/material-peralatan';
 import harPatrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import harProgram5s5r from '@/routes/har/input/program-5s5r';
 import harServiceRequest from '@/routes/har/input/service-request';
-import harUnsafeCondition from '@/routes/har/input/unsafe-condition';
 import harWorkOrder from '@/routes/har/input/work-order';
 
 type InputCard = {
@@ -78,14 +76,6 @@ const INPUT_MENUS: InputCard[] = [
         icon: FileText,
         url: harInstruksiKerja.index().url,
         buttonLabel: 'Buka Instruksi Kerja',
-    },
-    {
-        title: 'Unsafe Action & Unsafe Condition',
-        description:
-            'Pencatatan, pelaporan, dan evaluasi tindak lanjut temuan tindakan tidak aman (unsafe action) serta kondisi berbahaya (unsafe condition).',
-        icon: ShieldAlert,
-        url: harUnsafeCondition.index().url,
-        buttonLabel: 'Buka Input Unsafe Action & Condition',
     },
     {
         title: 'Rekap Laporan Gangguan',

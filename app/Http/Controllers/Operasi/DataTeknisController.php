@@ -34,7 +34,6 @@ class DataTeknisController extends Controller
         ['nama' => 'Jadwal inventarisasi tools dan material operasi', 'pic' => 'Koord Operasi'],
         ['nama' => 'Jadwal pembuatan IK', 'pic' => 'Koord Operasi'],
         ['nama' => 'Jadwal pembuatan patrol check', 'pic' => 'Koord Operasi'],
-        ['nama' => 'Laporan Unsafe Action dan Unsafe Condition', 'pic' => 'Koord Operasi'],
         ['nama' => 'Laporan inspeksi checklist 5S5R operasi', 'pic' => 'Koord Operasi'],
     ];
 

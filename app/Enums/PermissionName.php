@@ -91,7 +91,6 @@ enum PermissionName: string
     case OperasiLapanganFlmMonitoring = 'operasi.lapangan.flm_monitoring';
     case OperasiLapanganPatrolCheckMesin = 'operasi.lapangan.patrol_check_mesin';
     case OperasiLapanganChecklistCommissioning = 'operasi.lapangan.checklist_commissioning';
-    case OperasiLapanganUnsafeCondition = 'operasi.lapangan.unsafe_condition';
     case OperasiLapanganProgram5s5r = 'operasi.lapangan.program_5s5r';
 
     // The Operator module (logsheet + shift schedule) is separate from Operasi.
@@ -122,7 +121,6 @@ enum PermissionName: string
     case HarLapanganActivity = 'har.lapangan.activity';
     case HarLapanganSchedule = 'har.lapangan.schedule';
     case HarLapanganAttachment = 'har.lapangan.attachment';
-    case HarLapanganUnsafeCondition = 'har.lapangan.unsafe_condition';
     case HarLapanganRekapGangguan = 'har.lapangan.rekap_gangguan';
     case HarLapanganAbnormalGangguan = 'har.lapangan.abnormal_gangguan';
     case HarLapanganProgram5s5r = 'har.lapangan.program_5s5r';
@@ -283,7 +281,6 @@ enum PermissionName: string
             self::OperasiLapanganFlmMonitoring,
             self::OperasiLapanganPatrolCheckMesin,
             self::OperasiLapanganChecklistCommissioning,
-            self::OperasiLapanganUnsafeCondition,
             self::OperasiLapanganProgram5s5r => PermissionGroup::OperasiLapangan,
 
             self::OperatorLogsheetView,
@@ -311,7 +308,6 @@ enum PermissionName: string
             self::HarLapanganActivity,
             self::HarLapanganSchedule,
             self::HarLapanganAttachment,
-            self::HarLapanganUnsafeCondition,
             self::HarLapanganRekapGangguan,
             self::HarLapanganAbnormalGangguan,
             self::HarLapanganProgram5s5r,
@@ -468,7 +464,6 @@ enum PermissionName: string
             self::OperasiLapanganFlmMonitoring => 'Input lapangan: Monitoring FLM',
             self::OperasiLapanganPatrolCheckMesin => 'Input lapangan: Patrol Check Mesin',
             self::OperasiLapanganChecklistCommissioning => 'Input lapangan: Checklist Commissioning Test Mesin',
-            self::OperasiLapanganUnsafeCondition => 'Input lapangan: Unsafe Action & Unsafe Condition',
             self::OperasiLapanganProgram5s5r => 'Input lapangan: Program 5S 5R Pengoperasian KIT',
             self::OperatorLogsheetView => 'Melihat logsheet operator',
             self::OperatorLogsheetWrite => 'Mengisi logsheet operator',
@@ -493,7 +488,6 @@ enum PermissionName: string
             self::HarLapanganActivity => 'Input lapangan: Log Kegiatan',
             self::HarLapanganSchedule => 'Input lapangan: Rencana vs Realisasi',
             self::HarLapanganAttachment => 'Input lapangan: Lampiran Foto',
-            self::HarLapanganUnsafeCondition => 'Input lapangan: Unsafe Action & Unsafe Condition',
             self::HarLapanganRekapGangguan => 'Input lapangan: Rekap Laporan Gangguan',
             self::HarLapanganAbnormalGangguan => 'Input lapangan: Laporan Kondisi Abnormal & Gangguan',
             self::HarLapanganProgram5s5r => 'Input lapangan: Jadwal Program 5S 5R Pemeliharaan',

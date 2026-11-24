@@ -60,14 +60,10 @@ class K3DivisionFeed
      */
     public function unsafeFindings(Unit $unit, int $month, int $year, ?User $viewer = null): array
     {
-        $period = ['unit_id' => $unit->id, 'month' => $month, 'year' => $year];
-
         $shared = HarUnsafeCondition::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
             ->orderBy('sort_order')->orderBy('id')->get()
-            ->map(function (HarUnsafeCondition $finding) use ($period, $viewer): array {
+            ->map(function (HarUnsafeCondition $finding): array {
                 $source = $finding->source !== null && isset(self::UNSAFE_SOURCES[$finding->source]) ? $finding->source : null;
-                // Saved before the source column: the shared Operasi & HAR page.
-                $route = $source ?? 'operasi';
 
                 return [
                     'sumber' => $source === null ? 'Operasi / Pemeliharaan' : self::UNSAFE_SOURCES[$source],
@@ -83,19 +79,15 @@ class K3DivisionFeed
                     'keterangan' => null,
                     'foto_sebelum' => $this->photo($finding->foto_sebelum),
                     'foto_sesudah' => $this->photo($finding->foto_sesudah),
-                    'url' => $this->canOpenUnsafe($viewer, $route) ? route("{$route}.input.unsafe-condition.index", $period, false) : null,
+                    'url' => null,
                 ];
             });
-
-        $logistikUrl = $viewer !== null && $this->canOpenLogistik($viewer)
-            ? route('logistik.input.form.index', ['form' => 'unsafe', ...$period], false)
-            : null;
 
         $logistik = LogistikFormRow::query()->where('unit_id', $unit->id)->where('form', 'unsafe')
             ->where('year', $year)->where('month', $month)
             ->orderBy('sort_order')->orderBy('id')->get()
             ->filter(fn (LogistikFormRow $row): bool => trim((string) ($row->data['temuan'] ?? '')) !== '')
-            ->map(function (LogistikFormRow $row) use ($logistikUrl): array {
+            ->map(function (LogistikFormRow $row): array {
                 $data = (array) $row->data;
                 $keterangan = $this->text($data['keterangan'] ?? null);
 
@@ -114,7 +106,7 @@ class K3DivisionFeed
                     'keterangan' => $keterangan,
                     'foto_sebelum' => $this->photo($data['eviden_sebelum'] ?? null),
                     'foto_sesudah' => $this->photo($data['eviden_sesudah'] ?? null),
-                    'url' => $logistikUrl,
+                    'url' => null,
                 ];
             });
 
@@ -344,13 +336,6 @@ class K3DivisionFeed
         }
 
         return Storage::disk('public')->url($path);
-    }
-
-    private function canOpenUnsafe(?User $viewer, string $module): bool
-    {
-        return $module === 'har'
-            ? $this->can($viewer, [PermissionName::HarInputView, PermissionName::HarLapanganUnsafeCondition, PermissionName::HarLaporanView])
-            : $this->can($viewer, [PermissionName::OperasiInputView, PermissionName::OperasiLapanganUnsafeCondition, PermissionName::OperasiLaporanView]);
     }
 
     private function canOpenLogistik(User $viewer): bool

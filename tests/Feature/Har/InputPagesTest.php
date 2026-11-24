@@ -36,7 +36,6 @@ class InputPagesTest extends TestCase
             'service request' => ['har.input.service-request.index', [], 'har/input/service-request/index'],
             'log kegiatan' => ['har.input.activity.index', [], 'har/input/activity/index'],
             'lampiran foto' => ['har.input.attachment.index', [], 'har/input/attachment/index'],
-            'unsafe condition' => ['har.input.unsafe-condition.index', [], 'har/input/unsafe-condition/index'],
             'rekap laporan gangguan' => ['har.input.laporan-gangguan.index', [], 'har/input/laporan-gangguan/index'],
             'abnormal dan gangguan' => ['har.input.abnormal-gangguan.index', [], 'har/input/abnormal-gangguan/index'],
             'program 5s5r' => ['har.input.program-5s5r.index', [], 'har/input/program-5s5r/index'],

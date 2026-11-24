@@ -212,7 +212,7 @@ const INPUT_MENUS: InputCard[] = [
     {
         title: 'Kondisi K3 (Unsafe Action & Unsafe Condition)',
         description:
-            'Identifikasi, pelaporan, dan tindak lanjut temuan tindakan tidak aman dan kondisi berbahaya — termasuk temuan yang diinput Operasi, Pemeliharaan, dan Logistik & Gudang.',
+            'Identifikasi, pelaporan, tindak lanjut, rekomendasi, dan eviden foto temuan tindakan tidak aman (Unsafe Action) serta kondisi berbahaya (Unsafe Condition).',
         icon: AlertTriangle,
         url: k3KondisiK3.index().url,
         buttonLabel: 'Buka Kondisi K3',

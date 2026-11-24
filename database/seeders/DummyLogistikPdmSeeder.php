@@ -277,7 +277,7 @@ class DummyLogistikPdmSeeder extends Seeder
             ];
         }
 
-        // 2.2 Other 5 LogistikForms (pendukung, inventaris-lainnya, peralatan, unsafe, permit-to-work)
+        // 2.2 Other 4 LogistikForms (pendukung, inventaris-lainnya, peralatan, permit-to-work)
         foreach (LogistikForms::all() as $formDef) {
             $fKey = $formDef->key();
             if ($fKey === 'kondisi-stok') {
@@ -288,16 +288,6 @@ class DummyLogistikPdmSeeder extends Seeder
                 $defaultSecRows = $sec['rows'] ?? [];
                 if ($defaultSecRows === []) {
                     $defaultSecRows = match ($fKey) {
-                        'unsafe' => [[
-                            'tanggal' => $checkDate,
-                            'temuan' => 'Penataan palet kayu di sudut gudang kurang rata',
-                            'lokasi' => 'Gudang Material Sentral',
-                            'rekomendasi' => 'Perapian posisi palet dan pemberian garis batas kuning',
-                            'tindak_lanjut' => 'Palet telah dirapikan sesuai marka lantai',
-                            'open' => 0,
-                            'close' => 1,
-                            'keterangan' => 'Closed',
-                        ]],
                         'permit-to-work' => [[
                             'nomor' => sprintf('PTW-LOG/%s/%02d/%d/01', $unit->code, $month, $year),
                             'pekerjaan' => 'Stock Opname & Penataan Material Berat Rak Gudang',

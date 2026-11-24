@@ -4,6 +4,7 @@ namespace App\Services\Operasi;
 
 use App\Enums\ScheduleGroupType;
 use App\Models\HarUnsafeCondition;
+use App\Models\K3KondisiK3;
 use App\Models\KondisiAbnormal;
 use App\Models\Operasi5s5rJadwal;
 use App\Models\OperasiBlackstartJadwal;
@@ -315,6 +316,20 @@ class OperasiReportSections
      */
     private function unsafeConditions(int $unitId, int $month, int $year): array
     {
+        $k3Rows = K3KondisiK3::query()
+            ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
+            ->orderBy('sort_order')->orderBy('id')->get();
+
+        if ($k3Rows->isNotEmpty()) {
+            return $k3Rows->map(fn (K3KondisiK3 $u): array => [
+                'kategori' => $u->kategori,
+                'temuan' => $u->temuan,
+                'lokasi' => $u->lokasi,
+                'tindak_lanjut' => $u->tindak_lanjut,
+                'rekomendasi' => $u->rekomendasi,
+            ])->all();
+        }
+
         return HarUnsafeCondition::query()
             ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
             ->orderBy('sort_order')->get()

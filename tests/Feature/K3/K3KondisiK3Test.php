@@ -3,9 +3,13 @@
 namespace Tests\Feature\K3;
 
 use App\Enums\RoleName;
+use App\Models\K3KondisiK3;
 use App\Models\Unit;
+use App\Services\Dashboard\K3Dashboard;
+use App\Services\Reports\SlaReport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
@@ -137,5 +141,39 @@ class K3KondisiK3Test extends TestCase
 
         $path = $response->json('path');
         Storage::disk('public')->assertExists($path);
+    }
+
+    public function test_k3_dashboard_and_sla_read_kondisi_k3(): void
+    {
+        Carbon::setTestNow('2026-08-20 09:00:00');
+        $unit = Unit::factory()->create(['is_active' => true]);
+
+        K3KondisiK3::query()->create([
+            'unit_id' => $unit->id,
+            'year' => 2026,
+            'month' => 8,
+            'kategori' => 'Unsafe Action',
+            'temuan' => 'Helm tidak dipakai',
+            'keterangan' => 'Open',
+        ]);
+        K3KondisiK3::query()->create([
+            'unit_id' => $unit->id,
+            'year' => 2026,
+            'month' => 8,
+            'kategori' => 'Unsafe Condition',
+            'temuan' => 'Kabel terkelupas',
+            'keterangan' => 'Closed',
+        ]);
+
+        $dashboard = app(K3Dashboard::class)->build(Unit::query()->whereKey($unit->id)->get(), Carbon::now());
+        $unsafeKpi = collect($dashboard['kpis'])->firstWhere('key', 'unsafe');
+        $this->assertSame(1, $unsafeKpi['value']);
+
+        $sla = app(SlaReport::class)->build('k3', $unit, 8, 2026);
+        $unsafeSla = collect($sla['rows'])->first(fn (array $r): bool => str_contains(strtolower($r['kriteria']), 'unsafe action'));
+        $this->assertSame(['Inspeksi', 'Kondisi K3 (Unsafe Action & Condition)'], array_column($unsafeSla['sources'], 'label'));
+        $this->assertSame(50, $unsafeSla['percent']);
+
+        Carbon::setTestNow();
     }
 }

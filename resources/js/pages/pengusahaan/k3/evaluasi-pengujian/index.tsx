@@ -115,6 +115,31 @@ const PRINT_CSS = `
 }
 `;
 
+const normalizeMonths = (raw: unknown): number[] => {
+    if (Array.isArray(raw)) {
+        return raw
+            .map(Number)
+            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 12);
+    }
+
+    if (raw && typeof raw === 'object') {
+        return Object.entries(raw as Record<string, unknown>)
+            .filter(([, v]) => Boolean(v))
+            .map(([k]) => Number(k))
+            .filter((n) => Number.isInteger(n) && n >= 1 && n <= 12)
+            .sort((a, b) => a - b);
+    }
+
+    return [];
+};
+
+const hydrateRows = (list: RowData[]): Row[] =>
+    list.map((r, i) => ({
+        ...r,
+        progres_bulan: normalizeMonths(r.progres_bulan),
+        _key: i + 1,
+    }));
+
 export default function PengusahaanEvaluasiPengujianPage(props: Props) {
     const {
         unit,
@@ -128,9 +153,7 @@ export default function PengusahaanEvaluasiPengujianPage(props: Props) {
     const [keyCounter, setKeyCounter] = useState<number>(
         () => initialRows.length + 10,
     );
-    const [rows, setRows] = useState<Row[]>(() =>
-        initialRows.map((r, i) => ({ ...r, _key: i + 1 })),
-    );
+    const [rows, setRows] = useState<Row[]>(() => hydrateRows(initialRows));
     const [meta, setMeta] = useState<MetaData>(() => initialMeta);
     const [dirty, setDirty] = useState<boolean>(false);
     const [saving, setSaving] = useState<boolean>(false);
@@ -178,7 +201,7 @@ export default function PengusahaanEvaluasiPengujianPage(props: Props) {
                     return r;
                 }
 
-                const current = r.progres_bulan ?? [];
+                const current = normalizeMonths(r.progres_bulan);
                 const next = current.includes(monthNum)
                     ? current.filter((m) => m !== monthNum)
                     : [...current, monthNum].sort((a, b) => a - b);
@@ -238,7 +261,7 @@ export default function PengusahaanEvaluasiPengujianPage(props: Props) {
                 'Batalkan seluruh perubahan dan kembalikan ke data tersimpan?',
             )
         ) {
-            setRows(initialRows.map((r, i) => ({ ...r, _key: i + 1 })));
+            setRows(hydrateRows(initialRows));
             setMeta(initialMeta);
             setDirty(false);
             toast.info('Perubahan dibatalkan.');

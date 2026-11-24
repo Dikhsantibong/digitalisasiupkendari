@@ -42,7 +42,6 @@ use App\Http\Controllers\Har\ScheduleController;
 use App\Http\Controllers\Har\ServiceRequestController;
 use App\Http\Controllers\Har\TabelController;
 use App\Http\Controllers\Har\TimingInjectionPumpController;
-use App\Http\Controllers\Har\UnsafeConditionController;
 use App\Http\Controllers\Har\VibrationController;
 use App\Http\Controllers\Har\WorkOrderController;
 use App\Http\Controllers\PengusahaanController;
@@ -151,14 +150,6 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/instruksi-kerja/pdf', [InstruksiKerjaController::class, 'pdf'])->name('input.instruksi-kerja.pdf');
         Route::post('input/instruksi-kerja/pratinjau', [InstruksiKerjaController::class, 'preview'])->name('input.instruksi-kerja.preview');
         Route::delete('input/instruksi-kerja/{instruksiKerja}', [InstruksiKerjaController::class, 'destroy'])->whereNumber('instruksiKerja')->name('input.instruksi-kerja.destroy');
-
-        Route::get('input/unsafe-condition', [UnsafeConditionController::class, 'index'])->name('input.unsafe-condition.index');
-        Route::post('input/unsafe-condition', [UnsafeConditionController::class, 'store'])->name('input.unsafe-condition.store');
-        // The whole month's sheet at once (Tambah Baris + Simpan).
-        Route::post('input/unsafe-condition/simpan', [UnsafeConditionController::class, 'sync'])->name('input.unsafe-condition.sync');
-        Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])->whereNumber('unsafeCondition')->name('input.unsafe-condition.update');
-        Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])->whereNumber('unsafeCondition')->name('input.unsafe-condition.destroy');
-        Route::get('input/unsafe-condition/pdf', [UnsafeConditionController::class, 'pdf'])->name('input.unsafe-condition.pdf');
 
         // Material & Peralatan: the Koordinator lists items & stock, Harmes / Harlist check kelengkapan.
         Route::get('input/material-peralatan', [MaterialPeralatanController::class, 'index'])->name('input.material-peralatan.index');

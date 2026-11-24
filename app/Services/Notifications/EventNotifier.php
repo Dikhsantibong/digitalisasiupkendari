@@ -8,7 +8,7 @@ use App\Enums\PermissionName;
 use App\Enums\ReportModule;
 use App\Models\AccidentReport;
 use App\Models\AttendanceRequest;
-use App\Models\HarUnsafeCondition;
+use App\Models\K3KondisiK3;
 use App\Models\KondisiAbnormal;
 use App\Models\ReportWorkflow;
 use App\Models\ReportWorkflowStep;
@@ -75,45 +75,72 @@ class EventNotifier
     }
 
     /**
-     * A new unsafe action / condition finding (module operasi or har).
+     * Identity of a Kondisi K3 (Unsafe Action / Condition) row; rows are
+     * re-created on each sheet save.
      */
-    public function unsafeFound(HarUnsafeCondition $finding, string $module, User $actor): void
+    public static function kondisiKey(K3KondisiK3 $row): string
     {
-        [$view, $field, $laporan, $pengusahaan] = $module === 'operasi'
-            ? [PermissionName::OperasiInputView, PermissionName::OperasiLapanganUnsafeCondition, PermissionName::OperasiLaporanView, PermissionName::OperasiPengusahaanView]
-            : [PermissionName::HarInputView, PermissionName::HarLapanganUnsafeCondition, PermissionName::HarLaporanView, PermissionName::HarPengusahaanView];
-
-        $this->toAudience($finding->unit_id, [$view, $pengusahaan, $laporan, PermissionName::K3InputView, PermissionName::K3PengusahaanView], $actor,
-            NotificationCategory::Kejadian, $module,
-            Str::title(strtolower($finding->kategori)).' baru · '.($finding->unit?->name ?? 'Unit'),
-            Str::limit($finding->temuan.($finding->lokasi ? " — {$finding->lokasi}" : ''), 220),
-            route("{$module}.input.unsafe-condition.index", ['unit_id' => $finding->unit_id, 'month' => $finding->month, 'year' => $finding->year], false),
-            [$view, $field, $laporan], "kejadian:unsafe:{$finding->id}",
-            // The finding also lands in the K3 module: K3 staff open it from Kondisi K3.
-            $this->k3KondisiLink($finding->unit_id, $finding->month, $finding->year));
+        return md5(strtolower(implode('|', [
+            trim((string) $row->kategori),
+            trim((string) $row->temuan),
+            trim((string) $row->lokasi),
+        ])));
     }
 
     /**
-     * New Unsafe Action & Condition temuan saved in the Logistik & Gudang form:
-     * one summary for Logistik & Gudang and for K3, where the findings land.
+     * Announce new or newly closed Unsafe Action / Unsafe Condition findings
+     * saved on the K3 Kondisi K3 sheet.
      *
-     * @param  list<string>  $temuan  the temuan text of the rows that are new in this save
+     * @param  iterable<K3KondisiK3>  $rows
+     * @param  array<string, array{keterangan: string, input_by: int|null}>  $previousStates
      */
-    public function logistikUnsafeFound(Unit $unit, int $month, int $year, array $temuan, User $actor): void
+    public function k3KondisiChanges(Unit $unit, int $month, int $year, iterable $rows, array $previousStates, User $actor): void
     {
-        if ($temuan === []) {
-            return;
-        }
+        $url = route('k3.input.kondisi-k3.index', ['unit_id' => $unit->id, 'month' => $month, 'year' => $year], false);
+        $isClosed = fn (?string $status): bool => in_array(strtolower(trim((string) $status)), ['close', 'closed', 'selesai'], true);
 
-        $count = count($temuan);
-        $this->toAudience($unit->id, [PermissionName::LogistikInputView, PermissionName::LogistikLaporanView, PermissionName::K3InputView, PermissionName::K3PengusahaanView], $actor,
-            NotificationCategory::Kejadian, 'logistik',
-            ($count === 1 ? 'Temuan unsafe baru' : "{$count} temuan unsafe baru").' · '.$unit->name.' (Logistik & Gudang)',
-            Str::limit(implode('; ', $temuan), 220),
-            route('logistik.input.form.index', ['form' => 'unsafe', 'unit_id' => $unit->id, 'month' => $month, 'year' => $year], false),
-            [PermissionName::LogistikInputView, PermissionName::LogistikLaporanView],
-            'kejadian:logistik-unsafe:'.$unit->id.':'.$year.'-'.$month.':'.md5(implode('|', $temuan)),
-            $this->k3KondisiLink($unit->id, $month, $year));
+        foreach ($rows as $row) {
+            if (trim((string) $row->temuan) === '') {
+                continue;
+            }
+
+            $key = self::kondisiKey($row);
+
+            if (! array_key_exists($key, $previousStates)) {
+                $this->toAudience(
+                    $unit->id,
+                    [PermissionName::K3InputView, PermissionName::K3LaporanView, PermissionName::K3PengusahaanView],
+                    $actor,
+                    NotificationCategory::Kejadian,
+                    'k3',
+                    "{$row->kategori} baru · {$unit->name}",
+                    Str::limit($row->temuan.($row->lokasi ? " — {$row->lokasi}" : ''), 220),
+                    $url,
+                    [PermissionName::K3InputView, PermissionName::K3LaporanView],
+                    "kejadian:unsafe:{$row->id}",
+                );
+
+                continue;
+            }
+
+            $prev = $previousStates[$key];
+            if (! $isClosed($prev['keterangan']) && $isClosed($row->keterangan)) {
+                $reporterId = $prev['input_by'];
+                $reporter = $reporterId === null ? null : User::query()->find($reporterId);
+
+                if ($reporter !== null && ! $reporter->is($actor)) {
+                    $canOpen = $reporter->hasPermissionTo(PermissionName::K3InputView) || $reporter->hasPermissionTo(PermissionName::K3LaporanView);
+                    $this->later([$reporter], fn (User $user): ReminderNotification => new ReminderNotification(
+                        NotificationCategory::Kejadian,
+                        'k3',
+                        'Temuan Anda sudah ditutup',
+                        Str::limit($row->temuan, 200)." — ditutup oleh {$actor->name}.",
+                        $canOpen ? $url : null,
+                        "kejadian:unsafe-close:{$row->id}",
+                    ));
+                }
+            }
+        }
     }
 
     /**
@@ -231,40 +258,6 @@ class EventNotifier
         }
 
         return "{$request->type->label()} {$range}: {$request->reason}";
-    }
-
-    /**
-     * The K3 Kondisi K3 page of the period, for recipients who cannot open the
-     * division's own page.
-     *
-     * @return array{0: string, 1: list<PermissionName>}
-     */
-    private function k3KondisiLink(int $unitId, int $month, int $year): array
-    {
-        return [
-            route('k3.input.kondisi-k3.index', ['unit_id' => $unitId, 'month' => $month, 'year' => $year], false),
-            [PermissionName::K3InputView, PermissionName::K3LaporanView],
-        ];
-    }
-
-    /**
-     * An open finding was closed: tell the person who reported it.
-     */
-    public function unsafeClosed(HarUnsafeCondition $finding, string $module, User $actor): void
-    {
-        $reporter = $finding->input_by === null ? null : User::query()->find($finding->input_by);
-
-        if ($reporter === null || $reporter->is($actor)) {
-            return;
-        }
-
-        $this->later([$reporter], fn (User $user): ReminderNotification => new ReminderNotification(
-            NotificationCategory::Kejadian, $module,
-            'Temuan Anda sudah ditutup',
-            Str::limit($finding->temuan, 200)." — ditutup oleh {$actor->name}.",
-            route("{$module}.input.unsafe-condition.index", ['unit_id' => $finding->unit_id, 'month' => $finding->month, 'year' => $finding->year], false),
-            "kejadian:unsafe-close:{$finding->id}",
-        ));
     }
 
     /**

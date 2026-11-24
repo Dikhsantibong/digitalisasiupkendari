@@ -15,7 +15,6 @@ import {
     NotebookPen,
     Package,
     Ruler,
-    ShieldAlert,
     Siren,
     Sparkles,
     Timer,
@@ -37,7 +36,6 @@ import materialPeralatan from '@/routes/har/input/material-peralatan';
 import patrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import program5s5r from '@/routes/har/input/program-5s5r';
 import serviceRequest from '@/routes/har/input/service-request';
-import unsafeCondition from '@/routes/har/input/unsafe-condition';
 import workOrder from '@/routes/har/input/work-order';
 import axialConrod from '@/routes/har/pengusahaan/axial-conrod';
 import batteryVoltage from '@/routes/har/pengusahaan/battery-voltage';
@@ -105,16 +103,6 @@ const INPUT: Entry[] = [
         'bg-pink-500/10 text-pink-600 dark:text-pink-400',
         attachment.index().url,
         'har/input/attachment/index',
-    ],
-    [
-        'unsafe_condition',
-        'Unsafe Action & Condition',
-        'Unsafe',
-        'Temuan tindakan & kondisi tidak aman',
-        ShieldAlert,
-        'bg-red-500/10 text-red-600 dark:text-red-400',
-        unsafeCondition.index().url,
-        'har/input/unsafe-condition/index',
     ],
     [
         'rekap_gangguan',
@@ -359,7 +347,11 @@ const FORMULIR: Entry[] = [
     ],
 ];
 
-const toMenus = (entries: Entry[], group: MobileMenu['group'], coveredBy = 'har.input.view'): MobileMenu[] =>
+const toMenus = (
+    entries: Entry[],
+    group: MobileMenu['group'],
+    coveredBy = 'har.input.view',
+): MobileMenu[] =>
     entries.map(
         ([key, title, short, description, icon, tone, href, component]) => ({
             key: `har-${key}`,

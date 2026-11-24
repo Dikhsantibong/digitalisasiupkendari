@@ -1,5 +1,14 @@
 import { Head, router } from '@inertiajs/react';
-import { AlertOctagon, ClipboardCheck, ClipboardList, FileCheck, FileText, Package, ShieldAlert, Sparkles, Wrench } from 'lucide-react';
+import {
+    AlertOctagon,
+    ClipboardCheck,
+    ClipboardList,
+    FileCheck,
+    FileText,
+    Package,
+    Sparkles,
+    Wrench,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -13,7 +22,6 @@ import materialPeralatan from '@/routes/operasi/input/material-peralatan';
 import patrolCheckMesin from '@/routes/operasi/input/patrol-check-mesin';
 import permitToWork from '@/routes/operasi/input/permit-to-work';
 import program5s5r from '@/routes/operasi/input/program-5s5r';
-import unsafeCondition from '@/routes/operasi/input/unsafe-condition';
 
 type InputCard = {
     title: string;
@@ -26,63 +34,64 @@ type InputCard = {
 const INPUT_MENUS: InputCard[] = [
     {
         title: 'Kondisi Abnormal & Gangguan',
-        description: 'Pencatatan dan pemantauan kejadian kondisi abnormal serta gangguan mesin pembangkit beserta durasi kejadian.',
+        description:
+            'Pencatatan dan pemantauan kejadian kondisi abnormal serta gangguan mesin pembangkit beserta durasi kejadian.',
         icon: AlertOctagon,
         url: kondisiAbnormal.index().url,
         buttonLabel: 'Buka Input Kondisi Abnormal',
     },
     {
         title: 'Instruksi Kerja (IK)',
-        description: 'Buat IK operasi dari template (mis. start / stop mesin PLTD): alat, pelaksana, langkah pelaksanaan dan tanda tangan — bebas disesuaikan, cetak PDF format MKP.',
+        description:
+            'Buat IK operasi dari template (mis. start / stop mesin PLTD): alat, pelaksana, langkah pelaksanaan dan tanda tangan — bebas disesuaikan, cetak PDF format MKP.',
         icon: FileText,
         url: instruksiKerja.index().url,
         buttonLabel: 'Buka Instruksi Kerja',
     },
     {
         title: 'Material & Peralatan',
-        description: 'Pencatatan inventaris, monitoring stok awal, barang masuk, barang keluar, safety stock, dan reorder point.',
+        description:
+            'Pencatatan inventaris, monitoring stok awal, barang masuk, barang keluar, safety stock, dan reorder point.',
         icon: Package,
         url: materialPeralatan.index().url,
         buttonLabel: 'Buka Input Material & Peralatan',
     },
     {
         title: 'Permit to Work (PTW)',
-        description: 'Pencatatan dan pemantauan status izin kerja (Permit to Work) open dan close untuk pekerjaan pembangkit.',
+        description:
+            'Pencatatan dan pemantauan status izin kerja (Permit to Work) open dan close untuk pekerjaan pembangkit.',
         icon: FileCheck,
         url: permitToWork.index().url,
         buttonLabel: 'Buka Input Permit to Work',
     },
     {
         title: 'Monitoring FLM',
-        description: 'Pencatatan temuan first line maintenance mesin & peralatan, tindakan awal (bersihkan, lumasi, kencangkan, perbaikan koneksi), kondisi akhir, dan status.',
+        description:
+            'Pencatatan temuan first line maintenance mesin & peralatan, tindakan awal (bersihkan, lumasi, kencangkan, perbaikan koneksi), kondisi akhir, dan status.',
         icon: Wrench,
         url: flmMonitoring.index().url,
         buttonLabel: 'Buka Input Monitoring FLM',
     },
     {
         title: 'Patrol Check Mesin',
-        description: 'Pencatatan pemeriksaan harian mesin pembangkit (Lubricating, Fuel, Cooling, Air Intake/Exhaust, Electrical System) per shift.',
+        description:
+            'Pencatatan pemeriksaan harian mesin pembangkit (Lubricating, Fuel, Cooling, Air Intake/Exhaust, Electrical System) per shift.',
         icon: ClipboardCheck,
         url: patrolCheckMesin.index().url,
         buttonLabel: 'Buka Input Patrol Check Mesin',
     },
     {
         title: 'Checklist Commissioning Test Mesin',
-        description: 'Pemeriksaan dan verifikasi status kesiapan peralatan (Persiapan & Paralel Generator) saat commissioning test mesin pembangkit.',
+        description:
+            'Pemeriksaan dan verifikasi status kesiapan peralatan (Persiapan & Paralel Generator) saat commissioning test mesin pembangkit.',
         icon: ClipboardList,
         url: checklistCommissioningMesin.index().url,
         buttonLabel: 'Buka Checklist Commissioning Mesin',
     },
     {
-        title: 'Unsafe Action & Unsafe Condition',
-        description: 'Pencatatan, pelaporan, dan evaluasi tindak lanjut temuan tindakan tidak aman (unsafe action) serta kondisi berbahaya (unsafe condition).',
-        icon: ShieldAlert,
-        url: unsafeCondition.index().url,
-        buttonLabel: 'Buka Unsafe Action & Condition',
-    },
-    {
         title: 'Program 5S 5R Pengoperasian KIT',
-        description: 'Pencatatan mingguan program Ringkas (Seiri), Rapi (Seiton), Resik (Seiso), Rawat (Seiketsu), Rajin (Shitsuke), progres, kondisi, dan foto eviden.',
+        description:
+            'Pencatatan mingguan program Ringkas (Seiri), Rapi (Seiton), Resik (Seiso), Rawat (Seiketsu), Rajin (Shitsuke), progres, kondisi, dan foto eviden.',
         icon: Sparkles,
         url: program5s5r.index().url,
         buttonLabel: 'Buka Program 5S 5R',

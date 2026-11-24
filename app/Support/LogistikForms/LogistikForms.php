@@ -13,7 +13,6 @@ class LogistikForms
         InventarisLainnyaForm::class,
         PeralatanForm::class,
         KondisiStokForm::class,
-        UnsafeForm::class,
         PermitToWorkForm::class,
     ];
 

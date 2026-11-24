@@ -635,7 +635,7 @@
     @if(empty($unsafeConditions) && ! ($inputs['accidents']['has_data'] ?? false))
         @include('k3.laporan.partials.formulir-table', ['rows' => $formulir['temuan'] ?? [], 'note' => $jadwalNote, 'message' => 'Belum ada laporan unsafe action / unsafe condition maupun kecelakaan kerja pada periode ini.'])
     @elseif(! empty($unsafeConditions))
-        <div class="k3x-caption">A. Temuan Unsafe Action &amp; Unsafe Condition (K3 dan seluruh divisi)</div>
+        <div class="k3x-caption">A. Temuan Unsafe Action &amp; Unsafe Condition</div>
         <table class="report-table">
             <thead>
                 <tr>

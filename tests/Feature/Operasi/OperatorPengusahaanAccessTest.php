@@ -56,7 +56,8 @@ class OperatorPengusahaanAccessTest extends TestCase
         $this->actingAs($operator)->get(route('operasi.pengusahaan.jam-pembangkit.index', $this->period()))->assertForbidden();
         $this->actingAs($operator)->get(route('operasi.pengusahaan.index', ['section' => 'input']))->assertForbidden();
         $this->actingAs($operator)->post(route('operasi.pengusahaan.tara-kalor.store'), $this->period() + ['readings' => []])->assertForbidden();
-        $this->actingAs($operator)->get(route('operasi.input.unsafe-condition.index', $this->period()))->assertOk();
+        $this->actingAs($operator)->get(route('operasi.input.patrol-check-mesin.index', $this->period()))->assertOk();
+        $this->actingAs($operator)->get('/operasi/input/unsafe-condition')->assertNotFound();
         $this->actingAs($operator)->get(route('operator.start-stop.index', $this->period()))->assertOk();
 
         // No Master Data for the operator, not even read-only; the Project Leader keeps the view.

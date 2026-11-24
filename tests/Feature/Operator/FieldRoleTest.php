@@ -100,7 +100,6 @@ class FieldRoleTest extends TestCase
                 route('har.input.patrol-check-parameter.index', $query),
                 route('har.input.lembar.index', ['lembar' => 'patrol-check-pemeliharaan', ...$query]),
                 route('har.input.program-5s5r.index', $query),
-                route('har.input.unsafe-condition.index', $query),
             ] as $url) {
                 $this->actingAs($user)->get($url)->assertOk()->assertInertia(fn ($page) => $page->where('can_write', true));
             }
@@ -162,7 +161,6 @@ class FieldRoleTest extends TestCase
 
             foreach ([
                 route('operasi.input.patrol-check-mesin.index', $query),
-                route('operasi.input.unsafe-condition.index', $query),
                 route('operasi.input.program-5s5r.index', $query),
                 route('operasi.input.flm-monitoring.index', $query),
             ] as $url) {
@@ -215,9 +213,9 @@ class FieldRoleTest extends TestCase
 
     public function test_each_input_page_has_its_own_permission_in_role_and_akses(): void
     {
-        $this->assertCount(14, PermissionName::operasiLapangan());
-        // 27 + Material & Peralatan (2026-11-05).
-        $this->assertCount(28, PermissionName::harLapangan());
+        $this->assertCount(13, PermissionName::operasiLapangan());
+        // 27 pages after moving Unsafe Action & Condition exclusively to K3.
+        $this->assertCount(27, PermissionName::harLapangan());
 
         $operator = Role::query()->where('name', RoleName::Operator->value)->sole()->permissions()->pluck('name');
         $harmes = Role::query()->where('name', RoleName::Harmes->value)->sole()->permissions()->pluck('name');

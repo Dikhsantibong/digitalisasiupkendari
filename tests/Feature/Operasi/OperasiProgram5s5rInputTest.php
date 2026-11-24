@@ -2,11 +2,17 @@
 
 namespace Tests\Feature\Operasi;
 
+use App\Enums\AttendanceCodeType;
 use App\Enums\RoleName;
+use App\Enums\ScheduleGroupType;
 use App\Http\Controllers\Operasi\Program5s5rInputController;
+use App\Models\AttendanceCode;
+use App\Models\Employee;
 use App\Models\OperasiProgram5s5rEvidence;
 use App\Models\OperasiProgram5s5rItem;
 use App\Models\Unit;
+use App\Models\WorkSchedule;
+use App\Models\WorkScheduleEntry;
 use App\Support\OperasiProgram5s5r;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -197,5 +203,44 @@ class OperasiProgram5s5rInputTest extends TestCase
         $this->actingAs($user)
             ->get(route('operasi.input.program-5s5r.index', ['unit_id' => $unit2->id]))
             ->assertForbidden();
+    }
+
+    public function test_resolves_user_shift_and_regu_from_work_schedule_entry_attendance_code(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::Operator, $unit);
+        $employee = Employee::factory()->forUnit($unit)->create([
+            'user_id' => $user->id,
+            'name' => 'Budi Santoso',
+            'regu' => 'A',
+            'is_active' => true,
+        ]);
+        $soreCode = AttendanceCode::query()->firstOrCreate(
+            ['code' => 'S'],
+            ['label' => 'Sore', 'type' => AttendanceCodeType::Shift, 'jam_mulai' => '15:00', 'jam_selesai' => '23:00', 'hitung_hadir' => true, 'sort_order' => 2, 'is_active' => true],
+        );
+        $schedule = WorkSchedule::query()->create([
+            'unit_id' => $unit->id,
+            'group_type' => ScheduleGroupType::Shift,
+            'year' => 2026,
+            'month' => 11,
+        ]);
+        WorkScheduleEntry::query()->create([
+            'work_schedule_id' => $schedule->id,
+            'employee_id' => $employee->id,
+            'work_date' => '2026-11-24',
+            'attendance_code_id' => $soreCode->id,
+            'regu' => 'B',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('operasi.input.program-5s5r.index', ['unit_id' => $unit->id, 'month' => 11, 'year' => 2026, 'day' => 24]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.shift', 'Sore')
+                ->where('user_context.shift', 'Sore')
+                ->where('user_context.operator_name', 'Budi Santoso')
+                ->where('user_context.regu', 'Shift B'),
+            );
     }
 }

@@ -50,7 +50,6 @@ use App\Http\Controllers\Operasi\PengusahaanTugPelumasController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
 use App\Http\Controllers\Operasi\Program5s5rInputController;
-use App\Http\Controllers\Operasi\UnsafeConditionController;
 use App\Http\Controllers\PengusahaanController;
 use Illuminate\Support\Facades\Route;
 
@@ -158,20 +157,6 @@ Route::middleware(['auth', 'verified'])
             ->name('input.checklist-commissioning-mesin.store');
         Route::get('input/checklist-commissioning-mesin/pdf', [ChecklistCommissioningMesinController::class, 'pdf'])
             ->name('input.checklist-commissioning-mesin.pdf');
-
-        Route::get('input/unsafe-condition', [UnsafeConditionController::class, 'index'])
-            ->name('input.unsafe-condition.index');
-        Route::post('input/unsafe-condition', [UnsafeConditionController::class, 'store'])
-            ->name('input.unsafe-condition.store');
-        // The whole month's sheet at once (Tambah Baris + Simpan).
-        Route::post('input/unsafe-condition/simpan', [UnsafeConditionController::class, 'sync'])
-            ->name('input.unsafe-condition.sync');
-        Route::post('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'update'])
-            ->whereNumber('unsafeCondition')->name('input.unsafe-condition.update');
-        Route::delete('input/unsafe-condition/{unsafeCondition}', [UnsafeConditionController::class, 'destroy'])
-            ->whereNumber('unsafeCondition')->name('input.unsafe-condition.destroy');
-        Route::get('input/unsafe-condition/pdf', [UnsafeConditionController::class, 'pdf'])
-            ->name('input.unsafe-condition.pdf');
 
         Route::get('input/program-5s5r', [Program5s5rInputController::class, 'index'])
             ->name('input.program-5s5r.index');

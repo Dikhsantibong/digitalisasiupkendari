@@ -434,7 +434,6 @@ enum RoleName: string
                 PermissionName::OperasiLapanganFlmMonitoring,
                 PermissionName::OperasiLapanganPatrolCheckMesin,
                 PermissionName::OperasiLapanganChecklistCommissioning,
-                PermissionName::OperasiLapanganUnsafeCondition,
                 PermissionName::OperasiLapanganProgram5s5r,
                 // No Operasi inputs for now (user, 2026-10-30): the operator fills the
                 // core Operator menus and the Input Operasi (Laporan Project) pages only.

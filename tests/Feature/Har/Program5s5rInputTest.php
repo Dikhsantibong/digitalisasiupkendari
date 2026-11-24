@@ -2,12 +2,18 @@
 
 namespace Tests\Feature\Har;
 
+use App\Enums\AttendanceCodeType;
 use App\Enums\RoleName;
+use App\Enums\ScheduleGroupType;
 use App\Http\Controllers\Har\Program5s5rController;
+use App\Models\AttendanceCode;
+use App\Models\Employee;
 use App\Models\HarProgram5s5rEvidence;
 use App\Models\HarProgram5s5rItem;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
+use App\Models\WorkSchedule;
+use App\Models\WorkScheduleEntry;
 use App\Support\HarProgram5s5r;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -202,5 +208,44 @@ class Program5s5rInputTest extends TestCase
         $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
             ->get(route('har.input.program-5s5r.index', ['unit_id' => $unit->id]))
             ->assertForbidden();
+    }
+
+    public function test_resolves_user_shift_from_work_schedule_entry_attendance_code(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
+        $employee = Employee::factory()->forUnit($unit)->create([
+            'user_id' => $user->id,
+            'name' => 'Andi Har',
+            'regu' => 'C',
+            'is_active' => true,
+        ]);
+        $malamCode = AttendanceCode::query()->firstOrCreate(
+            ['code' => 'M'],
+            ['label' => 'Malam', 'type' => AttendanceCodeType::Shift, 'jam_mulai' => '23:00', 'jam_selesai' => '07:00', 'hitung_hadir' => true, 'sort_order' => 3, 'is_active' => true],
+        );
+        $schedule = WorkSchedule::query()->create([
+            'unit_id' => $unit->id,
+            'group_type' => ScheduleGroupType::Shift,
+            'year' => 2026,
+            'month' => 11,
+        ]);
+        WorkScheduleEntry::query()->create([
+            'work_schedule_id' => $schedule->id,
+            'employee_id' => $employee->id,
+            'work_date' => '2026-11-24',
+            'attendance_code_id' => $malamCode->id,
+            'regu' => 'C',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('har.input.program-5s5r.index', ['unit_id' => $unit->id, 'month' => 11, 'year' => 2026, 'day' => 24]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('filters.shift', 'Malam')
+                ->where('user_context.shift', 'Malam')
+                ->where('user_context.operator_name', 'Andi Har')
+                ->where('user_context.regu', 'Shift C'),
+            );
     }
 }

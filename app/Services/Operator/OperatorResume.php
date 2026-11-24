@@ -10,7 +10,7 @@ use App\Models\AttendanceCode;
 use App\Models\AttendanceRequest;
 use App\Models\Employee;
 use App\Models\EmployeePresence;
-use App\Models\HarUnsafeCondition;
+use App\Models\K3KondisiK3;
 use App\Models\KondisiAbnormal;
 use App\Models\OperasiFlmMonitoring;
 use App\Models\OperasiPatrolCheckMesin;
@@ -240,7 +240,7 @@ class OperatorResume
                 ->whereDate('tanggal', '>=', $from->toDateString())->whereDate('tanggal', '<=', $to->toDateString())->count(),
             'patrol_check' => $monthly(OperasiPatrolCheckMesin::class),
             'kondisi_abnormal' => $monthly(KondisiAbnormal::class),
-            'unsafe' => $monthly(HarUnsafeCondition::class),
+            'unsafe' => $monthly(K3KondisiK3::class),
             'flm' => $monthly(OperasiFlmMonitoring::class),
             'program_5s5r' => $monthly(OperasiProgram5s5rItem::class),
             'aktivitas' => $userId === null ? 0 : ActivityLog::query()->where('user_id', $userId)

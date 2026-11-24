@@ -140,7 +140,7 @@ Prinsip pembangunan: **Modular → Scalable → Auditable → Terkontrol.**
 | Operasi | Akses 1 (Project): Jadwal, Input Project (termasuk IK), Laporan Project Operasi · Akses 2: Input Operasi (BBM, Pelumas, kWh, Rekap, Jam), Berita Acara, TUG 9, Laporan Operasi |
 | Pemeliharaan (HAR) | Akses 1 (Project): Jadwal, Input Project (termasuk IK), Formulir Project, Laporan Project Pemeliharaan · Akses 2: WO/SR, Rencana & Realisasi, Laporan Kegiatan, 13 formulir teknis, Laporan Pemeliharaan |
 | K3 & Keamanan | Akses 1 (Project): Jadwal, Input Project (termasuk Dokumen IK), Formulir Project, Monitoring, Laporan Project K3 · Akses 2: 19 input + 3 formulir divisi, Laporan K3 & KAM |
-| Logistik & Gudang | Jadwal (9), Input (12, termasuk IK), Laporan Logistik & Gudang |
+| Logistik & Gudang | Jadwal (9), Input (11, termasuk IK), Laporan Logistik & Gudang |
 | PdM & Maturity Level | Jadwal (4), Input (12, termasuk IK), Laporan PdM & Maturity Level |
 | Pemantauan | Dashboard, Monitoring (Ringkasan, Kelengkapan Input, Verifikasi Laporan), Portal Pemantauan UP Kendari |
 | Laporan | Editor dokumen (Teks/Excel/Pratinjau PDF), alur pengesahan, delegasi penanda tangan, Resume Bulanan per modul (§8.11), editor IK visual dengan Pratinjau PDF (§9.2) |
@@ -280,10 +280,10 @@ Catatan:
 | Operator | `operator.logsheet.view|write`, `operator.absensi.view|write`, `operator.presensi`, `operator.mutasi.view|write` |
 | Operasi — Akses 1 | `operasi.input.view|write`, `operasi.laporan.view`, `operasi.master.view_any|manage`, `operasi.material_peralatan.kelola` |
 | Operasi — Akses 2 | `operasi.pengusahaan.view|write|input` |
-| Operasi — Input Lapangan | `operasi.lapangan.{daily_report, star_stop, feeder, auxiliary, fuel_receipt, kondisi_abnormal, resource_pembangkit, material_peralatan, permit_to_work, flm_monitoring, patrol_check_mesin, checklist_commissioning, unsafe_condition, program_5s5r}` |
+| Operasi — Input Lapangan | `operasi.lapangan.{daily_report, star_stop, feeder, auxiliary, fuel_receipt, kondisi_abnormal, resource_pembangkit, material_peralatan, permit_to_work, flm_monitoring, patrol_check_mesin, checklist_commissioning, program_5s5r}` |
 | Pemeliharaan — Akses 1 | `har.input.view|write`, `har.laporan.view`, `har.executive.view`, `har.master.view_any|manage` |
 | Pemeliharaan — Akses 2 | `har.pengusahaan.view|write` |
-| Pemeliharaan — Input Lapangan | `har.lapangan.{work_order, service_request, activity, schedule, attachment, unsafe_condition, rekap_gangguan, abnormal_gangguan, program_5s5r, patrol_check_pemeliharaan, patrol_check_parameter, prelube_test, hydrotest, timing_injection_pump, crankshaft_deflection, counter_weight, axial_conrod, clearance_valve, combustion_pressure, injector_pressure, motor_current, vibration, lube_quality, battery_voltage, laporan_gangguan, daily_meeting, logbook_mutasi}` |
+| Pemeliharaan — Input Lapangan | `har.lapangan.{work_order, service_request, activity, schedule, attachment, rekap_gangguan, abnormal_gangguan, program_5s5r, patrol_check_pemeliharaan, patrol_check_parameter, prelube_test, hydrotest, timing_injection_pump, crankshaft_deflection, counter_weight, axial_conrod, clearance_valve, combustion_pressure, injector_pressure, motor_current, vibration, lube_quality, battery_voltage, laporan_gangguan, daily_meeting, logbook_mutasi}` |
 | K3 — Akses 1 | `k3.input.view|write`, `k3.laporan.view`, `k3.monitoring.view`, `k3.master.view_any|manage` |
 | K3 — Akses 2 | `k3.pengusahaan.view|write` |
 | Logistik | `logistik.input.view|write`, `logistik.laporan.view`, `logistik.master.view_any|manage` |
@@ -429,7 +429,7 @@ Aturan tambahan:
   - **Pemeliharaan** — Work Order & Service Request per bulan periode laporan; biaya
     = jasa + material WO; backlog = WO berstatus belum closed (terlama di atas).
   - **K3** — hari sejak kecelakaan terakhir berkorban (— bila belum pernah),
-    Inspeksi, Unsafe tanpa tindak lanjut, status sertifikat & APAR (rumus Monitoring
+    Inspeksi, Unsafe berstatus belum Closed (`Open` / `On Progress` di `k3_kondisi_k3s`), status sertifikat & APAR (rumus Monitoring
     K3), Patroli Security per lokasi, Kurva S & kepatuhan mingguan dari Time Frame K3.
   - **Logistik** — Kondisi Stok Tools & Material bulan terakhir tiap unit (stok akhir,
     ROP; kritis = stok akhir ≤ ROP pada baris yang ada pergerakan), penerimaan
@@ -453,7 +453,7 @@ Aturan tambahan:
     yang dapat mengakses unit; baris tugas personal ke akun pegawai itu.
   - Dedup per user lewat `reminder_logs`.
 - **Notifikasi kejadian** setelah simpan: Kondisi Abnormal baru/berubah, Unsafe
-  Action & Condition (temuan baru → K3; ditutup → pelapor), WO/SR baru atau
+  Action & Condition (temuan baru di **Kondisi K3** → tim K3; ditutup → pelapor awal), WO/SR baru atau
   status berubah, kecelakaan K3, setiap langkah alur laporan (ke penanda tangan
   berikutnya + pengaju). Penerima = user aktif yang berhak & dapat mengakses unit,
   bukan pelaku dan bukan Super Admin. Tautan hanya diberikan bila penerima boleh
@@ -608,9 +608,9 @@ Detail Opname (BBM, Pelumas, kWh):
 Instalasi Blackstart · Commissioning Test Mesin · Commissioning Test Peralatan Non
 Mesin · Pelaksanaan Performance Test Mesin.
 
-**Input (9):** Kondisi Abnormal & Gangguan · Instruksi Kerja (IK) · Material &
+**Input (8):** Kondisi Abnormal & Gangguan · Instruksi Kerja (IK) · Material &
 Peralatan · Permit to Work (PTW) · Monitoring FLM · Patrol Check Mesin · Checklist
-Commissioning Test Mesin · Unsafe Action & Unsafe Condition · Program 5S 5R
+Commissioning Test Mesin · Program 5S 5R
 Pengoperasian KIT.
 
 Detail penting:
@@ -629,9 +629,10 @@ Detail penting:
 - **Patrol Check Mesin** — format dapat diatur per mesin/unit lewat menu Master Data **Template Patrol Check** (`operasi_patrol_check_templates`, `machines.patrol_check_template_id`, controller `Operasi\PatrolCheckTemplateController`):
   - **Template bawaan (`Cummins (Containerized)`)** memakai format matriks bulanan tanggal 1–31 (N/T per item) + Pelaksana Shift Pagi/Sore/Malam + Catatan (PLTD Poasia Containerized & unit standar, tidak berubah; bila ditandai `T`, langsung muncul isian uraian alasan & eviden foto).
   - **Template `PLTD Poasia (Mesin & Alat Bantu)`** (`POA-OPR-CHK-01`, `Rev. 00`) memakai format pemeriksaan per shift (`checklist`): Tanggal, **Shift & Operator diambil otomatis dari data shift / jadwal & profil pegawai user yang login** (`WorkScheduleEntry` + `employees.regu`, mis. `Shift A (Pagi)` & nama pegawai), Jam, Unit/Mesin, 25 item komponen (`MESIN` 16 item, `ALAT BANTU` 9 item), 5 parameter cek (`Getar`, `Bunyi`, `Suhu`, `Tek/Level`, `Bocor/Visual`; tanda `—` untuk parameter yang tidak relevan), status kondisi `N` / `TN` (ketika dipilih **`N` tidak ada input lanjutan**; ketika dipilih **`TN` langsung muncul input uraian alasan / tindakan awal yang wajib diisi beserta unggah eviden foto**), Catatan penting/tindak lanjut, minimal 2 kali per shift (`operasi_patrol_check_entries`). Setiap penyimpanan/perubahan otomatis memperbarui bagian **12. Pembuatan Patrol Check** (`#sec-4-12`) pada **Laporan Project Operasi**. Header web/Excel/PDF memakai logo PLN & MKP tanpa form tanda tangan pada halaman input (pengesahan digabung pada alur persetujuan Laporan Project Operasi).
-- **Unsafe Action & Condition** — sumber `operasi`; satu tabel bersama dengan HAR
-  dan terbaca langsung oleh K3.
 - **IK** — editor IK visual berbasis template: diketik langsung di kertas A4 + tab Pratinjau PDF (§9.2), PDF format MKP.
+- Input **Unsafe Action & Condition** dialihkan ke **K3 (Kondisi K3)** (`k3_kondisi_k3s`);
+  Laporan Project Operasi poin 13 (`#sec-4-13`) membaca data dari Kondisi K3
+  (dengan fallback arsip `har_unsafe_conditions`).
 - **Program 5S 5R Pengoperasian KIT** (`operasi/input/program-5s5r`) —
   diinput **per shift per hari** (`day` 1..31 × `shift` `Pagi` / `Sore` / `Malam`,
   tabel `operasi_program_5s5r_items` & `operasi_program_5s5r_evidences`) dengan
@@ -701,8 +702,8 @@ Pemeliharaan (On Call) · Piket Patrol Check Harian · Meeting Pemeliharaan ·
 Pembuatan IK Pemeliharaan · Inventarisasi Tools & Material · Pemeriksaan Instalasi
 Blackstart.
 
-**Input (12):** Work Order · Service Request · Log Kegiatan (HARMES) · Lampiran Foto ·
-Instruksi Kerja (IK, editor visual §9.2) · Unsafe Action & Unsafe Condition · Rekap Laporan Gangguan ·
+**Input (11):** Work Order · Service Request · Log Kegiatan (HARMES) · Lampiran Foto ·
+Instruksi Kerja (IK, editor visual §9.2) · Rekap Laporan Gangguan ·
 Laporan Kondisi Abnormal dan Gangguan Pembangkit · Program 5S 5R Pemeliharaan ·
 Laporan Patrol Check Pemeliharaan · Patrol Check Parameter Mesin · **Material &
 Peralatan** (sama seperti Operasi: daftar & stok disusun Koordinator Pemeliharaan,
@@ -808,8 +809,11 @@ Detail penting:
   dengan item dari master per kode form (bukan satu tabel per form).
 - **Patroli Keamanan** — matriks lokasi (POA1…) × tanggal, jumlah scan + total
   kumulatif.
-- **Kondisi K3** dan **Rekap 5S5R** membaca langsung (tidak menyalin) temuan
-  Unsafe & data 5S5R divisi Operasi, HAR, Logistik, PdM.
+- **Kondisi K3** (`k3/input/kondisi-k3`, `k3_kondisi_k3s`) menjadi satu-satunya
+  halaman input **Unsafe Action & Unsafe Condition** lintas aplikasi (dengan
+  fallback baca-saja untuk arsip temuan divisi lama bila masih ada), sedangkan
+  **Rekap 5S5R** membaca langsung (tidak menyalin) data 5S5R divisi Operasi,
+  HAR, Logistik, PdM.
 
 ### 8.7 K3 & Keamanan — Akses 2 (Pengusahaan)
 
@@ -834,22 +838,20 @@ Jan–Des) · Pemeliharaan Logistik dan Gudang (bawaan: rencana tiap Senin) · P
 Patrol Check Logistik & Gudang (bawaan Senin & Jumat; libur digeser ke hari kerja
 berikutnya).
 
-**Input (12):** Instruksi Kerja (IK) Logistik & Gudang (editor visual §9.2; template Penerimaan
+**Input (11):** Instruksi Kerja (IK) Logistik & Gudang (editor visual §9.2; template Penerimaan
 Material, Stok Opname; Dibuat Koordinator Logistik, Disetujui TL Pemeliharaan) ·
 Rekomendasi Logistik & Gudang · Kegiatan Patrol Check · Inspeksi
 Checklist 5S5R (15 pelaksanaan, 3 foto eviden/item) · Input Data Aplikasi
 Pembangkit · Maturity Level Logistik & Gudang (level 0–5) · Inventaris Lainnya
 (N/T per tanggal, target, realisasi, kinerja) · Peralatan, Material dan Tools
 (4 pelaksanaan × baik/rusak/hilang) · Kondisi Stok Tools dan Material (stok akhir
-& ROP dihitung) · Unsafe Action dan Unsafe Condition (foto sebelum/sesudah) ·
-Laporan Pendukung · Permit To Work Pembangkit (status OPEN/CLOSE, total).
+& ROP dihitung) · Laporan Pendukung · Permit To Work Pembangkit (status OPEN/CLOSE, total).
 
 - Jadwal & input matriks = sheet terdaftar di `LogistikJadwal::SHEETS`; input tabel
   bebas = form di `LogistikForms::ALL`. Tambah halaman lewat definisi, bukan
   controller baru.
 - Kolom terhitung (rumus, jumlah terisi, persen) dihitung ulang saat baca, tidak
   disimpan.
-- Temuan Unsafe Logistik memberi notifikasi K3 + Logistik sekali per temuan baru.
 - Input & jadwal tanpa tanda tangan (menyusul bersama fitur verifikasi).
 
 ### 8.9 PdM & Maturity Level
@@ -1411,8 +1413,8 @@ Tabel modul (ringkas, semua ber-`unit_id`):
 |---|---|
 | Operator | `operator_logsheets` (+ `_readings`), `logsheet_templates` (form per jenis mesin), `logsheet_parameters`, `operator_start_stops`, `operator_mutasis`, `operator_opnames`, `kwh_meters`, `work_schedules` (+ `_entries`), `attendance_codes`, `shift_patterns`, `holidays`, `employee_presences`, `attendance_requests` |
 | Operasi | `report_periods`, `feeders`, `auxiliary_sources`, `fuel_tanks`, `bbm_types`, `lubricant_types`, `calibration_factors`, `unit_status_codes`, `daily_engine_reports`, `engine_status_logs`, `daily_feeder_readings`, `daily_auxiliary_readings`, `fuel_receipts`, `operasi_jam_mesin`, `operasi_mesin_harian`, `operasi_persediaan`, `operasi_rekaps`, `operasi_tugs`, `document_templates`, `document_records`, `operasi_report_documents`, tabel jadwal/input `operasi_*` |
-| HAR | `maintenance_types`, `maintenance_cycles`, `wo_statuses`, `work_groups`, `sr_categories`, `work_orders`, `service_requests`, `maintenance_costs`, `har_material_peralatans`, `maintenance_activities` (+ tasks, materials), `maintenance_schedules`, `maintenance_attachments`, `har_unsafe_conditions`, `har_laporan_kegiatans`, `har_instruksi_kerjas`, `har_document_records`, tabel formulir/jadwal `har_*` |
-| K3 | master per §7.4, `k3_activity_plans`, `accident_reports`, `inspections` (+ results), `fire_extinguisher_checks`, `emergency_facility_checks`, `security_patrols`, `equipment_certificates`, `k3_attachments`, `k3_dokumen_iks`, `k3_document_records`, tabel `k3_*` lainnya |
+| HAR | `maintenance_types`, `maintenance_cycles`, `wo_statuses`, `work_groups`, `sr_categories`, `work_orders`, `service_requests`, `maintenance_costs`, `har_material_peralatans`, `maintenance_activities` (+ tasks, materials), `maintenance_schedules`, `maintenance_attachments`, `har_unsafe_conditions` *(arsip lama sebelum konsolidasi ke K3)*, `har_laporan_kegiatans`, `har_instruksi_kerjas`, `har_document_records`, tabel formulir/jadwal `har_*` |
+| K3 | master per §7.4, `k3_activity_plans`, `accident_reports`, `inspections` (+ results), `fire_extinguisher_checks`, `emergency_facility_checks`, `security_patrols`, `equipment_certificates`, `k3_kondisi_k3s` (+ `_meta`), `k3_attachments`, `k3_dokumen_iks`, `k3_document_records`, tabel `k3_*` lainnya |
 | Logistik | `logistik_jadwal_rows`, `logistik_form_rows`, `logistik_rekomendasis`, `logistik_instruksi_kerjas`, `logistik_document_records` |
 | PdM | `pdm_jadwal_harians`, `pdm_jadwal_patrol_checks`, `pdm_jadwal_meetings`, `pdm_jadwal_meta`, `pdm_kesiapan_apds`, `pdm_sample_monitorings` (+ items), `pdm_permit_to_works`, `pdm_form_documents` (+ items), `pdm_realisasi_prediktifs`, `pdm_instruksi_kerjas`, `pdm_document_records` |
 
@@ -1485,6 +1487,7 @@ Aturan data:
 
 | Tanggal | Keputusan |
 |---|---|
+| 2026-11-24 | **Konsolidasi input Unsafe Action & Condition hanya ke modul K3 (`Kondisi K3`)**: menu, rute, izin lapangan (`operasi.lapangan.unsafe_condition`, `har.lapangan.unsafe_condition`), form Logistik `unsafe`, dan halaman input Unsafe Action & Condition di Operasi, Pemeliharaan (HAR), serta Logistik & Gudang dihapus sehingga pencatatan hanya ada di `K3 → Kondisi K3` (`k3/input/kondisi-k3`, tabel `k3_kondisi_k3s`). Migrasi data menyalin temuan & foto lama dari `har_unsafe_conditions` serta `logistik_form_rows` (`unsafe`) ke `k3_kondisi_k3s` dan membersihkan permission terkait; `K3Dashboard`, `InputCatalog`, `SlaCatalog` (`k3:k3_kondisi_k3s`), `OperasiReportSections` (`sec-4-13`), dan `EventNotifier` disesuaikan untuk membaca & memberi notifikasi langsung dari `K3KondisiK3` (§5.3, §7.2–7.3, §8.2, §8.4, §8.6, §8.8) |
 | 2026-09 (Fase 1–4) | Fondasi akses permission-driven; modul Operasi, HAR, K3 dibangun sejajar memakai ulang RBAC, registry, document engine, dan grid |
 | 2026-09-19 | Input PdM tanpa tanda tangan (menyusul fitur verifikasi); dropdown memakai komponen React |
 | 2026-09-25 | Menu Laporan Operator dihapus; data absensi tetap dipakai Laporan Operasi |

@@ -15,7 +15,6 @@ import {
     PhoneCall,
     ShieldCheck,
     Sparkles,
-    TriangleAlert,
     Users,
     Warehouse,
     Wrench,
@@ -122,12 +121,6 @@ const INPUT_FORMS: Entry[] = [
         'Laporan Kondisi Stok Tools dan Material',
         'Kondisi Stok',
         Warehouse,
-    ],
-    [
-        'unsafe',
-        'Laporan Unsafe Action dan Unsafe Condition',
-        'Unsafe',
-        TriangleAlert,
     ],
     [
         'pendukung',

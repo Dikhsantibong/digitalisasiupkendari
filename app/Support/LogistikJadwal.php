@@ -365,7 +365,6 @@ class LogistikJadwal
                     'Laporan Inventaris Lainnya',
                 ]),
                 $row('mingguan', '5S 5R', $mark($on('SN', 'RB', 'JM'))),
-                $row('mingguan', 'Laporan Unsafe Action & Unsafe Condition', $mark($on('JM'))),
                 $row('mingguan', 'Laporan Peralatan, Material, Tools', $mark($on('JM'))),
                 $row('bulanan', 'Laporan Logistik & Gudang', $mark(array_slice($work, -1))),
                 $row('bulanan', 'Laporan Pembuatan IK', $mark(array_slice($work, -1))),

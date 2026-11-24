@@ -517,11 +517,13 @@ export default function K3KondisiK3Page({
                         </div>
                     )}
 
-                    <DivisionFindings
-                        findings={division_findings}
-                        summary={division_summary}
-                        onPreview={setPreviewImage}
-                    />
+                    {division_findings.length > 0 && (
+                        <DivisionFindings
+                            findings={division_findings}
+                            summary={division_summary}
+                            onPreview={setPreviewImage}
+                        />
+                    )}
 
                     <div className="flex flex-col gap-1.5">
                         <span className="text-[13px] font-semibold text-foreground">
@@ -1221,11 +1223,13 @@ export default function K3KondisiK3Page({
                         </div>
                     </Card>
 
-                    <DivisionFindings
-                        findings={division_findings}
-                        summary={division_summary}
-                        onPreview={setPreviewImage}
-                    />
+                    {division_findings.length > 0 && (
+                        <DivisionFindings
+                            findings={division_findings}
+                            summary={division_summary}
+                            onPreview={setPreviewImage}
+                        />
+                    )}
 
                     {/* Catatan Tambahan (No Signature block) */}
                     <Card className="gap-2 p-4 py-4">

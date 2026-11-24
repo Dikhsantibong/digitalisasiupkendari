@@ -6,7 +6,6 @@ import {
     FileSignature,
     FileText,
     FolderOpen,
-    TriangleAlert,
     Gauge,
     MonitorSmartphone,
     Sparkles,
@@ -95,13 +94,6 @@ const INPUT_MENUS: InputCard[] = [
             'Pemantauan kondisi dan level stok tools serta material: stok awal, masuk, keluar, dan stok akhir.',
         icon: Warehouse,
         href: formRoutes.index('kondisi-stok').url,
-    },
-    {
-        title: 'Laporan Unsafe Action dan Unsafe Condition',
-        description:
-            'Temuan unsafe action & unsafe condition per minggu dengan kondisi, tindak lanjut, rekomendasi, lokasi, dan eviden foto sebelum/sesudah.',
-        icon: TriangleAlert,
-        href: formRoutes.index('unsafe').url,
     },
     {
         title: 'Laporan Pendukung Logistik & Gudang',

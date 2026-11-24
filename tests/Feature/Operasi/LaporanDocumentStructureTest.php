@@ -6,7 +6,7 @@ use App\Enums\FuelType;
 use App\Enums\RoleName;
 use App\Models\Employee;
 use App\Models\EmployeePresence;
-use App\Models\HarUnsafeCondition;
+use App\Models\K3KondisiK3;
 use App\Models\KondisiAbnormal;
 use App\Models\Machine;
 use App\Models\Operasi5s5rJadwal;
@@ -163,7 +163,7 @@ class LaporanDocumentStructureTest extends TestCase
         OperasiBlackstartJadwal::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'uraian' => 'Cek Baterai Blackstart', 'rencana' => ['8-1'], 'realisasi' => ['8-1']]);
         OperasiCommPeralatan::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'nama_peralatan' => 'COMPRESOR 1', 'beban_50' => ['8-2']]);
         OperasiCommissioningTest::query()->create($period + ['section' => 'PERSIAPAN', 'no_urut' => 1, 'kegiatan' => 'Periksa PMT Feeder', 'status' => 'ok']);
-        HarUnsafeCondition::query()->create($period + ['kategori' => 'Unsafe Condition', 'temuan' => 'Kabel terkelupas', 'lokasi' => 'Ruang Panel']);
+        K3KondisiK3::query()->create($period + ['kategori' => 'Unsafe Condition', 'temuan' => 'Kabel terkelupas', 'lokasi' => 'Ruang Panel', 'keterangan' => 'Open']);
         OperasiFlmMonitoring::factory()->create($period + ['mesin' => 'Sensor Coolant Temp']);
 
         $html = $this->content($unit, $engine);

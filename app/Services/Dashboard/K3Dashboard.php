@@ -7,9 +7,9 @@ use App\Models\AccidentReport;
 use App\Models\EquipmentCertificate;
 use App\Models\FireExtinguisher;
 use App\Models\FireExtinguisherCheck;
-use App\Models\HarUnsafeCondition;
 use App\Models\Inspection;
 use App\Models\K3ActivityPlan;
+use App\Models\K3KondisiK3;
 use App\Models\SecurityPatrol;
 use App\Models\Unit;
 use App\Services\K3\K3MonitoringService;
@@ -20,7 +20,7 @@ use Illuminate\Support\Carbon;
 /**
  * The K3 section of the dashboard, read from the K3 inputs of the visible
  * units: Laporan Kecelakaan (hari tanpa kecelakaan), Inspeksi, Unsafe Action &
- * Condition (temuan without tindak lanjut), sertifikat alat & APAR (status by
+ * Condition (temuan belum Closed pada Kondisi K3), sertifikat alat & APAR (status by
  * {@see K3MonitoringService::statusFor()}), Patroli Security and the Time
  * Frame kegiatan K3 (rencana vs realisasi hari).
  */
@@ -46,9 +46,10 @@ class K3Dashboard
         );
 
         $inspections = $countPerMonth(Inspection::class);
-        $unsafeOpen = array_map(fn (array $m): int => HarUnsafeCondition::query()
+        $unsafeOpen = array_map(fn (array $m): int => K3KondisiK3::query()
             ->whereIn('unit_id', $unitIds)->where('year', $m['year'])->where('month', $m['month'])
-            ->where(fn ($q) => $q->whereNull('tindak_lanjut')->orWhere('tindak_lanjut', ''))
+            ->whereNotNull('temuan')->where('temuan', '!=', '')
+            ->where(fn ($q) => $q->whereNull('keterangan')->orWhereRaw("lower(trim(keterangan)) not in ('close', 'closed', 'selesai')"))
             ->count(), $months);
 
         $lastAccident = AccidentReport::query()
