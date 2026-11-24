@@ -145,8 +145,8 @@ class K3DivisionFeed
      * (Ringkas … Rajin) the rencana, realisasi and kinerja, with the temuan
      * and the number of eviden photos.
      *
-     * - Operasi & Pemeliharaan (Program 5S 5R): rencana = weeks of the month,
-     *   realisasi = weeks the program was filled in.
+     * - Operasi & Pemeliharaan (Program 5S 5R): rencana = days in month × 3 shifts,
+     *   realisasi = day-shift slots the program was filled in.
      * - PdM (Laporan Inspeksi Checklist 5S5R): the rencana & realisasi columns.
      * - Logistik & Gudang (Laporan Inspeksi Checklist 5S5R): per item the
      *   target (15 pelaksanaan) against the slots marked D.
@@ -158,9 +158,9 @@ class K3DivisionFeed
         $period = ['unit_id' => $unit->id, 'month' => $month, 'year' => $year];
 
         return [
-            $this->weeklyProgram('operasi', 'Operasi', 'Program 5S 5R Pengoperasian KIT', OperasiProgram5s5rItem::class, OperasiProgram5s5rEvidence::class, $unit, $month, $year,
+            $this->shiftDailyProgram('operasi', 'Operasi', 'Program 5S 5R Pengoperasian KIT', OperasiProgram5s5rItem::class, OperasiProgram5s5rEvidence::class, $unit, $month, $year,
                 $this->can($viewer, [PermissionName::OperasiInputView, PermissionName::OperasiLapanganProgram5s5r, PermissionName::OperasiLaporanView]) ? route('operasi.input.program-5s5r.index', $period, false) : null),
-            $this->weeklyProgram('har', 'Pemeliharaan', 'Program 5S 5R Pemeliharaan KIT', HarProgram5s5rItem::class, HarProgram5s5rEvidence::class, $unit, $month, $year,
+            $this->shiftDailyProgram('har', 'Pemeliharaan', 'Program 5S 5R Pemeliharaan KIT', HarProgram5s5rItem::class, HarProgram5s5rEvidence::class, $unit, $month, $year,
                 $this->can($viewer, [PermissionName::HarInputView, PermissionName::HarLapanganProgram5s5r, PermissionName::HarLaporanView]) ? route('har.input.program-5s5r.index', $period, false) : null),
             $this->pdmChecklist($unit, $month, $year,
                 $this->can($viewer, [PermissionName::PdmInputView, PermissionName::PdmLaporanView]) ? route('pdm.input.forms.index', ['form' => 'checklist-5s5r', ...$period], false) : null),
@@ -174,26 +174,29 @@ class K3DivisionFeed
      * @param  class-string<OperasiProgram5s5rEvidence|HarProgram5s5rEvidence>  $evidenceModel
      * @return Program
      */
-    private function weeklyProgram(string $key, string $sumber, string $judul, string $itemModel, string $evidenceModel, Unit $unit, int $month, int $year, ?string $url): array
+    private function shiftDailyProgram(string $key, string $sumber, string $judul, string $itemModel, string $evidenceModel, Unit $unit, int $month, int $year, ?string $url): array
     {
-        $weeks = OperasiProgram5s5r::weeks($month, $year);
+        $plannedSlots = OperasiProgram5s5r::plannedSlots($month, $year);
+        $shiftOrder = array_flip(OperasiProgram5s5r::SHIFTS);
         /** @var Collection<int, OperasiProgram5s5rItem|HarProgram5s5rItem> $items */
         $items = $itemModel::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
-            ->orderBy('minggu')->get();
+            ->orderBy('day')->orderBy('id')->get()
+            ->sortBy(fn (Model $item): int => ((int) $item->day * 10) + ($shiftOrder[(string) $item->shift] ?? 0))
+            ->values();
 
         $rows = [];
         foreach (array_keys(self::PROGRAMS) as $program) {
             $done = $items->where('program', $program);
-            $last = $done->sortByDesc('minggu')->first();
-            $rows[] = $this->programRow($program, $weeks, $done->count(), $last === null ? null : collect([
-                "Minggu {$last->minggu}",
+            $last = $done->last();
+            $rows[] = $this->programRow($program, $plannedSlots, $done->count(), $last === null ? null : collect([
+                "Tgl {$last->day} ({$last->shift})",
                 $last->kondisi_akhir !== null ? "kondisi akhir {$last->kondisi_akhir}" : null,
                 $last->progres !== null ? "progres {$last->progres}%" : null,
             ])->filter()->implode(' · '));
         }
 
         $temuan = $items->filter(fn (Model $item): bool => trim((string) $item->keterangan) !== '')
-            ->map(fn (Model $item): string => 'Minggu '.$item->minggu.' — '.(self::PROGRAMS[$item->program] ?? $item->program).': '.trim((string) $item->keterangan))
+            ->map(fn (Model $item): string => 'Tgl '.$item->day.' ('.$item->shift.') — '.(self::PROGRAMS[$item->program] ?? $item->program).': '.trim((string) $item->keterangan))
             ->values()->all();
 
         return $this->program($key, $sumber, $judul, $items->isNotEmpty(), $rows, $temuan,

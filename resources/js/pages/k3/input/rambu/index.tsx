@@ -1,10 +1,21 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import {
+    K3InputExportButtons,
+    K3MobilePdfButton,
+} from '@/components/k3/input-export-buttons';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
@@ -30,10 +41,25 @@ type Props = {
     can_write: boolean;
 };
 
-const empty = (): Row => ({ id: null, rambu: '', lokasi: '', kondisi: '', keterangan: '' });
-const toRow = (r: Partial<Row> & { id: number }): Row => ({ ...empty(), ...r, id: r.id });
+const empty = (): Row => ({
+    id: null,
+    rambu: '',
+    lokasi: '',
+    kondisi: '',
+    keterangan: '',
+});
+const toRow = (r: Partial<Row> & { id: number }): Row => ({
+    ...empty(),
+    ...r,
+    id: r.id,
+});
 
-export default function RambuInput({ unit, filters, rows: initial, options, can_write }: Props) {
+export default function RambuInput({
+    filters,
+    rows: initial,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<Row[]>(initial.map(toRow));
     const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
@@ -43,22 +69,46 @@ export default function RambuInput({ unit, filters, rows: initial, options, can_
     const [sig, setSig] = useState(signature);
 
     if (sig !== signature) {
- setSig(signature); setRows(initial.map(toRow)); setDirty(false); 
-}
+        setSig(signature);
+        setRows(initial.map(toRow));
+        setDirty(false);
+    }
 
-    const visit = (patch: Partial<Props['filters']>) => router.get(rambu.index().url, { ...filters, ...patch }, { preserveState: true, preserveScroll: true, replace: true });
+    const visit = (patch: Partial<Props['filters']>) =>
+        router.get(
+            rambu.index().url,
+            { ...filters, ...patch },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
     const update = (i: number, k: keyof Row, v: string) => {
- setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r))); setDirty(true); 
-};
+        setRows((p) => p.map((r, idx) => (idx === i ? { ...r, [k]: v } : r)));
+        setDirty(true);
+    };
     const addRow = () => {
- setRows((p) => [...p, empty()]); setDirty(true); 
-};
+        setRows((p) => [...p, empty()]);
+        setDirty(true);
+    };
     const removeRow = (i: number) => {
- setRows((p) => p.filter((_, idx) => idx !== i)); setDirty(true); 
-};
+        setRows((p) => p.filter((_, idx) => idx !== i));
+        setDirty(true);
+    };
     const save = () => {
- setSaving(true); router.post(rambu.store().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows }, { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) }); 
-};
+        setSaving(true);
+        router.post(
+            rambu.store().url,
+            {
+                unit_id: filters.unit_id,
+                month: filters.month,
+                year: filters.year,
+                rows,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setDirty(false),
+                onFinish: () => setSaving(false),
+            },
+        );
+    };
 
     const cell = (i: number, k: keyof Row) => (
         <AutoWrapCellInput
@@ -71,6 +121,90 @@ export default function RambuInput({ unit, filters, rows: initial, options, can_
 
     const cols = can_write ? 6 : 5;
 
+    if (compact) {
+        return (
+            <>
+                <Head title="Inspeksi Rambu-Rambu K3 & B3" />
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Inspeksi Rambu-Rambu K3 & B3"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    <MobileRowEditor<Row>
+                        rows={rows}
+                        fields={
+                            [
+                                { key: 'rambu', label: 'Rambu-Rambu K3' },
+                                { key: 'lokasi', label: 'Lokasi' },
+                                {
+                                    key: 'kondisi',
+                                    label: 'Kondisi',
+                                    type: 'dropdown',
+                                    options: ['Baik', 'Tidak Baik'],
+                                    placeholder: 'Pilih Kondisi',
+                                },
+                                { key: 'keterangan', label: 'Keterangan' },
+                            ] satisfies RowField<Row>[]
+                        }
+                        title={(r) => r.rambu || 'Rambu belum diisi'}
+                        subtitle={(r) =>
+                            `${r.lokasi || '-'} · ${r.kondisi || '-'}`
+                        }
+                        onChange={(i, k, v) => update(i, k, String(v ?? ''))}
+                        onRemove={removeRow}
+                        canWrite={can_write}
+                        removeLabel="Hapus rambu"
+                    />
+
+                    <StickyActionBar>
+                        <K3MobilePdfButton
+                            input="rambu"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                        />
+                        {can_write && (
+                            <>
+                                <Button
+                                    onClick={save}
+                                    disabled={saving || !dirty}
+                                    className="gap-1.5"
+                                >
+                                    <Save className="size-4" />
+                                    {saving ? 'Menyimpan…' : 'Simpan'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={addRow}
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-4" />
+                                    Tambah
+                                </Button>
+                            </>
+                        )}
+                    </StickyActionBar>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Inspeksi Rambu-Rambu K3 & B3" />
@@ -78,36 +212,89 @@ export default function RambuInput({ unit, filters, rows: initial, options, can_
                 <PageHeader
                     title="Inspeksi Rambu-Rambu K3 & B3"
                     description="Pemeriksaan kelengkapan dan kondisi rambu-rambu K3 dan B3 di area pembangkit."
-                    actions={(
+                    actions={
                         <div className="flex flex-wrap gap-2">
-                            <K3InputExportButtons input="rambu" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }} />
+                            <K3InputExportButtons
+                                input="rambu"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
                             {can_write && (
                                 <>
-                                    <Button variant="outline" onClick={addRow} className="gap-1.5"><Plus className="size-4" />Tambah Baris</Button>
-                                    <Button onClick={save} disabled={saving || !dirty} className="gap-2"><Save className="size-4" />{saving ? 'Menyimpan…' : 'Simpan'}</Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={addRow}
+                                        className="gap-1.5"
+                                    >
+                                        <Plus className="size-4" />
+                                        Tambah Baris
+                                    </Button>
+                                    <Button
+                                        onClick={save}
+                                        disabled={saving || !dirty}
+                                        className="gap-2"
+                                    >
+                                        <Save className="size-4" />
+                                        {saving ? 'Menyimpan…' : 'Simpan'}
+                                    </Button>
                                 </>
                             )}
                         </div>
-                    )}
+                    }
                 />
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-                    <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} />
-                    <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((l, i) => ({ value: String(i + 1), label: l }))} />
-                    <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} />
-                    {dirty && <span className="pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
+                    <OperasiSelect
+                        label="Unit"
+                        value={String(filters.unit_id)}
+                        onChange={(v) => visit({ unit_id: Number(v) })}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
+                    />
+                    <OperasiSelect
+                        label="Bulan"
+                        value={String(filters.month)}
+                        onChange={(v) => visit({ month: Number(v) })}
+                        options={OPERASI_MONTHS.map((l, i) => ({
+                            value: String(i + 1),
+                            label: l,
+                        }))}
+                    />
+                    <OperasiSelect
+                        label="Tahun"
+                        value={String(filters.year)}
+                        onChange={(v) => visit({ year: Number(v) })}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
+                    />
+                    {dirty && (
+                        <span className="pb-1 text-[13px] text-amber-600">
+                            Ada perubahan belum disimpan.
+                        </span>
+                    )}
                 </div>
 
                 {compact ? (
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={[
-                            { key: 'rambu', label: 'Rambu-Rambu K3' },
-                            { key: 'lokasi', label: 'Lokasi' },
-                            { key: 'kondisi', label: 'Kondisi' },
-                            { key: 'keterangan', label: 'Keterangan' },
-                        ] satisfies RowField<Row>[]}
+                        fields={
+                            [
+                                { key: 'rambu', label: 'Rambu-Rambu K3' },
+                                { key: 'lokasi', label: 'Lokasi' },
+                                { key: 'kondisi', label: 'Kondisi' },
+                                { key: 'keterangan', label: 'Keterangan' },
+                            ] satisfies RowField<Row>[]
+                        }
                         title={(r) => r.rambu || 'Rambu belum diisi'}
-                        subtitle={(r) => `${r.lokasi || '-'} · ${r.kondisi || '-'}`}
+                        subtitle={(r) =>
+                            `${r.lokasi || '-'} · ${r.kondisi || '-'}`
+                        }
                         onChange={(i, k, v) => update(i, k, String(v ?? ''))}
                         onRemove={removeRow}
                         canWrite={can_write}
@@ -118,22 +305,66 @@ export default function RambuInput({ unit, filters, rows: initial, options, can_
                         <table className="excel-sheet w-full border-collapse text-xs">
                             <thead className="bg-muted/50">
                                 <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
-                                    <th className="w-10">No</th><th className="text-left">Rambu-Rambu K3</th><th className="text-left">Lokasi</th><th>Kondisi</th><th className="text-left">Keterangan</th>{can_write && <th className="w-12">Aksi</th>}
+                                    <th className="w-10">No</th>
+                                    <th className="text-left">
+                                        Rambu-Rambu K3
+                                    </th>
+                                    <th className="text-left">Lokasi</th>
+                                    <th>Kondisi</th>
+                                    <th className="text-left">Keterangan</th>
+                                    {can_write && (
+                                        <th className="w-12">Aksi</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
                                 {rows.length === 0 ? (
-                                    <tr><td colSpan={cols} className="border border-border p-4 text-center text-muted-foreground">Belum ada data. Klik “Tambah Baris”.</td></tr>
-                                ) : rows.map((_, i) => (
-                                    <tr key={i} className="[&>td]:border [&>td]:border-border [&>td]:p-1 [&>td]:align-middle [&>td]:whitespace-normal hover:bg-muted/20">
-                                        <td className="text-center">{i + 1}</td>
-                                        <td className="min-w-[200px]">{cell(i, 'rambu')}</td>
-                                        <td className="min-w-[200px]">{cell(i, 'lokasi')}</td>
-                                        <td className="min-w-[120px]">{cell(i, 'kondisi')}</td>
-                                        <td className="min-w-[180px]">{cell(i, 'keterangan')}</td>
-                                        {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(i)}><Trash2 className="size-4" /></Button></td>}
+                                    <tr>
+                                        <td
+                                            colSpan={cols}
+                                            className="border border-border p-4 text-center text-muted-foreground"
+                                        >
+                                            Belum ada data. Klik “Tambah Baris”.
+                                        </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    rows.map((_, i) => (
+                                        <tr
+                                            key={i}
+                                            className="hover:bg-muted/20 [&>td]:border [&>td]:border-border [&>td]:p-1 [&>td]:align-middle [&>td]:whitespace-normal"
+                                        >
+                                            <td className="text-center">
+                                                {i + 1}
+                                            </td>
+                                            <td className="min-w-[200px]">
+                                                {cell(i, 'rambu')}
+                                            </td>
+                                            <td className="min-w-[200px]">
+                                                {cell(i, 'lokasi')}
+                                            </td>
+                                            <td className="min-w-[120px]">
+                                                {cell(i, 'kondisi')}
+                                            </td>
+                                            <td className="min-w-[180px]">
+                                                {cell(i, 'keterangan')}
+                                            </td>
+                                            {can_write && (
+                                                <td className="text-center">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="size-7 text-muted-foreground hover:text-destructive"
+                                                        onClick={() =>
+                                                            removeRow(i)
+                                                        }
+                                                    >
+                                                        <Trash2 className="size-4" />
+                                                    </Button>
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
                     </div>

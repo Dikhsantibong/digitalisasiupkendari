@@ -12,7 +12,15 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
-import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    MobileTimelineForm,
+    TimelineField,
+} from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -140,10 +148,6 @@ export default function K3KegiatanRutinPage({
         setDirty(false);
     }
 
-    const monthName = useMemo(
-        () => OPERASI_MONTHS[filters.month - 1] ?? '',
-        [filters.month],
-    );
     const workingDaysList = useMemo(
         () => days.filter((d) => !d.is_red).map((d) => d.day),
         [days],
@@ -159,14 +163,14 @@ export default function K3KegiatanRutinPage({
 
     const toggleDay = (key: number, day: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) => {
                 if (r._key !== key) {
-return r;
-}
+                    return r;
+                }
 
                 const set = new Set(r.jadwal || []);
 
@@ -190,8 +194,8 @@ return r;
         value: string | number,
     ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) => (r._key === key ? { ...r, [field]: value } : r)),
@@ -201,8 +205,8 @@ return;
 
     const handleMarkAllWorkingDays = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) => ({
@@ -216,8 +220,8 @@ return;
 
     const handleAddActivity = () => {
         if (!newKegiatan.trim()) {
-return;
-}
+            return;
+        }
 
         setRows((prev) => [
             ...prev,
@@ -242,8 +246,8 @@ return;
 
     const handleRemoveRow = (key: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) => prev.filter((r) => r._key !== key));
         setDirty(true);
@@ -256,8 +260,8 @@ return;
 
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
 
@@ -297,410 +301,760 @@ return;
             <Head title={`Jadwal Kegiatan Rutin K3L KIT — ${unit.name}`} />
             <style>{PRINT_CSS}</style>
 
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                {/* Header bar */}
-                <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => router.get(jadwal.index().url)}
-                            title="Kembali ke Daftar Jadwal"
-                        >
-                            <ArrowLeft className="size-4" />
-                        </Button>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold text-foreground">
-                                    Jadwal Kegiatan Rutin Harian, Mingguan &amp;
-                                    Bulanan K3L KIT
-                                </h1>
-                                <Badge
-                                    variant="outline"
-                                    className="border-primary/30 bg-primary/10 text-primary"
-                                >
-                                    {unit.name}
-                                </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Klik kotak tanggal untuk menandai pelaksanaan
-                                (otomatis terisi 1 &amp; terakumulasi ke
-                                realisasi/kinerja).
-                            </p>
-                        </div>
-                    </div>
+            {compact ? (
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Jadwal Kegiatan Rutin K3L"
+                        backHref={jadwal.index().url}
+                    />
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        {dirty && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleReset}
-                                disabled={saving}
-                                className="gap-1.5 text-xs text-muted-foreground"
-                            >
-                                <RotateCcw className="size-3.5" />
-                                Reset
-                            </Button>
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    {can_write && mobileEditing && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleMarkAllWorkingDays}
+                            className="h-9 w-full justify-center gap-1.5 text-xs"
+                        >
+                            <CheckCheck className="size-4 text-primary" />
+                            Tandai Semua Hari Kerja
+                        </Button>
+                    )}
+
+                    <MobileTimelineForm<Row>
+                        days={days}
+                        rows={GROUPS.flatMap((group) =>
+                            rows.filter((r) => r.grup === group.key),
                         )}
-                        {can_write && (!compact || mobileEditing || dirty) && (
+                        rowKey={(row) => row._key}
+                        title={(row) => row.kegiatan || 'Kegiatan baru'}
+                        sectionOf={(row) => {
+                            const group = GROUPS.find(
+                                (g) => g.key === row.grup,
+                            );
+
+                            return group
+                                ? `${group.roman}. ${group.label}`
+                                : '';
+                        }}
+                        categories={[
+                            {
+                                key: 'jadwal',
+                                label: 'Terlaksana',
+                                onClass:
+                                    'border-emerald-600 bg-emerald-500 text-black',
+                            },
+                        ]}
+                        isOn={(row, _category, day) =>
+                            (row.jadwal || []).includes(day)
+                        }
+                        onToggle={(row, _category, day) =>
+                            toggleDay(row._key, day)
+                        }
+                        lockRedDays
+                        details={(row) => (
+                            <>
+                                <TimelineField
+                                    label="Kegiatan"
+                                    value={row.kegiatan}
+                                    onChange={(v) =>
+                                        updateField(row._key, 'kegiatan', v)
+                                    }
+                                    readOnly={!can_write}
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <TimelineField
+                                        label="Target"
+                                        type="number"
+                                        value={row.target}
+                                        onChange={(v) =>
+                                            updateField(
+                                                row._key,
+                                                'target',
+                                                Number(v),
+                                            )
+                                        }
+                                        readOnly={!can_write}
+                                    />
+                                    <TimelineField
+                                        label="Keterangan"
+                                        value={row.keterangan || ''}
+                                        onChange={(v) =>
+                                            updateField(
+                                                row._key,
+                                                'keterangan',
+                                                v,
+                                            )
+                                        }
+                                        readOnly={!can_write}
+                                        placeholder="Catatan…"
+                                    />
+                                </div>
+                            </>
+                        )}
+                        summary={(row) => {
+                            const target = row.target || target_working_days;
+                            const realisasi = (row.jadwal || []).length;
+
+                            return `Target ${target} · Realisasi ${realisasi} · Kinerja ${target > 0 ? Math.round((realisasi / target) * 100) : 0}%`;
+                        }}
+                        onRemove={(row) => handleRemoveRow(row._key)}
+                        readOnly={!can_write}
+                        editing={mobileEditing}
+                        onEditingChange={setMobileEditing}
+                        empty="Belum ada kegiatan rutin."
+                    />
+
+                    <StickyActionBar>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                window.open(
+                                    `${kegiatanRutin.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`,
+                                    '_blank',
+                                )
+                            }
+                            className="gap-1.5"
+                        >
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                        {can_write && (
                             <>
                                 <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleMarkAllWorkingDays}
-                                    className="gap-1.5 text-xs"
-                                    title="Tandai seluruh hari kerja non-libur"
-                                >
-                                    <CheckCheck className="size-3.5 text-primary" />
-                                    Tandai Semua Hari Kerja
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setIsAddOpen(true)}
-                                    className="gap-1.5 text-xs"
-                                >
-                                    <Plus className="size-3.5" />
-                                    Tambah Kegiatan
-                                </Button>
-                                <Button
-                                    size="sm"
+                                    type="button"
                                     onClick={handleSave}
                                     disabled={saving || !dirty}
-                                    className="gap-1.5 text-xs"
+                                    className="gap-1.5"
                                 >
-                                    <Save className="size-3.5" />
-                                    {saving ? 'Menyimpan…' : 'Simpan Jadwal'}
+                                    <Save className="size-4" />
+                                    {saving ? 'Menyimpan…' : 'Simpan'}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsAddOpen(true)}
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-4" />
+                                    Tambah
                                 </Button>
                             </>
                         )}
-                        <a
-                            href={`${kegiatanRutin.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
+                    </StickyActionBar>
+                </div>
+            ) : (
+                <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                    {/* Header bar */}
+                    <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => router.get(jadwal.index().url)}
+                                title="Kembali ke Daftar Jadwal"
+                            >
+                                <ArrowLeft className="size-4" />
+                            </Button>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-xl font-bold text-foreground">
+                                        Jadwal Kegiatan Rutin Harian, Mingguan
+                                        &amp; Bulanan K3L KIT
+                                    </h1>
+                                    <Badge
+                                        variant="outline"
+                                        className="border-primary/30 bg-primary/10 text-primary"
+                                    >
+                                        {unit.name}
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Klik kotak tanggal untuk menandai
+                                    pelaksanaan (otomatis terisi 1 &amp;
+                                    terakumulasi ke realisasi/kinerja).
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            {dirty && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleReset}
+                                    disabled={saving}
+                                    className="gap-1.5 text-xs text-muted-foreground"
+                                >
+                                    <RotateCcw className="size-3.5" />
+                                    Reset
+                                </Button>
+                            )}
+                            {can_write &&
+                                (!compact || mobileEditing || dirty) && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleMarkAllWorkingDays}
+                                            className="gap-1.5 text-xs"
+                                            title="Tandai seluruh hari kerja non-libur"
+                                        >
+                                            <CheckCheck className="size-3.5 text-primary" />
+                                            Tandai Semua Hari Kerja
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsAddOpen(true)}
+                                            className="gap-1.5 text-xs"
+                                        >
+                                            <Plus className="size-3.5" />
+                                            Tambah Kegiatan
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleSave}
+                                            disabled={saving || !dirty}
+                                            className="gap-1.5 text-xs"
+                                        >
+                                            <Save className="size-3.5" />
+                                            {saving
+                                                ? 'Menyimpan…'
+                                                : 'Simpan Jadwal'}
+                                        </Button>
+                                    </>
+                                )}
+                            <a
+                                href={`${kegiatanRutin.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5 text-xs"
+                                    title="Unduh format PDF resmi"
+                                >
+                                    <Download className="size-3.5 text-rose-600" />
+                                    PDF
+                                </Button>
+                            </a>
                             <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => window.print()}
                                 className="gap-1.5 text-xs"
-                                title="Unduh format PDF resmi"
+                                title="Cetak Lanskap"
                             >
-                                <Download className="size-3.5 text-rose-600" />
-                                PDF
+                                <Printer className="size-3.5" />
+                                Cetak
                             </Button>
-                        </a>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.print()}
-                            className="gap-1.5 text-xs"
-                            title="Cetak Lanskap"
-                        >
-                            <Printer className="size-3.5" />
-                            Cetak
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Filters */}
-                <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
-                    <OperasiSelect
-                        label="Unit Pembangkit"
-                        value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({
-                            value: String(u.id),
-                            label: u.name,
-                        }))}
-                    />
-                    <OperasiSelect
-                        label="Bulan"
-                        value={String(filters.month)}
-                        onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({
-                            value: String(index + 1),
-                            label,
-                        }))}
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({
-                            value: String(y),
-                            label: String(y),
-                        }))}
-                    />
-                    {dirty && (
-                        <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
-                            Ada perubahan belum disimpan
-                        </div>
-                    )}
-                </div>
-
-                {/* Printable card */}
-                <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
-                    {/* Document header */}
-                    <div className="border-b border-border p-4">
-                        <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
-                            <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/sidebar-logo.png"
-                                    alt="PLN Nusantara Power"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (e.target as HTMLElement).style.display = 'none';
-                                    }}
-                                />
-                            </div>
-                            <div className="col-span-6 flex flex-col justify-center p-2 text-center">
-                                <div className="text-xs font-bold tracking-wide text-foreground uppercase">
-                                    JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT
-                                </div>
-                                <div className="text-xs font-bold text-foreground uppercase">
-                                    PLN NP UP KENDARI - {unit.name.toUpperCase()}
-                                </div>
-                                <div className="mt-0.5 text-[11px] font-semibold text-foreground uppercase">
-                                    LAPORAN PROJECT
-                                </div>
-                                <div className="text-[11px] font-bold text-foreground uppercase">
-                                    JADWAL KEGIATAN K3L
-                                </div>
-                            </div>
-                            <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/mkp.jpg"
-                                    alt="Mitra Karya Prima"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (e.target as HTMLElement).style.display = 'none';
-                                    }}
-                                />
-                            </div>
                         </div>
                     </div>
 
-                    {/* Table */}
-                    {compact ? (
-                        <div className="p-3">
-                            <MobileTimelineForm<Row>
-                                days={days}
-                                rows={GROUPS.flatMap((group) => rows.filter((r) => r.grup === group.key))}
-                                rowKey={(row) => row._key}
-                                title={(row) => row.kegiatan || 'Kegiatan baru'}
-                                sectionOf={(row) => {
-                                    const group = GROUPS.find((g) => g.key === row.grup);
+                    {/* Filters */}
+                    <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
+                        <OperasiSelect
+                            label="Unit Pembangkit"
+                            value={String(filters.unit_id)}
+                            onChange={(value) =>
+                                visit({ unit_id: Number(value) })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Bulan"
+                            value={String(filters.month)}
+                            onChange={(value) =>
+                                visit({ month: Number(value) })
+                            }
+                            options={OPERASI_MONTHS.map((label, index) => ({
+                                value: String(index + 1),
+                                label,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(value) => visit({ year: Number(value) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                        />
+                        {dirty && (
+                            <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                <span className="size-2 animate-pulse rounded-full bg-amber-500" />
+                                Ada perubahan belum disimpan
+                            </div>
+                        )}
+                    </div>
 
-                                    return group ? `${group.roman}. ${group.label}` : '';
-                                }}
-                                categories={[{ key: 'jadwal', label: 'Terlaksana', onClass: 'border-emerald-600 bg-emerald-500 text-black' }]}
-                                isOn={(row, _category, day) => (row.jadwal || []).includes(day)}
-                                onToggle={(row, _category, day) => toggleDay(row._key, day)}
-                                lockRedDays
-                                details={(row) => (
-                                    <>
-                                        <TimelineField label="Kegiatan" value={row.kegiatan} onChange={(v) => updateField(row._key, 'kegiatan', v)} readOnly={!can_write} />
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <TimelineField label="Target" type="number" value={row.target} onChange={(v) => updateField(row._key, 'target', Number(v))} readOnly={!can_write} />
-                                            <TimelineField label="Keterangan" value={row.keterangan || ''} onChange={(v) => updateField(row._key, 'keterangan', v)} readOnly={!can_write} placeholder="Catatan…" />
-                                        </div>
-                                    </>
-                                )}
-                                summary={(row) => {
-                                    const target = row.target || target_working_days;
-                                    const realisasi = (row.jadwal || []).length;
-
-                                    return `Target ${target} · Realisasi ${realisasi} · Kinerja ${target > 0 ? Math.round((realisasi / target) * 100) : 0}%`;
-                                }}
-                                onRemove={(row) => handleRemoveRow(row._key)}
-                                readOnly={!can_write}
-                                editing={mobileEditing}
-                                onEditingChange={setMobileEditing}
-                                empty="Belum ada kegiatan rutin."
-                            />
+                    {/* Printable card */}
+                    <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
+                        {/* Document header */}
+                        <div className="border-b border-border p-4">
+                            <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
+                                <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/sidebar-logo.png"
+                                        alt="PLN Nusantara Power"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                                <div className="col-span-6 flex flex-col justify-center p-2 text-center">
+                                    <div className="text-xs font-bold tracking-wide text-foreground uppercase">
+                                        JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE -
+                                        KIT
+                                    </div>
+                                    <div className="text-xs font-bold text-foreground uppercase">
+                                        PLN NP UP KENDARI -{' '}
+                                        {unit.name.toUpperCase()}
+                                    </div>
+                                    <div className="mt-0.5 text-[11px] font-semibold text-foreground uppercase">
+                                        LAPORAN PROJECT
+                                    </div>
+                                    <div className="text-[11px] font-bold text-foreground uppercase">
+                                        JADWAL KEGIATAN K3L
+                                    </div>
+                                </div>
+                                <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/mkp.jpg"
+                                        alt="Mitra Karya Prima"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="excel-sheet print-table w-full border-collapse text-xs">
-                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                    <tr>
-                                        <th rowSpan={2} className="w-10 border border-black p-2 text-center font-bold text-foreground">
-                                            No
-                                        </th>
-                                        <th rowSpan={2} className="w-72 min-w-64 whitespace-normal border border-black p-2 text-left font-bold text-foreground">
-                                            Nama Peralatan / Kegiatan
-                                        </th>
-                                        <th colSpan={days.length} className="border border-black p-1.5 text-center font-bold tracking-wider text-foreground uppercase">
-                                            Tanggal
-                                        </th>
-                                        <th rowSpan={2} className="w-14 border border-black p-2 text-center font-bold text-foreground">
-                                            TARGET
-                                        </th>
-                                        <th rowSpan={2} className="w-16 border border-black p-2 text-center font-bold text-foreground">
-                                            REALISASI
-                                        </th>
-                                        <th rowSpan={2} className="w-16 border border-black p-2 text-center font-bold text-foreground">
-                                            KINERJA
-                                        </th>
-                                        <th rowSpan={2} className="w-56 min-w-44 whitespace-normal border border-black p-2 text-left font-bold text-foreground">
-                                            Keterangan
-                                        </th>
-                                        {can_write && (
-                                            <th rowSpan={2} className="no-print w-10 border border-black p-2 text-center font-bold text-foreground">
-                                                Aksi
-                                            </th>
-                                        )}
-                                    </tr>
-                                    <tr>
-                                        {days.map((d) => (
-                                            <th
-                                                key={d.day}
-                                                className={`w-7 border border-black p-1 text-center font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`}
-                                                title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
-                                            >
-                                                {d.day}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {GROUPS.map((group) => {
-                                        const groupRows = rows.filter((r) => r.grup === group.key);
 
-                                        return (
-                                            <Fragment key={group.key}>
-                                                <tr className="print-group-row bg-muted/70 dark:bg-muted/40">
-                                                    <td className="border border-black p-1 text-center text-sm font-bold text-foreground">
-                                                        {group.roman}
-                                                    </td>
-                                                    <td
-                                                        colSpan={totalColsAfterNo}
-                                                        className="border border-black p-1 text-left text-sm font-bold text-foreground italic"
-                                                    >
-                                                        {group.label}
-                                                    </td>
-                                                </tr>
-
-                                                {groupRows.map((row, li) => {
-                                                    const realisasi = (row.jadwal || []).length;
-                                                    const target = row.target || target_working_days;
-                                                    const kinerja = target > 0 ? Math.round((realisasi / target) * 100) : 0;
-
-                                                    return (
-                                                        <tr key={row._key} className="transition-colors hover:bg-muted/10">
-                                                            <td className="border border-black p-1 text-center font-medium text-foreground">
-                                                                {li + 1}
-                                                            </td>
-                                                            <td className="min-w-64 border border-black p-1 align-middle whitespace-normal text-foreground">
-                                                                <AutoWrapCellInput
-                                                                    value={row.kegiatan}
-                                                                    onChange={(val) => updateField(row._key, 'kegiatan', val)}
-                                                                    readOnly={!can_write}
-                                                                />
-                                                            </td>
-                                                            {days.map((d) => {
-                                                                if (d.is_red) {
-                                                                    return (
-                                                                        <td
-                                                                            key={d.day}
-                                                                            className="print-red-cell border border-black bg-[#ff0000] select-none"
-                                                                            title={`${d.day} (${d.dow}): Libur / Akhir Pekan`}
-                                                                        />
-                                                                    );
-                                                                }
-
-                                                                const isDone = row.jadwal.includes(d.day);
-
-                                                                return (
-                                                                    <td
-                                                                        key={d.day}
-                                                                        onClick={() => toggleDay(row._key, d.day)}
-                                                                        className={`border border-black text-center font-bold transition-colors select-none ${isDone ? 'bg-slate-200 text-foreground dark:bg-slate-700' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}
-                                                                        title={`Tanggal ${d.day} (${d.dow}): ${isDone ? 'Terlaksana (1) - klik untuk batalkan' : 'Belum - klik untuk tandai (1)'}`}
-                                                                    >
-                                                                        {isDone ? '1' : ''}
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                            <td className="border border-black p-1 text-center font-bold text-foreground">
-                                                                {can_write ? (
-                                                                    <input
-                                                                        type="number"
-                                                                        min="0"
-                                                                        value={row.target}
-                                                                        onChange={(e) => updateField(row._key, 'target', Number(e.target.value))}
-                                                                        className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                    />
-                                                                ) : (
-                                                                    row.target
-                                                                )}
-                                                            </td>
-                                                            <td className="border border-black p-1 text-center font-extrabold text-foreground">
-                                                                {realisasi}
-                                                            </td>
-                                                            <td className={`border border-black p-1 text-center font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                                                                {kinerja}%
-                                                            </td>
-                                                            <td className="min-w-44 border border-black p-1 align-middle whitespace-normal text-foreground">
-                                                                <AutoWrapCellInput
-                                                                    value={row.keterangan || ''}
-                                                                    onChange={(val) => updateField(row._key, 'keterangan', val)}
-                                                                    placeholder="Catatan…"
-                                                                    emptyFallback="-"
-                                                                    readOnly={!can_write}
-                                                                />
-                                                            </td>
-                                                            {can_write && (
-                                                                <td className="no-print border border-black p-1 text-center">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                                        onClick={() => handleRemoveRow(row._key)}
-                                                                        title="Hapus Kegiatan"
-                                                                    >
-                                                                        <Trash2 className="size-3.5" />
-                                                                    </Button>
-                                                                </td>
-                                                            )}
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </Fragment>
+                        {/* Table */}
+                        {compact ? (
+                            <div className="p-3">
+                                <MobileTimelineForm<Row>
+                                    days={days}
+                                    rows={GROUPS.flatMap((group) =>
+                                        rows.filter(
+                                            (r) => r.grup === group.key,
+                                        ),
+                                    )}
+                                    rowKey={(row) => row._key}
+                                    title={(row) =>
+                                        row.kegiatan || 'Kegiatan baru'
+                                    }
+                                    sectionOf={(row) => {
+                                        const group = GROUPS.find(
+                                            (g) => g.key === row.grup,
                                         );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
 
-                    {/* Legend */}
-                    <div className="border-t border-border bg-muted/20 p-4">
-                        <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex flex-wrap items-center gap-4">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="size-3.5 rounded-xs border border-red-700 bg-[#ff0000]" />
-                                    <span>Hari Libur / Akhir Pekan</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="size-3.5 rounded-xs border border-border bg-slate-200 dark:bg-slate-700" />
-                                    <span>Terlaksana (1)</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="font-semibold text-foreground">Target Hari Kerja Bulan Ini:</span>
-                                    <span>{target_working_days} Hari</span>
-                                </div>
+                                        return group
+                                            ? `${group.roman}. ${group.label}`
+                                            : '';
+                                    }}
+                                    categories={[
+                                        {
+                                            key: 'jadwal',
+                                            label: 'Terlaksana',
+                                            onClass:
+                                                'border-emerald-600 bg-emerald-500 text-black',
+                                        },
+                                    ]}
+                                    isOn={(row, _category, day) =>
+                                        (row.jadwal || []).includes(day)
+                                    }
+                                    onToggle={(row, _category, day) =>
+                                        toggleDay(row._key, day)
+                                    }
+                                    lockRedDays
+                                    details={(row) => (
+                                        <>
+                                            <TimelineField
+                                                label="Kegiatan"
+                                                value={row.kegiatan}
+                                                onChange={(v) =>
+                                                    updateField(
+                                                        row._key,
+                                                        'kegiatan',
+                                                        v,
+                                                    )
+                                                }
+                                                readOnly={!can_write}
+                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <TimelineField
+                                                    label="Target"
+                                                    type="number"
+                                                    value={row.target}
+                                                    onChange={(v) =>
+                                                        updateField(
+                                                            row._key,
+                                                            'target',
+                                                            Number(v),
+                                                        )
+                                                    }
+                                                    readOnly={!can_write}
+                                                />
+                                                <TimelineField
+                                                    label="Keterangan"
+                                                    value={row.keterangan || ''}
+                                                    onChange={(v) =>
+                                                        updateField(
+                                                            row._key,
+                                                            'keterangan',
+                                                            v,
+                                                        )
+                                                    }
+                                                    readOnly={!can_write}
+                                                    placeholder="Catatan…"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                    summary={(row) => {
+                                        const target =
+                                            row.target || target_working_days;
+                                        const realisasi = (row.jadwal || [])
+                                            .length;
+
+                                        return `Target ${target} · Realisasi ${realisasi} · Kinerja ${target > 0 ? Math.round((realisasi / target) * 100) : 0}%`;
+                                    }}
+                                    onRemove={(row) =>
+                                        handleRemoveRow(row._key)
+                                    }
+                                    readOnly={!can_write}
+                                    editing={mobileEditing}
+                                    onEditingChange={setMobileEditing}
+                                    empty="Belum ada kegiatan rutin."
+                                />
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <Info className="size-3.5 text-primary" />
-                                <span>Gunakan &quot;Tandai Semua Hari Kerja&quot; untuk mengisi otomatis.</span>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="excel-sheet print-table w-full border-collapse text-xs">
+                                    <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                        <tr>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-10 border border-black p-2 text-center font-bold text-foreground"
+                                            >
+                                                No
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-72 min-w-64 border border-black p-2 text-left font-bold whitespace-normal text-foreground"
+                                            >
+                                                Nama Peralatan / Kegiatan
+                                            </th>
+                                            <th
+                                                colSpan={days.length}
+                                                className="border border-black p-1.5 text-center font-bold tracking-wider text-foreground uppercase"
+                                            >
+                                                Tanggal
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-14 border border-black p-2 text-center font-bold text-foreground"
+                                            >
+                                                TARGET
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-16 border border-black p-2 text-center font-bold text-foreground"
+                                            >
+                                                REALISASI
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-16 border border-black p-2 text-center font-bold text-foreground"
+                                            >
+                                                KINERJA
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-56 min-w-44 border border-black p-2 text-left font-bold whitespace-normal text-foreground"
+                                            >
+                                                Keterangan
+                                            </th>
+                                            {can_write && (
+                                                <th
+                                                    rowSpan={2}
+                                                    className="no-print w-10 border border-black p-2 text-center font-bold text-foreground"
+                                                >
+                                                    Aksi
+                                                </th>
+                                            )}
+                                        </tr>
+                                        <tr>
+                                            {days.map((d) => (
+                                                <th
+                                                    key={d.day}
+                                                    className={`w-7 border border-black p-1 text-center font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`}
+                                                    title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
+                                                >
+                                                    {d.day}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {GROUPS.map((group) => {
+                                            const groupRows = rows.filter(
+                                                (r) => r.grup === group.key,
+                                            );
+
+                                            return (
+                                                <Fragment key={group.key}>
+                                                    <tr className="print-group-row bg-muted/70 dark:bg-muted/40">
+                                                        <td className="border border-black p-1 text-center text-sm font-bold text-foreground">
+                                                            {group.roman}
+                                                        </td>
+                                                        <td
+                                                            colSpan={
+                                                                totalColsAfterNo
+                                                            }
+                                                            className="border border-black p-1 text-left text-sm font-bold text-foreground italic"
+                                                        >
+                                                            {group.label}
+                                                        </td>
+                                                    </tr>
+
+                                                    {groupRows.map(
+                                                        (row, li) => {
+                                                            const realisasi = (
+                                                                row.jadwal || []
+                                                            ).length;
+                                                            const target =
+                                                                row.target ||
+                                                                target_working_days;
+                                                            const kinerja =
+                                                                target > 0
+                                                                    ? Math.round(
+                                                                          (realisasi /
+                                                                              target) *
+                                                                              100,
+                                                                      )
+                                                                    : 0;
+
+                                                            return (
+                                                                <tr
+                                                                    key={
+                                                                        row._key
+                                                                    }
+                                                                    className="transition-colors hover:bg-muted/10"
+                                                                >
+                                                                    <td className="border border-black p-1 text-center font-medium text-foreground">
+                                                                        {li + 1}
+                                                                    </td>
+                                                                    <td className="min-w-64 border border-black p-1 align-middle whitespace-normal text-foreground">
+                                                                        <AutoWrapCellInput
+                                                                            value={
+                                                                                row.kegiatan
+                                                                            }
+                                                                            onChange={(
+                                                                                val,
+                                                                            ) =>
+                                                                                updateField(
+                                                                                    row._key,
+                                                                                    'kegiatan',
+                                                                                    val,
+                                                                                )
+                                                                            }
+                                                                            readOnly={
+                                                                                !can_write
+                                                                            }
+                                                                        />
+                                                                    </td>
+                                                                    {days.map(
+                                                                        (d) => {
+                                                                            if (
+                                                                                d.is_red
+                                                                            ) {
+                                                                                return (
+                                                                                    <td
+                                                                                        key={
+                                                                                            d.day
+                                                                                        }
+                                                                                        className="print-red-cell border border-black bg-[#ff0000] select-none"
+                                                                                        title={`${d.day} (${d.dow}): Libur / Akhir Pekan`}
+                                                                                    />
+                                                                                );
+                                                                            }
+
+                                                                            const isDone =
+                                                                                row.jadwal.includes(
+                                                                                    d.day,
+                                                                                );
+
+                                                                            return (
+                                                                                <td
+                                                                                    key={
+                                                                                        d.day
+                                                                                    }
+                                                                                    onClick={() =>
+                                                                                        toggleDay(
+                                                                                            row._key,
+                                                                                            d.day,
+                                                                                        )
+                                                                                    }
+                                                                                    className={`border border-black text-center font-bold transition-colors select-none ${isDone ? 'bg-slate-200 text-foreground dark:bg-slate-700' : 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}
+                                                                                    title={`Tanggal ${d.day} (${d.dow}): ${isDone ? 'Terlaksana (1) - klik untuk batalkan' : 'Belum - klik untuk tandai (1)'}`}
+                                                                                >
+                                                                                    {isDone
+                                                                                        ? '1'
+                                                                                        : ''}
+                                                                                </td>
+                                                                            );
+                                                                        },
+                                                                    )}
+                                                                    <td className="border border-black p-1 text-center font-bold text-foreground">
+                                                                        {can_write ? (
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                value={
+                                                                                    row.target
+                                                                                }
+                                                                                onChange={(
+                                                                                    e,
+                                                                                ) =>
+                                                                                    updateField(
+                                                                                        row._key,
+                                                                                        'target',
+                                                                                        Number(
+                                                                                            e
+                                                                                                .target
+                                                                                                .value,
+                                                                                        ),
+                                                                                    )
+                                                                                }
+                                                                                className="w-12 bg-transparent text-center font-bold focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                            />
+                                                                        ) : (
+                                                                            row.target
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="border border-black p-1 text-center font-extrabold text-foreground">
+                                                                        {
+                                                                            realisasi
+                                                                        }
+                                                                    </td>
+                                                                    <td
+                                                                        className={`border border-black p-1 text-center font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+                                                                    >
+                                                                        {
+                                                                            kinerja
+                                                                        }
+                                                                        %
+                                                                    </td>
+                                                                    <td className="min-w-44 border border-black p-1 align-middle whitespace-normal text-foreground">
+                                                                        <AutoWrapCellInput
+                                                                            value={
+                                                                                row.keterangan ||
+                                                                                ''
+                                                                            }
+                                                                            onChange={(
+                                                                                val,
+                                                                            ) =>
+                                                                                updateField(
+                                                                                    row._key,
+                                                                                    'keterangan',
+                                                                                    val,
+                                                                                )
+                                                                            }
+                                                                            placeholder="Catatan…"
+                                                                            emptyFallback="-"
+                                                                            readOnly={
+                                                                                !can_write
+                                                                            }
+                                                                        />
+                                                                    </td>
+                                                                    {can_write && (
+                                                                        <td className="no-print border border-black p-1 text-center">
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="icon"
+                                                                                className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                                                onClick={() =>
+                                                                                    handleRemoveRow(
+                                                                                        row._key,
+                                                                                    )
+                                                                                }
+                                                                                title="Hapus Kegiatan"
+                                                                            >
+                                                                                <Trash2 className="size-3.5" />
+                                                                            </Button>
+                                                                        </td>
+                                                                    )}
+                                                                </tr>
+                                                            );
+                                                        },
+                                                    )}
+                                                </Fragment>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Legend */}
+                        <div className="border-t border-border bg-muted/20 p-4">
+                            <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-3.5 rounded-xs border border-red-700 bg-[#ff0000]" />
+                                        <span>Hari Libur / Akhir Pekan</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="size-3.5 rounded-xs border border-border bg-slate-200 dark:bg-slate-700" />
+                                        <span>Terlaksana (1)</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="font-semibold text-foreground">
+                                            Target Hari Kerja Bulan Ini:
+                                        </span>
+                                        <span>{target_working_days} Hari</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Info className="size-3.5 text-primary" />
+                                    <span>
+                                        Gunakan &quot;Tandai Semua Hari
+                                        Kerja&quot; untuk mengisi otomatis.
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Add activity dialog */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -711,14 +1065,18 @@ return;
                             Tambah Kegiatan K3L
                         </DialogTitle>
                         <DialogDescription>
-                            Tambahkan kegiatan baru ke salah satu grup jadwal unit {unit.name}.
+                            Tambahkan kegiatan baru ke salah satu grup jadwal
+                            unit {unit.name}.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-3 py-2 text-sm">
                         <div className="grid gap-1.5">
                             <Label>Grup</Label>
-                            <Select value={newGrup} onValueChange={(v) => setNewGrup(v as Grup)}>
+                            <Select
+                                value={newGrup}
+                                onValueChange={(v) => setNewGrup(v as Grup)}
+                            >
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -748,16 +1106,24 @@ return;
                                 type="number"
                                 min="0"
                                 value={newTarget}
-                                onChange={(e) => setNewTarget(Number(e.target.value))}
+                                onChange={(e) =>
+                                    setNewTarget(Number(e.target.value))
+                                }
                             />
                         </div>
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsAddOpen(false)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsAddOpen(false)}
+                        >
                             Batal
                         </Button>
-                        <Button onClick={handleAddActivity} disabled={!newKegiatan.trim()}>
+                        <Button
+                            onClick={handleAddActivity}
+                            disabled={!newKegiatan.trim()}
+                        >
                             Tambahkan
                         </Button>
                     </DialogFooter>

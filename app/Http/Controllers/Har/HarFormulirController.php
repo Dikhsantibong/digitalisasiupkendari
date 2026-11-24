@@ -116,6 +116,7 @@ abstract class HarFormulirController extends Controller
         $record = $this->findRecord($unit, $machine, $testDate);
 
         $input = $record ? $record->toArray() : $this->defaults($unit, $machine, $testDate);
+        $input = $this->applyMachineIdentity($unit, $machine, $input);
         $viewData = $this->builder()->buildData($unit, $machine, $this->withSignatories($input, $unit, $user));
 
         return Inertia::render("pengusahaan/har/{$this->slug()}/index", [
@@ -171,6 +172,7 @@ abstract class HarFormulirController extends Controller
         $modelClass = $this->model();
         $existing = $this->findRecord($unit, $machine, $testDate);
         $data = $this->prepareForSave(Arr::except($validated, ['unit_id', 'machine_id', 'test_date']), $request, $existing);
+        $data = $this->applyMachineIdentity($unit, $machine, $data);
 
         // Static kop on the first save; signatories re-resolved from the unit's jabatan holders.
         $kop = $existing ? [] : Arr::only(
@@ -217,6 +219,7 @@ abstract class HarFormulirController extends Controller
         $record = $this->findRecord($unit, $machine, $testDate);
 
         $input = $record ? $record->toArray() : $this->defaults($unit, $machine, $testDate);
+        $input = $this->applyMachineIdentity($unit, $machine, $input);
         $viewData = $this->builder()->buildData($unit, $machine, $this->withSignatories($input, $unit, $user));
 
         $pdf = Pdf::loadHTML($this->builder()->renderHtml($viewData))
@@ -286,15 +289,67 @@ abstract class HarFormulirController extends Controller
      */
     protected function machineDefaults(?Machine $machine, array $fallback = []): array
     {
+        $installed = $machine?->capacity_kw !== null && (float) $machine->capacity_kw > 0
+            ? number_format((float) $machine->capacity_kw, 2, '.', '')
+            : ($fallback['installed_power'] ?? '');
+        $capable = ($fallback['capable_power'] ?? '') !== ''
+            ? $fallback['capable_power']
+            : ($machine?->capacity_kw !== null && (float) $machine->capacity_kw > 0
+                ? number_format(round((float) $machine->capacity_kw * 0.9, 2), 2, '.', '')
+                : '');
+
         return [
-            'brand' => $fallback['brand'] ?? 'MAK',
+            'brand' => $machine ? ($machine->merk ?: $machine->name) : ($fallback['brand'] ?? 'MAK'),
             'model_type' => $machine?->type ?: ($fallback['model_type'] ?? '8M 453 AK'),
             'serial_number' => $machine?->serial_number ?: ($fallback['serial_number'] ?? ''),
-            'machine_number' => $machine ? trim(str_replace(['MIRRLEES #', 'MESIN #', 'UNIT #', '#'], '', $machine->name)) : ($fallback['machine_number'] ?? '1'),
-            'installed_power' => $machine?->capacity_kw ? (string) $machine->capacity_kw : ($fallback['installed_power'] ?? ''),
-            'capable_power' => $fallback['capable_power'] ?? '',
-            'rpm' => $fallback['rpm'] ?? '600',
+            'machine_number' => $machine ? $this->resolveMachineNumber($machine) : ($fallback['machine_number'] ?? '1'),
+            'installed_power' => $installed,
+            'capable_power' => $capable,
+            'rpm' => $machine?->engine_rpm ? (string) $machine->engine_rpm : ($fallback['rpm'] ?? '600'),
         ];
+    }
+
+    /**
+     * Sync master machine identity attributes onto loaded/submitted form data so
+     * selecting a machine always reflects the current Master Mesin record.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function applyMachineIdentity(Unit $unit, ?Machine $machine, array $data): array
+    {
+        if ($machine === null) {
+            return $data;
+        }
+
+        $rules = $this->rules();
+        if (! array_key_exists('brand', $rules)) {
+            return $data;
+        }
+
+        $master = $this->machineDefaults($machine);
+        foreach (['brand', 'model_type', 'serial_number', 'machine_number', 'installed_power', 'capable_power', 'rpm'] as $key) {
+            if (($master[$key] ?? '') !== '') {
+                $data[$key] = $master[$key];
+            }
+        }
+
+        return $data;
+    }
+
+    protected function resolveMachineNumber(Machine $machine): string
+    {
+        if (preg_match('/#\s*([A-Za-z0-9]+)\b/', $machine->name, $matches) === 1) {
+            return $matches[1];
+        }
+
+        $stripped = trim((string) preg_replace(
+            '/^(MIRRLEES|CUMMINS|MAK|DEUTZ|CAT|CATERPILLAR|WARTSILA|WÄRTSILÄ|DAIHATSU|YANMAR|MESIN|UNIT)\s*#?\s*/iu',
+            '',
+            $machine->name,
+        ));
+
+        return $stripped !== '' ? $stripped : $machine->name;
     }
 
     protected function canView(User $user): bool

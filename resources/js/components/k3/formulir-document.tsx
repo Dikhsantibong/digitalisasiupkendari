@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -34,7 +35,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
+import {
+    useCompactLayout,
+    useSimplifiedMobileInput,
+} from '@/hooks/use-mobile-module';
 
 export type SignerOption = {
     id: number;
@@ -95,11 +99,16 @@ const PAGE_PARAMS = [
  * State dokumen resmi (kop, penandatangan, layout, editor teks, pratinjau PDF)
  * yang dipakai bersama oleh semua halaman Formulir K3.
  */
-export function useFormulirDocument(props: FormulirDocumentProps, markDirty: () => void) {
+export function useFormulirDocument(
+    props: FormulirDocumentProps,
+    markDirty: () => void,
+) {
     const [settings, setSettings] = useState<DocumentSettings>(props.document);
     const [htmlContent, setHtmlContent] = useState<string>(props.rendered_html);
     const [format, setFormat] = useState<DocumentFormat>(props.document.format);
-    const [viewTab, setViewTab] = useState<ViewTab>(props.document.format === 'html' ? 'html' : 'form');
+    const [viewTab, setViewTab] = useState<ViewTab>(
+        props.document.format === 'html' ? 'html' : 'form',
+    );
     const [previewKey, setPreviewKey] = useState<number>(0);
 
     const update = (patch: Partial<DocumentSettings>) => {
@@ -138,7 +147,15 @@ export function useFormulirDocument(props: FormulirDocumentProps, markDirty: () 
     const previewUrl = useMemo(
         () => pdfUrlWith({ v: String(previewKey) }),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [props.pdf_url, previewKey, settings.page_margin_top, settings.page_margin_bottom, settings.page_margin_left, settings.page_margin_right, settings.line_spacing],
+        [
+            props.pdf_url,
+            previewKey,
+            settings.page_margin_top,
+            settings.page_margin_bottom,
+            settings.page_margin_left,
+            settings.page_margin_right,
+            settings.line_spacing,
+        ],
     );
 
     return {
@@ -167,12 +184,24 @@ export function useFormulirDocument(props: FormulirDocumentProps, markDirty: () 
 
 export type FormulirDocumentState = ReturnType<typeof useFormulirDocument>;
 
-function SideCard({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+function SideCard({
+    title,
+    description,
+    children,
+}: {
+    title: string;
+    description: string;
+    children: ReactNode;
+}) {
     return (
         <div className="space-y-4 rounded-lg border border-border bg-card p-4">
             <div className="border-b border-border pb-2">
-                <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-                <p className="text-[12px] text-muted-foreground">{description}</p>
+                <h3 className="text-sm font-semibold text-foreground">
+                    {title}
+                </h3>
+                <p className="text-[12px] text-muted-foreground">
+                    {description}
+                </p>
             </div>
             <div className="space-y-3 text-xs">{children}</div>
         </div>
@@ -193,14 +222,19 @@ export function DocumentMetaCard({
     children: ReactNode;
 }) {
     return (
-        <SideCard title="Metadata Formulir" description="Unit, periode, dan identitas dokumen resmi.">
+        <SideCard
+            title="Metadata Formulir"
+            description="Unit, periode, dan identitas dokumen resmi."
+        >
             {children}
             <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                     <Label className="text-xs">No. Dokumen</Label>
                     <Input
                         value={doc.settings.document_number}
-                        onChange={(e) => doc.update({ document_number: e.target.value })}
+                        onChange={(e) =>
+                            doc.update({ document_number: e.target.value })
+                        }
                         disabled={disabled}
                         className="h-8 text-xs"
                     />
@@ -209,7 +243,9 @@ export function DocumentMetaCard({
                     <Label className="text-xs">Revisi</Label>
                     <Input
                         value={doc.settings.revision}
-                        onChange={(e) => doc.update({ revision: e.target.value })}
+                        onChange={(e) =>
+                            doc.update({ revision: e.target.value })
+                        }
                         disabled={disabled}
                         className="h-8 text-xs"
                     />
@@ -219,7 +255,9 @@ export function DocumentMetaCard({
                 <Label className="text-xs">Tanggal Efektif Dokumen</Label>
                 <Input
                     value={doc.settings.effective_date}
-                    onChange={(e) => doc.update({ effective_date: e.target.value })}
+                    onChange={(e) =>
+                        doc.update({ effective_date: e.target.value })
+                    }
                     disabled={disabled}
                     placeholder="mis. 1 Januari 2026"
                     className="h-8 text-xs"
@@ -227,10 +265,14 @@ export function DocumentMetaCard({
             </div>
             {showSignPlace && (
                 <div className="space-y-1">
-                    <Label className="text-xs">Tempat, Tanggal Tanda Tangan</Label>
+                    <Label className="text-xs">
+                        Tempat, Tanggal Tanda Tangan
+                    </Label>
                     <Input
                         value={doc.settings.sign_place_date}
-                        onChange={(e) => doc.update({ sign_place_date: e.target.value })}
+                        onChange={(e) =>
+                            doc.update({ sign_place_date: e.target.value })
+                        }
                         disabled={disabled}
                         placeholder="Kendari, 1 September 2026"
                         className="h-8 text-xs"
@@ -256,7 +298,9 @@ export function SignatoriesCard({
     return (
         <SideCard
             title="Penandatangan Dokumen"
-            description={signers.map((signer) => signer.label.replace(/,$/, '')).join(' · ')}
+            description={signers
+                .map((signer) => signer.label.replace(/,$/, ''))
+                .join(' · ')}
         >
             {signers.map((signer, index) => {
                 const signerOptions = options[signer.key] ?? [];
@@ -265,17 +309,27 @@ export function SignatoriesCard({
                 const title = doc.settings[`${signer.key}_title`];
 
                 return (
-                    <div key={signer.key} className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5">
+                    <div
+                        key={signer.key}
+                        className="space-y-2 rounded-md border border-border/70 bg-muted/20 p-2.5"
+                    >
                         <div className="flex items-center justify-between gap-2">
                             <Label className="font-semibold text-foreground">
-                                {index + 1}. {signer.label.replace(/,$/, '')} {title ? `(${title})` : ''}
+                                {index + 1}. {signer.label.replace(/,$/, '')}{' '}
+                                {title ? `(${title})` : ''}
                             </Label>
                             {selected?.has_signature ? (
-                                <Badge variant="outline" className="border-emerald-500/40 bg-emerald-50 py-0 text-[10px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                <Badge
+                                    variant="outline"
+                                    className="border-emerald-500/40 bg-emerald-50 py-0 text-[10px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                >
                                     TTD Siap
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="py-0 text-[10px] text-muted-foreground">
+                                <Badge
+                                    variant="outline"
+                                    className="py-0 text-[10px] text-muted-foreground"
+                                >
                                     Tanpa TTD
                                 </Badge>
                             )}
@@ -283,11 +337,23 @@ export function SignatoriesCard({
                         <Select
                             value={selectedId ? String(selectedId) : ''}
                             onValueChange={(value) => {
-                                const employee = signerOptions.find((e) => String(e.id) === value);
+                                const employee = signerOptions.find(
+                                    (e) => String(e.id) === value,
+                                );
                                 doc.update({
                                     [`${signer.key}_id`]: employee?.id ?? null,
-                                    ...(employee ? { [`${signer.key}_name`]: employee.name } : {}),
-                                    ...(employee?.position ? { [`${signer.key}_title`]: employee.position } : {}),
+                                    ...(employee
+                                        ? {
+                                              [`${signer.key}_name`]:
+                                                  employee.name,
+                                          }
+                                        : {}),
+                                    ...(employee?.position
+                                        ? {
+                                              [`${signer.key}_title`]:
+                                                  employee.position,
+                                          }
+                                        : {}),
                                 } as Partial<DocumentSettings>);
                             }}
                             disabled={disabled}
@@ -298,7 +364,8 @@ export function SignatoriesCard({
                             <SelectContent>
                                 {signerOptions.map((e) => (
                                     <SelectItem key={e.id} value={String(e.id)}>
-                                        {e.name} {e.position ? `(${e.position})` : ''}
+                                        {e.name}{' '}
+                                        {e.position ? `(${e.position})` : ''}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -306,14 +373,22 @@ export function SignatoriesCard({
                         <div className="grid grid-cols-2 gap-2">
                             <Input
                                 value={doc.settings[`${signer.key}_name`]}
-                                onChange={(e) => doc.update({ [`${signer.key}_name`]: e.target.value } as Partial<DocumentSettings>)}
+                                onChange={(e) =>
+                                    doc.update({
+                                        [`${signer.key}_name`]: e.target.value,
+                                    } as Partial<DocumentSettings>)
+                                }
                                 disabled={disabled}
                                 placeholder="Nama"
                                 className="h-7 text-xs"
                             />
                             <Input
                                 value={doc.settings[`${signer.key}_title`]}
-                                onChange={(e) => doc.update({ [`${signer.key}_title`]: e.target.value } as Partial<DocumentSettings>)}
+                                onChange={(e) =>
+                                    doc.update({
+                                        [`${signer.key}_title`]: e.target.value,
+                                    } as Partial<DocumentSettings>)
+                                }
                                 disabled={disabled}
                                 placeholder="Jabatan"
                                 className="h-7 text-xs"
@@ -324,15 +399,29 @@ export function SignatoriesCard({
             })}
             <div className="rounded-md border border-border bg-card p-2 text-[11px] text-muted-foreground">
                 <Info className="mr-1 inline size-3.5 text-primary" />
-                Tanda tangan digital pegawai otomatis terpasang pada PDF jika sudah diunggah pada master pegawai.
+                Tanda tangan digital pegawai otomatis terpasang pada PDF jika
+                sudah diunggah pada master pegawai.
             </div>
         </SideCard>
     );
 }
 
 /** Kartu kiri 3: margin & spasi baris PDF. */
-export function PageSettingsCard({ doc, disabled }: { doc: FormulirDocumentState; disabled: boolean }) {
-    const margins: { key: 'page_margin_top' | 'page_margin_bottom' | 'page_margin_left' | 'page_margin_right'; label: string }[] = [
+export function PageSettingsCard({
+    doc,
+    disabled,
+}: {
+    doc: FormulirDocumentState;
+    disabled: boolean;
+}) {
+    const margins: {
+        key:
+            | 'page_margin_top'
+            | 'page_margin_bottom'
+            | 'page_margin_left'
+            | 'page_margin_right';
+        label: string;
+    }[] = [
         { key: 'page_margin_top', label: 'Atas (mm)' },
         { key: 'page_margin_bottom', label: 'Bawah (mm)' },
         { key: 'page_margin_left', label: 'Kiri (mm)' },
@@ -340,7 +429,10 @@ export function PageSettingsCard({ doc, disabled }: { doc: FormulirDocumentState
     ];
 
     return (
-        <SideCard title="Page Settings" description="Pengaturan layout & margin PDF cetak.">
+        <SideCard
+            title="Page Settings"
+            description="Pengaturan layout & margin PDF cetak."
+        >
             <div className="grid grid-cols-4 gap-2">
                 {margins.map((margin) => (
                     <div key={margin.key} className="space-y-1">
@@ -350,7 +442,14 @@ export function PageSettingsCard({ doc, disabled }: { doc: FormulirDocumentState
                             min={0}
                             max={50}
                             value={doc.settings[margin.key]}
-                            onChange={(e) => doc.update({ [margin.key]: Math.max(0, Math.min(50, Number(e.target.value))) })}
+                            onChange={(e) =>
+                                doc.update({
+                                    [margin.key]: Math.max(
+                                        0,
+                                        Math.min(50, Number(e.target.value)),
+                                    ),
+                                })
+                            }
                             disabled={disabled}
                             className="h-7 text-center text-xs"
                         />
@@ -359,7 +458,13 @@ export function PageSettingsCard({ doc, disabled }: { doc: FormulirDocumentState
             </div>
             <div className="space-y-1">
                 <Label className="text-[11px]">Spasi Baris</Label>
-                <Select value={doc.settings.line_spacing} onValueChange={(value) => doc.update({ line_spacing: value })} disabled={disabled}>
+                <Select
+                    value={doc.settings.line_spacing}
+                    onValueChange={(value) =>
+                        doc.update({ line_spacing: value })
+                    }
+                    disabled={disabled}
+                >
                     <SelectTrigger className="h-7 text-xs">
                         <SelectValue />
                     </SelectTrigger>
@@ -374,12 +479,22 @@ export function PageSettingsCard({ doc, disabled }: { doc: FormulirDocumentState
     );
 }
 
-function TabButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: ReactNode; children: ReactNode }) {
+function TabButton({
+    active,
+    onClick,
+    icon,
+    children,
+}: {
+    active: boolean;
+    onClick: () => void;
+    icon: ReactNode;
+    children: ReactNode;
+}) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 whitespace-nowrap transition-colors ${
                 active
                     ? 'bg-primary font-medium text-primary-foreground'
                     : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
@@ -420,6 +535,7 @@ export function DocumentWorkspace({
     onCancel: () => void;
     children: ReactNode;
 }) {
+    const compact = useCompactLayout();
     const openPreview = () => {
         if (canWrite && dirty) {
             onSave(() => {
@@ -436,37 +552,66 @@ export function DocumentWorkspace({
 
     return (
         <div className="flex w-full min-w-0 flex-1 flex-col rounded-lg border border-border bg-card shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
-                <div>
-                    <h3 className="text-base font-semibold text-foreground">Isi Formulir &amp; Dokumen</h3>
-                    <p className="text-[12px] text-muted-foreground">
-                        Kop, periode, dan tanda tangan otomatis disesuaikan pada PDF.
-                    </p>
-                </div>
-                <div className="flex flex-wrap overflow-hidden rounded-md border border-border text-xs">
-                    <TabButton active={doc.viewTab === 'form'} onClick={() => doc.changeTab('form')} icon={<SlidersHorizontal className="size-3.5" />}>
-                        Editor Formulir
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3 md:gap-3 md:p-4">
+                {!compact && (
+                    <div>
+                        <h3 className="text-base font-semibold text-foreground">
+                            Isi Formulir &amp; Dokumen
+                        </h3>
+                        <p className="text-[12px] text-muted-foreground">
+                            Kop, periode, dan tanda tangan otomatis disesuaikan
+                            pada PDF.
+                        </p>
+                    </div>
+                )}
+                <div className="flex w-full flex-wrap overflow-hidden rounded-md border border-border text-xs sm:w-auto">
+                    <TabButton
+                        active={doc.viewTab === 'form'}
+                        onClick={() => doc.changeTab('form')}
+                        icon={<SlidersHorizontal className="size-3.5" />}
+                    >
+                        {compact ? 'Formulir' : 'Editor Formulir'}
                     </TabButton>
-                    <TabButton active={doc.viewTab === 'html'} onClick={() => doc.changeTab('html')} icon={<FileCode2 className="size-3.5" />}>
-                        Editor Teks (HTML)
+                    <TabButton
+                        active={doc.viewTab === 'html'}
+                        onClick={() => doc.changeTab('html')}
+                        icon={<FileCode2 className="size-3.5" />}
+                    >
+                        {compact ? 'Teks' : 'Editor Teks (HTML)'}
                     </TabButton>
-                    <TabButton active={doc.viewTab === 'pdf'} onClick={openPreview} icon={<Printer className="size-3.5" />}>
-                        Pratinjau PDF
+                    <TabButton
+                        active={doc.viewTab === 'pdf'}
+                        onClick={openPreview}
+                        icon={<Printer className="size-3.5" />}
+                    >
+                        {compact ? 'PDF' : 'Pratinjau PDF'}
                     </TabButton>
                 </div>
             </div>
 
-            {doc.viewTab === 'form' && <div className="space-y-4 p-4">{children}</div>}
+            {doc.viewTab === 'form' && (
+                <div className="space-y-3 p-3 md:space-y-4 md:p-4">
+                    {children}
+                </div>
+            )}
 
             {doc.viewTab === 'html' && (
                 <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
                         <span className="flex-1">
-                            Mode Editor Teks memungkinkan penyesuaian isi dokumen secara langsung. Jika disimpan pada mode ini, PDF mengikuti teks hasil editan
-                            (perubahan di Editor Formulir tidak ikut sampai Anda kembali ke tab Editor Formulir lalu menyimpan).
+                            Mode Editor Teks memungkinkan penyesuaian isi
+                            dokumen secara langsung. Jika disimpan pada mode
+                            ini, PDF mengikuti teks hasil editan (perubahan di
+                            Editor Formulir tidak ikut sampai Anda kembali ke
+                            tab Editor Formulir lalu menyimpan).
                         </span>
                         {canWrite && (
-                            <Button size="sm" variant="outline" onClick={doc.resetHtmlToForm} className="h-7 gap-1 bg-background text-xs">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={doc.resetHtmlToForm}
+                                className="h-7 gap-1 bg-background text-xs"
+                            >
                                 <RotateCcw className="size-3.5" />
                                 Muat Ulang dari Data Tersimpan
                             </Button>
@@ -487,8 +632,16 @@ export function DocumentWorkspace({
             {doc.viewTab === 'pdf' && (
                 <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                        <span>Pratinjau identik dengan hasil cetak PDF A4 resmi. Perubahan disimpan otomatis sebelum pratinjau.</span>
-                        <Button size="sm" variant="outline" onClick={doc.refreshPreview} className="h-7 gap-1 text-xs">
+                        <span>
+                            Pratinjau identik dengan hasil cetak PDF A4 resmi.
+                            Perubahan disimpan otomatis sebelum pratinjau.
+                        </span>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={doc.refreshPreview}
+                            className="h-7 gap-1 text-xs"
+                        >
                             <RotateCcw className="size-3.5" />
                             Segarkan Pratinjau
                         </Button>
@@ -502,31 +655,50 @@ export function DocumentWorkspace({
                 </div>
             )}
 
-            <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/10 p-4">
-                <Button variant="outline" size="sm" onClick={onOpenHistory} className="gap-1.5 text-xs">
-                    <History className="size-3.5" />
-                    Riwayat ({historyCount})
-                </Button>
-                <div className="flex flex-wrap items-center gap-2">
-                    <Button variant="secondary" onClick={onCancel}>
-                        Batal
+            {!compact && (
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-3 border-t border-border bg-muted/10 p-4">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onOpenHistory}
+                        className="gap-1.5 text-xs"
+                    >
+                        <History className="size-3.5" />
+                        Riwayat ({historyCount})
                     </Button>
-                    <Button variant="outline" onClick={openPreview} className="gap-1.5">
-                        <Printer className="size-4" />
-                        Pratinjau PDF
-                    </Button>
-                    <Button variant="outline" onClick={doc.downloadPdf} className="gap-1.5">
-                        <Download className="size-4" />
-                        Unduh PDF
-                    </Button>
-                    {canWrite && (
-                        <Button onClick={() => onSave()} disabled={saving || !dirty} className="gap-1.5">
-                            <Save className="size-4" />
-                            {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="secondary" onClick={onCancel}>
+                            Batal
                         </Button>
-                    )}
+                        <Button
+                            variant="outline"
+                            onClick={openPreview}
+                            className="gap-1.5"
+                        >
+                            <Printer className="size-4" />
+                            Pratinjau PDF
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={doc.downloadPdf}
+                            className="gap-1.5"
+                        >
+                            <Download className="size-4" />
+                            Unduh PDF
+                        </Button>
+                        {canWrite && (
+                            <Button
+                                onClick={() => onSave()}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }
@@ -554,17 +726,29 @@ export function HistoryDialog({
             <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>{title}</DialogTitle>
-                    <DialogDescription>Daftar periode formulir yang pernah disimpan untuk unit ini.</DialogDescription>
+                    <DialogDescription>
+                        Daftar periode formulir yang pernah disimpan untuk unit
+                        ini.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[380px] divide-y divide-border overflow-y-auto">
                     {entries.length === 0 ? (
-                        <div className="py-8 text-center text-xs text-muted-foreground">Belum ada riwayat formulir untuk unit ini.</div>
+                        <div className="py-8 text-center text-xs text-muted-foreground">
+                            Belum ada riwayat formulir untuk unit ini.
+                        </div>
                     ) : (
                         entries.map((entry) => (
-                            <div key={entry.key} className="flex items-center justify-between rounded px-2 py-2.5 text-xs hover:bg-muted/30">
+                            <div
+                                key={entry.key}
+                                className="flex items-center justify-between rounded px-2 py-2.5 text-xs hover:bg-muted/30"
+                            >
                                 <div>
-                                    <div className="font-semibold text-foreground">{entry.label}</div>
-                                    <div className="text-[11px] text-muted-foreground">{entry.description}</div>
+                                    <div className="font-semibold text-foreground">
+                                        {entry.label}
+                                    </div>
+                                    <div className="text-[11px] text-muted-foreground">
+                                        {entry.description}
+                                    </div>
                                 </div>
                                 <Button
                                     size="sm"
@@ -587,14 +771,25 @@ export function HistoryDialog({
 }
 
 /** Label + kontrol kecil di kartu metadata (unit / bulan / tahun / minggu). */
-export function MetaField({ label, children }: { label: string; children: ReactNode }) {
+export function MetaField({
+    label,
+    children,
+    className = '',
+}: {
+    label: string;
+    children: ReactNode;
+    className?: string;
+}) {
     // A phone input page uses the account's unit and the current period (app.css hides a row left empty).
-    if (useSimplifiedMobileInput() && ['Unit Pembangkit', 'Bulan', 'Tahun'].includes(label)) {
+    if (
+        useSimplifiedMobileInput() &&
+        ['Unit Pembangkit', 'Bulan', 'Tahun'].includes(label)
+    ) {
         return <span data-mobile-hidden hidden />;
     }
 
     return (
-        <div className="space-y-1">
+        <div className={`space-y-1 ${className}`}>
             <Label className="text-xs">{label}</Label>
             {children}
         </div>
@@ -621,7 +816,11 @@ export function CompactSelect({
             </SelectTrigger>
             <SelectContent>
                 {options.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                    <SelectItem
+                        key={option.value}
+                        value={option.value}
+                        className="text-xs"
+                    >
                         {option.label}
                     </SelectItem>
                 ))}
@@ -674,76 +873,184 @@ export function FormulirDocumentLayout({
     children: ReactNode;
 }) {
     const [showHistory, setShowHistory] = useState<boolean>(false);
+    const [showMobileDocSettings, setShowMobileDocSettings] =
+        useState<boolean>(false);
+    const compact = useCompactLayout();
 
     return (
         <>
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                <PageHeader
-                    title={title}
-                    description={description}
-                    actions={
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Button variant="outline" onClick={onBack} className="gap-2">
-                                <ArrowLeft className="size-4" />
-                                Kembali
-                            </Button>
-                            <Button variant="outline" onClick={() => setShowHistory(true)} className="gap-2">
-                                <History className="size-4" />
-                                Riwayat ({history.length})
-                            </Button>
-                            <Button variant="outline" onClick={doc.downloadPdf} className="gap-2">
-                                <Download className="size-4" />
-                                Unduh PDF
-                            </Button>
-                            {canWrite && (
-                                <Button onClick={() => onSave()} disabled={saving || !dirty} className="gap-2">
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan Formulir'}
+            <div
+                className={`flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6 ${compact ? 'pb-28' : ''}`}
+            >
+                {!compact && (
+                    <PageHeader
+                        title={title}
+                        description={description}
+                        actions={
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={onBack}
+                                    className="gap-2"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                    Kembali
                                 </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowHistory(true)}
+                                    className="gap-2"
+                                >
+                                    <History className="size-4" />
+                                    Riwayat ({history.length})
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={doc.downloadPdf}
+                                    className="gap-2"
+                                >
+                                    <Download className="size-4" />
+                                    Unduh PDF
+                                </Button>
+                                {canWrite && (
+                                    <Button
+                                        onClick={() => onSave()}
+                                        disabled={saving || !dirty}
+                                        className="gap-2"
+                                    >
+                                        <Save className="size-4" />
+                                        {saving
+                                            ? 'Menyimpan…'
+                                            : 'Simpan Formulir'}
+                                    </Button>
+                                )}
+                            </div>
+                        }
+                    />
+                )}
+
+                {!compact && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 text-[13px]">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-muted-foreground">Unit:</span>
+                            <strong className="text-foreground">
+                                {unitName}
+                            </strong>
+                            <span className="mx-1 text-muted-foreground">
+                                •
+                            </span>
+                            <span className="text-muted-foreground">
+                                Service Unit (UL):
+                            </span>
+                            <span className="font-medium text-foreground">
+                                {serviceUnitName || '—'}
+                            </span>
+                            <span className="mx-1 text-muted-foreground">
+                                •
+                            </span>
+                            <span className="text-muted-foreground">
+                                Periode:
+                            </span>
+                            <span className="font-medium text-foreground">
+                                {periodLabel}
+                            </span>
+                            <span className="mx-1 text-muted-foreground">
+                                •
+                            </span>
+                            {dirty ? (
+                                <StatusBadge tone="warning">
+                                    Ada perubahan belum disimpan
+                                </StatusBadge>
+                            ) : hasSaved ? (
+                                <StatusBadge tone="success">
+                                    Tersimpan (
+                                    {doc.format === 'html'
+                                        ? 'Teks HTML'
+                                        : 'Form'}
+                                    )
+                                </StatusBadge>
+                            ) : (
+                                <StatusBadge tone="neutral">
+                                    Template Standar
+                                </StatusBadge>
                             )}
                         </div>
-                    }
-                />
+                        <div className="text-[12px] text-muted-foreground">
+                            No. Dokumen:{' '}
+                            <span className="font-mono font-medium">
+                                {doc.settings.document_number}
+                            </span>{' '}
+                            (Rev. {doc.settings.revision})
+                        </div>
+                    </div>
+                )}
 
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card p-3 text-[13px]">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-muted-foreground">Unit:</span>
-                        <strong className="text-foreground">{unitName}</strong>
-                        <span className="mx-1 text-muted-foreground">•</span>
-                        <span className="text-muted-foreground">Service Unit (UL):</span>
-                        <span className="font-medium text-foreground">{serviceUnitName || '—'}</span>
-                        <span className="mx-1 text-muted-foreground">•</span>
-                        <span className="text-muted-foreground">Periode:</span>
-                        <span className="font-medium text-foreground">{periodLabel}</span>
-                        <span className="mx-1 text-muted-foreground">•</span>
-                        {dirty ? (
-                            <StatusBadge tone="warning">Ada perubahan belum disimpan</StatusBadge>
-                        ) : hasSaved ? (
-                            <StatusBadge tone="success">
-                                Tersimpan ({doc.format === 'html' ? 'Teks HTML' : 'Form'})
-                            </StatusBadge>
-                        ) : (
-                            <StatusBadge tone="neutral">Template Standar</StatusBadge>
-                        )}
-                    </div>
-                    <div className="text-[12px] text-muted-foreground">
-                        No. Dokumen: <span className="font-mono font-medium">{doc.settings.document_number}</span> (Rev. {doc.settings.revision})
-                    </div>
-                </div>
-
-                <div className="flex w-full flex-col items-start gap-6 xl:flex-row">
-                    <div className="w-full shrink-0 space-y-5 xl:w-[360px] 2xl:w-[400px]">
-                        <DocumentMetaCard doc={doc} disabled={!canWrite} showSignPlace={showSignPlace}>
-                            {periodControls}
-                        </DocumentMetaCard>
-                        <SignatoriesCard
-                            doc={doc}
-                            signers={documentProps.signers}
-                            options={documentProps.signer_options}
-                            disabled={!canWrite}
-                        />
-                        <PageSettingsCard doc={doc} disabled={!canWrite} />
-                    </div>
+                <div className="flex w-full flex-col items-start gap-4 xl:flex-row xl:gap-6">
+                    {compact ? (
+                        <div className="flex w-full flex-col gap-2">
+                            <div className="flex flex-wrap items-end justify-between gap-2 rounded-lg border border-border bg-card p-3">
+                                <div className="min-w-0 flex-1 space-y-2">
+                                    {periodControls}
+                                </div>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                        showMobileDocSettings
+                                            ? 'secondary'
+                                            : 'outline'
+                                    }
+                                    onClick={() =>
+                                        setShowMobileDocSettings(
+                                            (open) => !open,
+                                        )
+                                    }
+                                    className="h-8 shrink-0 gap-1 text-xs"
+                                >
+                                    <SlidersHorizontal className="size-3.5" />
+                                    Kop &amp; PDF
+                                </Button>
+                            </div>
+                            {showMobileDocSettings && (
+                                <div className="space-y-3">
+                                    <DocumentMetaCard
+                                        doc={doc}
+                                        disabled={!canWrite}
+                                        showSignPlace={showSignPlace}
+                                    >
+                                        {null}
+                                    </DocumentMetaCard>
+                                    <SignatoriesCard
+                                        doc={doc}
+                                        signers={documentProps.signers}
+                                        options={documentProps.signer_options}
+                                        disabled={!canWrite}
+                                    />
+                                    <PageSettingsCard
+                                        doc={doc}
+                                        disabled={!canWrite}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="w-full shrink-0 space-y-5 xl:w-[360px] 2xl:w-[400px]">
+                            <DocumentMetaCard
+                                doc={doc}
+                                disabled={!canWrite}
+                                showSignPlace={showSignPlace}
+                            >
+                                {periodControls}
+                            </DocumentMetaCard>
+                            <SignatoriesCard
+                                doc={doc}
+                                signers={documentProps.signers}
+                                options={documentProps.signer_options}
+                                disabled={!canWrite}
+                            />
+                            <PageSettingsCard doc={doc} disabled={!canWrite} />
+                        </div>
+                    )}
 
                     <DocumentWorkspace
                         doc={doc}
@@ -761,7 +1068,7 @@ export function FormulirDocumentLayout({
                     </DocumentWorkspace>
                 </div>
 
-                {dirty && canWrite && (
+                {!compact && dirty && canWrite && (
                     <div className="sticky bottom-4 z-20 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 shadow-lg dark:border-amber-900/60 dark:bg-amber-950/80">
                         <div className="flex items-center gap-2">
                             <AlertCircle className="size-4 text-amber-600 dark:text-amber-400" />
@@ -770,11 +1077,21 @@ export function FormulirDocumentLayout({
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={onReset} className="h-8 gap-1 text-xs">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={onReset}
+                                className="h-8 gap-1 text-xs"
+                            >
                                 <RotateCcw className="size-3" />
                                 Batal
                             </Button>
-                            <Button size="sm" onClick={() => onSave()} disabled={saving} className="h-8 gap-1.5 text-xs font-semibold">
+                            <Button
+                                size="sm"
+                                onClick={() => onSave()}
+                                disabled={saving}
+                                className="h-8 gap-1.5 text-xs font-semibold"
+                            >
                                 <Save className="size-3.5" />
                                 {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
                             </Button>
@@ -783,7 +1100,39 @@ export function FormulirDocumentLayout({
                 )}
             </div>
 
-            <HistoryDialog open={showHistory} onOpenChange={setShowHistory} title={`Riwayat ${title} - ${unitName}`} entries={history} />
+            {compact && (
+                <StickyActionBar>
+                    <Button
+                        variant="outline"
+                        onClick={doc.downloadPdf}
+                        className="gap-1.5"
+                    >
+                        <Download className="size-4" />
+                        PDF
+                    </Button>
+                    {canWrite && (
+                        <Button
+                            onClick={() => onSave()}
+                            disabled={saving || !dirty}
+                            className="gap-1.5"
+                        >
+                            <Save className="size-4" />
+                            {saving
+                                ? 'Menyimpan…'
+                                : dirty
+                                  ? 'Simpan'
+                                  : 'Tersimpan'}
+                        </Button>
+                    )}
+                </StickyActionBar>
+            )}
+
+            <HistoryDialog
+                open={showHistory}
+                onOpenChange={setShowHistory}
+                title={`Riwayat ${title} - ${unitName}`}
+                entries={history}
+            />
         </>
     );
 }

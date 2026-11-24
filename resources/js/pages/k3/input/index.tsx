@@ -4,6 +4,7 @@ import {
     BellRing,
     CalendarRange,
     Cctv,
+    ChevronRight,
     ClipboardCheck,
     ClipboardList,
     Droplets,
@@ -18,9 +19,11 @@ import {
     Siren,
     Sparkles,
 } from 'lucide-react';
+import { K3MobileHeader } from '@/components/k3/mobile-page-shell';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import k3Accident from '@/routes/k3/input/accident';
@@ -56,147 +59,168 @@ type InputCard = {
 const INPUT_MENUS: InputCard[] = [
     {
         title: 'Time Frame',
-        description: 'Pencatatan target rencana dan realisasi program kerja K3 pada periode berjalan.',
+        description:
+            'Pencatatan target rencana dan realisasi program kerja K3 pada periode berjalan.',
         icon: CalendarRange,
         url: k3TimeFrame.index().url,
         buttonLabel: 'Buka Input Time Frame',
     },
     {
         title: 'Laporan Kecelakaan',
-        description: 'Pencatatan laporan insiden kecelakaan kerja, penyakit akibat kerja (PAK/PAHK), dan investigasi.',
+        description:
+            'Pencatatan laporan insiden kecelakaan kerja, penyakit akibat kerja (PAK/PAHK), dan investigasi.',
         icon: ClipboardCheck,
         url: k3Accident.index().url,
         buttonLabel: 'Buka Input Kecelakaan',
     },
     {
         title: 'Inspeksi Checklist',
-        description: 'Pelaksanaan dan pencatatan checklist inspeksi keselamatan kerja berkala di seluruh area.',
+        description:
+            'Pelaksanaan dan pencatatan checklist inspeksi keselamatan kerja berkala di seluruh area.',
         icon: ClipboardList,
         url: k3Inspection.index().url,
         buttonLabel: 'Buka Input Checklist',
     },
     {
         title: 'Inspeksi APAR/APAB',
-        description: 'Pencatatan kondisi fisik, segel, tekanan tabung, dan masa berlaku APAR/APAB unit pembangkit.',
+        description:
+            'Pencatatan kondisi fisik, segel, tekanan tabung, dan masa berlaku APAR/APAB unit pembangkit.',
         icon: Flame,
         url: k3AparCheck.index().url,
         buttonLabel: 'Buka Input APAR/APAB',
     },
     {
         title: 'Patrol Check Sistem Fire Fighting',
-        description: 'Inspeksi sistem pemadam kebakaran: lokasi, merk/jenis APAR, tekanan tabung, kondisi fisik/selang/segel, hasil inspeksi, dan masa kadaluarsa.',
+        description:
+            'Inspeksi sistem pemadam kebakaran: lokasi, merk/jenis APAR, tekanan tabung, kondisi fisik/selang/segel, hasil inspeksi, dan masa kadaluarsa.',
         icon: Flame,
         url: k3AparCheck.index().url,
         buttonLabel: 'Buka Patrol Check Fire Fighting',
     },
     {
         title: 'Inspeksi Hydrant',
-        description: 'Pencatatan hasil inspeksi hydrant: lokasi, jenis, kondisi hose/nozzle/box, dan tekanan.',
+        description:
+            'Pencatatan hasil inspeksi hydrant: lokasi, jenis, kondisi hose/nozzle/box, dan tekanan.',
         icon: Droplets,
         url: k3Hydrant.index().url,
         buttonLabel: 'Buka Inspeksi Hydrant',
     },
     {
         title: 'Daftar CCTV',
-        description: 'Pendataan titik CCTV terpasang beserta status (on/off/rusak) dan dokumentasi foto.',
+        description:
+            'Pendataan titik CCTV terpasang beserta status (on/off/rusak) dan dokumentasi foto.',
         icon: Cctv,
         url: k3Cctv.index().url,
         buttonLabel: 'Buka Daftar CCTV',
     },
     {
         title: 'Inspeksi Fire Alarm',
-        description: 'Pemeriksaan sistem fire alarm: lokasi, kondisi, dan panel indikator.',
+        description:
+            'Pemeriksaan sistem fire alarm: lokasi, kondisi, dan panel indikator.',
         icon: BellRing,
         url: k3FireAlarm.index().url,
         buttonLabel: 'Buka Inspeksi Fire Alarm',
     },
     {
         title: 'Inspeksi Rambu-Rambu K3 & B3',
-        description: 'Pemeriksaan kelengkapan dan kondisi rambu-rambu K3 dan B3 di area pembangkit.',
+        description:
+            'Pemeriksaan kelengkapan dan kondisi rambu-rambu K3 dan B3 di area pembangkit.',
         icon: SignpostBig,
         url: k3Rambu.index().url,
         buttonLabel: 'Buka Inspeksi Rambu-Rambu',
     },
     {
         title: 'Pemeriksaan Emergency Facility',
-        description: 'Matriks kesiapan peralatan darurat (fire pump, detector, APAR, APD, dll) beserta % kesiapan, kendala, dan tindak lanjut.',
+        description:
+            'Matriks kesiapan peralatan darurat (fire pump, detector, APAR, APD, dll) beserta % kesiapan, kendala, dan tindak lanjut.',
         icon: Siren,
         url: k3EmergencyFacility.index().url,
         buttonLabel: 'Buka Emergency Facility',
     },
     {
         title: 'Kesiapan APD',
-        description: 'Pemeriksaan rutin kelayakan APD, peralatan kerja, SOP/IK, kesiapan P3K, area kerja, dan cara kerja ergonomi (Form Inspeksi K3).',
+        description:
+            'Pemeriksaan rutin kelayakan APD, peralatan kerja, SOP/IK, kesiapan P3K, area kerja, dan cara kerja ergonomi (Form Inspeksi K3).',
         icon: HardHat,
         url: k3KesiapanApd.index().url,
         buttonLabel: 'Buka Kesiapan APD',
     },
     {
         title: 'Daftar Inventaris APD',
-        description: 'Inventaris Alat Pelindung Diri per kelompok & subkategori: jumlah, satuan, lokasi penyimpanan, dan foto.',
+        description:
+            'Inventaris Alat Pelindung Diri per kelompok & subkategori: jumlah, satuan, lokasi penyimpanan, dan foto.',
         icon: HardHat,
         url: k3ApdInventory.index().url,
         buttonLabel: 'Buka Inventaris APD',
     },
     {
         title: 'Logbook Pemantauan Air Limbah',
-        description: 'Pencatatan pemantauan pemanfaatan air limbah: area penyiraman, waktu, metode, debit flow meter, rotasi, frekuensi, dan PIC.',
+        description:
+            'Pencatatan pemantauan pemanfaatan air limbah: area penyiraman, waktu, metode, debit flow meter, rotasi, frekuensi, dan PIC.',
         icon: Droplets,
         url: k3AirLimbah.index().url,
         buttonLabel: 'Buka Logbook Air Limbah',
     },
     {
         title: 'Dokumen IK K3',
-        description: 'Susun dokumen Instruksi Kerja (IK) K3 Lingkungan Pembangkit dari template (Alat, Bahan, Referensi, Langkah Pelaksanaan), cetak PDF, dan lampirkan ke Laporan K3.',
+        description:
+            'Susun dokumen Instruksi Kerja (IK) K3 Lingkungan Pembangkit dari template (Alat, Bahan, Referensi, Langkah Pelaksanaan), cetak PDF, dan lampirkan ke Laporan K3.',
         icon: FileText,
         url: k3DokumenIk.index().url,
         buttonLabel: 'Buka Dokumen IK',
     },
     {
         title: 'Fasilitas Darurat',
-        description: 'Pemeriksaan kesiapan kotak P3K, shower darurat, eye wash, alarm evakuasi, dan assembly point.',
+        description:
+            'Pemeriksaan kesiapan kotak P3K, shower darurat, eye wash, alarm evakuasi, dan assembly point.',
         icon: Siren,
         url: k3Emergency.index().url,
         buttonLabel: 'Buka Input Fasilitas Darurat',
     },
     {
         title: 'Patroli Keamanan',
-        description: 'Pencatatan ronda keamanan terjadwal dan verifikasi log titik scan RFID pos pengamanan.',
+        description:
+            'Pencatatan ronda keamanan terjadwal dan verifikasi log titik scan RFID pos pengamanan.',
         icon: ShieldCheck,
         url: k3Patrol.index().url,
         buttonLabel: 'Buka Input Patroli',
     },
     {
         title: 'Sertifikasi Peralatan',
-        description: 'Pencatatan riwayat uji kelaikan, izin operasi, dan masa berlaku sertifikat peralatan penunjang.',
+        description:
+            'Pencatatan riwayat uji kelaikan, izin operasi, dan masa berlaku sertifikat peralatan penunjang.',
         icon: ScrollText,
         url: k3Certificate.index().url,
         buttonLabel: 'Buka Input Sertifikasi',
     },
     {
         title: 'Lampiran K3',
-        description: 'Unggah dokumentasi foto kegiatan K3, sosialisasi/safety briefing, dan temuan lingkungan.',
+        description:
+            'Unggah dokumentasi foto kegiatan K3, sosialisasi/safety briefing, dan temuan lingkungan.',
         icon: Image,
         url: k3Attachment.index().url,
         buttonLabel: 'Buka Input Lampiran K3',
     },
     {
         title: 'Monitoring K3',
-        description: 'Dashboard pemantauan masa berlaku sertifikasi peralatan dan tabung pemadam api unit.',
+        description:
+            'Dashboard pemantauan masa berlaku sertifikasi peralatan dan tabung pemadam api unit.',
         icon: Gauge,
         url: k3Monitoring.index().url,
         buttonLabel: 'Buka Monitoring K3',
     },
     {
         title: 'Kondisi K3 (Unsafe Action & Unsafe Condition)',
-        description: 'Identifikasi, pelaporan, dan tindak lanjut temuan tindakan tidak aman dan kondisi berbahaya — termasuk temuan yang diinput Operasi, Pemeliharaan, dan Logistik & Gudang.',
+        description:
+            'Identifikasi, pelaporan, dan tindak lanjut temuan tindakan tidak aman dan kondisi berbahaya — termasuk temuan yang diinput Operasi, Pemeliharaan, dan Logistik & Gudang.',
         icon: AlertTriangle,
         url: k3KondisiK3.index().url,
         buttonLabel: 'Buka Kondisi K3',
     },
     {
         title: 'Rekap 5S5R Seluruh Divisi',
-        description: 'Pelaksanaan 5S5R (Ringkas, Rapi, Resik, Rawat, Rajin) yang diinput Operasi, Pemeliharaan, PdM, dan Logistik & Gudang — terisi otomatis.',
+        description:
+            'Pelaksanaan 5S5R (Ringkas, Rapi, Resik, Rawat, Rajin) yang diinput Operasi, Pemeliharaan, PdM, dan Logistik & Gudang — terisi otomatis.',
         icon: Sparkles,
         url: k3Rekap5s5r.index().url,
         buttonLabel: 'Buka Rekap 5S5R',
@@ -204,6 +228,43 @@ const INPUT_MENUS: InputCard[] = [
 ];
 
 export default function K3InputIndex() {
+    const compact = useCompactLayout();
+
+    if (compact) {
+        return (
+            <>
+                <Head title="Input K3 & Keamanan" />
+                <div className="flex flex-1 flex-col gap-2.5 p-3">
+                    <K3MobileHeader title="Input K3 & Keamanan" />
+                    <div className="flex flex-col gap-2">
+                        {INPUT_MENUS.map((item) => {
+                            const Icon = item.icon;
+                            const isAvailable = item.isAvailable ?? true;
+
+                            return (
+                                <button
+                                    key={item.title}
+                                    type="button"
+                                    disabled={!isAvailable}
+                                    onClick={() => router.get(item.url)}
+                                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition active:scale-[0.99] disabled:opacity-60"
+                                >
+                                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                        <Icon className="size-5" />
+                                    </div>
+                                    <span className="min-w-0 flex-1 text-[13.5px] leading-snug font-semibold text-foreground">
+                                        {item.title}
+                                    </span>
+                                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Input K3 & Keamanan" />
@@ -222,7 +283,9 @@ export default function K3InputIndex() {
                             <div
                                 key={item.title}
                                 className={`flex flex-col justify-between gap-4 rounded-md border border-border bg-card p-5 transition-all ${
-                                    isAvailable ? 'hover:border-primary/50' : 'hover:border-primary/30'
+                                    isAvailable
+                                        ? 'hover:border-primary/50'
+                                        : 'hover:border-primary/30'
                                 }`}
                             >
                                 <div>
@@ -231,7 +294,10 @@ export default function K3InputIndex() {
                                             <Icon className="size-5" />
                                         </div>
                                         {!isAvailable && (
-                                            <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                                            <Badge
+                                                variant="outline"
+                                                className="text-[11px] font-normal text-muted-foreground"
+                                            >
                                                 Sementara Disusun
                                             </Badge>
                                         )}
@@ -265,7 +331,8 @@ export default function K3InputIndex() {
                                                 {item.buttonLabel}
                                             </Button>
                                             <p className="text-center text-[11px] text-muted-foreground italic">
-                                                * Tombol belum difungsikan (tabel sedang disusun)
+                                                * Tombol belum difungsikan
+                                                (tabel sedang disusun)
                                             </p>
                                         </>
                                     )}

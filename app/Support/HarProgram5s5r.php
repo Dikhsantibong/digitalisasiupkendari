@@ -5,16 +5,19 @@ namespace App\Support;
 use Illuminate\Support\Carbon;
 
 /**
- * Definisi Jadwal Program 5S 5R Pemeliharaan (Modul HAR): lima program per
- * minggu dengan detail & PIC bawaan dari lembar resmi, pilihan tindakan,
- * progres dan kondisi. Satu sumber untuk halaman input, validasi dan PDF.
+ * Definisi Program 5S 5R Pemeliharaan (Modul HAR): lima program per shift per hari
+ * (Pagi, Sore, Malam) dengan detail & PIC bawaan dari lembar resmi, pilihan tindakan,
+ * progres, kondisi, dan foto eviden per shift per hari.
  */
 final class HarProgram5s5r
 {
     public const DEFAULT_PIC = 'K3L, Operasi Dan Pemeliharaan';
 
-    /** Foto eviden maksimal per minggu. */
+    /** Foto eviden maksimal per shift per hari. */
     public const MAX_EVIDENCE = 3;
+
+    /** @var list<string> */
+    public const SHIFTS = ['Pagi', 'Sore', 'Malam'];
 
     /**
      * @var array<string, array{label: string, istilah: string, detail: string}>
@@ -46,24 +49,52 @@ final class HarProgram5s5r
     /** @var list<string> */
     public const KONDISI = ['Baik', 'Kurang Baik', 'Rusak'];
 
+    public static function daysInMonth(int $month, int $year): int
+    {
+        return (int) Carbon::create($year, $month, 1)->daysInMonth;
+    }
+
     /**
      * Jumlah minggu dalam bulan (minggu ke-1 = tanggal 1–7, dst.).
      */
     public static function weeks(int $month, int $year): int
     {
-        return (int) ceil(Carbon::create($year, $month, 1)->daysInMonth / 7);
+        return (int) ceil(self::daysInMonth($month, $year) / 7);
     }
 
     /**
-     * Baris bawaan satu minggu: program, detail & PIC dari lembar resmi; kolom
-     * hasil (kondisi, tindakan, progres, jumlah) kosong untuk diisi.
+     * Total slot rencana per program dalam sebulan (jumlah hari × 3 shift).
+     */
+    public static function plannedSlots(int $month, int $year): int
+    {
+        return self::daysInMonth($month, $year) * count(self::SHIFTS);
+    }
+
+    public static function slotKey(int $day, string $shift): string
+    {
+        return "{$day}_{$shift}";
+    }
+
+    /**
+     * @return array{day: int, shift: string}|null
+     */
+    public static function parseSlotKey(string|int $key, int $maxDay = 31): ?array
+    {
+        return OperasiProgram5s5r::parseSlotKey($key, $maxDay);
+    }
+
+    /**
+     * Baris bawaan satu hari & shift: program, detail & PIC dari lembar resmi; kolom
+     * hasil (kondisi, tindakan, progres, jumlah, keterangan) kosong untuk diisi.
      *
      * @return array<string, mixed>
      */
-    public static function blankRow(int $minggu, string $program): array
+    public static function blankRow(int $day, string $shift, string $program): array
     {
         return [
-            'minggu' => $minggu,
+            'day' => $day,
+            'shift' => $shift,
+            'minggu' => max(1, (int) ceil($day / 7)),
             'program' => $program,
             'detail' => self::PROGRAMS[$program]['detail'],
             'pic' => self::DEFAULT_PIC,

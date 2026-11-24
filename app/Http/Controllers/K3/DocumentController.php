@@ -60,7 +60,7 @@ class DocumentController extends Controller
      *       Pemeliharaan & Logistik (Sumber, Status); poin 17 adds the 5S5R
      *       pelaksanaan of every division (K3DivisionFeed).
      */
-    private const BODY_VERSION = 15;
+    private const BODY_VERSION = 16;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN K3 LINGKUNGAN PEMBANGKIT';
 

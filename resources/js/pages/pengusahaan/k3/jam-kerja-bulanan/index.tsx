@@ -14,11 +14,26 @@ import {
     Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    useCompactLayout,
+    useSimplifiedMobileInput,
+} from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanJamKerja from '@/routes/k3/pengusahaan/jam-kerja';
 import k3PengusahaanJamKerjaBulanan from '@/routes/k3/pengusahaan/jam-kerja-bulanan';
@@ -104,15 +119,23 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
     const [form, setForm] = useState<JamKerjaBulananData>(() => initialRecord);
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const updateField = <K extends keyof JamKerjaBulananData>(key: K, value: JamKerjaBulananData[K]) => {
+    const updateField = <K extends keyof JamKerjaBulananData>(
+        key: K,
+        value: JamKerjaBulananData[K],
+    ) => {
         setForm((prev) => ({ ...prev, [key]: value }));
         setDirty(true);
     };
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', value: string | number) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        value: string | number,
+    ) => {
         const nextFilters = { ...filters, [key]: Number(value) };
         router.get(k3PengusahaanJamKerjaBulanan.index().url, nextFilters, {
             preserveState: false,
@@ -125,8 +148,8 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -152,12 +175,14 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
         const tetapShift = Number(form.karyawan_tetap_shift) || 0;
         const tidakTetap = Number(form.karyawan_tidak_tetap) || 0;
         const tidakTetapShift = Number(form.karyawan_tidak_tetap_shift) || 0;
-        const jumlahKaryawan = tetap + tetapShift + tidakTetap + tidakTetapShift;
+        const jumlahKaryawan =
+            tetap + tetapShift + tidakTetap + tidakTetapShift;
 
         const hariKerja = Number(form.hari_kerja) || 0;
         const jamStandart = hariKerja * 8;
 
-        const jamStandartKaryawan = Number(form.jam_kerja_standart_karyawan) || 0;
+        const jamStandartKaryawan =
+            Number(form.jam_kerja_standart_karyawan) || 0;
         const jamLembur = Number(form.jam_kerja_lembur_karyawan) || 0;
         const jamSeluruh = jamStandartKaryawan + jamLembur;
 
@@ -176,9 +201,349 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
         };
     }, [form]);
 
+    if (compact) {
+        const updateNum = (key: keyof JamKerjaBulananData, raw: string) => {
+            updateField(key, (raw === '' ? 0 : Number(raw)) as never);
+        };
+
+        return (
+            <>
+                <Head
+                    title={`Laporan Bulanan Jumlah Jam Kerja Karyawan — ${unit.name}`}
+                />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Jam Kerja Bulanan"
+                        backHref={k3Pengusahaan.index('input').url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => handleFilterChange('unit_id', v)}
+                        month={filters.month}
+                        onMonthChange={(v) => handleFilterChange('month', v)}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => handleFilterChange('year', v)}
+                    />
+
+                    {(has_detail_record ||
+                        komulatif_lalu_suggested !== null) && (
+                        <K3MobileActionRow>
+                            {has_detail_record && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() =>
+                                        router.get(
+                                            k3PengusahaanJamKerja.index({
+                                                query: filters,
+                                            }).url,
+                                        )
+                                    }
+                                    className="gap-1.5"
+                                >
+                                    <ExternalLink className="size-3.5" />
+                                    Buka Jam Kerja Harian
+                                </Button>
+                            )}
+                            {can_write && komulatif_lalu_suggested !== null && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() =>
+                                        updateField(
+                                            'jam_kerja_komulatif_bulan_lalu',
+                                            komulatif_lalu_suggested,
+                                        )
+                                    }
+                                    className="gap-1.5"
+                                >
+                                    <RefreshCw className="size-3.5" />
+                                    Pakai Kumulatif Lalu (
+                                    {formatNumber(komulatif_lalu_suggested)})
+                                </Button>
+                            )}
+                        </K3MobileActionRow>
+                    )}
+
+                    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                Tenaga Kerja
+                            </span>
+                            <span className="text-xs font-bold text-primary">
+                                Total: {calcs.jumlahKaryawan} org
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Tetap Non Shift
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={form.karyawan_tetap ?? 0}
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'karyawan_tetap',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Tetap Shift
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={form.karyawan_tetap_shift ?? 0}
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'karyawan_tetap_shift',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Tidak Tetap
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={form.karyawan_tidak_tetap ?? 0}
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'karyawan_tidak_tetap',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Tidak Tetap Shift
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={form.karyawan_tidak_tetap_shift ?? 0}
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'karyawan_tidak_tetap_shift',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                        <span className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            Hari &amp; Jam Kerja Bulanan
+                        </span>
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Hari Kerja
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={form.hari_kerja ?? 0}
+                                    onChange={(e) =>
+                                        updateNum('hari_kerja', e.target.value)
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                            <div className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Jam Standart (Hari × 8)
+                                <span className="flex h-9 items-center rounded-md bg-muted/60 px-3 font-mono text-xs font-semibold text-foreground">
+                                    {formatNumber(calcs.jamStandart)}
+                                </span>
+                            </div>
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Jam Standar Karyawan
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={
+                                        form.jam_kerja_standart_karyawan ?? 0
+                                    }
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'jam_kerja_standart_karyawan',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Jam Lembur Karyawan
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={form.jam_kerja_lembur_karyawan ?? 0}
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'jam_kerja_lembur_karyawan',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Jam Absensi Karyawan
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={form.jam_absensi_karyawan ?? 0}
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'jam_absensi_karyawan',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                            <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                                Kumulatif Bulan Lalu
+                                <Input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={
+                                        form.jam_kerja_komulatif_bulan_lalu ?? 0
+                                    }
+                                    onChange={(e) =>
+                                        updateNum(
+                                            'jam_kerja_komulatif_bulan_lalu',
+                                            e.target.value,
+                                        )
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 rounded-lg border border-border/70 bg-muted/30 p-2 text-center">
+                            <div>
+                                <div className="text-[10px] text-muted-foreground">
+                                    Seluruh
+                                </div>
+                                <div className="font-mono text-xs font-bold text-foreground">
+                                    {formatNumber(calcs.jamSeluruh)}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-muted-foreground">
+                                    Realisasi
+                                </div>
+                                <div className="font-mono text-xs font-bold text-primary">
+                                    {formatNumber(calcs.jamRealisasi)}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-muted-foreground">
+                                    Kum. Ini
+                                </div>
+                                <div className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                    {formatNumber(calcs.komulatifIni)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <K3MobileMetaAccordion
+                        noDokumen={form.no_dokumen}
+                        revisi={form.revisi}
+                        tanggalDokumen={form.tgl_berlaku}
+                        onNoDokumenChange={(v) => updateField('no_dokumen', v)}
+                        onRevisiChange={(v) => updateField('revisi', v)}
+                        onTanggalDokumenChange={(v) =>
+                            updateField('tgl_berlaku', v)
+                        }
+                        canWrite={can_write}
+                        extra={
+                            <label className="col-span-2 flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                Halaman
+                                <Input
+                                    value={form.halaman}
+                                    onChange={(e) =>
+                                        updateField('halaman', e.target.value)
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                        }
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={form.catatan ?? ''}
+                                onChange={(e) =>
+                                    updateField('catatan', e.target.value)
+                                }
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan jam kerja bulanan…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            {dirty && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={resetChanges}
+                                    disabled={saving}
+                                    className="gap-1.5"
+                                >
+                                    <RotateCcw className="size-4" />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
-            <Head title={`Laporan Bulanan Jumlah Jam Kerja Karyawan — ${unit.name}`} />
+            <Head
+                title={`Laporan Bulanan Jumlah Jam Kerja Karyawan — ${unit.name}`}
+            />
             <style>{PRINT_CSS}</style>
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -188,7 +553,9 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => router.get(k3Pengusahaan.index('input').url)}
+                            onClick={() =>
+                                router.get(k3Pengusahaan.index('input').url)
+                            }
                             title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
@@ -198,7 +565,10 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                 <h1 className="text-xl font-bold text-foreground">
                                     Laporan Bulanan Jumlah Jam Kerja Karyawan
                                 </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/30 bg-primary/10 text-primary"
+                                >
                                     {unit.name}
                                 </Badge>
                                 <Badge variant="secondary" className="text-xs">
@@ -206,7 +576,9 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Ringkasan 14 uraian jam kerja standar, lembur, absensi, realisasi, dan kumulatif bulanan (Formulir FMZ-08.4.4.11).
+                                Akses 2 — Ringkasan 14 uraian jam kerja standar,
+                                lembur, absensi, realisasi, dan kumulatif
+                                bulanan (Formulir FMZ-08.4.4.11).
                             </p>
                         </div>
                     </div>
@@ -232,7 +604,11 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                 className="gap-1.5 text-xs"
                             >
                                 <Save className="size-3.5" />
-                                {saving ? 'Menyimpan...' : has_saved ? 'Simpan Perubahan' : 'Simpan Data'}
+                                {saving
+                                    ? 'Menyimpan...'
+                                    : has_saved
+                                      ? 'Simpan Perubahan'
+                                      : 'Simpan Data'}
                             </Button>
                         )}
                         <Button
@@ -254,22 +630,37 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                             <OperasiSelect
                                 label="Unit Layanan"
                                 value={String(filters.unit_id)}
-                                options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                                onChange={(val) => handleFilterChange('unit_id', val)}
+                                options={options.units.map((u) => ({
+                                    value: String(u.id),
+                                    label: u.name,
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('unit_id', val)
+                                }
                             />
 
                             <OperasiSelect
                                 label="Bulan"
                                 value={String(filters.month)}
-                                options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
-                                onChange={(val) => handleFilterChange('month', val)}
+                                options={OPERASI_MONTHS.map((label, idx) => ({
+                                    value: String(idx + 1),
+                                    label,
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('month', val)
+                                }
                             />
 
                             <OperasiSelect
                                 label="Tahun"
                                 value={String(filters.year)}
-                                options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                                onChange={(val) => handleFilterChange('year', val)}
+                                options={options.years.map((y) => ({
+                                    value: String(y),
+                                    label: String(y),
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('year', val)
+                                }
                             />
                         </div>
 
@@ -277,55 +668,79 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                             {has_detail_record ? (
                                 <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-700 dark:text-emerald-300">
                                     <Info className="size-4 shrink-0" />
-                                    <span>Terkoneksi dengan data detail <strong>FMZ-08.4.4.10</strong></span>
+                                    <span>
+                                        Terkoneksi dengan data detail{' '}
+                                        <strong>FMZ-08.4.4.10</strong>
+                                    </span>
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 gap-1 px-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-100"
                                         onClick={() => {
-                                            router.get(k3PengusahaanJamKerja.index().url, {
-                                                unit_id: filters.unit_id,
-                                                month: filters.month,
-                                                year: filters.year,
-                                            });
+                                            router.get(
+                                                k3PengusahaanJamKerja.index()
+                                                    .url,
+                                                {
+                                                    unit_id: filters.unit_id,
+                                                    month: filters.month,
+                                                    year: filters.year,
+                                                },
+                                            );
                                         }}
                                     >
-                                        Buka Detail <ExternalLink className="size-3" />
+                                        Buka Detail{' '}
+                                        <ExternalLink className="size-3" />
                                     </Button>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300">
                                     <Info className="size-4 shrink-0" />
-                                    <span>Belum ada lembar detail FMZ-08.4.4.10 bulan ini.</span>
+                                    <span>
+                                        Belum ada lembar detail FMZ-08.4.4.10
+                                        bulan ini.
+                                    </span>
                                     <Button
                                         variant="ghost"
                                         size="sm"
                                         className="h-6 gap-1 px-1.5 text-xs font-semibold text-amber-700 hover:text-amber-900 dark:text-amber-300 dark:hover:text-amber-100"
                                         onClick={() => {
-                                            router.get(k3PengusahaanJamKerja.index().url, {
-                                                unit_id: filters.unit_id,
-                                                month: filters.month,
-                                                year: filters.year,
-                                            });
+                                            router.get(
+                                                k3PengusahaanJamKerja.index()
+                                                    .url,
+                                                {
+                                                    unit_id: filters.unit_id,
+                                                    month: filters.month,
+                                                    year: filters.year,
+                                                },
+                                            );
                                         }}
                                     >
-                                        Isi FMZ-08.4.4.10 <ExternalLink className="size-3" />
+                                        Isi FMZ-08.4.4.10{' '}
+                                        <ExternalLink className="size-3" />
                                     </Button>
                                 </div>
                             )}
 
                             {komulatif_lalu_suggested !== null &&
-                                form.jam_kerja_komulatif_bulan_lalu !== komulatif_lalu_suggested &&
+                                form.jam_kerja_komulatif_bulan_lalu !==
+                                    komulatif_lalu_suggested &&
                                 can_write && (
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => updateField('jam_kerja_komulatif_bulan_lalu', komulatif_lalu_suggested)}
+                                        onClick={() =>
+                                            updateField(
+                                                'jam_kerja_komulatif_bulan_lalu',
+                                                komulatif_lalu_suggested,
+                                            )
+                                        }
                                         className="gap-1.5 text-xs text-blue-600 hover:text-blue-700"
                                         title="Gunakan nilai jam kerja kumulatif bulan lalu dari arsip sistem"
                                     >
                                         <RefreshCw className="size-3.5" />
-                                        Gunakan Kumulatif Bulan Lalu ({formatNumber(komulatif_lalu_suggested)})
+                                        Gunakan Kumulatif Bulan Lalu (
+                                        {formatNumber(komulatif_lalu_suggested)}
+                                        )
                                     </Button>
                                 )}
                         </div>
@@ -373,7 +788,9 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                         alt="PLN Nusantara Power"
                                         className="mx-auto max-h-12 object-contain"
                                         onError={(e) => {
-                                            (e.target as HTMLElement).style.display = 'none';
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
                                         }}
                                     />
                                 </td>
@@ -384,10 +801,17 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                         PT PLN NUSANTARA POWER
                                     </div>
                                     <div className="text-sm font-extrabold text-foreground uppercase">
-                                        LAPORAN BULANAN JUMLAH JAM KERJA KARYAWAN
+                                        LAPORAN BULANAN JUMLAH JAM KERJA
+                                        KARYAWAN
                                     </div>
                                     <div className="text-xs font-semibold text-foreground uppercase">
-                                        UNIT : {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `ULPLTD ${unit.name.toUpperCase()}`}
+                                        UNIT :{' '}
+                                        {unit.name
+                                            .toUpperCase()
+                                            .startsWith('ULPLTD') ||
+                                        unit.name.toUpperCase().startsWith('UP')
+                                            ? unit.name.toUpperCase()
+                                            : `ULPLTD ${unit.name.toUpperCase()}`}
                                     </div>
                                     <div className="text-xs font-medium text-foreground">
                                         Periode : {monthName} {filters.year}
@@ -395,18 +819,28 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                 </td>
 
                                 {/* Metadata Dokumen Kanan */}
-                                <td className="w-56 border-l border-black p-1.5 text-left text-xs align-middle dark:border-border">
+                                <td className="w-56 border-l border-black p-1.5 text-left align-middle text-xs dark:border-border">
                                     <table className="w-full text-xs">
                                         <tbody>
                                             <tr>
-                                                <td className="w-24 py-0.5 font-semibold text-muted-foreground">No. Dokumen</td>
+                                                <td className="w-24 py-0.5 font-semibold text-muted-foreground">
+                                                    No. Dokumen
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={form.no_dokumen}
-                                                            onChange={(e) => updateField('no_dokumen', e.target.value)}
+                                                            value={
+                                                                form.no_dokumen
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'no_dokumen',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -415,14 +849,24 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Tgl. Berlaku</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Tgl. Berlaku
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={form.tgl_berlaku}
-                                                            onChange={(e) => updateField('tgl_berlaku', e.target.value)}
+                                                            value={
+                                                                form.tgl_berlaku
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'tgl_berlaku',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -431,14 +875,22 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Revisi</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Revisi
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
                                                             value={form.revisi}
-                                                            onChange={(e) => updateField('revisi', e.target.value)}
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'revisi',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -447,14 +899,22 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Halaman</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Halaman
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
                                                             value={form.halaman}
-                                                            onChange={(e) => updateField('halaman', e.target.value)}
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'halaman',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -473,16 +933,26 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                     <table className="excel-sheet jkb-table mt-4 w-full border-collapse border border-black text-xs dark:border-border">
                         <thead>
                             <tr className="bg-[#e8eaf6] text-center font-bold text-foreground dark:bg-muted/60">
-                                <th className="w-14 border border-black p-2 dark:border-border">NO.</th>
-                                <th className="border border-black p-2 text-left dark:border-border">URAIAN</th>
-                                <th className="w-40 border border-black p-2 text-center dark:border-border">JUMLAH</th>
-                                <th className="w-44 border border-black p-2 text-left dark:border-border">SATUAN</th>
+                                <th className="w-14 border border-black p-2 dark:border-border">
+                                    NO.
+                                </th>
+                                <th className="border border-black p-2 text-left dark:border-border">
+                                    URAIAN
+                                </th>
+                                <th className="w-40 border border-black p-2 text-center dark:border-border">
+                                    JUMLAH
+                                </th>
+                                <th className="w-44 border border-black p-2 text-left dark:border-border">
+                                    SATUAN
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {/* Baris 1: Jam Kerja Komulatif Bulan Lalu */}
-                            <tr className="border-b border-black font-bold bg-muted/20 dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">1.</td>
+                            <tr className="border-b border-black bg-muted/20 font-bold dark:border-border">
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    1.
+                                </td>
                                 <td className="border-r border-black p-2 dark:border-border">
                                     Jam Kerja Komulatif Bulan Lalu
                                 </td>
@@ -491,238 +961,408 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                         <input
                                             type="number"
                                             step="any"
-                                            value={form.jam_kerja_komulatif_bulan_lalu}
-                                            onChange={(e) => updateField('jam_kerja_komulatif_bulan_lalu', parseFloat(e.target.value) || 0)}
+                                            value={
+                                                form.jam_kerja_komulatif_bulan_lalu
+                                            }
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'jam_kerja_komulatif_bulan_lalu',
+                                                    parseFloat(
+                                                        e.target.value,
+                                                    ) || 0,
+                                                )
+                                            }
                                             className="w-full text-center font-bold text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
-                                        <span>{formatNumber(form.jam_kerja_komulatif_bulan_lalu)}</span>
+                                        <span>
+                                            {formatNumber(
+                                                form.jam_kerja_komulatif_bulan_lalu,
+                                            )}
+                                        </span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 2: Karyawan Tetap */}
                             <tr className="border-b border-black dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">2.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Karyawan Tetap</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    2.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Karyawan Tetap
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
                                             value={form.karyawan_tetap}
-                                            onChange={(e) => updateField('karyawan_tetap', parseInt(e.target.value) || 0)}
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'karyawan_tetap',
+                                                    parseInt(e.target.value) ||
+                                                        0,
+                                                )
+                                            }
                                             className="w-full text-center text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
                                         <span>{form.karyawan_tetap}</span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 3: Karyawan Tetap (Shift) */}
                             <tr className="border-b border-black dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">3.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Karyawan Tetap (Shift)</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    3.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Karyawan Tetap (Shift)
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
                                             value={form.karyawan_tetap_shift}
-                                            onChange={(e) => updateField('karyawan_tetap_shift', parseInt(e.target.value) || 0)}
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'karyawan_tetap_shift',
+                                                    parseInt(e.target.value) ||
+                                                        0,
+                                                )
+                                            }
                                             className="w-full text-center text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
                                         <span>{form.karyawan_tetap_shift}</span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 4: Karyawan Tidak Tetap */}
                             <tr className="border-b border-black dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">4.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Karyawan Tidak Tetap</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    4.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Karyawan Tidak Tetap
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
                                             value={form.karyawan_tidak_tetap}
-                                            onChange={(e) => updateField('karyawan_tidak_tetap', parseInt(e.target.value) || 0)}
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'karyawan_tidak_tetap',
+                                                    parseInt(e.target.value) ||
+                                                        0,
+                                                )
+                                            }
                                             className="w-full text-center text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
                                         <span>{form.karyawan_tidak_tetap}</span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 5: Karyawan Tidak Tetap (Shift) */}
                             <tr className="border-b border-black dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">5.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Karyawan Tidak Tetap (Shift)</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    5.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Karyawan Tidak Tetap (Shift)
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
-                                            value={form.karyawan_tidak_tetap_shift}
-                                            onChange={(e) => updateField('karyawan_tidak_tetap_shift', parseInt(e.target.value) || 0)}
+                                            value={
+                                                form.karyawan_tidak_tetap_shift
+                                            }
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'karyawan_tidak_tetap_shift',
+                                                    parseInt(e.target.value) ||
+                                                        0,
+                                                )
+                                            }
                                             className="w-full text-center text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
-                                        <span>{form.karyawan_tidak_tetap_shift}</span>
+                                        <span>
+                                            {form.karyawan_tidak_tetap_shift}
+                                        </span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 6: Jumlah Karyawan (Bold, computed) */}
-                            <tr className="border-b border-black font-bold bg-muted/20 dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">6.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jumlah Karyawan</td>
+                            <tr className="border-b border-black bg-muted/20 font-bold dark:border-border">
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    6.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jumlah Karyawan
+                                </td>
                                 <td className="border-r border-black p-2 text-center dark:border-border">
                                     {formatNumber(calcs.jumlahKaryawan)}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 7: Hari Kerja */}
                             <tr className="border-b border-black dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">7.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Hari Kerja</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    7.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Hari Kerja
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
                                             value={form.hari_kerja}
-                                            onChange={(e) => updateField('hari_kerja', parseInt(e.target.value) || 0)}
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'hari_kerja',
+                                                    parseInt(e.target.value) ||
+                                                        0,
+                                                )
+                                            }
                                             className="w-full text-center text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
                                         <span>{form.hari_kerja}</span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Hari</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Hari
+                                </td>
                             </tr>
 
                             {/* Baris 8: Jam Kerja Standart (Bold, computed: Hari Kerja * 8) */}
-                            <tr className="border-b border-black font-bold bg-muted/20 dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">8.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jam Kerja Standart</td>
+                            <tr className="border-b border-black bg-muted/20 font-bold dark:border-border">
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    8.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jam Kerja Standart
+                                </td>
                                 <td className="border-r border-black p-2 text-center dark:border-border">
                                     {formatNumber(calcs.jamStandart)}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja
+                                </td>
                             </tr>
 
                             {/* Baris 9: Jam Kerja Standart Karyawan */}
                             <tr className="border-b border-black dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">9.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jam Kerja Standart Karyawan</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    9.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jam Kerja Standart Karyawan
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
                                             step="any"
-                                            value={form.jam_kerja_standart_karyawan}
-                                            onChange={(e) => updateField('jam_kerja_standart_karyawan', parseFloat(e.target.value) || 0)}
+                                            value={
+                                                form.jam_kerja_standart_karyawan
+                                            }
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'jam_kerja_standart_karyawan',
+                                                    parseFloat(
+                                                        e.target.value,
+                                                    ) || 0,
+                                                )
+                                            }
                                             className="w-full text-center text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
-                                        <span>{formatNumber(form.jam_kerja_standart_karyawan)}</span>
+                                        <span>
+                                            {formatNumber(
+                                                form.jam_kerja_standart_karyawan,
+                                            )}
+                                        </span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 10: Jam Kerja Lembur Karyawan */}
                             <tr className="border-b border-black dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">10.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jam Kerja Lembur Karyawan</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    10.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jam Kerja Lembur Karyawan
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
                                             step="any"
-                                            value={form.jam_kerja_lembur_karyawan}
-                                            onChange={(e) => updateField('jam_kerja_lembur_karyawan', parseFloat(e.target.value) || 0)}
+                                            value={
+                                                form.jam_kerja_lembur_karyawan
+                                            }
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'jam_kerja_lembur_karyawan',
+                                                    parseFloat(
+                                                        e.target.value,
+                                                    ) || 0,
+                                                )
+                                            }
                                             className="w-full text-center text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
-                                        <span>{formatNumber(form.jam_kerja_lembur_karyawan)}</span>
+                                        <span>
+                                            {formatNumber(
+                                                form.jam_kerja_lembur_karyawan,
+                                            )}
+                                        </span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 11: Jam Kerja Seluruh Karyawan (Bold, computed: 9 + 10) */}
-                            <tr className="border-b border-black font-bold bg-muted/20 dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">11.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jam Kerja Seluruh Karyawan</td>
+                            <tr className="border-b border-black bg-muted/20 font-bold dark:border-border">
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    11.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jam Kerja Seluruh Karyawan
+                                </td>
                                 <td className="border-r border-black p-2 text-center dark:border-border">
                                     {formatNumber(calcs.jamSeluruh)}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 12: Jam Absensi Karyawan (Bold) */}
                             <tr className="border-b border-black font-bold dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">12.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jam Absensi Karyawan</td>
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    12.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jam Absensi Karyawan
+                                </td>
                                 <td className="border-r border-black p-1 text-center dark:border-border">
                                     {can_write ? (
                                         <input
                                             type="number"
                                             step="any"
                                             value={form.jam_absensi_karyawan}
-                                            onChange={(e) => updateField('jam_absensi_karyawan', parseFloat(e.target.value) || 0)}
+                                            onChange={(e) =>
+                                                updateField(
+                                                    'jam_absensi_karyawan',
+                                                    parseFloat(
+                                                        e.target.value,
+                                                    ) || 0,
+                                                )
+                                            }
                                             className="w-full text-center font-bold text-foreground focus:bg-primary/10 focus:outline-none"
                                         />
                                     ) : (
-                                        <span>{formatNumber(form.jam_absensi_karyawan)}</span>
+                                        <span>
+                                            {formatNumber(
+                                                form.jam_absensi_karyawan,
+                                            )}
+                                        </span>
                                     )}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 13: Jam Kerja Realisasi Karyawan (Bold, computed: 11 - 12) */}
-                            <tr className="border-b border-black font-bold bg-muted/20 dark:border-border">
-                                <td className="border-r border-black p-2 text-center dark:border-border">13.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jam Kerja Realisasi Karyawan</td>
+                            <tr className="border-b border-black bg-muted/20 font-bold dark:border-border">
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    13.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jam Kerja Realisasi Karyawan
+                                </td>
                                 <td className="border-r border-black p-2 text-center dark:border-border">
                                     {formatNumber(calcs.jamRealisasi)}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja Karyawan
+                                </td>
                             </tr>
 
                             {/* Baris 14: Jam Kerja Komulatif s/d Bulan ini (Bold, computed: 1 + 13) */}
-                            <tr className="font-bold bg-muted/30">
-                                <td className="border-r border-black p-2 text-center dark:border-border">14.</td>
-                                <td className="border-r border-black p-2 dark:border-border">Jam Kerja Komulatif s/d Bulan ini</td>
+                            <tr className="bg-muted/30 font-bold">
+                                <td className="border-r border-black p-2 text-center dark:border-border">
+                                    14.
+                                </td>
+                                <td className="border-r border-black p-2 dark:border-border">
+                                    Jam Kerja Komulatif s/d Bulan ini
+                                </td>
                                 <td className="border-r border-black p-2 text-center text-primary dark:border-border dark:text-primary">
                                     {formatNumber(calcs.komulatifIni)}
                                 </td>
-                                <td className="p-2 text-muted-foreground">Jam Kerja Karyawan</td>
+                                <td className="p-2 text-muted-foreground">
+                                    Jam Kerja Karyawan
+                                </td>
                             </tr>
                         </tbody>
                     </table>
 
                     {/* Catatan Tambahan (Bila ada) */}
                     <div className="mt-4">
-                        <div className="text-xs font-semibold text-foreground">Catatan / Keterangan:</div>
+                        <div className="text-xs font-semibold text-foreground">
+                            Catatan / Keterangan:
+                        </div>
                         {can_write ? (
                             <textarea
                                 value={form.catatan ?? ''}
-                                onChange={(e) => updateField('catatan', e.target.value)}
+                                onChange={(e) =>
+                                    updateField('catatan', e.target.value)
+                                }
                                 placeholder="Tambahkan catatan khusus mengenai realisasi jam kerja jika ada..."
                                 rows={2}
                                 className="mt-1 w-full rounded border border-border bg-background p-2 text-xs focus:ring-1 focus:ring-primary focus:outline-none"
                             />
                         ) : (
                             <p className="mt-1 text-xs text-muted-foreground italic">
-                                {form.catatan ? form.catatan : 'Tidak ada catatan.'}
+                                {form.catatan
+                                    ? form.catatan
+                                    : 'Tidak ada catatan.'}
                             </p>
                         )}
                     </div>
@@ -731,10 +1371,11 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                 {/* History Riwayat 12 Bulan Terakhir */}
                 {history.length > 0 && (
                     <Card className="no-print mt-2 p-4">
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="mb-3 flex items-center gap-2">
                             <CalendarRange className="size-4 text-primary" />
                             <h2 className="text-sm font-semibold text-foreground">
-                                Riwayat Kumulatif Jam Kerja 12 Bulan Terakhir ({unit.name})
+                                Riwayat Kumulatif Jam Kerja 12 Bulan Terakhir (
+                                {unit.name})
                             </h2>
                         </div>
                         <div className="overflow-x-auto">
@@ -742,15 +1383,25 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                 <thead>
                                     <tr className="border-b border-border bg-muted/40 text-left font-semibold text-muted-foreground">
                                         <th className="p-2">Periode</th>
-                                        <th className="p-2 text-right">Jam Kumulatif Bulan Ini</th>
-                                        <th className="p-2 text-right">Terakhir Diperbarui</th>
-                                        <th className="p-2 text-center">Aksi</th>
+                                        <th className="p-2 text-right">
+                                            Jam Kumulatif Bulan Ini
+                                        </th>
+                                        <th className="p-2 text-right">
+                                            Terakhir Diperbarui
+                                        </th>
+                                        <th className="p-2 text-center">
+                                            Aksi
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {history.map((h) => {
-                                        const mName = OPERASI_MONTHS[h.month - 1] ?? `Bulan ${h.month}`;
-                                        const isCurrent = h.year === filters.year && h.month === filters.month;
+                                        const mName =
+                                            OPERASI_MONTHS[h.month - 1] ??
+                                            `Bulan ${h.month}`;
+                                        const isCurrent =
+                                            h.year === filters.year &&
+                                            h.month === filters.month;
 
                                         return (
                                             <tr
@@ -760,13 +1411,19 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                                 <td className="p-2">
                                                     {mName} {h.year}
                                                     {isCurrent && (
-                                                        <Badge variant="outline" className="ml-2 border-primary/30 text-[10px] text-primary">
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="ml-2 border-primary/30 text-[10px] text-primary"
+                                                        >
                                                             Aktif
                                                         </Badge>
                                                     )}
                                                 </td>
                                                 <td className="p-2 text-right font-mono font-bold">
-                                                    {formatNumber(h.jam_kerja_komulatif_bulan_ini)} Jam
+                                                    {formatNumber(
+                                                        h.jam_kerja_komulatif_bulan_ini,
+                                                    )}{' '}
+                                                    Jam
                                                 </td>
                                                 <td className="p-2 text-right text-muted-foreground">
                                                     {h.updated_at ?? '-'}
@@ -777,11 +1434,16 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                                         size="sm"
                                                         className="h-6 px-2 text-xs"
                                                         onClick={() => {
-                                                            router.get(k3PengusahaanJamKerjaBulanan.index().url, {
-                                                                unit_id: filters.unit_id,
-                                                                month: h.month,
-                                                                year: h.year,
-                                                            });
+                                                            router.get(
+                                                                k3PengusahaanJamKerjaBulanan.index()
+                                                                    .url,
+                                                                {
+                                                                    unit_id:
+                                                                        filters.unit_id,
+                                                                    month: h.month,
+                                                                    year: h.year,
+                                                                },
+                                                            );
                                                         }}
                                                     >
                                                         Lihat
@@ -818,11 +1480,15 @@ function StatTile({
 
     return (
         <Card className="flex items-center gap-3 p-3">
-            <div className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone}`}>
+            <div
+                className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${tone}`}
+            >
                 {icon}
             </div>
             <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] text-muted-foreground">{label}</p>
+                <p className="truncate text-[11px] text-muted-foreground">
+                    {label}
+                </p>
                 <p className="text-sm font-bold text-foreground">{value}</p>
             </div>
         </Card>

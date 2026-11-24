@@ -91,7 +91,7 @@ export default function Persetujuan({
 
                 {decides_requests && (
                     <Section
-                        title="Pengajuan Operator (Izin / Cuti / Tukar Shift)"
+                        title="Pengajuan Absensi (Izin / Cuti / Tukar Shift)"
                         icon={<UserCheck className="size-5" />}
                         count={requests.length}
                     >

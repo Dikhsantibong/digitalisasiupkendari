@@ -10,10 +10,23 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanEmergencyFacility from '@/routes/k3/pengusahaan/emergency-facility';
 import type { IdName } from '@/types';
@@ -95,6 +108,7 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
     const [nextKey, setNextKey] = useState(initialRows.length + 10);
+    const compact = useCompactLayout();
 
     // Sync state when period / filters change without useEffect (React render-time adjustment)
     const currentFiltersKey = `${filters.unit_id}-${filters.year}-${filters.month}-${filters.periode}`;
@@ -107,10 +121,19 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
         setDirty(false);
     }
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year' | 'periode', value: string | number) => {
-        if (dirty && !confirm('Perubahan yang belum disimpan akan hilang jika berganti periode/unit. Lanjutkan?')) {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year' | 'periode',
+        value: string | number,
+    ) => {
+        if (
+            dirty &&
+            !confirm(
+                'Perubahan yang belum disimpan akan hilang jika berganti periode/unit. Lanjutkan?',
+            )
+        ) {
             return;
         }
 
@@ -129,7 +152,11 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
             return;
         }
 
-        if (!confirm(`Muat contoh data standar pemeriksaan Emergency Facility untuk ${filters.periode}? Data baris yang belum disimpan akan digantikan.`)) {
+        if (
+            !confirm(
+                `Muat contoh data standar pemeriksaan Emergency Facility untuk ${filters.periode}? Data baris yang belum disimpan akan digantikan.`,
+            )
+        ) {
             return;
         }
 
@@ -137,7 +164,11 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
         setDirty(true);
     };
 
-    const updateField = (key: number, field: keyof EmergencyFacilityRow, value: string | number) => {
+    const updateField = (
+        key: number,
+        field: keyof EmergencyFacilityRow,
+        value: string | number,
+    ) => {
         setRows((prev) =>
             prev.map((row) => {
                 if (row._key !== key) {
@@ -148,12 +179,21 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
 
                 // If user edits jml_total or jml_ready and both are valid numbers, automatically suggest jml_not_ready and % kesiapan
                 if (field === 'jml_total' || field === 'jml_ready') {
-                    const totalStr = String(field === 'jml_total' ? value : row.jml_total).trim();
-                    const readyStr = String(field === 'jml_ready' ? value : row.jml_ready).trim();
+                    const totalStr = String(
+                        field === 'jml_total' ? value : row.jml_total,
+                    ).trim();
+                    const readyStr = String(
+                        field === 'jml_ready' ? value : row.jml_ready,
+                    ).trim();
                     const totalNum = parseFloat(totalStr);
                     const readyNum = parseFloat(readyStr);
 
-                    if (!isNaN(totalNum) && !isNaN(readyNum) && totalNum >= 0 && readyNum >= 0) {
+                    if (
+                        !isNaN(totalNum) &&
+                        !isNaN(readyNum) &&
+                        totalNum >= 0 &&
+                        readyNum >= 0
+                    ) {
                         const notReady = Math.max(0, totalNum - readyNum);
                         updated.jml_not_ready = String(notReady);
 
@@ -174,7 +214,10 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
 
     const addRowToGroup = (grup: string) => {
         const groupRows = rows.filter((r) => r.grup === grup);
-        const maxNo = groupRows.length > 0 ? Math.max(...groupRows.map((r) => r.no_urut)) : rows.length;
+        const maxNo =
+            groupRows.length > 0
+                ? Math.max(...groupRows.map((r) => r.no_urut))
+                : rows.length;
 
         const newRow: EmergencyFacilityRow = {
             _key: nextKey,
@@ -208,8 +251,8 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -247,12 +290,23 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
     };
 
     const handleCopy = (sourcePeriode: string, isPrevMonth = false) => {
-        if (!confirm(`Apakah Anda yakin ingin menyalin seluruh data dari periode ${sourcePeriode} ke ${filters.periode}? Data yang ada saat ini di ${filters.periode} akan diperbarui.`)) {
+        if (
+            !confirm(
+                `Apakah Anda yakin ingin menyalin seluruh data dari periode ${sourcePeriode} ke ${filters.periode}? Data yang ada saat ini di ${filters.periode} akan diperbarui.`,
+            )
+        ) {
             return;
         }
 
-        const sourceMonth = isPrevMonth ? (filters.month === 1 ? 12 : filters.month - 1) : filters.month;
-        const sourceYear = isPrevMonth && filters.month === 1 ? filters.year - 1 : filters.year;
+        const sourceMonth = isPrevMonth
+            ? filters.month === 1
+                ? 12
+                : filters.month - 1
+            : filters.month;
+        const sourceYear =
+            isPrevMonth && filters.month === 1
+                ? filters.year - 1
+                : filters.year;
 
         router.post(
             k3PengusahaanEmergencyFacility.copy().url,
@@ -286,13 +340,266 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
         return groups;
     }, [rows]);
 
-    const periodTitle = filters.periode === 'BULANAN'
-        ? `BULAN ${monthName.toUpperCase()} ${filters.year}`
-        : `${filters.periode} BULAN ${monthName.toUpperCase()} ${filters.year}`;
+    const periodTitle =
+        filters.periode === 'BULANAN'
+            ? `BULAN ${monthName.toUpperCase()} ${filters.year}`
+            : `${filters.periode} BULAN ${monthName.toUpperCase()} ${filters.year}`;
+
+    if (compact) {
+        return (
+            <>
+                <Head
+                    title={`Pemeriksaan Emergency Facility — ${filters.periode} ${monthName} ${filters.year}`}
+                />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Emergency Facility"
+                        backHref={k3Pengusahaan.index('input').url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => handleFilterChange('unit_id', v)}
+                        month={filters.month}
+                        onMonthChange={(v) => handleFilterChange('month', v)}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => handleFilterChange('year', v)}
+                        extra={
+                            <OperasiSelect
+                                label="Periode"
+                                value={filters.periode}
+                                options={options.periods.map((p) => ({
+                                    value: p,
+                                    label: p,
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('periode', val)
+                                }
+                                className="w-full"
+                            />
+                        }
+                    />
+
+                    {can_write &&
+                        (props.sample_rows?.length ||
+                            copy_sources.current_month.length > 0 ||
+                            copy_sources.prev_month.length > 0) && (
+                            <div className="flex flex-col gap-2">
+                                {props.sample_rows &&
+                                    props.sample_rows.length > 0 && (
+                                        <K3MobileActionRow>
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={loadSampleRows}
+                                                className="gap-1.5"
+                                            >
+                                                <Sparkles className="size-3.5 text-amber-500" />
+                                                Muat Contoh Data
+                                            </Button>
+                                        </K3MobileActionRow>
+                                    )}
+                                {(copy_sources.current_month.length > 0 ||
+                                    copy_sources.prev_month.length > 0) && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {copy_sources.current_month.map(
+                                            (src) => (
+                                                <Button
+                                                    key={`curr-${src}`}
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        handleCopy(src, false)
+                                                    }
+                                                    className="h-8 gap-1 text-xs"
+                                                >
+                                                    <Copy className="size-3" />
+                                                    Salin {src}
+                                                </Button>
+                                            ),
+                                        )}
+                                        {copy_sources.prev_month.map((src) => (
+                                            <Button
+                                                key={`prev-${src}`}
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleCopy(src, true)
+                                                }
+                                                className="h-8 gap-1 text-xs"
+                                            >
+                                                <Copy className="size-3" />
+                                                Salin Bln Lalu ({src})
+                                            </Button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                    <div className="flex flex-col gap-4">
+                        {Object.entries(groupedRows).map(
+                            ([grup, groupItems]) => (
+                                <div key={grup} className="flex flex-col gap-2">
+                                    <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                        {grup}
+                                    </p>
+                                    <MobileRowEditor<EmergencyFacilityRow>
+                                        rows={groupItems}
+                                        rowKey={(r) => r._key}
+                                        title={(r) =>
+                                            r.nama_peralatan || 'Peralatan baru'
+                                        }
+                                        subtitle={(r) =>
+                                            `Ready ${r.jml_ready || 0}/${r.jml_total || 0} · ${r.persen_kesiapan}`
+                                        }
+                                        canWrite={can_write}
+                                        removeLabel="Hapus peralatan"
+                                        fields={[
+                                            {
+                                                key: 'nama_peralatan',
+                                                label: 'Nama Peralatan',
+                                                placeholder: 'Mis. APAR',
+                                            },
+                                            {
+                                                key: 'jml_total',
+                                                label: 'Jumlah Total',
+                                                type: 'number',
+                                                parse: (v) => String(v),
+                                                group: 'Kesiapan',
+                                            },
+                                            {
+                                                key: 'jml_ready',
+                                                label: 'Jumlah Ready',
+                                                type: 'number',
+                                                parse: (v) => String(v),
+                                            },
+                                            {
+                                                key: 'jml_not_ready',
+                                                label: 'Not Ready · % Kesiapan',
+                                                type: 'display',
+                                                display: (r) =>
+                                                    `${r.jml_not_ready || 0} · ${r.persen_kesiapan}`,
+                                            },
+                                            {
+                                                key: 'lokasi',
+                                                label: 'Lokasi Penempatan',
+                                                group: 'Keterangan',
+                                            },
+                                            {
+                                                key: 'kendala',
+                                                label: 'Kendala',
+                                            },
+                                            {
+                                                key: 'tindak_lanjut',
+                                                label: 'Tindak Lanjut',
+                                            },
+                                        ]}
+                                        onChange={(idx, key, value) =>
+                                            updateField(
+                                                groupItems[idx]._key,
+                                                key,
+                                                value as string | number,
+                                            )
+                                        }
+                                        onRemove={(idx) =>
+                                            removeRow(groupItems[idx]._key)
+                                        }
+                                    />
+                                    {can_write && (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => addRowToGroup(grup)}
+                                            className="w-full gap-1.5"
+                                        >
+                                            <Plus className="size-4" />
+                                            Tambah — {grup}
+                                        </Button>
+                                    )}
+                                </div>
+                            ),
+                        )}
+                    </div>
+
+                    <K3MobileMetaAccordion
+                        noDokumen={metadata.no_dokumen}
+                        revisi={metadata.revisi}
+                        tanggalDokumen={metadata.tanggal_dokumen}
+                        onNoDokumenChange={(v) => {
+                            setMetadata((m) => ({ ...m, no_dokumen: v }));
+                            setDirty(true);
+                        }}
+                        onRevisiChange={(v) => {
+                            setMetadata((m) => ({ ...m, revisi: v }));
+                            setDirty(true);
+                        }}
+                        onTanggalDokumenChange={(v) => {
+                            setMetadata((m) => ({ ...m, tanggal_dokumen: v }));
+                            setDirty(true);
+                        }}
+                        canWrite={can_write}
+                        extra={
+                            <label className="col-span-2 flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                Halaman
+                                <Input
+                                    value={metadata.halaman}
+                                    onChange={(e) => {
+                                        setMetadata((m) => ({
+                                            ...m,
+                                            halaman: e.target.value,
+                                        }));
+                                        setDirty(true);
+                                    }}
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                        }
+                    />
+
+                    {can_write && (
+                        <StickyActionBar>
+                            {dirty && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={resetChanges}
+                                    disabled={saving}
+                                    className="gap-1.5"
+                                >
+                                    <RotateCcw className="size-4" />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
-            <Head title={`Pemeriksaan Emergency Facility — ${filters.periode} ${monthName} ${filters.year}`} />
+            <Head
+                title={`Pemeriksaan Emergency Facility — ${filters.periode} ${monthName} ${filters.year}`}
+            />
             <style>{PRINT_CSS}</style>
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -302,7 +609,9 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => router.get(k3Pengusahaan.index('input').url)}
+                            onClick={() =>
+                                router.get(k3Pengusahaan.index('input').url)
+                            }
                             title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
@@ -312,10 +621,16 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                 <h1 className="text-xl font-bold text-foreground">
                                     Pemeriksaan Emergency Facility
                                 </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/30 bg-primary/10 text-primary"
+                                >
                                     {unit.name}
                                 </Badge>
-                                <Badge variant="secondary" className="font-bold">
+                                <Badge
+                                    variant="secondary"
+                                    className="font-bold"
+                                >
                                     {filters.periode}
                                 </Badge>
                                 <Badge variant="outline" className="text-xs">
@@ -323,25 +638,28 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Matriks kesiapan fasilitas darurat per periode mingguan (M1-M4) & Bulanan.
+                                Akses 2 — Matriks kesiapan fasilitas darurat per
+                                periode mingguan (M1-M4) & Bulanan.
                             </p>
                         </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {can_write && props.sample_rows && props.sample_rows.length > 0 && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={loadSampleRows}
-                                disabled={saving}
-                                className="gap-1.5 text-xs text-amber-700 hover:text-amber-800 dark:text-amber-400"
-                                title="Muat contoh data pemeriksaan sesuai dokumen fisik resmi SMT-FM-AK3"
-                            >
-                                <Sparkles className="size-3.5 text-amber-500" />
-                                Muat Contoh Dokumen
-                            </Button>
-                        )}
+                        {can_write &&
+                            props.sample_rows &&
+                            props.sample_rows.length > 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={loadSampleRows}
+                                    disabled={saving}
+                                    className="gap-1.5 text-xs text-amber-700 hover:text-amber-800 dark:text-amber-400"
+                                    title="Muat contoh data pemeriksaan sesuai dokumen fisik resmi SMT-FM-AK3"
+                                >
+                                    <Sparkles className="size-3.5 text-amber-500" />
+                                    Muat Contoh Dokumen
+                                </Button>
+                            )}
                         {dirty && (
                             <Button
                                 variant="outline"
@@ -362,7 +680,11 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                 className="gap-1.5 text-xs"
                             >
                                 <Save className="size-3.5" />
-                                {saving ? 'Menyimpan...' : has_saved ? 'Simpan Perubahan' : 'Simpan Data'}
+                                {saving
+                                    ? 'Menyimpan...'
+                                    : has_saved
+                                      ? 'Simpan Perubahan'
+                                      : 'Simpan Data'}
                             </Button>
                         )}
                         <Button
@@ -384,28 +706,45 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                             <OperasiSelect
                                 label="Unit Layanan"
                                 value={String(filters.unit_id)}
-                                options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                                onChange={(val) => handleFilterChange('unit_id', val)}
+                                options={options.units.map((u) => ({
+                                    value: String(u.id),
+                                    label: u.name,
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('unit_id', val)
+                                }
                             />
 
                             <OperasiSelect
                                 label="Bulan"
                                 value={String(filters.month)}
-                                options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
-                                onChange={(val) => handleFilterChange('month', val)}
+                                options={OPERASI_MONTHS.map((label, idx) => ({
+                                    value: String(idx + 1),
+                                    label,
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('month', val)
+                                }
                             />
 
                             <OperasiSelect
                                 label="Tahun"
                                 value={String(filters.year)}
-                                options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                                onChange={(val) => handleFilterChange('year', val)}
+                                options={options.years.map((y) => ({
+                                    value: String(y),
+                                    label: String(y),
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('year', val)
+                                }
                             />
                         </div>
 
                         {/* Periode Tab Buttons */}
                         <div className="flex flex-col gap-1.5">
-                            <span className="text-xs font-semibold text-muted-foreground">Pilih Periode Inspeksi:</span>
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                Pilih Periode Inspeksi:
+                            </span>
                             <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
                                 {options.periods.map((p) => {
                                     const active = filters.periode === p;
@@ -414,7 +753,9 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                         <button
                                             key={p}
                                             type="button"
-                                            onClick={() => handleFilterChange('periode', p)}
+                                            onClick={() =>
+                                                handleFilterChange('periode', p)
+                                            }
                                             className={`rounded-md px-3 py-1 text-xs font-semibold transition-all ${
                                                 active
                                                     ? 'bg-primary text-primary-foreground shadow-xs'
@@ -430,36 +771,39 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                     </div>
 
                     {/* Copy Data Options */}
-                    {can_write && (copy_sources.current_month.length > 0 || copy_sources.prev_month.length > 0) && (
-                        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs">
-                            <span className="flex items-center gap-1 font-medium text-muted-foreground">
-                                <Copy className="size-3.5 text-primary" />
-                                Salin data ke <strong>{filters.periode}</strong> dari:
-                            </span>
-                            {copy_sources.current_month.map((src) => (
-                                <Button
-                                    key={src}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 gap-1 px-2 text-[11px]"
-                                    onClick={() => handleCopy(src, false)}
-                                >
-                                    Periode {src}
-                                </Button>
-                            ))}
-                            {copy_sources.prev_month.map((src) => (
-                                <Button
-                                    key={`prev-${src}`}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-6 gap-1 px-2 text-[11px] text-muted-foreground"
-                                    onClick={() => handleCopy(src, true)}
-                                >
-                                    Bulan Lalu ({src})
-                                </Button>
-                            ))}
-                        </div>
-                    )}
+                    {can_write &&
+                        (copy_sources.current_month.length > 0 ||
+                            copy_sources.prev_month.length > 0) && (
+                            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 text-xs">
+                                <span className="flex items-center gap-1 font-medium text-muted-foreground">
+                                    <Copy className="size-3.5 text-primary" />
+                                    Salin data ke{' '}
+                                    <strong>{filters.periode}</strong> dari:
+                                </span>
+                                {copy_sources.current_month.map((src) => (
+                                    <Button
+                                        key={src}
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 gap-1 px-2 text-[11px]"
+                                        onClick={() => handleCopy(src, false)}
+                                    >
+                                        Periode {src}
+                                    </Button>
+                                ))}
+                                {copy_sources.prev_month.map((src) => (
+                                    <Button
+                                        key={`prev-${src}`}
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 gap-1 px-2 text-[11px] text-muted-foreground"
+                                        onClick={() => handleCopy(src, true)}
+                                    >
+                                        Bulan Lalu ({src})
+                                    </Button>
+                                ))}
+                            </div>
+                        )}
                 </Card>
 
                 {/* Printable container (A4 Landscape) */}
@@ -475,7 +819,9 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                         alt="PLN Nusantara Power"
                                         className="mx-auto max-h-12 object-contain"
                                         onError={(e) => {
-                                            (e.target as HTMLElement).style.display = 'none';
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
                                         }}
                                     />
                                 </td>
@@ -486,7 +832,13 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                         PT. PLN NUSANTARA POWER
                                     </div>
                                     <div className="text-xs font-semibold text-foreground uppercase">
-                                        UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PLTD ${unit.name.toUpperCase()}`}
+                                        UNIT LAYANAN{' '}
+                                        {unit.name
+                                            .toUpperCase()
+                                            .startsWith('ULPLTD') ||
+                                        unit.name.toUpperCase().startsWith('UP')
+                                            ? unit.name.toUpperCase()
+                                            : `PLTD ${unit.name.toUpperCase()}`}
                                     </div>
                                     <div className="text-sm font-extrabold text-foreground uppercase">
                                         PEMERIKSAAN EMERGENCY FACILITY
@@ -497,39 +849,63 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                 </td>
 
                                 {/* Metadata Dokumen Kanan */}
-                                <td className="w-56 border-l border-black p-1.5 text-left text-xs align-middle dark:border-border">
+                                <td className="w-56 border-l border-black p-1.5 text-left align-middle text-xs dark:border-border">
                                     <table className="w-full text-[11px]">
                                         <tbody>
                                             <tr>
-                                                <td className="w-24 py-0.5 font-semibold text-muted-foreground">No. Dokumen</td>
+                                                <td className="w-24 py-0.5 font-semibold text-muted-foreground">
+                                                    No. Dokumen
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={metadata.no_dokumen}
+                                                            value={
+                                                                metadata.no_dokumen
+                                                            }
                                                             onChange={(e) => {
-                                                                setMetadata((m) => ({ ...m, no_dokumen: e.target.value }));
+                                                                setMetadata(
+                                                                    (m) => ({
+                                                                        ...m,
+                                                                        no_dokumen:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    }),
+                                                                );
                                                                 setDirty(true);
                                                             }}
                                                             className="w-full bg-transparent text-[11px] focus:outline-none"
                                                             placeholder="SMT-FM-AK3-..."
                                                         />
                                                     ) : (
-                                                        metadata.no_dokumen || '-'
+                                                        metadata.no_dokumen ||
+                                                        '-'
                                                     )}
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Revisi</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Revisi
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={metadata.revisi}
+                                                            value={
+                                                                metadata.revisi
+                                                            }
                                                             onChange={(e) => {
-                                                                setMetadata((m) => ({ ...m, revisi: e.target.value }));
+                                                                setMetadata(
+                                                                    (m) => ({
+                                                                        ...m,
+                                                                        revisi: e
+                                                                            .target
+                                                                            .value,
+                                                                    }),
+                                                                );
                                                                 setDirty(true);
                                                             }}
                                                             className="w-full bg-transparent text-[11px] focus:outline-none"
@@ -541,35 +917,60 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Tanggal</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Tanggal
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={metadata.tanggal_dokumen}
+                                                            value={
+                                                                metadata.tanggal_dokumen
+                                                            }
                                                             onChange={(e) => {
-                                                                setMetadata((m) => ({ ...m, tanggal_dokumen: e.target.value }));
+                                                                setMetadata(
+                                                                    (m) => ({
+                                                                        ...m,
+                                                                        tanggal_dokumen:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    }),
+                                                                );
                                                                 setDirty(true);
                                                             }}
                                                             className="w-full bg-transparent text-[11px] focus:outline-none"
                                                             placeholder="23 September 2019"
                                                         />
                                                     ) : (
-                                                        metadata.tanggal_dokumen || '-'
+                                                        metadata.tanggal_dokumen ||
+                                                        '-'
                                                     )}
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Halaman</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Halaman
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={metadata.halaman}
+                                                            value={
+                                                                metadata.halaman
+                                                            }
                                                             onChange={(e) => {
-                                                                setMetadata((m) => ({ ...m, halaman: e.target.value }));
+                                                                setMetadata(
+                                                                    (m) => ({
+                                                                        ...m,
+                                                                        halaman:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    }),
+                                                                );
                                                                 setDirty(true);
                                                             }}
                                                             className="w-full bg-transparent text-[11px] focus:outline-none"
@@ -593,36 +994,65 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                             <thead>
                                 {/* Header Baris 1: Kolom Utama */}
                                 <tr className="bg-[#fff59d] text-center font-bold text-foreground dark:bg-amber-950/40">
-                                    <th className="w-10 border border-black p-1.5 dark:border-border">NO</th>
-                                    <th className="w-56 border border-black p-1.5 text-left dark:border-border">NAMA PERALATAN</th>
-                                    <th className="w-24 border border-black p-1.5 dark:border-border">JML TOTAL</th>
-                                    <th className="w-24 border border-black p-1.5 dark:border-border">JML READY</th>
-                                    <th className="w-24 border border-black p-1.5 dark:border-border">JML NOT READY</th>
-                                    <th className="w-20 border border-black p-1.5 dark:border-border">% Kesiapan</th>
-                                    <th className="w-52 border border-black p-1.5 text-left dark:border-border">LOKASI PENEMPATAN</th>
-                                    <th className="w-48 border border-black p-1.5 text-left dark:border-border">KENDALA</th>
-                                    <th className="w-52 border border-black p-1.5 text-left dark:border-border">TINDAK LANJUT</th>
-                                    {can_write && <th className="no-print w-10 border border-black p-1.5 dark:border-border">AKSI</th>}
+                                    <th className="w-10 border border-black p-1.5 dark:border-border">
+                                        NO
+                                    </th>
+                                    <th className="w-56 border border-black p-1.5 text-left dark:border-border">
+                                        NAMA PERALATAN
+                                    </th>
+                                    <th className="w-24 border border-black p-1.5 dark:border-border">
+                                        JML TOTAL
+                                    </th>
+                                    <th className="w-24 border border-black p-1.5 dark:border-border">
+                                        JML READY
+                                    </th>
+                                    <th className="w-24 border border-black p-1.5 dark:border-border">
+                                        JML NOT READY
+                                    </th>
+                                    <th className="w-20 border border-black p-1.5 dark:border-border">
+                                        % Kesiapan
+                                    </th>
+                                    <th className="w-52 border border-black p-1.5 text-left dark:border-border">
+                                        LOKASI PENEMPATAN
+                                    </th>
+                                    <th className="w-48 border border-black p-1.5 text-left dark:border-border">
+                                        KENDALA
+                                    </th>
+                                    <th className="w-52 border border-black p-1.5 text-left dark:border-border">
+                                        TINDAK LANJUT
+                                    </th>
+                                    {can_write && (
+                                        <th className="no-print w-10 border border-black p-1.5 dark:border-border">
+                                            AKSI
+                                        </th>
+                                    )}
                                 </tr>
                                 {/* Header Baris 2: Sub-Heading Hijau Besar EMERGENCY FACILITY */}
                                 <tr className="bg-[#a9dfbf] font-bold text-foreground dark:bg-emerald-950/50">
-                                    <td colSpan={can_write ? 10 : 9} className="border border-black px-2 py-1 uppercase dark:border-border">
+                                    <td
+                                        colSpan={can_write ? 10 : 9}
+                                        className="border border-black px-2 py-1 uppercase dark:border-border"
+                                    >
                                         EMERGENCY FACILITY
                                     </td>
                                 </tr>
                             </thead>
                             <tbody>
-                                {Object.entries(groupedRows).map(([grupName, groupItems]) => (
-                                    <GroupRowsSection
-                                        key={grupName}
-                                        grupName={grupName}
-                                        items={groupItems}
-                                        canWrite={can_write}
-                                        onUpdate={updateField}
-                                        onAddRow={() => addRowToGroup(grupName)}
-                                        onRemoveRow={removeRow}
-                                    />
-                                ))}
+                                {Object.entries(groupedRows).map(
+                                    ([grupName, groupItems]) => (
+                                        <GroupRowsSection
+                                            key={grupName}
+                                            grupName={grupName}
+                                            items={groupItems}
+                                            canWrite={can_write}
+                                            onUpdate={updateField}
+                                            onAddRow={() =>
+                                                addRowToGroup(grupName)
+                                            }
+                                            onRemoveRow={removeRow}
+                                        />
+                                    ),
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -643,7 +1073,11 @@ function GroupRowsSection({
     grupName: string;
     items: EmergencyFacilityRow[];
     canWrite: boolean;
-    onUpdate: (key: number, field: keyof EmergencyFacilityRow, value: string | number) => void;
+    onUpdate: (
+        key: number,
+        field: keyof EmergencyFacilityRow,
+        value: string | number,
+    ) => void;
     onAddRow: () => void;
     onRemoveRow: (key: number) => void;
 }) {
@@ -651,7 +1085,10 @@ function GroupRowsSection({
         <>
             {/* Header Kelompok (Grayish row) */}
             <tr className="bg-[#d5d8dc] font-bold text-foreground italic dark:bg-muted/70">
-                <td colSpan={canWrite ? 9 : 9} className="border border-black px-2 py-1 dark:border-border">
+                <td
+                    colSpan={canWrite ? 9 : 9}
+                    className="border border-black px-2 py-1 dark:border-border"
+                >
                     {grupName}
                 </td>
                 {canWrite && (
@@ -671,15 +1108,24 @@ function GroupRowsSection({
 
             {/* Item-item dalam kelompok */}
             {items.map((row) => (
-                <tr key={row._key} className="border-b border-black hover:bg-muted/20 dark:border-border">
+                <tr
+                    key={row._key}
+                    className="border-b border-black hover:bg-muted/20 dark:border-border"
+                >
                     {/* No */}
                     <td className="border-r border-black p-1 text-center font-mono dark:border-border">
                         {canWrite ? (
                             <input
                                 type="number"
                                 value={row.no_urut}
-                                onChange={(e) => onUpdate(row._key, 'no_urut', parseInt(e.target.value) || 0)}
-                                className="w-full text-center bg-transparent focus:outline-none"
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'no_urut',
+                                        parseInt(e.target.value) || 0,
+                                    )
+                                }
+                                className="w-full bg-transparent text-center focus:outline-none"
                             />
                         ) : (
                             row.no_urut
@@ -692,7 +1138,13 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.nama_peralatan}
-                                onChange={(e) => onUpdate(row._key, 'nama_peralatan', e.target.value)}
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'nama_peralatan',
+                                        e.target.value,
+                                    )
+                                }
                                 className="w-full bg-transparent focus:outline-none"
                             />
                         ) : (
@@ -706,8 +1158,14 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.jml_total}
-                                onChange={(e) => onUpdate(row._key, 'jml_total', e.target.value)}
-                                className="w-full text-center bg-transparent focus:bg-primary/5 focus:outline-none font-medium"
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'jml_total',
+                                        e.target.value,
+                                    )
+                                }
+                                className="w-full bg-transparent text-center font-medium focus:bg-primary/5 focus:outline-none"
                                 placeholder="0"
                             />
                         ) : (
@@ -721,8 +1179,14 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.jml_ready}
-                                onChange={(e) => onUpdate(row._key, 'jml_ready', e.target.value)}
-                                className="w-full text-center bg-transparent focus:bg-primary/5 focus:outline-none font-medium"
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'jml_ready',
+                                        e.target.value,
+                                    )
+                                }
+                                className="w-full bg-transparent text-center font-medium focus:bg-primary/5 focus:outline-none"
                                 placeholder="0"
                             />
                         ) : (
@@ -736,8 +1200,14 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.jml_not_ready}
-                                onChange={(e) => onUpdate(row._key, 'jml_not_ready', e.target.value)}
-                                className="w-full text-center bg-transparent focus:bg-primary/5 focus:outline-none font-medium"
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'jml_not_ready',
+                                        e.target.value,
+                                    )
+                                }
+                                className="w-full bg-transparent text-center font-medium focus:bg-primary/5 focus:outline-none"
                                 placeholder="0"
                             />
                         ) : (
@@ -751,8 +1221,14 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.persen_kesiapan}
-                                onChange={(e) => onUpdate(row._key, 'persen_kesiapan', e.target.value)}
-                                className="w-full text-center bg-transparent focus:bg-primary/5 focus:outline-none font-bold"
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'persen_kesiapan',
+                                        e.target.value,
+                                    )
+                                }
+                                className="w-full bg-transparent text-center font-bold focus:bg-primary/5 focus:outline-none"
                                 placeholder="100%"
                             />
                         ) : (
@@ -766,7 +1242,9 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.lokasi}
-                                onChange={(e) => onUpdate(row._key, 'lokasi', e.target.value)}
+                                onChange={(e) =>
+                                    onUpdate(row._key, 'lokasi', e.target.value)
+                                }
                                 className="w-full bg-transparent focus:outline-none"
                                 placeholder="Lokasi penempatan..."
                             />
@@ -781,7 +1259,13 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.kendala}
-                                onChange={(e) => onUpdate(row._key, 'kendala', e.target.value)}
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'kendala',
+                                        e.target.value,
+                                    )
+                                }
                                 className="w-full bg-transparent focus:outline-none"
                                 placeholder="Kendala..."
                             />
@@ -796,7 +1280,13 @@ function GroupRowsSection({
                             <input
                                 type="text"
                                 value={row.tindak_lanjut}
-                                onChange={(e) => onUpdate(row._key, 'tindak_lanjut', e.target.value)}
+                                onChange={(e) =>
+                                    onUpdate(
+                                        row._key,
+                                        'tindak_lanjut',
+                                        e.target.value,
+                                    )
+                                }
                                 className="w-full bg-transparent focus:outline-none"
                                 placeholder="Tindak lanjut..."
                             />

@@ -99,6 +99,7 @@ class InputCatalog
                 ['har_jadwal_piket_on_calls', 'Jadwal Piket On Call', 'har.jadwal.piket-on-call.index'],
                 ['har_jadwal_patrol_checks', 'Jadwal Patrol Check', 'har.jadwal.patrol-check.index'],
                 ['har_jadwal_meeting_pemeliharaans', 'Jadwal Meeting Pemeliharaan', 'har.jadwal.meeting-pemeliharaan.index'],
+                ['kondisi_abnormals', 'Laporan Kondisi Abnormal dan Gangguan Pembangkit', 'har.input.abnormal-gangguan.index'],
                 ['har_unsafe_conditions', 'Unsafe Action & Condition', 'har.input.unsafe-condition.index'],
                 ['har_material_peralatans', 'Material & Peralatan', 'har.input.material-peralatan.index'],
                 ['har_program_5s5r_items', 'Program 5S 5R', 'har.input.program-5s5r.index'],

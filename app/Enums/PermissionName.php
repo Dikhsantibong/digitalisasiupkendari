@@ -101,6 +101,8 @@ enum PermissionName: string
     case OperatorAbsensiView = 'operator.absensi.view';
     case OperatorAbsensiWrite = 'operator.absensi.write';
     case OperatorPresensi = 'operator.presensi';
+    case OperatorPengajuanApproveOperasi = 'operator.pengajuan.approve_operasi';
+    case OperatorPengajuanApproveHar = 'operator.pengajuan.approve_har';
     case OperatorMutasiView = 'operator.mutasi.view';
     case OperatorMutasiWrite = 'operator.mutasi.write';
 
@@ -289,6 +291,8 @@ enum PermissionName: string
             self::OperatorAbsensiView,
             self::OperatorAbsensiWrite,
             self::OperatorPresensi,
+            self::OperatorPengajuanApproveOperasi,
+            self::OperatorPengajuanApproveHar,
             self::OperatorMutasiView,
             self::OperatorMutasiWrite => PermissionGroup::Operator,
 
@@ -471,6 +475,8 @@ enum PermissionName: string
             self::OperatorAbsensiView => 'Melihat jadwal & absensi shift',
             self::OperatorAbsensiWrite => 'Menjadwalkan & mengisi absensi shift',
             self::OperatorPresensi => 'Absen masuk & pulang dalam radius kantor',
+            self::OperatorPengajuanApproveOperasi => 'Menyetujui pengajuan absensi operator',
+            self::OperatorPengajuanApproveHar => 'Menyetujui pengajuan absensi pemeliharaan (HAR)',
             self::OperatorMutasiView => 'Melihat lembar mutasi operator',
             self::OperatorMutasiWrite => 'Mengisi & serah terima lembar mutasi operator',
 

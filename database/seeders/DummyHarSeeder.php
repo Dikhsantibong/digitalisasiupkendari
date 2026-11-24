@@ -617,7 +617,7 @@ class DummyHarSeeder extends Seeder
             DB::table('har_lembar_rows')->insert($chunk);
         }
 
-        // 7. HarTabels (laporan-gangguan & abnormal-gangguan)
+        // 7. HarTabels (laporan-gangguan; abnormal-gangguan berbagi tabel kondisi_abnormals dengan Operasi)
         HarTabelRow::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
         $firstMachine = $machines->first();
         HarTabelRow::query()->create([
@@ -637,24 +637,6 @@ class DummyHarSeeder extends Seeder
                 'durasi_jam' => '1.0',
                 'status' => 'Selesai',
                 'keterangan' => 'Mesin kembali beroperasi normal',
-            ],
-            'input_by' => $userId,
-        ]);
-        HarTabelRow::query()->create([
-            'unit_id' => $unit->id,
-            'tabel' => 'abnormal-gangguan',
-            'year' => $year,
-            'month' => $month,
-            'sort_order' => 0,
-            'data' => [
-                'tanggal' => sprintf('%04d-%02d-07', $year, $month),
-                'mesin' => $firstMachine->name,
-                'uraian_kondisi' => 'Rembesan halus pada gasket cover rocker arm',
-                'kategori' => 'Abnormal',
-                'tindak_lanjut' => 'Penggantian gasket rocker arm pada saat jadwal P1',
-                'pic' => $signers['harmes_name'],
-                'status' => 'Closed',
-                'keterangan' => 'Tidak ada rembesan lagi',
             ],
             'input_by' => $userId,
         ]);
@@ -741,31 +723,37 @@ class DummyHarSeeder extends Seeder
             ]);
         }
 
-        // 10. har_program_5s5r_items
+        // 10. har_program_5s5r_items (per shift per hari)
         HarProgram5s5rItem::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
         $programs = ['ringkas', 'rapi', 'resik', 'rawat', 'rajin'];
-        foreach (range(1, 4) as $minggu) {
-            foreach ($programs as $prog) {
-                HarProgram5s5rItem::query()->create([
-                    'unit_id' => $unit->id,
-                    'year' => $year,
-                    'month' => $month,
-                    'minggu' => $minggu,
-                    'program' => $prog,
-                    'detail' => 'Penataan dan pembersihan area workshop pemeliharaan, special tools, serta spare part',
-                    'pic' => $signers['harmes_name'],
-                    'kondisi_awal' => 'Baik',
-                    'membersihkan' => true,
-                    'merapikan' => true,
-                    'membuang_sampah' => $prog === 'resik',
-                    'mengecat' => false,
-                    'lainnya' => false,
-                    'progres' => '76-100',
-                    'kondisi_akhir' => 'Baik',
-                    'jumlah' => 5,
-                    'keterangan' => 'Workshop bersih dan tools tertata sesuai shadow board',
-                    'input_by' => $userId,
-                ]);
+        $shifts = ['Pagi', 'Sore', 'Malam'];
+        foreach (range(1, 5) as $day) {
+            foreach ($shifts as $shift) {
+                foreach ($programs as $prog) {
+                    HarProgram5s5rItem::query()->create([
+                        'unit_id' => $unit->id,
+                        'year' => $year,
+                        'month' => $month,
+                        'day' => $day,
+                        'shift' => $shift,
+                        'tanggal' => sprintf('%04d-%02d-%02d', $year, $month, $day),
+                        'minggu' => max(1, (int) ceil($day / 7)),
+                        'program' => $prog,
+                        'detail' => 'Penataan dan pembersihan area workshop pemeliharaan, special tools, serta spare part',
+                        'pic' => "{$signers['harmes_name']} (Shift {$shift})",
+                        'kondisi_awal' => 'Baik',
+                        'membersihkan' => true,
+                        'merapikan' => true,
+                        'membuang_sampah' => $prog === 'resik',
+                        'mengecat' => false,
+                        'lainnya' => false,
+                        'progres' => '76-100',
+                        'kondisi_akhir' => 'Baik',
+                        'jumlah' => 5,
+                        'keterangan' => "Workshop bersih dan tools tertata sesuai shadow board (Shift {$shift})",
+                        'input_by' => $userId,
+                    ]);
+                }
             }
         }
 
@@ -813,7 +801,7 @@ class DummyHarSeeder extends Seeder
             'form_code' => 'LH-05',
             'unit_kesatuan' => $unit->name,
             'machine_id' => $firstMachine->id,
-            'merek' => $firstMachine->merk,
+            'merek' => $firstMachine->name,
             'type' => $firstMachine->type,
             'no_seri' => $firstMachine->serial_number,
             'rh' => '24500 Jam',
@@ -994,18 +982,20 @@ class DummyHarSeeder extends Seeder
             'format' => 'structured',
             'created_by' => $userId,
         ];
+        $firstCapNum = $firstMachine->capacity_kw !== null && (float) $firstMachine->capacity_kw > 0 ? (float) $firstMachine->capacity_kw : 1000.0;
+        $firstMachineNumber = preg_match('/#\s*([A-Za-z0-9]+)\b/', $firstMachine->name, $m) === 1 ? $m[1] : $firstMachine->name;
         $commonMachineHeader = [
             'unit_id' => $unit->id,
             'machine_id' => $firstMachine->id,
             'test_date' => $testDate,
             'revision' => '00',
             'effective_date' => '2026-01-02',
-            'brand' => $firstMachine->merk ?: 'Wärtsilä',
+            'brand' => $firstMachine->merk ?: $firstMachine->name,
             'model_type' => $firstMachine->type ?: 'V32',
             'serial_number' => $firstMachine->serial_number ?: "{$unit->code}-M01",
-            'machine_number' => $firstMachine->name,
-            'installed_power' => (string) ($firstMachine->capacity_kw ?: '1000'),
-            'capable_power' => (string) round((float) ($firstMachine->capacity_kw ?: 1000) * 0.9, 0),
+            'machine_number' => $firstMachineNumber,
+            'installed_power' => number_format($firstCapNum, 2, '.', ''),
+            'capable_power' => number_format(round($firstCapNum * 0.9, 2), 2, '.', ''),
             'rpm' => (string) ($firstMachine->engine_rpm ?: '750'),
             ...$commonSigners,
         ];
@@ -1239,6 +1229,9 @@ class DummyHarSeeder extends Seeder
                 $vibItems[0]['notes'] = $isWaspada ? 'Waspada (Zone B)' : 'Normal (Zone A)';
             }
 
+            $capNum = $m->capacity_kw !== null && (float) $m->capacity_kw > 0 ? (float) $m->capacity_kw : 1000.0;
+            $machineNumber = preg_match('/#\s*([A-Za-z0-9]+)\b/', $m->name, $mm) === 1 ? $mm[1] : $m->name;
+
             HarVibration::query()->create([
                 'unit_id' => $unit->id,
                 'machine_id' => $m->id,
@@ -1246,12 +1239,12 @@ class DummyHarSeeder extends Seeder
                 'document_number' => 'FM-HAR-VIB-01',
                 'revision' => '00',
                 'effective_date' => '2026-01-02',
-                'brand' => $m->merk ?: 'Wärtsilä',
+                'brand' => $m->merk ?: $m->name,
                 'model_type' => $m->type ?: 'V32',
-                'installed_power' => (string) ($m->capacity_kw ?: '1000'),
-                'capable_power' => (string) round((float) ($m->capacity_kw ?: 1000) * 0.9, 0),
+                'installed_power' => number_format($capNum, 2, '.', ''),
+                'capable_power' => number_format(round($capNum * 0.9, 2), 2, '.', ''),
                 'serial_number' => $m->serial_number ?: "{$unit->code}-M0".($idx + 1),
-                'machine_number' => $m->name,
+                'machine_number' => $machineNumber,
                 'rpm' => (string) ($m->engine_rpm ?: '750'),
                 'measurements' => $vibItems,
                 'standard_text' => 'ISO 10816-3 (Normal <= 4.5 mm/s, Waspada <= 7.1 mm/s)',

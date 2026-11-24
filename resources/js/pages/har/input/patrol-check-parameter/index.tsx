@@ -3,7 +3,10 @@ import { Download, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { DayStrip } from '@/components/mobile/day-strip';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -15,20 +18,48 @@ import harInput from '@/routes/har/input';
 import parameterRoutes from '@/routes/har/input/patrol-check-parameter';
 import type { IdName } from '@/types';
 
-type Column = { key: string; label: string; type: 'text' | 'number'; path: string[]; width: number };
+type Column = {
+    key: string;
+    label: string;
+    type: 'text' | 'number' | 'time';
+    path: string[];
+    width: number;
+};
 type HeaderCell = { label: string; colspan: number; rowspan: number };
 type Day = { key: string; label: string; sub: string | null; is_red: boolean };
 type Readings = Record<string, Record<string, string>>;
 
 type Props = {
-    sheet: { title: string; columns: Column[]; header_rows: HeaderCell[][]; widths: number[] };
+    sheet: {
+        title: string;
+        columns: Column[];
+        header_rows: HeaderCell[][];
+        widths: number[];
+    };
     days: Day[];
     unit: IdName;
-    filters: { unit_id: number; month: number; year: number; machine_id: number | null };
+    filters: {
+        unit_id: number;
+        month: number;
+        year: number;
+        machine_id: number | null;
+    };
     options: { units: IdName[]; years: number[]; machines: IdName[] };
     readings: Readings;
     has_saved: boolean;
+    current_user_name?: string;
     can_write: boolean;
+};
+
+const toTimeValue = (raw: string): string => {
+    const cleaned = raw.trim().replace('.', ':');
+    const match = /^(\d{1,2}):(\d{2})$/.exec(cleaned);
+
+    if (!match) {
+        return raw;
+    }
+
+    return `${match[1].padStart(2, '0')}:${match[2]}`;
 };
 
 function getHeaderCellClass(level: number, startCol: number): string {
@@ -91,8 +122,20 @@ const cellInput =
  * Patrol Check Parameter Mesin — pembacaan harian per mesin (engine,
  * generator, trafo, baterai). Definisi kolom: App\Support\HarPatrolCheckParameter.
  */
-export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters, options, readings: savedReadings, has_saved, can_write }: Props) {
-    const [readings, setReadings] = useState<Readings>(() => ({ ...savedReadings }));
+export default function HarPatrolCheckParameterPage({
+    sheet,
+    days,
+    unit,
+    filters,
+    options,
+    readings: savedReadings,
+    has_saved,
+    current_user_name = '',
+    can_write,
+}: Props) {
+    const [readings, setReadings] = useState<Readings>(() => ({
+        ...savedReadings,
+    }));
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -101,17 +144,29 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
     // Phone layout edits one day at a time; start on today when the month is shown.
     const [selectedDay, setSelectedDay] = useState<string>(() => {
         const now = new Date();
-        const today = now.getFullYear() === filters.year && now.getMonth() + 1 === filters.month ? String(now.getDate()) : null;
+        const today =
+            now.getFullYear() === filters.year &&
+            now.getMonth() + 1 === filters.month
+                ? String(now.getDate())
+                : null;
 
         return (days.find((d) => d.label === today) ?? days[0])?.key ?? '';
     });
-    const machineName = options.machines.find((m) => m.id === filters.machine_id)?.name;
-    const query = { unit_id: filters.unit_id, month: filters.month, year: filters.year, ...(filters.machine_id ? { machine_id: filters.machine_id } : {}) };
+    const machineName = options.machines.find(
+        (m) => m.id === filters.machine_id,
+    )?.name;
+    const query = {
+        unit_id: filters.unit_id,
+        month: filters.month,
+        year: filters.year,
+        ...(filters.machine_id ? { machine_id: filters.machine_id } : {}),
+    };
 
     const headerRowsWithMeta = useMemo(() => {
         const totalCols = sheet.columns.length + 1;
-        const occupied: boolean[][] = Array.from({ length: sheet.header_rows.length }, () =>
-            Array(totalCols).fill(false),
+        const occupied: boolean[][] = Array.from(
+            { length: sheet.header_rows.length },
+            () => Array(totalCols).fill(false),
         );
 
         return sheet.header_rows.map((cells, level) => {
@@ -144,11 +199,18 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
     }, [sheet.header_rows, sheet.columns.length]);
 
     const visit = (patch: Partial<Props['filters']>) => {
-        if (dirty && !window.confirm('Perubahan belum disimpan akan hilang. Lanjutkan?')) {
+        if (
+            dirty &&
+            !window.confirm('Perubahan belum disimpan akan hilang. Lanjutkan?')
+        ) {
             return;
         }
 
-        router.get(parameterRoutes.index().url, { ...query, ...patch }, { preserveScroll: true });
+        router.get(
+            parameterRoutes.index().url,
+            { ...query, ...patch },
+            { preserveScroll: true },
+        );
     };
 
     const setValue = (day: string, key: string, value: string) => {
@@ -159,6 +221,18 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                 delete next[key];
             } else {
                 next[key] = value;
+            }
+
+            if (key !== 'pic') {
+                const hasOtherInput = Object.entries(next).some(
+                    ([k, v]) => k !== 'pic' && v !== '',
+                );
+
+                if (value !== '' && current_user_name) {
+                    next.pic = current_user_name;
+                } else if (!hasOtherInput) {
+                    delete next.pic;
+                }
             }
 
             return { ...current, [day]: next };
@@ -174,7 +248,9 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
             {
                 preserveScroll: true,
                 onSuccess: (page) => {
-                    setReadings({ ...(page.props as unknown as Props).readings });
+                    setReadings({
+                        ...(page.props as unknown as Props).readings,
+                    });
                     setErrors({});
                     setDirty(false);
                 },
@@ -186,8 +262,15 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
 
     if (compact) {
         const day = days.find((d) => d.key === selectedDay) ?? days[0];
-        const groups = sheet.columns.reduce<{ title: string; columns: Column[] }[]>((list, column) => {
-            const title = column.path.join(' › ');
+        const groups = sheet.columns.reduce<
+            { title: string; columns: Column[] }[]
+        >((list, column) => {
+            const title =
+                column.path.length > 0
+                    ? column.path.join(' › ')
+                    : column.key === 'volt_battery'
+                      ? 'TEGANGAN BATERAI'
+                      : 'PETUGAS & BEBAN';
             const last = list[list.length - 1];
 
             if (last && last.title === title) {
@@ -202,22 +285,80 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
         return (
             <>
                 <Head title={`${sheet.title} - ${unit.name}`} />
-                <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
-                    <PageHeader title={sheet.title} description={`${unit.name} · ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}${machineName ? ` · ${machineName}` : ''}`} />
+                <div
+                    className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}
+                >
+                    <PageHeader
+                        title={sheet.title}
+                        description={`${unit.name} · ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}${machineName ? ` · ${machineName}` : ''}`}
+                    />
 
                     <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v), machine_id: null })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" labelClassName="col-span-2" />
+                        <OperasiSelect
+                            label="Unit"
+                            value={String(filters.unit_id)}
+                            onChange={(v) =>
+                                visit({ unit_id: Number(v), machine_id: null })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            className="w-full"
+                            labelClassName="col-span-2"
+                        />
                         <div className="col-span-2">
-                            <OperasiSelect label="Mesin" value={String(filters.machine_id ?? '')} onChange={(v) => visit({ machine_id: Number(v) })} options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))} className="w-full" />
+                            <OperasiSelect
+                                label="Mesin"
+                                value={String(filters.machine_id ?? '')}
+                                onChange={(v) =>
+                                    visit({ machine_id: Number(v) })
+                                }
+                                options={options.machines.map((m) => ({
+                                    value: String(m.id),
+                                    label: m.name,
+                                }))}
+                                className="w-full"
+                            />
                         </div>
-                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))} className="w-full" />
-                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
+                        <OperasiSelect
+                            label="Bulan"
+                            value={String(filters.month)}
+                            onChange={(v) => visit({ month: Number(v) })}
+                            options={OPERASI_MONTHS.map((label, index) => ({
+                                value: String(index + 1),
+                                label,
+                            }))}
+                            className="w-full"
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(v) => visit({ year: Number(v) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                            className="w-full"
+                        />
                     </div>
 
-                    {options.machines.length === 0 && <p className="text-[13px] text-amber-600">Unit ini belum punya data mesin — tambahkan di Master Mesin.</p>}
+                    {options.machines.length === 0 && (
+                        <p className="text-[13px] text-amber-600">
+                            Unit ini belum punya data mesin — tambahkan di
+                            Master Mesin.
+                        </p>
+                    )}
 
                     <DayStrip
-                        items={days.map((d) => ({ key: d.key, label: d.label, sub: d.sub, isRed: d.is_red, done: Object.keys(readings[d.label] ?? {}).length > 0 }))}
+                        items={days.map((d) => ({
+                            key: d.key,
+                            label: d.label,
+                            sub: d.sub,
+                            isRed: d.is_red,
+                            done:
+                                Object.keys(readings[d.label] ?? {}).length > 0,
+                        }))}
                         value={day?.key ?? ''}
                         onChange={setSelectedDay}
                     />
@@ -233,47 +374,154 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                     {day &&
                         groups.map((group) => {
                             const isEngine = group.title.startsWith('ENGINE');
-                            const isGenerator = group.title.startsWith('GENERATOR');
+                            const isGenerator =
+                                group.title.startsWith('GENERATOR');
                             const isTrafo = group.title.startsWith('TRAFO');
                             const badgeColor = isEngine
                                 ? 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
                                 : isGenerator
-                                ? 'border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300'
-                                : isTrafo
-                                ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-                                : 'border-slate-300 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
+                                  ? 'border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300'
+                                  : isTrafo
+                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                                    : 'border-slate-300 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200';
 
                             return (
-                                <div key={group.title} className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                                <div
+                                    key={group.title}
+                                    className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
+                                >
                                     <div>
-                                        <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase border ${badgeColor}`}>
+                                        <span
+                                            className={`inline-block rounded border px-2 py-0.5 text-[11px] font-bold tracking-wide uppercase ${badgeColor}`}
+                                        >
                                             {group.title}
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2.5">
-                                    {group.columns.map((column) => (
-                                        <label key={column.key} className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                            {column.label}
-                                            <Input
-                                                inputMode={column.type === 'number' ? 'decimal' : 'text'}
-                                                value={readings[day.label]?.[column.key] ?? ''}
-                                                onChange={(e) => setValue(day.label, column.key, e.target.value)}
-                                                disabled={!can_write || !filters.machine_id}
-                                                aria-invalid={errors[`readings.${day.label}.${column.key}`] ? true : undefined}
-                                            />
-                                        </label>
-                                    ))}
+                                        {group.columns.map((column) => {
+                                            const rawVal =
+                                                readings[day.label]?.[
+                                                    column.key
+                                                ] ?? '';
+
+                                            if (column.key === 'pic') {
+                                                const displayPic =
+                                                    rawVal ||
+                                                    (can_write &&
+                                                    filters.machine_id
+                                                        ? current_user_name
+                                                        : '—');
+
+                                                return (
+                                                    <div
+                                                        key={column.key}
+                                                        className="flex flex-col gap-1 text-[12px] text-muted-foreground"
+                                                    >
+                                                        <span>
+                                                            PIC (Otomatis)
+                                                        </span>
+                                                        <Input
+                                                            value={displayPic}
+                                                            readOnly
+                                                            tabIndex={-1}
+                                                            className="bg-muted/50 font-medium text-foreground"
+                                                            aria-label={`PIC tanggal ${day.label}`}
+                                                        />
+                                                    </div>
+                                                );
+                                            }
+
+                                            if (column.type === 'time') {
+                                                return (
+                                                    <label
+                                                        key={column.key}
+                                                        className="flex flex-col gap-1 text-[12px] text-muted-foreground"
+                                                    >
+                                                        {column.label}
+                                                        <Input
+                                                            type="time"
+                                                            value={toTimeValue(
+                                                                rawVal,
+                                                            )}
+                                                            onChange={(e) =>
+                                                                setValue(
+                                                                    day.label,
+                                                                    column.key,
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            disabled={
+                                                                !can_write ||
+                                                                !filters.machine_id
+                                                            }
+                                                            aria-invalid={
+                                                                errors[
+                                                                    `readings.${day.label}.${column.key}`
+                                                                ]
+                                                                    ? true
+                                                                    : undefined
+                                                            }
+                                                        />
+                                                    </label>
+                                                );
+                                            }
+
+                                            return (
+                                                <label
+                                                    key={column.key}
+                                                    className="flex flex-col gap-1 text-[12px] text-muted-foreground"
+                                                >
+                                                    {column.label}
+                                                    <Input
+                                                        inputMode={
+                                                            column.type ===
+                                                            'number'
+                                                                ? 'decimal'
+                                                                : 'text'
+                                                        }
+                                                        value={rawVal}
+                                                        onChange={(e) =>
+                                                            setValue(
+                                                                day.label,
+                                                                column.key,
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        disabled={
+                                                            !can_write ||
+                                                            !filters.machine_id
+                                                        }
+                                                        aria-invalid={
+                                                            errors[
+                                                                `readings.${day.label}.${column.key}`
+                                                            ]
+                                                                ? true
+                                                                : undefined
+                                                        }
+                                                    />
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
                 </div>
 
                 {can_write && (
                     <StickyActionBar>
-                        <Button size="lg" onClick={save} disabled={saving || !dirty || !filters.machine_id}>
+                        <Button
+                            size="lg"
+                            onClick={save}
+                            disabled={saving || !dirty || !filters.machine_id}
+                        >
                             <Save className="size-4" />
-                            {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                            {saving
+                                ? 'Menyimpan…'
+                                : dirty
+                                  ? 'Simpan'
+                                  : 'Tersimpan'}
                         </Button>
                     </StickyActionBar>
                 )}
@@ -291,16 +539,36 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                     actions={
                         <div className="flex flex-wrap gap-2">
                             {can('har.input.view') && (
-                                <Button variant="outline" onClick={() => router.get(harInput.index().url)}>
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        router.get(harInput.index().url)
+                                    }
+                                >
                                     Kembali
                                 </Button>
                             )}
-                            <Button variant="outline" onClick={() => window.open(parameterRoutes.pdf({ query }).url, '_blank')} className="gap-1.5">
+                            <Button
+                                variant="outline"
+                                onClick={() =>
+                                    window.open(
+                                        parameterRoutes.pdf({ query }).url,
+                                        '_blank',
+                                    )
+                                }
+                                className="gap-1.5"
+                            >
                                 <Download className="size-4 text-rose-600" />
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty || !filters.machine_id} className="gap-1.5">
+                                <Button
+                                    onClick={save}
+                                    disabled={
+                                        saving || !dirty || !filters.machine_id
+                                    }
+                                    className="gap-1.5"
+                                >
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>
@@ -311,13 +579,49 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
 
                 <div className="flex flex-wrap items-end justify-between gap-3 rounded-md border border-border bg-card p-3">
                     <div className="flex flex-wrap items-end gap-3">
-                        <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v), machine_id: null })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} />
-                        <OperasiSelect label="Mesin" value={String(filters.machine_id ?? '')} onChange={(v) => visit({ machine_id: Number(v) })} options={options.machines.map((m) => ({ value: String(m.id), label: m.name }))} />
-                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))} />
-                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} />
+                        <OperasiSelect
+                            label="Unit"
+                            value={String(filters.unit_id)}
+                            onChange={(v) =>
+                                visit({ unit_id: Number(v), machine_id: null })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Mesin"
+                            value={String(filters.machine_id ?? '')}
+                            onChange={(v) => visit({ machine_id: Number(v) })}
+                            options={options.machines.map((m) => ({
+                                value: String(m.id),
+                                label: m.name,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Bulan"
+                            value={String(filters.month)}
+                            onChange={(v) => visit({ month: Number(v) })}
+                            options={OPERASI_MONTHS.map((label, index) => ({
+                                value: String(index + 1),
+                                label,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(v) => visit({ year: Number(v) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                        />
                     </div>
                     {dirty ? (
-                        <StatusBadge tone="warning">Ada perubahan belum disimpan</StatusBadge>
+                        <StatusBadge tone="warning">
+                            Ada perubahan belum disimpan
+                        </StatusBadge>
                     ) : has_saved ? (
                         <StatusBadge tone="success">Tersimpan</StatusBadge>
                     ) : (
@@ -325,20 +629,39 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                     )}
                 </div>
 
-                {options.machines.length === 0 && <p className="text-[13px] text-amber-600">Unit ini belum punya data mesin — tambahkan di Master Mesin.</p>}
+                {options.machines.length === 0 && (
+                    <p className="text-[13px] text-amber-600">
+                        Unit ini belum punya data mesin — tambahkan di Master
+                        Mesin.
+                    </p>
+                )}
 
                 <div className="grid grid-cols-[64px_1fr_64px] items-center gap-3 rounded-md border border-border bg-muted/10 p-4 sm:grid-cols-[140px_1fr_140px]">
-                    <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="h-8 w-auto rounded-sm bg-white object-contain p-0.5 sm:h-11" />
+                    <img
+                        src="/logo/sidebar-logo.png"
+                        alt="PLN Nusantara Power"
+                        className="h-8 w-auto rounded-sm bg-white object-contain p-0.5 sm:h-11"
+                    />
                     <div className="text-center">
-                        <div className="text-xs font-semibold uppercase text-muted-foreground">Jasa Pendukung Teknis 6 KIT</div>
-                        <div className="text-xs font-semibold uppercase text-muted-foreground">Laporan Project {unit.name}</div>
-                        <div className="text-base font-bold uppercase text-foreground">Patrol Check Pemeliharaan</div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">
+                            Jasa Pendukung Teknis 6 KIT
+                        </div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase">
+                            Laporan Project {unit.name}
+                        </div>
+                        <div className="text-base font-bold text-foreground uppercase">
+                            Patrol Check Pemeliharaan
+                        </div>
                         <div className="mt-1 text-xs font-semibold uppercase">
                             {OPERASI_MONTHS[filters.month - 1]} {filters.year}
                             {machineName ? ` · Mesin: ${machineName}` : ''}
                         </div>
                     </div>
-                    <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="ml-auto h-8 w-auto rounded-sm bg-white object-contain p-0.5 sm:h-11" />
+                    <img
+                        src="/logo/mkp.jpg"
+                        alt="Mitra Karya Prima"
+                        className="ml-auto h-8 w-auto rounded-sm bg-white object-contain p-0.5 sm:h-11"
+                    />
                 </div>
 
                 {Object.keys(errors).length > 0 && (
@@ -349,13 +672,19 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                     </ul>
                 )}
 
-                <p className="text-xs text-red-600">Baris merah = akhir pekan / hari libur. Kolom angka menerima desimal koma atau titik.</p>
+                <p className="text-xs text-red-600">
+                    Baris merah = akhir pekan / hari libur. Kolom angka menerima
+                    desimal koma atau titik.
+                </p>
 
                 <div className="overflow-x-auto">
                     <table className="w-full min-w-[1400px] table-fixed border-collapse border-2 border-black text-xs dark:border-white">
                         <colgroup>
                             {sheet.widths.map((width, index) => (
-                                <col key={index} style={{ width: `${width}%` }} />
+                                <col
+                                    key={index}
+                                    style={{ width: `${width}%` }}
+                                />
                             ))}
                         </colgroup>
                         <thead className="text-center">
@@ -376,23 +705,92 @@ export default function HarPatrolCheckParameterPage({ sheet, days, unit, filters
                         </thead>
                         <tbody>
                             {days.map((day) => (
-                                <tr key={day.key} className={day.is_red ? 'bg-red-500/25' : ''}>
-                                    <td className="h-8 border border-black text-center font-semibold dark:border-white/60" title={day.sub ?? undefined}>
+                                <tr
+                                    key={day.key}
+                                    className={
+                                        day.is_red ? 'bg-red-500/25' : ''
+                                    }
+                                >
+                                    <td
+                                        className="h-8 border border-black text-center font-semibold dark:border-white/60"
+                                        title={day.sub ?? undefined}
+                                    >
                                         {day.label}
                                     </td>
-                                    {sheet.columns.map((column) => (
-                                        <td key={column.key} className={`h-8 border border-black p-0 dark:border-white/60 ${errors[`readings.${day.label}.${column.key}`] ? 'bg-destructive/20' : ''}`}>
-                                            <input
-                                                type="text"
-                                                inputMode={column.type === 'number' ? 'decimal' : 'text'}
-                                                value={readings[day.label]?.[column.key] ?? ''}
-                                                onChange={(e) => setValue(day.label, column.key, e.target.value)}
-                                                className={cellInput}
-                                                disabled={!can_write || !filters.machine_id}
-                                                aria-label={`${column.path.join(' ')} ${column.label} tanggal ${day.label}`}
-                                            />
-                                        </td>
-                                    ))}
+                                    {sheet.columns.map((column) => {
+                                        const rawVal =
+                                            readings[day.label]?.[column.key] ??
+                                            '';
+
+                                        return (
+                                            <td
+                                                key={column.key}
+                                                className={`h-8 border border-black p-0 dark:border-white/60 ${errors[`readings.${day.label}.${column.key}`] ? 'bg-destructive/20' : ''}`}
+                                            >
+                                                {column.key === 'pic' ? (
+                                                    <input
+                                                        type="text"
+                                                        value={rawVal}
+                                                        readOnly
+                                                        tabIndex={-1}
+                                                        placeholder={
+                                                            can_write &&
+                                                            filters.machine_id
+                                                                ? current_user_name
+                                                                : ''
+                                                        }
+                                                        title="PIC terisi otomatis dari akun user yang menginputkan"
+                                                        className={`${cellInput} cursor-default bg-muted/20 font-medium text-foreground`}
+                                                        aria-label={`${column.path.join(' ')} ${column.label} tanggal ${day.label}`}
+                                                    />
+                                                ) : column.type === 'time' ? (
+                                                    <input
+                                                        type="time"
+                                                        value={toTimeValue(
+                                                            rawVal,
+                                                        )}
+                                                        onChange={(e) =>
+                                                            setValue(
+                                                                day.label,
+                                                                column.key,
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className={`${cellInput} [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:px-0`}
+                                                        disabled={
+                                                            !can_write ||
+                                                            !filters.machine_id
+                                                        }
+                                                        aria-label={`${column.path.join(' ')} ${column.label} tanggal ${day.label}`}
+                                                    />
+                                                ) : (
+                                                    <input
+                                                        type="text"
+                                                        inputMode={
+                                                            column.type ===
+                                                            'number'
+                                                                ? 'decimal'
+                                                                : 'text'
+                                                        }
+                                                        value={rawVal}
+                                                        onChange={(e) =>
+                                                            setValue(
+                                                                day.label,
+                                                                column.key,
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className={cellInput}
+                                                        disabled={
+                                                            !can_write ||
+                                                            !filters.machine_id
+                                                        }
+                                                        aria-label={`${column.path.join(' ')} ${column.label} tanggal ${day.label}`}
+                                                    />
+                                                )}
+                                            </td>
+                                        );
+                                    })}
                                 </tr>
                             ))}
                         </tbody>
@@ -407,6 +805,9 @@ HarPatrolCheckParameterPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Input Pemeliharaan', href: harInput.index() },
-        { title: 'Patrol Check Parameter Mesin', href: parameterRoutes.index() },
+        {
+            title: 'Patrol Check Parameter Mesin',
+            href: parameterRoutes.index(),
+        },
     ],
 };

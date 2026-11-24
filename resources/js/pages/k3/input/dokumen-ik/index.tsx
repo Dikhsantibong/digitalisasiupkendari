@@ -29,6 +29,10 @@ import {
     PdfPreview,
 } from '@/components/instruksi-kerja/visual-editor';
 import type { EditorView } from '@/components/instruksi-kerja/visual-editor';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -380,57 +384,101 @@ export default function DokumenIkPage({
                     compact && can_write && 'pb-28',
                 )}
             >
-                <PageHeader
-                    title="Dokumen IK K3 Lingkungan Pembangkit"
-                    description="Pilih template, lalu klik langsung pada dokumen untuk mengubah isinya — tampilan sama dengan hasil cetak. IK yang tersimpan otomatis dilampirkan di Laporan K3 periode ini."
-                    actions={
-                        docs.length > 0 ? (
-                            <Button
-                                variant="outline"
-                                onClick={() =>
-                                    window.open(pdfUrl(), '_blank', 'noopener')
-                                }
-                                className="gap-1.5"
-                            >
-                                <Printer className="size-4" />
-                                Cetak Semua IK ({docs.length})
-                            </Button>
-                        ) : undefined
-                    }
-                />
+                {compact ? (
+                    <K3MobileHeader
+                        title="Dokumen IK K3"
+                        backHref={k3Input.index().url}
+                        right={
+                            docs.length > 0 ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() =>
+                                        window.open(
+                                            pdfUrl(),
+                                            '_blank',
+                                            'noopener',
+                                        )
+                                    }
+                                    className="h-8 gap-1 text-xs"
+                                >
+                                    <Printer className="size-3.5" />
+                                    PDF Semua
+                                </Button>
+                            ) : undefined
+                        }
+                    />
+                ) : (
+                    <PageHeader
+                        title="Dokumen IK K3 Lingkungan Pembangkit"
+                        description="Pilih template, lalu klik langsung pada dokumen untuk mengubah isinya — tampilan sama dengan hasil cetak. IK yang tersimpan otomatis dilampirkan di Laporan K3 periode ini."
+                        actions={
+                            docs.length > 0 ? (
+                                <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                        window.open(
+                                            pdfUrl(),
+                                            '_blank',
+                                            'noopener',
+                                        )
+                                    }
+                                    className="gap-1.5"
+                                >
+                                    <Printer className="size-4" />
+                                    Cetak Semua IK ({docs.length})
+                                </Button>
+                            ) : undefined
+                        }
+                    />
+                )}
 
-                <div className="flex flex-col gap-3 rounded-md border border-border bg-secondary p-3 sm:flex-row sm:flex-wrap sm:items-end">
-                    <OperasiSelect
-                        label="Unit"
-                        value={String(filters.unit_id)}
-                        onChange={(v) => visit({ unit_id: Number(v) })}
-                        options={options.units.map((u) => ({
-                            value: String(u.id),
-                            label: u.name,
-                        }))}
-                        className="w-full sm:w-48"
+                {compact ? (
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
                     />
-                    <OperasiSelect
-                        label="Bulan Laporan"
-                        value={String(filters.month)}
-                        onChange={(v) => visit({ month: Number(v) })}
-                        options={OPERASI_MONTHS.map((label, i) => ({
-                            value: String(i + 1),
-                            label,
-                        }))}
-                        className="w-full sm:w-40"
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(v) => visit({ year: Number(v) })}
-                        options={options.years.map((y) => ({
-                            value: String(y),
-                            label: String(y),
-                        }))}
-                        className="w-full sm:w-32"
-                    />
-                </div>
+                ) : (
+                    <div className="flex flex-col gap-3 rounded-md border border-border bg-secondary p-3 sm:flex-row sm:flex-wrap sm:items-end">
+                        <OperasiSelect
+                            label="Unit"
+                            value={String(filters.unit_id)}
+                            onChange={(v) => visit({ unit_id: Number(v) })}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            className="w-full sm:w-48"
+                        />
+                        <OperasiSelect
+                            label="Bulan Laporan"
+                            value={String(filters.month)}
+                            onChange={(v) => visit({ month: Number(v) })}
+                            options={OPERASI_MONTHS.map((label, i) => ({
+                                value: String(i + 1),
+                                label,
+                            }))}
+                            className="w-full sm:w-40"
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(v) => visit({ year: Number(v) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                            className="w-full sm:w-32"
+                        />
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
                     {/* IK list */}
@@ -441,7 +489,7 @@ export default function DokumenIkPage({
                             </h2>
                             <Badge variant="secondary">{docs.length}</Badge>
                         </div>
-                        {can_write && (
+                        {can_write && !compact && (
                             <Button
                                 onClick={() => setPickerOpen(true)}
                                 className="w-full gap-1.5"
@@ -637,8 +685,36 @@ export default function DokumenIkPage({
                 </DialogContent>
             </Dialog>
 
-            {compact && can_write && draft && (
-                <StickyActionBar>{saveButton}</StickyActionBar>
+            {compact && can_write && (
+                <StickyActionBar>
+                    {docs.length > 0 && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                window.open(
+                                    draft?.id ? pdfUrl(draft.id) : pdfUrl(),
+                                    '_blank',
+                                    'noopener',
+                                )
+                            }
+                            className="gap-1.5"
+                        >
+                            <FileDown className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                    )}
+                    {draft && saveButton}
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setPickerOpen(true)}
+                        className="gap-1.5"
+                    >
+                        <FilePlus2 className="size-4" />
+                        Tambah IK
+                    </Button>
+                </StickyActionBar>
             )}
         </>
     );

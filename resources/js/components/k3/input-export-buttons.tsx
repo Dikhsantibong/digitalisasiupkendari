@@ -9,6 +9,46 @@ import exportRoutes from '@/routes/k3/input/export';
 type Query = Record<string, string | number | null | undefined>;
 
 /**
+ * Mobile sticky-bar PDF button without Excel export clutter.
+ */
+export function K3MobilePdfButton({
+    input,
+    query,
+    pdfUrl,
+    label = 'PDF',
+}: {
+    input: string;
+    query: Query;
+    pdfUrl?: string;
+    label?: string;
+}) {
+    const cleanQuery = Object.fromEntries(
+        Object.entries(query).filter(
+            ([, value]) =>
+                value !== null && value !== undefined && value !== '',
+        ),
+    ) as Record<string, string | number>;
+
+    return (
+        <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+                window.open(
+                    pdfUrl ??
+                        exportRoutes.pdf(input, { query: cleanQuery }).url,
+                    '_blank',
+                )
+            }
+            className="gap-1.5"
+        >
+            <Download className="size-4 text-rose-600" />
+            {label}
+        </Button>
+    );
+}
+
+/**
  * Excel & PDF (landscape) export buttons for a K3 input page. Both exports are
  * built on the server from the saved data (App\Services\K3\K3InputTables), so
  * unsaved edits on the page are not included.

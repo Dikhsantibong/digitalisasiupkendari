@@ -1,5 +1,13 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, FileDown, History, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import {
+    ArrowLeft,
+    FileDown,
+    History,
+    Plus,
+    RotateCcw,
+    Save,
+    Trash2,
+} from 'lucide-react';
 import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
@@ -9,7 +17,13 @@ import { OperasiSelect } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCompactLayout, useInMobileShell } from '@/hooks/use-mobile-module';
 import { cn } from '@/lib/utils';
@@ -52,13 +66,31 @@ export type HarFormulirProps = {
     machines: IdName[];
     filters: { unit_id: number; machine_id: number | null; test_date: string };
     form: FormValues;
-    document: { title: string; number: string; revision: string; effective_date: string };
+    document: {
+        title: string;
+        number: string;
+        revision: string;
+        effective_date: string;
+    };
     signatories: { title: string; name: string }[];
     has_saved: boolean;
     history: { id: number; test_date: string; updated_at: string | null }[];
     pdf_url: string;
     can_write: boolean;
 };
+
+/** Machine identity keys populated automatically from Master Mesin when a machine is selected. */
+const AUTO_MASTER_KEYS = new Set([
+    'brand',
+    'model_type',
+    'serial_number',
+    'machine_number',
+    'installed_power',
+    'capable_power',
+    'rpm',
+    'unit_sentral',
+    'machine_name',
+]);
 
 /** The engine identity block shared by most formulir. */
 export const MACHINE_FIELDS: HarField[] = [
@@ -72,10 +104,18 @@ export const MACHINE_FIELDS: HarField[] = [
 ];
 
 /** ✓ / X checklist cell (the PDF prints ✓ for "v"). */
-export const CHECK_FIELD = { type: 'select', options: ['v', 'X', '-'], optionLabels: { v: '✓ Baik', X: '✗ Tidak', '-': '— N/A' } } as const;
+export const CHECK_FIELD = {
+    type: 'select',
+    options: ['v', 'X', '-'],
+    optionLabels: { v: '✓ Baik', X: '✗ Tidak', '-': '— N/A' },
+} as const;
 
 /** Baik / Tidak condition cell. */
-export const CONDITION_FIELD = { type: 'select', options: ['baik', 'tidak'], optionLabels: { baik: 'Baik', tidak: 'Tidak Baik' } } as const;
+export const CONDITION_FIELD = {
+    type: 'select',
+    options: ['baik', 'tidak'],
+    optionLabels: { baik: 'Baik', tidak: 'Tidak Baik' },
+} as const;
 
 const TONE: Record<string, string> = {
     v: 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
@@ -85,9 +125,11 @@ const TONE: Record<string, string> = {
 };
 
 /** Excel-style sheet: black grid, yellow headers, cells typed into directly. */
-const xlTh = 'border border-black bg-yellow-200 px-1.5 py-1.5 text-center text-[11px] font-bold text-black uppercase dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
+const xlTh =
+    'border border-black bg-yellow-200 px-1.5 py-1.5 text-center text-[11px] font-bold text-black uppercase dark:border-white dark:bg-yellow-800 dark:text-yellow-50';
 const xlTd = 'h-8 border border-black p-0 dark:border-white/60';
-const xlCell = 'h-8 w-full rounded-none border-0 bg-transparent px-1.5 text-xs shadow-none outline-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 disabled:opacity-100 dark:bg-transparent dark:focus:bg-yellow-950/40';
+const xlCell =
+    'h-8 w-full rounded-none border-0 bg-transparent px-1.5 text-xs shadow-none outline-none focus:bg-yellow-50 focus-visible:border-0 focus-visible:ring-0 disabled:opacity-100 dark:bg-transparent dark:focus:bg-yellow-950/40';
 
 const CHIP_TONE: Record<string, string> = {
     v: 'border-emerald-600 bg-emerald-600 text-white',
@@ -99,7 +141,13 @@ const CHIP_TONE: Record<string, string> = {
 const formatDate = (iso: string): string => {
     const date = new Date(`${iso}T00:00:00`);
 
-    return Number.isNaN(date.getTime()) ? iso : date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return Number.isNaN(date.getTime())
+        ? iso
+        : date.toLocaleDateString('id-ID', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+          });
 };
 
 /**
@@ -133,7 +181,18 @@ export function HarFormulirPage({
     /** Extra values posted with the form (e.g. a photo file); a File switches to multipart. */
     extraPayload?: () => Record<string, unknown>;
 }) {
-    const { unit, units, machines, filters, document, signatories, has_saved, history, pdf_url, can_write } = props;
+    const {
+        unit,
+        units,
+        machines,
+        filters,
+        document,
+        signatories,
+        has_saved,
+        history,
+        pdf_url,
+        can_write,
+    } = props;
     const compact = useCompactLayout();
     const inShell = useInMobileShell();
     const [form, setForm] = useState<FormValues>(props.form);
@@ -150,14 +209,24 @@ export function HarFormulirPage({
         setDirty(false);
     }
 
-    const machineName = machines.find((m) => m.id === filters.machine_id)?.name ?? '—';
+    const machineName =
+        machines.find((m) => m.id === filters.machine_id)?.name ?? '—';
 
     const visit = (patch: Partial<HarFormulirProps['filters']>) => {
-        if (dirty && !window.confirm('Ada perubahan belum disimpan. Yakin ingin berpindah?')) {
+        if (
+            dirty &&
+            !window.confirm(
+                'Ada perubahan belum disimpan. Yakin ingin berpindah?',
+            )
+        ) {
             return;
         }
 
-        router.get(indexUrl, { ...filters, ...patch }, { preserveScroll: true, replace: true });
+        router.get(
+            indexUrl,
+            { ...filters, ...patch },
+            { preserveScroll: true, replace: true },
+        );
     };
 
     const setValue = (key: string, value: unknown) => {
@@ -165,12 +234,20 @@ export function HarFormulirPage({
         setDirty(true);
     };
 
-    const rowsOf = (table: HarTable): FormRow[] => (Array.isArray(form[table.key]) ? (form[table.key] as FormRow[]) : []);
+    const rowsOf = (table: HarTable): FormRow[] =>
+        Array.isArray(form[table.key]) ? (form[table.key] as FormRow[]) : [];
 
-    const setCell = (table: HarTable, index: number, column: string, value: string) =>
+    const setCell = (
+        table: HarTable,
+        index: number,
+        column: string,
+        value: string,
+    ) =>
         setValue(
             table.key,
-            rowsOf(table).map((row, i) => (i === index ? { ...row, [column]: value } : row)),
+            rowsOf(table).map((row, i) =>
+                i === index ? { ...row, [column]: value } : row,
+            ),
         );
 
     const setCylinders = (count: number) => {
@@ -181,21 +258,39 @@ export function HarFormulirPage({
             .filter((table) => table.cylinders)
             .forEach((table) => {
                 const { numberKey, blank } = table.cylinders!;
-                const current = new Map(rowsOf(table).map((row) => [Number(row[numberKey]), row]));
+                const current = new Map(
+                    rowsOf(table).map((row) => [Number(row[numberKey]), row]),
+                );
 
-                next[table.key] = Array.from({ length: cylinders }, (_, i) => current.get(i + 1) ?? { ...blank, [numberKey]: i + 1 });
+                next[table.key] = Array.from(
+                    { length: cylinders },
+                    (_, i) =>
+                        current.get(i + 1) ?? { ...blank, [numberKey]: i + 1 },
+                );
             });
 
         setForm(next);
         setDirty(true);
     };
 
-    const addRow = (table: HarTable) => setValue(table.key, [...rowsOf(table), table.addable!.blank(rowsOf(table))]);
+    const addRow = (table: HarTable) =>
+        setValue(table.key, [
+            ...rowsOf(table),
+            table.addable!.blank(rowsOf(table)),
+        ]);
 
-    const removeRow = (table: HarTable, index: number) => setValue(table.key, rowsOf(table).filter((_, i) => i !== index));
+    const removeRow = (table: HarTable, index: number) =>
+        setValue(
+            table.key,
+            rowsOf(table).filter((_, i) => i !== index),
+        );
 
     const reset = () => {
-        if (window.confirm('Batalkan seluruh perubahan dan kembalikan ke data tersimpan?')) {
+        if (
+            window.confirm(
+                'Batalkan seluruh perubahan dan kembalikan ke data tersimpan?',
+            )
+        ) {
             setForm(props.form);
             setDirty(false);
         }
@@ -203,12 +298,20 @@ export function HarFormulirPage({
 
     const save = () => {
         const extraValues = extraPayload?.() ?? {};
-        const hasFile = Object.values(extraValues).some((value) => value instanceof File);
+        const hasFile = Object.values(extraValues).some(
+            (value) => value instanceof File,
+        );
 
         setSaving(true);
         router.post(
             storeUrl,
-            { unit_id: filters.unit_id, machine_id: filters.machine_id, test_date: filters.test_date, ...form, ...extraValues } as never,
+            {
+                unit_id: filters.unit_id,
+                machine_id: filters.machine_id,
+                test_date: filters.test_date,
+                ...form,
+                ...extraValues,
+            } as never,
             {
                 preserveScroll: true,
                 forceFormData: hasFile,
@@ -219,7 +322,12 @@ export function HarFormulirPage({
     };
 
     const openPdf = () => {
-        if (dirty && !window.confirm('Perubahan belum disimpan — PDF memakai data tersimpan. Tetap buka PDF?')) {
+        if (
+            dirty &&
+            !window.confirm(
+                'Perubahan belum disimpan — PDF memakai data tersimpan. Tetap buka PDF?',
+            )
+        ) {
             return;
         }
 
@@ -235,17 +343,34 @@ export function HarFormulirPage({
     const actions = (
         <>
             {dirty && (
-                <Button variant="outline" size={compact ? 'default' : 'sm'} onClick={reset} disabled={saving} className="gap-1.5">
+                <Button
+                    variant="outline"
+                    size={compact ? 'default' : 'sm'}
+                    onClick={reset}
+                    disabled={saving}
+                    className="gap-1.5"
+                >
                     <RotateCcw className="size-4" />
                     Reset
                 </Button>
             )}
-            <Button variant="outline" size={compact ? 'default' : 'sm'} onClick={openPdf} disabled={!filters.machine_id} className="gap-1.5">
+            <Button
+                variant="outline"
+                size={compact ? 'default' : 'sm'}
+                onClick={openPdf}
+                disabled={!filters.machine_id}
+                className="gap-1.5"
+            >
                 <FileDown className="size-4" />
                 PDF
             </Button>
             {can_write && (
-                <Button size={compact ? 'default' : 'sm'} onClick={save} disabled={saving || !dirty || !filters.machine_id} className="gap-1.5">
+                <Button
+                    size={compact ? 'default' : 'sm'}
+                    onClick={save}
+                    disabled={saving || !dirty || !filters.machine_id}
+                    className="gap-1.5"
+                >
                     <Save className="size-4" />
                     {saving ? 'Menyimpan…' : 'Simpan'}
                 </Button>
@@ -253,64 +378,161 @@ export function HarFormulirPage({
         </>
     );
 
+    const machineSelected = Boolean(filters.machine_id);
+    const hasCylinders = tables.some((table) => Boolean(table.cylinders));
+    const visibleIdentity =
+        compact && machineSelected
+            ? identity.filter((field) => !AUTO_MASTER_KEYS.has(field.key))
+            : identity;
+    const showIdentitySection =
+        visibleIdentity.length > 0 || (compact && hasCylinders);
+
     return (
         <>
             <Head title={`${document.title} — ${unit.name}`} />
 
-            <div className={cn('flex flex-1 flex-col gap-4 p-4 md:p-6', compact && 'pb-28')}>
-                {/* Header */}
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-start gap-3">
-                        {!inShell && (
-                            <Button variant="outline" size="icon" onClick={() => router.get(harPengusahaan.index('formulir').url)} title="Kembali ke Formulir Pemeliharaan" className="shrink-0">
-                                <ArrowLeft className="size-4" />
-                            </Button>
-                        )}
-                        <div className="min-w-0">
-                            <h1 className="text-lg font-bold text-foreground md:text-xl">{document.title}</h1>
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                                    {unit.name}
-                                </Badge>
-                                <Badge variant="outline">{machineName}</Badge>
-                                <Badge variant="outline">{formatDate(filters.test_date)}</Badge>
-                                {has_saved ? (
-                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                                        Tersimpan
+            <div
+                className={cn(
+                    'flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6',
+                    compact && 'pb-28',
+                )}
+            >
+                {/* Header: full header with badges & description on Desktop only; hidden in mobile shell (bar already holds title) */}
+                {!compact ? (
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex min-w-0 items-start gap-3">
+                            {!inShell && (
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() =>
+                                        router.get(
+                                            harPengusahaan.index('formulir')
+                                                .url,
+                                        )
+                                    }
+                                    title="Kembali ke Formulir Pemeliharaan"
+                                    className="shrink-0"
+                                >
+                                    <ArrowLeft className="size-4" />
+                                </Button>
+                            )}
+                            <div className="min-w-0">
+                                <h1 className="text-lg font-bold text-foreground md:text-xl">
+                                    {document.title}
+                                </h1>
+                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                    <Badge
+                                        variant="outline"
+                                        className="border-primary/30 bg-primary/10 text-primary"
+                                    >
+                                        {unit.name}
                                     </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-300">
-                                        Belum disimpan
+                                    <Badge variant="outline">
+                                        {machineName}
                                     </Badge>
-                                )}
+                                    <Badge variant="outline">
+                                        {formatDate(filters.test_date)}
+                                    </Badge>
+                                    {has_saved ? (
+                                        <Badge
+                                            variant="secondary"
+                                            className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                        >
+                                            Tersimpan
+                                        </Badge>
+                                    ) : (
+                                        <Badge
+                                            variant="outline"
+                                            className="border-amber-300 text-amber-700 dark:text-amber-300"
+                                        >
+                                            Belum disimpan
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    {description}
+                                </p>
                             </div>
-                            <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                            {actions}
                         </div>
                     </div>
-                    {!compact && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
-                </div>
+                ) : (
+                    !inShell && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() =>
+                                    router.get(
+                                        harPengusahaan.index('formulir').url,
+                                    )
+                                }
+                                title="Kembali"
+                                className="size-8 shrink-0"
+                            >
+                                <ArrowLeft className="size-4" />
+                            </Button>
+                            <h1 className="min-w-0 truncate text-base font-bold text-foreground">
+                                {document.title}
+                            </h1>
+                        </div>
+                    )
+                )}
 
                 {/* Filters */}
-                <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <div
+                    className={cn(
+                        'rounded-lg border border-border bg-card',
+                        compact
+                            ? 'grid grid-cols-2 gap-2 p-2.5'
+                            : 'flex flex-col gap-3 p-3 sm:flex-row sm:flex-wrap sm:items-end',
+                    )}
+                >
                     <OperasiSelect
                         label="Unit Pembangkit"
                         value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value), machine_id: null })}
-                        options={units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        onChange={(value) =>
+                            visit({ unit_id: Number(value), machine_id: null })
+                        }
+                        options={units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                         className="w-full sm:w-48"
+                        labelClassName={compact ? 'col-span-2' : ''}
                     />
                     <OperasiSelect
                         label="Mesin"
-                        value={filters.machine_id ? String(filters.machine_id) : ''}
-                        onChange={(value) => visit({ machine_id: Number(value) })}
-                        options={machines.map((m) => ({ value: String(m.id), label: m.name }))}
+                        value={
+                            filters.machine_id ? String(filters.machine_id) : ''
+                        }
+                        onChange={(value) =>
+                            visit({ machine_id: Number(value) })
+                        }
+                        options={machines.map((m) => ({
+                            value: String(m.id),
+                            label: m.name,
+                        }))}
                         className="w-full sm:w-48"
                     />
                     <label className="flex flex-col gap-1 text-[13px]">
-                        <span className="text-muted-foreground">Tanggal Pemeriksaan</span>
-                        <Input type="date" value={filters.test_date} onChange={(e) => e.target.value && visit({ test_date: e.target.value })} className="h-9 w-full sm:w-44" />
+                        <span className="text-muted-foreground">
+                            {compact ? 'Tanggal' : 'Tanggal Pemeriksaan'}
+                        </span>
+                        <Input
+                            type="date"
+                            value={filters.test_date}
+                            onChange={(e) =>
+                                e.target.value &&
+                                visit({ test_date: e.target.value })
+                            }
+                            className="h-9 w-full sm:w-44"
+                        />
                     </label>
-                    {dirty && (
+                    {dirty && !compact && (
                         <div className="flex items-center gap-1.5 pb-2 text-xs font-medium text-amber-600 dark:text-amber-400">
                             <span className="size-2 animate-pulse rounded-full bg-amber-500" />
                             Ada perubahan belum disimpan
@@ -319,19 +541,30 @@ export function HarFormulirPage({
                 </div>
 
                 {history.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                        <span className="flex items-center gap-1 text-muted-foreground">
+                    <div
+                        className={cn(
+                            'flex items-center gap-1.5 text-xs',
+                            compact
+                                ? '[scrollbar-width:none] overflow-x-auto pb-0.5 whitespace-nowrap [&::-webkit-scrollbar]:hidden'
+                                : 'flex-wrap',
+                        )}
+                    >
+                        <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
                             <History className="size-3.5" />
-                            Tersimpan:
+                            Riwayat:
                         </span>
                         {history.map((item) => (
                             <button
                                 key={item.id}
                                 type="button"
-                                onClick={() => visit({ test_date: item.test_date })}
+                                onClick={() =>
+                                    visit({ test_date: item.test_date })
+                                }
                                 className={cn(
-                                    'rounded-md border px-2 py-1 font-medium transition hover:bg-muted',
-                                    item.test_date === filters.test_date ? 'border-primary bg-primary/10 text-primary' : 'border-border text-foreground',
+                                    'shrink-0 rounded-md border px-2 py-1 font-medium transition hover:bg-muted',
+                                    item.test_date === filters.test_date
+                                        ? 'border-primary bg-primary/10 text-primary'
+                                        : 'border-border bg-card text-foreground',
                                 )}
                             >
                                 {formatDate(item.test_date)}
@@ -342,59 +575,113 @@ export function HarFormulirPage({
 
                 {machines.length === 0 ? (
                     <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                        Unit ini belum memiliki data mesin aktif. Tambahkan mesin di master data terlebih dahulu.
+                        Unit ini belum memiliki data mesin aktif. Tambahkan
+                        mesin di master data terlebih dahulu.
                     </p>
                 ) : (
                     <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-3 md:p-4">
-                        {/* Static kop */}
-                        <div className="grid grid-cols-1 gap-2 rounded-md border border-border p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
-                            <img
-                                src="/logo/sidebar-logo.png"
-                                alt="PLN Nusantara Power"
-                                className="hidden max-h-10 object-contain sm:block"
-                                onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
-                                }}
-                            />
-                            <div className="text-center">
-                                <div className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">PT PLN Nusantara Power · {unit.name}</div>
-                                <div className="text-sm font-extrabold text-foreground uppercase">{document.title}</div>
+                        {/* Static kop (Desktop only; omitted on mobile to maximize working area) */}
+                        {!compact && (
+                            <div className="grid grid-cols-1 gap-2 rounded-md border border-border p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+                                <img
+                                    src="/logo/sidebar-logo.png"
+                                    alt="PLN Nusantara Power"
+                                    className="hidden max-h-10 object-contain sm:block"
+                                    onError={(e) => {
+                                        (
+                                            e.target as HTMLElement
+                                        ).style.display = 'none';
+                                    }}
+                                />
+                                <div className="text-center">
+                                    <div className="text-[11px] font-bold tracking-wide text-muted-foreground uppercase">
+                                        PT PLN Nusantara Power · {unit.name}
+                                    </div>
+                                    <div className="text-sm font-extrabold text-foreground uppercase">
+                                        {document.title}
+                                    </div>
+                                </div>
+                                <dl className="grid grid-cols-[auto_1fr] gap-x-2 text-[11px] text-muted-foreground">
+                                    <dt>No. Dokumen</dt>
+                                    <dd className="font-mono text-foreground">
+                                        {document.number || '—'}
+                                    </dd>
+                                    <dt>Revisi</dt>
+                                    <dd className="font-mono text-foreground">
+                                        {document.revision || '—'}
+                                    </dd>
+                                    <dt>Berlaku</dt>
+                                    <dd className="text-foreground">
+                                        {document.effective_date || '—'}
+                                    </dd>
+                                </dl>
                             </div>
-                            <dl className="grid grid-cols-[auto_1fr] gap-x-2 text-[11px] text-muted-foreground">
-                                <dt>No. Dokumen</dt>
-                                <dd className="font-mono text-foreground">{document.number || '—'}</dd>
-                                <dt>Revisi</dt>
-                                <dd className="font-mono text-foreground">{document.revision || '—'}</dd>
-                                <dt>Berlaku</dt>
-                                <dd className="text-foreground">{document.effective_date || '—'}</dd>
-                            </dl>
-                        </div>
+                        )}
 
-                        {/* Identity */}
-                        {identity.length > 0 && (
-                            <Section title="Data Mesin">
+                        {/* Identity: full table on Desktop; on Mobile hide auto Master Mesin fields once machine is selected */}
+                        {showIdentitySection && (
+                            <Section
+                                title={
+                                    compact && machineSelected
+                                        ? 'Parameter Tambahan'
+                                        : 'Data Mesin'
+                                }
+                            >
                                 {!compact ? (
                                     <SheetFields
                                         fields={[
                                             ...identity.map((field) => ({
                                                 field,
-                                                cell: <CellInput field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} sheet />,
+                                                cell: (
+                                                    <CellInput
+                                                        field={field}
+                                                        value={text(field.key)}
+                                                        onChange={(v) =>
+                                                            setValue(
+                                                                field.key,
+                                                                v,
+                                                            )
+                                                        }
+                                                        canWrite={can_write}
+                                                        sheet
+                                                    />
+                                                ),
                                             })),
-                                            ...(tables.some((table) => table.cylinders)
+                                            ...(hasCylinders
                                                 ? [
                                                       {
-                                                          field: { key: 'cylinders_count', label: 'Jumlah Silinder' },
+                                                          field: {
+                                                              key: 'cylinders_count',
+                                                              label: 'Jumlah Silinder',
+                                                          },
                                                           cell: (
                                                               <Input
                                                                   type="number"
                                                                   inputMode="numeric"
                                                                   min={1}
                                                                   max={32}
-                                                                  value={text('cylinders_count')}
-                                                                  onChange={(e) => setCylinders(Number(e.target.value))}
-                                                                  disabled={!can_write}
+                                                                  value={text(
+                                                                      'cylinders_count',
+                                                                  )}
+                                                                  onChange={(
+                                                                      e,
+                                                                  ) =>
+                                                                      setCylinders(
+                                                                          Number(
+                                                                              e
+                                                                                  .target
+                                                                                  .value,
+                                                                          ),
+                                                                      )
+                                                                  }
+                                                                  disabled={
+                                                                      !can_write
+                                                                  }
                                                                   aria-label="Jumlah Silinder"
-                                                                  className={cn(xlCell, 'text-center')}
+                                                                  className={cn(
+                                                                      xlCell,
+                                                                      'text-center',
+                                                                  )}
                                                               />
                                                           ),
                                                       },
@@ -404,33 +691,55 @@ export function HarFormulirPage({
                                         perRow={2}
                                     />
                                 ) : (
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                                    {identity.map((field) => (
-                                        <FieldInput key={field.key} field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} />
-                                    ))}
-                                    {tables.some((table) => table.cylinders) && (
-                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                            Jumlah Silinder
-                                            <Input
-                                                type="number"
-                                                inputMode="numeric"
-                                                min={1}
-                                                max={32}
-                                                value={text('cylinders_count')}
-                                                onChange={(e) => setCylinders(Number(e.target.value))}
-                                                disabled={!can_write}
-                                                className="h-9 text-sm"
+                                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                                        {visibleIdentity.map((field) => (
+                                            <FieldInput
+                                                key={field.key}
+                                                field={field}
+                                                value={text(field.key)}
+                                                onChange={(v) =>
+                                                    setValue(field.key, v)
+                                                }
+                                                canWrite={can_write}
                                             />
-                                        </label>
-                                    )}
-                                </div>
+                                        ))}
+                                        {hasCylinders && (
+                                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                Jumlah Silinder
+                                                <Input
+                                                    type="number"
+                                                    inputMode="numeric"
+                                                    min={1}
+                                                    max={32}
+                                                    value={text(
+                                                        'cylinders_count',
+                                                    )}
+                                                    onChange={(e) =>
+                                                        setCylinders(
+                                                            Number(
+                                                                e.target.value,
+                                                            ),
+                                                        )
+                                                    }
+                                                    disabled={!can_write}
+                                                    className="h-9 text-sm"
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
                                 )}
                             </Section>
                         )}
 
                         {/* Tables */}
                         {tables.map((table) => (
-                            <Section key={table.key} title={table.title} description={table.description}>
+                            <Section
+                                key={table.key}
+                                title={table.title}
+                                description={
+                                    compact ? undefined : table.description
+                                }
+                            >
                                 {compact ? (
                                     <MobileRowEditor<FormRow>
                                         rows={rowsOf(table)}
@@ -438,24 +747,57 @@ export function HarFormulirPage({
                                             (column): RowField<FormRow> => ({
                                                 key: column.key,
                                                 label: column.label,
-                                                type: column.type ?? 'text',
-                                                options: column.options ? [...column.options] : undefined,
-                                                optionLabels: column.optionLabels,
-                                                optionTone: (option) => CHIP_TONE[option] ?? 'border-primary bg-primary text-primary-foreground',
+                                                type:
+                                                    column.type === 'select'
+                                                        ? 'dropdown'
+                                                        : (column.type ??
+                                                          'text'),
+                                                options: column.options
+                                                    ? [...column.options]
+                                                    : undefined,
+                                                optionLabels:
+                                                    column.optionLabels,
+                                                optionTone: (option) =>
+                                                    CHIP_TONE[option] ??
+                                                    'border-primary bg-primary text-primary-foreground',
                                                 placeholder: column.placeholder,
                                                 parse: (value) => String(value),
                                             }),
                                         )}
-                                        title={(row, index) => table.rowLabel(row, index)}
+                                        title={(row, index) =>
+                                            table.rowLabel(row, index)
+                                        }
                                         subtitle={(row) =>
                                             table.columns
-                                                .filter((c) => c.type !== 'textarea' && row[c.key] !== '' && row[c.key] !== null && row[c.key] !== undefined)
+                                                .filter(
+                                                    (c) =>
+                                                        c.type !== 'textarea' &&
+                                                        row[c.key] !== '' &&
+                                                        row[c.key] !== null &&
+                                                        row[c.key] !==
+                                                            undefined,
+                                                )
                                                 .slice(0, 3)
-                                                .map((c) => `${c.label}: ${c.optionLabels?.[String(row[c.key])] ?? row[c.key]}`)
+                                                .map(
+                                                    (c) =>
+                                                        `${c.label}: ${c.optionLabels?.[String(row[c.key])] ?? row[c.key]}`,
+                                                )
                                                 .join(' · ')
                                         }
-                                        onChange={(index, key, value) => setCell(table, index, key, String(value ?? ''))}
-                                        onRemove={table.addable ? (index) => removeRow(table, index) : undefined}
+                                        onChange={(index, key, value) =>
+                                            setCell(
+                                                table,
+                                                index,
+                                                key,
+                                                String(value ?? ''),
+                                            )
+                                        }
+                                        onRemove={
+                                            table.addable
+                                                ? (index) =>
+                                                      removeRow(table, index)
+                                                : undefined
+                                        }
                                         canWrite={can_write}
                                     />
                                 ) : (
@@ -463,42 +805,148 @@ export function HarFormulirPage({
                                         <table className="w-full border-collapse border-2 border-black text-sm dark:border-white">
                                             <thead>
                                                 <tr>
-                                                    <th className={cn(xlTh, 'w-32')}>{table.rowHeader}</th>
-                                                    {table.columns.map((column) => (
-                                                        <th key={column.key} className={cn(xlTh, column.wide ? 'min-w-56' : 'min-w-28')}>
-                                                            {column.label}
-                                                        </th>
-                                                    ))}
-                                                    {table.addable && can_write && <th className={cn(xlTh, 'w-10')} />}
+                                                    <th
+                                                        className={cn(
+                                                            xlTh,
+                                                            'w-32',
+                                                        )}
+                                                    >
+                                                        {table.rowHeader}
+                                                    </th>
+                                                    {table.columns.map(
+                                                        (column) => (
+                                                            <th
+                                                                key={column.key}
+                                                                className={cn(
+                                                                    xlTh,
+                                                                    column.wide
+                                                                        ? 'min-w-56'
+                                                                        : 'min-w-28',
+                                                                )}
+                                                            >
+                                                                {column.label}
+                                                            </th>
+                                                        ),
+                                                    )}
+                                                    {table.addable &&
+                                                        can_write && (
+                                                            <th
+                                                                className={cn(
+                                                                    xlTh,
+                                                                    'w-10',
+                                                                )}
+                                                            />
+                                                        )}
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {rowsOf(table).map((row, index) => (
-                                                    <tr key={index} className="hover:bg-yellow-50/40 dark:hover:bg-yellow-950/10">
-                                                        <td className={cn(xlTd, 'bg-yellow-50/60 px-2 text-xs font-semibold text-foreground dark:bg-yellow-950/20')}>{table.rowLabel(row, index)}</td>
-                                                        {table.columns.map((column) => (
-                                                            <td key={column.key} className={xlTd}>
-                                                                <CellInput
-                                                                    field={column}
-                                                                    value={row[column.key] === null || row[column.key] === undefined ? '' : String(row[column.key])}
-                                                                    onChange={(value) => setCell(table, index, column.key, value)}
-                                                                    canWrite={can_write}
-                                                                    sheet
-                                                                />
+                                                {rowsOf(table).map(
+                                                    (row, index) => (
+                                                        <tr
+                                                            key={index}
+                                                            className="hover:bg-yellow-50/40 dark:hover:bg-yellow-950/10"
+                                                        >
+                                                            <td
+                                                                className={cn(
+                                                                    xlTd,
+                                                                    'bg-yellow-50/60 px-2 text-xs font-semibold text-foreground dark:bg-yellow-950/20',
+                                                                )}
+                                                            >
+                                                                {table.rowLabel(
+                                                                    row,
+                                                                    index,
+                                                                )}
                                                             </td>
-                                                        ))}
-                                                        {table.addable && can_write && (
-                                                            <td className={cn(xlTd, 'text-center')}>
-                                                                <Button variant="ghost" size="icon" onClick={() => removeRow(table, index)} className="size-7 rounded-none text-muted-foreground hover:text-destructive" title="Hapus baris">
-                                                                    <Trash2 className="size-4" />
-                                                                </Button>
-                                                            </td>
-                                                        )}
-                                                    </tr>
-                                                ))}
+                                                            {table.columns.map(
+                                                                (column) => (
+                                                                    <td
+                                                                        key={
+                                                                            column.key
+                                                                        }
+                                                                        className={
+                                                                            xlTd
+                                                                        }
+                                                                    >
+                                                                        <CellInput
+                                                                            field={
+                                                                                column
+                                                                            }
+                                                                            value={
+                                                                                row[
+                                                                                    column
+                                                                                        .key
+                                                                                ] ===
+                                                                                    null ||
+                                                                                row[
+                                                                                    column
+                                                                                        .key
+                                                                                ] ===
+                                                                                    undefined
+                                                                                    ? ''
+                                                                                    : String(
+                                                                                          row[
+                                                                                              column
+                                                                                                  .key
+                                                                                          ],
+                                                                                      )
+                                                                            }
+                                                                            onChange={(
+                                                                                value,
+                                                                            ) =>
+                                                                                setCell(
+                                                                                    table,
+                                                                                    index,
+                                                                                    column.key,
+                                                                                    value,
+                                                                                )
+                                                                            }
+                                                                            canWrite={
+                                                                                can_write
+                                                                            }
+                                                                            sheet
+                                                                        />
+                                                                    </td>
+                                                                ),
+                                                            )}
+                                                            {table.addable &&
+                                                                can_write && (
+                                                                    <td
+                                                                        className={cn(
+                                                                            xlTd,
+                                                                            'text-center',
+                                                                        )}
+                                                                    >
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() =>
+                                                                                removeRow(
+                                                                                    table,
+                                                                                    index,
+                                                                                )
+                                                                            }
+                                                                            className="size-7 rounded-none text-muted-foreground hover:text-destructive"
+                                                                            title="Hapus baris"
+                                                                        >
+                                                                            <Trash2 className="size-4" />
+                                                                        </Button>
+                                                                    </td>
+                                                                )}
+                                                        </tr>
+                                                    ),
+                                                )}
                                                 {rowsOf(table).length === 0 && (
                                                     <tr>
-                                                        <td colSpan={table.columns.length + 2} className={cn(xlTd, 'p-4 text-center text-xs text-muted-foreground')}>
+                                                        <td
+                                                            colSpan={
+                                                                table.columns
+                                                                    .length + 2
+                                                            }
+                                                            className={cn(
+                                                                xlTd,
+                                                                'p-4 text-center text-xs text-muted-foreground',
+                                                            )}
+                                                        >
                                                             Belum ada baris.
                                                         </td>
                                                     </tr>
@@ -508,7 +956,12 @@ export function HarFormulirPage({
                                     </div>
                                 )}
                                 {table.addable && can_write && (
-                                    <Button variant="outline" size="sm" onClick={() => addRow(table)} className="mt-2 gap-1.5 self-start">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => addRow(table)}
+                                        className="mt-2 gap-1.5 self-start"
+                                    >
                                         <Plus className="size-4" />
                                         {table.addable.label}
                                     </Button>
@@ -523,15 +976,40 @@ export function HarFormulirPage({
                                     <SheetFields
                                         fields={notes.map((field) => ({
                                             field,
-                                            cell: <CellInput field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} sheet />,
+                                            cell: (
+                                                <CellInput
+                                                    field={field}
+                                                    value={text(field.key)}
+                                                    onChange={(v) =>
+                                                        setValue(field.key, v)
+                                                    }
+                                                    canWrite={can_write}
+                                                    sheet
+                                                />
+                                            ),
                                         }))}
                                         perRow={1}
                                     />
                                 ) : (
                                     <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                                         {notes.map((field) => (
-                                            <div key={field.key} className={field.type === 'textarea' && field.wide ? 'md:col-span-2' : ''}>
-                                                <FieldInput field={field} value={text(field.key)} onChange={(v) => setValue(field.key, v)} canWrite={can_write} />
+                                            <div
+                                                key={field.key}
+                                                className={
+                                                    field.type === 'textarea' &&
+                                                    field.wide
+                                                        ? 'md:col-span-2'
+                                                        : ''
+                                                }
+                                            >
+                                                <FieldInput
+                                                    field={field}
+                                                    value={text(field.key)}
+                                                    onChange={(v) =>
+                                                        setValue(field.key, v)
+                                                    }
+                                                    canWrite={can_write}
+                                                />
                                             </div>
                                         ))}
                                     </div>
@@ -539,20 +1017,32 @@ export function HarFormulirPage({
                             </Section>
                         )}
 
-                        {extra?.({ canWrite: can_write, markDirty: () => setDirty(true) })}
+                        {extra?.({
+                            canWrite: can_write,
+                            markDirty: () => setDirty(true),
+                        })}
 
-                        {/* Signatories */}
-                        <div className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
-                            <span className="font-semibold text-foreground">Tanda tangan di PDF (otomatis dari pemegang jabatan unit):</span>
-                            <div className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-3">
-                                {signatories.map((signatory) => (
-                                    <div key={signatory.title}>
-                                        <span className="block text-[11px]">{signatory.title}</span>
-                                        <span className="font-medium text-foreground">{signatory.name || '—'}</span>
-                                    </div>
-                                ))}
+                        {/* Signatories (Desktop only; omitted on mobile to maximize form workspace) */}
+                        {!compact && (
+                            <div className="rounded-md border border-dashed border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+                                <span className="font-semibold text-foreground">
+                                    Tanda tangan di PDF (otomatis dari pemegang
+                                    jabatan unit):
+                                </span>
+                                <div className="mt-1.5 grid grid-cols-1 gap-1 sm:grid-cols-3">
+                                    {signatories.map((signatory) => (
+                                        <div key={signatory.title}>
+                                            <span className="block text-[11px]">
+                                                {signatory.title}
+                                            </span>
+                                            <span className="font-medium text-foreground">
+                                                {signatory.name || '—'}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 )}
             </div>
@@ -562,12 +1052,26 @@ export function HarFormulirPage({
     );
 }
 
-function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function Section({
+    title,
+    description,
+    children,
+}: {
+    title: string;
+    description?: string;
+    children: ReactNode;
+}) {
     return (
         <section className="flex flex-col gap-2">
             <div>
-                <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-                {description && <p className="text-xs text-muted-foreground">{description}</p>}
+                <h2 className="text-sm font-semibold text-foreground">
+                    {title}
+                </h2>
+                {description && (
+                    <p className="text-xs text-muted-foreground">
+                        {description}
+                    </p>
+                )}
             </div>
             {children}
         </section>
@@ -575,8 +1079,17 @@ function Section({ title, description, children }: { title: string; description?
 }
 
 /** Label / value pairs laid out as an Excel grid: yellow label cell, typed-in value cell. */
-function SheetFields({ fields, perRow }: { fields: { field: HarField; cell: ReactNode }[]; perRow: number }) {
-    const rows = Array.from({ length: Math.ceil(fields.length / perRow) }, (_, i) => fields.slice(i * perRow, i * perRow + perRow));
+function SheetFields({
+    fields,
+    perRow,
+}: {
+    fields: { field: HarField; cell: ReactNode }[];
+    perRow: number;
+}) {
+    const rows = Array.from(
+        { length: Math.ceil(fields.length / perRow) },
+        (_, i) => fields.slice(i * perRow, i * perRow + perRow),
+    );
 
     return (
         <div className="overflow-x-auto">
@@ -586,10 +1099,25 @@ function SheetFields({ fields, perRow }: { fields: { field: HarField; cell: Reac
                         <tr key={rowIndex}>
                             {pairs.map(({ field, cell }) => (
                                 <Fragment key={field.key}>
-                                    <th scope="row" className={cn(xlTh, 'w-48 text-left normal-case', perRow === 1 && 'w-64')}>
+                                    <th
+                                        scope="row"
+                                        className={cn(
+                                            xlTh,
+                                            'w-48 text-left normal-case',
+                                            perRow === 1 && 'w-64',
+                                        )}
+                                    >
                                         {field.label}
                                     </th>
-                                    <td className={xlTd} colSpan={pairs.length < perRow ? (perRow - pairs.length) * 2 + 1 : 1}>
+                                    <td
+                                        className={xlTd}
+                                        colSpan={
+                                            pairs.length < perRow
+                                                ? (perRow - pairs.length) * 2 +
+                                                  1
+                                                : 1
+                                        }
+                                    >
                                         {cell}
                                     </td>
                                 </Fragment>
@@ -602,14 +1130,37 @@ function SheetFields({ fields, perRow }: { fields: { field: HarField; cell: Reac
     );
 }
 
-function FieldInput({ field, value, onChange, canWrite }: { field: HarField; value: string; onChange: (value: string) => void; canWrite: boolean }) {
+function FieldInput({
+    field,
+    value,
+    onChange,
+    canWrite,
+}: {
+    field: HarField;
+    value: string;
+    onChange: (value: string) => void;
+    canWrite: boolean;
+}) {
     return (
         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
             {field.label}
             {field.type === 'textarea' ? (
-                <Textarea value={value} onChange={(e) => onChange(e.target.value)} disabled={!canWrite} placeholder={field.placeholder} rows={3} className="text-sm" />
+                <Textarea
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    disabled={!canWrite}
+                    placeholder={field.placeholder}
+                    rows={3}
+                    className="text-sm"
+                />
             ) : (
-                <CellInput field={field} value={value} onChange={onChange} canWrite={canWrite} className="h-9" />
+                <CellInput
+                    field={field}
+                    value={value}
+                    onChange={onChange}
+                    canWrite={canWrite}
+                    className="h-9"
+                />
             )}
         </label>
     );
@@ -632,14 +1183,30 @@ function CellInput({
     sheet?: boolean;
 }) {
     if (field.type === 'select' && field.options) {
-        const options = value === '' || field.options.includes(value) ? field.options : [value, ...field.options];
+        const options =
+            value === '' || field.options.includes(value)
+                ? field.options
+                : [value, ...field.options];
 
         return (
-            <Select value={value || undefined} onValueChange={onChange} disabled={!canWrite}>
+            <Select
+                value={value || undefined}
+                onValueChange={onChange}
+                disabled={!canWrite}
+            >
                 <SelectTrigger
                     size="sm"
                     aria-label={field.label}
-                    className={cn('w-full text-sm', className, TONE[value], sheet && cn(xlCell, 'data-[size=sm]:h-8 font-medium focus-visible:ring-0'))}
+                    className={cn(
+                        'w-full text-sm',
+                        className,
+                        TONE[value],
+                        sheet &&
+                            cn(
+                                xlCell,
+                                'font-medium focus-visible:ring-0 data-[size=sm]:h-8',
+                            ),
+                    )}
                 >
                     <SelectValue placeholder="Pilih" />
                 </SelectTrigger>
@@ -663,7 +1230,14 @@ function CellInput({
                 placeholder={field.placeholder}
                 rows={sheet ? 1 : 2}
                 aria-label={field.label}
-                className={cn('min-h-8 text-sm', sheet && cn(xlCell, 'h-auto resize-none py-1.5 [field-sizing:content]'))}
+                className={cn(
+                    'min-h-8 text-sm',
+                    sheet &&
+                        cn(
+                            xlCell,
+                            '[field-sizing:content] h-auto resize-none py-1.5',
+                        ),
+                )}
             />
         );
     }
@@ -676,7 +1250,11 @@ function CellInput({
             placeholder={field.placeholder}
             inputMode={field.type === 'number' ? 'decimal' : undefined}
             aria-label={field.label}
-            className={cn('text-sm', className, sheet && cn(xlCell, field.type === 'number' && 'text-center'))}
+            className={cn(
+                'text-sm',
+                className,
+                sheet && cn(xlCell, field.type === 'number' && 'text-center'),
+            )}
         />
     );
 }

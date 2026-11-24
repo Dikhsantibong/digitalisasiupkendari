@@ -190,14 +190,14 @@ class K3DivisionFeedTest extends TestCase
     {
         $operasi = $this->userWithRole(RoleName::KoordinatorOperasi, $this->unit);
         $this->actingAs($operasi)->post(route('operasi.input.program-5s5r.store'), $this->period + ['rows' => [
-            [...OperasiProgram5s5r::blankRow(1, 'ringkas'), 'kondisi_awal' => 'Kurang Baik', 'progres' => '51-75', 'kondisi_akhir' => 'Baik'],
-            [...OperasiProgram5s5r::blankRow(2, 'ringkas'), 'kondisi_awal' => 'Baik', 'progres' => '76-100', 'kondisi_akhir' => 'Baik'],
-            [...OperasiProgram5s5r::blankRow(1, 'resik'), 'keterangan' => 'Lantai genset dibersihkan'],
+            [...OperasiProgram5s5r::blankRow(1, 'Pagi', 'ringkas'), 'kondisi_awal' => 'Kurang Baik', 'progres' => '51-75', 'kondisi_akhir' => 'Baik'],
+            [...OperasiProgram5s5r::blankRow(2, 'Sore', 'ringkas'), 'kondisi_awal' => 'Baik', 'progres' => '76-100', 'kondisi_akhir' => 'Baik'],
+            [...OperasiProgram5s5r::blankRow(1, 'Pagi', 'resik'), 'keterangan' => 'Lantai genset dibersihkan'],
         ]])->assertSessionHasNoErrors();
 
         $har = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $this->unit);
         $this->actingAs($har)->post(route('har.input.program-5s5r.store'), $this->period + ['rows' => [
-            [...HarProgram5s5r::blankRow(3, 'rapi'), 'progres' => '26-50', 'keterangan' => 'Rak tools ditata ulang'],
+            [...HarProgram5s5r::blankRow(3, 'Malam', 'rapi'), 'progres' => '26-50', 'keterangan' => 'Rak tools ditata ulang'],
         ]])->assertSessionHasNoErrors();
 
         $pdm = $this->userWithRole(RoleName::KoordinatorPdm, $this->unit);
@@ -221,22 +221,22 @@ class K3DivisionFeedTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('k3/input/rekap-5s5r/index')
                 ->has('programs', 4)
-                // Operasi: August 2026 has 5 weeks; Ringkas filled in 2 of them.
+                // Operasi: August 2026 has 31 days × 3 shifts = 93 slots; Ringkas filled in 2 of them.
                 ->where('programs.0.sumber', 'Operasi')
                 ->where('programs.0.saved', true)
                 ->where('programs.0.rows.0.program', 'Ringkas (Seiri)')
-                ->where('programs.0.rows.0.rencana', 5)
+                ->where('programs.0.rows.0.rencana', 93)
                 ->where('programs.0.rows.0.realisasi', 2)
-                ->where('programs.0.rows.0.kinerja', '40%')
-                ->where('programs.0.rows.0.catatan', 'Minggu 2 · kondisi akhir Baik · progres 76-100%')
+                ->where('programs.0.rows.0.kinerja', '2%')
+                ->where('programs.0.rows.0.catatan', 'Tgl 2 (Sore) · kondisi akhir Baik · progres 76-100%')
                 ->where('programs.0.rows.1.realisasi', 0)
                 ->where('programs.0.rows.2.realisasi', 1)
-                ->where('programs.0.total', ['rencana' => 25, 'realisasi' => 3, 'kinerja' => '12%'])
-                ->where('programs.0.temuan', ['Minggu 1 — Resik (Seiso): Lantai genset dibersihkan'])
+                ->where('programs.0.total', ['rencana' => 465, 'realisasi' => 3, 'kinerja' => '1%'])
+                ->where('programs.0.temuan', ['Tgl 1 (Pagi) — Resik (Seiso): Lantai genset dibersihkan'])
                 // Pemeliharaan.
                 ->where('programs.1.sumber', 'Pemeliharaan')
                 ->where('programs.1.rows.1.realisasi', 1)
-                ->where('programs.1.temuan', ['Minggu 3 — Rapi (Seiton): Rak tools ditata ulang'])
+                ->where('programs.1.temuan', ['Tgl 3 (Malam) — Rapi (Seiton): Rak tools ditata ulang'])
                 // PdM: the rencana & realisasi of the checklist.
                 ->where('programs.2.sumber', 'PdM')
                 ->where('programs.2.saved', true)
@@ -296,7 +296,7 @@ class K3DivisionFeedTest extends TestCase
         $this->reportUnsafe('operasi', RoleName::KoordinatorOperasi, ['temuan' => 'Temuan dari operasi', 'keterangan' => 'close']);
         LogistikFormRow::factory()->create([...$this->period, 'form' => 'unsafe', 'section' => 'temuan', 'data' => ['kategori' => 'UNSAFE CONDITION', 'temuan' => 'Temuan dari gudang']]);
         $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $this->unit))
-            ->post(route('har.input.program-5s5r.store'), $this->period + ['rows' => [[...HarProgram5s5r::blankRow(1, 'rawat'), 'progres' => '76-100']]])
+            ->post(route('har.input.program-5s5r.store'), $this->period + ['rows' => [[...HarProgram5s5r::blankRow(1, 'Pagi', 'rawat'), 'progres' => '76-100']]])
             ->assertSessionHasNoErrors();
 
         $report = app(K3ReportBuilder::class)->monthly($this->unit, 8, 2026);

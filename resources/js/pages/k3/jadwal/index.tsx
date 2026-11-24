@@ -1,15 +1,18 @@
 import { Head, router } from '@inertiajs/react';
-import type {
-    Users} from 'lucide-react';
+import type { Users } from 'lucide-react';
 import {
-    CalendarClock,
     CalendarDays,
+    ChevronRight,
     FilePen,
     FileText,
     Leaf,
     PhoneCall,
-    ShieldCheck
+    ShieldCheck,
 } from 'lucide-react';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -17,6 +20,7 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/k3/jadwal';
 import type { IdName } from '@/types';
@@ -46,43 +50,50 @@ const AVAILABLE_TARGETS: string[] = [
 const JADWAL_LIST: JadwalCard[] = [
     {
         title: 'Jadwal On Call K3L',
-        description: 'Jadwal on call dan kesiapan personil K3L periode cut-off 16 s/d 15 beserta perhitungan nilai dan rupiah insentif.',
+        description:
+            'Jadwal on call dan kesiapan personil K3L periode cut-off 16 s/d 15 beserta perhitungan nilai dan rupiah insentif.',
         icon: PhoneCall,
         target: '/k3/jadwal/on-call',
     },
     {
         title: 'Jadwal Kegiatan Rutin Harian, Mingguan & Bulanan K3L KIT',
-        description: 'Agenda berkala pelaksanaan program keselamatan kerja dan lindungan lingkungan di unit pembangkit.',
+        description:
+            'Agenda berkala pelaksanaan program keselamatan kerja dan lindungan lingkungan di unit pembangkit.',
         icon: CalendarDays,
         target: '/k3/jadwal/kegiatan-rutin',
     },
     {
         title: 'Jadwal Pekerjaan Rutin K3L & Lingkungan 11 KIT',
-        description: 'Program kerja rutin pengelolaan keselamatan kerja dan kelestarian lingkungan di 11 KIT.',
+        description:
+            'Program kerja rutin pengelolaan keselamatan kerja dan kelestarian lingkungan di 11 KIT.',
         icon: Leaf,
         target: '/k3/jadwal/pekerjaan-rutin',
     },
     {
         title: 'Jadwal Patrol Check Harian K3L & Lingkungan',
-        description: 'Inspeksi patroli harian keliling area pembangkit untuk deteksi dini bahaya dan pemantauan lingkungan.',
+        description:
+            'Inspeksi patroli harian keliling area pembangkit untuk deteksi dini bahaya dan pemantauan lingkungan.',
         icon: ShieldCheck,
         target: '/k3/jadwal/patrol-check',
     },
     {
         title: 'Jadwal Instruksi Kerja K3L',
-        description: 'Penyusunan, sosialisasi, standardisasi, dan peninjauan Instruksi Kerja (IK) prosedur K3L.',
+        description:
+            'Penyusunan, sosialisasi, standardisasi, dan peninjauan Instruksi Kerja (IK) prosedur K3L.',
         icon: FileText,
         target: '/k3/jadwal/instruksi-kerja',
     },
     {
         title: 'Jadwal Pembuatan IK K3',
-        description: 'Rencana (R) dan realisasi (✓) penyusunan dokumen Instruksi Kerja K3 & Lingkungan per bulan dalam satu tahun, lengkap dengan PIC pembuat.',
+        description:
+            'Rencana (R) dan realisasi (✓) penyusunan dokumen Instruksi Kerja K3 & Lingkungan per bulan dalam satu tahun, lengkap dengan PIC pembuat.',
         icon: FilePen,
         target: '/k3/jadwal/pembuatan-ik',
     },
 ];
 
 export default function K3JadwalIndex({ filters, options }: Props) {
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
             jadwal.index().url,
@@ -90,6 +101,61 @@ export default function K3JadwalIndex({ filters, options }: Props) {
             { preserveState: true, preserveScroll: true, replace: true },
         );
     };
+
+    if (compact) {
+        return (
+            <>
+                <Head title="Jadwal K3 & Lingkungan" />
+                <div className="flex flex-1 flex-col gap-3 p-3">
+                    <K3MobileHeader title="Jadwal K3 & Lingkungan" />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    <div className="flex flex-col gap-2">
+                        {JADWAL_LIST.map((item) => {
+                            const Icon = item.icon;
+                            const isAvailable = AVAILABLE_TARGETS.includes(
+                                item.target,
+                            );
+
+                            return (
+                                <button
+                                    key={item.title}
+                                    type="button"
+                                    disabled={!isAvailable}
+                                    onClick={() =>
+                                        router.get(item.target, {
+                                            unit_id: filters.unit_id,
+                                            month: filters.month,
+                                            year: filters.year,
+                                        })
+                                    }
+                                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition active:scale-[0.99] disabled:opacity-60"
+                                >
+                                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                        <Icon className="size-5" />
+                                    </div>
+                                    <span className="min-w-0 flex-1 text-[13.5px] leading-snug font-semibold text-foreground">
+                                        {item.title}
+                                    </span>
+                                    <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -105,26 +171,37 @@ export default function K3JadwalIndex({ filters, options }: Props) {
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {JADWAL_LIST.map((item) => {
                         const Icon = item.icon;
-                        const isAvailable = AVAILABLE_TARGETS.includes(item.target);
+                        const isAvailable = AVAILABLE_TARGETS.includes(
+                            item.target,
+                        );
 
                         return (
                             <div
@@ -154,7 +231,10 @@ export default function K3JadwalIndex({ filters, options }: Props) {
                                                 Tersedia
                                             </Badge>
                                         ) : (
-                                            <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                                            <Badge
+                                                variant="outline"
+                                                className="text-[11px] font-normal text-muted-foreground"
+                                            >
                                                 Sementara Disusun
                                             </Badge>
                                         )}
@@ -194,7 +274,8 @@ export default function K3JadwalIndex({ filters, options }: Props) {
                                                 Input Jadwal
                                             </Button>
                                             <p className="text-center text-[11px] text-muted-foreground italic">
-                                                * Tombol belum difungsikan (tabel sedang disusun)
+                                                * Tombol belum difungsikan
+                                                (tabel sedang disusun)
                                             </p>
                                         </>
                                     )}

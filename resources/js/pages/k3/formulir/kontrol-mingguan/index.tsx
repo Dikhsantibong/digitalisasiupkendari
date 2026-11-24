@@ -1,4 +1,7 @@
-import { FormulirRecordPage, recordBreadcrumbs } from '@/components/k3/formulir-record-page';
+import {
+    FormulirRecordPage,
+    recordBreadcrumbs,
+} from '@/components/k3/formulir-record-page';
 import type { FormulirRecordPageProps } from '@/components/k3/formulir-record-page';
 
 export default function KontrolK3MingguanPage(props: FormulirRecordPageProps) {
@@ -6,5 +9,8 @@ export default function KontrolK3MingguanPage(props: FormulirRecordPageProps) {
 }
 
 KontrolK3MingguanPage.layout = {
-    breadcrumbs: recordBreadcrumbs('kontrol-mingguan', 'Form Kontrol K3 Mingguan'),
+    breadcrumbs: recordBreadcrumbs(
+        'kontrol-mingguan',
+        'Form Kontrol K3 Mingguan',
+    ),
 };

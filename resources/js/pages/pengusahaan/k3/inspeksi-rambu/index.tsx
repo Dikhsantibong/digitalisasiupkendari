@@ -13,10 +13,23 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
+import { dmyToIso, isoToDmy } from '@/components/pengusahaan/k3-cells';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
     Select,
     SelectContent,
@@ -24,6 +37,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanInspeksiRambu from '@/routes/k3/pengusahaan/inspeksi-rambu';
 import type { IdName } from '@/types';
@@ -90,7 +105,13 @@ const PRINT_CSS = `
 }
 `;
 
-const KETERANGAN_OPTIONS = ['Perhatian', 'Bahaya', 'Waspada', 'Awas', 'Penting'];
+const KETERANGAN_OPTIONS = [
+    'Perhatian',
+    'Bahaya',
+    'Waspada',
+    'Awas',
+    'Penting',
+];
 const TINGKAT_PELANGGARAN_OPTIONS = ['Nihil', 'Ringan', 'Sedang', 'Berat'];
 
 export default function PengusahaanInspeksiRambuPage(props: Props) {
@@ -105,15 +126,19 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
 
     const [noDokumen, setNoDokumen] = useState(initialRecord.no_dokumen);
     const [revisi, setRevisi] = useState(initialRecord.revisi);
-    const [tanggalDokumen, setTanggalDokumen] = useState(initialRecord.tanggal_dokumen);
-    const [tanggalInspeksi, setTanggalInspeksi] = useState(initialRecord.tanggal_inspeksi || '01/09/2026');
+    const [tanggalDokumen, setTanggalDokumen] = useState(
+        initialRecord.tanggal_dokumen,
+    );
+    const [tanggalInspeksi, setTanggalInspeksi] = useState(
+        initialRecord.tanggal_inspeksi || '01/09/2026',
+    );
     const [catatan, setCatatan] = useState(initialRecord.catatan);
 
     const [items, setItems] = useState<InspeksiRambuItem[]>(() =>
         initialRecord.items.map((it, idx) => ({
             ...it,
             _key: idx + 1,
-            no_id: it.no_id ?? (idx + 1),
+            no_id: it.no_id ?? idx + 1,
             tingkat_pelanggaran: it.tingkat_pelanggaran || 'Nihil',
             keterangan: it.keterangan || 'Perhatian',
         })),
@@ -124,10 +149,15 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
     const [searchQuery, setSearchQuery] = useState('');
     const [kategoriFilter, setKategoriFilter] = useState('all');
     const [nextKey, setNextKey] = useState(initialRecord.items.length + 10);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', val: string) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        val: string,
+    ) => {
         router.get(
             k3PengusahaanInspeksiRambu.index().url,
             {
@@ -141,15 +171,22 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
         );
     };
 
-    const updateItem = (key: number, field: keyof InspeksiRambuItem, value: unknown) => {
+    const updateItem = (
+        key: number,
+        field: keyof InspeksiRambuItem,
+        value: unknown,
+    ) => {
         setItems((prev) =>
-            prev.map((it) => (it._key === key ? { ...it, [field]: value } : it)),
+            prev.map((it) =>
+                it._key === key ? { ...it, [field]: value } : it,
+            ),
         );
         setDirty(true);
     };
 
     const addItem = () => {
-        const newNoId = items.length > 0 ? Math.max(...items.map((i) => i.no_id)) + 1 : 1;
+        const newNoId =
+            items.length > 0 ? Math.max(...items.map((i) => i.no_id)) + 1 : 1;
         const newItem: InspeksiRambuItem = {
             _key: nextKey,
             id: null,
@@ -192,7 +229,7 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
             initialRecord.items.map((it, idx) => ({
                 ...it,
                 _key: idx + 1,
-                no_id: it.no_id ?? (idx + 1),
+                no_id: it.no_id ?? idx + 1,
                 tingkat_pelanggaran: it.tingkat_pelanggaran || 'Nihil',
                 keterangan: it.keterangan || 'Perhatian',
             })),
@@ -200,8 +237,8 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -259,7 +296,11 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
 
             const ketLower = item.keterangan.trim().toLowerCase();
 
-            if (ketLower === 'bahaya' || ketLower === 'waspada' || ketLower === 'awas') {
+            if (
+                ketLower === 'bahaya' ||
+                ketLower === 'waspada' ||
+                ketLower === 'awas'
+            ) {
                 hazardCount++;
             }
 
@@ -282,7 +323,11 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
     // Screen view filter (print view renders all items)
     const filteredItems = useMemo(() => {
         return items.filter((it) => {
-            if (kategoriFilter !== 'all' && it.keterangan.trim().toLowerCase() !== kategoriFilter.toLowerCase()) {
+            if (
+                kategoriFilter !== 'all' &&
+                it.keterangan.trim().toLowerCase() !==
+                    kategoriFilter.toLowerCase()
+            ) {
                 return false;
             }
 
@@ -316,6 +361,197 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
         }
     };
 
+    if (compact) {
+        return (
+            <>
+                <Head title={`Inspeksi Rambu K3 — ${unit.name}`} />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Inspeksi Rambu K3"
+                        backHref={k3Pengusahaan.index({ section: 'input' }).url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) =>
+                            handleFilterChange('unit_id', String(v))
+                        }
+                        month={filters.month}
+                        onMonthChange={(v) =>
+                            handleFilterChange('month', String(v))
+                        }
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) =>
+                            handleFilterChange('year', String(v))
+                        }
+                        extra={
+                            <div className="col-span-2 grid grid-cols-2 gap-2 pt-0.5">
+                                <Input
+                                    value={searchQuery}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
+                                    placeholder="Cari rambu / lokasi…"
+                                    className="h-9 text-xs"
+                                />
+                                <Select
+                                    value={kategoriFilter}
+                                    onValueChange={setKategoriFilter}
+                                >
+                                    <SelectTrigger className="h-9 w-full text-xs">
+                                        <SelectValue placeholder="Semua Kategori" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">
+                                            Semua Kategori
+                                        </SelectItem>
+                                        {KETERANGAN_OPTIONS.map((k) => (
+                                            <SelectItem key={k} value={k}>
+                                                {k}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        }
+                    />
+
+                    {can_write && (
+                        <K3MobileActionRow>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={setAllNihil}
+                                className="gap-1.5 text-emerald-700 dark:text-emerald-400"
+                            >
+                                <CheckCircle2 className="size-3.5" />
+                                Tandai Semua Nihil
+                            </Button>
+                        </K3MobileActionRow>
+                    )}
+
+                    <MobileRowEditor<InspeksiRambuItem>
+                        rows={filteredItems}
+                        rowKey={(it) => it._key}
+                        title={(it) => it.rambu_k3 || `Rambu #${it.no_id}`}
+                        subtitle={(it) =>
+                            `${it.lokasi || '-'} · ${it.tingkat_pelanggaran} · ${it.keterangan}`
+                        }
+                        canWrite={can_write}
+                        removeLabel="Hapus rambu"
+                        fields={[
+                            {
+                                key: 'rambu_k3',
+                                label: 'Nama / Jenis Rambu K3',
+                                placeholder: 'Mis. Dilarang Merokok',
+                            },
+                            {
+                                key: 'lokasi',
+                                label: 'Lokasi Pemasangan',
+                                placeholder: 'Area Engine',
+                            },
+                            {
+                                key: 'tingkat_pelanggaran',
+                                label: 'Tingkat Pelanggaran',
+                                type: 'dropdown',
+                                options: TINGKAT_PELANGGARAN_OPTIONS,
+                            },
+                            {
+                                key: 'keterangan',
+                                label: 'Kategori / Keterangan',
+                                type: 'dropdown',
+                                options: KETERANGAN_OPTIONS,
+                            },
+                        ]}
+                        onChange={(idx, key, value) =>
+                            updateItem(filteredItems[idx]._key, key, value)
+                        }
+                        onRemove={(idx) => removeItem(filteredItems[idx]._key)}
+                    />
+
+                    <K3MobileMetaAccordion
+                        noDokumen={noDokumen}
+                        revisi={revisi}
+                        tanggalDokumen={tanggalDokumen}
+                        onNoDokumenChange={(v) => {
+                            setNoDokumen(v);
+                            setDirty(true);
+                        }}
+                        onRevisiChange={(v) => {
+                            setRevisi(v);
+                            setDirty(true);
+                        }}
+                        onTanggalDokumenChange={(v) => {
+                            setTanggalDokumen(v);
+                            setDirty(true);
+                        }}
+                        canWrite={can_write}
+                        extra={
+                            <label className="col-span-2 flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                Tanggal Inspeksi
+                                <Input
+                                    type="date"
+                                    value={dmyToIso(tanggalInspeksi)}
+                                    onChange={(e) => {
+                                        setTanggalInspeksi(
+                                            isoToDmy(e.target.value),
+                                        );
+                                        setDirty(true);
+                                    }}
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                        }
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan hasil inspeksi rambu…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={addItem}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <div className="space-y-6 p-6">
             <style>{PRINT_CSS}</style>
@@ -328,7 +564,11 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => router.get(k3Pengusahaan.index({ section: 'input' }).url)}
+                        onClick={() =>
+                            router.get(
+                                k3Pengusahaan.index({ section: 'input' }).url,
+                            )
+                        }
                         title="Kembali ke Menu Input K3"
                     >
                         <ArrowLeft className="size-4" />
@@ -339,17 +579,25 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                 Inspeksi Rambu Rambu K3
                             </h1>
                             {has_saved ? (
-                                <Badge variant="secondary" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <Badge
+                                    variant="secondary"
+                                    className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
                                     Tersimpan
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                >
                                     Draft
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Pemeriksaan rutin kepatuhan, kondisi fisik, dan tingkat pelanggaran rambu-rambu K3 (SMT-FM-AK3-07.01).
+                            Pemeriksaan rutin kepatuhan, kondisi fisik, dan
+                            tingkat pelanggaran rambu-rambu K3
+                            (SMT-FM-AK3-07.01).
                         </p>
                     </div>
                 </div>
@@ -385,7 +633,9 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                             className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             <Save className="size-4" />
-                            <span>{saving ? 'Menyimpan...' : 'Simpan Data'}</span>
+                            <span>
+                                {saving ? 'Menyimpan...' : 'Simpan Data'}
+                            </span>
                         </Button>
                     )}
                 </div>
@@ -398,21 +648,32 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                         <OperasiSelect
                             label="Unit Layanan"
                             value={String(filters.unit_id)}
-                            options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                            onChange={(val) => handleFilterChange('unit_id', val)}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            onChange={(val) =>
+                                handleFilterChange('unit_id', val)
+                            }
                         />
 
                         <OperasiSelect
                             label="Bulan"
                             value={String(filters.month)}
-                            options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                            options={OPERASI_MONTHS.map((label, idx) => ({
+                                value: String(idx + 1),
+                                label,
+                            }))}
                             onChange={(val) => handleFilterChange('month', val)}
                         />
 
                         <OperasiSelect
                             label="Tahun"
                             value={String(filters.year)}
-                            options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
                             onChange={(val) => handleFilterChange('year', val)}
                         />
                     </div>
@@ -421,15 +682,23 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                     <div className="flex flex-wrap items-center gap-2.5">
                         <div className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300">
                             <Signpost className="size-3.5 text-sky-600" />
-                            <span>{stats.totalSigns} Titik Rambu ({stats.distinctLocations} Area)</span>
+                            <span>
+                                {stats.totalSigns} Titik Rambu (
+                                {stats.distinctLocations} Area)
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                             <CheckCircle2 className="size-3.5 text-emerald-600" />
-                            <span>Kepatuhan: {stats.nihilPercent}% Nihil Pelanggaran</span>
+                            <span>
+                                Kepatuhan: {stats.nihilPercent}% Nihil
+                                Pelanggaran
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
                             <AlertTriangle className="size-3.5 text-amber-600" />
-                            <span>{stats.hazardCount} Rambu Bahaya / Waspada</span>
+                            <span>
+                                {stats.hazardCount} Rambu Bahaya / Waspada
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -463,28 +732,60 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                         <div className="flex w-full flex-wrap items-center gap-1.5 sm:ml-auto sm:w-auto sm:flex-nowrap">
                             {/* Search filter */}
                             <div className="relative">
-                                <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+                                <Search className="absolute top-2.5 left-2.5 size-3.5 text-muted-foreground" />
                                 <input
                                     type="text"
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
                                     placeholder="Cari rambu / lokasi..."
-                                    className="h-8 w-44 rounded-md border pl-8 pr-2 text-xs focus:outline-none sm:w-56"
+                                    className="h-8 w-44 rounded-md border pr-2 pl-8 text-xs focus:outline-none sm:w-56"
                                 />
                             </div>
 
                             {/* Category filter */}
-                            <Select value={kategoriFilter} onValueChange={setKategoriFilter}>
+                            <Select
+                                value={kategoriFilter}
+                                onValueChange={setKategoriFilter}
+                            >
                                 <SelectTrigger className="h-8 w-40 text-xs">
                                     <SelectValue placeholder="Semua Kategori" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all" className="text-xs">Semua Kategori</SelectItem>
-                                    <SelectItem value="Perhatian" className="text-xs">Perhatian</SelectItem>
-                                    <SelectItem value="Bahaya" className="text-xs">Bahaya</SelectItem>
-                                    <SelectItem value="Waspada" className="text-xs">Waspada</SelectItem>
-                                    <SelectItem value="Awas" className="text-xs">Awas</SelectItem>
-                                    <SelectItem value="Penting" className="text-xs">Penting</SelectItem>
+                                    <SelectItem value="all" className="text-xs">
+                                        Semua Kategori
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="Perhatian"
+                                        className="text-xs"
+                                    >
+                                        Perhatian
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="Bahaya"
+                                        className="text-xs"
+                                    >
+                                        Bahaya
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="Waspada"
+                                        className="text-xs"
+                                    >
+                                        Waspada
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="Awas"
+                                        className="text-xs"
+                                    >
+                                        Awas
+                                    </SelectItem>
+                                    <SelectItem
+                                        value="Penting"
+                                        className="text-xs"
+                                    >
+                                        Penting
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -497,25 +798,27 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                 {/* Header KOP Dokumen Resmi Kembar Logo PLN & Lambang K3 */}
                 <div className="rambu-header-box relative rounded border-2 border-black p-4 dark:border-border">
                     {/* Logo PLN Kiri */}
-                    <div className="absolute left-4 top-4 flex items-center">
+                    <div className="absolute top-4 left-4 flex items-center">
                         <img
                             src="/logo/sidebar-logo.png"
                             alt="PLN Nusantara Power"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
 
                     {/* Lambang K3 Kanan */}
-                    <div className="absolute right-4 top-4 flex items-center">
+                    <div className="absolute top-4 right-4 flex items-center">
                         <img
                             src="/logo/k3.png"
                             alt="Logo K3"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
@@ -529,7 +832,11 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                             UNIT PEMBANGKITAN KENDARI
                         </div>
                         <div className="text-[11px] font-bold text-foreground uppercase sm:text-xs">
-                            UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
+                            UNIT LAYANAN{' '}
+                            {unit.name.toUpperCase().startsWith('ULPLTD') ||
+                            unit.name.toUpperCase().startsWith('UP')
+                                ? unit.name.toUpperCase()
+                                : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
                         </div>
                     </div>
 
@@ -543,14 +850,15 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                 INSPEKSI RAMBU RAMBU K3
                             </h2>
                             <div className="text-xs font-bold text-foreground uppercase">
-                                PERIODE BULAN {monthName.toUpperCase()} TAHUN {filters.year}
+                                PERIODE BULAN {monthName.toUpperCase()} TAHUN{' '}
+                                {filters.year}
                             </div>
                         </div>
 
                         {/* Kotak Metadata Dokumen */}
-                        <div className="w-full sm:w-64 border border-black text-[9px] dark:border-border sm:text-[10px]">
+                        <div className="w-full border border-black text-[9px] sm:w-64 sm:text-[10px] dark:border-border">
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     No. dokumen
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -570,7 +878,7 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Revisi
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -590,7 +898,7 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Tanggal
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -599,7 +907,9 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                             type="text"
                                             value={tanggalDokumen}
                                             onChange={(e) => {
-                                                setTanggalDokumen(e.target.value);
+                                                setTanggalDokumen(
+                                                    e.target.value,
+                                                );
                                                 setDirty(true);
                                             }}
                                             className="w-full bg-transparent focus:outline-none"
@@ -615,9 +925,9 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
 
                 {/* Table Content */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="excel-sheet rambu-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet rambu-table w-full border-collapse border border-black text-[10px] sm:text-[11px] dark:border-border">
                         <thead>
-                            <tr className="bg-muted/40 font-bold uppercase text-foreground">
+                            <tr className="bg-muted/40 font-bold text-foreground uppercase">
                                 <th className="w-12 border border-black px-1.5 py-1.5 text-center dark:border-border">
                                     No Id
                                 </th>
@@ -642,29 +952,51 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                         </thead>
                         <tbody>
                             {items.map((it) => {
-                                const isVisibleOnScreen = filteredItems.some((f) => f._key === it._key);
-                                const tingkatChoices = TINGKAT_PELANGGARAN_OPTIONS.includes(it.tingkat_pelanggaran)
-                                    ? TINGKAT_PELANGGARAN_OPTIONS
-                                    : [it.tingkat_pelanggaran, ...TINGKAT_PELANGGARAN_OPTIONS].filter(Boolean);
-                                const keteranganChoices = KETERANGAN_OPTIONS.includes(it.keterangan)
-                                    ? KETERANGAN_OPTIONS
-                                    : [it.keterangan, ...KETERANGAN_OPTIONS].filter(Boolean);
+                                const isVisibleOnScreen = filteredItems.some(
+                                    (f) => f._key === it._key,
+                                );
+                                const tingkatChoices =
+                                    TINGKAT_PELANGGARAN_OPTIONS.includes(
+                                        it.tingkat_pelanggaran,
+                                    )
+                                        ? TINGKAT_PELANGGARAN_OPTIONS
+                                        : [
+                                              it.tingkat_pelanggaran,
+                                              ...TINGKAT_PELANGGARAN_OPTIONS,
+                                          ].filter(Boolean);
+                                const keteranganChoices =
+                                    KETERANGAN_OPTIONS.includes(it.keterangan)
+                                        ? KETERANGAN_OPTIONS
+                                        : [
+                                              it.keterangan,
+                                              ...KETERANGAN_OPTIONS,
+                                          ].filter(Boolean);
 
                                 return (
                                     <tr
                                         key={it._key}
-                                        className={`hover:bg-muted/15 transition-colors ${
-                                            !isVisibleOnScreen ? 'no-screen hidden print:table-row' : ''
+                                        className={`transition-colors hover:bg-muted/15 ${
+                                            !isVisibleOnScreen
+                                                ? 'no-screen hidden print:table-row'
+                                                : ''
                                         }`}
                                     >
                                         {/* No Id */}
-                                        <td className="border border-black px-1.5 py-1 text-center font-bold align-middle dark:border-border">
+                                        <td className="border border-black px-1.5 py-1 text-center align-middle font-bold dark:border-border">
                                             {can_write ? (
                                                 <input
                                                     type="number"
                                                     value={it.no_id}
-                                                    onChange={(e) => updateItem(it._key, 'no_id', Number(e.target.value))}
-                                                    className="w-full text-center font-bold bg-transparent focus:bg-background focus:outline-none"
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'no_id',
+                                                            Number(
+                                                                e.target.value,
+                                                            ),
+                                                        )
+                                                    }
+                                                    className="w-full bg-transparent text-center font-bold focus:bg-background focus:outline-none"
                                                 />
                                             ) : (
                                                 it.no_id
@@ -677,12 +1009,20 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                                 <input
                                                     type="text"
                                                     value={it.rambu_k3}
-                                                    onChange={(e) => updateItem(it._key, 'rambu_k3', e.target.value)}
-                                                    className="w-full bg-transparent focus:bg-background focus:outline-none font-medium"
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'rambu_k3',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full bg-transparent font-medium focus:bg-background focus:outline-none"
                                                     placeholder="Nama rambu K3..."
                                                 />
                                             ) : (
-                                                <span className="font-medium">{it.rambu_k3}</span>
+                                                <span className="font-medium">
+                                                    {it.rambu_k3}
+                                                </span>
                                             )}
                                         </td>
 
@@ -692,7 +1032,13 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                                 <input
                                                     type="text"
                                                     value={it.lokasi}
-                                                    onChange={(e) => updateItem(it._key, 'lokasi', e.target.value)}
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'lokasi',
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     className="w-full bg-transparent focus:bg-background focus:outline-none"
                                                     placeholder="Lokasi penempatan..."
                                                 />
@@ -707,35 +1053,93 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                                 <>
                                                     <div className="no-print flex justify-center">
                                                         <Select
-                                                            value={it.tingkat_pelanggaran || 'Nihil'}
-                                                            onValueChange={(val) => updateItem(it._key, 'tingkat_pelanggaran', val)}
+                                                            value={
+                                                                it.tingkat_pelanggaran ||
+                                                                'Nihil'
+                                                            }
+                                                            onValueChange={(
+                                                                val,
+                                                            ) =>
+                                                                updateItem(
+                                                                    it._key,
+                                                                    'tingkat_pelanggaran',
+                                                                    val,
+                                                                )
+                                                            }
                                                         >
-                                                            <SelectTrigger size="sm" className="h-7 w-full min-w-[90px] text-xs font-medium justify-between bg-transparent">
+                                                            <SelectTrigger
+                                                                size="sm"
+                                                                className="h-7 w-full min-w-[90px] justify-between bg-transparent text-xs font-medium"
+                                                            >
                                                                 <SelectValue placeholder="Pilih...">
-                                                                    <span className={it.tingkat_pelanggaran.toLowerCase() === 'nihil' ? 'text-emerald-700 font-semibold dark:text-emerald-400' : 'text-red-700 font-bold dark:text-red-400'}>
-                                                                        {it.tingkat_pelanggaran}
+                                                                    <span
+                                                                        className={
+                                                                            it.tingkat_pelanggaran.toLowerCase() ===
+                                                                            'nihil'
+                                                                                ? 'font-semibold text-emerald-700 dark:text-emerald-400'
+                                                                                : 'font-bold text-red-700 dark:text-red-400'
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            it.tingkat_pelanggaran
+                                                                        }
                                                                     </span>
                                                                 </SelectValue>
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {tingkatChoices.map((opt) => (
-                                                                    <SelectItem key={opt} value={opt} className="text-xs">
-                                                                        <span className={opt.toLowerCase() === 'nihil' ? 'text-emerald-700 font-semibold dark:text-emerald-400' : 'text-red-700 font-bold dark:text-red-400'}>
-                                                                            {opt}
-                                                                        </span>
-                                                                    </SelectItem>
-                                                                ))}
+                                                                {tingkatChoices.map(
+                                                                    (opt) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                opt
+                                                                            }
+                                                                            value={
+                                                                                opt
+                                                                            }
+                                                                            className="text-xs"
+                                                                        >
+                                                                            <span
+                                                                                className={
+                                                                                    opt.toLowerCase() ===
+                                                                                    'nihil'
+                                                                                        ? 'font-semibold text-emerald-700 dark:text-emerald-400'
+                                                                                        : 'font-bold text-red-700 dark:text-red-400'
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    opt
+                                                                                }
+                                                                            </span>
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
                                                     <span className="hidden print:inline-block">
-                                                        <span className={it.tingkat_pelanggaran.toLowerCase() === 'nihil' ? 'text-emerald-700 font-semibold' : 'text-red-700 font-bold'}>
-                                                            {it.tingkat_pelanggaran}
+                                                        <span
+                                                            className={
+                                                                it.tingkat_pelanggaran.toLowerCase() ===
+                                                                'nihil'
+                                                                    ? 'font-semibold text-emerald-700'
+                                                                    : 'font-bold text-red-700'
+                                                            }
+                                                        >
+                                                            {
+                                                                it.tingkat_pelanggaran
+                                                            }
                                                         </span>
                                                     </span>
                                                 </>
                                             ) : (
-                                                <span className={it.tingkat_pelanggaran.toLowerCase() === 'nihil' ? 'text-emerald-700 font-semibold dark:text-emerald-400' : 'text-red-700 font-bold dark:text-red-400'}>
+                                                <span
+                                                    className={
+                                                        it.tingkat_pelanggaran.toLowerCase() ===
+                                                        'nihil'
+                                                            ? 'font-semibold text-emerald-700 dark:text-emerald-400'
+                                                            : 'font-bold text-red-700 dark:text-red-400'
+                                                    }
+                                                >
                                                     {it.tingkat_pelanggaran}
                                                 </span>
                                             )}
@@ -747,35 +1151,71 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                                 <>
                                                     <div className="no-print flex justify-center">
                                                         <Select
-                                                            value={it.keterangan || 'Perhatian'}
-                                                            onValueChange={(val) => updateItem(it._key, 'keterangan', val)}
+                                                            value={
+                                                                it.keterangan ||
+                                                                'Perhatian'
+                                                            }
+                                                            onValueChange={(
+                                                                val,
+                                                            ) =>
+                                                                updateItem(
+                                                                    it._key,
+                                                                    'keterangan',
+                                                                    val,
+                                                                )
+                                                            }
                                                         >
-                                                            <SelectTrigger size="sm" className="h-7 w-full min-w-[105px] text-xs font-medium justify-between bg-transparent">
+                                                            <SelectTrigger
+                                                                size="sm"
+                                                                className="h-7 w-full min-w-[105px] justify-between bg-transparent text-xs font-medium"
+                                                            >
                                                                 <SelectValue placeholder="Pilih...">
-                                                                    <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold border ${getKeteranganBadgeClass(it.keterangan)}`}>
-                                                                        {it.keterangan}
+                                                                    <span
+                                                                        className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${getKeteranganBadgeClass(it.keterangan)}`}
+                                                                    >
+                                                                        {
+                                                                            it.keterangan
+                                                                        }
                                                                     </span>
                                                                 </SelectValue>
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                {keteranganChoices.map((opt) => (
-                                                                    <SelectItem key={opt} value={opt} className="text-xs">
-                                                                        <span className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-bold border ${getKeteranganBadgeClass(opt)}`}>
-                                                                            {opt}
-                                                                        </span>
-                                                                    </SelectItem>
-                                                                ))}
+                                                                {keteranganChoices.map(
+                                                                    (opt) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                opt
+                                                                            }
+                                                                            value={
+                                                                                opt
+                                                                            }
+                                                                            className="text-xs"
+                                                                        >
+                                                                            <span
+                                                                                className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-bold ${getKeteranganBadgeClass(opt)}`}
+                                                                            >
+                                                                                {
+                                                                                    opt
+                                                                                }
+                                                                            </span>
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
                                                     <span className="hidden print:inline-block">
-                                                        <span className={`inline-block rounded px-2 py-0.5 text-[9px] font-bold border ${getKeteranganBadgeClass(it.keterangan)}`}>
+                                                        <span
+                                                            className={`inline-block rounded border px-2 py-0.5 text-[9px] font-bold ${getKeteranganBadgeClass(it.keterangan)}`}
+                                                        >
                                                             {it.keterangan}
                                                         </span>
                                                     </span>
                                                 </>
                                             ) : (
-                                                <span className={`inline-block rounded px-2 py-0.5 text-[9px] font-bold border ${getKeteranganBadgeClass(it.keterangan)}`}>
+                                                <span
+                                                    className={`inline-block rounded border px-2 py-0.5 text-[9px] font-bold ${getKeteranganBadgeClass(it.keterangan)}`}
+                                                >
                                                     {it.keterangan}
                                                 </span>
                                             )}
@@ -786,8 +1226,10 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                             <td className="no-print border border-black px-1 py-1 text-center align-middle dark:border-border">
                                                 <button
                                                     type="button"
-                                                    onClick={() => removeItem(it._key)}
-                                                    className="text-muted-foreground hover:text-red-600 transition-colors"
+                                                    onClick={() =>
+                                                        removeItem(it._key)
+                                                    }
+                                                    className="text-muted-foreground transition-colors hover:text-red-600"
                                                     title="Hapus baris ini"
                                                 >
                                                     <Trash2 className="size-3.5" />
@@ -802,8 +1244,8 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                 </div>
 
                 {/* Additional Notes Box */}
-                <div className="mt-4 border border-black p-3 text-[10px] dark:border-border sm:text-[11px]">
-                    <div className="font-bold uppercase text-foreground mb-1">
+                <div className="mt-4 border border-black p-3 text-[10px] sm:text-[11px] dark:border-border">
+                    <div className="mb-1 font-bold text-foreground uppercase">
                         Catatan Khusus / Temuan Inspeksi Rambu K3:
                     </div>
                     {can_write ? (
@@ -815,15 +1257,14 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                 setDirty(true);
                             }}
                             placeholder="Catatan kondisi fisik rambu yang rusak, tertutup debu/oli, pudar, atau usulan penambahan rambu baru..."
-                            className="w-full rounded border border-input bg-transparent p-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full rounded border border-input bg-transparent p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none"
                         />
                     ) : (
-                        <div className="text-muted-foreground whitespace-pre-wrap">
+                        <div className="whitespace-pre-wrap text-muted-foreground">
                             {catatan || 'Tidak ada catatan khusus.'}
                         </div>
                     )}
                 </div>
-
             </div>
         </div>
     );

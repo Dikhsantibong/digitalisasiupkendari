@@ -1,17 +1,30 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import { Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
-import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
-import { MobileGridList } from '@/components/mobile/grid-list';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3InputExportButtons,
+    K3MobilePdfButton,
+} from '@/components/k3/input-export-buttons';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
+import k3Input from '@/routes/k3/input';
 import accident from '@/routes/k3/input/accident';
 import type { IdName } from '@/types';
 
@@ -28,7 +41,10 @@ type RowData = {
     keterangan: string | null;
 };
 
-type GridRow = RowData & { _key: number; [key: string]: number | string | boolean | null };
+type GridRow = RowData & {
+    _key: number;
+    [key: string]: number | string | boolean | null;
+};
 
 type Props = {
     filters: { unit_id: number; month: number; year: number };
@@ -42,7 +58,11 @@ type Props = {
 };
 
 const asNihil = (v: RowData['is_nihil']): string =>
-    v === true || v === 1 || v === '1' || v === 'ya' ? 'ya' : v ? String(v) : 'tidak';
+    v === true || v === 1 || v === '1' || v === 'ya'
+        ? 'ya'
+        : v
+          ? String(v)
+          : 'tidak';
 
 const blankRow = (key: number, nihil = false): GridRow => ({
     _key: key,
@@ -60,10 +80,19 @@ const blankRow = (key: number, nihil = false): GridRow => ({
 
 const hydrate = (rows: RowData[]): GridRow[] =>
     rows.length
-        ? rows.map((row, index) => ({ ...row, is_nihil: asNihil(row.is_nihil), _key: index }))
+        ? rows.map((row, index) => ({
+              ...row,
+              is_nihil: asNihil(row.is_nihil),
+              _key: index,
+          }))
         : [blankRow(0)];
 
-export default function AccidentInput({ filters, rows: initialRows, options, can_write }: Props) {
+export default function AccidentInput({
+    filters,
+    rows: initialRows,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<GridRow[]>(() => hydrate(initialRows));
     const compact = useCompactLayout();
     const [nextKey, setNextKey] = useState(Math.max(initialRows.length, 1));
@@ -96,7 +125,11 @@ export default function AccidentInput({ filters, rows: initialRows, options, can
     };
 
     const columns = useMemo<readonly ColumnOrColumnGroup<GridRow>[]>(() => {
-        const editable = (key: keyof RowData, name: string, width = 120): Column<GridRow> => ({
+        const editable = (
+            key: keyof RowData,
+            name: string,
+            width = 120,
+        ): Column<GridRow> => ({
             key: key as string,
             name,
             width,
@@ -171,7 +204,10 @@ export default function AccidentInput({ filters, rows: initialRows, options, can
         luka_ringan: Number(row.luka_ringan) || 0,
         luka_berat: Number(row.luka_berat) || 0,
         meninggal: Number(row.meninggal) || 0,
-        kerugian_material: row.kerugian_material === '' || row.kerugian_material === null ? null : Number(row.kerugian_material),
+        kerugian_material:
+            row.kerugian_material === '' || row.kerugian_material === null
+                ? null
+                : Number(row.kerugian_material),
         is_nihil: asNihil(row.is_nihil) === 'ya',
         keterangan: row.keterangan,
     });
@@ -201,6 +237,181 @@ export default function AccidentInput({ filters, rows: initialRows, options, can
         persist(nihilRows);
     };
 
+    const updateMobileRow = (
+        index: number,
+        field: keyof GridRow,
+        value: string | number | null,
+    ) => {
+        setRows((current) =>
+            current.map((row, i) =>
+                i === index ? { ...row, [field]: value } : row,
+            ),
+        );
+        setDirty(true);
+    };
+
+    const categoryLabels = Object.fromEntries(
+        options.categories.map((c) => [c.value, c.label]),
+    );
+
+    if (compact) {
+        return (
+            <>
+                <Head title="Input K3 — Laporan Kecelakaan" />
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Laporan Kecelakaan (PAK/PAHK)"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={markNihil}
+                            disabled={saving}
+                            className="h-9 w-full justify-center gap-1.5 text-xs font-medium"
+                        >
+                            <ShieldCheck className="size-4 text-emerald-600" />
+                            Tandai Bulan Ini NIHIL
+                        </Button>
+                    )}
+
+                    <MobileRowEditor<GridRow>
+                        rows={rows}
+                        rowKey={(r) => r._key}
+                        fields={
+                            [
+                                {
+                                    key: 'category',
+                                    label: 'Kategori',
+                                    type: 'select',
+                                    options: options.categories.map(
+                                        (c) => c.value,
+                                    ),
+                                    optionLabels: categoryLabels,
+                                    group: 'Kejadian',
+                                },
+                                {
+                                    key: 'incident_date',
+                                    label: 'Tanggal',
+                                    type: 'date',
+                                },
+                                {
+                                    key: 'is_nihil',
+                                    label: 'Status NIHIL',
+                                    type: 'select',
+                                    options: ['tidak', 'ya'],
+                                    optionLabels: {
+                                        tidak: 'Ada Kejadian',
+                                        ya: 'NIHIL (Nol Kejadian)',
+                                    },
+                                },
+                                { key: 'fungsi', label: 'Fungsi' },
+                                { key: 'lokasi', label: 'Lokasi' },
+                                {
+                                    key: 'luka_ringan',
+                                    label: 'Luka Ringan',
+                                    type: 'number',
+                                    group: 'Korban & Kerugian',
+                                },
+                                {
+                                    key: 'luka_berat',
+                                    label: 'Luka Berat',
+                                    type: 'number',
+                                },
+                                {
+                                    key: 'meninggal',
+                                    label: 'Meninggal',
+                                    type: 'number',
+                                },
+                                {
+                                    key: 'kerugian_material',
+                                    label: 'Kerugian (Rp)',
+                                    type: 'number',
+                                },
+                                {
+                                    key: 'keterangan',
+                                    label: 'Keterangan',
+                                    group: 'Lainnya',
+                                },
+                            ] satisfies RowField<GridRow>[]
+                        }
+                        title={(r) =>
+                            categoryLabels[r.category ?? ''] ??
+                            (r.category || 'Kategori')
+                        }
+                        subtitle={(r) =>
+                            asNihil(r.is_nihil) === 'ya'
+                                ? 'NIHIL'
+                                : [
+                                      r.incident_date || 'Tanpa tanggal',
+                                      r.lokasi || null,
+                                  ]
+                                      .filter(Boolean)
+                                      .join(' · ')
+                        }
+                        onChange={(i, k, v) =>
+                            updateMobileRow(
+                                i,
+                                k,
+                                v === '' ? null : (v as string | number),
+                            )
+                        }
+                        onRemove={(i) => removeRow(rows[i]._key)}
+                        canWrite={can_write}
+                        removeLabel="Hapus kejadian"
+                    />
+
+                    <StickyActionBar>
+                        <K3MobilePdfButton
+                            input="accidents"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                        />
+                        {can_write && (
+                            <>
+                                <Button
+                                    onClick={() => persist(rows)}
+                                    disabled={saving}
+                                    className="gap-1.5"
+                                >
+                                    <Save className="size-4" />
+                                    {saving ? 'Menyimpan…' : 'Simpan'}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    onClick={addRow}
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-4" />
+                                    Tambah
+                                </Button>
+                            </>
+                        )}
+                    </StickyActionBar>
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Input K3 — Laporan Kecelakaan" />
@@ -210,21 +421,38 @@ export default function AccidentInput({ filters, rows: initialRows, options, can
                     description="Isi kejadian kecelakaan/penyakit akibat kerja per periode. Bila tidak ada kejadian, gunakan tombol Tandai NIHIL."
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <K3InputExportButtons input="accidents" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }} />
+                            <K3InputExportButtons
+                                input="accidents"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
                             {can_write && (
-                                    <div className="flex flex-wrap gap-2">
-                                        <Button variant="secondary" onClick={markNihil} disabled={saving}>
-                                            <ShieldCheck className="size-4" />
-                                            Tandai NIHIL
-                                        </Button>
-                                        <Button variant="secondary" onClick={addRow}>
-                                            <Plus className="size-4" />
-                                            Tambah Baris
-                                        </Button>
-                                        <Button onClick={() => persist(rows)} disabled={saving}>
-                                            {saving ? 'Menyimpan…' : 'Simpan'}
-                                        </Button>
-                                    </div>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="secondary"
+                                        onClick={markNihil}
+                                        disabled={saving}
+                                    >
+                                        <ShieldCheck className="size-4" />
+                                        Tandai NIHIL
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={addRow}
+                                    >
+                                        <Plus className="size-4" />
+                                        Tambah Baris
+                                    </Button>
+                                    <Button
+                                        onClick={() => persist(rows)}
+                                        disabled={saving}
+                                    >
+                                        {saving ? 'Menyimpan…' : 'Simpan'}
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     }
@@ -235,59 +463,60 @@ export default function AccidentInput({ filters, rows: initialRows, options, can
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                     {dirty && !saving && (
-                        <span className="text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
+                        <span className="text-[13px] text-amber-600">
+                            Ada perubahan belum disimpan.
+                        </span>
                     )}
                 </div>
 
-                {compact ? (
-                    <MobileGridList<GridRow>
+                <div
+                    className="operasi-grid overflow-hidden rounded-md border border-border"
+                    onPaste={onPaste}
+                >
+                    <style>{OPERASI_GRID_STYLES}</style>
+                    <DataGrid
+                        className="rdg-light"
+                        style={{ blockSize: `${gridHeight}px` }}
                         columns={columns}
                         rows={rows}
-                        rowKey={(row) => row._key}
-                        readOnly={!can_write}
+                        rowKeyGetter={(row) => row._key}
                         onRowsChange={(next) => {
                             setRows(next);
                             setDirty(true);
                         }}
-                        onRemove={can_write ? (row) => removeRow(row._key) : undefined}
-                        removeLabel="Hapus kejadian"
+                        onSelectedCellChange={onSelectedCellChange}
                     />
-                ) : (
-                    <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
-                        <style>{OPERASI_GRID_STYLES}</style>
-                        <DataGrid
-                            className="rdg-light"
-                            style={{ blockSize: `${gridHeight}px` }}
-                            columns={columns}
-                            rows={rows}
-                            rowKeyGetter={(row) => row._key}
-                            onRowsChange={(next) => {
-                                setRows(next);
-                                setDirty(true);
-                            }}
-                            onSelectedCellChange={onSelectedCellChange}
-                        />
-                    </div>
-                )}
+                </div>
 
                 <div className="rounded-md border border-border bg-card p-3 text-[12px] text-muted-foreground">
                     <span className="font-medium">Kategori valid:</span>{' '}
-                    {options.categories.map((c) => `${c.value} (${c.label})`).join(' · ')}
+                    {options.categories
+                        .map((c) => `${c.value} (${c.label})`)
+                        .join(' · ')}
                 </div>
             </div>
         </>

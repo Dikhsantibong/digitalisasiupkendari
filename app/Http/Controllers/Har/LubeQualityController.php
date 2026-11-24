@@ -85,7 +85,7 @@ class LubeQualityController extends HarFormulirController
             'test_date' => $testDate,
             'unit_sentral' => 'ULPLTD '.strtoupper($unit->serviceUnit?->name ?? $unit->name),
             'machine_name' => $machine?->name ?? '1',
-            'machine_number' => $machine ? trim(str_replace(['MIRRLEES #', 'MESIN #', 'UNIT #', '#'], '', $machine->name)) : '1',
+            'machine_number' => $machine ? $this->resolveMachineNumber($machine) : '1',
             'serial_number' => $machine?->serial_number ?? '',
             'sample_point' => 'Sump Tank',
             'parameters' => $parameters,
@@ -121,6 +121,22 @@ class LubeQualityController extends HarFormulirController
             'signature_location' => $existing?->getAttribute('signature_location') ?? 'Kendari',
             'signature_date' => Carbon::parse($request->input('test_date'))->translatedFormat('d F Y'),
         ];
+    }
+
+    protected function applyMachineIdentity(Unit $unit, ?Machine $machine, array $data): array
+    {
+        if ($machine === null) {
+            return $data;
+        }
+
+        $data['unit_sentral'] = 'ULPLTD '.strtoupper($unit->serviceUnit?->name ?? $unit->name);
+        $data['machine_name'] = $machine->name;
+        $data['machine_number'] = $this->resolveMachineNumber($machine);
+        if (! empty($machine->serial_number)) {
+            $data['serial_number'] = $machine->serial_number;
+        }
+
+        return $data;
     }
 
     protected function extraProps(?Model $record): array

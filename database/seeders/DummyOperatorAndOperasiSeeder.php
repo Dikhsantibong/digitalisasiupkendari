@@ -46,7 +46,9 @@ use App\Models\OperasiJamMesin;
 use App\Models\OperasiMaterialPeralatan;
 use App\Models\OperasiMeetingShiftJadwal;
 use App\Models\OperasiMesinHarian;
+use App\Models\OperasiPatrolCheckEntry;
 use App\Models\OperasiPatrolCheckMesin;
+use App\Models\OperasiPatrolCheckTemplate;
 use App\Models\OperasiPemakaianBbm;
 use App\Models\OperasiPemakaianPelumas;
 use App\Models\OperasiPemakaianPelumasItem;
@@ -984,6 +986,50 @@ class DummyOperatorAndOperasiSeeder extends Seeder
             ['no' => 5, 'system' => 'ELECTRICAL & GENERATOR', 'peralatan' => 'Main Alternator Bearing & Panel Kontrol', 'checks' => $checksMap],
         ];
         foreach ($machines as $m) {
+            $patrolTemplate = OperasiPatrolCheckTemplate::forMachine($m);
+            if ($patrolTemplate?->isChecklist()) {
+                $parent = OperasiPatrolCheckMesin::query()->create([
+                    'unit_id' => $unit->id,
+                    'machine_id' => $m->id,
+                    'nama_mesin' => $m->name,
+                    'year' => $year,
+                    'month' => $month,
+                    'format' => OperasiPatrolCheckMesin::FORMAT_CHECKLIST,
+                    'input_by' => $userId,
+                ]);
+                $checklistItems = collect($patrolTemplate->resolvedItems())->values()->map(function (array $item, int $idx): array {
+                    $params = (array) ($item['params'] ?? []);
+                    $checked = [];
+                    foreach (array_column(OperasiPatrolCheckMesin::CHECKLIST_PARAMS, 'key') as $key) {
+                        $checked[$key] = (bool) ($params[$key] ?? false);
+                    }
+
+                    return [
+                        'no' => $idx + 1,
+                        'system' => $item['system'],
+                        'peralatan' => $item['peralatan'],
+                        'applicable' => $checked,
+                        'checked' => $checked,
+                        'status' => 'N',
+                        'catatan' => '',
+                    ];
+                })->all();
+                foreach ([['08:30', 'Pagi'], ['13:30', 'Pagi']] as [$jam, $shift]) {
+                    OperasiPatrolCheckEntry::query()->create([
+                        'patrol_check_mesin_id' => $parent->id,
+                        'tanggal' => sprintf('%04d-%02d-%02d', $year, $month, max(1, $daysDue)),
+                        'shift' => $shift,
+                        'jam' => $jam,
+                        'operator_name' => 'Operator Shift',
+                        'items' => $checklistItems,
+                        'catatan' => 'Seluruh parameter mesin dalam kondisi normal.',
+                        'input_by' => $userId,
+                    ]);
+                }
+
+                continue;
+            }
+
             OperasiPatrolCheckMesin::query()->create([
                 'unit_id' => $unit->id,
                 'machine_id' => $m->id,
@@ -999,30 +1045,36 @@ class DummyOperatorAndOperasiSeeder extends Seeder
             ]);
         }
 
-        // 11. operasi_program_5s5r_items
+        // 11. operasi_program_5s5r_items (per shift per hari)
         OperasiProgram5s5rItem::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
-        foreach (range(1, 4) as $minggu) {
-            foreach (OperasiProgram5s5r::PROGRAMS as $progKey => $progDef) {
-                OperasiProgram5s5rItem::query()->create([
-                    'unit_id' => $unit->id,
-                    'year' => $year,
-                    'month' => $month,
-                    'minggu' => $minggu,
-                    'program' => $progKey,
-                    'detail' => $progDef['default_detail'] ?? "Pelaksanaan {$progDef['label']} di area ruang mesin & ruang kontrol",
-                    'pic' => 'Operator Shift '.$reguCycle[($minggu - 1) % 4],
-                    'kondisi_awal' => 'Baik',
-                    'membersihkan' => true,
-                    'merapikan' => true,
-                    'membuang_sampah' => $progKey === 'resik',
-                    'mengecat' => false,
-                    'lainnya' => false,
-                    'progres' => '76-100',
-                    'kondisi_akhir' => 'Baik',
-                    'jumlah' => 4,
-                    'keterangan' => 'Terlaksana sesuai jadwal mingguan',
-                    'input_by' => $userId,
-                ]);
+        foreach (range(1, min($daysDue, 7)) as $day) {
+            foreach (OperasiProgram5s5r::SHIFTS as $shiftIdx => $shift) {
+                $reguCode = $reguCycle[($day + $shiftIdx - 1) % 4];
+                foreach (OperasiProgram5s5r::PROGRAMS as $progKey => $progDef) {
+                    OperasiProgram5s5rItem::query()->create([
+                        'unit_id' => $unit->id,
+                        'year' => $year,
+                        'month' => $month,
+                        'day' => $day,
+                        'shift' => $shift,
+                        'tanggal' => sprintf('%04d-%02d-%02d', $year, $month, $day),
+                        'minggu' => max(1, (int) ceil($day / 7)),
+                        'program' => $progKey,
+                        'detail' => $progDef['detail'] ?? "Pelaksanaan {$progDef['label']} di area ruang mesin & ruang kontrol",
+                        'pic' => "Operator Shift {$reguCode} ({$shift})",
+                        'kondisi_awal' => 'Baik',
+                        'membersihkan' => true,
+                        'merapikan' => true,
+                        'membuang_sampah' => $progKey === 'resik',
+                        'mengecat' => false,
+                        'lainnya' => false,
+                        'progres' => '76-100',
+                        'kondisi_akhir' => 'Baik',
+                        'jumlah' => 4,
+                        'keterangan' => "Terlaksana rutin Shift {$shift}",
+                        'input_by' => $userId,
+                    ]);
+                }
             }
         }
 

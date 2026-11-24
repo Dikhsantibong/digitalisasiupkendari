@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\HarPatrolCheckReading;
 use App\Models\Machine;
 use App\Models\Unit;
@@ -22,6 +23,7 @@ use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -58,6 +60,7 @@ class PatrolCheckParameterController extends Controller
             ],
             'readings' => (object) $readings,
             'has_saved' => $readings !== [],
+            'current_user_name' => $this->resolveUserPic($user, $unit),
             'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganPatrolCheckParameter),
         ]);
     }
@@ -70,7 +73,12 @@ class PatrolCheckParameterController extends Controller
         $unit = Unit::query()->findOrFail($request->integer('unit_id'));
         abort_unless($user->canAccessUnit($unit), 403);
 
-        $validated = $request->validate([
+        $input = $request->all();
+        if (is_array($input['readings'] ?? null)) {
+            $input['readings'] = $this->stringifyReadings($input['readings']);
+        }
+
+        $validated = Validator::make($input, [
             'unit_id' => ['required', 'integer'],
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'between:2000,2100'],
@@ -78,7 +86,7 @@ class PatrolCheckParameterController extends Controller
             'readings' => ['present', 'array', 'max:31'],
             'readings.*' => ['array'],
             'readings.*.*' => ['nullable', 'string', 'max:50'],
-        ]);
+        ])->validate();
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
@@ -86,6 +94,7 @@ class PatrolCheckParameterController extends Controller
         $daysInMonth = (int) Carbon::create($year, $month, 1)->daysInMonth;
         $numeric = collect(HarPatrolCheckParameter::columns())->where('type', 'number')->pluck('label', 'key');
 
+        $defaultPic = $this->resolveUserPic($user, $unit);
         $clean = [];
         $errors = [];
         foreach ($validated['readings'] as $day => $values) {
@@ -104,6 +113,9 @@ class PatrolCheckParameterController extends Controller
             }
 
             if ($values !== []) {
+                if (trim((string) ($values['pic'] ?? '')) === '') {
+                    $values['pic'] = $defaultPic;
+                }
                 $clean[$day] = $values;
             }
         }
@@ -179,6 +191,34 @@ class PatrolCheckParameterController extends Controller
         return Machine::query()->whereIn('id', $ids)->orderBy('name')->get();
     }
 
+    private function resolveUserPic(User $user, Unit $unit): string
+    {
+        $employee = Employee::query()
+            ->where('user_id', $user->id)
+            ->orderByRaw('unit_id = ? desc', [$unit->id])
+            ->first(['id', 'name']);
+
+        return $employee?->name ?? $user->name;
+    }
+
+    /**
+     * @param  array<mixed, mixed>  $readings
+     * @return array<mixed, mixed>
+     */
+    private function stringifyReadings(array $readings): array
+    {
+        return collect($readings)->map(function (mixed $dayValues): mixed {
+            if (! is_array($dayValues)) {
+                return $dayValues;
+            }
+
+            return array_map(
+                fn (mixed $value): mixed => is_int($value) || is_float($value) ? (string) $value : $value,
+                $dayValues,
+            );
+        })->all();
+    }
+
     /**
      * @return array<int, array<string, string>> day => values
      */
@@ -186,7 +226,12 @@ class PatrolCheckParameterController extends Controller
     {
         return HarPatrolCheckReading::query()->where('machine_id', $machine->id)->where('year', $year)->where('month', $month)
             ->orderBy('day')->get()
-            ->mapWithKeys(fn (HarPatrolCheckReading $reading): array => [$reading->day => $reading->values])
+            ->mapWithKeys(fn (HarPatrolCheckReading $reading): array => [
+                $reading->day => array_map(
+                    fn (mixed $value): string => is_scalar($value) ? (string) $value : '',
+                    $reading->values,
+                ),
+            ])
             ->all();
     }
 

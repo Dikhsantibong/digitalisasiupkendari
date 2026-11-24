@@ -3,10 +3,15 @@
 namespace Tests\Feature\Operator;
 
 use App\Enums\AttendanceRequestStatus;
+use App\Enums\PermissionName;
 use App\Enums\RoleName;
+use App\Enums\RoleScope;
+use App\Enums\UnitTlStructure;
 use App\Models\AttendanceCode;
 use App\Models\AttendanceRequest;
 use App\Models\Employee;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\Unit;
 use App\Models\User;
 use App\Models\WorkSchedule;
@@ -224,13 +229,19 @@ class PengajuanAbsensiTest extends TestCase
     {
         $izin = $this->izin('2026-08-20');
         $this->actingAs($this->userB)->post(route('operator.pengajuan.approve', $izin))->assertForbidden();
-        $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit))->post(route('operator.pengajuan.approve', $izin))->assertForbidden();
+        $this->actingAs($this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit))->post(route('operator.pengajuan.approve', $izin))->assertForbidden();
         $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, Unit::factory()->create()))->post(route('operator.pengajuan.approve', $izin))->assertForbidden();
 
-        // The Project Leader approves the others, but their own request goes to another approver.
-        [$leaderUser, $leader] = $this->employeeWithRole('Lukman', RoleName::ProjectLeaderOperasi, ['regu' => null, 'position' => 'Project Leader']);
-        $this->actingAs($leaderUser)->post(route('operator.pengajuan.approve', $izin))->assertRedirect()->assertSessionHasNoErrors();
+        // TL Operasi approves operator requests; TL Pemeliharaan cannot.
+        $tlOperasi = $this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit);
+        $this->actingAs($tlOperasi)->post(route('operator.pengajuan.approve', $izin))->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(AttendanceRequestStatus::Disetujui, $izin->refresh()->status);
+
+        // The Project Leader approves the others, but their own request goes to another approver.
+        $cuti = $this->izin('2026-08-25', 'cuti');
+        [$leaderUser, $leader] = $this->employeeWithRole('Lukman', RoleName::ProjectLeaderOperasi, ['regu' => null, 'position' => 'Project Leader']);
+        $this->actingAs($leaderUser)->post(route('operator.pengajuan.approve', $cuti))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(AttendanceRequestStatus::Disetujui, $cuti->refresh()->status);
 
         $this->actingAs($leaderUser)->post(route('operator.pengajuan.store'), ['type' => 'izin', 'start_date' => '2026-08-21', 'reason' => 'Urusan bank'])->assertRedirect()->assertSessionHasNoErrors();
         $own = AttendanceRequest::query()->where('employee_id', $leader->id)->firstOrFail();
@@ -263,12 +274,178 @@ class PengajuanAbsensiTest extends TestCase
         $this->actingAs($this->approver)->get(route('operator.pengajuan.index', $page))
             ->assertInertia(fn ($p) => $p->has('requests', 2)->where('sees_all', true)->where('can_approve', true)->where('can_submit', false));
         $this->actingAs($this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit))->get(route('operator.pengajuan.index', $page))
-            ->assertInertia(fn ($p) => $p->has('requests', 2)->where('can_approve', false));
+            ->assertInertia(fn ($p) => $p->has('requests', 2)->where('can_approve', true)
+                ->where('requests', fn ($items): bool => collect($items)->firstWhere('id', $sakit->id)['can']['approve'] === true
+                    && collect($items)->firstWhere('id', $tukar->id)['can']['approve'] === false));
+        // TL Pemeliharaan does not see or approve operator requests or their attachments.
+        $tlHar = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit);
+        $this->actingAs($tlHar)->get(route('operator.pengajuan.index', $page))
+            ->assertInertia(fn ($p) => $p->has('requests', 0)->where('sees_all', true)->where('can_approve', true));
 
         $this->actingAs($this->userA)->get(route('operator.pengajuan.attachment', $sakit))->assertOk();
         $this->actingAs($this->approver)->get(route('operator.pengajuan.attachment', $sakit))->assertOk();
+        $this->actingAs($tlHar)->get(route('operator.pengajuan.attachment', $sakit))->assertForbidden();
         $this->actingAs($userC)->get(route('operator.pengajuan.attachment', $sakit))->assertForbidden();
         $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $this->unit))->get(route('operator.pengajuan.index', $page))->assertForbidden();
+    }
+
+    public function test_operator_requests_notify_and_approve_via_tl_operasi_and_har_requests_via_tl_pemeliharaan(): void
+    {
+        Storage::fake('local');
+        $tlOperasi = $this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit);
+        $tlHar = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit);
+        [$plUser] = $this->employeeWithRole('Lukman PL', RoleName::ProjectLeaderOperasi, ['regu' => null, 'position' => 'Project Leader']);
+
+        [$harmesUser, $harmes] = $this->employeeWithRole('Amir Harmes', RoleName::Harmes, ['regu' => null, 'position' => Employee::POSITION_HARMES]);
+        [$harlistUser, $harlist] = $this->employeeWithRole('Rizal Harlist', RoleName::Harlist, ['regu' => null, 'position' => Employee::POSITION_HARLIST]);
+        [$asmeUser, $asme] = $this->employeeWithRole('Yacub ASME', RoleName::Harmes, ['regu' => null, 'position' => Employee::POSITION_ASME]);
+
+        // Custom HAR role (e.g. asmec / aslist created in Role & Akses) with Aslist position.
+        $aslistRole = Role::query()->create(['name' => 'aslist', 'display_name' => 'Aslist', 'scope' => RoleScope::Unit, 'is_system' => false]);
+        $aslistRole->permissions()->sync(Permission::query()->whereIn('name', [PermissionName::OperatorPresensi->value, PermissionName::HarLapanganWorkOrder->value])->pluck('id'));
+        $aslistUser = User::factory()->create();
+        $aslistUser->assignRole($aslistRole, $this->unit);
+        $aslist = Employee::factory()->create(['unit_id' => $this->unit->id, 'is_active' => true, 'name' => 'Budi Aslist', 'user_id' => $aslistUser->id, 'regu' => null, 'position' => 'Aslist']);
+
+        $this->schedule($harmes, ['2026-08-17' => 'P', '2026-08-18' => 'P']);
+        $this->schedule($harlist, ['2026-08-17' => 'OFF']);
+
+        // 1. Operator submits izin -> TL Operasi is notified & approves; TL Pemeliharaan is not.
+        $opIzin = $this->izin('2026-08-05');
+        $this->assertContains('Pengajuan izin · Andi', $this->titles($tlOperasi));
+        $this->assertSame([], $this->titles($tlHar));
+        $this->actingAs($tlHar)->post(route('operator.pengajuan.approve', $opIzin))->assertForbidden();
+        $this->actingAs($tlOperasi)->post(route('operator.pengajuan.approve', $opIzin))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(AttendanceRequestStatus::Disetujui, $opIzin->refresh()->status);
+
+        // 2. HAR staff (Harmes, ASME & Elec, Aslist) submit izin / cuti / tukar shift -> TL Pemeliharaan approves.
+        $this->actingAs($harmesUser)->post(route('operator.pengajuan.store'), [
+            'type' => 'izin', 'start_date' => '2026-08-18', 'reason' => 'Urusan keluarga',
+            'attachment' => UploadedFile::fake()->create('bukti.pdf', 20, 'application/pdf'),
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $harmesIzin = AttendanceRequest::query()->latest('id')->firstOrFail();
+
+        $this->assertContains('Pengajuan izin · Amir Harmes', $this->titles($tlHar));
+        $this->assertNotContains('Pengajuan izin · Amir Harmes', $this->titles($tlOperasi));
+        $this->assertNotContains('Pengajuan izin · Amir Harmes', $this->titles($this->approver));
+        $this->assertNotContains('Pengajuan izin · Amir Harmes', $this->titles($plUser));
+
+        // Only TL Pemeliharaan may decide HAR requests (not TL Operasi, Koordinator Operasi, or Terpisah PL).
+        $this->actingAs($tlOperasi)->post(route('operator.pengajuan.approve', $harmesIzin))->assertForbidden();
+        $this->actingAs($this->approver)->post(route('operator.pengajuan.approve', $harmesIzin))->assertForbidden();
+        $this->actingAs($plUser)->post(route('operator.pengajuan.approve', $harmesIzin))->assertForbidden();
+
+        // TL Pemeliharaan opens Pengajuan page (sees HAR requests, not Andi's operator request) and attachment.
+        $this->actingAs($tlHar)->get(route('operator.pengajuan.index', ['unit_id' => $this->unit->id, 'month' => 8, 'year' => 2026]))
+            ->assertInertia(fn ($p) => $p->has('requests', 1)->where('requests.0.id', $harmesIzin->id)->where('requests.0.can.approve', true));
+        $this->actingAs($tlHar)->get(route('operator.pengajuan.attachment', $harmesIzin))->assertOk();
+
+        $this->actingAs($tlHar)->post(route('operator.pengajuan.approve', $harmesIzin))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(['2026-08-18' => 'I'], $this->codes($harmes, ['2026-08-18']));
+
+        // 3. HAR Tukar Shift: Harmes swaps 2026-08-17 with Harlist (OFF) -> Harlist confirms -> TL Pemeliharaan approves.
+        $this->actingAs($harmesUser)->post(route('operator.pengajuan.store'), [
+            'type' => 'tukar_shift', 'start_date' => '2026-08-17', 'substitute_employee_id' => $harlist->id, 'reason' => 'Ganti jadwal piket',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $harTukar = AttendanceRequest::query()->latest('id')->firstOrFail();
+        $this->assertSame(AttendanceRequestStatus::MenungguPengganti, $harTukar->status);
+
+        $this->actingAs($harlistUser)->post(route('operator.pengajuan.respond', $harTukar), ['accept' => true])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(AttendanceRequestStatus::MenungguPersetujuan, $harTukar->refresh()->status);
+        $this->assertContains('Tukar shift disetujui pengganti · Amir Harmes', $this->titles($tlHar));
+
+        $this->actingAs($tlOperasi)->post(route('operator.pengajuan.approve', $harTukar))->assertForbidden();
+        $this->actingAs($tlHar)->post(route('operator.pengajuan.approve', $harTukar))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(['2026-08-17' => 'OFF'], $this->codes($harmes, ['2026-08-17']));
+        $this->assertSame(['2026-08-17' => 'P'], $this->codes($harlist, ['2026-08-17']));
+
+        // 4. ASME & Elec and custom Aslist role cuti also route to TL Pemeliharaan.
+        foreach ([[$asmeUser, $asme, '2026-08-22'], [$aslistUser, $aslist, '2026-08-24']] as [$user, $emp, $date]) {
+            $this->schedule($emp, [$date => 'P']);
+            $this->actingAs($user)->post(route('operator.pengajuan.store'), ['type' => 'cuti', 'start_date' => $date, 'reason' => 'Cuti tahunan'])->assertRedirect()->assertSessionHasNoErrors();
+            $req = AttendanceRequest::query()->latest('id')->firstOrFail();
+            $this->actingAs($tlOperasi)->post(route('operator.pengajuan.approve', $req))->assertForbidden();
+            $this->actingAs($tlHar)->post(route('operator.pengajuan.approve', $req))->assertRedirect()->assertSessionHasNoErrors();
+            $this->assertSame([$date => 'C'], $this->codes($emp, [$date]));
+        }
+    }
+
+    public function test_tl_ophar_approves_both_and_containerized_project_leader_acts_as_tl(): void
+    {
+        // Ophar unit: TL Ophar approves both operator and Harmes requests.
+        $opharUnit = Unit::factory()->create(['is_active' => true, 'tl_structure' => UnitTlStructure::Ophar]);
+        $tlOphar = $this->userWithRole(RoleName::TeamLeaderOphar, $opharUnit);
+        [$opharOpUser] = $this->operator('Dina', 'A', $opharUnit);
+        [$opharHarUser] = $this->employeeWithRole('Eko Harmes', RoleName::Harmes, ['regu' => null, 'position' => Employee::POSITION_HARMES], $opharUnit);
+
+        $this->actingAs($opharOpUser)->post(route('operator.pengajuan.store'), ['type' => 'izin', 'start_date' => '2026-08-10', 'reason' => 'Keperluan keluarga'])->assertSessionHasNoErrors();
+        $opharOpReq = AttendanceRequest::query()->latest('id')->firstOrFail();
+        $this->actingAs($opharHarUser)->post(route('operator.pengajuan.store'), ['type' => 'cuti', 'start_date' => '2026-08-12', 'reason' => 'Cuti keluarga'])->assertSessionHasNoErrors();
+        $opharHarReq = AttendanceRequest::query()->latest('id')->firstOrFail();
+
+        $this->actingAs($tlOphar)->post(route('operator.pengajuan.approve', $opharOpReq))->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($tlOphar)->post(route('operator.pengajuan.approve', $opharHarReq))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(AttendanceRequestStatus::Disetujui, $opharOpReq->refresh()->status);
+        $this->assertSame(AttendanceRequestStatus::Disetujui, $opharHarReq->refresh()->status);
+
+        // Containerized unit (no TL): Project Leader approves HAR requests too; Koordinator Operasi cannot.
+        $contUnit = Unit::factory()->create(['is_active' => true, 'tl_structure' => UnitTlStructure::Containerized]);
+        $contPl = $this->userWithRole(RoleName::ProjectLeaderOperasi, $contUnit);
+        $contKoord = $this->userWithRole(RoleName::KoordinatorOperasi, $contUnit);
+        [$contHarUser] = $this->employeeWithRole('Fajar Harmes', RoleName::Harmes, ['regu' => null, 'position' => Employee::POSITION_HARMES], $contUnit);
+
+        $this->actingAs($contHarUser)->post(route('operator.pengajuan.store'), ['type' => 'izin', 'start_date' => '2026-08-14', 'reason' => 'Urusan penting'])->assertSessionHasNoErrors();
+        $contHarReq = AttendanceRequest::query()->latest('id')->firstOrFail();
+
+        $this->assertContains('Pengajuan izin · Fajar Harmes', $this->titles($contPl));
+        $this->assertNotContains('Pengajuan izin · Fajar Harmes', $this->titles($contKoord));
+        $this->actingAs($contKoord)->post(route('operator.pengajuan.approve', $contHarReq))->assertForbidden();
+        $this->actingAs($contPl)->post(route('operator.pengajuan.approve', $contHarReq))->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(AttendanceRequestStatus::Disetujui, $contHarReq->refresh()->status);
+    }
+
+    public function test_izin_is_limited_to_once_per_month_unless_rejected_or_cancelled(): void
+    {
+        $tlOperasi = $this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit);
+        $page = ['unit_id' => $this->unit->id, 'month' => 8, 'year' => 2026];
+
+        // First izin in August succeeds (pending); a second izin in August is rejected by validation.
+        $first = $this->izin('2026-08-05');
+        $this->actingAs($this->userA)->post(route('operator.pengajuan.store'), [
+            'type' => 'izin', 'start_date' => '2026-08-20', 'end_date' => '2026-08-20', 'reason' => 'Keperluan lain',
+        ])->assertSessionHasErrors('type');
+
+        // Frontend receives the used month; sakit/cuti and next month izin remain allowed.
+        $this->actingAs($this->userA)->get(route('operator.pengajuan.index', $page))
+            ->assertInertia(fn ($p) => $p->where('izin_used_months', ['2026-08']));
+        $this->actingAs($this->userA)->post(route('operator.pengajuan.store'), [
+            'type' => 'cuti', 'start_date' => '2026-08-20', 'reason' => 'Cuti keluarga',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->userA)->post(route('operator.pengajuan.store'), [
+            'type' => 'izin', 'start_date' => '2026-09-03', 'reason' => 'Urusan bulan depan',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        // Another employee still has their own monthly quota.
+        $this->actingAs($this->userB)->post(route('operator.pengajuan.store'), [
+            'type' => 'izin', 'start_date' => '2026-08-05', 'reason' => 'Keperluan Budi',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        // Approving the August izin keeps the quota spent for August, even on different days.
+        $this->actingAs($tlOperasi)->post(route('operator.pengajuan.approve', $first))->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->userA)->post(route('operator.pengajuan.store'), [
+            'type' => 'izin', 'start_date' => '2026-08-28', 'reason' => 'Lagi',
+        ])->assertSessionHasErrors('type');
+
+        // Cancelling (undoing) or rejecting releases the monthly quota so the employee can submit izin again.
+        $this->actingAs($tlOperasi)->post(route('operator.pengajuan.cancel', $first))->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->userA)->get(route('operator.pengajuan.index', $page))
+            ->assertInertia(fn ($p) => $p->where('izin_used_months', ['2026-09']));
+
+        $second = $this->izin('2026-08-28');
+        $this->actingAs($tlOperasi)->post(route('operator.pengajuan.reject', $second), ['note' => 'Jadwal padat'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($this->userA)->post(route('operator.pengajuan.store'), [
+            'type' => 'izin', 'start_date' => '2026-08-29', 'reason' => 'Ajukan ulang setelah ditolak',
+        ])->assertRedirect()->assertSessionHasNoErrors();
     }
 
     public function test_a_pengganti_without_an_account_goes_straight_to_the_approver(): void

@@ -1,7 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import {
     ArrowLeft,
-    Check,
     Download,
     FileSpreadsheet,
     FileText,
@@ -12,8 +11,16 @@ import {
     Save,
     Trash2,
 } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
-import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
+import { useMemo, useState } from 'react';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    MobileTimelineForm,
+    TimelineField,
+} from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -31,7 +38,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import type { StyleSpec } from '@/lib/jadwal-excel';
 import {
@@ -193,14 +206,14 @@ export default function K3JadwalPembuatanIk({
     // Cycle month cell: Blank -> R -> ✓ -> R & ✓ -> Blank
     const toggleMonthCell = (rowIndex: number, month: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r, idx) => {
                 if (idx !== rowIndex) {
-return r;
-}
+                    return r;
+                }
 
                 const inRencana = r.rencana_bulan.includes(month);
                 const inRealisasi = r.realisasi_bulan.includes(month);
@@ -236,12 +249,17 @@ return r;
 
     // Update text fields
     // Phone: Rencana and Realisasi of a month are toggled separately.
-    const setMonthFlag = (rowIndex: number, category: 'rencana' | 'realisasi', month: number) => {
+    const setMonthFlag = (
+        rowIndex: number,
+        category: 'rencana' | 'realisasi',
+        month: number,
+    ) => {
         if (!can_write) {
             return;
         }
 
-        const key = category === 'rencana' ? 'rencana_bulan' : 'realisasi_bulan';
+        const key =
+            category === 'rencana' ? 'rencana_bulan' : 'realisasi_bulan';
 
         setRows((prev) =>
             prev.map((r, idx) => {
@@ -249,7 +267,9 @@ return r;
                     return r;
                 }
 
-                const months = r[key].includes(month) ? r[key].filter((m) => m !== month) : [...r[key], month].sort((a, b) => a - b);
+                const months = r[key].includes(month)
+                    ? r[key].filter((m) => m !== month)
+                    : [...r[key], month].sort((a, b) => a - b);
 
                 return { ...r, [key]: months };
             }),
@@ -263,8 +283,8 @@ return r;
         value: string,
     ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r, idx) =>
@@ -277,8 +297,8 @@ return;
     // Add new IK row
     const handleAddRow = () => {
         if (!newTitle.trim()) {
-return;
-}
+            return;
+        }
 
         setRows((prev) => [
             ...prev,
@@ -300,8 +320,8 @@ return;
     // Remove IK row
     const handleRemoveRow = (rowIndex: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) => {
             const filtered = prev.filter((_, idx) => idx !== rowIndex);
@@ -320,8 +340,8 @@ return;
     // Save
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
 
@@ -591,565 +611,766 @@ return;
             <Head title={`Jadwal Pembuatan IK K3 — ${unit.name}`} />
             <style>{PRINT_CSS}</style>
 
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                {/* Screen Header Bar */}
-                <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => router.get(jadwal.index().url)}
-                            title="Kembali ke Daftar Jadwal"
-                        >
-                            <ArrowLeft className="size-4" />
-                        </Button>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold text-foreground">
-                                    Jadwal Pembuatan IK K3
-                                </h1>
-                                <Badge
-                                    variant="outline"
-                                    className="border-primary/30 bg-primary/10 text-primary"
-                                >
-                                    {unit.name}
-                                </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Perencanaan dan realisasi penyusunan Instruksi
-                                Kerja (IK) K3 &amp; Lingkungan tahunan.
-                            </p>
-                        </div>
-                    </div>
+            {compact ? (
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Jadwal Pembuatan IK K3"
+                        backHref={jadwal.index().url}
+                    />
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        {dirty && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleReset}
-                                disabled={saving}
-                                className="gap-1.5 text-xs text-muted-foreground"
-                            >
-                                <RotateCcw className="size-3.5" />
-                                Reset
-                            </Button>
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    <MobileTimelineForm<IkRow>
+                        days={MONTH_LABELS.map((label, index) => ({
+                            day: index + 1,
+                            dow: label,
+                            is_red: false,
+                        }))}
+                        rows={rows}
+                        rowKey={(row, index) => row.id ?? `new-${index}`}
+                        title={(row) =>
+                            row.instruksi_kerja || 'Instruksi kerja baru'
+                        }
+                        isOn={(row, category, month) =>
+                            (category === 'rencana'
+                                ? row.rencana_bulan
+                                : row.realisasi_bulan
+                            ).includes(month)
+                        }
+                        onToggle={(row, category, month) =>
+                            setMonthFlag(
+                                rows.indexOf(row),
+                                category as 'rencana' | 'realisasi',
+                                month,
+                            )
+                        }
+                        dayLabel={(month) =>
+                            `Bulan ${OPERASI_MONTHS[month.day - 1] ?? month.dow} ${filters.year}`
+                        }
+                        initialDay={new Date().getMonth() + 1}
+                        details={(row, index) => (
+                            <>
+                                <TimelineField
+                                    label="Instruksi Kerja"
+                                    value={row.instruksi_kerja}
+                                    onChange={(v) =>
+                                        updateTextField(
+                                            index,
+                                            'instruksi_kerja',
+                                            v,
+                                        )
+                                    }
+                                    readOnly={!can_write}
+                                />
+                                <TimelineField
+                                    label="PIC Pembuat"
+                                    value={row.pic_pembuat}
+                                    onChange={(v) =>
+                                        updateTextField(index, 'pic_pembuat', v)
+                                    }
+                                    readOnly={!can_write}
+                                />
+                            </>
                         )}
-                        {can_write && (!compact || mobileEditing || dirty) && (
+                        summary={(row) =>
+                            `PIC ${row.pic_pembuat || '-'} · Rencana ${row.rencana_bulan.length} · Realisasi ${row.realisasi_bulan.length} bulan`
+                        }
+                        onRemove={(_row, index) => handleRemoveRow(index)}
+                        readOnly={!can_write}
+                        editing={mobileEditing}
+                        onEditingChange={setMobileEditing}
+                        empty="Belum ada rencana pembuatan IK."
+                    />
+
+                    <StickyActionBar>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                window.open(
+                                    `${pembuatanIk.pdf().url}?unit_id=${filters.unit_id}&year=${filters.year}`,
+                                    '_blank',
+                                )
+                            }
+                            className="gap-1.5"
+                        >
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                        {can_write && (
                             <>
                                 <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setIsAddOpen(true)}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-3.5" />
-                                    Tambah IK
-                                </Button>
-                                <Button
-                                    size="sm"
+                                    type="button"
                                     onClick={handleSave}
                                     disabled={saving || !dirty}
                                     className="gap-1.5"
                                 >
-                                    <Save className="size-3.5" />
-                                    {saving ? 'Menyimpan…' : 'Simpan Jadwal'}
+                                    <Save className="size-4" />
+                                    {saving ? 'Menyimpan…' : 'Simpan'}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setIsAddOpen(true)}
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-4" />
+                                    Tambah
                                 </Button>
                             </>
                         )}
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleExportExcel}
-                            className="gap-1.5"
-                            title="Unduh format Excel (.xlsx)"
-                        >
-                            <FileSpreadsheet className="size-3.5 text-emerald-600" />
-                            Excel
-                        </Button>
-                        <a
-                            href={`${pembuatanIk.pdf().url}?unit_id=${filters.unit_id}&year=${filters.year}`}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
+                    </StickyActionBar>
+                </div>
+            ) : (
+                <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                    {/* Screen Header Bar */}
+                    <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => router.get(jadwal.index().url)}
+                                title="Kembali ke Daftar Jadwal"
+                            >
+                                <ArrowLeft className="size-4" />
+                            </Button>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-xl font-bold text-foreground">
+                                        Jadwal Pembuatan IK K3
+                                    </h1>
+                                    <Badge
+                                        variant="outline"
+                                        className="border-primary/30 bg-primary/10 text-primary"
+                                    >
+                                        {unit.name}
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Perencanaan dan realisasi penyusunan
+                                    Instruksi Kerja (IK) K3 &amp; Lingkungan
+                                    tahunan.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            {dirty && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleReset}
+                                    disabled={saving}
+                                    className="gap-1.5 text-xs text-muted-foreground"
+                                >
+                                    <RotateCcw className="size-3.5" />
+                                    Reset
+                                </Button>
+                            )}
+                            {can_write &&
+                                (!compact || mobileEditing || dirty) && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setIsAddOpen(true)}
+                                            className="gap-1.5"
+                                        >
+                                            <Plus className="size-3.5" />
+                                            Tambah IK
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleSave}
+                                            disabled={saving || !dirty}
+                                            className="gap-1.5"
+                                        >
+                                            <Save className="size-3.5" />
+                                            {saving
+                                                ? 'Menyimpan…'
+                                                : 'Simpan Jadwal'}
+                                        </Button>
+                                    </>
+                                )}
                             <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={handleExportExcel}
                                 className="gap-1.5"
-                                title="Unduh format PDF resmi"
+                                title="Unduh format Excel (.xlsx)"
                             >
-                                <Download className="size-3.5 text-rose-600" />
-                                PDF
+                                <FileSpreadsheet className="size-3.5 text-emerald-600" />
+                                Excel
                             </Button>
-                        </a>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handlePrint}
-                            className="gap-1.5"
-                            title="Cetak Lanskap"
-                        >
-                            <Printer className="size-3.5" />
-                            Cetak
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Filters Row */}
-                <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
-                    <OperasiSelect
-                        label="Unit Pembangkit"
-                        value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({
-                            value: String(u.id),
-                            label: u.name,
-                        }))}
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({
-                            value: String(y),
-                            label: String(y),
-                        }))}
-                    />
-
-                    {dirty && (
-                        <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
-                            Ada perubahan belum disimpan
-                        </div>
-                    )}
-                </div>
-
-                {/* Main Printable Card */}
-                <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
-                    {/* Official Document Header (Exact match to reference image box layout) */}
-                    <div className="border-b border-border p-4">
-                        <div className="grid grid-cols-12 items-center border border-black dark:border-border">
-                            {/* Left Logo: PLN Nusantara Power */}
-                            <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/sidebar-logo.png"
-                                    alt="PLN Nusantara Power"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (
-                                            e.target as HTMLElement
-                                        ).style.display = 'none';
-                                    }}
-                                />
-                            </div>
-
-                            {/* Center 3-row Title Box */}
-                            <div className="col-span-6 text-center text-xs font-bold text-foreground">
-                                <div className="border-b border-black py-1.5 tracking-wide uppercase dark:border-border">
-                                    JASA PENDUKUNG TEKNIS 6 SITE - KIT UP
-                                    KENDARI
-                                </div>
-                                <div className="border-b border-black py-1.5 uppercase dark:border-border">
-                                    LAPORAN PROJECT {unit.name.toUpperCase()}
-                                </div>
-                                <div className="py-1.5 uppercase">
-                                    JADWAL PEMBUATAN IK K3 PEMBANGKIT
-                                    - TAHUN {filters.year}
-                                </div>
-                            </div>
-
-                            {/* Right Logo: MKP */}
-                            <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/mkp.jpg"
-                                    alt="Mitra Karya Prima"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (
-                                            e.target as HTMLElement
-                                        ).style.display = 'none';
-                                    }}
-                                />
-                            </div>
+                            <a
+                                href={`${pembuatanIk.pdf().url}?unit_id=${filters.unit_id}&year=${filters.year}`}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5"
+                                    title="Unduh format PDF resmi"
+                                >
+                                    <Download className="size-3.5 text-rose-600" />
+                                    PDF
+                                </Button>
+                            </a>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handlePrint}
+                                className="gap-1.5"
+                                title="Cetak Lanskap"
+                            >
+                                <Printer className="size-3.5" />
+                                Cetak
+                            </Button>
                         </div>
                     </div>
 
-                    {/* Table Container */}
-                    {compact ? (
-                        <div className="p-3">
-                            <MobileTimelineForm<IkRow>
-                                days={MONTH_LABELS.map((label, index) => ({ day: index + 1, dow: label, is_red: false }))}
-                                rows={rows}
-                                rowKey={(row, index) => row.id ?? `new-${index}`}
-                                title={(row) => row.instruksi_kerja || 'Instruksi kerja baru'}
-                                isOn={(row, category, month) => (category === 'rencana' ? row.rencana_bulan : row.realisasi_bulan).includes(month)}
-                                onToggle={(row, category, month) => setMonthFlag(rows.indexOf(row), category as 'rencana' | 'realisasi', month)}
-                                dayLabel={(month) => `Bulan ${OPERASI_MONTHS[month.day - 1] ?? month.dow} ${filters.year}`}
-                                initialDay={new Date().getMonth() + 1}
-                                details={(row, index) => (
-                                    <>
-                                        <TimelineField label="Instruksi Kerja" value={row.instruksi_kerja} onChange={(v) => updateTextField(index, 'instruksi_kerja', v)} readOnly={!can_write} />
-                                        <TimelineField label="PIC Pembuat" value={row.pic_pembuat} onChange={(v) => updateTextField(index, 'pic_pembuat', v)} readOnly={!can_write} />
-                                    </>
-                                )}
-                                summary={(row) => `PIC ${row.pic_pembuat || '-'} · Rencana ${row.rencana_bulan.length} · Realisasi ${row.realisasi_bulan.length} bulan`}
-                                onRemove={(_row, index) => handleRemoveRow(index)}
-                                readOnly={!can_write}
-                                editing={mobileEditing}
-                                onEditingChange={setMobileEditing}
-                                empty="Belum ada rencana pembuatan IK."
-                            />
+                    {/* Filters Row */}
+                    <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
+                        <OperasiSelect
+                            label="Unit Pembangkit"
+                            value={String(filters.unit_id)}
+                            onChange={(value) =>
+                                visit({ unit_id: Number(value) })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(value) => visit({ year: Number(value) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                        />
+
+                        {dirty && (
+                            <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                <span className="size-2 animate-pulse rounded-full bg-amber-500" />
+                                Ada perubahan belum disimpan
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Main Printable Card */}
+                    <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
+                        {/* Official Document Header (Exact match to reference image box layout) */}
+                        <div className="border-b border-border p-4">
+                            <div className="grid grid-cols-12 items-center border border-black dark:border-border">
+                                {/* Left Logo: PLN Nusantara Power */}
+                                <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/sidebar-logo.png"
+                                        alt="PLN Nusantara Power"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Center 3-row Title Box */}
+                                <div className="col-span-6 text-center text-xs font-bold text-foreground">
+                                    <div className="border-b border-black py-1.5 tracking-wide uppercase dark:border-border">
+                                        JASA PENDUKUNG TEKNIS 6 SITE - KIT UP
+                                        KENDARI
+                                    </div>
+                                    <div className="border-b border-black py-1.5 uppercase dark:border-border">
+                                        LAPORAN PROJECT{' '}
+                                        {unit.name.toUpperCase()}
+                                    </div>
+                                    <div className="py-1.5 uppercase">
+                                        JADWAL PEMBUATAN IK K3 PEMBANGKIT -
+                                        TAHUN {filters.year}
+                                    </div>
+                                </div>
+
+                                {/* Right Logo: MKP */}
+                                <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/mkp.jpg"
+                                        alt="Mitra Karya Prima"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="excel-sheet print-table w-full border-collapse text-xs">
-                                <thead className="print-orange-header bg-[#ed7d31] text-black">
-                                    <tr>
-                                        <th
-                                            rowSpan={2}
-                                            className="w-12 border border-black p-2 text-center font-bold"
-                                        >
-                                            NO
-                                        </th>
-                                        <th
-                                            rowSpan={2}
-                                            className="w-72 min-w-64 border border-black p-2 text-left font-bold"
-                                        >
-                                            INSTRUKSI KERJA
-                                        </th>
-                                        <th
-                                            rowSpan={2}
-                                            className="w-44 min-w-36 border border-black p-2 text-left font-bold"
-                                        >
-                                            PIC PEMBUAT
-                                        </th>
-                                        <th
-                                            colSpan={12}
-                                            className="border border-black p-1.5 text-center font-bold tracking-wider"
-                                        >
-                                            BULAN
-                                        </th>
-                                        <th
-                                            rowSpan={2}
-                                            className="w-16 border border-black p-2 text-center font-bold"
-                                        >
-                                            JUMLAH
-                                        </th>
-                                        {can_write && (
+
+                        {/* Table Container */}
+                        {compact ? (
+                            <div className="p-3">
+                                <MobileTimelineForm<IkRow>
+                                    days={MONTH_LABELS.map((label, index) => ({
+                                        day: index + 1,
+                                        dow: label,
+                                        is_red: false,
+                                    }))}
+                                    rows={rows}
+                                    rowKey={(row, index) =>
+                                        row.id ?? `new-${index}`
+                                    }
+                                    title={(row) =>
+                                        row.instruksi_kerja ||
+                                        'Instruksi kerja baru'
+                                    }
+                                    isOn={(row, category, month) =>
+                                        (category === 'rencana'
+                                            ? row.rencana_bulan
+                                            : row.realisasi_bulan
+                                        ).includes(month)
+                                    }
+                                    onToggle={(row, category, month) =>
+                                        setMonthFlag(
+                                            rows.indexOf(row),
+                                            category as 'rencana' | 'realisasi',
+                                            month,
+                                        )
+                                    }
+                                    dayLabel={(month) =>
+                                        `Bulan ${OPERASI_MONTHS[month.day - 1] ?? month.dow} ${filters.year}`
+                                    }
+                                    initialDay={new Date().getMonth() + 1}
+                                    details={(row, index) => (
+                                        <>
+                                            <TimelineField
+                                                label="Instruksi Kerja"
+                                                value={row.instruksi_kerja}
+                                                onChange={(v) =>
+                                                    updateTextField(
+                                                        index,
+                                                        'instruksi_kerja',
+                                                        v,
+                                                    )
+                                                }
+                                                readOnly={!can_write}
+                                            />
+                                            <TimelineField
+                                                label="PIC Pembuat"
+                                                value={row.pic_pembuat}
+                                                onChange={(v) =>
+                                                    updateTextField(
+                                                        index,
+                                                        'pic_pembuat',
+                                                        v,
+                                                    )
+                                                }
+                                                readOnly={!can_write}
+                                            />
+                                        </>
+                                    )}
+                                    summary={(row) =>
+                                        `PIC ${row.pic_pembuat || '-'} · Rencana ${row.rencana_bulan.length} · Realisasi ${row.realisasi_bulan.length} bulan`
+                                    }
+                                    onRemove={(_row, index) =>
+                                        handleRemoveRow(index)
+                                    }
+                                    readOnly={!can_write}
+                                    editing={mobileEditing}
+                                    onEditingChange={setMobileEditing}
+                                    empty="Belum ada rencana pembuatan IK."
+                                />
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="excel-sheet print-table w-full border-collapse text-xs">
+                                    <thead className="print-orange-header bg-[#ed7d31] text-black">
+                                        <tr>
                                             <th
                                                 rowSpan={2}
-                                                className="no-print w-10 border border-black p-2 text-center font-bold"
+                                                className="w-12 border border-black p-2 text-center font-bold"
                                             >
-                                                Aksi
+                                                NO
                                             </th>
-                                        )}
-                                    </tr>
-                                    <tr>
-                                        {MONTH_LABELS.map((m) => (
                                             <th
-                                                key={m}
-                                                className="w-8 border border-black p-1 text-center font-bold"
+                                                rowSpan={2}
+                                                className="w-72 min-w-64 border border-black p-2 text-left font-bold"
                                             >
-                                                {m}
+                                                INSTRUKSI KERJA
                                             </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {/* Category Header Row */}
-                                    <tr className="bg-muted/30 font-bold">
-                                        <td className="border border-black p-1.5 text-center font-extrabold">
-                                            A.
-                                        </td>
-                                        <td
-                                            colSpan={can_write ? 15 : 14}
-                                            className="border border-black p-1.5 text-left font-extrabold tracking-wider uppercase"
-                                        >
-                                            PEMBUATAN INTRUKSI KERJA
-                                        </td>
-                                    </tr>
-
-                                    {/* IK Data Rows */}
-                                    {rows.map((row, idx) => {
-                                        const uniqueMonths = new Set([
-                                            ...row.rencana_bulan,
-                                            ...row.realisasi_bulan,
-                                        ]);
-                                        const rowJumlah = uniqueMonths.size;
-
-                                        return (
-                                            <tr
-                                                key={idx}
-                                                className="transition-colors hover:bg-muted/10"
+                                            <th
+                                                rowSpan={2}
+                                                className="w-44 min-w-36 border border-black p-2 text-left font-bold"
                                             >
-                                                {/* NO */}
-                                                <td className="border border-black p-1 text-center font-medium">
-                                                    {idx + 1}
-                                                </td>
-
-                                                {/* INSTRUKSI KERJA */}
-                                                <td className="min-w-64 border border-black p-0.5 align-middle whitespace-normal">
-                                                    <AutoWrapCellInput
-                                                        value={
-                                                            row.instruksi_kerja
-                                                        }
-                                                        onChange={(val) =>
-                                                            updateTextField(
-                                                                idx,
-                                                                'instruksi_kerja',
-                                                                val,
-                                                            )
-                                                        }
-                                                        placeholder="IK......................................................"
-                                                        readOnly={!can_write}
-                                                    />
-                                                </td>
-
-                                                {/* PIC PEMBUAT */}
-                                                <td className="border border-black p-0.5">
-                                                    {can_write ? (
-                                                        <>
-                                                            <input
-                                                                type="text"
-                                                                list={`emp-list-${idx}`}
-                                                                value={
-                                                                    row.pic_pembuat
-                                                                }
-                                                                onChange={(e) =>
-                                                                    updateTextField(
-                                                                        idx,
-                                                                        'pic_pembuat',
-                                                                        e.target
-                                                                            .value,
-                                                                    )
-                                                                }
-                                                                className="w-full bg-transparent px-1.5 py-0.5 text-xs uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                placeholder="Nama PIC"
-                                                            />
-                                                            <datalist
-                                                                id={`emp-list-${idx}`}
-                                                            >
-                                                                {employees.map(
-                                                                    (emp) => (
-                                                                        <option
-                                                                            key={
-                                                                                emp
-                                                                            }
-                                                                            value={
-                                                                                emp
-                                                                            }
-                                                                        />
-                                                                    ),
-                                                                )}
-                                                            </datalist>
-                                                        </>
-                                                    ) : (
-                                                        <span className="px-1.5 text-xs uppercase">
-                                                            {row.pic_pembuat || '-'}
-                                                        </span>
-                                                    )}
-                                                </td>
-
-                                                {/* 12 Month Cells */}
-                                                {Array.from(
-                                                    { length: 12 },
-                                                    (_, mIdx) => {
-                                                        const m = mIdx + 1;
-                                                        const inRencana =
-                                                            row.rencana_bulan.includes(
-                                                                m,
-                                                            );
-                                                        const inRealisasi =
-                                                            row.realisasi_bulan.includes(
-                                                                m,
-                                                            );
-
-                                                        let cellContent = '';
-                                                        let cellClass =
-                                                            'border border-black text-center font-bold select-none text-xs ';
-
-                                                        if (
-                                                            inRencana &&
-                                                            inRealisasi
-                                                        ) {
-                                                            cellContent = 'R & ✓';
-                                                            cellClass +=
-                                                                'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-200 print-month-both ';
-                                                        } else if (inRencana) {
-                                                            cellContent = 'R';
-                                                            cellClass +=
-                                                                'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 print-month-rencana ';
-                                                        } else if (inRealisasi) {
-                                                            cellContent = '✓';
-                                                            cellClass +=
-                                                                'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 print-month-realisasi ';
-                                                        }
-
-                                                        if (can_write) {
-                                                            cellClass +=
-                                                                'cursor-pointer hover:bg-primary/10 transition-colors';
-                                                        }
-
-                                                        return (
-                                                            <td
-                                                                key={m}
-                                                                className={
-                                                                    cellClass
-                                                                }
-                                                                onClick={() =>
-                                                                    toggleMonthCell(
-                                                                        idx,
-                                                                        m,
-                                                                    )
-                                                                }
-                                                                title={`Bulan ${MONTH_LABELS[mIdx]}: Klik untuk ubah (Kosong -> R -> ✓ -> R & ✓)`}
-                                                            >
-                                                                {cellContent}
-                                                            </td>
-                                                        );
-                                                    },
-                                                )}
-
-                                                {/* JUMLAH */}
-                                                <td className="border border-black p-1 text-center font-bold">
-                                                    {rowJumlah}
-                                                </td>
-
-                                                {/* Action (No-Print) */}
-                                                {can_write && (
-                                                    <td className="no-print border border-black p-0.5 text-center">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                            onClick={() =>
-                                                                handleRemoveRow(idx)
-                                                            }
-                                                            title="Hapus Baris"
-                                                        >
-                                                            <Trash2 className="size-3.5" />
-                                                        </Button>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        );
-                                    })}
-
-                                    {/* TOTAL IK Row */}
-                                    <tr className="bg-muted/40 font-bold">
-                                        <td
-                                            colSpan={3}
-                                            className="border border-black p-1.5 text-center font-extrabold tracking-wider"
-                                        >
-                                            TOTAL IK
-                                        </td>
-                                        {Array.from({ length: 12 }, (_, mIdx) => (
-                                            <td
-                                                key={mIdx}
-                                                className="border border-black p-1 text-center font-extrabold"
+                                                PIC PEMBUAT
+                                            </th>
+                                            <th
+                                                colSpan={12}
+                                                className="border border-black p-1.5 text-center font-bold tracking-wider"
                                             >
-                                                {monthTotals[mIdx + 1] ?? 0}
+                                                BULAN
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-16 border border-black p-2 text-center font-bold"
+                                            >
+                                                JUMLAH
+                                            </th>
+                                            {can_write && (
+                                                <th
+                                                    rowSpan={2}
+                                                    className="no-print w-10 border border-black p-2 text-center font-bold"
+                                                >
+                                                    Aksi
+                                                </th>
+                                            )}
+                                        </tr>
+                                        <tr>
+                                            {MONTH_LABELS.map((m) => (
+                                                <th
+                                                    key={m}
+                                                    className="w-8 border border-black p-1 text-center font-bold"
+                                                >
+                                                    {m}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {/* Category Header Row */}
+                                        <tr className="bg-muted/30 font-bold">
+                                            <td className="border border-black p-1.5 text-center font-extrabold">
+                                                A.
                                             </td>
-                                        ))}
-                                        <td className="border border-black p-1 text-center font-extrabold">
-                                            {grandTotalIk}
-                                        </td>
-                                        {can_write && (
-                                            <td className="no-print border border-black" />
-                                        )}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                            <td
+                                                colSpan={can_write ? 15 : 14}
+                                                className="border border-black p-1.5 text-left font-extrabold tracking-wider uppercase"
+                                            >
+                                                PEMBUATAN INTRUKSI KERJA
+                                            </td>
+                                        </tr>
 
-                    {/* Bottom Section: Recap Table & Legends */}
-                    <div className="flex flex-col items-start justify-between gap-4 border-t border-border bg-muted/10 p-4 md:flex-row">
-                        {/* Recap Table (Matches image) */}
-                        <div className="w-full overflow-hidden rounded-xs border border-black md:w-96">
-                            <table className="excel-sheet w-full border-collapse text-xs">
-                                <thead className="print-orange-header bg-[#ed7d31] text-black">
-                                    <tr>
-                                        <th className="w-10 border border-black p-1.5 text-center font-bold">
-                                            A.
-                                        </th>
-                                        <th className="border border-black p-1.5 text-left font-bold">
-                                            IK
-                                        </th>
-                                        <th className="w-20 border border-black p-1.5 text-center font-bold">
-                                            NILAI
-                                        </th>
-                                        <th className="w-20 border border-black p-1.5 text-center font-bold">
-                                            A.DATA
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td className="border border-black p-1.5 text-center font-medium">
-                                            1
-                                        </td>
-                                        <td className="border border-black p-1.5 font-bold">
-                                            RENCANA
-                                        </td>
-                                        <td className="border border-black p-1.5 text-center font-extrabold">
-                                            {totalRencana}
-                                        </td>
-                                        <td className="border border-black p-1.5 text-center font-extrabold text-emerald-600">
-                                            {kinerja}%
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td className="border border-black p-1.5 text-center font-medium">
-                                            2
-                                        </td>
-                                        <td className="border border-black p-1.5 font-bold">
-                                            REALISASI
-                                        </td>
-                                        <td className="border border-black p-1.5 text-center font-extrabold">
-                                            {totalRealisasi}
-                                        </td>
-                                        <td className="border border-black p-1.5 text-center" />
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                        {/* IK Data Rows */}
+                                        {rows.map((row, idx) => {
+                                            const uniqueMonths = new Set([
+                                                ...row.rencana_bulan,
+                                                ...row.realisasi_bulan,
+                                            ]);
+                                            const rowJumlah = uniqueMonths.size;
 
-                        {/* Interactive Legend Box */}
-                        <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1.5 font-semibold text-foreground">
-                                <Info className="size-4 text-primary" />
-                                <span>Petunjuk Pengisian Matriks IK:</span>
+                                            return (
+                                                <tr
+                                                    key={idx}
+                                                    className="transition-colors hover:bg-muted/10"
+                                                >
+                                                    {/* NO */}
+                                                    <td className="border border-black p-1 text-center font-medium">
+                                                        {idx + 1}
+                                                    </td>
+
+                                                    {/* INSTRUKSI KERJA */}
+                                                    <td className="min-w-64 border border-black p-0.5 align-middle whitespace-normal">
+                                                        <AutoWrapCellInput
+                                                            value={
+                                                                row.instruksi_kerja
+                                                            }
+                                                            onChange={(val) =>
+                                                                updateTextField(
+                                                                    idx,
+                                                                    'instruksi_kerja',
+                                                                    val,
+                                                                )
+                                                            }
+                                                            placeholder="IK......................................................"
+                                                            readOnly={
+                                                                !can_write
+                                                            }
+                                                        />
+                                                    </td>
+
+                                                    {/* PIC PEMBUAT */}
+                                                    <td className="border border-black p-0.5">
+                                                        {can_write ? (
+                                                            <>
+                                                                <input
+                                                                    type="text"
+                                                                    list={`emp-list-${idx}`}
+                                                                    value={
+                                                                        row.pic_pembuat
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateTextField(
+                                                                            idx,
+                                                                            'pic_pembuat',
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
+                                                                    }
+                                                                    className="w-full bg-transparent px-1.5 py-0.5 text-xs uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
+                                                                    placeholder="Nama PIC"
+                                                                />
+                                                                <datalist
+                                                                    id={`emp-list-${idx}`}
+                                                                >
+                                                                    {employees.map(
+                                                                        (
+                                                                            emp,
+                                                                        ) => (
+                                                                            <option
+                                                                                key={
+                                                                                    emp
+                                                                                }
+                                                                                value={
+                                                                                    emp
+                                                                                }
+                                                                            />
+                                                                        ),
+                                                                    )}
+                                                                </datalist>
+                                                            </>
+                                                        ) : (
+                                                            <span className="px-1.5 text-xs uppercase">
+                                                                {row.pic_pembuat ||
+                                                                    '-'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+
+                                                    {/* 12 Month Cells */}
+                                                    {Array.from(
+                                                        { length: 12 },
+                                                        (_, mIdx) => {
+                                                            const m = mIdx + 1;
+                                                            const inRencana =
+                                                                row.rencana_bulan.includes(
+                                                                    m,
+                                                                );
+                                                            const inRealisasi =
+                                                                row.realisasi_bulan.includes(
+                                                                    m,
+                                                                );
+
+                                                            let cellContent =
+                                                                '';
+                                                            let cellClass =
+                                                                'border border-black text-center font-bold select-none text-xs ';
+
+                                                            if (
+                                                                inRencana &&
+                                                                inRealisasi
+                                                            ) {
+                                                                cellContent =
+                                                                    'R & ✓';
+                                                                cellClass +=
+                                                                    'bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-200 print-month-both ';
+                                                            } else if (
+                                                                inRencana
+                                                            ) {
+                                                                cellContent =
+                                                                    'R';
+                                                                cellClass +=
+                                                                    'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200 print-month-rencana ';
+                                                            } else if (
+                                                                inRealisasi
+                                                            ) {
+                                                                cellContent =
+                                                                    '✓';
+                                                                cellClass +=
+                                                                    'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 print-month-realisasi ';
+                                                            }
+
+                                                            if (can_write) {
+                                                                cellClass +=
+                                                                    'cursor-pointer hover:bg-primary/10 transition-colors';
+                                                            }
+
+                                                            return (
+                                                                <td
+                                                                    key={m}
+                                                                    className={
+                                                                        cellClass
+                                                                    }
+                                                                    onClick={() =>
+                                                                        toggleMonthCell(
+                                                                            idx,
+                                                                            m,
+                                                                        )
+                                                                    }
+                                                                    title={`Bulan ${MONTH_LABELS[mIdx]}: Klik untuk ubah (Kosong -> R -> ✓ -> R & ✓)`}
+                                                                >
+                                                                    {
+                                                                        cellContent
+                                                                    }
+                                                                </td>
+                                                            );
+                                                        },
+                                                    )}
+
+                                                    {/* JUMLAH */}
+                                                    <td className="border border-black p-1 text-center font-bold">
+                                                        {rowJumlah}
+                                                    </td>
+
+                                                    {/* Action (No-Print) */}
+                                                    {can_write && (
+                                                        <td className="no-print border border-black p-0.5 text-center">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                                onClick={() =>
+                                                                    handleRemoveRow(
+                                                                        idx,
+                                                                    )
+                                                                }
+                                                                title="Hapus Baris"
+                                                            >
+                                                                <Trash2 className="size-3.5" />
+                                                            </Button>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })}
+
+                                        {/* TOTAL IK Row */}
+                                        <tr className="bg-muted/40 font-bold">
+                                            <td
+                                                colSpan={3}
+                                                className="border border-black p-1.5 text-center font-extrabold tracking-wider"
+                                            >
+                                                TOTAL IK
+                                            </td>
+                                            {Array.from(
+                                                { length: 12 },
+                                                (_, mIdx) => (
+                                                    <td
+                                                        key={mIdx}
+                                                        className="border border-black p-1 text-center font-extrabold"
+                                                    >
+                                                        {monthTotals[
+                                                            mIdx + 1
+                                                        ] ?? 0}
+                                                    </td>
+                                                ),
+                                            )}
+                                            <td className="border border-black p-1 text-center font-extrabold">
+                                                {grandTotalIk}
+                                            </td>
+                                            {can_write && (
+                                                <td className="no-print border border-black" />
+                                            )}
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                                <div className="flex items-center gap-1.5">
-                                    <span className="rounded-xs border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                                        R
-                                    </span>
-                                    <span>Rencana Pembuatan</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="rounded-xs border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
-                                        ✓
-                                    </span>
-                                    <span>Realisasi Selesai</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                    <span className="rounded-xs border border-teal-300 bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-800">
-                                        R &amp; ✓
-                                    </span>
-                                    <span>Selesai Sesuai Rencana</span>
-                                </div>
+                        )}
+
+                        {/* Bottom Section: Recap Table & Legends */}
+                        <div className="flex flex-col items-start justify-between gap-4 border-t border-border bg-muted/10 p-4 md:flex-row">
+                            {/* Recap Table (Matches image) */}
+                            <div className="w-full overflow-hidden rounded-xs border border-black md:w-96">
+                                <table className="excel-sheet w-full border-collapse text-xs">
+                                    <thead className="print-orange-header bg-[#ed7d31] text-black">
+                                        <tr>
+                                            <th className="w-10 border border-black p-1.5 text-center font-bold">
+                                                A.
+                                            </th>
+                                            <th className="border border-black p-1.5 text-left font-bold">
+                                                IK
+                                            </th>
+                                            <th className="w-20 border border-black p-1.5 text-center font-bold">
+                                                NILAI
+                                            </th>
+                                            <th className="w-20 border border-black p-1.5 text-center font-bold">
+                                                A.DATA
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td className="border border-black p-1.5 text-center font-medium">
+                                                1
+                                            </td>
+                                            <td className="border border-black p-1.5 font-bold">
+                                                RENCANA
+                                            </td>
+                                            <td className="border border-black p-1.5 text-center font-extrabold">
+                                                {totalRencana}
+                                            </td>
+                                            <td className="border border-black p-1.5 text-center font-extrabold text-emerald-600">
+                                                {kinerja}%
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-black p-1.5 text-center font-medium">
+                                                2
+                                            </td>
+                                            <td className="border border-black p-1.5 font-bold">
+                                                REALISASI
+                                            </td>
+                                            <td className="border border-black p-1.5 text-center font-extrabold">
+                                                {totalRealisasi}
+                                            </td>
+                                            <td className="border border-black p-1.5 text-center" />
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <p className="text-[11px] italic">
-                                Klik langsung pada sel bulan untuk mengganti
-                                status. Perhitungan JUMLAH, TOTAL IK, dan Rekap
-                                A.DATA dihitung otomatis.
-                            </p>
+
+                            {/* Interactive Legend Box */}
+                            <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                                    <Info className="size-4 text-primary" />
+                                    <span>Petunjuk Pengisian Matriks IK:</span>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="rounded-xs border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+                                            R
+                                        </span>
+                                        <span>Rencana Pembuatan</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="rounded-xs border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800">
+                                            ✓
+                                        </span>
+                                        <span>Realisasi Selesai</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="rounded-xs border border-teal-300 bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-800">
+                                            R &amp; ✓
+                                        </span>
+                                        <span>Selesai Sesuai Rencana</span>
+                                    </div>
+                                </div>
+                                <p className="text-[11px] italic">
+                                    Klik langsung pada sel bulan untuk mengganti
+                                    status. Perhitungan JUMLAH, TOTAL IK, dan
+                                    Rekap A.DATA dihitung otomatis.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Modal Tambah Baris IK */}
             <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -1201,13 +1422,21 @@ return;
                             <Label htmlFor="ik-month">
                                 Target Bulan Rencana
                             </Label>
-                            <Select value={String(newMonth)} onValueChange={(value) => setNewMonth(Number(value))}>
+                            <Select
+                                value={String(newMonth)}
+                                onValueChange={(value) =>
+                                    setNewMonth(Number(value))
+                                }
+                            >
                                 <SelectTrigger className="h-9 w-full text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {MONTH_LABELS.map((m, idx) => (
-                                        <SelectItem key={m} value={String(idx + 1)}>
+                                        <SelectItem
+                                            key={m}
+                                            value={String(idx + 1)}
+                                        >
                                             {m} - Bulan {idx + 1}
                                         </SelectItem>
                                     ))}

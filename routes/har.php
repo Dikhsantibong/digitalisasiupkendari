@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Har\AbnormalGangguanController;
 use App\Http\Controllers\Har\ActivityController;
 use App\Http\Controllers\Har\AttachmentController;
 use App\Http\Controllers\Har\AxialConrodController;
@@ -166,7 +167,15 @@ Route::middleware(['auth', 'verified'])
         Route::get('input/material-peralatan/pdf', [MaterialPeralatanController::class, 'pdf'])->name('input.material-peralatan.pdf');
         Route::delete('input/material-peralatan/{materialPeralatan}', [MaterialPeralatanController::class, 'destroy'])->whereNumber('materialPeralatan')->name('input.material-peralatan.destroy');
 
-        // Tabel input bebas (App\Support\HarTabel): Rekap Laporan Gangguan & Laporan Kondisi Abnormal dan Gangguan.
+        // Laporan Kondisi Abnormal dan Gangguan Pembangkit: shared with Input Operasi → Kondisi Abnormal & Gangguan.
+        Route::get('input/abnormal-gangguan', [AbnormalGangguanController::class, 'index'])->name('input.abnormal-gangguan.index');
+        Route::post('input/abnormal-gangguan', [AbnormalGangguanController::class, 'store'])->name('input.abnormal-gangguan.store');
+        Route::post('input/abnormal-gangguan/simpan', [AbnormalGangguanController::class, 'sync'])->name('input.abnormal-gangguan.sync');
+        Route::put('input/abnormal-gangguan/{kondisiAbnormal}', [AbnormalGangguanController::class, 'update'])->whereNumber('kondisiAbnormal')->name('input.abnormal-gangguan.update');
+        Route::delete('input/abnormal-gangguan/{kondisiAbnormal}', [AbnormalGangguanController::class, 'destroy'])->whereNumber('kondisiAbnormal')->name('input.abnormal-gangguan.destroy');
+        Route::get('input/abnormal-gangguan/pdf', [AbnormalGangguanController::class, 'pdf'])->name('input.abnormal-gangguan.pdf');
+
+        // Tabel input bebas (App\Support\HarTabel): Rekap Laporan Gangguan.
         foreach (HarTabels::all() as $tabel) {
             Route::get("input/{$tabel->key()}", [TabelController::class, 'index'])->name("input.{$tabel->key()}.index")->defaults('tabel', $tabel->key());
             Route::post("input/{$tabel->key()}", [TabelController::class, 'store'])->name("input.{$tabel->key()}.store")->defaults('tabel', $tabel->key());

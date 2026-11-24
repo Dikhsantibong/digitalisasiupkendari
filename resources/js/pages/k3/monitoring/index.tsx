@@ -1,5 +1,12 @@
 import { Head, router } from '@inertiajs/react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { StatusBadge } from '@/components/status-badge';
 import {
@@ -10,6 +17,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import monitoring from '@/routes/k3/monitoring';
 import type { IdName, Tone } from '@/types';
@@ -87,19 +95,34 @@ function ExpiryBadge({ item }: { item: Expiry }) {
     );
 }
 
-function Metric({ label, value, tone }: { label: string; value: string; tone?: Tone }) {
+function Metric({
+    label,
+    value,
+    tone,
+}: {
+    label: string;
+    value: string;
+    tone?: Tone;
+}) {
     return (
         <div className="rounded-md border border-border bg-card p-3">
             <div className="text-[11px] text-muted-foreground">{label}</div>
             <div className="mt-1 flex items-center gap-2">
-                <span className="text-lg font-semibold text-foreground">{value}</span>
-                {tone && <span className={`size-2 rounded-full ${tone === 'danger' ? 'bg-red-500' : tone === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`} />}
+                <span className="text-lg font-semibold text-foreground">
+                    {value}
+                </span>
+                {tone && (
+                    <span
+                        className={`size-2 rounded-full ${tone === 'danger' ? 'bg-red-500' : tone === 'warning' ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                    />
+                )}
             </div>
         </div>
     );
 }
 
 export default function K3Monitoring({ filters, options, data }: Props) {
+    const compact = useCompactLayout();
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
             monitoring.index().url,
@@ -109,6 +132,179 @@ export default function K3Monitoring({ filters, options, data }: Props) {
     };
 
     const { summary } = data;
+
+    if (compact) {
+        return (
+            <>
+                <Head title="Monitoring K3 & Keamanan" />
+                <div className="flex flex-1 flex-col gap-3 p-3">
+                    <K3MobileHeader title="Monitoring K3 & Keamanan" />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <Metric
+                            label="Kecelakaan Bulan Ini"
+                            value={
+                                summary.accident_nihil
+                                    ? 'NIHIL'
+                                    : `${summary.accident_casualties} korban`
+                            }
+                            tone={summary.accident_nihil ? 'success' : 'danger'}
+                        />
+                        <Metric
+                            label="Kesiapan Darurat"
+                            value={
+                                summary.emergency_readiness === null
+                                    ? '—'
+                                    : `${summary.emergency_readiness}%`
+                            }
+                        />
+                        <Metric
+                            label="Sertifikat Expired"
+                            value={String(summary.cert_expired)}
+                            tone={
+                                summary.cert_expired > 0 ? 'danger' : 'success'
+                            }
+                        />
+                        <Metric
+                            label="Sertifikat Mendekati"
+                            value={String(summary.cert_mendekati)}
+                            tone={
+                                summary.cert_mendekati > 0
+                                    ? 'warning'
+                                    : 'success'
+                            }
+                        />
+                        <Metric
+                            label="APAR Expired"
+                            value={String(summary.apar_expired)}
+                            tone={
+                                summary.apar_expired > 0 ? 'danger' : 'success'
+                            }
+                        />
+                        <Metric
+                            label="APAR Mendekati"
+                            value={String(summary.apar_mendekati)}
+                            tone={
+                                summary.apar_mendekati > 0
+                                    ? 'warning'
+                                    : 'success'
+                            }
+                        />
+                    </div>
+
+                    <section className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between px-0.5">
+                            <h2 className="text-sm font-semibold text-foreground">
+                                Sertifikasi Peralatan
+                            </h2>
+                            <span className="text-xs text-muted-foreground">
+                                {data.certificates.length} item
+                            </span>
+                        </div>
+                        {data.certificates.length === 0 ? (
+                            <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                                Belum ada data sertifikat.
+                            </p>
+                        ) : (
+                            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                                {data.certificates.map((cert, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex flex-col gap-1.5 p-3"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="truncate text-[13px] font-semibold text-foreground">
+                                                    {cert.jenis}
+                                                </div>
+                                                <div className="text-[11px] text-muted-foreground">
+                                                    {[
+                                                        cert.category,
+                                                        cert.lokasi,
+                                                        cert.no_seri,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ') || '—'}
+                                                </div>
+                                            </div>
+                                            <ExpiryBadge item={cert} />
+                                        </div>
+                                        {cert.uji_ulang_tanggal && (
+                                            <div className="text-[11px] text-muted-foreground">
+                                                Uji Ulang:{' '}
+                                                {cert.uji_ulang_tanggal}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <section className="flex flex-col gap-2">
+                        <div className="flex items-center justify-between px-0.5">
+                            <h2 className="text-sm font-semibold text-foreground">
+                                APAR/APAB
+                            </h2>
+                            <span className="text-xs text-muted-foreground">
+                                {data.extinguishers.length} unit
+                            </span>
+                        </div>
+                        {data.extinguishers.length === 0 ? (
+                            <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                                Belum ada APAR/APAB pada master.
+                            </p>
+                        ) : (
+                            <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                                {data.extinguishers.map((ext, index) => (
+                                    <div
+                                        key={index}
+                                        className="flex flex-col gap-1.5 p-3"
+                                    >
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="truncate text-[13px] font-semibold text-foreground">
+                                                    {ext.rfid ?? '—'}{' '}
+                                                    {ext.jenis
+                                                        ? `· ${ext.jenis}`
+                                                        : ''}
+                                                </div>
+                                                <div className="text-[11px] text-muted-foreground">
+                                                    {[
+                                                        ext.location,
+                                                        ext.kondisi_tabung,
+                                                    ]
+                                                        .filter(Boolean)
+                                                        .join(' · ') || '—'}
+                                                </div>
+                                            </div>
+                                            <ExpiryBadge item={ext} />
+                                        </div>
+                                        {ext.exp_date && (
+                                            <div className="text-[11px] text-muted-foreground">
+                                                Exp Date: {ext.exp_date}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -124,33 +320,56 @@ export default function K3Monitoring({ filters, options, data }: Props) {
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                     <Metric
                         label="Kecelakaan Bulan Ini"
-                        value={summary.accident_nihil ? 'NIHIL' : `${summary.accident_casualties} korban`}
+                        value={
+                            summary.accident_nihil
+                                ? 'NIHIL'
+                                : `${summary.accident_casualties} korban`
+                        }
                         tone={summary.accident_nihil ? 'success' : 'danger'}
                     />
-                    <Metric label="Kegiatan Terealisasi" value={String(summary.activities_realized)} />
-                    <Metric label="Total Scan Patroli" value={String(summary.patrol_total_scan)} />
+                    <Metric
+                        label="Kegiatan Terealisasi"
+                        value={String(summary.activities_realized)}
+                    />
+                    <Metric
+                        label="Total Scan Patroli"
+                        value={String(summary.patrol_total_scan)}
+                    />
                     <Metric
                         label="Kesiapan Darurat"
-                        value={summary.emergency_readiness === null ? '—' : `${summary.emergency_readiness}%`}
+                        value={
+                            summary.emergency_readiness === null
+                                ? '—'
+                                : `${summary.emergency_readiness}%`
+                        }
                     />
                     <Metric
                         label="Sertifikat Expired"
@@ -160,7 +379,9 @@ export default function K3Monitoring({ filters, options, data }: Props) {
                     <Metric
                         label="Sertifikat Mendekati"
                         value={String(summary.cert_mendekati)}
-                        tone={summary.cert_mendekati > 0 ? 'warning' : 'success'}
+                        tone={
+                            summary.cert_mendekati > 0 ? 'warning' : 'success'
+                        }
                     />
                     <Metric
                         label="APAR Expired"
@@ -170,12 +391,16 @@ export default function K3Monitoring({ filters, options, data }: Props) {
                     <Metric
                         label="APAR Mendekati"
                         value={String(summary.apar_mendekati)}
-                        tone={summary.apar_mendekati > 0 ? 'warning' : 'success'}
+                        tone={
+                            summary.apar_mendekati > 0 ? 'warning' : 'success'
+                        }
                     />
                 </div>
 
                 <section className="flex flex-col gap-2">
-                    <h2 className="text-base font-semibold text-foreground">Sertifikasi Peralatan</h2>
+                    <h2 className="text-base font-semibold text-foreground">
+                        Sertifikasi Peralatan
+                    </h2>
                     <div className="overflow-hidden rounded-md border border-border bg-card">
                         <Table>
                             <TableHeader>
@@ -191,18 +416,31 @@ export default function K3Monitoring({ filters, options, data }: Props) {
                             <TableBody>
                                 {data.certificates.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-muted-foreground">
+                                        <TableCell
+                                            colSpan={6}
+                                            className="text-muted-foreground"
+                                        >
                                             Belum ada data sertifikat.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     data.certificates.map((cert, index) => (
                                         <TableRow key={index}>
-                                            <TableCell className="font-medium">{cert.jenis}</TableCell>
-                                            <TableCell>{cert.category ?? '—'}</TableCell>
-                                            <TableCell>{cert.lokasi ?? '—'}</TableCell>
-                                            <TableCell>{cert.no_seri ?? '—'}</TableCell>
-                                            <TableCell>{cert.uji_ulang_tanggal ?? '—'}</TableCell>
+                                            <TableCell className="font-medium">
+                                                {cert.jenis}
+                                            </TableCell>
+                                            <TableCell>
+                                                {cert.category ?? '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {cert.lokasi ?? '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {cert.no_seri ?? '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {cert.uji_ulang_tanggal ?? '—'}
+                                            </TableCell>
                                             <TableCell>
                                                 <ExpiryBadge item={cert} />
                                             </TableCell>
@@ -215,7 +453,9 @@ export default function K3Monitoring({ filters, options, data }: Props) {
                 </section>
 
                 <section className="flex flex-col gap-2">
-                    <h2 className="text-base font-semibold text-foreground">APAR/APAB</h2>
+                    <h2 className="text-base font-semibold text-foreground">
+                        APAR/APAB
+                    </h2>
                     <div className="overflow-hidden rounded-md border border-border bg-card">
                         <Table>
                             <TableHeader>
@@ -231,18 +471,31 @@ export default function K3Monitoring({ filters, options, data }: Props) {
                             <TableBody>
                                 {data.extinguishers.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-muted-foreground">
+                                        <TableCell
+                                            colSpan={6}
+                                            className="text-muted-foreground"
+                                        >
                                             Belum ada APAR/APAB pada master.
                                         </TableCell>
                                     </TableRow>
                                 ) : (
                                     data.extinguishers.map((ext, index) => (
                                         <TableRow key={index}>
-                                            <TableCell className="font-medium">{ext.rfid ?? '—'}</TableCell>
-                                            <TableCell>{ext.location ?? '—'}</TableCell>
-                                            <TableCell>{ext.jenis ?? '—'}</TableCell>
-                                            <TableCell>{ext.kondisi_tabung ?? '—'}</TableCell>
-                                            <TableCell>{ext.exp_date ?? '—'}</TableCell>
+                                            <TableCell className="font-medium">
+                                                {ext.rfid ?? '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {ext.location ?? '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {ext.jenis ?? '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {ext.kondisi_tabung ?? '—'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {ext.exp_date ?? '—'}
+                                            </TableCell>
                                             <TableCell>
                                                 <ExpiryBadge item={ext} />
                                             </TableCell>

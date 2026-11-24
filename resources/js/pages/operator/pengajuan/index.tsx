@@ -29,7 +29,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -51,7 +57,12 @@ type AttendanceRequestRow = {
     id: number;
     type: RequestType;
     type_label: string;
-    employee: { id: number; name: string; regu: string | null };
+    employee: {
+        id: number;
+        name: string;
+        regu: string | null;
+        position?: string | null;
+    };
     substitute: { id: number; name: string; regu: string | null } | null;
     start_date: string;
     end_date: string;
@@ -99,6 +110,7 @@ type Props = {
     can_submit: boolean;
     can_approve: boolean;
     sees_all: boolean;
+    izin_used_months?: string[];
     today: string;
 };
 
@@ -124,6 +136,39 @@ const codeText = (code: string | undefined) =>
         ? `${code}${SHIFT_LABEL[code] ? ` (${SHIFT_LABEL[code]})` : ''}`
         : 'belum dijadwalkan';
 
+const monthsInRange = (start: string, end: string): string[] => {
+    if (!start) {
+        return [];
+    }
+
+    const [sy, sm] = start.split('-').map(Number);
+    const [ey, em] = (end && end >= start ? end : start).split('-').map(Number);
+
+    if (!sy || !sm || !ey || !em) {
+        return [];
+    }
+
+    const months: string[] = [];
+    let year = sy;
+    let month = sm;
+
+    while (year < ey || (year === ey && month <= em)) {
+        months.push(`${year}-${String(month).padStart(2, '0')}`);
+        month += 1;
+
+        if (month > 12) {
+            month = 1;
+            year += 1;
+        }
+
+        if (months.length >= 12) {
+            break;
+        }
+    }
+
+    return months;
+};
+
 type Decision = {
     request: AttendanceRequestRow;
     action: 'approve' | 'reject' | 'cancel' | 'decline';
@@ -131,8 +176,9 @@ type Decision = {
 
 /**
  * Pengajuan Absensi: izin, sakit (with the surat dokter), cuti and tukar
- * shift. A tukar shift is confirmed by the pengganti, then every request is
- * approved by the Koordinator Operasi / Project Leader, which updates the
+ * shift. A tukar shift is confirmed by the pengganti, then operator requests
+ * are approved by TL Operasi / Project Leader / Koordinator Operasi and HAR
+ * requests (Harmes / Harlist / ASME) by TL Pemeliharaan, which updates the
  * Jadwal Shift. Card layout, the same on the phone and the desktop.
  */
 export default function OperatorPengajuan({
@@ -145,6 +191,7 @@ export default function OperatorPengajuan({
     can_submit,
     can_approve,
     sees_all,
+    izin_used_months = [],
     today,
 }: Props) {
     const form = useForm<{
@@ -170,6 +217,11 @@ export default function OperatorPengajuan({
     const [processing, setProcessing] = useState(false);
 
     const tukar = form.data.type === 'tukar_shift';
+    const izinQuotaUsed =
+        form.data.type === 'izin' &&
+        monthsInRange(form.data.start_date, form.data.end_date).some((m) =>
+            izin_used_months.includes(m),
+        );
     const myCode = me?.codes[form.data.start_date];
     const substitute = colleagues.find(
         (c) => String(c.id) === form.data.substitute_employee_id,
@@ -248,7 +300,7 @@ export default function OperatorPengajuan({
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
                 <PageHeader
                     title="Pengajuan Absensi"
-                    description="Ajukan izin, sakit, cuti, atau tukar shift. Tukar shift dikonfirmasi rekan pengganti, lalu semua pengajuan disetujui Koordinator Operasi / Project Leader — setelah disetujui, Jadwal Shift ikut berubah otomatis."
+                    description="Ajukan izin, sakit, cuti, atau tukar shift. Tukar shift dikonfirmasi rekan pengganti, lalu pengajuan operator disetujui TL Operasi (atau Project Leader / Koordinator Operasi) dan pengajuan HAR disetujui TL Pemeliharaan — setelah disetujui, Jadwal Shift ikut berubah otomatis."
                 />
 
                 <Card className="grid grid-cols-2 gap-3 p-3 py-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end">
@@ -314,6 +366,15 @@ export default function OperatorPengajuan({
                                     form.setData('type', value as RequestType)
                                 }
                             />
+                            <InputError message={form.errors.type} />
+                            {izinQuotaUsed && (
+                                <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-300">
+                                    Pengajuan izin hanya dapat dilakukan 1 kali
+                                    per bulan. Kuota izin pada bulan yang
+                                    dipilih sudah terpakai (menunggu atau
+                                    disetujui).
+                                </p>
+                            )}
 
                             {tukar ? (
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
@@ -348,20 +409,50 @@ export default function OperatorPengajuan({
                                     <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                         Rekan pengganti
                                         <Select
-                                            value={form.data.substitute_employee_id ? String(form.data.substitute_employee_id) : undefined}
-                                            onValueChange={(value) => form.setData('substitute_employee_id', value)}
+                                            value={
+                                                form.data.substitute_employee_id
+                                                    ? String(
+                                                          form.data
+                                                              .substitute_employee_id,
+                                                      )
+                                                    : undefined
+                                            }
+                                            onValueChange={(value) =>
+                                                form.setData(
+                                                    'substitute_employee_id',
+                                                    value,
+                                                )
+                                            }
                                         >
-                                            <SelectTrigger className="h-10 w-full min-w-0 text-sm text-foreground" aria-label="Rekan pengganti">
+                                            <SelectTrigger
+                                                className="h-10 w-full min-w-0 text-sm text-foreground"
+                                                aria-label="Rekan pengganti"
+                                            >
                                                 <SelectValue placeholder="Pilih rekan…" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {colleagues.map((c) => {
-                                                    const code = c.codes[form.data.start_date];
+                                                    const code =
+                                                        c.codes[
+                                                            form.data.start_date
+                                                        ];
 
                                                     return (
-                                                        <SelectItem key={c.id} value={String(c.id)} disabled={isWorking(code)}>
+                                                        <SelectItem
+                                                            key={c.id}
+                                                            value={String(c.id)}
+                                                            disabled={isWorking(
+                                                                code,
+                                                            )}
+                                                        >
                                                             {c.name}
-                                                            {c.regu ? ` · Regu ${c.regu}` : ''} — {isWorking(code) ? `bertugas ${code}` : 'tersedia'}
+                                                            {c.regu
+                                                                ? ` · Regu ${c.regu}`
+                                                                : ''}{' '}
+                                                            —{' '}
+                                                            {isWorking(code)
+                                                                ? `bertugas ${code}`
+                                                                : 'tersedia'}
                                                         </SelectItem>
                                                     );
                                                 })}
@@ -526,6 +617,7 @@ export default function OperatorPengajuan({
                                     type="submit"
                                     disabled={
                                         form.processing ||
+                                        izinQuotaUsed ||
                                         form.data.reason.trim().length < 3 ||
                                         (tukar &&
                                             (!form.data
@@ -716,11 +808,18 @@ function RequestCard({
                     <div className="min-w-0">
                         <div className="text-[14px] font-semibold text-foreground">
                             {r.type_label} · {r.employee.name}
-                            {r.employee.regu && (
+                            {r.employee.regu ? (
                                 <span className="font-normal text-muted-foreground">
                                     {' '}
                                     (Regu {r.employee.regu})
                                 </span>
+                            ) : (
+                                r.employee.position && (
+                                    <span className="font-normal text-muted-foreground">
+                                        {' '}
+                                        ({r.employee.position})
+                                    </span>
+                                )
                             )}
                         </div>
                         <div className="text-[12px] text-muted-foreground">

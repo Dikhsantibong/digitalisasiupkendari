@@ -8,13 +8,20 @@ import {
     Save,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
-import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import {
+    K3InputExportButtons,
+    K3MobilePdfButton,
+} from '@/components/k3/input-export-buttons';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import { DayStrip } from '@/components/mobile/day-strip';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
-import { PageHeader } from '@/components/page-header';
 import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -113,16 +120,20 @@ export default function TimeFrameInput({
         );
     };
 
-    const toggleCell = (activityId: number, category: Category, day: number) => {
+    const toggleCell = (
+        activityId: number,
+        category: Category,
+        day: number,
+    ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) => {
                 if (r.activity_type_id !== activityId) {
-return r;
-}
+                    return r;
+                }
 
                 const set = new Set(r[category] || []);
 
@@ -132,7 +143,10 @@ return r;
                     set.add(day);
                 }
 
-                return { ...r, [category]: Array.from(set).sort((a, b) => a - b) };
+                return {
+                    ...r,
+                    [category]: Array.from(set).sort((a, b) => a - b),
+                };
             }),
         );
         setDirty(true);
@@ -144,12 +158,14 @@ return r;
         value: string,
     ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) =>
-                r.activity_type_id === activityId ? { ...r, [field]: value } : r,
+                r.activity_type_id === activityId
+                    ? { ...r, [field]: value }
+                    : r,
             ),
         );
         setDirty(true);
@@ -157,8 +173,8 @@ return;
 
     const handleMarkPlanWorkingDays = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) => ({ ...r, rencana: [...workingDaysList] })),
@@ -173,8 +189,8 @@ return;
 
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
         router.post(
@@ -232,7 +248,9 @@ return;
             return (
                 <td
                     key={`${category}-${d.day}`}
-                    onClick={() => toggleCell(row.activity_type_id, category, d.day)}
+                    onClick={() =>
+                        toggleCell(row.activity_type_id, category, d.day)
+                    }
                     className={`border border-black text-center text-[11px] font-bold transition-colors select-none ${color || 'hover:bg-muted/40'} ${can_write ? 'cursor-pointer' : ''}`}
                     title={`Tanggal ${d.day} (${d.dow}) — ${category === 'rencana' ? 'Rencana' : 'Realisasi'}: klik untuk ${on ? 'batalkan' : 'tandai (1)'}`}
                 >
@@ -246,260 +264,683 @@ return;
             <Head title={`Time Frame K3 & Lingkungan — ${unit.name}`} />
             <style>{PRINT_CSS}</style>
 
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                {/* Header bar */}
-                <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
+            {compact ? (
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Time Frame Kinerja K3L"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    {can_write && (
                         <Button
+                            type="button"
                             variant="outline"
-                            size="icon"
-                            onClick={() => router.get(k3Input.index().url)}
-                            title="Kembali ke Input K3"
+                            size="sm"
+                            onClick={handleMarkPlanWorkingDays}
+                            className="h-9 w-full justify-center gap-1.5 text-xs"
                         >
-                            <ArrowLeft className="size-4" />
+                            <CheckCheck className="size-4 text-primary" />
+                            Tandai Rencana Hari Kerja
                         </Button>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold text-foreground">
-                                    Time Frame Kinerja K3 &amp; Lingkungan
-                                </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                                    {unit.name}
-                                </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Klik kotak tanggal pada baris RENC (rencana) / REAL (realisasi) — otomatis terisi 1. Target = jumlah rencana, kinerja = realisasi ÷ target.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                        {dirty && (
-                            <Button variant="outline" size="sm" onClick={handleReset} disabled={saving} className="gap-1.5 text-xs text-muted-foreground">
-                                <RotateCcw className="size-3.5" />
-                                Reset
-                            </Button>
-                        )}
-                        {can_write && (
-                            <>
-                                <Button variant="outline" size="sm" onClick={handleMarkPlanWorkingDays} className="gap-1.5 text-xs" title="Isi rencana untuk seluruh hari kerja">
-                                    <CheckCheck className="size-3.5 text-primary" />
-                                    Tandai Rencana Hari Kerja
-                                </Button>
-                                <Button size="sm" onClick={handleSave} disabled={saving || !dirty} className="gap-1.5 text-xs">
-                                    <Save className="size-3.5" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                            </>
-                        )}
-                        <K3InputExportButtons input="time-frame" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }} />
-                        <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 text-xs" title="Cetak Lanskap">
-                            <Printer className="size-3.5" />
-                            Cetak
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Filters */}
-                <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
-                    <OperasiSelect
-                        label="Unit Pembangkit"
-                        value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                    />
-                    <OperasiSelect
-                        label="Bulan"
-                        value={String(filters.month)}
-                        onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                    />
-                    {dirty && (
-                        <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
-                            Ada perubahan belum disimpan
-                        </div>
                     )}
-                </div>
 
-                {/* Printable card */}
-                <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
-                    <div className="border-b border-border p-4">
-                        <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
-                            <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img src="/logo/sidebar-logo.png" alt="PLN Nusantara Power" className="max-h-12 object-contain" onError={(e) => {
- (e.target as HTMLElement).style.display = 'none'; 
-}} />
-                            </div>
-                            <div className="col-span-6 flex flex-col justify-center p-2 text-center">
-                                <div className="text-xs font-bold tracking-wide text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT</div>
-                                <div className="text-xs font-bold text-foreground uppercase">PLN NP UP KENDARI - {unit.name.toUpperCase()}</div>
-                                <div className="mt-0.5 text-[11px] font-semibold text-foreground uppercase">LAPORAN PROJECT</div>
-                                <div className="text-[11px] font-bold text-foreground uppercase">TIME FRAME KINERJA K3 DAN LINGKUNGAN BULAN {monthName.toUpperCase()} {filters.year}</div>
-                            </div>
-                            <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img src="/logo/mkp.jpg" alt="Mitra Karya Prima" className="max-h-12 object-contain" onError={(e) => {
- (e.target as HTMLElement).style.display = 'none'; 
-}} />
-                            </div>
+                    <DayStrip
+                        items={days.map((d) => ({
+                            key: String(d.day),
+                            label: String(d.day),
+                            sub: d.dow,
+                            isRed: d.is_red,
+                            done: rows.some(
+                                (r) =>
+                                    r.rencana.includes(d.day) ||
+                                    r.realisasi.includes(d.day),
+                            ),
+                        }))}
+                        value={String(mobileDay)}
+                        onChange={(key) => setMobileDay(Number(key))}
+                    />
+
+                    {rows.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                            Belum ada master jenis kegiatan K3.
                         </div>
-                    </div>
-
-                    {compact ? (
-                        <div className="flex flex-col gap-3 p-3">
-                            <DayStrip
-                                items={days.map((d) => ({ key: String(d.day), label: String(d.day), sub: d.dow, isRed: d.is_red, done: rows.some((r) => r.rencana.includes(d.day) || r.realisasi.includes(d.day)) }))}
-                                value={String(mobileDay)}
-                                onChange={(key) => setMobileDay(Number(key))}
-                            />
+                    ) : (
+                        <div className="flex flex-col gap-3">
                             {rows.map((row, index) => (
-                                <div key={row.activity_type_id} className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3">
-                                    <div className="text-[14px] font-medium text-foreground">
+                                <div
+                                    key={row.activity_type_id}
+                                    className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3"
+                                >
+                                    <div className="text-[13.5px] font-semibold text-foreground">
                                         {index + 1}. {row.uraian}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {(['rencana', 'realisasi'] as const).map((category) => {
-                                            const on = row[category].includes(mobileDay);
+                                        {(
+                                            ['rencana', 'realisasi'] as const
+                                        ).map((category) => {
+                                            const on =
+                                                row[category].includes(
+                                                    mobileDay,
+                                                );
 
                                             return (
                                                 <button
                                                     key={category}
                                                     type="button"
                                                     disabled={!can_write}
-                                                    onClick={() => toggleCell(row.activity_type_id, category, mobileDay)}
+                                                    onClick={() =>
+                                                        toggleCell(
+                                                            row.activity_type_id,
+                                                            category,
+                                                            mobileDay,
+                                                        )
+                                                    }
                                                     className={`min-h-10 rounded-lg border text-[13px] font-medium transition active:scale-95 disabled:opacity-60 ${on ? (category === 'rencana' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-amber-500 bg-amber-400 text-black') : 'border-border bg-background text-foreground'}`}
                                                 >
                                                     {on ? '✓ ' : ''}
-                                                    {category === 'rencana' ? 'Rencana' : 'Realisasi'}
+                                                    {category === 'rencana'
+                                                        ? 'Rencana'
+                                                        : 'Realisasi'}
                                                 </button>
                                             );
                                         })}
                                     </div>
-                                    <div className="grid grid-cols-1 gap-2">
+                                    <div className="grid grid-cols-2 gap-2">
                                         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                             PIC
-                                            <Input value={row.pic} onChange={(e) => updateField(row.activity_type_id, 'pic', e.target.value)} disabled={!can_write} />
+                                            <Input
+                                                value={row.pic}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        row.activity_type_id,
+                                                        'pic',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                disabled={!can_write}
+                                                className="h-9 text-xs"
+                                            />
                                         </label>
                                         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                             Keterangan
-                                            <Input value={row.keterangan} onChange={(e) => updateField(row.activity_type_id, 'keterangan', e.target.value)} disabled={!can_write} />
+                                            <Input
+                                                value={row.keterangan}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        row.activity_type_id,
+                                                        'keterangan',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                disabled={!can_write}
+                                                className="h-9 text-xs"
+                                            />
                                         </label>
-                                    </div>
-                                    <div className="text-[12px] text-muted-foreground">
-                                        Bulan ini: rencana {row.rencana.length} hari · realisasi {row.realisasi.length} hari
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="excel-sheet print-table w-full border-collapse text-xs">
-                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                    <tr>
-                                        <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">No</th>
-                                        <th rowSpan={2} className="w-56 min-w-48 whitespace-normal border border-black p-1 text-left font-bold text-foreground">Uraian Pelaporan</th>
-                                        <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">PIC</th>
-                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">Status</th>
-                                        <th colSpan={days.length} className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase">Time line</th>
-                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">TARGET</th>
-                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">REALISASI</th>
-                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">KINERJA</th>
-                                        <th rowSpan={2} className="w-40 min-w-32 whitespace-normal border border-black p-1 text-left font-bold text-foreground">KETERANGAN</th>
-                                    </tr>
-                                    <tr>
-                                        {days.map((d) => (
-                                            <th key={d.day} className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`} title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}>
-                                                {d.day}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={days.length + 8} className="border border-black p-6 text-center text-xs text-muted-foreground">
-                                                Belum ada master jenis kegiatan K3. Tambahkan di Master K3 &amp; Keamanan → Jenis Kegiatan.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        rows.map((row, idx) => {
-                                            const target = row.rencana.length;
-                                            const realisasi = row.realisasi.length;
-                                            const kinerja = target > 0 ? Math.round((realisasi / target) * 100) : 0;
-
-                                            return (
-                                                <Fragment key={row.activity_type_id}>
-                                                    {/* RENC */}
-                                                    <tr className="transition-colors hover:bg-muted/10">
-                                                        <td rowSpan={2} className="border border-black p-1 text-center font-medium text-foreground">{idx + 1}</td>
-                                                        <td rowSpan={2} className="min-w-48 border border-black p-1 text-left align-middle text-[11px] whitespace-normal [overflow-wrap:anywhere] text-foreground">{row.uraian}</td>
-                                                        <td rowSpan={2} className="border border-black p-1 text-center align-middle whitespace-normal">
-                                                            <AutoWrapCellInput
-                                                                value={row.pic || ''}
-                                                                onChange={(val) => updateField(row.activity_type_id, 'pic', val)}
-                                                                className="text-center"
-                                                                emptyFallback="-"
-                                                                readOnly={!can_write}
-                                                            />
-                                                        </td>
-                                                        <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">RENC</td>
-                                                        {dayCells(row, 'rencana')}
-                                                        <td rowSpan={2} className="border border-black p-1 text-center align-middle font-bold text-foreground">{target}</td>
-                                                        <td rowSpan={2} className="border border-black p-1 text-center align-middle font-extrabold text-foreground">{realisasi}</td>
-                                                        <td rowSpan={2} className={`border border-black p-1 text-center align-middle font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>{kinerja}%</td>
-                                                        <td rowSpan={2} className="min-w-32 border border-black p-1 text-left align-middle whitespace-normal">
-                                                            <AutoWrapCellInput
-                                                                value={row.keterangan || ''}
-                                                                onChange={(val) => updateField(row.activity_type_id, 'keterangan', val)}
-                                                                placeholder="Catatan…"
-                                                                emptyFallback="-"
-                                                                readOnly={!can_write}
-                                                            />
-                                                        </td>
-                                                    </tr>
-                                                    {/* REAL */}
-                                                    <tr className="transition-colors hover:bg-muted/10">
-                                                        <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">REAL</td>
-                                                        {dayCells(row, 'realisasi')}
-                                                    </tr>
-                                                </Fragment>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
                     )}
 
-                    {/* Legend */}
-                    <div className="border-t border-border bg-muted/20 p-4">
-                        <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1.5">
-                                <span className="size-3.5 rounded-xs border border-emerald-700 bg-emerald-400" />
-                                <span>Terealisasi</span>
+                    <StickyActionBar>
+                        <K3MobilePdfButton
+                            input="time-frame"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                        />
+                        {can_write && (
+                            <Button
+                                onClick={handleSave}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        )}
+                    </StickyActionBar>
+                </div>
+            ) : (
+                <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                    {/* Header bar */}
+                    <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => router.get(k3Input.index().url)}
+                                title="Kembali ke Input K3"
+                            >
+                                <ArrowLeft className="size-4" />
+                            </Button>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-xl font-bold text-foreground">
+                                        Time Frame Kinerja K3 &amp; Lingkungan
+                                    </h1>
+                                    <Badge
+                                        variant="outline"
+                                        className="border-primary/30 bg-primary/10 text-primary"
+                                    >
+                                        {unit.name}
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Klik kotak tanggal pada baris RENC (rencana)
+                                    / REAL (realisasi) — otomatis terisi 1.
+                                    Target = jumlah rencana, kinerja = realisasi
+                                    ÷ target.
+                                </p>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="size-3.5 rounded-xs border border-yellow-500 bg-yellow-300" />
-                                <span>Tidak Terealisasi (rencana belum terealisasi)</span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            {dirty && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleReset}
+                                    disabled={saving}
+                                    className="gap-1.5 text-xs text-muted-foreground"
+                                >
+                                    <RotateCcw className="size-3.5" />
+                                    Reset
+                                </Button>
+                            )}
+                            {can_write && (
+                                <>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleMarkPlanWorkingDays}
+                                        className="gap-1.5 text-xs"
+                                        title="Isi rencana untuk seluruh hari kerja"
+                                    >
+                                        <CheckCheck className="size-3.5 text-primary" />
+                                        Tandai Rencana Hari Kerja
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        onClick={handleSave}
+                                        disabled={saving || !dirty}
+                                        className="gap-1.5 text-xs"
+                                    >
+                                        <Save className="size-3.5" />
+                                        {saving ? 'Menyimpan…' : 'Simpan'}
+                                    </Button>
+                                </>
+                            )}
+                            <K3InputExportButtons
+                                input="time-frame"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.print()}
+                                className="gap-1.5 text-xs"
+                                title="Cetak Lanskap"
+                            >
+                                <Printer className="size-3.5" />
+                                Cetak
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Filters */}
+                    <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
+                        <OperasiSelect
+                            label="Unit Pembangkit"
+                            value={String(filters.unit_id)}
+                            onChange={(value) =>
+                                visit({ unit_id: Number(value) })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Bulan"
+                            value={String(filters.month)}
+                            onChange={(value) =>
+                                visit({ month: Number(value) })
+                            }
+                            options={OPERASI_MONTHS.map((label, index) => ({
+                                value: String(index + 1),
+                                label,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(value) => visit({ year: Number(value) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                        />
+                        {dirty && (
+                            <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                <span className="size-2 animate-pulse rounded-full bg-amber-500" />
+                                Ada perubahan belum disimpan
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="size-3.5 rounded-xs border border-red-700 bg-[#ff0000]" />
-                                <span>Hari Libur / Akhir Pekan</span>
+                        )}
+                    </div>
+
+                    {/* Printable card */}
+                    <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
+                        <div className="border-b border-border p-4">
+                            <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
+                                <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/sidebar-logo.png"
+                                        alt="PLN Nusantara Power"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                                <div className="col-span-6 flex flex-col justify-center p-2 text-center">
+                                    <div className="text-xs font-bold tracking-wide text-foreground uppercase">
+                                        JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE -
+                                        KIT
+                                    </div>
+                                    <div className="text-xs font-bold text-foreground uppercase">
+                                        PLN NP UP KENDARI -{' '}
+                                        {unit.name.toUpperCase()}
+                                    </div>
+                                    <div className="mt-0.5 text-[11px] font-semibold text-foreground uppercase">
+                                        LAPORAN PROJECT
+                                    </div>
+                                    <div className="text-[11px] font-bold text-foreground uppercase">
+                                        TIME FRAME KINERJA K3 DAN LINGKUNGAN
+                                        BULAN {monthName.toUpperCase()}{' '}
+                                        {filters.year}
+                                    </div>
+                                </div>
+                                <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/mkp.jpg"
+                                        alt="Mitra Karya Prima"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <Info className="size-3.5 text-primary" />
-                                <span>Baris RENC = rencana, REAL = realisasi.</span>
+                        </div>
+
+                        {compact ? (
+                            <div className="flex flex-col gap-3 p-3">
+                                <DayStrip
+                                    items={days.map((d) => ({
+                                        key: String(d.day),
+                                        label: String(d.day),
+                                        sub: d.dow,
+                                        isRed: d.is_red,
+                                        done: rows.some(
+                                            (r) =>
+                                                r.rencana.includes(d.day) ||
+                                                r.realisasi.includes(d.day),
+                                        ),
+                                    }))}
+                                    value={String(mobileDay)}
+                                    onChange={(key) =>
+                                        setMobileDay(Number(key))
+                                    }
+                                />
+                                {rows.map((row, index) => (
+                                    <div
+                                        key={row.activity_type_id}
+                                        className="flex flex-col gap-2 rounded-xl border border-border bg-background p-3"
+                                    >
+                                        <div className="text-[14px] font-medium text-foreground">
+                                            {index + 1}. {row.uraian}
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(
+                                                [
+                                                    'rencana',
+                                                    'realisasi',
+                                                ] as const
+                                            ).map((category) => {
+                                                const on =
+                                                    row[category].includes(
+                                                        mobileDay,
+                                                    );
+
+                                                return (
+                                                    <button
+                                                        key={category}
+                                                        type="button"
+                                                        disabled={!can_write}
+                                                        onClick={() =>
+                                                            toggleCell(
+                                                                row.activity_type_id,
+                                                                category,
+                                                                mobileDay,
+                                                            )
+                                                        }
+                                                        className={`min-h-10 rounded-lg border text-[13px] font-medium transition active:scale-95 disabled:opacity-60 ${on ? (category === 'rencana' ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-amber-500 bg-amber-400 text-black') : 'border-border bg-background text-foreground'}`}
+                                                    >
+                                                        {on ? '✓ ' : ''}
+                                                        {category === 'rencana'
+                                                            ? 'Rencana'
+                                                            : 'Realisasi'}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                PIC
+                                                <Input
+                                                    value={row.pic}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            row.activity_type_id,
+                                                            'pic',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    disabled={!can_write}
+                                                />
+                                            </label>
+                                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                Keterangan
+                                                <Input
+                                                    value={row.keterangan}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            row.activity_type_id,
+                                                            'keterangan',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    disabled={!can_write}
+                                                />
+                                            </label>
+                                        </div>
+                                        <div className="text-[12px] text-muted-foreground">
+                                            Bulan ini: rencana{' '}
+                                            {row.rencana.length} hari ·
+                                            realisasi {row.realisasi.length}{' '}
+                                            hari
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="excel-sheet print-table w-full border-collapse text-xs">
+                                    <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                        <tr>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-8 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                No
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-56 min-w-48 border border-black p-1 text-left font-bold whitespace-normal text-foreground"
+                                            >
+                                                Uraian Pelaporan
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-20 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                PIC
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-12 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                Status
+                                            </th>
+                                            <th
+                                                colSpan={days.length}
+                                                className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase"
+                                            >
+                                                Time line
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-12 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                TARGET
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-14 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                REALISASI
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-14 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                KINERJA
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-40 min-w-32 border border-black p-1 text-left font-bold whitespace-normal text-foreground"
+                                            >
+                                                KETERANGAN
+                                            </th>
+                                        </tr>
+                                        <tr>
+                                            {days.map((d) => (
+                                                <th
+                                                    key={d.day}
+                                                    className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${d.is_red ? 'print-red-text text-red-600' : 'text-foreground'}`}
+                                                    title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
+                                                >
+                                                    {d.day}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rows.length === 0 ? (
+                                            <tr>
+                                                <td
+                                                    colSpan={days.length + 8}
+                                                    className="border border-black p-6 text-center text-xs text-muted-foreground"
+                                                >
+                                                    Belum ada master jenis
+                                                    kegiatan K3. Tambahkan di
+                                                    Master K3 &amp; Keamanan →
+                                                    Jenis Kegiatan.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            rows.map((row, idx) => {
+                                                const target =
+                                                    row.rencana.length;
+                                                const realisasi =
+                                                    row.realisasi.length;
+                                                const kinerja =
+                                                    target > 0
+                                                        ? Math.round(
+                                                              (realisasi /
+                                                                  target) *
+                                                                  100,
+                                                          )
+                                                        : 0;
+
+                                                return (
+                                                    <Fragment
+                                                        key={
+                                                            row.activity_type_id
+                                                        }
+                                                    >
+                                                        {/* RENC */}
+                                                        <tr className="transition-colors hover:bg-muted/10">
+                                                            <td
+                                                                rowSpan={2}
+                                                                className="border border-black p-1 text-center font-medium text-foreground"
+                                                            >
+                                                                {idx + 1}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={2}
+                                                                className="min-w-48 border border-black p-1 text-left align-middle text-[11px] [overflow-wrap:anywhere] whitespace-normal text-foreground"
+                                                            >
+                                                                {row.uraian}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={2}
+                                                                className="border border-black p-1 text-center align-middle whitespace-normal"
+                                                            >
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.pic ||
+                                                                        ''
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        updateField(
+                                                                            row.activity_type_id,
+                                                                            'pic',
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    className="text-center"
+                                                                    emptyFallback="-"
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
+                                                            </td>
+                                                            <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">
+                                                                RENC
+                                                            </td>
+                                                            {dayCells(
+                                                                row,
+                                                                'rencana',
+                                                            )}
+                                                            <td
+                                                                rowSpan={2}
+                                                                className="border border-black p-1 text-center align-middle font-bold text-foreground"
+                                                            >
+                                                                {target}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={2}
+                                                                className="border border-black p-1 text-center align-middle font-extrabold text-foreground"
+                                                            >
+                                                                {realisasi}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={2}
+                                                                className={`border border-black p-1 text-center align-middle font-extrabold ${kinerja >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+                                                            >
+                                                                {kinerja}%
+                                                            </td>
+                                                            <td
+                                                                rowSpan={2}
+                                                                className="min-w-32 border border-black p-1 text-left align-middle whitespace-normal"
+                                                            >
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.keterangan ||
+                                                                        ''
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        updateField(
+                                                                            row.activity_type_id,
+                                                                            'keterangan',
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    placeholder="Catatan…"
+                                                                    emptyFallback="-"
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                        {/* REAL */}
+                                                        <tr className="transition-colors hover:bg-muted/10">
+                                                            <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">
+                                                                REAL
+                                                            </td>
+                                                            {dayCells(
+                                                                row,
+                                                                'realisasi',
+                                                            )}
+                                                        </tr>
+                                                    </Fragment>
+                                                );
+                                            })
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Legend */}
+                        <div className="border-t border-border bg-muted/20 p-4">
+                            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="size-3.5 rounded-xs border border-emerald-700 bg-emerald-400" />
+                                    <span>Terealisasi</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="size-3.5 rounded-xs border border-yellow-500 bg-yellow-300" />
+                                    <span>
+                                        Tidak Terealisasi (rencana belum
+                                        terealisasi)
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="size-3.5 rounded-xs border border-red-700 bg-[#ff0000]" />
+                                    <span>Hari Libur / Akhir Pekan</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <Info className="size-3.5 text-primary" />
+                                    <span>
+                                        Baris RENC = rencana, REAL = realisasi.
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </>
     );
 }

@@ -2,19 +2,26 @@
 
 namespace App\Support;
 
+use App\Enums\AttendanceCode;
+use App\Models\Employee;
+use App\Models\User;
+use App\Models\WorkScheduleEntry;
 use Illuminate\Support\Carbon;
 
 /**
- * Definisi Jadwal Program 5S 5R Pengoperasian KIT (Modul OPERASI):
- * lima program per minggu dengan detail & PIC bawaan dari lembar resmi,
- * pilihan tindakan, progres dan kondisi. Satu sumber untuk halaman input, validasi dan PDF.
+ * Definisi Program 5S 5R Pengoperasian KIT (Modul OPERASI):
+ * lima program per shift per hari (Pagi, Sore, Malam) dengan detail & PIC bawaan dari lembar resmi,
+ * pilihan tindakan, progres, kondisi, dan foto eviden per shift per hari.
  */
 final class OperasiProgram5s5r
 {
     public const DEFAULT_PIC = 'K3L, Operasi Dan Pemeliharaan';
 
-    /** Foto eviden maksimal per minggu. */
+    /** Foto eviden maksimal per shift per hari. */
     public const MAX_EVIDENCE = 3;
+
+    /** @var list<string> */
+    public const SHIFTS = ['Pagi', 'Sore', 'Malam'];
 
     /**
      * @var array<string, array{label: string, istilah: string, detail: string}>
@@ -66,24 +73,67 @@ final class OperasiProgram5s5r
     /** @var list<string> */
     public const KONDISI = ['Baik', 'Kurang Baik', 'Rusak'];
 
+    public static function daysInMonth(int $month, int $year): int
+    {
+        return (int) Carbon::create($year, $month, 1)->daysInMonth;
+    }
+
     /**
      * Jumlah minggu dalam bulan (minggu ke-1 = tanggal 1–7, dst.).
      */
     public static function weeks(int $month, int $year): int
     {
-        return (int) ceil(Carbon::create($year, $month, 1)->daysInMonth / 7);
+        return (int) ceil(self::daysInMonth($month, $year) / 7);
     }
 
     /**
-     * Baris bawaan satu minggu: program, detail & PIC dari lembar resmi; kolom
+     * Total slot rencana per program dalam sebulan (jumlah hari × 3 shift).
+     */
+    public static function plannedSlots(int $month, int $year): int
+    {
+        return self::daysInMonth($month, $year) * count(self::SHIFTS);
+    }
+
+    public static function slotKey(int $day, string $shift): string
+    {
+        return "{$day}_{$shift}";
+    }
+
+    /**
+     * @return array{day: int, shift: string}|null
+     */
+    public static function parseSlotKey(string|int $key, int $maxDay = 31): ?array
+    {
+        $raw = trim((string) $key);
+        if (preg_match('/^(\d+)_(Pagi|Sore|Malam)$/', $raw, $m) === 1) {
+            $day = (int) $m[1];
+            if ($day >= 1 && $day <= $maxDay) {
+                return ['day' => $day, 'shift' => $m[2]];
+            }
+        }
+
+        if (ctype_digit($raw)) {
+            $day = (int) $raw;
+            if ($day >= 1 && $day <= $maxDay) {
+                return ['day' => $day, 'shift' => 'Pagi'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Baris bawaan satu hari & shift: program, detail & PIC dari lembar resmi; kolom
      * hasil (kondisi, tindakan, progres, jumlah, keterangan) kosong untuk diisi.
      *
      * @return array<string, mixed>
      */
-    public static function blankRow(int $minggu, string $program): array
+    public static function blankRow(int $day, string $shift, string $program): array
     {
         return [
-            'minggu' => $minggu,
+            'day' => $day,
+            'shift' => $shift,
+            'minggu' => max(1, (int) ceil($day / 7)),
             'program' => $program,
             'detail' => self::PROGRAMS[$program]['detail'],
             'pic' => self::DEFAULT_PIC,
@@ -117,5 +167,72 @@ final class OperasiProgram5s5r
         }
 
         return false;
+    }
+
+    /**
+     * Resolve shift aktif & nama petugas/regu dari akun yang sedang login.
+     *
+     * @return array{shift: string, operator_name: string, regu: string|null}
+     */
+    public static function resolveUserContext(?User $user, int $unitId, string $tanggal): array
+    {
+        $hour = (int) now('Asia/Makassar')->format('H');
+        $timeBasedShift = match (true) {
+            $hour >= 7 && $hour < 15 => 'Pagi',
+            $hour >= 15 && $hour < 23 => 'Sore',
+            default => 'Malam',
+        };
+
+        if ($user === null) {
+            return [
+                'shift' => $timeBasedShift,
+                'operator_name' => '',
+                'regu' => null,
+            ];
+        }
+
+        $employee = Employee::query()
+            ->where(function ($q) use ($user): void {
+                $q->where('user_id', $user->id);
+                if ($user->nip !== null && trim((string) $user->nip) !== '') {
+                    $q->orWhere('nip', $user->nip);
+                }
+            })
+            ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$user->id])
+            ->first();
+
+        $operatorName = trim((string) ($employee?->name ?: $user->name));
+        $regu = $employee?->regu !== null && trim((string) $employee->regu) !== ''
+            ? 'Shift '.trim((string) $employee->regu)
+            : null;
+
+        if ($employee !== null) {
+            $scheduleCode = WorkScheduleEntry::query()
+                ->where('employee_id', $employee->id)
+                ->whereDate('work_date', $tanggal)
+                ->whereHas('schedule', fn ($q) => $q->where('unit_id', $unitId))
+                ->value('attendance_code');
+
+            $scheduledShift = match ($scheduleCode) {
+                AttendanceCode::Pagi->value => 'Pagi',
+                AttendanceCode::Sore->value => 'Sore',
+                AttendanceCode::Malam->value => 'Malam',
+                default => null,
+            };
+
+            if ($scheduledShift !== null) {
+                return [
+                    'shift' => $scheduledShift,
+                    'operator_name' => $operatorName,
+                    'regu' => $regu,
+                ];
+            }
+        }
+
+        return [
+            'shift' => $timeBasedShift,
+            'operator_name' => $operatorName,
+            'regu' => $regu,
+        ];
     }
 }

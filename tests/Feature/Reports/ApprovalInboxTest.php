@@ -78,4 +78,38 @@ class ApprovalInboxTest extends TestCase
         $this->actingAs($admin)->get(route('dashboard'))->assertOk()
             ->assertInertia(fn ($page) => $page->where('auth.approvals', null)->where('approvals', null));
     }
+
+    public function test_tl_operasi_sees_only_operator_requests_and_tl_pemeliharaan_sees_only_har_requests_in_the_inbox(): void
+    {
+        $tlOperasi = $this->userWithRole(RoleName::TeamLeaderOperasi, $this->unit);
+        Employee::factory()->create(['unit_id' => $this->unit->id, 'user_id' => $tlOperasi->id, 'position' => EmployeePosition::TeamLeaderOperasi->value, 'is_active' => true]);
+
+        $tlHar = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit);
+        Employee::factory()->create(['unit_id' => $this->unit->id, 'user_id' => $tlHar->id, 'position' => EmployeePosition::TeamLeaderPemeliharaan->value, 'is_active' => true]);
+
+        $operator = Employee::factory()->create(['unit_id' => $this->unit->id, 'name' => 'Andi Op', 'regu' => 'A', 'is_active' => true]);
+        $harmes = Employee::factory()->create(['unit_id' => $this->unit->id, 'name' => 'Amir Harmes', 'regu' => null, 'position' => Employee::POSITION_HARMES, 'is_active' => true]);
+
+        $opReq = AttendanceRequest::factory()->create(['unit_id' => $this->unit->id, 'employee_id' => $operator->id]);
+        $harReq = AttendanceRequest::factory()->create(['unit_id' => $this->unit->id, 'employee_id' => $harmes->id]);
+
+        $this->actingAs($tlOperasi)->get(route('approvals.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('decides_requests', true)
+                ->has('requests', 1)
+                ->where('requests.0.id', $opReq->id)
+                ->where('requests.0.employee', 'Andi Op'));
+
+        $this->actingAs($tlHar)->get(route('approvals.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('decides_requests', true)
+                ->has('requests', 1)
+                ->where('requests.0.id', $harReq->id)
+                ->where('requests.0.employee', 'Amir Harmes')
+                ->where('requests.0.position', Employee::POSITION_HARMES));
+
+        $this->actingAs($tlHar)->post(route('operator.pengajuan.approve', $harReq), ['note' => 'Disetujui'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(AttendanceRequestStatus::Disetujui, $harReq->refresh()->status);
+        $this->actingAs($tlHar)->get(route('approvals.index'))->assertInertia(fn ($page) => $page->has('requests', 0));
+    }
 }

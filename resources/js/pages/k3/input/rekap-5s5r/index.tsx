@@ -7,12 +7,17 @@ import {
     Sparkles,
 } from 'lucide-react';
 import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Input from '@/routes/k3/input';
 import k3Rekap5s5r from '@/routes/k3/input/rekap-5s5r';
@@ -62,6 +67,7 @@ export default function K3Rekap5s5rPage({
     programs,
     summary,
 }: Props) {
+    const compact = useCompactLayout();
     const monthName =
         OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
@@ -72,6 +78,113 @@ export default function K3Rekap5s5rPage({
             { preserveScroll: true, replace: true },
         );
     };
+
+    if (compact) {
+        return (
+            <>
+                <Head title={`Rekap 5S5R Seluruh Divisi - ${unit.name}`} />
+                <div className="flex flex-1 flex-col gap-3 p-3">
+                    <K3MobileHeader
+                        title="Rekap 5S5R Divisi"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <SummaryTile
+                            icon={ClipboardCheck}
+                            label="Divisi Input"
+                            value={`${summary.filled} / ${summary.divisions}`}
+                        />
+                        <SummaryTile
+                            icon={CheckCircle2}
+                            label="Kinerja Total"
+                            value={summary.kinerja}
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        {programs.map((program) => (
+                            <Card
+                                key={program.key}
+                                className="gap-0 overflow-hidden p-0 py-0 shadow-xs"
+                            >
+                                <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/20 p-3">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="truncate text-sm font-semibold text-foreground">
+                                            {program.sumber}
+                                        </div>
+                                        <div className="truncate text-[11px] text-muted-foreground">
+                                            {program.saved
+                                                ? `Kinerja ${program.total.kinerja}`
+                                                : 'Belum diinput'}
+                                            {program.eviden > 0
+                                                ? ` · ${program.eviden} eviden`
+                                                : ''}
+                                        </div>
+                                    </div>
+                                    {program.url && (
+                                        <Link
+                                            href={program.url}
+                                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-medium text-primary"
+                                        >
+                                            <ExternalLink className="size-3.5" />
+                                            Buka
+                                        </Link>
+                                    )}
+                                </div>
+
+                                {program.saved ? (
+                                    <div className="divide-y divide-border">
+                                        {program.rows.map((row) => (
+                                            <div
+                                                key={row.program}
+                                                className="flex items-center justify-between gap-2 px-3 py-2 text-xs"
+                                            >
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-medium text-foreground">
+                                                        {row.program}
+                                                    </div>
+                                                    {row.catatan && (
+                                                        <div className="text-[11px] text-muted-foreground">
+                                                            {row.catatan}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="shrink-0 text-right tabular-nums">
+                                                    <div className="font-semibold text-foreground">
+                                                        {row.kinerja}
+                                                    </div>
+                                                    <div className="text-[10.5px] text-muted-foreground">
+                                                        {row.realisasi}/
+                                                        {row.rencana}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="p-3 text-center text-xs text-muted-foreground">
+                                        Belum diinput pada periode ini.
+                                    </p>
+                                )}
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>

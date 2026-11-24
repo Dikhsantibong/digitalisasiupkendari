@@ -15,10 +15,18 @@ import { toast } from 'sonner';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { EvidencePhotoField } from '@/components/operasi/evidence-photo-field';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
+import { PatrolCheckChecklistView } from '@/components/operasi/patrol-check-checklist-view';
+import type {
+    ChecklistActiveEntry,
+    ChecklistEntrySummary,
+    ChecklistMeta,
+    ChecklistParamOption,
+} from '@/components/operasi/patrol-check-checklist-view';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,11 +55,19 @@ type DayInfo = {
     day_name: string;
 };
 
+type DayFinding = {
+    catatan: string;
+    eviden?: string | null;
+    eviden_url?: string | null;
+    eviden_file?: File | null;
+};
+
 type PatrolCheckItem = {
     no: number;
     system: string;
     peralatan: string;
     checks: Record<string, 'N' | 'T' | ''>;
+    findings?: Record<string, DayFinding>;
 };
 
 type MachineOption = {
@@ -86,6 +102,14 @@ type Props = {
     shift_malam: Record<string, string>;
     catatan: string;
     can_write: boolean;
+    patrol_format?: 'monthly' | 'checklist';
+    patrol_meta?: ChecklistMeta;
+    patrol_param_options?: ChecklistParamOption[];
+    shift_options?: string[];
+    user_shifts?: Record<string, string>;
+    user_operator_name?: string;
+    entries?: ChecklistEntrySummary[];
+    active_entry?: ChecklistActiveEntry | null;
 };
 
 const PRINT_CSS = `
@@ -163,7 +187,36 @@ const PRINT_CSS = `
 }
 `;
 
-export default function OperasiPatrolCheckMesinIndex({
+export default function OperasiPatrolCheckMesinIndex(props: Props) {
+    if (props.patrol_format === 'checklist' && props.active_entry) {
+        return (
+            <PatrolCheckChecklistView
+                key={`${props.active_entry.id ?? 'new'}-${props.active_entry.tanggal}-${props.active_entry.jam}`}
+                unit={props.unit}
+                filters={props.filters}
+                options={props.options}
+                patrol_meta={
+                    props.patrol_meta ?? {
+                        title: 'FORM PATROL CHECK MESIN & ALAT BANTU',
+                        form_number: 'POA-OPR-CHK-01',
+                        revision: 'Rev. 00',
+                        instruction: '',
+                    }
+                }
+                patrol_param_options={props.patrol_param_options ?? []}
+                user_shifts={props.user_shifts}
+                user_operator_name={props.user_operator_name}
+                entries={props.entries ?? []}
+                active_entry={props.active_entry}
+                can_write={props.can_write}
+            />
+        );
+    }
+
+    return <MonthlyPatrolCheckView {...props} />;
+}
+
+function MonthlyPatrolCheckView({
     unit,
     filters,
     options,
@@ -223,22 +276,37 @@ export default function OperasiPatrolCheckMesinIndex({
         targetType: 'N' | 'T',
     ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setItems((prev) => {
             const updated = [...prev];
             const currentItem = { ...updated[itemIndex] };
             const currentChecks = { ...(currentItem.checks || {}) };
-            const currentVal = currentChecks[String(day)];
+            const currentFindings = { ...(currentItem.findings || {}) };
+            const dayKey = String(day);
+            const currentVal = currentChecks[dayKey];
 
             if (currentVal === targetType) {
-                delete currentChecks[String(day)];
+                delete currentChecks[dayKey];
+                delete currentFindings[dayKey];
             } else {
-                currentChecks[String(day)] = targetType;
+                currentChecks[dayKey] = targetType;
+
+                if (targetType !== 'T') {
+                    delete currentFindings[dayKey];
+                } else if (!currentFindings[dayKey]) {
+                    currentFindings[dayKey] = {
+                        catatan: '',
+                        eviden: null,
+                        eviden_url: null,
+                        eviden_file: null,
+                    };
+                }
             }
 
             currentItem.checks = currentChecks;
+            currentItem.findings = currentFindings;
             updated[itemIndex] = currentItem;
 
             return updated;
@@ -246,11 +314,117 @@ return;
         setDirty(true);
     };
 
+    const handleUpdateFindingNote = (
+        itemIndex: number,
+        day: number,
+        note: string,
+    ) => {
+        if (!can_write) {
+            return;
+        }
+
+        const dayKey = String(day);
+        setItems((prev) =>
+            prev.map((it, idx) => {
+                if (idx !== itemIndex) {
+                    return it;
+                }
+
+                const prevFinding = it.findings?.[dayKey] ?? {
+                    catatan: '',
+                    eviden: null,
+                    eviden_url: null,
+                    eviden_file: null,
+                };
+
+                return {
+                    ...it,
+                    findings: {
+                        ...(it.findings || {}),
+                        [dayKey]: { ...prevFinding, catatan: note },
+                    },
+                };
+            }),
+        );
+        setDirty(true);
+    };
+
+    const handlePickFindingPhoto = (
+        itemIndex: number,
+        day: number,
+        file: File,
+    ) => {
+        if (!can_write) {
+            return;
+        }
+
+        const dayKey = String(day);
+        setItems((prev) =>
+            prev.map((it, idx) => {
+                if (idx !== itemIndex) {
+                    return it;
+                }
+
+                const prevFinding = it.findings?.[dayKey] ?? {
+                    catatan: '',
+                    eviden: null,
+                    eviden_url: null,
+                    eviden_file: null,
+                };
+
+                return {
+                    ...it,
+                    findings: {
+                        ...(it.findings || {}),
+                        [dayKey]: { ...prevFinding, eviden_file: file },
+                    },
+                };
+            }),
+        );
+        setDirty(true);
+    };
+
+    const handleRemoveFindingPhoto = (itemIndex: number, day: number) => {
+        if (!can_write) {
+            return;
+        }
+
+        const dayKey = String(day);
+        setItems((prev) =>
+            prev.map((it, idx) => {
+                if (idx !== itemIndex) {
+                    return it;
+                }
+
+                const prevFinding = it.findings?.[dayKey] ?? {
+                    catatan: '',
+                    eviden: null,
+                    eviden_url: null,
+                    eviden_file: null,
+                };
+
+                return {
+                    ...it,
+                    findings: {
+                        ...(it.findings || {}),
+                        [dayKey]: {
+                            ...prevFinding,
+                            eviden: null,
+                            eviden_url: null,
+                            eviden_file: null,
+                        },
+                    },
+                };
+            }),
+        );
+        setDirty(true);
+    };
+
     // Quick action: mark all equipment as Normal (N) for today's date
     const handleMarkTodayNormal = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -291,8 +465,8 @@ return;
         value: string,
     ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         const dayKey = String(day);
         const upper = value.toUpperCase();
@@ -321,8 +495,8 @@ return;
     // Save
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
 
@@ -341,6 +515,7 @@ return;
                 catatan,
             },
             {
+                forceFormData: true,
                 preserveScroll: true,
                 onSuccess: () => setDirty(false),
                 onFinish: () => setSaving(false),
@@ -551,8 +726,8 @@ return;
 
         paintSheet(ws, sheetData.length, totalCols, (r, c) => {
             if (r < 4) {
-return null;
-} // Document header
+                return null;
+            } // Document header
 
             if (r === headerTop) {
                 return SPECS.headerOrange;
@@ -560,8 +735,8 @@ return null;
 
             if (r === headerMid) {
                 if (c < 2) {
-return SPECS.headerOrange;
-}
+                    return SPECS.headerOrange;
+                }
 
                 const dayIndex = Math.floor((c - 2) / 2);
                 const isWeekend = daysInfo[dayIndex]?.is_weekend;
@@ -571,8 +746,8 @@ return SPECS.headerOrange;
 
             if (r === headerBottom) {
                 if (c < 2) {
-return SPECS.headerOrange;
-}
+                    return SPECS.headerOrange;
+                }
 
                 const isN = (c - 2) % 2 === 0;
 
@@ -597,12 +772,12 @@ return SPECS.headerOrange;
 
             if (r >= dataStart && r < shiftHeaderIdx) {
                 if (c === 0) {
-return SPECS.labelCenter;
-}
+                    return SPECS.labelCenter;
+                }
 
                 if (c === 1) {
-return SPECS.label;
-}
+                    return SPECS.label;
+                }
 
                 const cellVal = String(sheetData[r]?.[c] ?? '');
                 const isT = (c - 2) % 2 === 1;
@@ -726,7 +901,6 @@ return SPECS.label;
                         className="w-full"
                     />
 
-
                     <DayStrip
                         items={daysInfo.map((d) => ({
                             key: String(d.day),
@@ -768,40 +942,109 @@ return SPECS.label;
                                     <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
                                         {group.system}
                                     </p>
-                                    {group.entries.map(({ item, index }) => (
-                                        <div
-                                            key={`${item.no}-${item.peralatan}`}
-                                            className="flex items-center justify-between gap-3 border-t border-border pt-2 first-of-type:border-t-0 first-of-type:pt-0"
-                                        >
-                                            <span className="min-w-0 flex-1 text-[13.5px] text-foreground">
-                                                {item.peralatan}
-                                            </span>
-                                            <ChoiceChips
-                                                options={['N', 'T']}
-                                                value={
-                                                    item.checks?.[
-                                                        String(day.day)
-                                                    ] ?? ''
-                                                }
-                                                onChange={(value) =>
-                                                    handleToggleCell(
-                                                        index,
-                                                        day.day,
-                                                        (value ||
+                                    {group.entries.map(({ item, index }) => {
+                                        const dayKey = String(day.day);
+                                        const isTrouble =
+                                            item.checks?.[dayKey] === 'T';
+                                        const finding = item.findings?.[dayKey];
+
+                                        return (
+                                            <div
+                                                key={`${item.no}-${item.peralatan}`}
+                                                className="flex flex-col gap-2 border-t border-border pt-2 first-of-type:border-t-0 first-of-type:pt-0"
+                                            >
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <span className="min-w-0 flex-1 text-[13.5px] text-foreground">
+                                                        {item.peralatan}
+                                                    </span>
+                                                    <ChoiceChips
+                                                        options={['N', 'T']}
+                                                        value={
                                                             item.checks?.[
-                                                                String(day.day)
-                                                            ]) as 'N' | 'T',
-                                                    )
-                                                }
-                                                disabled={!can_write}
-                                                tone={(code) =>
-                                                    code === 'N'
-                                                        ? 'border-emerald-600 bg-emerald-600 text-white'
-                                                        : 'border-rose-600 bg-rose-600 text-white'
-                                                }
-                                            />
-                                        </div>
-                                    ))}
+                                                                dayKey
+                                                            ] ?? ''
+                                                        }
+                                                        onChange={(value) =>
+                                                            handleToggleCell(
+                                                                index,
+                                                                day.day,
+                                                                (value ||
+                                                                    item
+                                                                        .checks?.[
+                                                                        dayKey
+                                                                    ]) as
+                                                                    'N' | 'T',
+                                                            )
+                                                        }
+                                                        disabled={!can_write}
+                                                        tone={(code) =>
+                                                            code === 'N'
+                                                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                                                : 'border-rose-600 bg-rose-600 text-white'
+                                                        }
+                                                    />
+                                                </div>
+                                                {isTrouble && (
+                                                    <div className="flex flex-col gap-2 rounded-lg border border-rose-300 bg-rose-50/70 p-2.5 dark:border-rose-700/60 dark:bg-rose-950/30">
+                                                        <Input
+                                                            value={
+                                                                finding?.catatan ??
+                                                                ''
+                                                            }
+                                                            disabled={
+                                                                !can_write
+                                                            }
+                                                            placeholder="Uraian alasan tidak normal / tindakan awal..."
+                                                            onChange={(e) =>
+                                                                handleUpdateFindingNote(
+                                                                    index,
+                                                                    day.day,
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="h-8 bg-background text-[12.5px]"
+                                                        />
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <span className="text-[11.5px] font-semibold text-rose-900 dark:text-rose-200">
+                                                                Eviden Foto
+                                                            </span>
+                                                            <EvidencePhotoField
+                                                                label={`Eviden ${item.peralatan}`}
+                                                                url={
+                                                                    finding?.eviden_url ??
+                                                                    null
+                                                                }
+                                                                file={
+                                                                    finding?.eviden_file ??
+                                                                    null
+                                                                }
+                                                                onPick={(
+                                                                    file,
+                                                                ) =>
+                                                                    handlePickFindingPhoto(
+                                                                        index,
+                                                                        day.day,
+                                                                        file,
+                                                                    )
+                                                                }
+                                                                onRemove={() =>
+                                                                    handleRemoveFindingPhoto(
+                                                                        index,
+                                                                        day.day,
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    !can_write
+                                                                }
+                                                                size="sm"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             ))}
 
@@ -1192,142 +1435,133 @@ return SPECS.label;
                                 </tr>
                             </thead>
                             <tbody>
-                                {(() => {
-                                    let currentSystem: string | null = null;
+                                {items.map((item, itemIdx) => {
+                                    const isNewSystem =
+                                        itemIdx === 0 ||
+                                        items[itemIdx - 1].system !==
+                                            item.system;
 
-                                    return items.map((item, itemIdx) => {
-                                        const isNewSystem =
-                                            item.system !== currentSystem;
+                                    const checks = item.checks || {};
 
-                                        if (isNewSystem) {
-                                            currentSystem = item.system;
-                                        }
-
-                                        const checks = item.checks || {};
-
-                                        return (
-                                            <Fragment
-                                                key={`item-${item.no}-${itemIdx}`}
-                                            >
-                                                {isNewSystem && (
-                                                    <tr className="print-category-yellow bg-[#fef08a] font-bold text-black">
-                                                        <td
-                                                            colSpan={
-                                                                2 +
-                                                                daysInMonth * 2
-                                                            }
-                                                            className="border border-black px-2 py-1 text-left text-xs font-bold uppercase dark:border-white"
-                                                        >
-                                                            <div className="sticky left-2 inline-block">
-                                                                {item.system}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-
-                                                <tr className="group hover:bg-muted/30">
+                                    return (
+                                        <Fragment
+                                            key={`item-${item.no}-${itemIdx}`}
+                                        >
+                                            {isNewSystem && (
+                                                <tr className="print-category-yellow bg-[#fef08a] font-bold text-black">
                                                     <td
-                                                        className="sticky-col sticky left-0 z-10 border border-black bg-card px-1 py-1 font-medium group-hover:bg-muted/80 dark:border-white"
-                                                        style={{
-                                                            width: '36px',
-                                                            minWidth: '36px',
-                                                            maxWidth: '36px',
-                                                        }}
+                                                        colSpan={
+                                                            2 + daysInMonth * 2
+                                                        }
+                                                        className="border border-black px-2 py-1 text-left text-xs font-bold uppercase dark:border-white"
                                                     >
-                                                        {item.no}
-                                                    </td>
-                                                    <td
-                                                        className="sticky-col sticky left-[36px] z-10 border border-black bg-card px-2.5 py-1 text-left font-semibold shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)] group-hover:bg-muted/80 dark:border-white"
-                                                        style={{
-                                                            width: '220px',
-                                                            minWidth: '220px',
-                                                            maxWidth: '220px',
-                                                        }}
-                                                        title={item.peralatan}
-                                                    >
-                                                        <div className="truncate text-xs font-semibold">
-                                                            {item.peralatan}
+                                                        <div className="sticky left-2 inline-block">
+                                                            {item.system}
                                                         </div>
                                                     </td>
-                                                    {daysInfo.map((d) => {
-                                                        const val =
-                                                            checks[
-                                                                String(d.day)
-                                                            ] ||
-                                                            checks[d.day] ||
-                                                            '';
-                                                        const isN = val === 'N';
-                                                        const isT = val === 'T';
-
-                                                        return (
-                                                            <Fragment
-                                                                key={`cell-${item.no}-${d.day}`}
-                                                            >
-                                                                {/* Cell N */}
-                                                                <td
-                                                                    onClick={() =>
-                                                                        handleToggleCell(
-                                                                            itemIdx,
-                                                                            d.day,
-                                                                            'N',
-                                                                        )
-                                                                    }
-                                                                    className={`cursor-pointer border border-black p-0 text-center font-bold transition-colors dark:border-white ${
-                                                                        isN
-                                                                            ? 'bg-amber-100 text-black dark:bg-amber-900/60 dark:text-amber-100'
-                                                                            : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20'
-                                                                    }`}
-                                                                    style={{
-                                                                        width: '24px',
-                                                                        minWidth:
-                                                                            '24px',
-                                                                        height: '26px',
-                                                                    }}
-                                                                    title={`Tanggal ${d.day}: Klik Normal (N)`}
-                                                                >
-                                                                    {isN ? (
-                                                                        <Check className="mx-auto size-3.5 font-bold text-black dark:text-white" />
-                                                                    ) : (
-                                                                        ''
-                                                                    )}
-                                                                </td>
-
-                                                                {/* Cell T */}
-                                                                <td
-                                                                    onClick={() =>
-                                                                        handleToggleCell(
-                                                                            itemIdx,
-                                                                            d.day,
-                                                                            'T',
-                                                                        )
-                                                                    }
-                                                                    className={`cursor-pointer border border-black p-0 text-center font-bold transition-colors dark:border-white ${
-                                                                        isT
-                                                                            ? 'bg-red-200 text-red-700 dark:bg-red-950/80 dark:text-red-200'
-                                                                            : 'hover:bg-red-50/50 dark:hover:bg-red-950/20'
-                                                                    }`}
-                                                                    style={{
-                                                                        width: '24px',
-                                                                        minWidth:
-                                                                            '24px',
-                                                                        height: '26px',
-                                                                    }}
-                                                                    title={`Tanggal ${d.day}: Klik Temuan/Tidak Normal (T)`}
-                                                                >
-                                                                    {isT ? (
-                                                                        <Check className="mx-auto size-3.5 font-bold text-red-600" />
-                                                                    ) : (
-                                                                        ''
-                                                                    )}
-                                                                </td>
-                                                            </Fragment>
-                                                        );
-                                                    })}
                                                 </tr>
-                                            </Fragment>
-                                        );
-                                    });
-                                })()}
+                                            )}
+
+                                            <tr className="group hover:bg-muted/30">
+                                                <td
+                                                    className="sticky-col sticky left-0 z-10 border border-black bg-card px-1 py-1 font-medium group-hover:bg-muted/80 dark:border-white"
+                                                    style={{
+                                                        width: '36px',
+                                                        minWidth: '36px',
+                                                        maxWidth: '36px',
+                                                    }}
+                                                >
+                                                    {item.no}
+                                                </td>
+                                                <td
+                                                    className="sticky-col sticky left-[36px] z-10 border border-black bg-card px-2.5 py-1 text-left font-semibold shadow-[2px_0_4px_-2px_rgba(0,0,0,0.15)] group-hover:bg-muted/80 dark:border-white"
+                                                    style={{
+                                                        width: '220px',
+                                                        minWidth: '220px',
+                                                        maxWidth: '220px',
+                                                    }}
+                                                    title={item.peralatan}
+                                                >
+                                                    <div className="truncate text-xs font-semibold">
+                                                        {item.peralatan}
+                                                    </div>
+                                                </td>
+                                                {daysInfo.map((d) => {
+                                                    const val =
+                                                        checks[String(d.day)] ||
+                                                        checks[d.day] ||
+                                                        '';
+                                                    const isN = val === 'N';
+                                                    const isT = val === 'T';
+
+                                                    return (
+                                                        <Fragment
+                                                            key={`cell-${item.no}-${d.day}`}
+                                                        >
+                                                            {/* Cell N */}
+                                                            <td
+                                                                onClick={() =>
+                                                                    handleToggleCell(
+                                                                        itemIdx,
+                                                                        d.day,
+                                                                        'N',
+                                                                    )
+                                                                }
+                                                                className={`cursor-pointer border border-black p-0 text-center font-bold transition-colors dark:border-white ${
+                                                                    isN
+                                                                        ? 'bg-amber-100 text-black dark:bg-amber-900/60 dark:text-amber-100'
+                                                                        : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20'
+                                                                }`}
+                                                                style={{
+                                                                    width: '24px',
+                                                                    minWidth:
+                                                                        '24px',
+                                                                    height: '26px',
+                                                                }}
+                                                                title={`Tanggal ${d.day}: Klik Normal (N)`}
+                                                            >
+                                                                {isN ? (
+                                                                    <Check className="mx-auto size-3.5 font-bold text-black dark:text-white" />
+                                                                ) : (
+                                                                    ''
+                                                                )}
+                                                            </td>
+
+                                                            {/* Cell T */}
+                                                            <td
+                                                                onClick={() =>
+                                                                    handleToggleCell(
+                                                                        itemIdx,
+                                                                        d.day,
+                                                                        'T',
+                                                                    )
+                                                                }
+                                                                className={`cursor-pointer border border-black p-0 text-center font-bold transition-colors dark:border-white ${
+                                                                    isT
+                                                                        ? 'bg-red-200 text-red-700 dark:bg-red-950/80 dark:text-red-200'
+                                                                        : 'hover:bg-red-50/50 dark:hover:bg-red-950/20'
+                                                                }`}
+                                                                style={{
+                                                                    width: '24px',
+                                                                    minWidth:
+                                                                        '24px',
+                                                                    height: '26px',
+                                                                }}
+                                                                title={`Tanggal ${d.day}: Klik Temuan/Tidak Normal (T)`}
+                                                            >
+                                                                {isT ? (
+                                                                    <Check className="mx-auto size-3.5 font-bold text-red-600" />
+                                                                ) : (
+                                                                    ''
+                                                                )}
+                                                            </td>
+                                                        </Fragment>
+                                                    );
+                                                })}
+                                            </tr>
+                                        </Fragment>
+                                    );
+                                })}
 
                                 {/* PELAKSANA SHIFT Header */}
                                 <tr className="print-shift-header bg-muted/60 font-bold text-foreground">
@@ -1504,6 +1738,111 @@ return SPECS.label;
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Tindak Lanjut Kondisi Tidak Normal (T) — hanya muncul bila ada sel T */}
+                    {(() => {
+                        const troubleRows: {
+                            itemIdx: number;
+                            day: number;
+                            item: PatrolCheckItem;
+                        }[] = [];
+
+                        items.forEach((item, itemIdx) => {
+                            Object.entries(item.checks || {}).forEach(
+                                ([dKey, st]) => {
+                                    if (st === 'T') {
+                                        troubleRows.push({
+                                            itemIdx,
+                                            day: Number(dKey),
+                                            item,
+                                        });
+                                    }
+                                },
+                            );
+                        });
+
+                        if (troubleRows.length === 0) {
+                            return null;
+                        }
+
+                        return (
+                            <div className="mt-4 rounded-md border border-rose-300 bg-rose-50/40 p-3 dark:border-rose-700/60 dark:bg-rose-950/20">
+                                <p className="mb-2 text-xs font-bold text-rose-800 uppercase dark:text-rose-200">
+                                    Tindak Lanjut Kondisi Tidak Normal (T) —
+                                    Uraian Alasan &amp; Eviden Foto (
+                                    {troubleRows.length})
+                                </p>
+                                <div className="flex flex-col gap-2">
+                                    {troubleRows.map(
+                                        ({ itemIdx, day, item }) => {
+                                            const dayKey = String(day);
+                                            const finding =
+                                                item.findings?.[dayKey];
+
+                                            return (
+                                                <div
+                                                    key={`${item.no}-${day}`}
+                                                    className="flex flex-wrap items-center gap-2 rounded border border-rose-200 bg-card p-2 text-xs dark:border-rose-800"
+                                                >
+                                                    <Badge
+                                                        variant="destructive"
+                                                        className="shrink-0"
+                                                    >
+                                                        Tgl {day}
+                                                    </Badge>
+                                                    <span className="w-48 shrink-0 font-semibold">
+                                                        {item.peralatan}
+                                                    </span>
+                                                    <Input
+                                                        value={
+                                                            finding?.catatan ??
+                                                            ''
+                                                        }
+                                                        disabled={!can_write}
+                                                        placeholder="Tuliskan uraian alasan tidak normal & tindakan awal..."
+                                                        onChange={(e) =>
+                                                            handleUpdateFindingNote(
+                                                                itemIdx,
+                                                                day,
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className="h-8 min-w-60 flex-1 text-xs"
+                                                    />
+                                                    <EvidencePhotoField
+                                                        label={`Eviden ${item.peralatan} Tgl ${day}`}
+                                                        url={
+                                                            finding?.eviden_url ??
+                                                            null
+                                                        }
+                                                        file={
+                                                            finding?.eviden_file ??
+                                                            null
+                                                        }
+                                                        onPick={(file) =>
+                                                            handlePickFindingPhoto(
+                                                                itemIdx,
+                                                                day,
+                                                                file,
+                                                            )
+                                                        }
+                                                        onRemove={() =>
+                                                            handleRemoveFindingPhoto(
+                                                                itemIdx,
+                                                                day,
+                                                            )
+                                                        }
+                                                        disabled={!can_write}
+                                                        size="sm"
+                                                    />
+                                                </div>
+                                            );
+                                        },
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Note & Catatan */}
                     <div className="mt-4 space-y-2 border-t border-border pt-3">

@@ -17,16 +17,40 @@ export default function BatteryVoltagePage(props: HarFormulirProps) {
                     title: 'Tegangan Sel Baterai 24 Volt',
                     rowHeader: 'Sel',
                     rowLabel: (row) => `Sel ${row.cell}`,
-                    addable: { label: 'Tambah Sel 24 V', blank: (rows) => ({ cell: rows.length + 1, voltage: '' }) },
-                    columns: [{ key: 'voltage', label: 'Tegangan (V)', type: 'number' }],
+                    addable: {
+                        label: 'Tambah Sel 24 V',
+                        blank: (rows) => ({
+                            cell: rows.length + 1,
+                            voltage: '',
+                        }),
+                    },
+                    columns: [
+                        {
+                            key: 'voltage',
+                            label: 'Tegangan (V)',
+                            type: 'number',
+                        },
+                    ],
                 },
                 {
                     key: 'cells_110v',
                     title: 'Tegangan Sel Baterai 110 Volt',
                     rowHeader: 'Sel',
                     rowLabel: (row) => `Sel ${row.cell}`,
-                    addable: { label: 'Tambah Sel 110 V', blank: (rows) => ({ cell: rows.length + 1, voltage: '' }) },
-                    columns: [{ key: 'voltage', label: 'Tegangan (V)', type: 'number' }],
+                    addable: {
+                        label: 'Tambah Sel 110 V',
+                        blank: (rows) => ({
+                            cell: rows.length + 1,
+                            voltage: '',
+                        }),
+                    },
+                    columns: [
+                        {
+                            key: 'voltage',
+                            label: 'Tegangan (V)',
+                            type: 'number',
+                        },
+                    ],
                 },
                 {
                     key: 'charging_conditions',
@@ -34,14 +58,29 @@ export default function BatteryVoltagePage(props: HarFormulirProps) {
                     rowHeader: 'Mode · Item',
                     rowLabel: (row) => `${row.mode} · ${row.item}`,
                     columns: [
-                        { key: 'cond_24v', label: 'Kondisi 24 V' },
-                        { key: 'cond_110v', label: 'Kondisi 110 V' },
+                        {
+                            key: 'cond_24v',
+                            label: 'Kondisi 24 V',
+                            type: 'select',
+                            options: ['Baik', 'Tidak Baik'],
+                        },
+                        {
+                            key: 'cond_110v',
+                            label: 'Kondisi 110 V',
+                            type: 'select',
+                            options: ['Baik', 'Tidak Baik'],
+                        },
                         { key: 'notes', label: 'Keterangan', wide: true },
                     ],
                 },
             ]}
             notes={[
-                { key: 'notes', label: 'Catatan', type: 'textarea', wide: true },
+                {
+                    key: 'notes',
+                    label: 'Catatan',
+                    type: 'textarea',
+                    wide: true,
+                },
             ]}
         />
     );
@@ -50,7 +89,10 @@ export default function BatteryVoltagePage(props: HarFormulirProps) {
 BatteryVoltagePage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Formulir Pemeliharaan', href: harPengusahaan.index('formulir') },
+        {
+            title: 'Formulir Pemeliharaan',
+            href: harPengusahaan.index('formulir'),
+        },
         { title: 'Tegangan Baterai', href: batteryVoltageRoutes.index() },
     ],
 };

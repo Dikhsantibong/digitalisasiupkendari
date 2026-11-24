@@ -12,11 +12,26 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
+import { dmyToIso, isoToDmy } from '@/components/pengusahaan/k3-cells';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanFireAlarm from '@/routes/k3/pengusahaan/fire-alarm';
 import type { IdName } from '@/types';
@@ -78,15 +93,22 @@ export default function PengusahaanFireAlarmPage(props: Props) {
 
     const [noDokumen, setNoDokumen] = useState(initialRecord.no_dokumen);
     const [revisi, setRevisi] = useState(initialRecord.revisi);
-    const [tanggalDokumen, setTanggalDokumen] = useState(initialRecord.tanggal_dokumen);
-    const [batchDate, setBatchDate] = useState(initialRecord.tanggal_periksa || '12/08/2026');
+    const [tanggalDokumen, setTanggalDokumen] = useState(
+        initialRecord.tanggal_dokumen,
+    );
+    const [batchDate, setBatchDate] = useState(
+        initialRecord.tanggal_periksa || '12/08/2026',
+    );
     const [catatan, setCatatan] = useState(initialRecord.catatan);
 
     const [items, setItems] = useState<FireAlarmItem[]>(() =>
         initialRecord.items.map((it, idx) => ({
             ...it,
             _key: idx + 1,
-            tanggal_periksa: it.tanggal_periksa || initialRecord.tanggal_periksa || '12/08/2026',
+            tanggal_periksa:
+                it.tanggal_periksa ||
+                initialRecord.tanggal_periksa ||
+                '12/08/2026',
             kondisi: it.kondisi || 'Baik',
             panel_indikator: it.panel_indikator || 'Baik',
             keterangan: it.keterangan || '',
@@ -96,10 +118,15 @@ export default function PengusahaanFireAlarmPage(props: Props) {
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
     const [nextKey, setNextKey] = useState(initialRecord.items.length + 10);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', value: string | number) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        value: string | number,
+    ) => {
         const nextFilters = { ...filters, [key]: Number(value) };
         router.get(k3PengusahaanFireAlarm.index().url, nextFilters, {
             preserveState: false,
@@ -107,7 +134,11 @@ export default function PengusahaanFireAlarmPage(props: Props) {
         });
     };
 
-    const updateItem = (key: number, field: keyof FireAlarmItem, value: string | number) => {
+    const updateItem = (
+        key: number,
+        field: keyof FireAlarmItem,
+        value: string | number,
+    ) => {
         setItems((prev) =>
             prev.map((item) => {
                 if (item._key !== key) {
@@ -177,7 +208,10 @@ export default function PengusahaanFireAlarmPage(props: Props) {
             initialRecord.items.map((it, idx) => ({
                 ...it,
                 _key: idx + 1,
-                tanggal_periksa: it.tanggal_periksa || initialRecord.tanggal_periksa || '12/08/2026',
+                tanggal_periksa:
+                    it.tanggal_periksa ||
+                    initialRecord.tanggal_periksa ||
+                    '12/08/2026',
                 kondisi: it.kondisi || 'Baik',
                 panel_indikator: it.panel_indikator || 'Baik',
                 keterangan: it.keterangan || '',
@@ -186,8 +220,8 @@ export default function PengusahaanFireAlarmPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -226,7 +260,11 @@ export default function PengusahaanFireAlarmPage(props: Props) {
         let countRusak = 0;
 
         for (const item of items) {
-            if (item.kondisi.toLowerCase().includes('rusak') || item.panel_indikator.toLowerCase().includes('rusak') || item.panel_indikator.toLowerCase().includes('trouble')) {
+            if (
+                item.kondisi.toLowerCase().includes('rusak') ||
+                item.panel_indikator.toLowerCase().includes('rusak') ||
+                item.panel_indikator.toLowerCase().includes('trouble')
+            ) {
                 countRusak++;
             } else {
                 countBaik++;
@@ -240,6 +278,185 @@ export default function PengusahaanFireAlarmPage(props: Props) {
         };
     }, [items]);
 
+    if (compact) {
+        return (
+            <>
+                <Head title={`Pemeriksaan Fire Alarm — ${unit.name}`} />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Inspeksi Fire Alarm"
+                        backHref={k3Pengusahaan.index({ section: 'input' }).url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => handleFilterChange('unit_id', v)}
+                        month={filters.month}
+                        onMonthChange={(v) => handleFilterChange('month', v)}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => handleFilterChange('year', v)}
+                    />
+
+                    {can_write && (
+                        <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
+                            <div className="flex items-end gap-2">
+                                <label className="flex min-w-0 flex-1 flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Tanggal Periksa Massal
+                                    <Input
+                                        type="date"
+                                        value={dmyToIso(batchDate)}
+                                        onChange={(e) => {
+                                            setBatchDate(
+                                                isoToDmy(e.target.value),
+                                            );
+                                            setDirty(true);
+                                        }}
+                                        className="h-9 text-xs"
+                                    />
+                                </label>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={applyBatchDate}
+                                    className="h-9 shrink-0 text-xs"
+                                >
+                                    Terapkan Tgl
+                                </Button>
+                            </div>
+                            <K3MobileActionRow>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={setAllBaik}
+                                    className="gap-1.5 text-emerald-700 dark:text-emerald-400"
+                                >
+                                    <CheckCircle2 className="size-3.5" />
+                                    Tandai Semua Baik
+                                </Button>
+                            </K3MobileActionRow>
+                        </div>
+                    )}
+
+                    <MobileRowEditor<FireAlarmItem>
+                        rows={items.map((it) => ({
+                            ...it,
+                            tanggal_periksa: dmyToIso(it.tanggal_periksa),
+                        }))}
+                        rowKey={(it) => it._key}
+                        title={(it) => it.lokasi || 'Lokasi belum diisi'}
+                        subtitle={(it) =>
+                            `${isoToDmy(it.tanggal_periksa) || '-'} · Kondisi ${it.kondisi || '-'} · Panel ${it.panel_indikator || '-'}`
+                        }
+                        canWrite={can_write}
+                        removeLabel="Hapus titik"
+                        fields={[
+                            {
+                                key: 'lokasi',
+                                label: 'Lokasi Panel / Detektor',
+                                placeholder: 'Mis. Ruang Kontrol',
+                            },
+                            {
+                                key: 'tanggal_periksa',
+                                label: 'Tanggal Periksa',
+                                type: 'date',
+                                parse: (v) => isoToDmy(String(v)),
+                            },
+                            {
+                                key: 'kondisi',
+                                label: 'Kondisi',
+                                type: 'dropdown',
+                                options: ['Baik', 'Tidak Baik', 'Rusak'],
+                            },
+                            {
+                                key: 'panel_indikator',
+                                label: 'Panel Indikator',
+                                type: 'dropdown',
+                                options: [
+                                    'Baik',
+                                    'Normal',
+                                    'Tidak Baik',
+                                    'Trouble',
+                                ],
+                            },
+                            { key: 'keterangan', label: 'Keterangan' },
+                        ]}
+                        onChange={(idx, key, value) =>
+                            updateItem(
+                                items[idx]._key,
+                                key,
+                                value as string | number,
+                            )
+                        }
+                        onRemove={(idx) => removeItem(items[idx]._key)}
+                    />
+
+                    <K3MobileMetaAccordion
+                        noDokumen={noDokumen}
+                        revisi={revisi}
+                        tanggalDokumen={tanggalDokumen}
+                        onNoDokumenChange={(v) => {
+                            setNoDokumen(v);
+                            setDirty(true);
+                        }}
+                        onRevisiChange={(v) => {
+                            setRevisi(v);
+                            setDirty(true);
+                        }}
+                        onTanggalDokumenChange={(v) => {
+                            setTanggalDokumen(v);
+                            setDirty(true);
+                        }}
+                        canWrite={can_write}
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan pemeriksaan fire alarm…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={addItem}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <div className="space-y-6 p-6">
             <style>{PRINT_CSS}</style>
@@ -252,7 +469,11 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => router.get(k3Pengusahaan.index({ section: 'input' }).url)}
+                        onClick={() =>
+                            router.get(
+                                k3Pengusahaan.index({ section: 'input' }).url,
+                            )
+                        }
                         title="Kembali ke Menu Input K3"
                     >
                         <ArrowLeft className="size-4" />
@@ -263,17 +484,24 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                 Pemeriksaan Fire Alarm
                             </h1>
                             {has_saved ? (
-                                <Badge variant="secondary" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <Badge
+                                    variant="secondary"
+                                    className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
                                     Tersimpan
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                >
                                     Draft
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Pemeriksaan berkala kondisi fisik panel dan detektor fire alarm unit pembangkit (SMT-FM-AK3-12.06).
+                            Pemeriksaan berkala kondisi fisik panel dan detektor
+                            fire alarm unit pembangkit (SMT-FM-AK3-12.06).
                         </p>
                     </div>
                 </div>
@@ -309,7 +537,9 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                             className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             <Save className="size-4" />
-                            <span>{saving ? 'Menyimpan...' : 'Simpan Data'}</span>
+                            <span>
+                                {saving ? 'Menyimpan...' : 'Simpan Data'}
+                            </span>
                         </Button>
                     )}
                 </div>
@@ -322,21 +552,32 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                         <OperasiSelect
                             label="Unit Layanan"
                             value={String(filters.unit_id)}
-                            options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                            onChange={(val) => handleFilterChange('unit_id', val)}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            onChange={(val) =>
+                                handleFilterChange('unit_id', val)
+                            }
                         />
 
                         <OperasiSelect
                             label="Bulan"
                             value={String(filters.month)}
-                            options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                            options={OPERASI_MONTHS.map((label, idx) => ({
+                                value: String(idx + 1),
+                                label,
+                            }))}
                             onChange={(val) => handleFilterChange('month', val)}
                         />
 
                         <OperasiSelect
                             label="Tahun"
                             value={String(filters.year)}
-                            options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
                             onChange={(val) => handleFilterChange('year', val)}
                         />
                     </div>
@@ -363,7 +604,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                 {can_write && (
                     <div className="mt-4 flex flex-wrap items-center gap-3 border-t pt-3">
                         <div className="flex flex-wrap items-center gap-2">
-                            <label className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                            <label className="text-xs font-semibold whitespace-nowrap text-muted-foreground">
                                 Tanggal Periksa:
                             </label>
                             <input
@@ -378,7 +619,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                 variant="secondary"
                                 size="sm"
                                 onClick={applyBatchDate}
-                                className="gap-1 h-8 text-xs"
+                                className="h-8 gap-1 text-xs"
                                 title="Terapkan tanggal ini ke seluruh baris lokasi"
                             >
                                 <Calendar className="size-3.5" />
@@ -391,7 +632,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                             variant="secondary"
                             size="sm"
                             onClick={setAllBaik}
-                            className="gap-1.5 h-8 text-xs"
+                            className="h-8 gap-1.5 text-xs"
                         >
                             <Sparkles className="size-3.5 text-amber-500" />
                             <span>Setel Semua Baik / Normal</span>
@@ -402,7 +643,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                             variant="outline"
                             size="sm"
                             onClick={addItem}
-                            className="gap-1.5 h-8 text-xs"
+                            className="h-8 gap-1.5 text-xs"
                         >
                             <Plus className="size-3.5" />
                             <span>Tambah Baris</span>
@@ -416,25 +657,27 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                 {/* KOP Dokumen Resmi Kembar Logo PLN & Lambang K3 */}
                 <div className="fa-header-box relative rounded border-2 border-black p-4 dark:border-border">
                     {/* Logo PLN Kiri */}
-                    <div className="absolute left-4 top-4 flex items-center">
+                    <div className="absolute top-4 left-4 flex items-center">
                         <img
                             src="/logo/sidebar-logo.png"
                             alt="PLN Nusantara Power"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
 
                     {/* Lambang K3 Kanan */}
-                    <div className="absolute right-4 top-4 flex items-center">
+                    <div className="absolute top-4 right-4 flex items-center">
                         <img
                             src="/logo/k3.png"
                             alt="Logo K3"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
@@ -448,7 +691,11 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                             UNIT PEMBANGKITAN KENDARI
                         </div>
                         <div className="text-[11px] font-bold text-foreground uppercase sm:text-xs">
-                            UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
+                            UNIT LAYANAN{' '}
+                            {unit.name.toUpperCase().startsWith('ULPLTD') ||
+                            unit.name.toUpperCase().startsWith('UP')
+                                ? unit.name.toUpperCase()
+                                : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
                         </div>
                     </div>
 
@@ -459,7 +706,8 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                     <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                         <div className="flex-1 text-center sm:pl-28">
                             <h2 className="text-sm font-black tracking-wider text-foreground uppercase sm:text-base">
-                                PEMERIKSAAN FIRE ALARM PERIODE BULAN {monthName.toUpperCase()}
+                                PEMERIKSAAN FIRE ALARM PERIODE BULAN{' '}
+                                {monthName.toUpperCase()}
                             </h2>
                             <div className="text-xs font-black tracking-wider text-foreground uppercase">
                                 TAHUN {filters.year}
@@ -467,9 +715,9 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                         </div>
 
                         {/* Kotak Metadata SMT-FM-AK3-12.06 */}
-                        <div className="w-56 border border-black text-[9px] dark:border-border sm:text-[10px]">
+                        <div className="w-56 border border-black text-[9px] sm:text-[10px] dark:border-border">
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     No Dokumen
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -489,7 +737,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Revisi
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -509,7 +757,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Tanggal
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -518,7 +766,9 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                             type="text"
                                             value={tanggalDokumen}
                                             onChange={(e) => {
-                                                setTanggalDokumen(e.target.value);
+                                                setTanggalDokumen(
+                                                    e.target.value,
+                                                );
                                                 setDirty(true);
                                             }}
                                             className="w-full bg-transparent focus:outline-none"
@@ -536,7 +786,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                 <div className="mt-4 overflow-x-auto">
                     <table className="excel-sheet fa-table w-full border-collapse border border-black text-[11px] dark:border-border">
                         <thead>
-                            <tr className="bg-muted/40 font-bold uppercase text-foreground">
+                            <tr className="bg-muted/40 font-bold text-foreground uppercase">
                                 <th className="w-12 border border-black px-2 py-2 text-center dark:border-border">
                                     NO
                                 </th>
@@ -564,7 +814,10 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                         </thead>
                         <tbody>
                             {items.map((item) => (
-                                <tr key={item._key} className="hover:bg-muted/10">
+                                <tr
+                                    key={item._key}
+                                    className="hover:bg-muted/10"
+                                >
                                     <td className="border border-black px-2 py-2 text-center font-medium dark:border-border">
                                         {item.no_urut}
                                     </td>
@@ -576,7 +829,11 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                                 type="text"
                                                 value={item.lokasi}
                                                 onChange={(e) =>
-                                                    updateItem(item._key, 'lokasi', e.target.value)
+                                                    updateItem(
+                                                        item._key,
+                                                        'lokasi',
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 className="w-full bg-transparent font-semibold uppercase focus:outline-none"
                                             />
@@ -592,13 +849,19 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                                 type="text"
                                                 value={item.tanggal_periksa}
                                                 onChange={(e) =>
-                                                    updateItem(item._key, 'tanggal_periksa', e.target.value)
+                                                    updateItem(
+                                                        item._key,
+                                                        'tanggal_periksa',
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 placeholder="DD/MM/YYYY"
                                                 className="w-full bg-transparent text-center focus:outline-none"
                                             />
                                         ) : (
-                                            <span>{item.tanggal_periksa || '-'}</span>
+                                            <span>
+                                                {item.tanggal_periksa || '-'}
+                                            </span>
                                         )}
                                     </td>
 
@@ -607,8 +870,18 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                         {can_write ? (
                                             <PdmCellSelect
                                                 value={item.kondisi}
-                                                onChange={(value) => updateItem(item._key, 'kondisi', value)}
-                                                options={['Baik', 'Rusak', 'Perlu Perbaikan']}
+                                                onChange={(value) =>
+                                                    updateItem(
+                                                        item._key,
+                                                        'kondisi',
+                                                        value,
+                                                    )
+                                                }
+                                                options={[
+                                                    'Baik',
+                                                    'Rusak',
+                                                    'Perlu Perbaikan',
+                                                ]}
                                                 className="h-8 justify-center font-medium"
                                             />
                                         ) : (
@@ -621,8 +894,20 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                         {can_write ? (
                                             <PdmCellSelect
                                                 value={item.panel_indikator}
-                                                onChange={(value) => updateItem(item._key, 'panel_indikator', value)}
-                                                options={['Baik', 'Normal', 'Alarm', 'Trouble', 'Rusak']}
+                                                onChange={(value) =>
+                                                    updateItem(
+                                                        item._key,
+                                                        'panel_indikator',
+                                                        value,
+                                                    )
+                                                }
+                                                options={[
+                                                    'Baik',
+                                                    'Normal',
+                                                    'Alarm',
+                                                    'Trouble',
+                                                    'Rusak',
+                                                ]}
                                                 className="h-8 justify-center font-medium"
                                             />
                                         ) : (
@@ -637,13 +922,19 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                                 type="text"
                                                 value={item.keterangan}
                                                 onChange={(e) =>
-                                                    updateItem(item._key, 'keterangan', e.target.value)
+                                                    updateItem(
+                                                        item._key,
+                                                        'keterangan',
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 placeholder="Keterangan kondisi..."
                                                 className="w-full bg-transparent focus:outline-none"
                                             />
                                         ) : (
-                                            <span>{item.keterangan || '-'}</span>
+                                            <span>
+                                                {item.keterangan || '-'}
+                                            </span>
                                         )}
                                     </td>
 
@@ -655,7 +946,9 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="size-6 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950"
-                                                onClick={() => removeItem(item._key)}
+                                                onClick={() =>
+                                                    removeItem(item._key)
+                                                }
                                                 title="Hapus Baris"
                                             >
                                                 <Trash2 className="size-3.5" />
@@ -685,12 +978,11 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                             className="mt-1 w-full rounded border border-black p-2 text-[11px] dark:border-border"
                         />
                     ) : (
-                        <p className="mt-1 text-[11px] text-muted-foreground whitespace-pre-wrap">
+                        <p className="mt-1 text-[11px] whitespace-pre-wrap text-muted-foreground">
                             {catatan || '-'}
                         </p>
                     )}
                 </div>
-
             </div>
         </div>
     );

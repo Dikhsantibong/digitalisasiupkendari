@@ -152,6 +152,30 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Whether this account belongs to HAR field maintenance staff (Harmes,
+     * Harlist, or a custom HAR field role such as asmec / aslist holding
+     * `har.*` permissions without operator schedule/logsheet management).
+     */
+    public function isHarFieldAccount(): bool
+    {
+        if ($this->hasRole(RoleName::Harmes) || $this->hasRole(RoleName::Harlist)) {
+            return true;
+        }
+
+        if (
+            $this->isSuperAdmin()
+            || $this->hasPermissionTo(PermissionName::OperatorLogsheetWrite)
+            || $this->hasPermissionTo(PermissionName::OperatorAbsensiWrite)
+            || $this->hasPermissionTo(PermissionName::OperatorPengajuanApproveOperasi)
+        ) {
+            return false;
+        }
+
+        return $this->accessControl()->permissionNames($this)
+            ->contains(fn (string $permission): bool => str_starts_with($permission, 'har.'));
+    }
+
+    /**
      * Whether the user holds the given role anywhere in the organisation.
      *
      * Prefer permission checks over this method; it exists for presentation and

@@ -2,6 +2,7 @@ import { Link } from '@inertiajs/react';
 import { Building2, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 
 /** A finding reported by another division (App\Services\K3\K3DivisionFeed::unsafeFindings). */
 export type DivisionFinding = {
@@ -43,6 +44,127 @@ export function DivisionFindings({
     summary: DivisionSummary;
     onPreview: (photo: { url: string; title: string }) => void;
 }) {
+    const compact = useCompactLayout();
+
+    if (compact) {
+        return (
+            <Card className="gap-0 overflow-hidden p-0 py-0 shadow-xs">
+                <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/20 p-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Building2 className="size-4 shrink-0 text-primary" />
+                        <span>Temuan Divisi Lain</span>
+                    </div>
+                    <Badge variant="secondary" className="text-[11px]">
+                        {summary.total} temuan
+                    </Badge>
+                </div>
+
+                {findings.length === 0 ? (
+                    <p className="p-4 text-center text-xs text-muted-foreground">
+                        Belum ada temuan dari divisi lain pada periode ini.
+                    </p>
+                ) : (
+                    <div className="divide-y divide-border">
+                        {findings.map((finding, index) => (
+                            <div
+                                key={`${finding.sumber_key}-${index}`}
+                                className="flex flex-col gap-2 p-3 text-xs"
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                        <span className="font-semibold text-foreground">
+                                            {finding.sumber}
+                                        </span>
+                                        <span className="text-muted-foreground">
+                                            · {finding.kategori}
+                                        </span>
+                                    </div>
+                                    {finding.status && (
+                                        <Badge
+                                            variant={
+                                                finding.status === 'Close'
+                                                    ? 'secondary'
+                                                    : 'destructive'
+                                            }
+                                            className="shrink-0 text-[10px]"
+                                        >
+                                            {finding.status}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="text-[13px] font-medium text-foreground">
+                                    {finding.temuan}
+                                </div>
+                                {(finding.lokasi || finding.periode) && (
+                                    <div className="text-[11px] text-muted-foreground">
+                                        {[finding.lokasi, finding.periode]
+                                            .filter(Boolean)
+                                            .join(' · ')}
+                                    </div>
+                                )}
+                                {finding.tindak_lanjut && (
+                                    <div className="text-muted-foreground">
+                                        Tindak lanjut: {finding.tindak_lanjut}
+                                    </div>
+                                )}
+                                {(finding.foto_sebelum ||
+                                    finding.foto_sesudah ||
+                                    finding.url) && (
+                                    <div className="flex items-center justify-between gap-2 pt-1">
+                                        <div className="flex gap-1.5">
+                                            {(
+                                                [
+                                                    [
+                                                        'Sebelum',
+                                                        finding.foto_sebelum,
+                                                    ],
+                                                    [
+                                                        'Sesudah',
+                                                        finding.foto_sesudah,
+                                                    ],
+                                                ] as const
+                                            ).map(([label, url]) =>
+                                                url ? (
+                                                    <button
+                                                        key={label}
+                                                        type="button"
+                                                        onClick={() =>
+                                                            onPreview({
+                                                                url,
+                                                                title: `Eviden ${label.toLowerCase()} — ${finding.sumber}`,
+                                                            })
+                                                        }
+                                                        className="overflow-hidden rounded border border-border"
+                                                        title={`Eviden ${label.toLowerCase()}`}
+                                                    >
+                                                        <img
+                                                            src={url}
+                                                            alt={`Eviden ${label.toLowerCase()}`}
+                                                            className="size-10 object-cover"
+                                                        />
+                                                    </button>
+                                                ) : null,
+                                            )}
+                                        </div>
+                                        {finding.url && (
+                                            <Link
+                                                href={finding.url}
+                                                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                                            >
+                                                <ExternalLink className="size-3.5" />
+                                                Buka
+                                            </Link>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </Card>
+        );
+    }
+
     return (
         <Card className="gap-0 overflow-hidden p-0 py-0 shadow-xs">
             <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-muted/20 p-4">

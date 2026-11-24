@@ -19,6 +19,7 @@ use App\Http\Controllers\Operasi\PembuatanIkController;
 use App\Http\Controllers\Operasi\PengusahaanResourcePembangkitController;
 use App\Http\Controllers\Operasi\PermitToWorkController;
 use App\Http\Controllers\Operasi\Program5s5rController;
+use App\Http\Controllers\Operasi\Program5s5rInputController;
 use App\Models\OperasiInstruksiKerja;
 use App\Models\OperasiPatrolCheckMesin;
 use App\Models\Unit;
@@ -97,11 +98,35 @@ class OperasiReportTables
         }
         $tables['patrol_check'] = ['title' => 'Patrol Check Mesin', 'scope' => $patrol['scope'], 'body' => $patrol['body']];
 
+        // 14. Laporan 5S5R: the Program 5S 5R Pengoperasian KIT input (per shift per hari)
+        // when saved for the month.
+        $program5s5rInput = $this->program5s5rInput($unit, $month, $year);
+        if ($program5s5rInput['css'] !== '') {
+            $styles[$program5s5rInput['scope']] = $program5s5rInput['css'];
+        }
+        $tables['program_5s5r_input'] = ['title' => 'Laporan 5S5R', 'scope' => $program5s5rInput['scope'], 'body' => $program5s5rInput['body']];
+
         return [
             'tables' => $tables,
             'styles' => implode("\n", $styles),
             'resume' => $this->resume($unit, $payloads, $month, $year, $engineDaysFilled),
         ];
+    }
+
+    /**
+     * @return array{scope: string, css: string, body: string}
+     */
+    private function program5s5rInput(Unit $unit, int $month, int $year): array
+    {
+        $scope = 'op-v-operasi-input-program-5s5r-pdf';
+        [$view, $data] = app(Program5s5rInputController::class)->pdfView($unit, $month, $year);
+        if (empty($data['has_saved'])) {
+            return ['scope' => $scope, 'css' => '', 'body' => ''];
+        }
+
+        $fragment = $this->fragments->extract(View::make($view, $data)->render(), $scope);
+
+        return ['scope' => $scope, 'css' => $fragment['css'], 'body' => $fragment['body']];
     }
 
     /**

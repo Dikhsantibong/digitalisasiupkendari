@@ -1,16 +1,29 @@
 import { Head, router } from '@inertiajs/react';
+import { Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
-import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import {
+    K3InputExportButtons,
+    K3MobilePdfButton,
+} from '@/components/k3/input-export-buttons';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import { MobileMatrixForm } from '@/components/mobile/matrix-form';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
+import k3Input from '@/routes/k3/input';
 import patrol from '@/routes/k3/input/patrol';
 import type { IdName } from '@/types';
 
@@ -41,7 +54,13 @@ const rowTotal = (row: GridRow, days: number): number => {
     return sum;
 };
 
-export default function PatrolInput({ filters, days, rows: initialRows, options, can_write }: Props) {
+export default function PatrolInput({
+    filters,
+    days,
+    rows: initialRows,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<GridRow[]>(initialRows);
     const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
@@ -124,10 +143,103 @@ export default function PatrolInput({ filters, days, rows: initialRows, options,
         });
         router.post(
             patrol.store().url,
-            { unit_id: filters.unit_id, month: filters.month, year: filters.year, rows: payload },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            {
+                unit_id: filters.unit_id,
+                month: filters.month,
+                year: filters.year,
+                rows: payload,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => setDirty(false),
+                onFinish: () => setSaving(false),
+            },
         );
     };
+
+    if (compact) {
+        return (
+            <>
+                <Head title="Input K3 — Patroli Keamanan" />
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Patroli Keamanan"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    {rows.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                            Belum ada lokasi patroli pada master.
+                        </div>
+                    ) : (
+                        <MobileMatrixForm<GridRow>
+                            columns={Array.from({ length: days }, (_, i) => ({
+                                key: `day_${i + 1}`,
+                                label: String(i + 1),
+                            }))}
+                            rows={rows}
+                            rowKey={(row) => row.location_id}
+                            rowLabel={(row) => row.location_name}
+                            rowSub={(row) =>
+                                `Total bulan ini: ${rowTotal(row, days)}`
+                            }
+                            value={(row, column) =>
+                                row[column] === null ||
+                                row[column] === undefined
+                                    ? ''
+                                    : String(row[column])
+                            }
+                            onChange={(index, column, value) => {
+                                setRows((current) =>
+                                    current.map((row, i) =>
+                                        i === index
+                                            ? { ...row, [column]: value }
+                                            : row,
+                                    ),
+                                );
+                                setDirty(true);
+                            }}
+                            readOnly={!can_write}
+                        />
+                    )}
+
+                    <StickyActionBar>
+                        <K3MobilePdfButton
+                            input="patrols"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                        />
+                        {can_write && (
+                            <Button
+                                onClick={save}
+                                disabled={saving || rows.length === 0}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        )}
+                    </StickyActionBar>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -138,11 +250,21 @@ export default function PatrolInput({ filters, days, rows: initialRows, options,
                     description="Matriks lokasi patroli (POA…) × tanggal. Isi jumlah scan per hari; total kumulatif per lokasi dihitung otomatis. Paste dari Excel didukung."
                     actions={
                         <div className="flex flex-wrap gap-2">
-                            <K3InputExportButtons input="patrols" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }} />
+                            <K3InputExportButtons
+                                input="patrols"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
                             {can_write && (
-                                    <Button onClick={save} disabled={saving || rows.length === 0}>
-                                        {saving ? 'Menyimpan…' : 'Simpan'}
-                                    </Button>
+                                <Button
+                                    onClick={save}
+                                    disabled={saving || rows.length === 0}
+                                >
+                                    {saving ? 'Menyimpan…' : 'Simpan'}
+                                </Button>
                             )}
                         </div>
                     }
@@ -153,61 +275,89 @@ export default function PatrolInput({ filters, days, rows: initialRows, options,
                         label="Unit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                     {dirty && !saving && (
-                        <span className="text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
+                        <span className="text-[13px] text-amber-600">
+                            Ada perubahan belum disimpan.
+                        </span>
                     )}
                 </div>
 
                 {rows.length === 0 ? (
                     <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                        Belum ada lokasi patroli. Tambahkan lewat Master K3 &amp; Keamanan → Lokasi Patroli.
+                        Belum ada lokasi patroli. Tambahkan lewat Master K3
+                        &amp; Keamanan → Lokasi Patroli.
                     </div>
+                ) : compact ? (
+                    <MobileMatrixForm<GridRow>
+                        columns={Array.from({ length: days }, (_, i) => ({
+                            key: `day_${i + 1}`,
+                            label: String(i + 1),
+                        }))}
+                        rows={rows}
+                        rowKey={(row) => row.location_id}
+                        rowLabel={(row) => row.location_name}
+                        rowSub={(row) =>
+                            `Total bulan ini: ${rowTotal(row, days)}`
+                        }
+                        value={(row, column) =>
+                            row[column] === null || row[column] === undefined
+                                ? ''
+                                : String(row[column])
+                        }
+                        onChange={(index, column, value) => {
+                            setRows((current) =>
+                                current.map((row, i) =>
+                                    i === index
+                                        ? { ...row, [column]: value }
+                                        : row,
+                                ),
+                            );
+                            setDirty(true);
+                        }}
+                        readOnly={!can_write}
+                    />
                 ) : (
-                    compact ? (
-                        <MobileMatrixForm<GridRow>
-                            columns={Array.from({ length: days }, (_, i) => ({ key: `day_${i + 1}`, label: String(i + 1) }))}
+                    <div
+                        className="operasi-grid overflow-hidden rounded-md border border-border"
+                        onPaste={onPaste}
+                    >
+                        <style>{OPERASI_GRID_STYLES}</style>
+                        <DataGrid
+                            className="rdg-light"
+                            style={{ blockSize: `${gridHeight}px` }}
+                            columns={columns}
                             rows={rows}
-                            rowKey={(row) => row.location_id}
-                            rowLabel={(row) => row.location_name}
-                            rowSub={(row) => `Total bulan ini: ${rowTotal(row, days)}`}
-                            value={(row, column) => (row[column] === null || row[column] === undefined ? '' : String(row[column]))}
-                            onChange={(index, column, value) => {
-                                setRows((current) => current.map((row, i) => (i === index ? { ...row, [column]: value } : row)));
+                            rowKeyGetter={(row) => row.location_id}
+                            onRowsChange={(next) => {
+                                setRows(next);
                                 setDirty(true);
                             }}
-                            readOnly={!can_write}
+                            onSelectedCellChange={onSelectedCellChange}
                         />
-                    ) : (
-                        <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
-                            <style>{OPERASI_GRID_STYLES}</style>
-                            <DataGrid
-                                className="rdg-light"
-                                style={{ blockSize: `${gridHeight}px` }}
-                                columns={columns}
-                                rows={rows}
-                                rowKeyGetter={(row) => row.location_id}
-                                onRowsChange={(next) => {
-                                    setRows(next);
-                                    setDirty(true);
-                                }}
-                                onSelectedCellChange={onSelectedCellChange}
-                            />
-                        </div>
-                    )
+                    </div>
                 )}
             </div>
         </>

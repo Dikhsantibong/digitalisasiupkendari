@@ -13,7 +13,17 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -27,7 +37,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
+import {
+    useCompactLayout,
+    useSimplifiedMobileInput,
+} from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanMetodePengujian from '@/routes/k3/pengusahaan/metode-pengujian';
@@ -109,23 +122,39 @@ const PRINT_CSS = `
 `;
 
 export default function PengusahaanMetodePengujianPage(props: Props) {
-    const { unit, filters, options, rows: initialRows, meta: initialMeta, can_write } = props;
+    const {
+        unit,
+        filters,
+        options,
+        rows: initialRows,
+        meta: initialMeta,
+        can_write,
+    } = props;
 
-    const [keyCounter, setKeyCounter] = useState<number>(() => initialRows.length + 10);
+    const [keyCounter, setKeyCounter] = useState<number>(
+        () => initialRows.length + 10,
+    );
     const [rows, setRows] = useState<Row[]>(() =>
         initialRows.map((r, i) => ({ ...r, _key: i + 1 })),
     );
     const [meta, setMeta] = useState<MetaData>(() => initialMeta);
     const [dirty, setDirty] = useState<boolean>(false);
     const [saving, setSaving] = useState<boolean>(false);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
     const testOptions = options.answers?.length
         ? options.answers
         : ['-', 'Memenuhi', 'Belum Memenuhi', 'Tidak Memenuhi', 'N/A'];
 
     const navigatePeriod = (patch: Partial<Props['filters']>) => {
-        if (dirty && !window.confirm('Ada perubahan belum disimpan. Yakin ingin berpindah halaman?')) {
+        if (
+            dirty &&
+            !window.confirm(
+                'Ada perubahan belum disimpan. Yakin ingin berpindah halaman?',
+            )
+        ) {
             return;
         }
 
@@ -136,14 +165,21 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
         );
     };
 
-    const updateRow = <K extends keyof RowData>(key: number, field: K, val: RowData[K]) => {
+    const updateRow = <K extends keyof RowData>(
+        key: number,
+        field: K,
+        val: RowData[K],
+    ) => {
         setRows((prev) =>
             prev.map((r) => (r._key === key ? { ...r, [field]: val } : r)),
         );
         setDirty(true);
     };
 
-    const updateMeta = <K extends keyof MetaData>(field: K, val: MetaData[K]) => {
+    const updateMeta = <K extends keyof MetaData>(
+        field: K,
+        val: MetaData[K],
+    ) => {
         setMeta((prev) => ({ ...prev, [field]: val }));
         setDirty(true);
     };
@@ -191,7 +227,11 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
     };
 
     const resetChanges = () => {
-        if (window.confirm('Batalkan seluruh perubahan dan kembalikan ke data tersimpan?')) {
+        if (
+            window.confirm(
+                'Batalkan seluruh perubahan dan kembalikan ke data tersimpan?',
+            )
+        ) {
             setRows(initialRows.map((r, i) => ({ ...r, _key: i + 1 })));
             setMeta(initialMeta);
             setDirty(false);
@@ -214,7 +254,8 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                 year: filters.year,
                 rows: rows.map((r, idx) => ({
                     no_urut: r.no_urut || String(idx + 1),
-                    nama_peralatan: r.nama_peralatan.trim() || `Peralatan ${idx + 1}`,
+                    nama_peralatan:
+                        r.nama_peralatan.trim() || `Peralatan ${idx + 1}`,
                     no_pengesahan: r.no_pengesahan || '-',
                     nama_kategori_alat: r.nama_kategori_alat || '-',
                     uji_visual: r.uji_visual || '-',
@@ -267,9 +308,147 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
         };
     }, [rows]);
 
+    if (compact) {
+        return (
+            <>
+                <Head
+                    title={`Formulir Metode Pengujian Peralatan — ${unit.name}`}
+                />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Metode Pengujian"
+                        backHref={k3Pengusahaan.index('formulir').url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        unitLabel="Unit Pembangkit"
+                        onUnitChange={(v) => navigatePeriod({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => navigatePeriod({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => navigatePeriod({ year: v })}
+                    />
+
+                    <MobileRowEditor<Row>
+                        rows={rows}
+                        rowKey={(r) => r._key}
+                        title={(r) =>
+                            r.nama_peralatan || `Peralatan #${r.no_urut}`
+                        }
+                        subtitle={(r) =>
+                            `${r.nama_kategori_alat || '-'} · ${r.uji_visual || '-'} · ${r.uji_fungsi || '-'}`
+                        }
+                        canWrite={can_write}
+                        removeLabel="Hapus baris"
+                        fields={[
+                            {
+                                key: 'nama_peralatan',
+                                label: 'Nama Peralatan',
+                                placeholder: 'Mis. Crane / Tangki',
+                            },
+                            { key: 'no_pengesahan', label: 'No. Pengesahan' },
+                            {
+                                key: 'nama_kategori_alat',
+                                label: 'Kategori Alat',
+                            },
+                            ...TEST_COLUMNS.map(({ field, label }, i) => ({
+                                key: field,
+                                label,
+                                type: 'dropdown' as const,
+                                options: testOptions,
+                                group: i === 0 ? 'Metode Pengujian' : undefined,
+                            })),
+                            {
+                                key: 'sertifikasi_terakhir',
+                                label: 'Sertifikasi Terakhir',
+                                group: 'Sertifikasi',
+                            },
+                            {
+                                key: 'sertifikasi_ulang',
+                                label: 'Sertifikasi Ulang',
+                            },
+                            {
+                                key: 'keterangan',
+                                label: 'Keterangan',
+                                type: 'textarea',
+                            },
+                        ]}
+                        onChange={(idx, key, value) =>
+                            updateRow(
+                                rows[idx]._key,
+                                key as keyof RowData,
+                                String(value ?? ''),
+                            )
+                        }
+                        onRemove={(idx) => deleteRow(rows[idx]._key)}
+                    />
+
+                    <K3MobileMetaAccordion
+                        noDokumen={meta.nomor_dokumen}
+                        revisi={meta.revisi}
+                        tanggalDokumen={meta.tanggal_terbit}
+                        onNoDokumenChange={(v) =>
+                            updateMeta('nomor_dokumen', v)
+                        }
+                        onRevisiChange={(v) => updateMeta('revisi', v)}
+                        onTanggalDokumenChange={(v) =>
+                            updateMeta('tanggal_terbit', v)
+                        }
+                        canWrite={can_write}
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={meta.catatan}
+                                onChange={(e) =>
+                                    updateMeta('catatan', e.target.value)
+                                }
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan metode pengujian…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={addRow}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
-            <Head title={`Formulir Metode Pengujian Peralatan — ${unit.name}`} />
+            <Head
+                title={`Formulir Metode Pengujian Peralatan — ${unit.name}`}
+            />
             <style>{PRINT_CSS}</style>
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -279,7 +458,9 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => router.get(k3Pengusahaan.index('formulir').url)}
+                            onClick={() =>
+                                router.get(k3Pengusahaan.index('formulir').url)
+                            }
                             title="Kembali ke Formulir K3"
                         >
                             <ArrowLeft className="size-4" />
@@ -289,7 +470,10 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                 <h1 className="text-xl font-bold text-foreground">
                                     Formulir Metode Pengujian Peralatan
                                 </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/30 bg-primary/10 text-primary"
+                                >
                                     {unit.name}
                                 </Badge>
                                 <Badge variant="secondary" className="text-xs">
@@ -297,7 +481,9 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Metode pemeriksaan, pengujian berkala, dan verifikasi sertifikasi peralatan keselamatan kerja.
+                                Akses 2 — Metode pemeriksaan, pengujian berkala,
+                                dan verifikasi sertifikasi peralatan keselamatan
+                                kerja.
                             </p>
                         </div>
                     </div>
@@ -355,20 +541,35 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                     <OperasiSelect
                         label="Unit Pembangkit"
                         value={String(filters.unit_id)}
-                        onChange={(value) => navigatePeriod({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        onChange={(value) =>
+                            navigatePeriod({ unit_id: Number(value) })
+                        }
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
-                        onChange={(value) => navigatePeriod({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                        onChange={(value) =>
+                            navigatePeriod({ month: Number(value) })
+                        }
+                        options={OPERASI_MONTHS.map((label, idx) => ({
+                            value: String(idx + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
-                        onChange={(value) => navigatePeriod({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        onChange={(value) =>
+                            navigatePeriod({ year: Number(value) })
+                        }
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                     {dirty && (
                         <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -420,7 +621,9 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                             alt="PLN Nusantara Power"
                                             className="mx-auto max-h-12 object-contain"
                                             onError={(e) => {
-                                                (e.target as HTMLElement).style.display = 'none';
+                                                (
+                                                    e.target as HTMLElement
+                                                ).style.display = 'none';
                                             }}
                                         />
                                     </td>
@@ -431,7 +634,8 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                             PT PLN NUSANTARA POWER
                                         </div>
                                         <div className="text-xs font-bold text-foreground uppercase">
-                                            UNIT LAYANAN PUSAT LISTRIK TENAGA DIESEL {unit.name.toUpperCase()}
+                                            UNIT LAYANAN PUSAT LISTRIK TENAGA
+                                            DIESEL {unit.name.toUpperCase()}
                                         </div>
                                         <div className="mt-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                                             FORMULIR
@@ -442,52 +646,90 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                     </td>
 
                                     {/* Metadata Dokumen Kanan */}
-                                    <td className="w-64 border-l border-black p-1.5 text-left text-[11px] align-middle dark:border-border">
+                                    <td className="w-64 border-l border-black p-1.5 text-left align-middle text-[11px] dark:border-border">
                                         <table className="w-full text-xs">
                                             <tbody>
                                                 <tr>
-                                                    <td className="w-28 py-0.5 font-semibold text-muted-foreground">Nomor Dokumen</td>
-                                                    <td className="py-0.5">:</td>
+                                                    <td className="w-28 py-0.5 font-semibold text-muted-foreground">
+                                                        Nomor Dokumen
+                                                    </td>
+                                                    <td className="py-0.5">
+                                                        :
+                                                    </td>
                                                     <td className="py-0.5 pl-1 font-mono">
                                                         {can_write ? (
                                                             <input
                                                                 type="text"
-                                                                value={meta.nomor_dokumen}
-                                                                onChange={(e) => updateMeta('nomor_dokumen', e.target.value)}
+                                                                value={
+                                                                    meta.nomor_dokumen
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateMeta(
+                                                                        'nomor_dokumen',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
                                                                 placeholder="SMT-FM-AK3-..."
                                                                 className="w-full bg-transparent text-xs focus:outline-none"
                                                             />
                                                         ) : (
-                                                            meta.nomor_dokumen || '-'
+                                                            meta.nomor_dokumen ||
+                                                            '-'
                                                         )}
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="py-0.5 font-semibold text-muted-foreground">Tanggal Terbit</td>
-                                                    <td className="py-0.5">:</td>
+                                                    <td className="py-0.5 font-semibold text-muted-foreground">
+                                                        Tanggal Terbit
+                                                    </td>
+                                                    <td className="py-0.5">
+                                                        :
+                                                    </td>
                                                     <td className="py-0.5 pl-1 font-mono">
                                                         {can_write ? (
                                                             <input
                                                                 type="text"
-                                                                value={meta.tanggal_terbit}
-                                                                onChange={(e) => updateMeta('tanggal_terbit', e.target.value)}
+                                                                value={
+                                                                    meta.tanggal_terbit
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateMeta(
+                                                                        'tanggal_terbit',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
                                                                 placeholder="DD/MM/YYYY"
                                                                 className="w-full bg-transparent text-xs focus:outline-none"
                                                             />
                                                         ) : (
-                                                            meta.tanggal_terbit || '-'
+                                                            meta.tanggal_terbit ||
+                                                            '-'
                                                         )}
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="py-0.5 font-semibold text-muted-foreground">Revisi</td>
-                                                    <td className="py-0.5">:</td>
+                                                    <td className="py-0.5 font-semibold text-muted-foreground">
+                                                        Revisi
+                                                    </td>
+                                                    <td className="py-0.5">
+                                                        :
+                                                    </td>
                                                     <td className="py-0.5 pl-1 font-mono">
                                                         {can_write ? (
                                                             <input
                                                                 type="text"
-                                                                value={meta.revisi}
-                                                                onChange={(e) => updateMeta('revisi', e.target.value)}
+                                                                value={
+                                                                    meta.revisi
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateMeta(
+                                                                        'revisi',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
                                                                 placeholder="00"
                                                                 className="w-full bg-transparent text-xs focus:outline-none"
                                                             />
@@ -497,14 +739,26 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <td className="py-0.5 font-semibold text-muted-foreground">Halaman</td>
-                                                    <td className="py-0.5">:</td>
+                                                    <td className="py-0.5 font-semibold text-muted-foreground">
+                                                        Halaman
+                                                    </td>
+                                                    <td className="py-0.5">
+                                                        :
+                                                    </td>
                                                     <td className="py-0.5 pl-1 font-mono">
                                                         {can_write ? (
                                                             <input
                                                                 type="text"
-                                                                value={meta.halaman}
-                                                                onChange={(e) => updateMeta('halaman', e.target.value)}
+                                                                value={
+                                                                    meta.halaman
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateMeta(
+                                                                        'halaman',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
                                                                 placeholder="1 dari 1"
                                                                 className="w-full bg-transparent text-xs focus:outline-none"
                                                             />
@@ -526,27 +780,69 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                         <table className="excel-sheet metode-table w-full min-w-[1450px] border-collapse text-xs">
                             <thead>
                                 <tr className="metode-th bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:font-bold">
-                                    <th rowSpan={2} className="w-10">No.</th>
-                                    <th rowSpan={2} className="min-w-[180px] text-left">Nama Peralatan</th>
-                                    <th rowSpan={2} className="min-w-[140px] text-left">No. Pengesahan</th>
-                                    <th rowSpan={2} className="min-w-[200px] text-left">NAMA KATEGORI ALAT</th>
-                                    <th colSpan={TEST_COLUMNS.length} className="bg-blue-50/70 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
+                                    <th rowSpan={2} className="w-10">
+                                        No.
+                                    </th>
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[180px] text-left"
+                                    >
+                                        Nama Peralatan
+                                    </th>
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[140px] text-left"
+                                    >
+                                        No. Pengesahan
+                                    </th>
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[200px] text-left"
+                                    >
+                                        NAMA KATEGORI ALAT
+                                    </th>
+                                    <th
+                                        colSpan={TEST_COLUMNS.length}
+                                        className="bg-blue-50/70 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200"
+                                    >
                                         Metode Pemeriksaan
                                     </th>
-                                    <th colSpan={2} className="bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                    <th
+                                        colSpan={2}
+                                        className="bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+                                    >
                                         Sertifikasi Terakhir
                                     </th>
-                                    <th rowSpan={2} className="min-w-[180px] text-left">Keterangan</th>
-                                    {can_write && <th rowSpan={2} className="no-print w-12 text-center">Aksi</th>}
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[180px] text-left"
+                                    >
+                                        Keterangan
+                                    </th>
+                                    {can_write && (
+                                        <th
+                                            rowSpan={2}
+                                            className="no-print w-12 text-center"
+                                        >
+                                            Aksi
+                                        </th>
+                                    )}
                                 </tr>
                                 <tr className="metode-th bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-1.5 [&>th]:text-center [&>th]:text-[11px] [&>th]:font-semibold">
                                     {TEST_COLUMNS.map(({ field, label }) => (
-                                        <th key={field} className="min-w-[105px] bg-blue-50/40 text-center dark:bg-blue-950/20">
+                                        <th
+                                            key={field}
+                                            className="min-w-[105px] bg-blue-50/40 text-center dark:bg-blue-950/20"
+                                        >
                                             {label}
                                         </th>
                                     ))}
-                                    <th className="min-w-[105px] bg-emerald-50/40 text-center dark:bg-emerald-950/20">Terakhir</th>
-                                    <th className="min-w-[105px] bg-emerald-50/40 text-center dark:bg-emerald-950/20">Ulang</th>
+                                    <th className="min-w-[105px] bg-emerald-50/40 text-center dark:bg-emerald-950/20">
+                                        Terakhir
+                                    </th>
+                                    <th className="min-w-[105px] bg-emerald-50/40 text-center dark:bg-emerald-950/20">
+                                        Ulang
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -559,18 +855,33 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                             {can_write ? (
                                                 <input
                                                     type="text"
-                                                    value={row.no_urut ?? String(idx + 1)}
-                                                    onChange={(e) => updateRow(row._key, 'no_urut', e.target.value)}
+                                                    value={
+                                                        row.no_urut ??
+                                                        String(idx + 1)
+                                                    }
+                                                    onChange={(e) =>
+                                                        updateRow(
+                                                            row._key,
+                                                            'no_urut',
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     className="w-10 text-center text-xs focus:outline-none"
                                                 />
                                             ) : (
-                                                row.no_urut ?? idx + 1
+                                                (row.no_urut ?? idx + 1)
                                             )}
                                         </td>
                                         <td>
                                             <CellInput
                                                 value={row.nama_peralatan}
-                                                onChange={(v) => updateRow(row._key, 'nama_peralatan', v)}
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'nama_peralatan',
+                                                        v,
+                                                    )
+                                                }
                                                 placeholder="Nama peralatan..."
                                                 canWrite={can_write}
                                                 className="font-semibold"
@@ -579,24 +890,48 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                         <td>
                                             <CellInput
                                                 value={row.no_pengesahan ?? '-'}
-                                                onChange={(v) => updateRow(row._key, 'no_pengesahan', v)}
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'no_pengesahan',
+                                                        v,
+                                                    )
+                                                }
                                                 placeholder="No. pengesahan..."
                                                 canWrite={can_write}
                                             />
                                         </td>
                                         <td>
                                             <CellInput
-                                                value={row.nama_kategori_alat ?? '-'}
-                                                onChange={(v) => updateRow(row._key, 'nama_kategori_alat', v)}
+                                                value={
+                                                    row.nama_kategori_alat ??
+                                                    '-'
+                                                }
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'nama_kategori_alat',
+                                                        v,
+                                                    )
+                                                }
                                                 placeholder="Kategori alat..."
                                                 canWrite={can_write}
                                             />
                                         </td>
                                         {TEST_COLUMNS.map(({ field }) => (
-                                            <td key={field} className="text-center">
+                                            <td
+                                                key={field}
+                                                className="text-center"
+                                            >
                                                 <TestCellSelect
                                                     value={row[field]}
-                                                    onChange={(val) => updateRow(row._key, field, val)}
+                                                    onChange={(val) =>
+                                                        updateRow(
+                                                            row._key,
+                                                            field,
+                                                            val,
+                                                        )
+                                                    }
                                                     options={testOptions}
                                                     disabled={!can_write}
                                                 />
@@ -604,8 +939,17 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                         ))}
                                         <td>
                                             <CellInput
-                                                value={row.sertifikasi_terakhir ?? '-'}
-                                                onChange={(v) => updateRow(row._key, 'sertifikasi_terakhir', v)}
+                                                value={
+                                                    row.sertifikasi_terakhir ??
+                                                    '-'
+                                                }
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'sertifikasi_terakhir',
+                                                        v,
+                                                    )
+                                                }
                                                 placeholder="-"
                                                 canWrite={can_write}
                                                 className="text-center"
@@ -613,8 +957,16 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                         </td>
                                         <td>
                                             <CellInput
-                                                value={row.sertifikasi_ulang ?? '-'}
-                                                onChange={(v) => updateRow(row._key, 'sertifikasi_ulang', v)}
+                                                value={
+                                                    row.sertifikasi_ulang ?? '-'
+                                                }
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'sertifikasi_ulang',
+                                                        v,
+                                                    )
+                                                }
                                                 placeholder="-"
                                                 canWrite={can_write}
                                                 className="text-center"
@@ -623,7 +975,13 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                         <td>
                                             <CellInput
                                                 value={row.keterangan ?? ''}
-                                                onChange={(v) => updateRow(row._key, 'keterangan', v)}
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'keterangan',
+                                                        v,
+                                                    )
+                                                }
                                                 placeholder="Catatan..."
                                                 canWrite={can_write}
                                             />
@@ -633,7 +991,9 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => deleteRow(row._key)}
+                                                    onClick={() =>
+                                                        deleteRow(row._key)
+                                                    }
                                                     className="size-7 text-muted-foreground hover:text-destructive"
                                                     title="Hapus baris"
                                                 >
@@ -650,7 +1010,9 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                     {/* Catatan & Legenda Dokumen */}
                     <div className="grid gap-3 border-t border-border p-3 md:grid-cols-2">
                         <div className="space-y-1.5 rounded-md border border-border bg-muted/20 p-3 text-xs">
-                            <span className="font-semibold text-foreground">Legenda Metode Pemeriksaan:</span>
+                            <span className="font-semibold text-foreground">
+                                Legenda Metode Pemeriksaan:
+                            </span>
                             <div className="flex flex-wrap gap-2 text-muted-foreground">
                                 <span className="rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 font-medium text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                                     Memenuhi
@@ -678,14 +1040,17 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                 <Textarea
                                     id="catatan"
                                     value={meta.catatan}
-                                    onChange={(e) => updateMeta('catatan', e.target.value)}
+                                    onChange={(e) =>
+                                        updateMeta('catatan', e.target.value)
+                                    }
                                     placeholder="Tuliskan catatan khusus atau rekomendasi pengujian/sertifikasi..."
                                     rows={3}
                                     className="text-xs"
                                 />
                             ) : (
-                                <p className="italic text-muted-foreground">
-                                    {meta.catatan || 'Tidak ada catatan tambahan.'}
+                                <p className="text-muted-foreground italic">
+                                    {meta.catatan ||
+                                        'Tidak ada catatan tambahan.'}
                                 </p>
                             )}
                         </div>
@@ -714,10 +1079,18 @@ function StatTile({
 
     return (
         <Card className="flex flex-row items-center gap-3 p-3 py-3 shadow-none">
-            <div className={`flex size-8 items-center justify-center rounded-lg ${tone}`}>{icon}</div>
+            <div
+                className={`flex size-8 items-center justify-center rounded-lg ${tone}`}
+            >
+                {icon}
+            </div>
             <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase text-muted-foreground">{label}</div>
-                <div className="truncate text-sm font-bold text-foreground">{value}</div>
+                <div className="text-[10px] font-medium text-muted-foreground uppercase">
+                    {label}
+                </div>
+                <div className="truncate text-sm font-bold text-foreground">
+                    {value}
+                </div>
             </div>
         </Card>
     );
@@ -737,7 +1110,11 @@ function CellInput({
     className?: string;
 }) {
     if (!canWrite) {
-        return <div className={`px-1 py-0.5 text-xs ${className}`}>{value || '-'}</div>;
+        return (
+            <div className={`px-1 py-0.5 text-xs ${className}`}>
+                {value || '-'}
+            </div>
+        );
     }
 
     return (
@@ -807,6 +1184,9 @@ PengusahaanMetodePengujianPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Formulir K3', href: k3Pengusahaan.index('formulir') },
-        { title: 'Metode Pengujian Peralatan', href: k3PengusahaanMetodePengujian.index() },
+        {
+            title: 'Metode Pengujian Peralatan',
+            href: k3PengusahaanMetodePengujian.index(),
+        },
     ],
 };

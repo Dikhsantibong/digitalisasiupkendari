@@ -61,10 +61,16 @@ class AttendanceRoster
             Employee::POSITION_HARLIST,
             Employee::POSITION_ASME,
         ]);
+        $fallbackOrder = count($order);
 
-        return $query->whereNull('regu')->whereIn('position', array_keys($order))
-            ->orderBy('name')->get(['id', 'name', 'nip', 'position', 'regu', 'is_shift_leader'])
-            ->sortBy(fn (Employee $e): int => $order[$e->position] ?? PHP_INT_MAX)
+        return $query->whereNull('regu')
+            ->with('user')
+            ->orderBy('name')
+            ->get(['id', 'name', 'nip', 'position', 'regu', 'is_shift_leader', 'user_id', 'division'])
+            ->filter(fn (Employee $e): bool => isset($order[(string) $e->position])
+                || Employee::isHarFieldPosition($e->position)
+                || ($e->user !== null && $e->user->isHarFieldAccount()))
+            ->sortBy(fn (Employee $e): int => $order[(string) $e->position] ?? $fallbackOrder)
             ->values();
     }
 

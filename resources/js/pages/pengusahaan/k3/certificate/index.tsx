@@ -1,10 +1,30 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
+import {
+    ArrowLeft,
+    Plus,
+    Printer,
+    RotateCcw,
+    Save,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanCertificate from '@/routes/k3/pengusahaan/certificate';
@@ -74,7 +94,8 @@ const blank = (key: number): Row => ({
     keterangan: null,
 });
 
-const hydrate = (rows: RowData[]): Row[] => rows.map((r, i) => ({ ...r, _key: i }));
+const hydrate = (rows: RowData[]): Row[] =>
+    rows.map((r, i) => ({ ...r, _key: i }));
 
 const PRINT_CSS = `
 @media print {
@@ -92,7 +113,8 @@ const PRINT_CSS = `
 type StatusKey = 'AKTIF' | 'EXPIRED' | 'BELUM';
 
 const statusOf = (r: Row): StatusKey => {
-    const certified = r.ijin_awal_tanggal || r.uji_terakhir_tanggal || r.uji_ulang_tanggal;
+    const certified =
+        r.ijin_awal_tanggal || r.uji_terakhir_tanggal || r.uji_ulang_tanggal;
 
     if (!certified) {
         return 'BELUM';
@@ -125,6 +147,7 @@ export default function PengusahaanCertificateIndex({
     const [nextKey, setNextKey] = useState(initialRows.length);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
 
     const signature = String(filters.unit_id);
     const [sig, setSig] = useState(signature);
@@ -137,12 +160,18 @@ export default function PengusahaanCertificateIndex({
     }
 
     const update = (key: number, field: TextField, value: string) => {
-        setRows((p) => p.map((r) => (r._key === key ? { ...r, [field]: value } : r)));
+        setRows((p) =>
+            p.map((r) => (r._key === key ? { ...r, [field]: value } : r)),
+        );
         setDirty(true);
     };
 
     const updateCategory = (key: number, value: string) => {
-        setRows((p) => p.map((r) => (r._key === key ? { ...r, category_code: value || null } : r)));
+        setRows((p) =>
+            p.map((r) =>
+                r._key === key ? { ...r, category_code: value || null } : r,
+            ),
+        );
         setDirty(true);
     };
 
@@ -187,7 +216,8 @@ export default function PengusahaanCertificateIndex({
                     uji_ulang_tanggal: r.uji_ulang_tanggal || null,
                     batasan_uji: r.batasan_uji,
                     masa_berlaku_tahun:
-                        r.masa_berlaku_tahun === '' || r.masa_berlaku_tahun === null
+                        r.masa_berlaku_tahun === '' ||
+                        r.masa_berlaku_tahun === null
                             ? null
                             : Number(r.masa_berlaku_tahun),
                     keterangan: r.keterangan,
@@ -216,9 +246,167 @@ export default function PengusahaanCertificateIndex({
     const thBase =
         'cert-th border border-black bg-yellow-200 p-1 text-center text-[10px] font-bold text-slate-900';
 
+    if (compact) {
+        return (
+            <>
+                <Head
+                    title={`Daftar Monitoring Sertifikasi Peralatan — ${unit.name}`}
+                />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Sertifikasi Peralatan"
+                        backHref={k3Pengusahaan.index('input').url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        unitLabel="Unit Pembangkit"
+                        onUnitChange={(v) =>
+                            router.get(
+                                k3PengusahaanCertificate.index().url,
+                                { unit_id: v },
+                                { preserveState: true, replace: true },
+                            )
+                        }
+                    />
+
+                    <MobileRowEditor<Row>
+                        rows={rows}
+                        rowKey={(r) => r._key}
+                        title={(r) =>
+                            r.jenis ||
+                            options.categories.find(
+                                (c) => c.code === r.category_code,
+                            )?.name ||
+                            'Peralatan baru'
+                        }
+                        subtitle={(r) => `${r.no_seri || '-'} · ${statusOf(r)}`}
+                        canWrite={can_write}
+                        removeLabel="Hapus baris"
+                        fields={[
+                            {
+                                key: 'category_code',
+                                label: 'Kategori Alat',
+                                type: 'dropdown',
+                                options: options.categories.map((c) => c.code),
+                                optionLabels: Object.fromEntries(
+                                    options.categories.map((c) => [
+                                        c.code,
+                                        c.name,
+                                    ]),
+                                ),
+                                group: 'Peralatan',
+                            },
+                            { key: 'jenis', label: 'Jenis / Tipe Alat' },
+                            { key: 'kapasitas', label: 'Kapasitas' },
+                            { key: 'lokasi', label: 'Lokasi' },
+                            {
+                                key: 'merk_manufacture',
+                                label: 'Merk / Manufacture',
+                            },
+                            { key: 'no_seri', label: 'No. Seri' },
+                            {
+                                key: 'regulasi',
+                                label: 'Regulasi',
+                                group: 'Perizinan & Uji',
+                            },
+                            { key: 'ijin_awal_nomor', label: 'No. Izin Awal' },
+                            {
+                                key: 'ijin_awal_tanggal',
+                                label: 'Tgl Izin Awal',
+                                type: 'date',
+                            },
+                            {
+                                key: 'uji_terakhir_nomor',
+                                label: 'No. Uji Terakhir',
+                            },
+                            {
+                                key: 'uji_terakhir_tanggal',
+                                label: 'Tgl Uji Terakhir',
+                                type: 'date',
+                            },
+                            {
+                                key: 'uji_ulang_tanggal',
+                                label: 'Tgl Uji Ulang',
+                                type: 'date',
+                            },
+                            { key: 'batasan_uji', label: 'Batasan Uji' },
+                            {
+                                key: 'masa_berlaku_tahun',
+                                label: 'Masa Berlaku (Thn)',
+                                type: 'number',
+                                parse: (v) => (v === '' ? null : Number(v)),
+                            },
+                            {
+                                key: 'keterangan',
+                                label: 'Status',
+                                type: 'display',
+                                display: (r) => statusOf(r),
+                            },
+                        ]}
+                        onChange={(idx, key, value) => {
+                            const row = rows[idx];
+
+                            if (key === 'category_code') {
+                                updateCategory(row._key, String(value ?? ''));
+                            } else if (key === 'masa_berlaku_tahun') {
+                                setRows((p) =>
+                                    p.map((r) =>
+                                        r._key === row._key
+                                            ? {
+                                                  ...r,
+                                                  masa_berlaku_tahun: value as
+                                                      number | null,
+                                              }
+                                            : r,
+                                    ),
+                                );
+                                setDirty(true);
+                            } else {
+                                update(
+                                    row._key,
+                                    key as TextField,
+                                    String(value ?? ''),
+                                );
+                            }
+                        }}
+                        onRemove={(idx) => removeRow(rows[idx]._key)}
+                    />
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={addRow}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
-            <Head title={`Daftar Monitoring Sertifikasi Peralatan — ${unit.name}`} />
+            <Head
+                title={`Daftar Monitoring Sertifikasi Peralatan — ${unit.name}`}
+            />
             <style>{PRINT_CSS}</style>
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -228,7 +416,9 @@ export default function PengusahaanCertificateIndex({
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => router.get(k3Pengusahaan.index('input').url)}
+                            onClick={() =>
+                                router.get(k3Pengusahaan.index('input').url)
+                            }
                             title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
@@ -238,12 +428,18 @@ export default function PengusahaanCertificateIndex({
                                 <h1 className="text-xl font-bold text-foreground">
                                     Daftar Monitoring Sertifikasi Peralatan
                                 </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/30 bg-primary/10 text-primary"
+                                >
                                     {unit.name}
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Data sertifikat &amp; pengujian alat (crane, tangki timbun, instalasi penyalur petir, dll.). Status AKTIF/EXPIRED/BELUM dihitung otomatis dari tanggal pengujian ulang.
+                                Data sertifikat &amp; pengujian alat (crane,
+                                tangki timbun, instalasi penyalur petir, dll.).
+                                Status AKTIF/EXPIRED/BELUM dihitung otomatis
+                                dari tanggal pengujian ulang.
                             </p>
                         </div>
                     </div>
@@ -308,7 +504,10 @@ export default function PengusahaanCertificateIndex({
                                 { preserveState: true, replace: true },
                             )
                         }
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     {dirty && (
                         <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -331,7 +530,9 @@ export default function PengusahaanCertificateIndex({
                                             alt="PLN Nusantara Power"
                                             className="mx-auto max-h-12 object-contain"
                                             onError={(e) => {
-                                                (e.target as HTMLElement).style.display = 'none';
+                                                (
+                                                    e.target as HTMLElement
+                                                ).style.display = 'none';
                                             }}
                                         />
                                     </td>
@@ -343,7 +544,8 @@ export default function PengusahaanCertificateIndex({
                                             UNIT PEMBANGKITAN KENDARI
                                         </div>
                                         <div className="text-[11px] font-semibold text-foreground uppercase">
-                                            UNIT LAYANAN PUSAT LISTRIK TENAGA DIESEL {unit.name.toUpperCase()}
+                                            UNIT LAYANAN PUSAT LISTRIK TENAGA
+                                            DIESEL {unit.name.toUpperCase()}
                                         </div>
                                     </td>
                                     <td className="w-40 border-l border-black p-2 text-center align-middle dark:border-border">
@@ -352,7 +554,9 @@ export default function PengusahaanCertificateIndex({
                                             alt="Logo K3"
                                             className="mx-auto max-h-12 object-contain"
                                             onError={(e) => {
-                                                (e.target as HTMLElement).style.display = 'none';
+                                                (
+                                                    e.target as HTMLElement
+                                                ).style.display = 'none';
                                             }}
                                         />
                                     </td>
@@ -375,10 +579,16 @@ export default function PengusahaanCertificateIndex({
                                     <th rowSpan={2} className={`${thBase} w-8`}>
                                         NO
                                     </th>
-                                    <th rowSpan={2} className={`${thBase} min-w-40 text-left`}>
+                                    <th
+                                        rowSpan={2}
+                                        className={`${thBase} min-w-40 text-left`}
+                                    >
                                         NAMA KATEGORI ALAT
                                     </th>
-                                    <th rowSpan={2} className={`${thBase} min-w-32`}>
+                                    <th
+                                        rowSpan={2}
+                                        className={`${thBase} min-w-32`}
+                                    >
                                         JENIS
                                     </th>
                                     <th rowSpan={2} className={thBase}>
@@ -393,7 +603,10 @@ export default function PengusahaanCertificateIndex({
                                     <th rowSpan={2} className={thBase}>
                                         NO. SERI ALAT
                                     </th>
-                                    <th rowSpan={2} className={`${thBase} min-w-40`}>
+                                    <th
+                                        rowSpan={2}
+                                        className={`${thBase} min-w-40`}
+                                    >
                                         REGULASI PERATURAN
                                     </th>
                                     <th colSpan={2} className={thBase}>
@@ -411,11 +624,17 @@ export default function PengusahaanCertificateIndex({
                                     <th rowSpan={2} className={thBase}>
                                         BATASAN UJI
                                     </th>
-                                    <th rowSpan={2} className={`${thBase} min-w-32`}>
+                                    <th
+                                        rowSpan={2}
+                                        className={`${thBase} min-w-32`}
+                                    >
                                         KETERANGAN
                                     </th>
                                     {can_write && (
-                                        <th rowSpan={2} className={`${thBase} no-print w-10`}>
+                                        <th
+                                            rowSpan={2}
+                                            className={`${thBase} no-print w-10`}
+                                        >
                                             Aksi
                                         </th>
                                     )}
@@ -434,7 +653,8 @@ export default function PengusahaanCertificateIndex({
                                             colSpan={can_write ? 17 : 16}
                                             className="border border-black p-4 text-center text-muted-foreground"
                                         >
-                                            Belum ada data. Klik &quot;Tambah Baris&quot; untuk menambahkan.
+                                            Belum ada data. Klik &quot;Tambah
+                                            Baris&quot; untuk menambahkan.
                                         </td>
                                     </tr>
                                 ) : (
@@ -446,52 +666,139 @@ export default function PengusahaanCertificateIndex({
                                                 key={r._key}
                                                 className="transition-colors hover:bg-muted/10 [&>td]:border [&>td]:border-black [&>td]:p-1"
                                             >
-                                                <td className="text-center font-bold">{i + 1}</td>
+                                                <td className="text-center font-bold">
+                                                    {i + 1}
+                                                </td>
                                                 <td className="min-w-40">
                                                     {can_write ? (
-                                                        <Select value={r.category_code || '__none__'} onValueChange={(value) => updateCategory(r._key, value === '__none__' ? '' : value)}>
+                                                        <Select
+                                                            value={
+                                                                r.category_code ||
+                                                                '__none__'
+                                                            }
+                                                            onValueChange={(
+                                                                value,
+                                                            ) =>
+                                                                updateCategory(
+                                                                    r._key,
+                                                                    value ===
+                                                                        '__none__'
+                                                                        ? ''
+                                                                        : value,
+                                                                )
+                                                            }
+                                                        >
                                                             <SelectTrigger className="h-7 w-full rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1">
                                                                 <SelectValue />
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="__none__" className="text-xs text-muted-foreground">— pilih —</SelectItem>
-                                                                {options.categories.map((c) => (
-                                                                    <SelectItem key={c.code} value={c.code} className="text-xs">
-                                                                        {c.name}
-                                                                    </SelectItem>
-                                                                ))}
+                                                                <SelectItem
+                                                                    value="__none__"
+                                                                    className="text-xs text-muted-foreground"
+                                                                >
+                                                                    — pilih —
+                                                                </SelectItem>
+                                                                {options.categories.map(
+                                                                    (c) => (
+                                                                        <SelectItem
+                                                                            key={
+                                                                                c.code
+                                                                            }
+                                                                            value={
+                                                                                c.code
+                                                                            }
+                                                                            className="text-xs"
+                                                                        >
+                                                                            {
+                                                                                c.name
+                                                                            }
+                                                                        </SelectItem>
+                                                                    ),
+                                                                )}
                                                             </SelectContent>
                                                         </Select>
                                                     ) : (
                                                         <span className="text-xs">
-                                                            {options.categories.find((c) => c.code === r.category_code)
-                                                                ?.name ??
+                                                            {options.categories.find(
+                                                                (c) =>
+                                                                    c.code ===
+                                                                    r.category_code,
+                                                            )?.name ??
                                                                 r.category_code ??
                                                                 '-'}
                                                         </span>
                                                     )}
                                                 </td>
-                                                <td className="min-w-32">{txt(r, 'jenis')}</td>
-                                                <td className="min-w-24">{txt(r, 'kapasitas')}</td>
-                                                <td className="min-w-24">{txt(r, 'lokasi')}</td>
-                                                <td className="min-w-28">{txt(r, 'merk_manufacture')}</td>
-                                                <td className="min-w-28">{txt(r, 'no_seri')}</td>
-                                                <td className="min-w-40">{txt(r, 'regulasi')}</td>
-                                                <td className="min-w-24">{txt(r, 'ijin_awal_nomor')}</td>
-                                                <td className="min-w-32">{txt(r, 'ijin_awal_tanggal', 'date')}</td>
-                                                <td className="min-w-24">{txt(r, 'uji_terakhir_nomor')}</td>
-                                                <td className="min-w-32">{txt(r, 'uji_terakhir_tanggal', 'date')}</td>
-                                                <td className="min-w-32">{txt(r, 'uji_ulang_tanggal', 'date')}</td>
-                                                <td className={`text-center text-xs ${STATUS_CLASS[st]}`}>{st}</td>
-                                                <td className="min-w-24">{txt(r, 'batasan_uji')}</td>
-                                                <td className="min-w-32">{txt(r, 'keterangan')}</td>
+                                                <td className="min-w-32">
+                                                    {txt(r, 'jenis')}
+                                                </td>
+                                                <td className="min-w-24">
+                                                    {txt(r, 'kapasitas')}
+                                                </td>
+                                                <td className="min-w-24">
+                                                    {txt(r, 'lokasi')}
+                                                </td>
+                                                <td className="min-w-28">
+                                                    {txt(r, 'merk_manufacture')}
+                                                </td>
+                                                <td className="min-w-28">
+                                                    {txt(r, 'no_seri')}
+                                                </td>
+                                                <td className="min-w-40">
+                                                    {txt(r, 'regulasi')}
+                                                </td>
+                                                <td className="min-w-24">
+                                                    {txt(r, 'ijin_awal_nomor')}
+                                                </td>
+                                                <td className="min-w-32">
+                                                    {txt(
+                                                        r,
+                                                        'ijin_awal_tanggal',
+                                                        'date',
+                                                    )}
+                                                </td>
+                                                <td className="min-w-24">
+                                                    {txt(
+                                                        r,
+                                                        'uji_terakhir_nomor',
+                                                    )}
+                                                </td>
+                                                <td className="min-w-32">
+                                                    {txt(
+                                                        r,
+                                                        'uji_terakhir_tanggal',
+                                                        'date',
+                                                    )}
+                                                </td>
+                                                <td className="min-w-32">
+                                                    {txt(
+                                                        r,
+                                                        'uji_ulang_tanggal',
+                                                        'date',
+                                                    )}
+                                                </td>
+                                                <td
+                                                    className={`text-center text-xs ${STATUS_CLASS[st]}`}
+                                                >
+                                                    {st}
+                                                </td>
+                                                <td className="min-w-24">
+                                                    {txt(r, 'batasan_uji')}
+                                                </td>
+                                                <td className="min-w-32">
+                                                    {txt(r, 'keterangan')}
+                                                </td>
                                                 {can_write && (
                                                     <td className="no-print text-center">
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             className="size-7 text-muted-foreground hover:text-destructive"
-                                                            onClick={() => removeRow(r._key)}
+                                                            onClick={() =>
+                                                                removeRow(
+                                                                    r._key,
+                                                                )
+                                                            }
                                                             title="Hapus baris ini"
                                                         >
                                                             <Trash2 className="size-4" />
@@ -509,21 +816,35 @@ export default function PengusahaanCertificateIndex({
 
                 {/* NB legend */}
                 <div className="rounded-md border border-border bg-card p-3 text-[12px] text-muted-foreground">
-                    <p className="font-semibold text-foreground">NB : Keterangan Status</p>
+                    <p className="font-semibold text-foreground">
+                        NB : Keterangan Status
+                    </p>
                     <ul className="mt-1 space-y-0.5">
                         <li>
-                            <span className="font-bold text-emerald-700 dark:text-emerald-400">AKTIF</span> — Sudah tersertifikasi dan sertifikat masih berlaku.
+                            <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                                AKTIF
+                            </span>{' '}
+                            — Sudah tersertifikasi dan sertifikat masih berlaku.
                         </li>
                         <li>
-                            <span className="font-bold text-rose-700 dark:text-rose-400">EXPIRED</span> — Sudah tersertifikasi namun sertifikat sudah tidak berlaku.
+                            <span className="font-bold text-rose-700 dark:text-rose-400">
+                                EXPIRED
+                            </span>{' '}
+                            — Sudah tersertifikasi namun sertifikat sudah tidak
+                            berlaku.
                         </li>
                         <li>
-                            <span className="font-bold text-amber-700 dark:text-amber-400">BELUM</span> — Peralatan belum sama sekali dilakukan sertifikasi.
+                            <span className="font-bold text-amber-700 dark:text-amber-400">
+                                BELUM
+                            </span>{' '}
+                            — Peralatan belum sama sekali dilakukan sertifikasi.
                         </li>
                     </ul>
                     {options.categories.length > 0 && (
                         <p className="mt-2 text-xs">
-                            Kategori alat diambil dari master kategori. Tanggal berformat YYYY-MM-DD; status dihitung otomatis dari tanggal Pengujian Ulang.
+                            Kategori alat diambil dari master kategori. Tanggal
+                            berformat YYYY-MM-DD; status dihitung otomatis dari
+                            tanggal Pengujian Ulang.
                         </p>
                     )}
                 </div>
@@ -535,7 +856,13 @@ export default function PengusahaanCertificateIndex({
 PengusahaanCertificateIndex.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Input K3 & Keamanan', href: k3Pengusahaan.index('input').url },
-        { title: 'Daftar Sertifikasi Peralatan', href: k3PengusahaanCertificate.index().url },
+        {
+            title: 'Input K3 & Keamanan',
+            href: k3Pengusahaan.index('input').url,
+        },
+        {
+            title: 'Daftar Sertifikasi Peralatan',
+            href: k3PengusahaanCertificate.index().url,
+        },
     ],
 };

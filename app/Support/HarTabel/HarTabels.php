@@ -10,7 +10,6 @@ final class HarTabels
     /** @var list<class-string<HarTabel>> */
     public const ALL = [
         RekapGangguanTabel::class,
-        AbnormalGangguanTabel::class,
     ];
 
     /**

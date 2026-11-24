@@ -51,7 +51,35 @@ class HarFormulirPengusahaanTest extends TestCase
 
         $this->seedAccessControl();
         $this->unit = Unit::factory()->create(['is_active' => true]);
-        $this->machine = Machine::factory()->create(['unit_id' => $this->unit->id, 'name' => 'MIRRLEES #3', 'is_active' => true]);
+        $this->machine = Machine::factory()->create([
+            'unit_id' => $this->unit->id,
+            'name' => 'MIRRLEES #3',
+            'merk' => 'MIRRLEES #3',
+            'type' => 'ESL 16 MK 2',
+            'serial_number' => '01-99-88',
+            'capacity_kw' => 2.00,
+            'engine_rpm' => 750,
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_machine_identity_is_automatically_pulled_from_master_machine(): void
+    {
+        $tl = $this->userWithRole(RoleName::TeamLeaderPemeliharaan, $this->unit);
+        $query = ['unit_id' => $this->unit->id, 'machine_id' => $this->machine->id, 'test_date' => '2026-09-10'];
+
+        $this->actingAs($tl)
+            ->get(route('har.pengusahaan.crankshaft-deflection.index', $query))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('form.brand', 'MIRRLEES #3')
+                ->where('form.model_type', 'ESL 16 MK 2')
+                ->where('form.serial_number', '01-99-88')
+                ->where('form.machine_number', '3')
+                ->where('form.installed_power', '2.00')
+                ->where('form.capable_power', '1.80')
+                ->where('form.rpm', '750')
+            );
     }
 
     public function test_every_formulir_opens_saves_and_prints_for_the_team_leader(): void

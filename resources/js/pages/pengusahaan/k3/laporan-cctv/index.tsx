@@ -12,10 +12,24 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
+import { dmyToIso, isoToDmy } from '@/components/pengusahaan/k3-cells';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanLaporanCctv from '@/routes/k3/pengusahaan/laporan-cctv';
 import type { IdName } from '@/types';
@@ -103,14 +117,16 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
 
     const [noDokumen, setNoDokumen] = useState(initialRecord.no_dokumen);
     const [revisi, setRevisi] = useState(initialRecord.revisi);
-    const [tanggalDokumen, setTanggalDokumen] = useState(initialRecord.tanggal_dokumen);
+    const [tanggalDokumen, setTanggalDokumen] = useState(
+        initialRecord.tanggal_dokumen,
+    );
     const [catatan, setCatatan] = useState(initialRecord.catatan);
 
     const [items, setItems] = useState<LaporanCctvItem[]>(() =>
         initialRecord.items.map((it, idx) => ({
             ...it,
             _key: idx + 1,
-            no_urut: it.no_urut ?? (idx + 1),
+            no_urut: it.no_urut ?? idx + 1,
             lokasi_cctv: it.lokasi_cctv || DEFAULT_8_POINTS,
             waktu_pantau: it.waktu_pantau || 'Setiap Saat',
             kondisi_pantau: it.kondisi_pantau || 'Aman',
@@ -121,10 +137,15 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
     const [nextKey, setNextKey] = useState(initialRecord.items.length + 10);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', val: string) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        val: string,
+    ) => {
         router.get(
             k3PengusahaanLaporanCctv.index().url,
             {
@@ -138,15 +159,22 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
         );
     };
 
-    const updateItem = (key: number, field: keyof LaporanCctvItem, value: unknown) => {
+    const updateItem = (
+        key: number,
+        field: keyof LaporanCctvItem,
+        value: unknown,
+    ) => {
         setItems((prev) =>
-            prev.map((it) => (it._key === key ? { ...it, [field]: value } : it)),
+            prev.map((it) =>
+                it._key === key ? { ...it, [field]: value } : it,
+            ),
         );
         setDirty(true);
     };
 
     const addItem = () => {
-        const nextNo = items.length > 0 ? Math.max(...items.map((i) => i.no_urut)) + 1 : 1;
+        const nextNo =
+            items.length > 0 ? Math.max(...items.map((i) => i.no_urut)) + 1 : 1;
         const newItem: LaporanCctvItem = {
             _key: nextKey,
             id: null,
@@ -194,7 +222,7 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
             initialRecord.items.map((it, idx) => ({
                 ...it,
                 _key: idx + 1,
-                no_urut: it.no_urut ?? (idx + 1),
+                no_urut: it.no_urut ?? idx + 1,
                 lokasi_cctv: it.lokasi_cctv || DEFAULT_8_POINTS,
                 waktu_pantau: it.waktu_pantau || 'Setiap Saat',
                 kondisi_pantau: it.kondisi_pantau || 'Aman',
@@ -204,8 +232,8 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -244,12 +272,18 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
         let amanCount = 0;
 
         for (const item of items) {
-            if (item.kondisi_pantau.trim().toLowerCase() === 'aman' || item.kondisi_pantau.trim().toLowerCase() === 'baik') {
+            if (
+                item.kondisi_pantau.trim().toLowerCase() === 'aman' ||
+                item.kondisi_pantau.trim().toLowerCase() === 'baik'
+            ) {
                 amanCount++;
             }
         }
 
-        const amanPercent = totalEntries > 0 ? Math.round((amanCount / totalEntries) * 100) : 100;
+        const amanPercent =
+            totalEntries > 0
+                ? Math.round((amanCount / totalEntries) * 100)
+                : 100;
 
         return {
             totalEntries,
@@ -258,6 +292,168 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
             cctvPointsCount: 8,
         };
     }, [items]);
+
+    if (compact) {
+        return (
+            <>
+                <Head title={`Laporan Kondisi CCTV — ${unit.name}`} />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Laporan Kondisi CCTV"
+                        backHref={k3Pengusahaan.index({ section: 'input' }).url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) =>
+                            handleFilterChange('unit_id', String(v))
+                        }
+                        month={filters.month}
+                        onMonthChange={(v) =>
+                            handleFilterChange('month', String(v))
+                        }
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) =>
+                            handleFilterChange('year', String(v))
+                        }
+                    />
+
+                    {can_write && (
+                        <K3MobileActionRow>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={setAllAman}
+                                className="gap-1.5 text-emerald-700 dark:text-emerald-400"
+                            >
+                                <CheckCircle2 className="size-3.5" />
+                                Tandai Semua Aman
+                            </Button>
+                        </K3MobileActionRow>
+                    )}
+
+                    <MobileRowEditor<LaporanCctvItem>
+                        rows={items.map((it) => ({
+                            ...it,
+                            tanggal: dmyToIso(it.tanggal),
+                        }))}
+                        rowKey={(it) => it._key}
+                        title={(it) =>
+                            isoToDmy(it.tanggal) || `Laporan #${it.no_urut}`
+                        }
+                        subtitle={(it) =>
+                            `${it.waktu_pantau || '-'} · ${it.kondisi_pantau || '-'}`
+                        }
+                        canWrite={can_write}
+                        removeLabel="Hapus baris"
+                        fields={[
+                            {
+                                key: 'tanggal',
+                                label: 'Tanggal',
+                                type: 'date',
+                                parse: (v) => isoToDmy(String(v)),
+                            },
+                            {
+                                key: 'waktu_pantau',
+                                label: 'Waktu Pantau',
+                                type: 'dropdown',
+                                options: [
+                                    'Setiap Saat',
+                                    'Shift Pagi',
+                                    'Shift Sore',
+                                    'Shift Malam',
+                                ],
+                            },
+                            {
+                                key: 'kondisi_pantau',
+                                label: 'Kondisi Pantau',
+                                type: 'dropdown',
+                                options: [
+                                    'Aman',
+                                    'Baik',
+                                    'Tidak Baik',
+                                    'Rusak',
+                                    'Offline',
+                                ],
+                            },
+                            {
+                                key: 'lokasi_cctv',
+                                label: 'Daftar Lokasi CCTV',
+                                type: 'textarea',
+                            },
+                            { key: 'keterangan', label: 'Keterangan' },
+                        ]}
+                        onChange={(idx, key, value) =>
+                            updateItem(items[idx]._key, key, value)
+                        }
+                        onRemove={(idx) => removeItem(items[idx]._key)}
+                    />
+
+                    <K3MobileMetaAccordion
+                        noDokumen={noDokumen}
+                        revisi={revisi}
+                        tanggalDokumen={tanggalDokumen}
+                        onNoDokumenChange={(v) => {
+                            setNoDokumen(v);
+                            setDirty(true);
+                        }}
+                        onRevisiChange={(v) => {
+                            setRevisi(v);
+                            setDirty(true);
+                        }}
+                        onTanggalDokumenChange={(v) => {
+                            setTanggalDokumen(v);
+                            setDirty(true);
+                        }}
+                        canWrite={can_write}
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan pemantauan CCTV…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={addItem}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
 
     return (
         <div className="space-y-6 p-6">
@@ -271,7 +467,11 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => router.get(k3Pengusahaan.index({ section: 'input' }).url)}
+                        onClick={() =>
+                            router.get(
+                                k3Pengusahaan.index({ section: 'input' }).url,
+                            )
+                        }
                         title="Kembali ke Menu Input K3"
                     >
                         <ArrowLeft className="size-4" />
@@ -282,17 +482,25 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                 Laporan Kondisi CCTV
                             </h1>
                             {has_saved ? (
-                                <Badge variant="secondary" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <Badge
+                                    variant="secondary"
+                                    className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
                                     Tersimpan
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                >
                                     Draft
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Laporan kondisi fisik, visual, dan pemantauan kamera pengawas CCTV di area unit pembangkit (SMT-FM-AK3-14.01).
+                            Laporan kondisi fisik, visual, dan pemantauan kamera
+                            pengawas CCTV di area unit pembangkit
+                            (SMT-FM-AK3-14.01).
                         </p>
                     </div>
                 </div>
@@ -328,7 +536,9 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                             className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             <Save className="size-4" />
-                            <span>{saving ? 'Menyimpan...' : 'Simpan Data'}</span>
+                            <span>
+                                {saving ? 'Menyimpan...' : 'Simpan Data'}
+                            </span>
                         </Button>
                     )}
                 </div>
@@ -341,21 +551,32 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                         <OperasiSelect
                             label="Unit Layanan"
                             value={String(filters.unit_id)}
-                            options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                            onChange={(val) => handleFilterChange('unit_id', val)}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            onChange={(val) =>
+                                handleFilterChange('unit_id', val)
+                            }
                         />
 
                         <OperasiSelect
                             label="Bulan"
                             value={String(filters.month)}
-                            options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                            options={OPERASI_MONTHS.map((label, idx) => ({
+                                value: String(idx + 1),
+                                label,
+                            }))}
                             onChange={(val) => handleFilterChange('month', val)}
                         />
 
                         <OperasiSelect
                             label="Tahun"
                             value={String(filters.year)}
-                            options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
                             onChange={(val) => handleFilterChange('year', val)}
                         />
                     </div>
@@ -368,7 +589,9 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                             <CheckCircle2 className="size-3.5 text-emerald-600" />
-                            <span>Kondisi: {stats.amanPercent}% Aman / Normal</span>
+                            <span>
+                                Kondisi: {stats.amanPercent}% Aman / Normal
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                             <Eye className="size-3.5 text-indigo-600" />
@@ -411,25 +634,27 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                 {/* Header KOP Dokumen Resmi Kembar Logo PLN & Lambang K3 */}
                 <div className="cctv-header-box relative rounded border-2 border-black p-4 dark:border-border">
                     {/* Logo PLN Kiri */}
-                    <div className="absolute left-4 top-4 flex items-center">
+                    <div className="absolute top-4 left-4 flex items-center">
                         <img
                             src="/logo/sidebar-logo.png"
                             alt="PLN Nusantara Power"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
 
                     {/* Lambang K3 Kanan */}
-                    <div className="absolute right-4 top-4 flex items-center">
+                    <div className="absolute top-4 right-4 flex items-center">
                         <img
                             src="/logo/k3.png"
                             alt="Logo K3"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
@@ -443,7 +668,11 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                             UNIT PEMBANGKITAN KENDARI
                         </div>
                         <div className="text-[11px] font-bold text-foreground uppercase sm:text-xs">
-                            UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
+                            UNIT LAYANAN{' '}
+                            {unit.name.toUpperCase().startsWith('ULPLTD') ||
+                            unit.name.toUpperCase().startsWith('UP')
+                                ? unit.name.toUpperCase()
+                                : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
                         </div>
                     </div>
 
@@ -454,14 +683,15 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex-1 text-left sm:pr-4">
                             <h2 className="text-xs font-black tracking-wider text-foreground uppercase sm:text-sm">
-                                LAPORAN KONDISI CCTV PERIODE BULAN {monthName.toUpperCase()} TAHUN {filters.year}
+                                LAPORAN KONDISI CCTV PERIODE BULAN{' '}
+                                {monthName.toUpperCase()} TAHUN {filters.year}
                             </h2>
                         </div>
 
                         {/* Kotak Metadata Dokumen */}
-                        <div className="w-full sm:w-64 border border-black text-[9px] dark:border-border sm:text-[10px]">
+                        <div className="w-full border border-black text-[9px] sm:w-64 sm:text-[10px] dark:border-border">
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     No. dokumen
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -481,7 +711,7 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     No. revisi
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -501,7 +731,7 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Tanggal
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -510,7 +740,9 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                             type="text"
                                             value={tanggalDokumen}
                                             onChange={(e) => {
-                                                setTanggalDokumen(e.target.value);
+                                                setTanggalDokumen(
+                                                    e.target.value,
+                                                );
                                                 setDirty(true);
                                             }}
                                             className="w-full bg-transparent focus:outline-none"
@@ -526,9 +758,9 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
 
                 {/* Table Content */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="excel-sheet cctv-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet cctv-table w-full border-collapse border border-black text-[10px] sm:text-[11px] dark:border-border">
                         <thead>
-                            <tr className="bg-muted/40 font-bold uppercase text-foreground">
+                            <tr className="bg-muted/40 font-bold text-foreground uppercase">
                                 <th className="w-10 border border-black px-1.5 py-1.5 text-center dark:border-border">
                                     NO
                                 </th>
@@ -556,15 +788,24 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                         </thead>
                         <tbody>
                             {items.map((it) => (
-                                <tr key={it._key} className="hover:bg-muted/15 transition-colors">
+                                <tr
+                                    key={it._key}
+                                    className="transition-colors hover:bg-muted/15"
+                                >
                                     {/* NO */}
-                                    <td className="border border-black px-1.5 py-2 text-center font-bold align-middle dark:border-border">
+                                    <td className="border border-black px-1.5 py-2 text-center align-middle font-bold dark:border-border">
                                         {can_write ? (
                                             <input
                                                 type="number"
                                                 value={it.no_urut}
-                                                onChange={(e) => updateItem(it._key, 'no_urut', Number(e.target.value))}
-                                                className="w-full text-center font-bold bg-transparent focus:bg-background focus:outline-none"
+                                                onChange={(e) =>
+                                                    updateItem(
+                                                        it._key,
+                                                        'no_urut',
+                                                        Number(e.target.value),
+                                                    )
+                                                }
+                                                className="w-full bg-transparent text-center font-bold focus:bg-background focus:outline-none"
                                             />
                                         ) : (
                                             it.no_urut
@@ -577,8 +818,14 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                             <input
                                                 type="text"
                                                 value={it.tanggal}
-                                                onChange={(e) => updateItem(it._key, 'tanggal', e.target.value)}
-                                                className="w-full text-center bg-transparent focus:bg-background focus:outline-none"
+                                                onChange={(e) =>
+                                                    updateItem(
+                                                        it._key,
+                                                        'tanggal',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-full bg-transparent text-center focus:bg-background focus:outline-none"
                                                 placeholder="31/8/2026"
                                             />
                                         ) : (
@@ -593,19 +840,29 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                                 <textarea
                                                     rows={8}
                                                     value={it.lokasi_cctv}
-                                                    onChange={(e) => updateItem(it._key, 'lokasi_cctv', e.target.value)}
-                                                    className="w-full bg-transparent focus:bg-background focus:outline-none text-[10px] leading-relaxed sm:text-[11px]"
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'lokasi_cctv',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full bg-transparent text-[10px] leading-relaxed focus:bg-background focus:outline-none sm:text-[11px]"
                                                 />
                                                 <button
                                                     type="button"
-                                                    onClick={() => fillDefaultPoints(it._key)}
-                                                    className="no-print text-[9px] text-primary hover:underline mt-0.5"
+                                                    onClick={() =>
+                                                        fillDefaultPoints(
+                                                            it._key,
+                                                        )
+                                                    }
+                                                    className="no-print mt-0.5 text-[9px] text-primary hover:underline"
                                                 >
                                                     Muat Ulang 8 Titik Standar
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="whitespace-pre-wrap leading-relaxed">
+                                            <div className="leading-relaxed whitespace-pre-wrap">
                                                 {it.lokasi_cctv}
                                             </div>
                                         )}
@@ -617,8 +874,14 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                             <input
                                                 type="text"
                                                 value={it.waktu_pantau}
-                                                onChange={(e) => updateItem(it._key, 'waktu_pantau', e.target.value)}
-                                                className="w-full text-center bg-transparent focus:bg-background focus:outline-none"
+                                                onChange={(e) =>
+                                                    updateItem(
+                                                        it._key,
+                                                        'waktu_pantau',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-full bg-transparent text-center focus:bg-background focus:outline-none"
                                                 placeholder="Setiap Saat"
                                             />
                                         ) : (
@@ -632,12 +895,27 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                             <input
                                                 type="text"
                                                 value={it.kondisi_pantau}
-                                                onChange={(e) => updateItem(it._key, 'kondisi_pantau', e.target.value)}
-                                                className="w-full text-center font-bold bg-transparent focus:bg-background focus:outline-none"
+                                                onChange={(e) =>
+                                                    updateItem(
+                                                        it._key,
+                                                        'kondisi_pantau',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-full bg-transparent text-center font-bold focus:bg-background focus:outline-none"
                                                 placeholder="Aman"
                                             />
                                         ) : (
-                                            <span className={it.kondisi_pantau.toLowerCase() === 'aman' || it.kondisi_pantau.toLowerCase() === 'baik' ? 'text-emerald-700 font-bold dark:text-emerald-400' : 'text-amber-700 font-bold dark:text-amber-400'}>
+                                            <span
+                                                className={
+                                                    it.kondisi_pantau.toLowerCase() ===
+                                                        'aman' ||
+                                                    it.kondisi_pantau.toLowerCase() ===
+                                                        'baik'
+                                                        ? 'font-bold text-emerald-700 dark:text-emerald-400'
+                                                        : 'font-bold text-amber-700 dark:text-amber-400'
+                                                }
+                                            >
                                                 {it.kondisi_pantau}
                                             </span>
                                         )}
@@ -649,8 +927,14 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                             <input
                                                 type="text"
                                                 value={it.keterangan}
-                                                onChange={(e) => updateItem(it._key, 'keterangan', e.target.value)}
-                                                className="w-full text-center bg-transparent focus:bg-background focus:outline-none"
+                                                onChange={(e) =>
+                                                    updateItem(
+                                                        it._key,
+                                                        'keterangan',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-full bg-transparent text-center focus:bg-background focus:outline-none"
                                                 placeholder="Keterangan..."
                                             />
                                         ) : (
@@ -663,11 +947,13 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                         <td className="no-print border border-black px-1 py-1 text-center align-middle dark:border-border">
                                             <button
                                                 type="button"
-                                                onClick={() => removeItem(it._key)}
-                                                className="text-muted-foreground hover:text-red-600 transition-colors"
+                                                onClick={() =>
+                                                    removeItem(it._key)
+                                                }
+                                                className="text-muted-foreground transition-colors hover:text-red-600"
                                                 title="Hapus baris ini"
                                             >
-                                                <Trash2 className="size-3.5 mx-auto" />
+                                                <Trash2 className="mx-auto size-3.5" />
                                             </button>
                                         </td>
                                     )}
@@ -678,8 +964,8 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                 </div>
 
                 {/* Additional Notes Box */}
-                <div className="mt-4 border border-black p-3 text-[10px] dark:border-border sm:text-[11px]">
-                    <div className="font-bold uppercase text-foreground mb-1">
+                <div className="mt-4 border border-black p-3 text-[10px] sm:text-[11px] dark:border-border">
+                    <div className="mb-1 font-bold text-foreground uppercase">
                         Catatan Khusus Pemantauan / Gangguan Perangkat CCTV:
                     </div>
                     {can_write ? (
@@ -691,15 +977,14 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                 setDirty(true);
                             }}
                             placeholder="Catatan kamera offline, kabel terputus, sudut pandang terhalang dahan/pohon, atau usulan relokasi..."
-                            className="w-full rounded border border-input bg-transparent p-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full rounded border border-input bg-transparent p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none"
                         />
                     ) : (
-                        <div className="text-muted-foreground whitespace-pre-wrap">
+                        <div className="whitespace-pre-wrap text-muted-foreground">
                             {catatan || 'Tidak ada catatan khusus.'}
                         </div>
                     )}
                 </div>
-
             </div>
         </div>
     );

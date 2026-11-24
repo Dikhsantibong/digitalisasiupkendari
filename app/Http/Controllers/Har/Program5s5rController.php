@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
+use App\Models\HarDocumentRecord;
 use App\Models\HarProgram5s5rEvidence;
 use App\Models\HarProgram5s5rItem;
 use App\Models\Unit;
@@ -14,6 +15,7 @@ use App\Services\ActivityLogger;
 use App\Support\HarProgram5s5r;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
+use App\Support\OperasiProgram5s5r;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,14 +31,16 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Input Jadwal Program 5S 5R Pemeliharaan (Modul HAR): per minggu lima program
- * (Ringkas … Rajin) dengan kondisi, tindakan, progres, jumlah, keterangan dan
- * foto eviden per minggu. Definisi di App\Support\HarProgram5s5r; hanya baris
- * yang benar-benar diisi yang disimpan (baris bawaan hanya teks program).
+ * Input Program 5S 5R Pemeliharaan (Modul HAR): per shift per hari (Pagi, Sore, Malam)
+ * lima program (Ringkas … Rajin) dengan kondisi, tindakan, progres, jumlah, keterangan dan
+ * foto eviden per shift per hari. Definisi di App\Support\HarProgram5s5r; hanya baris
+ * yang benar-benar diisi yang disimpan.
  */
 class Program5s5rController extends Controller
 {
     use AuthorizesFieldInput;
+
+    private const WEEKDAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
@@ -46,20 +50,56 @@ class Program5s5rController extends Controller
         $this->authorizeView($user);
         [$units, $unit, $month, $year] = $this->target($request);
 
+        $daysInMonth = HarProgram5s5r::daysInMonth($month, $year);
+        $now = Carbon::now('Asia/Makassar');
+        $defaultDay = ($month === (int) $now->month && $year === (int) $now->year)
+            ? min($daysInMonth, (int) $now->day)
+            : 1;
+        $requestedDay = $request->integer('day');
+        $activeDay = ($requestedDay >= 1 && $requestedDay <= $daysInMonth) ? $requestedDay : $defaultDay;
+
+        $activeDate = sprintf('%04d-%02d-%02d', $year, $month, $activeDay);
+        $userContext = OperasiProgram5s5r::resolveUserContext($user, $unit->id, $activeDate);
+
+        $requestedShift = trim((string) $request->query('shift', ''));
+        $activeShift = in_array($requestedShift, HarProgram5s5r::SHIFTS, true)
+            ? $requestedShift
+            : $userContext['shift'];
+
+        $hasSaved = HarProgram5s5rItem::query()
+            ->where('unit_id', $unit->id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->exists()
+            || HarProgram5s5rEvidence::query()
+                ->where('unit_id', $unit->id)
+                ->where('year', $year)
+                ->where('month', $month)
+                ->exists();
+
         return Inertia::render('har/input/program-5s5r/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name, 'service_unit_name' => $unit->serviceUnit?->name],
-            'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
+            'filters' => [
+                'unit_id' => $unit->id,
+                'month' => $month,
+                'year' => $year,
+                'day' => $activeDay,
+                'shift' => $activeShift,
+            ],
+            'user_context' => $userContext,
             'options' => [
                 'units' => $units->map(fn (Unit $u): array => ['id' => $u->id, 'name' => $u->name])->all(),
                 'years' => range((int) now()->year - 3, (int) now()->year + 1),
+                'days_in_month' => $daysInMonth,
+                'shifts' => HarProgram5s5r::SHIFTS,
                 'programs' => collect(HarProgram5s5r::PROGRAMS)->map(fn (array $p, string $key): array => ['key' => $key, ...$p])->values()->all(),
                 'tindakan' => collect(HarProgram5s5r::TINDAKAN)->map(fn (string $label, string $key): array => ['key' => $key, 'label' => $label])->values()->all(),
                 'progres' => HarProgram5s5r::PROGRES,
                 'kondisi' => HarProgram5s5r::KONDISI,
                 'max_evidence' => HarProgram5s5r::MAX_EVIDENCE,
             ],
-            'weeks' => $this->weeks($unit, $month, $year, embed: false),
-            'has_saved' => HarProgram5s5rItem::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->exists(),
+            'days' => $this->days($unit, $month, $year, embed: true),
+            'has_saved' => $hasSaved,
             'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganProgram5s5r),
         ]);
     }
@@ -73,15 +113,17 @@ class Program5s5rController extends Controller
         abort_unless($user->canAccessUnit($unit), 403);
 
         $month = max(1, min(12, $request->integer('month')));
-        $year = $request->integer('year');
-        $weeks = HarProgram5s5r::weeks($month, max(2000, min(2100, $year)));
+        $year = max(2000, min(2100, $request->integer('year')));
+        $daysInMonth = HarProgram5s5r::daysInMonth($month, $year);
+        $maxRows = $daysInMonth * count(HarProgram5s5r::SHIFTS) * count(HarProgram5s5r::PROGRAMS);
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer'],
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'between:2000,2100'],
-            'rows' => ['present', 'array', 'max:'.($weeks * count(HarProgram5s5r::PROGRAMS))],
-            'rows.*.minggu' => ['required', 'integer', 'between:1,'.$weeks],
+            'rows' => ['present', 'array', 'max:'.$maxRows],
+            'rows.*.day' => ['required', 'integer', 'between:1,'.$daysInMonth],
+            'rows.*.shift' => ['required', Rule::in(HarProgram5s5r::SHIFTS)],
             'rows.*.program' => ['required', Rule::in(array_keys(HarProgram5s5r::PROGRAMS))],
             'rows.*.detail' => ['nullable', 'string', 'max:1000'],
             'rows.*.pic' => ['nullable', 'string', 'max:150'],
@@ -91,6 +133,8 @@ class Program5s5rController extends Controller
             'rows.*.jumlah' => ['nullable', 'integer', 'between:0,999'],
             'rows.*.keterangan' => ['nullable', 'string', 'max:1000'],
             ...collect(HarProgram5s5r::TINDAKAN)->keys()->mapWithKeys(fn (string $key): array => ["rows.*.{$key}" => ['nullable', 'boolean']])->all(),
+            'synced_slots' => ['nullable', 'array'],
+            'synced_slots.*' => ['string'],
             'keep_evidence' => ['nullable', 'array'],
             'keep_evidence.*' => ['nullable', 'array'],
             'keep_evidence.*.*' => ['integer'],
@@ -99,22 +143,43 @@ class Program5s5rController extends Controller
             'evidence.*.*' => ['image', 'max:5120'],
         ]);
 
-        // Kept + new photos of a week may not exceed the maximum.
-        foreach (range(1, $weeks) as $minggu) {
-            $total = count((array) ($validated['keep_evidence'][$minggu] ?? [])) + count((array) ($validated['evidence'][$minggu] ?? []));
+        $evidenceSlotKeys = array_values(array_unique([
+            ...($validated['synced_slots'] ?? []),
+            ...array_keys($validated['keep_evidence'] ?? []),
+            ...array_keys($validated['evidence'] ?? []),
+        ]));
+
+        foreach ($evidenceSlotKeys as $slotKey) {
+            $parsed = HarProgram5s5r::parseSlotKey($slotKey, $daysInMonth);
+            if ($parsed === null) {
+                throw ValidationException::withMessages([
+                    "evidence.{$slotKey}" => 'Slot hari dan shift foto eviden tidak valid.',
+                ]);
+            }
+
+            $total = count((array) ($validated['keep_evidence'][$slotKey] ?? [])) + count((array) ($validated['evidence'][$slotKey] ?? []));
             if ($total > HarProgram5s5r::MAX_EVIDENCE) {
                 throw ValidationException::withMessages([
-                    "evidence.{$minggu}" => 'Foto eviden minggu ke '.$minggu.' maksimal '.HarProgram5s5r::MAX_EVIDENCE.' foto.',
+                    "evidence.{$slotKey}" => "Foto eviden tanggal {$parsed['day']} shift {$parsed['shift']} maksimal ".HarProgram5s5r::MAX_EVIDENCE.' foto.',
                 ]);
             }
         }
 
-        DB::transaction(function () use ($validated, $unit, $month, $year, $weeks, $user, $request): void {
+        DB::transaction(function () use ($validated, $unit, $month, $year, $daysInMonth, $evidenceSlotKeys, $user, $request): void {
             $period = ['unit_id' => $unit->id, 'year' => $year, 'month' => $month];
 
             foreach ($validated['rows'] as $row) {
-                $key = [...$period, 'minggu' => (int) $row['minggu'], 'program' => $row['program']];
+                $day = (int) $row['day'];
+                $shift = (string) $row['shift'];
+                $key = [
+                    ...$period,
+                    'day' => $day,
+                    'shift' => $shift,
+                    'program' => (string) $row['program'],
+                ];
                 $values = [
+                    'tanggal' => sprintf('%04d-%02d-%02d', $year, $month, $day),
+                    'minggu' => max(1, (int) ceil($day / 7)),
                     'detail' => $this->text($row['detail'] ?? null),
                     'pic' => $this->text($row['pic'] ?? null),
                     'kondisi_awal' => $row['kondisi_awal'] ?? null,
@@ -132,24 +197,40 @@ class Program5s5rController extends Controller
                 }
             }
 
-            foreach (range(1, $weeks) as $minggu) {
+            foreach ($evidenceSlotKeys as $slotKey) {
+                $parsed = HarProgram5s5r::parseSlotKey($slotKey, $daysInMonth);
+                if ($parsed === null) {
+                    continue;
+                }
+
                 $this->syncEvidence(
-                    [...$period, 'minggu' => $minggu],
-                    array_map('intval', (array) ($validated['keep_evidence'][$minggu] ?? [])),
-                    array_values(array_filter((array) $request->file("evidence.{$minggu}", []), fn ($file): bool => $file instanceof UploadedFile)),
+                    [
+                        ...$period,
+                        'day' => $parsed['day'],
+                        'shift' => $parsed['shift'],
+                    ],
+                    array_map('intval', (array) ($validated['keep_evidence'][$slotKey] ?? [])),
+                    array_values(array_filter((array) $request->file("evidence.{$slotKey}", []), fn ($file): bool => $file instanceof UploadedFile)),
                     $user->id,
                 );
             }
         });
 
+        // Invalidate cached HAR document record so Laporan Pemeliharaan rebuilds with the latest 5S5R data.
+        HarDocumentRecord::query()
+            ->where('unit_id', $unit->id)
+            ->where('month', $month)
+            ->where('year', $year)
+            ->delete();
+
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Jadwal Program 5S 5R Pemeliharaan {$unit->name} ".Indonesian::monthName($month)." {$year}",
+            "Menyimpan Program 5S 5R Pemeliharaan {$unit->name} ".Indonesian::monthName($month)." {$year}",
             $unit,
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal Program 5S 5R berhasil disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Program 5S 5R Pemeliharaan berhasil disimpan.']);
 
         return back();
     }
@@ -160,7 +241,7 @@ class Program5s5rController extends Controller
         [, $unit, $month, $year] = $this->target($request);
         [$view, $data] = $this->pdfView($unit, $month, $year);
 
-        $filename = sprintf('Jadwal_Program_5S5R_Pemeliharaan_%s_%02d_%d.pdf', str_replace(' ', '_', $unit->name), $month, $year);
+        $filename = sprintf('Program_5S5R_Pemeliharaan_%s_%02d_%d.pdf', str_replace(' ', '_', $unit->name), $month, $year);
         $pdf = Pdf::loadView($view, $data)->setPaper('a4', 'landscape')->output();
 
         return response($pdf, 200, [
@@ -177,11 +258,13 @@ class Program5s5rController extends Controller
     public function pdfView(Unit $unit, int $month, int $year): array
     {
         $unit->loadMissing('serviceUnit');
+        [$slots, $hasSaved] = $this->pdfSlots($unit, $month, $year);
 
         return ['har.input.program-5s5r-pdf', [
             'unit' => $unit,
             'periodLabel' => strtoupper(Indonesian::monthName($month)).' '.$year,
-            'weeks' => $this->weeks($unit, $month, $year, embed: true),
+            'slots' => $slots,
+            'has_saved' => $hasSaved,
             'programs' => HarProgram5s5r::PROGRAMS,
             'tindakan' => HarProgram5s5r::TINDAKAN,
             'progres' => HarProgram5s5r::PROGRES,
@@ -190,50 +273,127 @@ class Program5s5rController extends Controller
     }
 
     /**
-     * Every week of the month with its five program rows (saved values over
-     * the template) and evidence photos.
+     * Every day of the month with its 3 shifts (Pagi, Sore, Malam), each containing
+     * the 5 program rows (saved values over the template) and evidence photos.
      *
-     * @return list<array{minggu: int, rows: list<array<string, mixed>>, evidence: list<array{id: int, url: string}>}>
+     * @return list<array<string, mixed>>
      */
-    private function weeks(Unit $unit, int $month, int $year, bool $embed): array
+    private function days(Unit $unit, int $month, int $year, bool $embed): array
     {
-        $saved = HarProgram5s5rItem::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->get()
-            ->keyBy(fn (HarProgram5s5rItem $item): string => "{$item->minggu}:{$item->program}");
-        $evidence = HarProgram5s5rEvidence::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
-            ->orderBy('sort_order')->orderBy('id')->get()->groupBy('minggu');
+        $saved = HarProgram5s5rItem::query()
+            ->where('unit_id', $unit->id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->get()
+            ->keyBy(fn (HarProgram5s5rItem $item): string => "{$item->day}:{$item->shift}:{$item->program}");
 
-        return array_map(fn (int $minggu): array => [
-            'minggu' => $minggu,
-            'rows' => array_map(function (string $program) use ($saved, $minggu): array {
-                $item = $saved->get("{$minggu}:{$program}");
+        $evidence = HarProgram5s5rEvidence::query()
+            ->where('unit_id', $unit->id)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->groupBy(fn (HarProgram5s5rEvidence $photo): string => "{$photo->day}:{$photo->shift}");
 
-                return $item === null
-                    ? HarProgram5s5r::blankRow($minggu, $program)
-                    : [
-                        ...HarProgram5s5r::blankRow($minggu, $program),
+        $monthName = Indonesian::monthName($month);
+        $daysInMonth = HarProgram5s5r::daysInMonth($month, $year);
+
+        return array_map(function (int $day) use ($saved, $evidence, $year, $month, $monthName, $embed): array {
+            $date = sprintf('%04d-%02d-%02d', $year, $month, $day);
+            $dateLabel = sprintf('%02d %s %04d', $day, $monthName, $year);
+            $shortLabel = sprintf('%02d/%02d/%04d', $day, $month, $year);
+            $weekday = self::WEEKDAYS[Carbon::create($year, $month, $day)->dayOfWeek];
+            $minggu = max(1, (int) ceil($day / 7));
+
+            $shifts = array_map(function (string $shift) use ($saved, $evidence, $day, $date, $dateLabel, $shortLabel, $weekday, $minggu, $embed): array {
+                $filledCount = 0;
+                $rows = array_map(function (string $program) use ($saved, $day, $shift, &$filledCount): array {
+                    $item = $saved->get("{$day}:{$shift}:{$program}");
+                    if ($item === null) {
+                        return HarProgram5s5r::blankRow($day, $shift, $program);
+                    }
+
+                    $filledCount++;
+
+                    return [
+                        ...HarProgram5s5r::blankRow($day, $shift, $program),
                         ...$item->only(['detail', 'pic', 'kondisi_awal', 'progres', 'kondisi_akhir', 'jumlah', 'keterangan', ...array_keys(HarProgram5s5r::TINDAKAN)]),
                         'saved' => true,
                     ];
-            }, array_keys(HarProgram5s5r::PROGRAMS)),
-            'evidence' => ($evidence->get($minggu) ?? collect())->map(fn (HarProgram5s5rEvidence $photo): array => [
-                'id' => $photo->id,
-                'url' => $embed ? $this->embed($photo->path) : Storage::disk('public')->url($photo->path),
-            ])->filter(fn (array $photo): bool => $photo['url'] !== '')->values()->all(),
-        ], range(1, HarProgram5s5r::weeks($month, $year)));
+                }, array_keys(HarProgram5s5r::PROGRAMS));
+
+                $photos = ($evidence->get("{$day}:{$shift}") ?? collect())
+                    ->map(fn (HarProgram5s5rEvidence $photo): array => [
+                        'id' => $photo->id,
+                        'url' => $embed ? $this->embed($photo->path) : Storage::disk('public')->url($photo->path),
+                    ])
+                    ->filter(fn (array $photo): bool => $photo['url'] !== '')
+                    ->values()
+                    ->all();
+
+                return [
+                    'day' => $day,
+                    'date' => $date,
+                    'date_label' => $dateLabel,
+                    'short_label' => $shortLabel,
+                    'weekday' => $weekday,
+                    'minggu' => $minggu,
+                    'shift' => $shift,
+                    'slot_key' => HarProgram5s5r::slotKey($day, $shift),
+                    'saved' => $filledCount > 0 || $photos !== [],
+                    'filled_count' => $filledCount,
+                    'rows' => $rows,
+                    'evidence' => $photos,
+                ];
+            }, HarProgram5s5r::SHIFTS);
+
+            $savedShiftsCount = count(array_filter($shifts, fn (array $s): bool => (bool) $s['saved']));
+            $savedProgramsCount = array_sum(array_column($shifts, 'filled_count'));
+
+            return [
+                'day' => $day,
+                'date' => $date,
+                'date_label' => $dateLabel,
+                'short_label' => $shortLabel,
+                'weekday' => $weekday,
+                'minggu' => $minggu,
+                'saved' => $savedShiftsCount > 0,
+                'saved_shifts_count' => $savedShiftsCount,
+                'saved_programs_count' => $savedProgramsCount,
+                'shifts' => $shifts,
+            ];
+        }, range(1, $daysInMonth));
     }
 
     /**
-     * Keep the listed photos of a week, delete the others (files too) and add
+     * @return array{0: list<array<string, mixed>>, 1: bool}
+     */
+    private function pdfSlots(Unit $unit, int $month, int $year): array
+    {
+        $days = $this->days($unit, $month, $year, embed: true);
+        $allSlots = collect($days)->flatMap(fn (array $d): array => $d['shifts'])->values();
+        $savedSlots = $allSlots->filter(fn (array $s): bool => (bool) $s['saved'])->values()->all();
+
+        if ($savedSlots !== []) {
+            return [$savedSlots, true];
+        }
+
+        return [$days[0]['shifts'] ?? [], false];
+    }
+
+    /**
+     * Keep the listed photos of a day+shift slot, delete the others (files too) and add
      * new uploads up to {@see HarProgram5s5r::MAX_EVIDENCE}.
      *
-     * @param  array{unit_id: int, year: int, month: int, minggu: int}  $week
+     * @param  array{unit_id: int, year: int, month: int, day: int, shift: string}  $slot
      * @param  list<int>  $keep
      * @param  list<UploadedFile>  $uploads
      */
-    private function syncEvidence(array $week, array $keep, array $uploads, int $userId): void
+    private function syncEvidence(array $slot, array $keep, array $uploads, int $userId): void
     {
         /** @var Collection<int, HarProgram5s5rEvidence> $existing */
-        $existing = HarProgram5s5rEvidence::query()->where($week)->orderBy('sort_order')->get();
+        $existing = HarProgram5s5rEvidence::query()->where($slot)->orderBy('sort_order')->get();
 
         foreach ($existing->reject(fn (HarProgram5s5rEvidence $photo): bool => in_array($photo->id, $keep, true)) as $photo) {
             Storage::disk('public')->delete($photo->path);
@@ -241,10 +401,15 @@ class Program5s5rController extends Controller
         }
 
         $count = $existing->filter(fn (HarProgram5s5rEvidence $photo): bool => in_array($photo->id, $keep, true))->count();
+        $tanggal = sprintf('%04d-%02d-%02d', $slot['year'], $slot['month'], $slot['day']);
+        $minggu = max(1, (int) ceil($slot['day'] / 7));
+
         foreach (array_slice($uploads, 0, max(0, HarProgram5s5r::MAX_EVIDENCE - $count)) as $file) {
             HarProgram5s5rEvidence::query()->create([
-                ...$week,
-                'path' => $file->store("har-5s5r/{$week['unit_id']}/{$week['year']}-{$week['month']}", 'public'),
+                ...$slot,
+                'tanggal' => $tanggal,
+                'minggu' => $minggu,
+                'path' => $file->store("har-5s5r/{$slot['unit_id']}/{$slot['year']}-{$slot['month']}", 'public'),
                 'sort_order' => $count++,
                 'input_by' => $userId,
             ]);

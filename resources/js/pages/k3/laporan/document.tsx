@@ -54,13 +54,25 @@ export default function K3LaporanDocument({
                 canEdit={can_write}
                 baseName={`Laporan-K3-${filters.unit_id}-${filters.month}-${filters.year}`}
                 xlsxHeaderLines={[
-                    { text: 'UNIT INDUK PEMBANGKITAN DAN PENYALURAN SULAWESI', bold: true },
-                    { text: 'UNIT PELAKSANA PENGENDALIAN PEMBANGKITAN KENDARI', bold: true },
-                    { text: 'SISTEM MANAJEMEN TERINTEGRASI (9001-14001-45001-SMK3-SMP)' },
+                    {
+                        text: 'UNIT INDUK PEMBANGKITAN DAN PENYALURAN SULAWESI',
+                        bold: true,
+                    },
+                    {
+                        text: 'UNIT PELAKSANA PENGENDALIAN PEMBANGKITAN KENDARI',
+                        bold: true,
+                    },
+                    {
+                        text: 'SISTEM MANAJEMEN TERINTEGRASI (9001-14001-45001-SMK3-SMP)',
+                    },
                 ]}
                 saveUrl={document.store().url}
                 regenerateUrl={document.regenerate().url}
-                saveExtra={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }}
+                saveExtra={{
+                    unit_id: filters.unit_id,
+                    month: filters.month,
+                    year: filters.year,
+                }}
                 workflow={workflow}
             />
         </>

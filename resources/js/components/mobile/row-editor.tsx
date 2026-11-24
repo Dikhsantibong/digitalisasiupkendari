@@ -4,6 +4,13 @@ import type { ReactNode } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +25,7 @@ export type RowField<R> = {
         | 'textarea'
         | 'check'
         | 'select'
+        | 'dropdown'
         | 'display';
     options?: string[];
     /** For `select`: text per option and the colour of the selected chip. */
@@ -125,6 +133,39 @@ export function MobileRowEditor<R>({
                         disabled={disabled}
                     />
                 );
+            case 'dropdown': {
+                const strVal = field.display
+                    ? String(field.display(row))
+                    : String(value ?? '');
+                const baseOptions = field.options ?? [];
+                const mergedOptions =
+                    strVal !== '' && !baseOptions.includes(strVal)
+                        ? [...baseOptions, strVal]
+                        : baseOptions;
+
+                return (
+                    <Select
+                        value={strVal || undefined}
+                        onValueChange={(v) => set(index, field, v)}
+                        disabled={disabled}
+                    >
+                        <SelectTrigger className="h-10 w-full text-[13px]">
+                            <SelectValue
+                                placeholder={
+                                    field.placeholder ?? `Pilih ${field.label}`
+                                }
+                            />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {mergedOptions.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                    {field.optionLabels?.[option] ?? option}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                );
+            }
             case 'check': {
                 const checked = value === 1 || value === true || value === '1';
 

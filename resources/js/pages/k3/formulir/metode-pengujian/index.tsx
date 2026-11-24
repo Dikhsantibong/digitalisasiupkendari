@@ -16,6 +16,7 @@ import {
     useFormulirDocument,
 } from '@/components/k3/formulir-document';
 import type { FormulirDocumentProps } from '@/components/k3/formulir-document';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { OPERASI_MONTHS } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -30,7 +31,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
+import {
+    useCompactLayout,
+    useSimplifiedMobileInput,
+} from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import formulir from '@/routes/k3/formulir';
 import metodePengujianRoutes from '@/routes/k3/formulir/metode-pengujian';
@@ -94,22 +98,42 @@ const TEST_FIELDS = [
 ] as const satisfies readonly { field: keyof ServerRow; label: string }[];
 
 export default function MetodePengujianPeralatanPage(props: Props) {
-    const { unit, filters, options, rows: initialRows, meta, has_saved, history, can_write } = props;
+    const {
+        unit,
+        filters,
+        options,
+        rows: initialRows,
+        meta,
+        has_saved,
+        history,
+        can_write,
+    } = props;
 
-    const [keyCounter, setKeyCounter] = useState<number>(() => initialRows.length + 10);
+    const [keyCounter, setKeyCounter] = useState<number>(
+        () => initialRows.length + 10,
+    );
     const [rows, setRows] = useState<Row[]>(() =>
         initialRows.map((r, i) => ({ ...r, _key: i + 1 })),
     );
     const [catatan, setCatatan] = useState<string>(() => meta.catatan ?? '');
     const [dirty, setDirty] = useState<boolean>(false);
     const [saving, setSaving] = useState<boolean>(false);
+    const compact = useCompactLayout();
     const doc = useFormulirDocument(props, () => setDirty(true));
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
-    const testingOptions = options.answers?.length ? options.answers : DEFAULT_METODE_OPTIONS;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const testingOptions = options.answers?.length
+        ? options.answers
+        : DEFAULT_METODE_OPTIONS;
 
     const visit = (patch: Partial<Props['filters']>) => {
-        if (dirty && !window.confirm('Ada perubahan belum disimpan. Yakin ingin berpindah halaman?')) {
+        if (
+            dirty &&
+            !window.confirm(
+                'Ada perubahan belum disimpan. Yakin ingin berpindah halaman?',
+            )
+        ) {
             return;
         }
 
@@ -121,14 +145,23 @@ export default function MetodePengujianPeralatanPage(props: Props) {
     };
 
     const goBack = () => {
-        if (dirty && !window.confirm('Ada perubahan belum disimpan. Yakin ingin kembali?')) {
+        if (
+            dirty &&
+            !window.confirm(
+                'Ada perubahan belum disimpan. Yakin ingin kembali?',
+            )
+        ) {
             return;
         }
 
         router.get(formulir.index().url, filters);
     };
 
-    const updateRow = <K extends keyof ServerRow>(key: number, field: K, val: ServerRow[K]) => {
+    const updateRow = <K extends keyof ServerRow>(
+        key: number,
+        field: K,
+        val: ServerRow[K],
+    ) => {
         setRows((prev) =>
             prev.map((r) => (r._key === key ? { ...r, [field]: val } : r)),
         );
@@ -172,14 +205,21 @@ export default function MetodePengujianPeralatanPage(props: Props) {
         setRows((prev) => {
             const filtered = prev.filter((r) => r._key !== key);
 
-            return filtered.map((r, idx) => ({ ...r, no_urut: String(idx + 1) }));
+            return filtered.map((r, idx) => ({
+                ...r,
+                no_urut: String(idx + 1),
+            }));
         });
         setDirty(true);
         toast.success('Baris berhasil dihapus.');
     };
 
     const resetChanges = () => {
-        if (window.confirm('Batalkan seluruh perubahan dan kembalikan ke data tersimpan?')) {
+        if (
+            window.confirm(
+                'Batalkan seluruh perubahan dan kembalikan ke data tersimpan?',
+            )
+        ) {
             setRows(initialRows.map((r, i) => ({ ...r, _key: i + 1 })));
             setCatatan(meta.catatan ?? '');
             doc.reset();
@@ -203,7 +243,8 @@ export default function MetodePengujianPeralatanPage(props: Props) {
                 year: filters.year,
                 rows: rows.map((r, idx) => ({
                     no_urut: r.no_urut || String(idx + 1),
-                    nama_peralatan: r.nama_peralatan.trim() || `Peralatan ${idx + 1}`,
+                    nama_peralatan:
+                        r.nama_peralatan.trim() || `Peralatan ${idx + 1}`,
                     no_pengesahan: r.no_pengesahan || '-',
                     nama_kategori_alat: r.nama_kategori_alat || '-',
                     uji_visual: r.uji_visual || '-',
@@ -252,12 +293,18 @@ export default function MetodePengujianPeralatanPage(props: Props) {
             });
         });
 
-        return { totalPeralatan: rows.length, totalMemenuhi, totalTidakMemenuhi };
+        return {
+            totalPeralatan: rows.length,
+            totalMemenuhi,
+            totalTidakMemenuhi,
+        };
     }, [rows]);
 
     return (
         <>
-            <Head title={`Formulir Metode Pengujian Peralatan - ${unit.name}`} />
+            <Head
+                title={`Formulir Metode Pengujian Peralatan - ${unit.name}`}
+            />
 
             <FormulirDocumentLayout
                 title="Formulir Metode Pengujian Peralatan"
@@ -286,7 +333,10 @@ export default function MetodePengujianPeralatanPage(props: Props) {
                             <CompactSelect
                                 value={String(filters.unit_id)}
                                 onChange={(v) => visit({ unit_id: Number(v) })}
-                                options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                                options={options.units.map((u) => ({
+                                    value: String(u.id),
+                                    label: u.name,
+                                }))}
                                 disabled={options.units.length <= 1}
                             />
                         </MetaField>
@@ -294,179 +344,414 @@ export default function MetodePengujianPeralatanPage(props: Props) {
                             <MetaField label="Bulan">
                                 <CompactSelect
                                     value={String(filters.month)}
-                                    onChange={(v) => visit({ month: Number(v) })}
-                                    options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                                    onChange={(v) =>
+                                        visit({ month: Number(v) })
+                                    }
+                                    options={OPERASI_MONTHS.map(
+                                        (label, index) => ({
+                                            value: String(index + 1),
+                                            label,
+                                        }),
+                                    )}
                                 />
                             </MetaField>
                             <MetaField label="Tahun">
                                 <CompactSelect
                                     value={String(filters.year)}
                                     onChange={(v) => visit({ year: Number(v) })}
-                                    options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                                    options={options.years.map((y) => ({
+                                        value: String(y),
+                                        label: String(y),
+                                    }))}
                                 />
                             </MetaField>
                         </div>
                     </>
                 }
             >
-                {/* KPI ringkas */}
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <StatTile icon={<Wrench className="size-4" />} tone="bg-primary/10 text-primary" label="Total Peralatan" value={`${stats.totalPeralatan} Alat`} />
-                    <StatTile icon={<CheckCircle2 className="size-4" />} tone="bg-emerald-500/10 text-emerald-600" label="Memenuhi" value={`${stats.totalMemenuhi} Uji`} />
-                    <StatTile icon={<XCircle className="size-4" />} tone="bg-rose-500/10 text-rose-600" label="Tidak Memenuhi" value={`${stats.totalTidakMemenuhi} Uji`} />
-                    <StatTile icon={<ClipboardCheck className="size-4" />} tone="bg-blue-500/10 text-blue-600" label="Periode" value={`${monthName} ${filters.year}`} />
-                </div>
+                {/* KPI ringkas (desktop only) */}
+                {!compact && (
+                    <>
+                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                            <StatTile
+                                icon={<Wrench className="size-4" />}
+                                tone="bg-primary/10 text-primary"
+                                label="Total Peralatan"
+                                value={`${stats.totalPeralatan} Alat`}
+                            />
+                            <StatTile
+                                icon={<CheckCircle2 className="size-4" />}
+                                tone="bg-emerald-500/10 text-emerald-600"
+                                label="Memenuhi"
+                                value={`${stats.totalMemenuhi} Uji`}
+                            />
+                            <StatTile
+                                icon={<XCircle className="size-4" />}
+                                tone="bg-rose-500/10 text-rose-600"
+                                label="Tidak Memenuhi"
+                                value={`${stats.totalTidakMemenuhi} Uji`}
+                            />
+                            <StatTile
+                                icon={<ClipboardCheck className="size-4" />}
+                                tone="bg-blue-500/10 text-blue-600"
+                                label="Periode"
+                                value={`${monthName} ${filters.year}`}
+                            />
+                        </div>
 
-                {/* Toolbar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/20 p-2.5 text-xs">
-                    <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="border-primary/20 bg-primary/5 text-[10px] font-semibold text-primary">
-                            MATRIKS METODE PEMERIKSAAN
-                        </Badge>
-                        <span className="text-muted-foreground">{rows.length} baris peralatan</span>
-                    </div>
-                    {can_write && (
-                        <Button type="button" size="sm" variant="outline" onClick={addRow} className="h-7 gap-1 text-[11px]">
-                            <Plus className="size-3.5" />
-                            Tambah Peralatan
-                        </Button>
-                    )}
-                </div>
-
-                {/* Matrix Table */}
-                <div className="overflow-x-auto">
-                    <table className="excel-sheet w-full min-w-[1500px] border-collapse text-xs">
-                        <thead>
-                            <tr className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:font-bold">
-                                <th rowSpan={2} className="w-12">No.</th>
-                                <th rowSpan={2} className="min-w-[180px] text-left">Nama Peralatan</th>
-                                <th rowSpan={2} className="min-w-[140px] text-left">No. Pengesahan</th>
-                                <th rowSpan={2} className="min-w-[180px] text-left">Nama Kategori Alat</th>
-                                <th colSpan={TEST_FIELDS.length} className="bg-blue-50/70 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
-                                    Metode Pemeriksaan
-                                </th>
-                                <th colSpan={2} className="bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200">
-                                    Sertifikasi
-                                </th>
-                                <th rowSpan={2} className="min-w-[200px] text-left">Keterangan</th>
-                                {can_write && <th rowSpan={2} className="w-12">Aksi</th>}
-                            </tr>
-                            <tr className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:text-[11px] [&>th]:font-semibold">
-                                {TEST_FIELDS.map(({ field, label }) => (
-                                    <th key={field} className="min-w-[110px] bg-blue-50/40 dark:bg-blue-950/20">{label}</th>
-                                ))}
-                                <th className="min-w-[110px] bg-emerald-50/40 dark:bg-emerald-950/20">Terakhir</th>
-                                <th className="min-w-[110px] bg-emerald-50/40 dark:bg-emerald-950/20">Ulang</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row, idx) => (
-                                <tr
-                                    key={row._key}
-                                    className="transition-colors hover:bg-muted/40 [&>td]:border [&>td]:border-border [&>td]:p-1.5 [&>td]:align-middle"
+                        {/* Toolbar */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted/20 p-2.5 text-xs">
+                            <div className="flex items-center gap-2">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/20 bg-primary/5 text-[10px] font-semibold text-primary"
                                 >
-                                    <td className="text-center font-medium text-muted-foreground">
-                                        {can_write ? (
-                                            <Input
-                                                value={row.no_urut ?? String(idx + 1)}
-                                                onChange={(e) => updateRow(row._key, 'no_urut', e.target.value)}
-                                                className="h-7 w-12 text-center text-xs"
-                                            />
-                                        ) : (
-                                            row.no_urut ?? idx + 1
-                                        )}
-                                    </td>
-                                    <td>
-                                        <CellText
-                                            value={row.nama_peralatan}
-                                            onChange={(v) => updateRow(row._key, 'nama_peralatan', v)}
-                                            placeholder="Nama peralatan..."
-                                            canWrite={can_write}
-                                            className="font-semibold"
-                                        />
-                                    </td>
-                                    <td>
-                                        <CellText
-                                            value={row.no_pengesahan ?? '-'}
-                                            onChange={(v) => updateRow(row._key, 'no_pengesahan', v)}
-                                            placeholder="No. pengesahan..."
-                                            canWrite={can_write}
-                                        />
-                                    </td>
-                                    <td>
-                                        <CellText
-                                            value={row.nama_kategori_alat ?? '-'}
-                                            onChange={(v) => updateRow(row._key, 'nama_kategori_alat', v)}
-                                            placeholder="Kategori alat..."
-                                            canWrite={can_write}
-                                        />
-                                    </td>
-                                    {TEST_FIELDS.map(({ field }) => (
-                                        <td key={field}>
-                                            <MetodeCellSelect
-                                                value={row[field]}
-                                                onChange={(val) => updateRow(row._key, field, val)}
-                                                options={testingOptions}
-                                                disabled={!can_write}
-                                            />
-                                        </td>
-                                    ))}
-                                    <td>
-                                        <CellText
-                                            value={row.sertifikasi_terakhir ?? '-'}
-                                            onChange={(v) => updateRow(row._key, 'sertifikasi_terakhir', v)}
-                                            placeholder="-"
-                                            canWrite={can_write}
-                                            className="text-center"
-                                        />
-                                    </td>
-                                    <td>
-                                        <CellText
-                                            value={row.sertifikasi_ulang ?? '-'}
-                                            onChange={(v) => updateRow(row._key, 'sertifikasi_ulang', v)}
-                                            placeholder="-"
-                                            canWrite={can_write}
-                                            className="text-center"
-                                        />
-                                    </td>
-                                    <td>
-                                        <CellText
-                                            value={row.keterangan ?? ''}
-                                            onChange={(v) => updateRow(row._key, 'keterangan', v)}
-                                            placeholder="Catatan / keterangan..."
-                                            canWrite={can_write}
-                                        />
-                                    </td>
+                                    MATRIKS METODE PEMERIKSAAN
+                                </Badge>
+                                <span className="text-muted-foreground">
+                                    {rows.length} baris peralatan
+                                </span>
+                            </div>
+                            {can_write && (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={addRow}
+                                    className="h-7 gap-1 text-[11px]"
+                                >
+                                    <Plus className="size-3.5" />
+                                    Tambah Peralatan
+                                </Button>
+                            )}
+                        </div>
+                    </>
+                )}
+
+                {/* Matrix Table / Mobile Cards */}
+                {compact ? (
+                    <div className="flex flex-col gap-3">
+                        <MobileRowEditor<Row>
+                            rows={rows}
+                            rowKey={(r) => r._key}
+                            title={(r) =>
+                                r.nama_peralatan || `Peralatan #${r.no_urut}`
+                            }
+                            subtitle={(r) =>
+                                `${r.nama_kategori_alat || '-'} · Visual ${r.uji_visual || '-'} · Fungsi ${r.uji_fungsi || '-'}`
+                            }
+                            canWrite={can_write}
+                            removeLabel="Hapus peralatan"
+                            fields={[
+                                {
+                                    key: 'nama_peralatan',
+                                    label: 'Nama Peralatan',
+                                    placeholder: 'Mis. Crane',
+                                },
+                                {
+                                    key: 'no_pengesahan',
+                                    label: 'No. Pengesahan',
+                                },
+                                {
+                                    key: 'nama_kategori_alat',
+                                    label: 'Nama Kategori Alat',
+                                },
+                                ...TEST_FIELDS.map(({ field, label }, i) => ({
+                                    key: field,
+                                    label,
+                                    type: 'dropdown' as const,
+                                    options: testingOptions,
+                                    group:
+                                        i === 0
+                                            ? 'Metode Pemeriksaan'
+                                            : undefined,
+                                })),
+                                {
+                                    key: 'sertifikasi_terakhir',
+                                    label: 'Sertifikasi Terakhir',
+                                    group: 'Sertifikasi',
+                                },
+                                {
+                                    key: 'sertifikasi_ulang',
+                                    label: 'Sertifikasi Ulang',
+                                },
+                                {
+                                    key: 'keterangan',
+                                    label: 'Keterangan',
+                                    type: 'textarea',
+                                },
+                            ]}
+                            onChange={(idx, key, value) =>
+                                updateRow(
+                                    rows[idx]._key,
+                                    key as keyof ServerRow,
+                                    String(value ?? ''),
+                                )
+                            }
+                            onRemove={(idx) => deleteRow(rows[idx]._key)}
+                        />
+                        {can_write && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addRow}
+                                className="w-full gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah Peralatan
+                            </Button>
+                        )}
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="excel-sheet w-full min-w-[1500px] border-collapse text-xs">
+                            <thead>
+                                <tr className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:font-bold">
+                                    <th rowSpan={2} className="w-12">
+                                        No.
+                                    </th>
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[180px] text-left"
+                                    >
+                                        Nama Peralatan
+                                    </th>
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[140px] text-left"
+                                    >
+                                        No. Pengesahan
+                                    </th>
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[180px] text-left"
+                                    >
+                                        Nama Kategori Alat
+                                    </th>
+                                    <th
+                                        colSpan={TEST_FIELDS.length}
+                                        className="bg-blue-50/70 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200"
+                                    >
+                                        Metode Pemeriksaan
+                                    </th>
+                                    <th
+                                        colSpan={2}
+                                        className="bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200"
+                                    >
+                                        Sertifikasi
+                                    </th>
+                                    <th
+                                        rowSpan={2}
+                                        className="min-w-[200px] text-left"
+                                    >
+                                        Keterangan
+                                    </th>
                                     {can_write && (
-                                        <td className="text-center">
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                onClick={() => deleteRow(row._key)}
-                                                className="size-7 text-muted-foreground hover:text-destructive"
-                                                title="Hapus baris"
-                                            >
-                                                <Trash2 className="size-3.5" />
-                                            </Button>
-                                        </td>
+                                        <th rowSpan={2} className="w-12">
+                                            Aksi
+                                        </th>
                                     )}
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                <tr className="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200 [&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:text-center [&>th]:text-[11px] [&>th]:font-semibold">
+                                    {TEST_FIELDS.map(({ field, label }) => (
+                                        <th
+                                            key={field}
+                                            className="min-w-[110px] bg-blue-50/40 dark:bg-blue-950/20"
+                                        >
+                                            {label}
+                                        </th>
+                                    ))}
+                                    <th className="min-w-[110px] bg-emerald-50/40 dark:bg-emerald-950/20">
+                                        Terakhir
+                                    </th>
+                                    <th className="min-w-[110px] bg-emerald-50/40 dark:bg-emerald-950/20">
+                                        Ulang
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.map((row, idx) => (
+                                    <tr
+                                        key={row._key}
+                                        className="transition-colors hover:bg-muted/40 [&>td]:border [&>td]:border-border [&>td]:p-1.5 [&>td]:align-middle"
+                                    >
+                                        <td className="text-center font-medium text-muted-foreground">
+                                            {can_write ? (
+                                                <Input
+                                                    value={
+                                                        row.no_urut ??
+                                                        String(idx + 1)
+                                                    }
+                                                    onChange={(e) =>
+                                                        updateRow(
+                                                            row._key,
+                                                            'no_urut',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="h-7 w-12 text-center text-xs"
+                                                />
+                                            ) : (
+                                                (row.no_urut ?? idx + 1)
+                                            )}
+                                        </td>
+                                        <td>
+                                            <CellText
+                                                value={row.nama_peralatan}
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'nama_peralatan',
+                                                        v,
+                                                    )
+                                                }
+                                                placeholder="Nama peralatan..."
+                                                canWrite={can_write}
+                                                className="font-semibold"
+                                            />
+                                        </td>
+                                        <td>
+                                            <CellText
+                                                value={row.no_pengesahan ?? '-'}
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'no_pengesahan',
+                                                        v,
+                                                    )
+                                                }
+                                                placeholder="No. pengesahan..."
+                                                canWrite={can_write}
+                                            />
+                                        </td>
+                                        <td>
+                                            <CellText
+                                                value={
+                                                    row.nama_kategori_alat ??
+                                                    '-'
+                                                }
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'nama_kategori_alat',
+                                                        v,
+                                                    )
+                                                }
+                                                placeholder="Kategori alat..."
+                                                canWrite={can_write}
+                                            />
+                                        </td>
+                                        {TEST_FIELDS.map(({ field }) => (
+                                            <td key={field}>
+                                                <MetodeCellSelect
+                                                    value={row[field]}
+                                                    onChange={(val) =>
+                                                        updateRow(
+                                                            row._key,
+                                                            field,
+                                                            val,
+                                                        )
+                                                    }
+                                                    options={testingOptions}
+                                                    disabled={!can_write}
+                                                />
+                                            </td>
+                                        ))}
+                                        <td>
+                                            <CellText
+                                                value={
+                                                    row.sertifikasi_terakhir ??
+                                                    '-'
+                                                }
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'sertifikasi_terakhir',
+                                                        v,
+                                                    )
+                                                }
+                                                placeholder="-"
+                                                canWrite={can_write}
+                                                className="text-center"
+                                            />
+                                        </td>
+                                        <td>
+                                            <CellText
+                                                value={
+                                                    row.sertifikasi_ulang ?? '-'
+                                                }
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'sertifikasi_ulang',
+                                                        v,
+                                                    )
+                                                }
+                                                placeholder="-"
+                                                canWrite={can_write}
+                                                className="text-center"
+                                            />
+                                        </td>
+                                        <td>
+                                            <CellText
+                                                value={row.keterangan ?? ''}
+                                                onChange={(v) =>
+                                                    updateRow(
+                                                        row._key,
+                                                        'keterangan',
+                                                        v,
+                                                    )
+                                                }
+                                                placeholder="Catatan / keterangan..."
+                                                canWrite={can_write}
+                                            />
+                                        </td>
+                                        {can_write && (
+                                            <td className="text-center">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() =>
+                                                        deleteRow(row._key)
+                                                    }
+                                                    className="size-7 text-muted-foreground hover:text-destructive"
+                                                    title="Hapus baris"
+                                                >
+                                                    <Trash2 className="size-3.5" />
+                                                </Button>
+                                            </td>
+                                        )}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
                 {/* Legenda & Catatan */}
                 <div className="grid gap-3 md:grid-cols-2">
-                    <div className="space-y-1.5 rounded-md border border-border bg-muted/20 p-3 text-xs">
-                        <span className="font-semibold text-foreground">Legenda Hasil Uji:</span>
-                        <div className="flex flex-wrap gap-2 text-muted-foreground">
-                            <span className="rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">Memenuhi</span>
-                            <span className="rounded border border-rose-300 bg-rose-50 px-2 py-0.5 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">Tidak Memenuhi</span>
-                            <span className="rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">N/A</span>
-                            <span className="rounded border border-input px-2 py-0.5">- = tidak diuji</span>
+                    {!compact && (
+                        <div className="space-y-1.5 rounded-md border border-border bg-muted/20 p-3 text-xs">
+                            <span className="font-semibold text-foreground">
+                                Legenda Hasil Uji:
+                            </span>
+                            <div className="flex flex-wrap gap-2 text-muted-foreground">
+                                <span className="rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                    Memenuhi
+                                </span>
+                                <span className="rounded border border-rose-300 bg-rose-50 px-2 py-0.5 text-rose-800 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300">
+                                    Tidak Memenuhi
+                                </span>
+                                <span className="rounded border border-amber-300 bg-amber-50 px-2 py-0.5 text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                                    N/A
+                                </span>
+                                <span className="rounded border border-input px-2 py-0.5">
+                                    - = tidak diuji
+                                </span>
+                            </div>
                         </div>
-                    </div>
+                    )}
                     <div className="space-y-1.5 text-xs">
                         <Label htmlFor="catatan" className="font-semibold">
                             Catatan Tambahan &amp; Rekomendasi:
@@ -484,7 +769,9 @@ export default function MetodePengujianPeralatanPage(props: Props) {
                                 className="text-xs"
                             />
                         ) : (
-                            <p className="italic text-muted-foreground">{catatan || 'Tidak ada catatan tambahan.'}</p>
+                            <p className="text-muted-foreground italic">
+                                {catatan || 'Tidak ada catatan tambahan.'}
+                            </p>
                         )}
                     </div>
                 </div>
@@ -493,7 +780,17 @@ export default function MetodePengujianPeralatanPage(props: Props) {
     );
 }
 
-function StatTile({ icon, tone, label, value }: { icon: React.ReactNode; tone: string; label: string; value: string }) {
+function StatTile({
+    icon,
+    tone,
+    label,
+    value,
+}: {
+    icon: React.ReactNode;
+    tone: string;
+    label: string;
+    value: string;
+}) {
     // Phone input pages go without summary tiles (a grid left empty is hidden by app.css).
     if (useSimplifiedMobileInput()) {
         return <span data-mobile-hidden hidden />;
@@ -501,10 +798,18 @@ function StatTile({ icon, tone, label, value }: { icon: React.ReactNode; tone: s
 
     return (
         <Card className="flex flex-row items-center gap-3 p-3 py-3 shadow-none">
-            <div className={`flex size-8 items-center justify-center rounded-lg ${tone}`}>{icon}</div>
+            <div
+                className={`flex size-8 items-center justify-center rounded-lg ${tone}`}
+            >
+                {icon}
+            </div>
             <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase text-muted-foreground">{label}</div>
-                <div className="truncate text-sm font-bold text-foreground">{value}</div>
+                <div className="text-[10px] font-medium text-muted-foreground uppercase">
+                    {label}
+                </div>
+                <div className="truncate text-sm font-bold text-foreground">
+                    {value}
+                </div>
             </div>
         </Card>
     );
@@ -590,6 +895,9 @@ MetodePengujianPeralatanPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Formulir K3 & Keamanan', href: formulir.index() },
-        { title: 'Formulir Metode Pengujian Peralatan', href: metodePengujianRoutes.index() },
+        {
+            title: 'Formulir Metode Pengujian Peralatan',
+            href: metodePengujianRoutes.index(),
+        },
     ],
 };

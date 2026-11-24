@@ -10,7 +10,13 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import { DayStrip } from '@/components/mobile/day-strip';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -117,14 +123,14 @@ export default function PengusahaanTimeFrameIndex({
 
     const toggleCell = (index: number, category: Category, day: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r, i) => {
                 if (i !== index) {
-return r;
-}
+                    return r;
+                }
 
                 const set = new Set(r[category] || []);
 
@@ -134,7 +140,10 @@ return r;
                     set.add(day);
                 }
 
-                return { ...r, [category]: Array.from(set).sort((a, b) => a - b) };
+                return {
+                    ...r,
+                    [category]: Array.from(set).sort((a, b) => a - b),
+                };
             }),
         );
         setDirty(true);
@@ -146,8 +155,8 @@ return r;
         value: string,
     ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r, i) => (i === index ? { ...r, [field]: value } : r)),
@@ -157,8 +166,8 @@ return;
 
     const handleAddRow = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) => [
             ...prev,
@@ -178,21 +187,25 @@ return;
 
     const handleDeleteRow = (index: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev
                 .filter((_, i) => i !== index)
-                .map((r, idx) => ({ ...r, no_urut: idx + 1, sort_order: idx + 1 })),
+                .map((r, idx) => ({
+                    ...r,
+                    no_urut: idx + 1,
+                    sort_order: idx + 1,
+                })),
         );
         setDirty(true);
     };
 
     const handleMarkPlanWorkingDays = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) => ({ ...r, rencana: [...workingDaysList] })),
@@ -207,8 +220,8 @@ return;
 
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
         router.post(
@@ -247,7 +260,9 @@ return;
                         ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-black print-black-cell'
                         : 'bg-emerald-500 text-black font-extrabold print-green-cell';
             } else if (d.is_red) {
-                bgClass = d.holiday ? 'bg-red-200/60 dark:bg-red-950/40 print-red-col' : 'bg-muted/40 dark:bg-muted/20 print-sun-cell';
+                bgClass = d.holiday
+                    ? 'bg-red-200/60 dark:bg-red-950/40 print-red-col'
+                    : 'bg-muted/40 dark:bg-muted/20 print-sun-cell';
             }
 
             return (
@@ -264,6 +279,225 @@ return;
             );
         });
 
+    if (compact) {
+        return (
+            <>
+                <Head
+                    title={`Time Frame Kinerja K3 & Keamanan — ${unit.name}`}
+                />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Time Frame K3"
+                        backHref={k3Pengusahaan.index('input').url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    {can_write && (
+                        <K3MobileActionRow>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleMarkPlanWorkingDays}
+                                className="gap-1.5"
+                            >
+                                <CheckCheck className="size-3.5 text-primary" />
+                                Tandai Rencana Hari Kerja
+                            </Button>
+                        </K3MobileActionRow>
+                    )}
+
+                    <DayStrip
+                        items={days.map((d) => ({
+                            key: String(d.day),
+                            label: String(d.day),
+                            sub: d.dow,
+                            isRed: d.is_red,
+                            done: rows.some(
+                                (r) =>
+                                    r.rencana.includes(d.day) ||
+                                    r.realisasi.includes(d.day),
+                            ),
+                        }))}
+                        value={String(mobileDay)}
+                        onChange={(key) => setMobileDay(Number(key))}
+                    />
+
+                    {days.find((d) => d.day === mobileDay)?.holiday && (
+                        <p className="rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-700 dark:bg-red-500/10 dark:text-red-300">
+                            Libur:{' '}
+                            {days.find((d) => d.day === mobileDay)?.holiday}
+                        </p>
+                    )}
+
+                    {rows.length === 0 ? (
+                        <p className="rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground">
+                            Belum ada baris kegiatan. Tekan Tambah untuk
+                            menambahkan.
+                        </p>
+                    ) : (
+                        <div className="flex flex-col gap-2.5">
+                            {rows.map((row, idx) => (
+                                <div
+                                    key={`m-row-${idx}`}
+                                    className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
+                                >
+                                    <div className="flex items-start gap-2">
+                                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">
+                                            {idx + 1}
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            {can_write ? (
+                                                <Input
+                                                    value={row.uraian_pelaporan}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            idx,
+                                                            'uraian_pelaporan',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Uraian pelaporan…"
+                                                    className="h-9 text-sm"
+                                                />
+                                            ) : (
+                                                <p className="pt-1 text-[14px] font-medium text-foreground">
+                                                    {row.uraian_pelaporan ||
+                                                        '—'}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {can_write && (
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    handleDeleteRow(idx)
+                                                }
+                                                className="size-9 text-muted-foreground hover:text-destructive"
+                                                aria-label="Hapus baris"
+                                            >
+                                                <Trash2 className="size-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {(
+                                            ['rencana', 'realisasi'] as const
+                                        ).map((category) => {
+                                            const on = (
+                                                row[category] || []
+                                            ).includes(mobileDay);
+
+                                            return (
+                                                <button
+                                                    key={category}
+                                                    type="button"
+                                                    disabled={!can_write}
+                                                    onClick={() =>
+                                                        toggleCell(
+                                                            idx,
+                                                            category,
+                                                            mobileDay,
+                                                        )
+                                                    }
+                                                    className={`min-h-10 rounded-lg border text-[12px] font-semibold transition active:scale-95 disabled:opacity-70 ${
+                                                        on
+                                                            ? category ===
+                                                              'rencana'
+                                                                ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-black'
+                                                                : 'border-emerald-600 bg-emerald-500 text-black'
+                                                            : 'border-border bg-background text-foreground'
+                                                    }`}
+                                                >
+                                                    {on ? '✓ ' : ''}
+                                                    {category === 'rencana'
+                                                        ? 'Rencana'
+                                                        : 'Realisasi'}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            PIC
+                                            <Input
+                                                value={row.pic || ''}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        idx,
+                                                        'pic',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                disabled={!can_write}
+                                                className="h-9 text-xs"
+                                            />
+                                        </label>
+                                        <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                            Keterangan
+                                            <Input
+                                                value={row.keterangan || ''}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        idx,
+                                                        'keterangan',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                disabled={!can_write}
+                                                className="h-9 text-xs"
+                                            />
+                                        </label>
+                                    </div>
+                                    <p className="text-[11.5px] text-muted-foreground">
+                                        Bulan ini: rencana{' '}
+                                        {(row.rencana || []).length} hari ·
+                                        realisasi {(row.realisasi || []).length}{' '}
+                                        hari
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={handleSave}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={handleAddRow}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title={`Time Frame Kinerja K3 & Keamanan — ${unit.name}`} />
@@ -276,7 +510,9 @@ return;
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => router.get(k3Pengusahaan.index('input').url)}
+                            onClick={() =>
+                                router.get(k3Pengusahaan.index('input').url)
+                            }
                             title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
@@ -286,12 +522,16 @@ return;
                                 <h1 className="text-xl font-bold text-foreground">
                                     Time Frame K3 &amp; Keamanan
                                 </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/30 bg-primary/10 text-primary"
+                                >
                                     {unit.name}
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Matriks rencana (RENC) dan realisasi (REAL) time frame kinerja K3 dan keamanan bulanan.
+                                Matriks rencana (RENC) dan realisasi (REAL) time
+                                frame kinerja K3 dan keamanan bulanan.
                             </p>
                         </div>
                     </div>
@@ -361,19 +601,28 @@ return;
                         label="Unit Pembangkit"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
                         onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
                         onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                     {dirty && (
                         <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -396,7 +645,9 @@ return;
                                             alt="PLN Nusantara Power"
                                             className="mx-auto max-h-12 object-contain"
                                             onError={(e) => {
-                                                (e.target as HTMLElement).style.display = 'none';
+                                                (
+                                                    e.target as HTMLElement
+                                                ).style.display = 'none';
                                             }}
                                         />
                                     </td>
@@ -408,7 +659,8 @@ return;
                                             UNIT PEMBANGKITAN KENDARI
                                         </div>
                                         <div className="text-[11px] font-semibold text-foreground uppercase">
-                                            UNIT LAYANAN PUSAT LISTRIK TENAGA DIESEL {unit.name.toUpperCase()}
+                                            UNIT LAYANAN PUSAT LISTRIK TENAGA
+                                            DIESEL {unit.name.toUpperCase()}
                                         </div>
                                     </td>
                                     <td className="w-40 border-l border-black p-2 text-center align-middle dark:border-border">
@@ -417,7 +669,9 @@ return;
                                             alt="Logo K3"
                                             className="mx-auto max-h-12 object-contain"
                                             onError={(e) => {
-                                                (e.target as HTMLElement).style.display = 'none';
+                                                (
+                                                    e.target as HTMLElement
+                                                ).style.display = 'none';
                                             }}
                                         />
                                     </td>
@@ -428,7 +682,8 @@ return;
                         {/* Title Bar */}
                         <div className="mt-2 border border-black p-1.5 text-center dark:border-border">
                             <h2 className="text-xs font-bold tracking-wider text-foreground uppercase md:text-sm">
-                                TIME FRAME KINERJA K3 DAN KEAMANAN PERIODE {monthName.toUpperCase()} {filters.year}
+                                TIME FRAME KINERJA K3 DAN KEAMANAN PERIODE{' '}
+                                {monthName.toUpperCase()} {filters.year}
                             </h2>
                         </div>
                     </div>
@@ -437,51 +692,105 @@ return;
                     {compact ? (
                         <div className="flex flex-col gap-3 p-3">
                             <DayStrip
-                                items={days.map((d) => ({ key: String(d.day), label: String(d.day), sub: d.dow, isRed: d.is_red, done: rows.some((r) => r.rencana.includes(d.day) || r.realisasi.includes(d.day)) }))}
+                                items={days.map((d) => ({
+                                    key: String(d.day),
+                                    label: String(d.day),
+                                    sub: d.dow,
+                                    isRed: d.is_red,
+                                    done: rows.some(
+                                        (r) =>
+                                            r.rencana.includes(d.day) ||
+                                            r.realisasi.includes(d.day),
+                                    ),
+                                }))}
                                 value={String(mobileDay)}
                                 onChange={(key) => setMobileDay(Number(key))}
                             />
                             {days.find((d) => d.day === mobileDay)?.holiday && (
                                 <p className="rounded-lg bg-red-50 px-3 py-2 text-[12px] text-red-700 dark:bg-red-500/10 dark:text-red-300">
-                                    Libur: {days.find((d) => d.day === mobileDay)?.holiday}
+                                    Libur:{' '}
+                                    {
+                                        days.find((d) => d.day === mobileDay)
+                                            ?.holiday
+                                    }
                                 </p>
                             )}
                             {rows.length === 0 && (
                                 <p className="rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground">
-                                    Belum ada baris kegiatan. Tekan &quot;Tambah Baris&quot; untuk menambahkan.
+                                    Belum ada baris kegiatan. Tekan &quot;Tambah
+                                    Baris&quot; untuk menambahkan.
                                 </p>
                             )}
                             {rows.map((row, idx) => (
-                                <div key={`m-row-${idx}`} className="flex flex-col gap-2.5 rounded-xl border border-border bg-background p-3">
+                                <div
+                                    key={`m-row-${idx}`}
+                                    className="flex flex-col gap-2.5 rounded-xl border border-border bg-background p-3"
+                                >
                                     <div className="flex items-start gap-2">
-                                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">{idx + 1}</span>
+                                        <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">
+                                            {idx + 1}
+                                        </span>
                                         <div className="min-w-0 flex-1">
                                             {can_write ? (
-                                                <Input value={row.uraian_pelaporan} onChange={(e) => updateField(idx, 'uraian_pelaporan', e.target.value)} placeholder="Uraian pelaporan…" className="h-10 text-sm" />
+                                                <Input
+                                                    value={row.uraian_pelaporan}
+                                                    onChange={(e) =>
+                                                        updateField(
+                                                            idx,
+                                                            'uraian_pelaporan',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Uraian pelaporan…"
+                                                    className="h-10 text-sm"
+                                                />
                                             ) : (
-                                                <p className="pt-1 text-[14px] font-medium text-foreground">{row.uraian_pelaporan || '—'}</p>
+                                                <p className="pt-1 text-[14px] font-medium text-foreground">
+                                                    {row.uraian_pelaporan ||
+                                                        '—'}
+                                                </p>
                                             )}
                                         </div>
                                         {can_write && (
-                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteRow(idx)} className="size-10 text-muted-foreground hover:text-destructive" aria-label="Hapus baris">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() =>
+                                                    handleDeleteRow(idx)
+                                                }
+                                                className="size-10 text-muted-foreground hover:text-destructive"
+                                                aria-label="Hapus baris"
+                                            >
                                                 <Trash2 className="size-4" />
                                             </Button>
                                         )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {(['rencana', 'realisasi'] as const).map((category) => {
-                                            const on = (row[category] || []).includes(mobileDay);
+                                        {(
+                                            ['rencana', 'realisasi'] as const
+                                        ).map((category) => {
+                                            const on = (
+                                                row[category] || []
+                                            ).includes(mobileDay);
 
                                             return (
                                                 <button
                                                     key={category}
                                                     type="button"
                                                     disabled={!can_write}
-                                                    onClick={() => toggleCell(idx, category, mobileDay)}
+                                                    onClick={() =>
+                                                        toggleCell(
+                                                            idx,
+                                                            category,
+                                                            mobileDay,
+                                                        )
+                                                    }
                                                     className={`min-h-11 rounded-lg border text-[13px] font-semibold transition active:scale-95 disabled:opacity-70 ${on ? (category === 'rencana' ? 'border-slate-900 bg-slate-900 text-white dark:border-slate-100 dark:bg-slate-100 dark:text-black' : 'border-emerald-600 bg-emerald-500 text-black') : 'border-border bg-card text-foreground'}`}
                                                 >
                                                     {on ? '✓ ' : ''}
-                                                    {category === 'rencana' ? 'Rencana (RENC)' : 'Realisasi (REAL)'}
+                                                    {category === 'rencana'
+                                                        ? 'Rencana (RENC)'
+                                                        : 'Realisasi (REAL)'}
                                                 </button>
                                             );
                                         })}
@@ -489,15 +798,40 @@ return;
                                     <div className="grid grid-cols-1 gap-2">
                                         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                             PIC
-                                            <Input value={row.pic || ''} onChange={(e) => updateField(idx, 'pic', e.target.value)} disabled={!can_write} className="h-10 text-sm" />
+                                            <Input
+                                                value={row.pic || ''}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        idx,
+                                                        'pic',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                disabled={!can_write}
+                                                className="h-10 text-sm"
+                                            />
                                         </label>
                                         <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                             Keterangan
-                                            <Input value={row.keterangan || ''} onChange={(e) => updateField(idx, 'keterangan', e.target.value)} disabled={!can_write} className="h-10 text-sm" />
+                                            <Input
+                                                value={row.keterangan || ''}
+                                                onChange={(e) =>
+                                                    updateField(
+                                                        idx,
+                                                        'keterangan',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                disabled={!can_write}
+                                                className="h-10 text-sm"
+                                            />
                                         </label>
                                     </div>
                                     <p className="text-[12px] text-muted-foreground">
-                                        Bulan ini: rencana {(row.rencana || []).length} hari · realisasi {(row.realisasi || []).length} hari
+                                        Bulan ini: rencana{' '}
+                                        {(row.rencana || []).length} hari ·
+                                        realisasi {(row.realisasi || []).length}{' '}
+                                        hari
                                     </p>
                                 </div>
                             ))}
@@ -507,16 +841,28 @@ return;
                             <table className="excel-sheet print-table w-full border-collapse text-xs">
                                 <thead className="print-thead bg-muted/50 dark:bg-muted/30">
                                     <tr>
-                                        <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">
+                                        <th
+                                            rowSpan={2}
+                                            className="w-8 border border-black p-1 text-center font-bold text-foreground"
+                                        >
                                             NO
                                         </th>
-                                        <th rowSpan={2} className="w-64 min-w-56 border border-black p-1 text-left font-bold text-foreground">
+                                        <th
+                                            rowSpan={2}
+                                            className="w-64 min-w-56 border border-black p-1 text-left font-bold text-foreground"
+                                        >
                                             URAIAN PELAPORAN
                                         </th>
-                                        <th rowSpan={2} className="w-28 min-w-24 border border-black p-1 text-center font-bold text-foreground">
+                                        <th
+                                            rowSpan={2}
+                                            className="w-28 min-w-24 border border-black p-1 text-center font-bold text-foreground"
+                                        >
                                             PIC
                                         </th>
-                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">
+                                        <th
+                                            rowSpan={2}
+                                            className="w-14 border border-black p-1 text-center font-bold text-foreground"
+                                        >
                                             STATUS
                                         </th>
                                         <th
@@ -525,11 +871,17 @@ return;
                                         >
                                             Timeline
                                         </th>
-                                        <th rowSpan={2} className="w-44 min-w-36 border border-black p-1 text-left font-bold text-foreground">
+                                        <th
+                                            rowSpan={2}
+                                            className="w-44 min-w-36 border border-black p-1 text-left font-bold text-foreground"
+                                        >
                                             KETERANGAN
                                         </th>
                                         {can_write && (
-                                            <th rowSpan={2} className="no-print w-10 border border-black p-1 text-center font-bold text-foreground">
+                                            <th
+                                                rowSpan={2}
+                                                className="no-print w-10 border border-black p-1 text-center font-bold text-foreground"
+                                            >
                                                 Aksi
                                             </th>
                                         )}
@@ -541,8 +893,8 @@ return;
                                                 className={`w-5 border border-black p-0.5 text-center text-[10px] font-bold ${
                                                     d.is_red
                                                         ? d.holiday
-                                                            ? 'bg-red-100 text-red-600 dark:bg-red-950/60 print-red-col'
-                                                            : 'bg-muted/70 text-red-600 print-sun-cell'
+                                                            ? 'print-red-col bg-red-100 text-red-600 dark:bg-red-950/60'
+                                                            : 'print-sun-cell bg-muted/70 text-red-600'
                                                         : 'text-foreground'
                                                 }`}
                                                 title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
@@ -556,10 +908,15 @@ return;
                                     {rows.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={days.length + (can_write ? 6 : 5)}
+                                                colSpan={
+                                                    days.length +
+                                                    (can_write ? 6 : 5)
+                                                }
                                                 className="border border-black p-6 text-center text-xs text-muted-foreground"
                                             >
-                                                Belum ada baris kegiatan. Klik tombol &quot;Tambah Baris&quot; di atas untuk menambahkan.
+                                                Belum ada baris kegiatan. Klik
+                                                tombol &quot;Tambah Baris&quot;
+                                                di atas untuk menambahkan.
                                             </td>
                                         </tr>
                                     ) : (
@@ -580,15 +937,26 @@ return;
                                                         {can_write ? (
                                                             <input
                                                                 type="text"
-                                                                value={row.uraian_pelaporan}
+                                                                value={
+                                                                    row.uraian_pelaporan
+                                                                }
                                                                 onChange={(e) =>
-                                                                    updateField(idx, 'uraian_pelaporan', e.target.value)
+                                                                    updateField(
+                                                                        idx,
+                                                                        'uraian_pelaporan',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
                                                                 }
                                                                 placeholder="Uraian pelaporan…"
                                                                 className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
                                                             />
                                                         ) : (
-                                                            <span className="font-medium">{row.uraian_pelaporan}</span>
+                                                            <span className="font-medium">
+                                                                {
+                                                                    row.uraian_pelaporan
+                                                                }
+                                                            </span>
                                                         )}
                                                     </td>
                                                     <td
@@ -598,19 +966,35 @@ return;
                                                         {can_write ? (
                                                             <input
                                                                 type="text"
-                                                                value={row.pic || ''}
-                                                                onChange={(e) => updateField(idx, 'pic', e.target.value)}
+                                                                value={
+                                                                    row.pic ||
+                                                                    ''
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateField(
+                                                                        idx,
+                                                                        'pic',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
                                                                 placeholder="PIC"
                                                                 className="w-full bg-transparent px-1 py-0.5 text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
                                                             />
                                                         ) : (
-                                                            <span className="text-xs">{row.pic || '-'}</span>
+                                                            <span className="text-xs">
+                                                                {row.pic || '-'}
+                                                            </span>
                                                         )}
                                                     </td>
                                                     <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">
                                                         RENC
                                                     </td>
-                                                    {dayCells(row, idx, 'rencana')}
+                                                    {dayCells(
+                                                        row,
+                                                        idx,
+                                                        'rencana',
+                                                    )}
                                                     <td
                                                         rowSpan={2}
                                                         className="border border-black p-1 text-left align-middle"
@@ -618,15 +1002,26 @@ return;
                                                         {can_write ? (
                                                             <input
                                                                 type="text"
-                                                                value={row.keterangan || ''}
+                                                                value={
+                                                                    row.keterangan ||
+                                                                    ''
+                                                                }
                                                                 onChange={(e) =>
-                                                                    updateField(idx, 'keterangan', e.target.value)
+                                                                    updateField(
+                                                                        idx,
+                                                                        'keterangan',
+                                                                        e.target
+                                                                            .value,
+                                                                    )
                                                                 }
                                                                 placeholder="Keterangan…"
                                                                 className="w-full bg-transparent px-1 py-0.5 text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
                                                             />
                                                         ) : (
-                                                            <span className="px-1 text-xs">{row.keterangan || '-'}</span>
+                                                            <span className="px-1 text-xs">
+                                                                {row.keterangan ||
+                                                                    '-'}
+                                                            </span>
                                                         )}
                                                     </td>
                                                     {can_write && (
@@ -637,7 +1032,11 @@ return;
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                onClick={() => handleDeleteRow(idx)}
+                                                                onClick={() =>
+                                                                    handleDeleteRow(
+                                                                        idx,
+                                                                    )
+                                                                }
                                                                 className="size-6 text-destructive hover:bg-destructive/10"
                                                                 title="Hapus baris ini"
                                                             >
@@ -651,7 +1050,11 @@ return;
                                                     <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">
                                                         REAL
                                                     </td>
-                                                    {dayCells(row, idx, 'realisasi')}
+                                                    {dayCells(
+                                                        row,
+                                                        idx,
+                                                        'realisasi',
+                                                    )}
                                                 </tr>
                                             </Fragment>
                                         ))
@@ -682,7 +1085,10 @@ return;
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <Info className="size-3.5 text-primary" />
-                                <span>Klik pada kotak tanggal untuk menandai atau membatalkan jadwal.</span>
+                                <span>
+                                    Klik pada kotak tanggal untuk menandai atau
+                                    membatalkan jadwal.
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -695,7 +1101,13 @@ return;
 PengusahaanTimeFrameIndex.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Input K3 & Keamanan', href: k3Pengusahaan.index('input').url },
-        { title: 'Time Frame K3 & Keamanan', href: k3PengusahaanTimeFrame.index().url },
+        {
+            title: 'Input K3 & Keamanan',
+            href: k3Pengusahaan.index('input').url,
+        },
+        {
+            title: 'Time Frame K3 & Keamanan',
+            href: k3PengusahaanTimeFrame.index().url,
+        },
     ],
 };

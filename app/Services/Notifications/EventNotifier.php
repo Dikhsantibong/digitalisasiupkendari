@@ -15,6 +15,7 @@ use App\Models\ReportWorkflowStep;
 use App\Models\Unit;
 use App\Models\User;
 use App\Notifications\ReminderNotification;
+use App\Services\Operator\AttendanceRequestService;
 use App\Support\Indonesian;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -37,7 +38,10 @@ use function Illuminate\Support\defer;
  */
 class EventNotifier
 {
-    public function __construct(private ReminderSender $sender) {}
+    public function __construct(
+        private ReminderSender $sender,
+        private AttendanceRequestService $attendanceRequests,
+    ) {}
 
     /**
      * Kondisi abnormal / gangguan rows that just became abnormal or gangguan.
@@ -115,7 +119,8 @@ class EventNotifier
     /**
      * A new Pengajuan Absensi: a tukar shift goes to the pengganti first; any
      * other request (or a tukar shift whose pengganti has no account) to the
-     * approvers of the unit (operator.absensi.write).
+     * matching approvers of the unit (TL Operasi for operators; TL Pemeliharaan
+     * for HAR field staff).
      */
     public function attendanceRequestSubmitted(AttendanceRequest $request, User $actor): void
     {
@@ -178,9 +183,16 @@ class EventNotifier
 
     private function toApprovers(AttendanceRequest $request, User $actor, string $title, string $key): void
     {
+        $request->loadMissing(['employee.user', 'requester', 'unit']);
+
         // Never the employee who asked: nobody approves their own request.
-        $recipients = $this->audience($request->unit_id, [PermissionName::OperatorAbsensiWrite], $actor)
-            ->reject(fn (User $user): bool => $user->id === $request->employee?->user_id)
+        $recipients = User::query()
+            ->where('is_active', true)
+            ->whereKeyNot($actor->id)
+            ->when($request->employee?->user_id !== null, fn ($q) => $q->whereKeyNot($request->employee->user_id))
+            ->with('employee')
+            ->get()
+            ->filter(fn (User $user): bool => ! $user->isSuperAdmin() && $this->attendanceRequests->canApprove($user, $request))
             ->values();
 
         $this->later($recipients, fn (User $user): ReminderNotification => new ReminderNotification(

@@ -84,6 +84,14 @@ abstract class HarLembar
     }
 
     /**
+     * Apakah daftar baris item bersifat tetap (tidak bisa ditambah, diubah namanya, atau dihapus di halaman input).
+     */
+    public function fixedItems(): bool
+    {
+        return false;
+    }
+
+    /**
      * Baris sel per item => label.
      *
      * @return array<string, string>
@@ -200,6 +208,7 @@ abstract class HarLembar
             'menu' => $this->menu(),
             'yearly' => $this->yearly(),
             'per_machine' => $this->perMachine(),
+            'fixed_items' => $this->fixedItems(),
             'fields' => $this->fields(),
             'grid' => $this->grid($month, $year),
             'cell_type' => $this->cellType(),

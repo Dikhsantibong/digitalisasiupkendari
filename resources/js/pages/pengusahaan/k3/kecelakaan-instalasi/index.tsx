@@ -10,10 +10,22 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanKecelakaanInstalasi from '@/routes/k3/pengusahaan/kecelakaan-instalasi';
 import type { IdName } from '@/types';
@@ -77,8 +89,12 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
     } = props;
 
     const [isNihil, setIsNihil] = useState<boolean>(initialRecord.is_nihil);
-    const [lampiranTeks, setLampiranTeks] = useState(initialRecord.lampiran_teks);
-    const [nomorKeputusan, setNomorKeputusan] = useState(initialRecord.nomor_keputusan);
+    const [lampiranTeks, setLampiranTeks] = useState(
+        initialRecord.lampiran_teks,
+    );
+    const [nomorKeputusan, setNomorKeputusan] = useState(
+        initialRecord.nomor_keputusan,
+    );
     const [catatan, setCatatan] = useState(initialRecord.catatan);
     const [items, setItems] = useState<KecelakaanItem[]>(() =>
         initialRecord.items.map((it, idx) => ({ ...it, _key: idx + 1 })),
@@ -86,10 +102,15 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
     const [nextKey, setNextKey] = useState(initialRecord.items.length + 5);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', value: string | number) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        value: string | number,
+    ) => {
         const nextFilters = { ...filters, [key]: Number(value) };
         router.get(k3PengusahaanKecelakaanInstalasi.index().url, nextFilters, {
             preserveState: false,
@@ -122,7 +143,11 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
         setDirty(true);
     };
 
-    const updateItem = (key: number, field: keyof KecelakaanItem, value: string | number) => {
+    const updateItem = (
+        key: number,
+        field: keyof KecelakaanItem,
+        value: string | number,
+    ) => {
         setItems((prev) =>
             prev.map((item) => {
                 if (item._key !== key) {
@@ -145,12 +170,14 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
         setLampiranTeks(initialRecord.lampiran_teks);
         setNomorKeputusan(initialRecord.nomor_keputusan);
         setCatatan(initialRecord.catatan);
-        setItems(initialRecord.items.map((it, idx) => ({ ...it, _key: idx + 1 })));
+        setItems(
+            initialRecord.items.map((it, idx) => ({ ...it, _key: idx + 1 })),
+        );
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -166,16 +193,16 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                 items: isNihil
                     ? []
                     : items.map((it, idx) => ({
-                        no_urut: idx + 1,
-                        tanggal_kejadian: it.tanggal_kejadian,
-                        fungsi: it.fungsi,
-                        lokasi_kejadian: it.lokasi_kejadian,
-                        luka_ringan: Number(it.luka_ringan) || 0,
-                        luka_berat: Number(it.luka_berat) || 0,
-                        meninggal: Number(it.meninggal) || 0,
-                        kerugian_material: Number(it.kerugian_material) || 0,
-                        keterangan: it.keterangan,
-                    })),
+                          no_urut: idx + 1,
+                          tanggal_kejadian: it.tanggal_kejadian,
+                          fungsi: it.fungsi,
+                          lokasi_kejadian: it.lokasi_kejadian,
+                          luka_ringan: Number(it.luka_ringan) || 0,
+                          luka_berat: Number(it.luka_berat) || 0,
+                          meninggal: Number(it.meninggal) || 0,
+                          kerugian_material: Number(it.kerugian_material) || 0,
+                          keterangan: it.keterangan,
+                      })),
             },
             {
                 preserveScroll: true,
@@ -186,9 +213,211 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
         );
     };
 
+    if (compact) {
+        return (
+            <>
+                <Head
+                    title={`Laporan Bulanan Kecelakaan Instalasi — ${unit.name}`}
+                />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Kecelakaan Instalasi"
+                        backHref={k3Pengusahaan.index('input').url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => handleFilterChange('unit_id', v)}
+                        month={filters.month}
+                        onMonthChange={(v) => handleFilterChange('month', v)}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => handleFilterChange('year', v)}
+                    />
+
+                    <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-2">
+                        <button
+                            type="button"
+                            disabled={!can_write}
+                            onClick={() => handleToggleNihil(true)}
+                            className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg border text-xs font-semibold transition ${
+                                isNihil
+                                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                                    : 'border-border bg-background text-muted-foreground'
+                            }`}
+                        >
+                            <CheckCircle2 className="size-3.5" />
+                            NIHIL
+                        </button>
+                        <button
+                            type="button"
+                            disabled={!can_write}
+                            onClick={() => handleToggleNihil(false)}
+                            className={`flex min-h-10 items-center justify-center gap-1.5 rounded-lg border text-xs font-semibold transition ${
+                                !isNihil
+                                    ? 'border-rose-600 bg-rose-600 text-white'
+                                    : 'border-border bg-background text-muted-foreground'
+                            }`}
+                        >
+                            <AlertTriangle className="size-3.5" />
+                            Ada Kejadian
+                        </button>
+                    </div>
+
+                    {isNihil ? (
+                        <div className="rounded-xl border border-emerald-300 bg-emerald-50/70 p-4 text-center text-xs font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                            Bulan {monthName} {filters.year} dinyatakan NIHIL
+                            kecelakaan instalasi.
+                        </div>
+                    ) : (
+                        <MobileRowEditor<KecelakaanItem>
+                            rows={items}
+                            rowKey={(it) => it._key}
+                            title={(it) =>
+                                it.lokasi_kejadian || `Kejadian #${it.no_urut}`
+                            }
+                            subtitle={(it) =>
+                                `${it.tanggal_kejadian || '-'} · ${it.fungsi || '-'} · Rugi Rp ${formatCurrency(it.kerugian_material)}`
+                            }
+                            canWrite={can_write}
+                            removeLabel="Hapus kejadian"
+                            fields={[
+                                {
+                                    key: 'tanggal_kejadian',
+                                    label: 'Tanggal Kejadian',
+                                    type: 'date',
+                                },
+                                {
+                                    key: 'fungsi',
+                                    label: 'Fungsi / Bagian',
+                                    type: 'dropdown',
+                                    options: [
+                                        'Operasi',
+                                        'Pemeliharaan',
+                                        'Enjiniring',
+                                        'K3 & Keamanan',
+                                        'Umum',
+                                    ],
+                                },
+                                {
+                                    key: 'lokasi_kejadian',
+                                    label: 'Lokasi Kejadian',
+                                },
+                                {
+                                    key: 'luka_ringan',
+                                    label: 'Luka Ringan',
+                                    type: 'number',
+                                    group: 'Dampak',
+                                },
+                                {
+                                    key: 'luka_berat',
+                                    label: 'Luka Berat',
+                                    type: 'number',
+                                },
+                                {
+                                    key: 'meninggal',
+                                    label: 'Meninggal',
+                                    type: 'number',
+                                },
+                                {
+                                    key: 'kerugian_material',
+                                    label: 'Kerugian Material (Rp)',
+                                    type: 'number',
+                                },
+                                {
+                                    key: 'keterangan',
+                                    label: 'Keterangan',
+                                    type: 'textarea',
+                                    group: 'Lainnya',
+                                },
+                            ]}
+                            onChange={(idx, key, value) =>
+                                updateItem(
+                                    items[idx]._key,
+                                    key,
+                                    value as string | number,
+                                )
+                            }
+                            onRemove={(idx) => removeItem(items[idx]._key)}
+                        />
+                    )}
+
+                    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                            Nomor Keputusan (Kepdir)
+                            <Input
+                                value={nomorKeputusan}
+                                onChange={(e) => {
+                                    setNomorKeputusan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                disabled={!can_write}
+                                className="h-9 text-xs"
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                            Teks Lampiran
+                            <Input
+                                value={lampiranTeks}
+                                onChange={(e) => {
+                                    setLampiranTeks(e.target.value);
+                                    setDirty(true);
+                                }}
+                                disabled={!can_write}
+                                className="h-9 text-xs"
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                rows={2}
+                                disabled={!can_write}
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            {!isNihil && (
+                                <Button
+                                    variant="outline"
+                                    onClick={addItem}
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-4" />
+                                    Tambah
+                                </Button>
+                            )}
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
-            <Head title={`Laporan Bulanan Kecelakaan Instalasi — ${unit.name}`} />
+            <Head
+                title={`Laporan Bulanan Kecelakaan Instalasi — ${unit.name}`}
+            />
             <style>{PRINT_CSS}</style>
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -198,7 +427,9 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => router.get(k3Pengusahaan.index('input').url)}
+                            onClick={() =>
+                                router.get(k3Pengusahaan.index('input').url)
+                            }
                             title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
@@ -208,18 +439,30 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                 <h1 className="text-xl font-bold text-foreground">
                                     Laporan Bulanan Kecelakaan Instalasi
                                 </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/30 bg-primary/10 text-primary"
+                                >
                                     {unit.name}
                                 </Badge>
-                                <Badge variant={isNihil ? 'secondary' : 'destructive'} className="font-semibold">
-                                    {isNihil ? 'NIHIL' : `${items.length} Kejadian`}
+                                <Badge
+                                    variant={
+                                        isNihil ? 'secondary' : 'destructive'
+                                    }
+                                    className="font-semibold"
+                                >
+                                    {isNihil
+                                        ? 'NIHIL'
+                                        : `${items.length} Kejadian`}
                                 </Badge>
                                 <Badge variant="outline" className="text-xs">
                                     {monthName} {filters.year}
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Laporan kejadian kecelakaan instalasi dan kerugian material (Kepdir PT PLN No. 0251.P/DIR/2016).
+                                Akses 2 — Laporan kejadian kecelakaan instalasi
+                                dan kerugian material (Kepdir PT PLN No.
+                                0251.P/DIR/2016).
                             </p>
                         </div>
                     </div>
@@ -245,7 +488,11 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                 className="gap-1.5 text-xs"
                             >
                                 <Save className="size-3.5" />
-                                {saving ? 'Menyimpan...' : has_saved ? 'Simpan Perubahan' : 'Simpan Data'}
+                                {saving
+                                    ? 'Menyimpan...'
+                                    : has_saved
+                                      ? 'Simpan Perubahan'
+                                      : 'Simpan Data'}
                             </Button>
                         )}
                         <Button
@@ -267,29 +514,46 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                             <OperasiSelect
                                 label="Unit Layanan"
                                 value={String(filters.unit_id)}
-                                options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                                onChange={(val) => handleFilterChange('unit_id', val)}
+                                options={options.units.map((u) => ({
+                                    value: String(u.id),
+                                    label: u.name,
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('unit_id', val)
+                                }
                             />
 
                             <OperasiSelect
                                 label="Bulan"
                                 value={String(filters.month)}
-                                options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
-                                onChange={(val) => handleFilterChange('month', val)}
+                                options={OPERASI_MONTHS.map((label, idx) => ({
+                                    value: String(idx + 1),
+                                    label,
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('month', val)
+                                }
                             />
 
                             <OperasiSelect
                                 label="Tahun"
                                 value={String(filters.year)}
-                                options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                                onChange={(val) => handleFilterChange('year', val)}
+                                options={options.years.map((y) => ({
+                                    value: String(y),
+                                    label: String(y),
+                                }))}
+                                onChange={(val) =>
+                                    handleFilterChange('year', val)
+                                }
                             />
                         </div>
 
                         {/* Status Toggle Buttons */}
                         {can_write && (
                             <div className="flex flex-col gap-1.5">
-                                <span className="text-xs font-semibold text-muted-foreground">Kondisi Bulan Ini:</span>
+                                <span className="text-xs font-semibold text-muted-foreground">
+                                    Kondisi Bulan Ini:
+                                </span>
                                 <div className="inline-flex rounded-lg border border-border bg-muted/40 p-1">
                                     <button
                                         type="button"
@@ -332,31 +596,33 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                     {/* KOP Dokumen Resmi Kembar Logo PLN & Lambang K3 */}
                     <div className="ki-header-box relative rounded border-2 border-black p-4 dark:border-border">
                         {/* Logo PLN Kiri */}
-                        <div className="absolute left-4 top-4 flex items-center">
+                        <div className="absolute top-4 left-4 flex items-center">
                             <img
                                 src="/logo/sidebar-logo.png"
                                 alt="PLN Nusantara Power"
                                 className="max-h-14 object-contain"
                                 onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
+                                    (e.target as HTMLElement).style.display =
+                                        'none';
                                 }}
                             />
                         </div>
 
                         {/* Lambang K3 Kanan */}
-                        <div className="absolute right-4 top-4 flex items-center">
+                        <div className="absolute top-4 right-4 flex items-center">
                             <img
                                 src="/logo/k3.png"
                                 alt="Logo K3"
                                 className="max-h-14 object-contain"
                                 onError={(e) => {
-                                    (e.target as HTMLElement).style.display = 'none';
+                                    (e.target as HTMLElement).style.display =
+                                        'none';
                                 }}
                             />
                         </div>
 
                         {/* Teks Instansi Tengah */}
-                        <div className="text-center px-24">
+                        <div className="px-24 text-center">
                             <div className="text-sm font-extrabold tracking-wide text-foreground uppercase">
                                 PT. PLN NUSANTARA POWER
                             </div>
@@ -364,7 +630,11 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                 UNIT PEMBANGKITAN KENDARI
                             </div>
                             <div className="text-xs font-bold text-foreground uppercase">
-                                UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
+                                UNIT LAYANAN{' '}
+                                {unit.name.toUpperCase().startsWith('ULPLTD') ||
+                                unit.name.toUpperCase().startsWith('UP')
+                                    ? unit.name.toUpperCase()
+                                    : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
                             </div>
                         </div>
 
@@ -381,10 +651,11 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                     KECELAKAAN INSTALASI
                                 </div>
                                 <div className="text-xs font-bold text-foreground uppercase">
-                                    BULAN {monthName.toUpperCase()} TAHUN {filters.year}
+                                    BULAN {monthName.toUpperCase()} TAHUN{' '}
+                                    {filters.year}
                                 </div>
                             </div>
-                            <div className="text-center text-[10px] text-muted-foreground italic leading-tight sm:text-right">
+                            <div className="text-center text-[10px] leading-tight text-muted-foreground italic sm:text-right">
                                 <div>{lampiranTeks}</div>
                                 <div>{nomorKeputusan}</div>
                             </div>
@@ -396,42 +667,76 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                         <table className="excel-sheet ki-table w-full border-collapse border-2 border-black text-xs dark:border-border">
                             <thead>
                                 <tr className="bg-muted/40 text-center font-bold text-foreground">
-                                    <th rowSpan={2} className="w-12 border border-black p-2 dark:border-border">
+                                    <th
+                                        rowSpan={2}
+                                        className="w-12 border border-black p-2 dark:border-border"
+                                    >
                                         NO
                                     </th>
-                                    <th rowSpan={2} className="w-40 border border-black p-2 dark:border-border">
+                                    <th
+                                        rowSpan={2}
+                                        className="w-40 border border-black p-2 dark:border-border"
+                                    >
                                         TANGGAL KEJADIAN
                                     </th>
-                                    <th rowSpan={2} className="w-36 border border-black p-2 dark:border-border">
+                                    <th
+                                        rowSpan={2}
+                                        className="w-36 border border-black p-2 dark:border-border"
+                                    >
                                         FUNGSI
                                     </th>
-                                    <th rowSpan={2} className="w-52 border border-black p-2 dark:border-border">
+                                    <th
+                                        rowSpan={2}
+                                        className="w-52 border border-black p-2 dark:border-border"
+                                    >
                                         LOKASI KEJADIAN
                                     </th>
-                                    <th colSpan={4} className="border border-black p-2 uppercase dark:border-border">
+                                    <th
+                                        colSpan={4}
+                                        className="border border-black p-2 uppercase dark:border-border"
+                                    >
                                         AKIBAT YANG DITIMBULKAN
                                     </th>
                                     {!isNihil && can_write && (
-                                        <th rowSpan={2} className="no-print w-12 border border-black p-2 dark:border-border">
+                                        <th
+                                            rowSpan={2}
+                                            className="no-print w-12 border border-black p-2 dark:border-border"
+                                        >
                                             AKSI
                                         </th>
                                     )}
                                 </tr>
                                 <tr className="bg-muted/40 text-center font-bold text-foreground">
-                                    <th className="w-28 border border-black p-1.5 dark:border-border">LUKA RINGAN</th>
-                                    <th className="w-28 border border-black p-1.5 dark:border-border">LUKA BERAT</th>
-                                    <th className="w-28 border border-black p-1.5 dark:border-border">MENINGGAL</th>
-                                    <th className="w-36 border border-black p-1.5 dark:border-border">KERUGIAN MATERIAL</th>
+                                    <th className="w-28 border border-black p-1.5 dark:border-border">
+                                        LUKA RINGAN
+                                    </th>
+                                    <th className="w-28 border border-black p-1.5 dark:border-border">
+                                        LUKA BERAT
+                                    </th>
+                                    <th className="w-28 border border-black p-1.5 dark:border-border">
+                                        MENINGGAL
+                                    </th>
+                                    <th className="w-36 border border-black p-1.5 dark:border-border">
+                                        KERUGIAN MATERIAL
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {isNihil ? (
                                     /* Tampilan Baris NIHIL Resmi PLN (sesuai format fisik media_1790456619742.png) */
-                                    <tr className="border-b border-black text-center font-bold dark:border-border h-48">
-                                        <td className="border-r border-black p-4 align-middle dark:border-border">-</td>
-                                        <td className="border-r border-black p-4 align-middle dark:border-border">-</td>
-                                        <td className="border-r border-black p-4 align-middle dark:border-border">-</td>
-                                        <td className="border-r border-black p-4 align-middle dark:border-border">-</td>
+                                    <tr className="h-48 border-b border-black text-center font-bold dark:border-border">
+                                        <td className="border-r border-black p-4 align-middle dark:border-border">
+                                            -
+                                        </td>
+                                        <td className="border-r border-black p-4 align-middle dark:border-border">
+                                            -
+                                        </td>
+                                        <td className="border-r border-black p-4 align-middle dark:border-border">
+                                            -
+                                        </td>
+                                        <td className="border-r border-black p-4 align-middle dark:border-border">
+                                            -
+                                        </td>
                                         <td className="border-r border-black p-4 align-middle text-emerald-700 dark:border-border dark:text-emerald-400">
                                             NIHIL
                                         </td>
@@ -447,13 +752,21 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                     </tr>
                                 ) : items.length === 0 ? (
                                     <tr>
-                                        <td colSpan={can_write ? 9 : 8} className="p-6 text-center text-muted-foreground italic">
-                                            Belum ada kejadian tercatat. Klik tombol di bawah untuk menambahkan rincian kecelakaan.
+                                        <td
+                                            colSpan={can_write ? 9 : 8}
+                                            className="p-6 text-center text-muted-foreground italic"
+                                        >
+                                            Belum ada kejadian tercatat. Klik
+                                            tombol di bawah untuk menambahkan
+                                            rincian kecelakaan.
                                         </td>
                                     </tr>
                                 ) : (
                                     items.map((item, index) => (
-                                        <tr key={item._key} className="border-b border-black hover:bg-muted/20 dark:border-border">
+                                        <tr
+                                            key={item._key}
+                                            className="border-b border-black hover:bg-muted/20 dark:border-border"
+                                        >
                                             {/* NO */}
                                             <td className="border-r border-black p-2 text-center font-mono dark:border-border">
                                                 {index + 1}
@@ -464,13 +777,24 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                                 {can_write ? (
                                                     <input
                                                         type="text"
-                                                        value={item.tanggal_kejadian}
-                                                        onChange={(e) => updateItem(item._key, 'tanggal_kejadian', e.target.value)}
+                                                        value={
+                                                            item.tanggal_kejadian
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateItem(
+                                                                item._key,
+                                                                'tanggal_kejadian',
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="DD/MM/YYYY"
-                                                        className="w-full text-center bg-transparent focus:outline-none"
+                                                        className="w-full bg-transparent text-center focus:outline-none"
                                                     />
                                                 ) : (
-                                                    <span>{item.tanggal_kejadian || '-'}</span>
+                                                    <span>
+                                                        {item.tanggal_kejadian ||
+                                                            '-'}
+                                                    </span>
                                                 )}
                                             </td>
 
@@ -480,12 +804,20 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                                     <input
                                                         type="text"
                                                         value={item.fungsi}
-                                                        onChange={(e) => updateItem(item._key, 'fungsi', e.target.value)}
+                                                        onChange={(e) =>
+                                                            updateItem(
+                                                                item._key,
+                                                                'fungsi',
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="Fungsi..."
                                                         className="w-full bg-transparent focus:outline-none"
                                                     />
                                                 ) : (
-                                                    <span>{item.fungsi || '-'}</span>
+                                                    <span>
+                                                        {item.fungsi || '-'}
+                                                    </span>
                                                 )}
                                             </td>
 
@@ -494,13 +826,24 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                                 {can_write ? (
                                                     <input
                                                         type="text"
-                                                        value={item.lokasi_kejadian}
-                                                        onChange={(e) => updateItem(item._key, 'lokasi_kejadian', e.target.value)}
+                                                        value={
+                                                            item.lokasi_kejadian
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateItem(
+                                                                item._key,
+                                                                'lokasi_kejadian',
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="Lokasi kejadian..."
                                                         className="w-full bg-transparent focus:outline-none"
                                                     />
                                                 ) : (
-                                                    <span>{item.lokasi_kejadian || '-'}</span>
+                                                    <span>
+                                                        {item.lokasi_kejadian ||
+                                                            '-'}
+                                                    </span>
                                                 )}
                                             </td>
 
@@ -511,11 +854,22 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                                         type="number"
                                                         min={0}
                                                         value={item.luka_ringan}
-                                                        onChange={(e) => updateItem(item._key, 'luka_ringan', parseInt(e.target.value) || 0)}
-                                                        className="w-full text-center bg-transparent focus:outline-none font-semibold"
+                                                        onChange={(e) =>
+                                                            updateItem(
+                                                                item._key,
+                                                                'luka_ringan',
+                                                                parseInt(
+                                                                    e.target
+                                                                        .value,
+                                                                ) || 0,
+                                                            )
+                                                        }
+                                                        className="w-full bg-transparent text-center font-semibold focus:outline-none"
                                                     />
                                                 ) : (
-                                                    <span>{item.luka_ringan} Orang</span>
+                                                    <span>
+                                                        {item.luka_ringan} Orang
+                                                    </span>
                                                 )}
                                             </td>
 
@@ -526,11 +880,22 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                                         type="number"
                                                         min={0}
                                                         value={item.luka_berat}
-                                                        onChange={(e) => updateItem(item._key, 'luka_berat', parseInt(e.target.value) || 0)}
-                                                        className="w-full text-center bg-transparent focus:outline-none font-semibold text-amber-600"
+                                                        onChange={(e) =>
+                                                            updateItem(
+                                                                item._key,
+                                                                'luka_berat',
+                                                                parseInt(
+                                                                    e.target
+                                                                        .value,
+                                                                ) || 0,
+                                                            )
+                                                        }
+                                                        className="w-full bg-transparent text-center font-semibold text-amber-600 focus:outline-none"
                                                     />
                                                 ) : (
-                                                    <span>{item.luka_berat} Orang</span>
+                                                    <span>
+                                                        {item.luka_berat} Orang
+                                                    </span>
                                                 )}
                                             </td>
 
@@ -541,11 +906,22 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                                         type="number"
                                                         min={0}
                                                         value={item.meninggal}
-                                                        onChange={(e) => updateItem(item._key, 'meninggal', parseInt(e.target.value) || 0)}
-                                                        className="w-full text-center bg-transparent focus:outline-none font-bold text-destructive"
+                                                        onChange={(e) =>
+                                                            updateItem(
+                                                                item._key,
+                                                                'meninggal',
+                                                                parseInt(
+                                                                    e.target
+                                                                        .value,
+                                                                ) || 0,
+                                                            )
+                                                        }
+                                                        className="w-full bg-transparent text-center font-bold text-destructive focus:outline-none"
                                                     />
                                                 ) : (
-                                                    <span>{item.meninggal} Orang</span>
+                                                    <span>
+                                                        {item.meninggal} Orang
+                                                    </span>
                                                 )}
                                             </td>
 
@@ -553,19 +929,35 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                             <td className="border-r border-black p-1 text-right dark:border-border">
                                                 {can_write ? (
                                                     <div className="flex items-center gap-1">
-                                                        <span className="text-muted-foreground text-[10px]">Rp</span>
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            Rp
+                                                        </span>
                                                         <input
                                                             type="number"
                                                             min={0}
                                                             step="any"
-                                                            value={item.kerugian_material}
-                                                            onChange={(e) => updateItem(item._key, 'kerugian_material', parseFloat(e.target.value) || 0)}
-                                                            className="w-full text-right bg-transparent focus:outline-none font-mono"
+                                                            value={
+                                                                item.kerugian_material
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateItem(
+                                                                    item._key,
+                                                                    'kerugian_material',
+                                                                    parseFloat(
+                                                                        e.target
+                                                                            .value,
+                                                                    ) || 0,
+                                                                )
+                                                            }
+                                                            className="w-full bg-transparent text-right font-mono focus:outline-none"
                                                         />
                                                     </div>
                                                 ) : (
                                                     <span className="font-mono">
-                                                        {item.kerugian_material > 0 ? `Rp ${formatCurrency(item.kerugian_material)}` : 'NIHIL'}
+                                                        {item.kerugian_material >
+                                                        0
+                                                            ? `Rp ${formatCurrency(item.kerugian_material)}`
+                                                            : 'NIHIL'}
                                                     </span>
                                                 )}
                                             </td>
@@ -576,7 +968,11 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
                                                     <Button
                                                         variant="ghost"
                                                         size="icon"
-                                                        onClick={() => removeItem(item._key)}
+                                                        onClick={() =>
+                                                            removeItem(
+                                                                item._key,
+                                                            )
+                                                        }
                                                         className="size-6 p-0 text-destructive hover:bg-destructive/10"
                                                         title="Hapus baris ini"
                                                     >
@@ -608,7 +1004,9 @@ export default function PengusahaanKecelakaanInstalasiPage(props: Props) {
 
                     {/* Catatan / Keterangan Tambahan */}
                     <div className="mt-4">
-                        <div className="text-xs font-semibold text-foreground">Catatan Tambahan:</div>
+                        <div className="text-xs font-semibold text-foreground">
+                            Catatan Tambahan:
+                        </div>
                         {can_write ? (
                             <textarea
                                 value={catatan}

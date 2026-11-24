@@ -60,6 +60,23 @@ class Employee extends Model
     /** Asisten mekanik & elektrik under the Harmes and Harlist. */
     public const POSITION_ASME = 'ASME & Elec';
 
+    /**
+     * Whether a free-text jabatan belongs to the HAR field maintenance staff
+     * (Harmes, Harlist, ASME & Elec / Asmec / Aslist).
+     */
+    public static function isHarFieldPosition(?string $position): bool
+    {
+        return in_array(strtolower(trim((string) $position)), [
+            'harmes',
+            'harlist',
+            'harlis',
+            'asme & elec',
+            'asme',
+            'asmec',
+            'aslist',
+        ], true);
+    }
+
     protected static function booted(): void
     {
         static::saving(function (Employee $employee): void {
@@ -89,7 +106,7 @@ class Employee extends Model
             return 'operasi';
         }
 
-        return in_array($position, [self::POSITION_HARMES, self::POSITION_HARLIST, self::POSITION_ASME], true) ? 'pemeliharaan' : null;
+        return self::isHarFieldPosition($position) ? 'pemeliharaan' : null;
     }
 
     /**

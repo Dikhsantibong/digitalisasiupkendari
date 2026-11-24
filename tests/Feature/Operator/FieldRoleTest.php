@@ -7,7 +7,7 @@ use App\Enums\PermissionName;
 use App\Enums\RoleName;
 use App\Enums\ScheduleGroupType;
 use App\Models\Employee;
-use App\Models\HarTabelRow;
+use App\Models\KondisiAbnormal;
 use App\Models\OperasiFlmMonitoring;
 use App\Models\Permission;
 use App\Models\Role;
@@ -125,17 +125,21 @@ class FieldRoleTest extends TestCase
         $harmes = $this->userWithRole(RoleName::Harmes, $unit);
 
         $this->actingAs($harmes)
-            ->post(route('har.input.abnormal-gangguan.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [
-                ['uraian' => 'Bocor BBM pada transfer pump', 'jenis' => 'MESIN', 'tanggal' => '2026-08-20', 'abnormal' => 1, 'durasi_abnormal' => 2],
-            ]])
+            ->post(route('har.input.abnormal-gangguan.store'), [
+                'unit_id' => $unit->id,
+                'tanggal' => '2026-08-20',
+                'jenis' => 'abnormal',
+                'durasi' => 2,
+                'uraian_kondisi' => 'Bocor BBM pada transfer pump',
+            ])
             ->assertSessionHasNoErrors();
 
-        $this->assertSame(1, HarTabelRow::query()->where('unit_id', $unit->id)->where('tabel', 'abnormal-gangguan')->count());
+        $this->assertSame(1, KondisiAbnormal::query()->where('unit_id', $unit->id)->count());
 
-        // The TL Pemeliharaan sees the same row on the HAR page.
+        // The Koordinator Pemeliharaan sees the same row on the HAR page.
         $this->actingAs($this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit))
             ->get(route('har.input.abnormal-gangguan.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
-            ->assertInertia(fn ($page) => $page->has('rows', 1)->where('rows.0.uraian', 'Bocor BBM pada transfer pump'));
+            ->assertInertia(fn ($page) => $page->has('entries', 1)->where('entries.0.uraian_kondisi', 'Bocor BBM pada transfer pump'));
     }
 
     public function test_harmes_cannot_write_har_input_of_another_unit(): void

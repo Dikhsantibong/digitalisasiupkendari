@@ -1,4 +1,4 @@
-{{-- PDF (A4 landscape) Jadwal Program 5S 5R Pemeliharaan — definisi: App\Support\HarProgram5s5r, data: Har\Program5s5rController::pdfView(). --}}
+{{-- PDF (A4 landscape) Program 5S 5R Pemeliharaan (Per Shift Per Hari) — definisi: App\Support\HarProgram5s5r, data: Har\Program5s5rController::pdfView(). --}}
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -17,16 +17,17 @@
         /* No rowspan and no hidden borders: dompdf cuts rowspan cells at a page
            break (columns shift, borders break). Every cell keeps its full
            border, rows never split, the header repeats on each page, and a
-           thicker line marks the start of each week. */
+           thicker line marks the start of each day/shift slot. */
         table.grid { width: 100%; border-collapse: collapse; }
         table.grid tr { page-break-inside: avoid; }
-        table.grid tr.week-start td { border-top: 1.5px solid #000; }
+        table.grid tr.slot-start td { border-top: 1.5px solid #000; }
         table.grid th, table.grid td { border: 1px solid #000; padding: 2px 3px; vertical-align: middle; }
         table.grid th { background: #f2f2f2; font-weight: bold; text-align: center; }
         .c { text-align: center; }
         .program { text-align: center; font-size: 8.5px; }
         .program em { font-size: 7.5px; }
-        .week { text-align: center; font-weight: bold; }
+        .slot-meta { text-align: center; font-weight: bold; line-height: 1.35; }
+        .slot-shift { display: inline-block; margin-top: 2px; padding: 1px 5px; border: 1px solid #000; background: #eaeaea; font-size: 7px; }
         .eviden img { max-width: 150px; max-height: 110px; display: block; margin: 2px auto; }
     </style>
 </head>
@@ -44,7 +45,7 @@
         </tr>
     </table>
 
-    <div class="period">{{ $periodLabel }}</div>
+    <div class="period">{{ $periodLabel }} (Pelaksanaan Per Shift Per Hari)</div>
 
     <table class="grid">
         <thead>
@@ -60,9 +61,9 @@
                 <th rowspan="2" style="width: 150px;">Eviden</th>
             </tr>
             <tr>
-                <th style="width: 34px;">Periode</th>
+                <th style="width: 58px;">Tanggal / Shift</th>
                 <th style="width: 48px;">Uraian</th>
-                <th style="width: 170px;">Detail</th>
+                <th style="width: 155px;">Detail</th>
                 @foreach($tindakan as $label)
                     <th style="width: 34px;">{{ $label }}</th>
                 @endforeach
@@ -72,10 +73,15 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($weeks as $week)
-                @foreach($week['rows'] as $row)
-                    <tr class="{{ $loop->first ? 'week-start' : '' }}">
-                        <td class="week">{{ $loop->first ? 'Minggu ke '.$week['minggu'] : '' }}</td>
+            @foreach($slots as $slot)
+                @foreach($slot['rows'] as $row)
+                    <tr class="{{ $loop->first ? 'slot-start' : '' }}">
+                        <td class="slot-meta">
+                            @if($loop->first)
+                                <div>{{ $slot['weekday'] }}, {{ $slot['date_label'] }}</div>
+                                <div class="slot-shift">Shift {{ $slot['shift'] }}</div>
+                            @endif
+                        </td>
                         <td class="program">{{ $programs[$row['program']]['label'] }}<br><em>({{ $programs[$row['program']]['istilah'] }})</em></td>
                         <td>{{ $row['detail'] }}</td>
                         <td class="c">{{ $row['pic'] }}</td>
@@ -91,8 +97,8 @@
                         <td>{{ $row['keterangan'] }}</td>
                         <td class="eviden">
                             @if($loop->first)
-                                @foreach($week['evidence'] as $photo)
-                                    <img src="{{ $photo['url'] }}" alt="Eviden minggu ke {{ $week['minggu'] }}">
+                                @foreach($slot['evidence'] as $photo)
+                                    <img src="{{ $photo['url'] }}" alt="Eviden {{ $slot['date_label'] }} Shift {{ $slot['shift'] }}">
                                 @endforeach
                             @endif
                         </td>

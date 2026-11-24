@@ -12,6 +12,11 @@ import {
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { MobileTimelineForm } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
@@ -35,7 +40,12 @@ import jadwal from '@/routes/k3/jadwal';
 import pekerjaanRutin from '@/routes/k3/jadwal/pekerjaan-rutin';
 import type { IdName } from '@/types';
 
-type DayInfo = { day: number; dow: string; is_red: boolean; holiday?: string | null };
+type DayInfo = {
+    day: number;
+    dow: string;
+    is_red: boolean;
+    holiday?: string | null;
+};
 
 type ServerRow = {
     id: number | null;
@@ -50,7 +60,12 @@ type ServerRow = {
 type Row = ServerRow & { _key: number };
 
 type Props = {
-    unit: { id: number; name: string; service_unit_id: number | null; service_unit_name: string | null };
+    unit: {
+        id: number;
+        name: string;
+        service_unit_id: number | null;
+        service_unit_name: string | null;
+    };
     filters: { unit_id: number; month: number; year: number };
     options: { units: IdName[]; years: number[] };
     days: DayInfo[];
@@ -77,7 +92,8 @@ const PRINT_CSS = `
 }
 `;
 
-const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: i }));
+const hydrate = (rows: ServerRow[]): Row[] =>
+    rows.map((r, i) => ({ ...r, _key: i }));
 
 export default function K3PekerjaanRutinPage({
     unit,
@@ -110,8 +126,14 @@ export default function K3PekerjaanRutinPage({
         setDirty(false);
     }
 
-    const monthName = useMemo(() => OPERASI_MONTHS[filters.month - 1] ?? '', [filters.month]);
-    const workingDaysList = useMemo(() => days.filter((d) => !d.is_red).map((d) => d.day), [days]);
+    const monthName = useMemo(
+        () => OPERASI_MONTHS[filters.month - 1] ?? '',
+        [filters.month],
+    );
+    const workingDaysList = useMemo(
+        () => days.filter((d) => !d.is_red).map((d) => d.day),
+        [days],
+    );
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -123,14 +145,14 @@ export default function K3PekerjaanRutinPage({
 
     const toggleCell = (key: number, category: Category, day: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((prev) =>
             prev.map((r) => {
                 if (r._key !== key) {
-return r;
-}
+                    return r;
+                }
 
                 const set = new Set(r[category] || []);
 
@@ -140,7 +162,10 @@ return r;
                     set.add(day);
                 }
 
-                return { ...r, [category]: Array.from(set).sort((a, b) => a - b) };
+                return {
+                    ...r,
+                    [category]: Array.from(set).sort((a, b) => a - b),
+                };
             }),
         );
         setDirty(true);
@@ -148,10 +173,12 @@ return r;
 
     const handleMarkPlanWorkingDays = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
-        setRows((prev) => prev.map((r) => ({ ...r, rencana: [...workingDaysList] })));
+        setRows((prev) =>
+            prev.map((r) => ({ ...r, rencana: [...workingDaysList] })),
+        );
         setDirty(true);
         toast.success('Rencana seluruh hari kerja telah ditandai.');
     };
@@ -182,7 +209,11 @@ return;
             setRows((prev) =>
                 prev.map((r) =>
                     r._key === editingKey
-                        ? { ...r, uraian: trimmedUraian, paraf: form.paraf.trim() || 'Empty' }
+                        ? {
+                              ...r,
+                              uraian: trimmedUraian,
+                              paraf: form.paraf.trim() || 'Empty',
+                          }
                         : r,
                 ),
             );
@@ -209,8 +240,8 @@ return;
 
     const handleRemove = (key: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         const target = rows.find((r) => r._key === key);
 
@@ -229,8 +260,8 @@ return;
 
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
         router.post(
@@ -295,7 +326,8 @@ return;
 
             if (on) {
                 if (category === 'realisasi') {
-                    color = 'bg-emerald-400 text-black print-green-cell font-bold';
+                    color =
+                        'bg-emerald-400 text-black print-green-cell font-bold';
                 } else {
                     color = realized
                         ? 'bg-emerald-400 text-black print-green-cell font-bold'
@@ -321,364 +353,610 @@ return;
 
     return (
         <>
-            <Head title={`Jadwal Pekerjaan Rutin K3L & Lingkungan 11 KIT — ${unit.name}`} />
+            <Head
+                title={`Jadwal Pekerjaan Rutin K3L & Lingkungan 11 KIT — ${unit.name}`}
+            />
             <style>{PRINT_CSS}</style>
 
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                {/* Header bar */}
-                <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => router.get(jadwal.index().url)}
-                            title="Kembali ke Daftar Jadwal"
-                        >
-                            <ArrowLeft className="size-4" />
-                        </Button>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold text-foreground">
-                                    Jadwal Pekerjaan Rutin K3L &amp; Lingkungan 11 KIT
-                                </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
-                                    {unit.name}
-                                </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Klik kotak tanggal pada baris RENC / REAL untuk menandai jadwal (1). Target = jumlah rencana, Kinerja = realisasi ÷ target.
-                            </p>
-                        </div>
-                    </div>
+            {compact ? (
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Jadwal Pekerjaan Rutin K3L"
+                        backHref={jadwal.index().url}
+                    />
 
-                    <div className="flex flex-wrap items-center gap-2">
-                        {dirty && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleReset}
-                                disabled={saving}
-                                className="gap-1.5 text-xs text-muted-foreground"
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    {can_write && mobileEditing && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleMarkPlanWorkingDays}
+                            className="h-9 w-full justify-center gap-1.5 text-xs"
+                        >
+                            <CheckCheck className="size-4 text-primary" />
+                            Tandai Rencana Hari Kerja
+                        </Button>
+                    )}
+
+                    <MobileTimelineForm<Row>
+                        days={days}
+                        rows={rows}
+                        rowKey={(row) => row._key}
+                        title={(row, _index, editing) => (
+                            <button
+                                type="button"
+                                disabled={!can_write || !editing}
+                                onClick={() => openEditModal(row)}
+                                className="flex items-start gap-1.5 text-left disabled:cursor-default"
                             >
-                                <RotateCcw className="size-3.5" />
-                                Reset
-                            </Button>
+                                <span>{row.uraian || 'Pekerjaan baru'}</span>
+                                {can_write && editing && (
+                                    <Pencil className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                                )}
+                            </button>
                         )}
-                        {can_write && (!compact || mobileEditing || dirty) && (
+                        isOn={(row, category, day) =>
+                            row[category as Category].includes(day)
+                        }
+                        onToggle={(row, category, day) =>
+                            toggleCell(row._key, category as Category, day)
+                        }
+                        lockRedDays
+                        summary={(row) =>
+                            `Target ${row.rencana.length} · Realisasi ${row.realisasi.length} · Kinerja ${row.rencana.length > 0 ? Math.round((row.realisasi.length / row.rencana.length) * 100) : 0}%`
+                        }
+                        onRemove={(row) => handleRemove(row._key)}
+                        readOnly={!can_write}
+                        editing={mobileEditing}
+                        onEditingChange={setMobileEditing}
+                    />
+
+                    <StickyActionBar>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() =>
+                                window.open(
+                                    `${pekerjaanRutin.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`,
+                                    '_blank',
+                                )
+                            }
+                            className="gap-1.5"
+                        >
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                        {can_write && (
                             <>
                                 <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleMarkPlanWorkingDays}
-                                    className="gap-1.5 text-xs"
-                                    title="Isi rencana untuk seluruh hari kerja"
-                                >
-                                    <CheckCheck className="size-3.5 text-primary" />
-                                    Tandai Rencana Hari Kerja
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={openCreateModal}
-                                    className="gap-1.5 text-xs"
-                                >
-                                    <Plus className="size-3.5" />
-                                    Tambah Pekerjaan
-                                </Button>
-                                <Button
-                                    size="sm"
+                                    type="button"
                                     onClick={handleSave}
                                     disabled={saving || !dirty}
-                                    className="gap-1.5 text-xs"
+                                    className="gap-1.5"
                                 >
-                                    <Save className="size-3.5" />
+                                    <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={openCreateModal}
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-4" />
+                                    Tambah
                                 </Button>
                             </>
                         )}
-                        <a
-                            href={`${pekerjaanRutin.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <Button variant="outline" size="sm" className="gap-1.5 text-xs" title="Unduh format PDF resmi">
-                                <Download className="size-3.5 text-rose-600" />
-                                PDF
-                            </Button>
-                        </a>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.print()}
-                            className="gap-1.5 text-xs"
-                            title="Cetak Lanskap"
-                        >
-                            <Printer className="size-3.5" />
-                            Cetak
-                        </Button>
-                    </div>
+                    </StickyActionBar>
                 </div>
-
-                {/* Filters & summary */}
-                <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
-                    <OperasiSelect
-                        label="Unit Pembangkit"
-                        value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                    />
-                    <OperasiSelect
-                        label="Bulan"
-                        value={String(filters.month)}
-                        onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                    />
-
-                    <div className="mx-1 hidden h-9 w-px self-center bg-border lg:block" />
-
-                    <div className="flex items-center gap-3 pb-1 text-xs">
-                        <div>
-                            <span className="text-muted-foreground">Total Target:</span>{' '}
-                            <span className="font-semibold text-foreground">{totalTarget}</span>
-                        </div>
-                        <div>
-                            <span className="text-muted-foreground">Total Real:</span>{' '}
-                            <span className="font-semibold text-foreground">{totalReal}</span>
-                        </div>
-                        <div>
-                            <span className="text-muted-foreground">Rata-rata Kinerja:</span>{' '}
-                            <span
-                                className={`font-semibold ${
-                                    overallKinerja >= 100
-                                        ? 'text-emerald-600 dark:text-emerald-400'
-                                        : 'text-amber-600 dark:text-amber-400'
-                                }`}
+            ) : (
+                <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                    {/* Header bar */}
+                    <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex items-center gap-3">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => router.get(jadwal.index().url)}
+                                title="Kembali ke Daftar Jadwal"
                             >
-                                {totalTarget > 0 ? `${overallKinerja}%` : '0%'}
-                            </span>
-                        </div>
-                    </div>
-
-                    {dirty && (
-                        <div className="ml-auto flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
-                            Ada perubahan belum disimpan
-                        </div>
-                    )}
-                </div>
-
-                {/* Printable Document Card */}
-                <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
-                    {/* Header with Logos */}
-                    <div className="border-b border-border p-4">
-                        <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
-                            <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/sidebar-logo.png"
-                                    alt="PLN Nusantara Power"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (e.target as HTMLElement).style.display = 'none';
-                                    }}
-                                />
-                            </div>
-                            <div className="col-span-6 flex flex-col justify-center p-2 text-center">
-                                <div className="text-xs font-bold tracking-wide text-foreground uppercase">
-                                    JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE - KIT
+                                <ArrowLeft className="size-4" />
+                            </Button>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-xl font-bold text-foreground">
+                                        Jadwal Pekerjaan Rutin K3L &amp;
+                                        Lingkungan 11 KIT
+                                    </h1>
+                                    <Badge
+                                        variant="outline"
+                                        className="border-primary/30 bg-primary/10 text-primary"
+                                    >
+                                        {unit.name}
+                                    </Badge>
                                 </div>
-                                <div className="text-xs font-bold text-foreground uppercase">
-                                    PLN NP UP KENDARI - {unit.name.toUpperCase()}
-                                </div>
-                                <div className="mt-0.5 text-[11px] font-semibold text-foreground uppercase">
-                                    LAPORAN PROJECT
-                                </div>
-                                <div className="text-[11px] font-bold text-foreground uppercase">
-                                    JADWAL PEKERJAAN RUTIN K3L BULAN {monthName.toUpperCase()} {filters.year}
-                                </div>
-                            </div>
-                            <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/mkp.jpg"
-                                    alt="Mitra Karya Prima"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (e.target as HTMLElement).style.display = 'none';
-                                    }}
-                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Klik kotak tanggal pada baris RENC / REAL
+                                    untuk menandai jadwal (1). Target = jumlah
+                                    rencana, Kinerja = realisasi ÷ target.
+                                </p>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Table */}
-                    {compact ? (
-                        <div className="p-3">
-                            <MobileTimelineForm<Row>
-                                days={days}
-                                rows={rows}
-                                rowKey={(row) => row._key}
-                                title={(row, _index, editing) => (
-                                    <button type="button" disabled={!can_write || !editing} onClick={() => openEditModal(row)} className="flex items-start gap-1.5 text-left disabled:cursor-default">
-                                        <span>{row.uraian || 'Pekerjaan baru'}</span>
-                                        {can_write && editing && <Pencil className="mt-0.5 size-3.5 shrink-0 text-primary" />}
-                                    </button>
-                                )}
-                                isOn={(row, category, day) => row[category as Category].includes(day)}
-                                onToggle={(row, category, day) => toggleCell(row._key, category as Category, day)}
-                                lockRedDays
-                                summary={(row) => `Target ${row.rencana.length} · Realisasi ${row.realisasi.length} · Kinerja ${row.rencana.length > 0 ? Math.round((row.realisasi.length / row.rencana.length) * 100) : 0}% · Paraf ${row.paraf || 'Empty'}`}
-                                onRemove={(row) => handleRemove(row._key)}
-                                readOnly={!can_write}
-                                editing={mobileEditing}
-                                onEditingChange={setMobileEditing}
-                            />
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="excel-sheet print-table w-full border-collapse text-xs">
-                                <thead className="print-thead bg-muted/60 dark:bg-muted/30">
-                                    <tr>
-                                        <th rowSpan={2} className="w-8 border border-black p-1 text-center font-bold text-foreground">
-                                            No
-                                        </th>
-                                        <th rowSpan={2} className="w-72 min-w-60 whitespace-normal border border-black p-1 text-left font-bold text-foreground">
-                                            URAIAN
-                                        </th>
-                                        <th rowSpan={2} className="w-12 border border-black p-1 text-center font-bold text-foreground">
-                                            STATUS
-                                        </th>
-                                        <th
-                                            colSpan={days.length}
-                                            className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase"
+                        <div className="flex flex-wrap items-center gap-2">
+                            {dirty && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleReset}
+                                    disabled={saving}
+                                    className="gap-1.5 text-xs text-muted-foreground"
+                                >
+                                    <RotateCcw className="size-3.5" />
+                                    Reset
+                                </Button>
+                            )}
+                            {can_write &&
+                                (!compact || mobileEditing || dirty) && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleMarkPlanWorkingDays}
+                                            className="gap-1.5 text-xs"
+                                            title="Isi rencana untuk seluruh hari kerja"
                                         >
-                                            TANGGAL
-                                        </th>
-                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">
-                                            TARGET
-                                        </th>
-                                        <th rowSpan={2} className="w-14 border border-black p-1 text-center font-bold text-foreground">
-                                            REAL
-                                        </th>
-                                        <th rowSpan={2} className="w-16 border border-black p-1 text-center font-bold text-foreground">
-                                            KINERJA
-                                        </th>
-                                        <th rowSpan={2} className="w-20 border border-black p-1 text-center font-bold text-foreground">
-                                            PARAF
-                                        </th>
-                                        {can_write && (
-                                            <th rowSpan={2} className="no-print w-16 border border-black p-1 text-center font-bold text-foreground">
-                                                Aksi
-                                            </th>
-                                        )}
-                                    </tr>
-                                    <tr>
-                                        {days.map((d) => (
-                                            <th
-                                                key={d.day}
-                                                className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${
-                                                    d.is_red ? 'print-red-text text-red-600' : 'text-foreground'
-                                                }`}
-                                                title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
-                                            >
-                                                {String(d.day).padStart(2, '0')}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((row, idx) => {
-                                        const target = row.rencana.length;
-                                        const real = row.realisasi.length;
-                                        const kinerja = target > 0 ? `${Math.round((real / target) * 100)}%` : '0%';
-
-                                        return (
-                                            <Fragment key={row._key}>
-                                                <tr className="hover:bg-muted/10">
-                                                    {/* Baris RENC */}
-                                                    <td rowSpan={2} className="border border-black text-center font-medium">
-                                                        {idx + 1}
-                                                    </td>
-                                            <td rowSpan={2} className="min-w-60 border border-black px-2 py-1 text-left align-middle font-semibold whitespace-normal [overflow-wrap:anywhere] text-foreground">
-                                                {row.uraian}
-                                            </td>
-                                                    <td className="border border-black bg-muted/40 text-center font-bold text-[10px]">
-                                                        RENC
-                                                    </td>
-                                                    {dayCells(row, 'rencana')}
-                                                    <td rowSpan={2} className="border border-black text-center font-bold">
-                                                        {target}
-                                                    </td>
-                                                    <td rowSpan={2} className="border border-black text-center font-bold">
-                                                        {real}
-                                                    </td>
-                                                    <td rowSpan={2} className="border border-black text-center font-bold text-foreground">
-                                                        {kinerja}
-                                                    </td>
-                                                    <td rowSpan={2} className="border border-black text-center text-xs text-muted-foreground">
-                                                        {row.paraf || 'Empty'}
-                                                    </td>
-                                                    {can_write && (
-                                                        <td rowSpan={2} className="no-print border border-black p-1 text-center">
-                                                            <div className="flex items-center justify-center gap-1">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => openEditModal(row)}
-                                                                    className="rounded p-1 text-primary hover:bg-primary/10 transition-colors"
-                                                                    title="Edit Uraian / Paraf"
-                                                                >
-                                                                    <Pencil className="size-3.5" />
-                                                                </button>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleRemove(row._key)}
-                                                                    className="rounded p-1 text-destructive hover:bg-destructive/10 transition-colors"
-                                                                    title="Hapus Pekerjaan"
-                                                                >
-                                                                    <Trash2 className="size-3.5" />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    )}
-                                                </tr>
-                                                <tr className="hover:bg-muted/10">
-                                                    <td className="border border-black bg-muted/40 text-center font-bold text-[10px]">
-                                                        REAL
-                                                    </td>
-                                                    {dayCells(row, 'realisasi')}
-                                                </tr>
-                                            </Fragment>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                            <CheckCheck className="size-3.5 text-primary" />
+                                            Tandai Rencana Hari Kerja
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={openCreateModal}
+                                            className="gap-1.5 text-xs"
+                                        >
+                                            <Plus className="size-3.5" />
+                                            Tambah Pekerjaan
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleSave}
+                                            disabled={saving || !dirty}
+                                            className="gap-1.5 text-xs"
+                                        >
+                                            <Save className="size-3.5" />
+                                            {saving ? 'Menyimpan…' : 'Simpan'}
+                                        </Button>
+                                    </>
+                                )}
+                            <a
+                                href={`${pekerjaanRutin.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`}
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5 text-xs"
+                                    title="Unduh format PDF resmi"
+                                >
+                                    <Download className="size-3.5 text-rose-600" />
+                                    PDF
+                                </Button>
+                            </a>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => window.print()}
+                                className="gap-1.5 text-xs"
+                                title="Cetak Lanskap"
+                            >
+                                <Printer className="size-3.5" />
+                                Cetak
+                            </Button>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Keterangan & Catatan */}
-                    <div className="border-t border-border p-3 text-xs">
-                        <div className="font-semibold text-foreground">Keterangan :</div>
-                        <div className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
-                            <div>v : kondisi baik</div>
-                            <div>x : kondisi tidak baik</div>
-                            <div className="mt-1 text-[11px] text-muted-foreground/80">
-                                💡 Catatan: Angka 1 pada baris RENC menandakan jadwal rencana, angka 1 pada baris REAL menandakan realisasi.
+                    {/* Filters & summary */}
+                    <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
+                        <OperasiSelect
+                            label="Unit Pembangkit"
+                            value={String(filters.unit_id)}
+                            onChange={(value) =>
+                                visit({ unit_id: Number(value) })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Bulan"
+                            value={String(filters.month)}
+                            onChange={(value) =>
+                                visit({ month: Number(value) })
+                            }
+                            options={OPERASI_MONTHS.map((label, index) => ({
+                                value: String(index + 1),
+                                label,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(value) => visit({ year: Number(value) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                        />
+
+                        <div className="mx-1 hidden h-9 w-px self-center bg-border lg:block" />
+
+                        <div className="flex items-center gap-3 pb-1 text-xs">
+                            <div>
+                                <span className="text-muted-foreground">
+                                    Total Target:
+                                </span>{' '}
+                                <span className="font-semibold text-foreground">
+                                    {totalTarget}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">
+                                    Total Real:
+                                </span>{' '}
+                                <span className="font-semibold text-foreground">
+                                    {totalReal}
+                                </span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">
+                                    Rata-rata Kinerja:
+                                </span>{' '}
+                                <span
+                                    className={`font-semibold ${
+                                        overallKinerja >= 100
+                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                            : 'text-amber-600 dark:text-amber-400'
+                                    }`}
+                                >
+                                    {totalTarget > 0
+                                        ? `${overallKinerja}%`
+                                        : '0%'}
+                                </span>
+                            </div>
+                        </div>
+
+                        {dirty && (
+                            <div className="ml-auto flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                <span className="size-2 animate-pulse rounded-full bg-amber-500" />
+                                Ada perubahan belum disimpan
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Printable Document Card */}
+                    <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
+                        {/* Header with Logos */}
+                        <div className="border-b border-border p-4">
+                            <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
+                                <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/sidebar-logo.png"
+                                        alt="PLN Nusantara Power"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                                <div className="col-span-6 flex flex-col justify-center p-2 text-center">
+                                    <div className="text-xs font-bold tracking-wide text-foreground uppercase">
+                                        JASA PENDUKUNG TEKNIS 11 &amp; 6 SITE -
+                                        KIT
+                                    </div>
+                                    <div className="text-xs font-bold text-foreground uppercase">
+                                        PLN NP UP KENDARI -{' '}
+                                        {unit.name.toUpperCase()}
+                                    </div>
+                                    <div className="mt-0.5 text-[11px] font-semibold text-foreground uppercase">
+                                        LAPORAN PROJECT
+                                    </div>
+                                    <div className="text-[11px] font-bold text-foreground uppercase">
+                                        JADWAL PEKERJAAN RUTIN K3L BULAN{' '}
+                                        {monthName.toUpperCase()} {filters.year}
+                                    </div>
+                                </div>
+                                <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
+                                    <img
+                                        src="/logo/mkp.jpg"
+                                        alt="Mitra Karya Prima"
+                                        className="max-h-12 object-contain"
+                                        onError={(e) => {
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        {compact ? (
+                            <div className="p-3">
+                                <MobileTimelineForm<Row>
+                                    days={days}
+                                    rows={rows}
+                                    rowKey={(row) => row._key}
+                                    title={(row, _index, editing) => (
+                                        <button
+                                            type="button"
+                                            disabled={!can_write || !editing}
+                                            onClick={() => openEditModal(row)}
+                                            className="flex items-start gap-1.5 text-left disabled:cursor-default"
+                                        >
+                                            <span>
+                                                {row.uraian || 'Pekerjaan baru'}
+                                            </span>
+                                            {can_write && editing && (
+                                                <Pencil className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                                            )}
+                                        </button>
+                                    )}
+                                    isOn={(row, category, day) =>
+                                        row[category as Category].includes(day)
+                                    }
+                                    onToggle={(row, category, day) =>
+                                        toggleCell(
+                                            row._key,
+                                            category as Category,
+                                            day,
+                                        )
+                                    }
+                                    lockRedDays
+                                    summary={(row) =>
+                                        `Target ${row.rencana.length} · Realisasi ${row.realisasi.length} · Kinerja ${row.rencana.length > 0 ? Math.round((row.realisasi.length / row.rencana.length) * 100) : 0}% · Paraf ${row.paraf || 'Empty'}`
+                                    }
+                                    onRemove={(row) => handleRemove(row._key)}
+                                    readOnly={!can_write}
+                                    editing={mobileEditing}
+                                    onEditingChange={setMobileEditing}
+                                />
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="excel-sheet print-table w-full border-collapse text-xs">
+                                    <thead className="print-thead bg-muted/60 dark:bg-muted/30">
+                                        <tr>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-8 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                No
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-72 min-w-60 border border-black p-1 text-left font-bold whitespace-normal text-foreground"
+                                            >
+                                                URAIAN
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-12 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                STATUS
+                                            </th>
+                                            <th
+                                                colSpan={days.length}
+                                                className="border border-black p-1 text-center font-bold tracking-wider text-foreground uppercase"
+                                            >
+                                                TANGGAL
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-14 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                TARGET
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-14 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                REAL
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-16 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                KINERJA
+                                            </th>
+                                            <th
+                                                rowSpan={2}
+                                                className="w-20 border border-black p-1 text-center font-bold text-foreground"
+                                            >
+                                                PARAF
+                                            </th>
+                                            {can_write && (
+                                                <th
+                                                    rowSpan={2}
+                                                    className="no-print w-16 border border-black p-1 text-center font-bold text-foreground"
+                                                >
+                                                    Aksi
+                                                </th>
+                                            )}
+                                        </tr>
+                                        <tr>
+                                            {days.map((d) => (
+                                                <th
+                                                    key={d.day}
+                                                    className={`w-6 border border-black p-0.5 text-center text-[10px] font-bold ${
+                                                        d.is_red
+                                                            ? 'print-red-text text-red-600'
+                                                            : 'text-foreground'
+                                                    }`}
+                                                    title={`${d.day} (${d.dow})${d.holiday ? ` - ${d.holiday}` : ''}`}
+                                                >
+                                                    {String(d.day).padStart(
+                                                        2,
+                                                        '0',
+                                                    )}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rows.map((row, idx) => {
+                                            const target = row.rencana.length;
+                                            const real = row.realisasi.length;
+                                            const kinerja =
+                                                target > 0
+                                                    ? `${Math.round((real / target) * 100)}%`
+                                                    : '0%';
+
+                                            return (
+                                                <Fragment key={row._key}>
+                                                    <tr className="hover:bg-muted/10">
+                                                        {/* Baris RENC */}
+                                                        <td
+                                                            rowSpan={2}
+                                                            className="border border-black text-center font-medium"
+                                                        >
+                                                            {idx + 1}
+                                                        </td>
+                                                        <td
+                                                            rowSpan={2}
+                                                            className="min-w-60 border border-black px-2 py-1 text-left align-middle font-semibold [overflow-wrap:anywhere] whitespace-normal text-foreground"
+                                                        >
+                                                            {row.uraian}
+                                                        </td>
+                                                        <td className="border border-black bg-muted/40 text-center text-[10px] font-bold">
+                                                            RENC
+                                                        </td>
+                                                        {dayCells(
+                                                            row,
+                                                            'rencana',
+                                                        )}
+                                                        <td
+                                                            rowSpan={2}
+                                                            className="border border-black text-center font-bold"
+                                                        >
+                                                            {target}
+                                                        </td>
+                                                        <td
+                                                            rowSpan={2}
+                                                            className="border border-black text-center font-bold"
+                                                        >
+                                                            {real}
+                                                        </td>
+                                                        <td
+                                                            rowSpan={2}
+                                                            className="border border-black text-center font-bold text-foreground"
+                                                        >
+                                                            {kinerja}
+                                                        </td>
+                                                        <td
+                                                            rowSpan={2}
+                                                            className="border border-black text-center text-xs text-muted-foreground"
+                                                        >
+                                                            {row.paraf ||
+                                                                'Empty'}
+                                                        </td>
+                                                        {can_write && (
+                                                            <td
+                                                                rowSpan={2}
+                                                                className="no-print border border-black p-1 text-center"
+                                                            >
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            openEditModal(
+                                                                                row,
+                                                                            )
+                                                                        }
+                                                                        className="rounded p-1 text-primary transition-colors hover:bg-primary/10"
+                                                                        title="Edit Uraian / Paraf"
+                                                                    >
+                                                                        <Pencil className="size-3.5" />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleRemove(
+                                                                                row._key,
+                                                                            )
+                                                                        }
+                                                                        className="rounded p-1 text-destructive transition-colors hover:bg-destructive/10"
+                                                                        title="Hapus Pekerjaan"
+                                                                    >
+                                                                        <Trash2 className="size-3.5" />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        )}
+                                                    </tr>
+                                                    <tr className="hover:bg-muted/10">
+                                                        <td className="border border-black bg-muted/40 text-center text-[10px] font-bold">
+                                                            REAL
+                                                        </td>
+                                                        {dayCells(
+                                                            row,
+                                                            'realisasi',
+                                                        )}
+                                                    </tr>
+                                                </Fragment>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+
+                        {/* Keterangan & Catatan */}
+                        <div className="border-t border-border p-3 text-xs">
+                            <div className="font-semibold text-foreground">
+                                Keterangan :
+                            </div>
+                            <div className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
+                                <div>v : kondisi baik</div>
+                                <div>x : kondisi tidak baik</div>
+                                <div className="mt-1 text-[11px] text-muted-foreground/80">
+                                    💡 Catatan: Angka 1 pada baris RENC
+                                    menandakan jadwal rencana, angka 1 pada
+                                    baris REAL menandakan realisasi.
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
 
             {/* Modal Dialog Tambah / Edit Pekerjaan */}
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingKey !== null ? 'Edit Pekerjaan Rutin' : 'Tambah Pekerjaan Rutin'}
+                            {editingKey !== null
+                                ? 'Edit Pekerjaan Rutin'
+                                : 'Tambah Pekerjaan Rutin'}
                         </DialogTitle>
                         <DialogDescription>
                             {editingKey !== null
@@ -687,16 +965,25 @@ return;
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form onSubmit={handleModalSubmit} className="space-y-4 py-2">
+                    <form
+                        onSubmit={handleModalSubmit}
+                        className="space-y-4 py-2"
+                    >
                         <div className="space-y-1.5">
                             <Label htmlFor="uraian">
-                                Uraian Pekerjaan <span className="text-destructive">*</span>
+                                Uraian Pekerjaan{' '}
+                                <span className="text-destructive">*</span>
                             </Label>
                             <Input
                                 id="uraian"
                                 placeholder="Contoh: CEK DAN BERSIHKAN OIL TRAP"
                                 value={form.uraian}
-                                onChange={(e) => setForm((prev) => ({ ...prev, uraian: e.target.value }))}
+                                onChange={(e) =>
+                                    setForm((prev) => ({
+                                        ...prev,
+                                        uraian: e.target.value,
+                                    }))
+                                }
                                 required
                                 autoFocus
                             />
@@ -708,12 +995,21 @@ return;
                                 id="paraf"
                                 placeholder="Empty"
                                 value={form.paraf}
-                                onChange={(e) => setForm((prev) => ({ ...prev, paraf: e.target.value }))}
+                                onChange={(e) =>
+                                    setForm((prev) => ({
+                                        ...prev,
+                                        paraf: e.target.value,
+                                    }))
+                                }
                             />
                         </div>
 
-                        <DialogFooter className="pt-2 gap-2 sm:gap-0">
-                            <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
+                        <DialogFooter className="gap-2 pt-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setModalOpen(false)}
+                            >
                                 Batal
                             </Button>
                             <Button type="submit">
@@ -731,6 +1027,9 @@ K3PekerjaanRutinPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Jadwal K3', href: jadwal.index() },
-        { title: 'Pekerjaan Rutin K3L & Lingkungan 11 KIT', href: pekerjaanRutin.index() },
+        {
+            title: 'Pekerjaan Rutin K3L & Lingkungan 11 KIT',
+            href: pekerjaanRutin.index(),
+        },
     ],
 };

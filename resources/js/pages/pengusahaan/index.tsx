@@ -1,11 +1,21 @@
 import { Head, router, setLayoutProps } from '@inertiajs/react';
-import { LayoutGrid } from 'lucide-react';
+import { LayoutGrid, ChevronRight } from 'lucide-react';
+import { K3MobileHeader } from '@/components/k3/mobile-page-shell';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { usePermissions } from '@/hooks/use-permissions';
-import { PENGUSAHAAN_MENU_GROUPS, PENGUSAHAAN_MENUS, PENGUSAHAAN_MODULES } from '@/lib/pengusahaan-menus';
-import type { PengusahaanMenu, PengusahaanModuleKey, PengusahaanSectionKey } from '@/lib/pengusahaan-menus';
+import {
+    PENGUSAHAAN_MENU_GROUPS,
+    PENGUSAHAAN_MENUS,
+    PENGUSAHAAN_MODULES,
+} from '@/lib/pengusahaan-menus';
+import type {
+    PengusahaanMenu,
+    PengusahaanModuleKey,
+    PengusahaanSectionKey,
+} from '@/lib/pengusahaan-menus';
 import { dashboard } from '@/routes';
 
 type Props = {
@@ -20,18 +30,97 @@ type Props = {
  */
 export default function PengusahaanHub({ module, section }: Props) {
     const { can } = usePermissions();
-    const menus = PENGUSAHAAN_MENUS.filter((menu) => menu.module === module.key && menu.section === section.key && can(menu.permission));
+    const compact = useCompactLayout();
+    const menus = PENGUSAHAAN_MENUS.filter(
+        (menu) =>
+            menu.module === module.key &&
+            menu.section === section.key &&
+            can(menu.permission),
+    );
     const groups = [undefined, ...PENGUSAHAAN_MENU_GROUPS]
-        .map((group) => ({ group, items: menus.filter((menu) => menu.group === group) }))
+        .map((group) => ({
+            group,
+            items: menus.filter((menu) => menu.group === group),
+        }))
         .filter(({ items }) => items.length > 0);
-    const hub = PENGUSAHAAN_MODULES.find((item) => item.key === module.key)?.hub(section.key);
+    const hub = PENGUSAHAAN_MODULES.find(
+        (item) => item.key === module.key,
+    )?.hub(section.key);
 
     setLayoutProps({
         breadcrumbs: [
             { title: 'Dashboard', href: dashboard() },
-            { title: `${section.title} ${module.title}`, href: hub ?? dashboard() },
+            {
+                title: `${section.title} ${module.title}`,
+                href: hub ?? dashboard(),
+            },
         ],
     });
+
+    if (compact) {
+        return (
+            <>
+                <Head title={`${section.title} ${module.title}`} />
+                <div className="flex flex-1 flex-col gap-3 p-3 pb-16">
+                    <K3MobileHeader
+                        title={`${section.title} ${module.title}`}
+                        backHref={dashboard().url}
+                    />
+                    {menus.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                            Belum ada menu tersedia.
+                        </div>
+                    ) : (
+                        groups.map(({ group, items }) => (
+                            <section
+                                key={group ?? 'utama'}
+                                className="flex flex-col gap-2"
+                            >
+                                {group && (
+                                    <p className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                        {group}
+                                    </p>
+                                )}
+                                <div className="flex flex-col gap-2">
+                                    {items.map((menu) => {
+                                        const Icon = menu.icon;
+
+                                        return (
+                                            <button
+                                                key={menu.title}
+                                                type="button"
+                                                disabled={menu.href === null}
+                                                onClick={() =>
+                                                    menu.href &&
+                                                    router.get(menu.href)
+                                                }
+                                                className="flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition active:scale-[0.99] disabled:opacity-60"
+                                            >
+                                                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                                    <Icon className="size-4" />
+                                                </span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block truncate text-[14px] font-medium text-foreground">
+                                                        {menu.title}
+                                                    </span>
+                                                    {menu.href === null && (
+                                                        <span className="text-[11px] text-muted-foreground">
+                                                            Sementara Disusun
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </section>
+                        ))
+                    )}
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -47,15 +136,26 @@ export default function PengusahaanHub({ module, section }: Props) {
                         <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
                             <LayoutGrid className="size-6" />
                         </div>
-                        <h3 className="text-base font-semibold text-foreground">Belum ada menu</h3>
+                        <h3 className="text-base font-semibold text-foreground">
+                            Belum ada menu
+                        </h3>
                         <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                            Belum ada halaman {section.title.toLowerCase()} {module.title.toLowerCase()} yang tersedia untuk akun Anda.
+                            Belum ada halaman {section.title.toLowerCase()}{' '}
+                            {module.title.toLowerCase()} yang tersedia untuk
+                            akun Anda.
                         </p>
                     </div>
                 ) : (
                     groups.map(({ group, items }) => (
-                        <section key={group ?? 'utama'} className="flex flex-col gap-3">
-                            {group && <h2 className="mt-2 text-sm font-semibold text-muted-foreground">{group}</h2>}
+                        <section
+                            key={group ?? 'utama'}
+                            className="flex flex-col gap-3"
+                        >
+                            {group && (
+                                <h2 className="mt-2 text-sm font-semibold text-muted-foreground">
+                                    {group}
+                                </h2>
+                            )}
                             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                                 {items.map((menu) => (
                                     <MenuCard key={menu.title} menu={menu} />
@@ -80,15 +180,26 @@ function MenuCard({ menu }: { menu: PengusahaanMenu }) {
                         <Icon className="size-5" />
                     </div>
                     {menu.href === null && (
-                        <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                        <Badge
+                            variant="outline"
+                            className="text-[11px] font-normal text-muted-foreground"
+                        >
                             Sementara Disusun
                         </Badge>
                     )}
                 </div>
-                <h3 className="text-base font-semibold text-foreground">{menu.title}</h3>
-                <p className="mt-1 text-[13px] text-muted-foreground">{menu.description}</p>
+                <h3 className="text-base font-semibold text-foreground">
+                    {menu.title}
+                </h3>
+                <p className="mt-1 text-[13px] text-muted-foreground">
+                    {menu.description}
+                </p>
             </div>
-            <Button className="w-full justify-center gap-2" disabled={menu.href === null} onClick={() => menu.href && router.get(menu.href)}>
+            <Button
+                className="w-full justify-center gap-2"
+                disabled={menu.href === null}
+                onClick={() => menu.href && router.get(menu.href)}
+            >
                 <Icon className="size-4" />
                 {menu.href === null ? 'Sedang disiapkan' : `Buka ${menu.title}`}
             </Button>

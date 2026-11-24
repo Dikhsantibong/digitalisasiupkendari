@@ -57,12 +57,19 @@ export default function K3LaporanPengusahaan({
                 baseName={`Laporan-Pengusahaan-K3-${filters.unit_id}-${filters.month}-${filters.year}`}
                 xlsxHeaderLines={[
                     { text: 'PT PLN NUSANTARA POWER', bold: true },
-                    { text: 'UNIT PELAKSANA PENGENDALIAN PEMBANGKITAN KENDARI', bold: true },
+                    {
+                        text: 'UNIT PELAKSANA PENGENDALIAN PEMBANGKITAN KENDARI',
+                        bold: true,
+                    },
                     { text: 'LAPORAN KINERJA K3 & KEAMANAN' },
                 ]}
                 saveUrl={pengusahaan.store().url}
                 regenerateUrl={pengusahaan.regenerate().url}
-                saveExtra={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }}
+                saveExtra={{
+                    unit_id: filters.unit_id,
+                    month: filters.month,
+                    year: filters.year,
+                }}
             />
         </>
     );

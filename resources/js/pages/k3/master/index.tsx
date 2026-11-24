@@ -15,11 +15,13 @@ export default function K3MasterPage(props: Props) {
                 {...props}
                 routes={{
                     title: 'Master Data K3 & Keamanan',
-                    description: 'Kelola jenis kegiatan, lokasi patroli, fasilitas darurat, APD, APAR, kotak P3K, dan item checklist.',
+                    description:
+                        'Kelola jenis kegiatan, lokasi patroli, fasilitas darurat, APD, APAR, kotak P3K, dan item checklist.',
                     indexUrl: (slug) => master.index(slug).url,
                     storeAction: (slug) => MasterController.store.form(slug),
                     updateAction: (args) => MasterController.update.form(args),
-                    destroyAction: (args) => MasterController.destroy.form(args),
+                    destroyAction: (args) =>
+                        MasterController.destroy.form(args),
                 }}
             />
         </>

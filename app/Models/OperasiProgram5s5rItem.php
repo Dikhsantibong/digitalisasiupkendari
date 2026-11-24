@@ -7,16 +7,20 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 
 /**
- * Satu program (Ringkas, Rapi, Resik, Rawat, Rajin) pada satu minggu di
- * Jadwal Program 5S 5R Pengoperasian KIT (Modul OPERASI).
+ * Satu program (Ringkas, Rapi, Resik, Rawat, Rajin) pada satu hari & shift di
+ * Program 5S 5R Pengoperasian KIT (Modul OPERASI).
  * Definisi: App\Support\OperasiProgram5s5r.
  *
  * @property int $id
  * @property int $unit_id
  * @property int $year
  * @property int $month
+ * @property int $day
+ * @property string $shift
+ * @property Carbon|null $tanggal
  * @property int $minggu
  * @property string $program
  * @property string|null $detail
@@ -37,6 +41,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'unit_id',
     'year',
     'month',
+    'day',
+    'shift',
+    'tanggal',
     'minggu',
     'program',
     'detail',
@@ -67,6 +74,8 @@ class OperasiProgram5s5rItem extends Model
         return [
             'year' => 'integer',
             'month' => 'integer',
+            'day' => 'integer',
+            'tanggal' => 'date',
             'minggu' => 'integer',
             'membersihkan' => 'boolean',
             'merapikan' => 'boolean',

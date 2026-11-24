@@ -12,6 +12,7 @@ use App\Models\ReportWorkflow;
 use App\Models\ReportWorkflowStep;
 use App\Models\Unit;
 use App\Models\User;
+use App\Services\Operator\AttendanceRequestService;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -21,9 +22,10 @@ use Illuminate\Support\Collection;
  * - the reports whose open step of the workflow is theirs — Koordinator
  *   (verifikasi), Team Leader (setujui) or Manager UL (sahkan) — and the ones
  *   they signed (actions post to the existing report-workflow.* routes);
- * - the operators' pengajuan (izin / cuti / tukar shift) waiting for a
- *   decision, for whoever approves them (operator.absensi.write, e.g. the
- *   Project Leader; actions post to operator.pengajuan.approve / reject);
+ * - the pengajuan absensi (izin / cuti / tukar shift) waiting for a
+ *   decision: operator requests to TL Operasi / TL Ophar / Project Leader /
+ *   Koordinator Operasi, HAR requests to TL Pemeliharaan / TL Ophar (or Project
+ *   Leader in a containerized unit) — actions post to operator.pengajuan.approve / reject;
  * - the Laporan Project the Project Leader / Office signs "Mengetahui" in
  *   (no action: the signature prints once the report is FINAL).
  * Shown on the Manager UL home, the dashboard of Team Leader / Koordinator /
@@ -31,6 +33,8 @@ use Illuminate\Support\Collection;
  */
 class ApprovalInbox
 {
+    public function __construct(private readonly AttendanceRequestService $attendanceRequests) {}
+
     /** Whether the user's employee holds a jabatan that signs a report (chain or "Mengetahui"). */
     public static function isSigner(User $user): bool
     {
@@ -44,10 +48,13 @@ class ApprovalInbox
         );
     }
 
-    /** Whether the user decides the operators' pengajuan (izin / cuti / tukar shift). */
+    /** Whether the user decides any pengajuan absensi (izin / cuti / tukar shift). */
     public static function decidesRequests(User $user): bool
     {
-        return ! $user->isReadOnly() && $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite);
+        return ! $user->isReadOnly() && (
+            $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveOperasi)
+            || $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveHar)
+        );
     }
 
     /** Whether the account has an approval inbox at all. */
@@ -69,8 +76,8 @@ class ApprovalInbox
     }
 
     /**
-     * The operators' pengajuan waiting for the user's decision, in the units
-     * they can access (never their own).
+     * The pengajuan absensi waiting for the user's decision, in the units
+     * they can access and routed to their division (never their own).
      *
      * @return list<array<string, mixed>>
      */
@@ -86,14 +93,22 @@ class ApprovalInbox
             ->where('status', AttendanceRequestStatus::MenungguPersetujuan)
             ->whereIn('unit_id', $user->accessibleUnitIds())
             ->when($own !== null, fn ($q) => $q->where('employee_id', '!=', $own))
-            ->with(['employee:id,name,regu', 'substitute:id,name,regu', 'unit:id,name'])
+            ->with([
+                'employee:id,name,regu,position,division,user_id',
+                'employee.user',
+                'requester',
+                'substitute:id,name,regu',
+                'unit:id,name,tl_structure',
+            ])
             ->orderBy('created_at')
             ->get()
+            ->filter(fn (AttendanceRequest $r): bool => $this->attendanceRequests->canApprove($user, $r))
             ->map(fn (AttendanceRequest $r): array => [
                 'id' => $r->id,
                 'type_label' => $r->type->label(),
                 'unit' => $r->unit?->name ?? '-',
                 'employee' => $r->employee?->name ?? '-',
+                'position' => $r->employee?->position,
                 'regu' => $r->employee?->regu,
                 'substitute' => $r->substitute?->name,
                 'start_date' => $r->start_date->toDateString(),

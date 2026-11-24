@@ -21,6 +21,7 @@ use App\Http\Controllers\Operasi\MasterController;
 use App\Http\Controllers\Operasi\MaterialPeralatanController;
 use App\Http\Controllers\Operasi\MeetingShiftController;
 use App\Http\Controllers\Operasi\PatrolCheckMesinController;
+use App\Http\Controllers\Operasi\PatrolCheckTemplateController;
 use App\Http\Controllers\Operasi\PembuatanIkController;
 use App\Http\Controllers\Operasi\PengusahaanAuxiliaryReadingController;
 use App\Http\Controllers\Operasi\PengusahaanBaFisikPelumasController;
@@ -145,6 +146,9 @@ Route::middleware(['auth', 'verified'])
             ->name('input.patrol-check-mesin.index');
         Route::post('input/patrol-check-mesin', [PatrolCheckMesinController::class, 'store'])
             ->name('input.patrol-check-mesin.store');
+        Route::delete('input/patrol-check-mesin/entry/{entry}', [PatrolCheckMesinController::class, 'destroyEntry'])
+            ->whereNumber('entry')
+            ->name('input.patrol-check-mesin.entry.destroy');
         Route::get('input/patrol-check-mesin/pdf', [PatrolCheckMesinController::class, 'pdf'])
             ->name('input.patrol-check-mesin.pdf');
 
@@ -322,6 +326,18 @@ Route::middleware(['auth', 'verified'])
 
         Route::get('document-template', [DocumentTemplateController::class, 'index'])->name('document-template.index');
         Route::put('document-template/{type}', [DocumentTemplateController::class, 'update'])->name('document-template.update');
+
+        // Template Patrol Check Mesin (Master Data Operasi): format & daftar cek per jenis mesin.
+        Route::get('template-patrol-check', [PatrolCheckTemplateController::class, 'index'])
+            ->name('patrol-check-template.index');
+        Route::post('template-patrol-check', [PatrolCheckTemplateController::class, 'store'])
+            ->name('patrol-check-template.store');
+        Route::put('template-patrol-check/{template}', [PatrolCheckTemplateController::class, 'update'])
+            ->whereNumber('template')
+            ->name('patrol-check-template.update');
+        Route::delete('template-patrol-check/{template}', [PatrolCheckTemplateController::class, 'destroy'])
+            ->whereNumber('template')
+            ->name('patrol-check-template.destroy');
 
         Route::get('master/{resource}', [MasterController::class, 'index'])->name('master.index');
         Route::post('master/{resource}', [MasterController::class, 'store'])->name('master.store');

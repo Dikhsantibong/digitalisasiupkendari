@@ -11,7 +11,7 @@ use App\Support\HarLembar\HarLembar;
  * tegangan, cos phi, kVAR), trafo (oil level, temperatur) dan tegangan
  * baterai. Akhir pekan & hari libur merah (kalender {@see HarLembar::days()}).
  *
- * @phpstan-type Column array{key: string, label: string, type: 'text'|'number', path: list<string>, width: int}
+ * @phpstan-type Column array{key: string, label: string, type: 'text'|'number'|'time', path: list<string>, width: int}
  * @phpstan-type HeaderCell array{label: string, colspan: int, rowspan: int}
  */
 final class HarPatrolCheckParameter
@@ -34,7 +34,7 @@ final class HarPatrolCheckParameter
 
         return [
             self::col('pic', 'PIC', 'text', [], 60),
-            self::col('jam', 'JAM', 'text', [], 40),
+            self::col('jam', 'JAM', 'time', [], 52),
             self::col('load', 'LOAD (KW)', 'number', [], 44),
             self::col('coolant_1', '1', 'number', [...$engineTemp, 'COOLANT'], 26),
             self::col('coolant_2', '2', 'number', [...$engineTemp, 'COOLANT'], 26),
@@ -154,7 +154,7 @@ final class HarPatrolCheckParameter
     }
 
     /**
-     * @param  'text'|'number'  $type
+     * @param  'text'|'number'|'time'  $type
      * @param  list<string>  $path
      * @return Column
      */

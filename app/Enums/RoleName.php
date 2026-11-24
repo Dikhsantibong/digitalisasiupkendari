@@ -99,10 +99,10 @@ enum RoleName: string
         return match ($this) {
             self::SuperAdmin => 'Kontrol penuh atas sistem: manajemen akses, pemantauan aktivitas, dan seluruh unit.',
             self::ManagerUl => 'Memimpin satu unit layanan dan memantau seluruh unit pembangkit di bawahnya.',
-            self::TeamLeaderOperasi => 'Akses 2 — Operasi (menu & laporan divisi), serta menyetujui Laporan Project Operasi pada unit yang ditugaskan.',
-            self::TeamLeaderPemeliharaan => 'Akses 2 — Pemeliharaan (menu & laporan divisi), serta menyetujui Laporan Project Pemeliharaan pada unit yang ditugaskan.',
+            self::TeamLeaderOperasi => 'Akses 2 — Operasi (menu & laporan divisi), serta menyetujui Laporan Project Operasi dan pengajuan absensi operator pada unit yang ditugaskan.',
+            self::TeamLeaderPemeliharaan => 'Akses 2 — Pemeliharaan (menu & laporan divisi), serta menyetujui Laporan Project Pemeliharaan dan pengajuan absensi pemeliharaan (HAR) pada unit yang ditugaskan.',
             self::TeamLeaderK3 => 'Akses 2 — K3 & keamanan (menu & laporan divisi), serta menyetujui Laporan K3 Pembangkit pada unit yang ditugaskan.',
-            self::TeamLeaderOphar => 'TL Operasi & Pemeliharaan digabung: Akses 2 — Operasi dan Pemeliharaan (menu & laporan divisi), serta menyetujui Laporan Project Operasi, Pemeliharaan, Logistik & PdM pada unit yang ditugaskan.',
+            self::TeamLeaderOphar => 'TL Operasi & Pemeliharaan digabung: Akses 2 — Operasi dan Pemeliharaan (menu & laporan divisi), serta menyetujui Laporan Project Operasi, Pemeliharaan, Logistik & PdM serta pengajuan absensi pada unit yang ditugaskan.',
             self::KoordinatorLogistik => 'Mengelola kegiatan logistik & gudang pada unit pembangkit yang ditugaskan dan memverifikasi Laporan Logistik (disetujui TL Pemeliharaan).',
             self::KoordinatorPdm => 'Mengelola kegiatan predictive maintenance (PdM) & maturity level pada unit pembangkit yang ditugaskan dan memverifikasi Laporan PdM (disetujui TL Pemeliharaan).',
             self::SiteLeader => 'Memimpin lokasi unit pembangkit dan menyetujui laporan tingkat unit.',
@@ -258,6 +258,7 @@ enum RoleName: string
                 PermissionName::OperatorMutasiView,
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorAbsensiWrite,
+                PermissionName::OperatorPengajuanApproveOperasi,
             ],
 
             self::KoordinatorK3 => [
@@ -279,6 +280,7 @@ enum RoleName: string
                 PermissionName::HarPengusahaanWrite,
                 PermissionName::HarLaporanView,
                 PermissionName::HarExecutiveView,
+                PermissionName::OperatorPengajuanApproveHar,
             ],
 
             self::TeamLeaderOperasi => [
@@ -287,10 +289,11 @@ enum RoleName: string
                 PermissionName::OperasiPengusahaanWrite,
                 PermissionName::OperasiLaporanView,
                 // TL Operasi still verifies the operators' logsheets and sees
-                // the shift schedule.
+                // the shift schedule, and approves operator attendance requests.
                 PermissionName::OperatorLogsheetView,
                 PermissionName::OperatorMutasiView,
                 PermissionName::OperatorAbsensiView,
+                PermissionName::OperatorPengajuanApproveOperasi,
             ],
 
             self::TeamLeaderK3 => [
@@ -388,6 +391,7 @@ enum RoleName: string
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorAbsensiWrite,
                 PermissionName::OperatorPresensi,
+                PermissionName::OperatorPengajuanApproveOperasi,
                 PermissionName::OperasiLaporanView,
                 ...PermissionName::operasiLapangan(),
                 PermissionName::OperasiPengusahaanInput,

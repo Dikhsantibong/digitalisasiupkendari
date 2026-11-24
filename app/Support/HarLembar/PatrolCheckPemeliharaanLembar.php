@@ -51,6 +51,31 @@ class PatrolCheckPemeliharaanLembar extends HarLembar
         return true;
     }
 
+    public function fixedItems(): bool
+    {
+        return true;
+    }
+
+    public function sanitize(array $row, int $month, int $year): ?array
+    {
+        $sanitized = parent::sanitize($row, $month, $year);
+        if ($sanitized === null) {
+            return null;
+        }
+
+        $section = (string) ($sanitized['section'] ?? '');
+        $peralatan = trim((string) ($sanitized['fields']['peralatan'] ?? ''));
+        $allowedItems = self::SYSTEMS[$section][1] ?? [];
+
+        if (! in_array($peralatan, $allowedItems, true)) {
+            return null;
+        }
+
+        $sanitized['fields']['peralatan'] = $peralatan;
+
+        return $sanitized;
+    }
+
     public function kopLines(string $unitName, int $month, int $year): array
     {
         return [

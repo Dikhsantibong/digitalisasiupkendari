@@ -4,6 +4,7 @@ namespace Tests\Feature\Har;
 
 use App\Enums\RoleName;
 use App\Models\HarLaporanGangguan;
+use App\Models\Machine;
 use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithAccessControl;
@@ -75,5 +76,58 @@ class FormulirLaporanGangguanTest extends TestCase
             ->get(route('har.input.laporan-gangguan.index', ['unit_id' => $unit->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('har/input/laporan-gangguan/index')->where('tabel.key', 'laporan-gangguan'));
+    }
+
+    public function test_machine_identity_is_automatically_populated_from_master_machine(): void
+    {
+        $unit = Unit::factory()->create(['name' => 'PLTD Poasia', 'is_active' => true]);
+        $machine = Machine::query()->create([
+            'unit_id' => $unit->id,
+            'name' => 'MIRRLEES #1',
+            'code' => 'MRL-01',
+            'merk' => 'MIRRLEES #1',
+            'type' => 'ESL 16 MK 2',
+            'serial_number' => '01 - 44 - 98',
+            'capacity_kw' => 1.70,
+            'status' => 'Operasi',
+            'is_active' => true,
+        ]);
+
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
+
+        $this->actingAs($user)
+            ->get(route('har.formulir.laporan-gangguan.index', ['unit_id' => $unit->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('har/formulir/laporan-gangguan/index')
+                ->where('options.machines.0.name', 'MIRRLEES #1')
+                ->where('options.machines.0.merek', 'MIRRLEES #1')
+                ->where('options.machines.0.type', 'ESL 16 MK 2')
+                ->where('options.machines.0.no_seri', '01 - 44 - 98')
+                ->where('options.machines.0.daya_terpasang', '1.70')
+                ->where('options.machines.0.daya_mampu', '1.53')
+                ->where('options.machines.0.fungsi_pembangkit', 'PLTD Poasia')
+            );
+
+        $this->actingAs($user)
+            ->post(route('har.formulir.laporan-gangguan.store'), [
+                'unit_id' => $unit->id,
+                'year' => 2026,
+                'machine_id' => $machine->id,
+                'nomor' => 'LH05/PLTD-POASIA/11/2026/001',
+                'hal' => 'Laporan Gangguan Sistem Pendingin MIRRLEES #1',
+                'merek' => 'Wärtsilä / Caterpillar',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $report = HarLaporanGangguan::query()->where('unit_id', $unit->id)->sole();
+        $this->assertSame($machine->id, $report->machine_id);
+        $this->assertSame('MIRRLEES #1', $report->merek);
+        $this->assertSame('ESL 16 MK 2', $report->type);
+        $this->assertSame('01 - 44 - 98', $report->no_seri);
+        $this->assertSame('1.70', $report->daya_terpasang);
+        $this->assertSame('1.53', $report->daya_mampu);
+        $this->assertSame('PLTD Poasia', $report->fungsi_pembangkit);
     }
 }

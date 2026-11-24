@@ -1,4 +1,14 @@
-import { BarChart3, ClipboardList, Droplets, FilePen, Fingerprint, Fuel, Handshake, Power, Zap } from 'lucide-react';
+import {
+    BarChart3,
+    ClipboardList,
+    Droplets,
+    FilePen,
+    Fingerprint,
+    Fuel,
+    Handshake,
+    Power,
+    Zap,
+} from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
 import logsheet from '@/routes/operator/logsheet';
 import mutasi from '@/routes/operator/mutasi';
@@ -33,7 +43,13 @@ export const UMUM_MENUS: MobileMenu[] = [
         tone: 'bg-rose-500/10 text-rose-600 dark:text-rose-400',
         href: pengajuan.index().url,
         component: 'operator/pengajuan/index',
-        permission: ['operator.presensi', 'operator.absensi.view'],
+        permission: [
+            'operator.presensi',
+            'operator.absensi.view',
+            'operator.absensi.write',
+            'operator.pengajuan.approve_operasi',
+            'operator.pengajuan.approve_har',
+        ],
     },
     {
         key: 'logsheet',

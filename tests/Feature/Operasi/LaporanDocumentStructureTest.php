@@ -18,8 +18,11 @@ use App\Models\OperasiFlmJadwal;
 use App\Models\OperasiFlmMonitoring;
 use App\Models\OperasiInventarisJadwal;
 use App\Models\OperasiMeetingShiftJadwal;
+use App\Models\OperasiPatrolCheckEntry;
 use App\Models\OperasiPatrolCheckMesin;
+use App\Models\OperasiPatrolCheckTemplate;
 use App\Models\OperasiPembuatanIk;
+use App\Models\OperasiProgram5s5rItem;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use Database\Seeders\AttendanceCodeSeeder;
@@ -238,6 +241,87 @@ class LaporanDocumentStructureTest extends TestCase
         $this->assertStringContainsString('Lube Oil Line Pipe', $section);
         $this->assertStringNotContainsString('MESIN JULI', $section);
         $this->assertLessThan(strpos($section, 'DEUTZ BV #1'), strpos($section, 'DAIHATSU #3'));
+    }
+
+    public function test_the_pembuatan_patrol_check_includes_poasia_checklist_entries_without_signatures(): void
+    {
+        $unit = Unit::factory()->create(['code' => 'PLTD-POASIA', 'name' => 'PLTD Poasia', 'is_active' => true]);
+        $template = OperasiPatrolCheckTemplate::query()->where('code', 'poasia-checklist')->firstOrFail();
+        $engine = Machine::factory()->forUnit($unit)->create([
+            'name' => 'MIRRLEES #1',
+            'fuel_type' => FuelType::HsdOnly,
+            'patrol_check_template_id' => $template->id,
+        ]);
+
+        $parent = OperasiPatrolCheckMesin::query()->create([
+            'unit_id' => $unit->id,
+            'machine_id' => $engine->id,
+            'nama_mesin' => $engine->name,
+            'year' => 2026,
+            'month' => 8,
+            'format' => OperasiPatrolCheckMesin::FORMAT_CHECKLIST,
+        ]);
+
+        OperasiPatrolCheckEntry::query()->create([
+            'patrol_check_mesin_id' => $parent->id,
+            'tanggal' => '2026-08-10',
+            'shift' => 'Pagi',
+            'jam' => '09:00',
+            'operator_name' => 'Budi Poasia',
+            'items' => [[
+                'no' => 1,
+                'system' => 'MESIN',
+                'peralatan' => 'Block Cam',
+                'applicable' => ['getar' => true, 'bunyi' => true, 'suhu' => true, 'tek_level' => false, 'bocor_visual' => true],
+                'checked' => ['getar' => true, 'bunyi' => true, 'suhu' => true, 'tek_level' => false, 'bocor_visual' => true],
+                'status' => 'TN',
+                'catatan' => 'Perlu pengecekan baut',
+            ]],
+            'catatan' => 'Tindak lanjut shift sore',
+        ]);
+
+        $section = $this->section($this->content($unit, $engine), 'sec-4-12');
+
+        $this->assertStringNotContainsString('op-red-line', $section);
+        $this->assertStringContainsString('class="op-v-operasi-input-patrol-check-mesin-pdf"', $section);
+        $this->assertStringContainsString('POA-OPR-CHK-01', $section);
+        $this->assertStringContainsString('Budi Poasia', $section);
+        $this->assertStringContainsString('Perlu pengecekan baut', $section);
+        $this->assertStringNotContainsString('Mengetahui,', $section);
+    }
+
+    public function test_the_laporan_5s5r_section_includes_per_shift_per_day_program_5s5r_input(): void
+    {
+        [$unit, $engine] = $this->unitWithEngine();
+
+        OperasiProgram5s5rItem::query()->create([
+            'unit_id' => $unit->id,
+            'year' => 2026,
+            'month' => 8,
+            'day' => 10,
+            'shift' => 'Sore',
+            'tanggal' => '2026-08-10',
+            'minggu' => 2,
+            'program' => 'resik',
+            'detail' => 'Membersihkan area ruang mesin',
+            'pic' => 'Operator Shift B (Sore)',
+            'kondisi_awal' => 'Kurang Baik',
+            'membersihkan' => true,
+            'merapikan' => true,
+            'progres' => '76-100',
+            'kondisi_akhir' => 'Baik',
+            'jumlah' => 3,
+            'keterangan' => 'Pembersihan lantai mesin Mirrlees shift sore',
+        ]);
+
+        $section = $this->section($this->content($unit, $engine), 'sec-4-14');
+
+        $this->assertStringNotContainsString('op-red-line', $section);
+        $this->assertStringContainsString('class="op-v-operasi-input-program-5s5r-pdf"', $section);
+        $this->assertStringContainsString('10 Agustus 2026', $section);
+        $this->assertStringContainsString('Shift Sore', $section);
+        $this->assertStringContainsString('Operator Shift B (Sore)', $section);
+        $this->assertStringContainsString('Pembersihan lantai mesin Mirrlees shift sore', $section);
     }
 
     private function unitWithEngine(): array

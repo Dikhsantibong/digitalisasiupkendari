@@ -1,16 +1,29 @@
 import { Head, router } from '@inertiajs/react';
+import { Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
-import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
-import { MobileGridList } from '@/components/mobile/grid-list';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3InputExportButtons,
+    K3MobilePdfButton,
+} from '@/components/k3/input-export-buttons';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { OPERASI_GRID_STYLES, useExcelPaste } from '@/components/operasi/grid';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
+import k3Input from '@/routes/k3/input';
 import emergency from '@/routes/k3/input/emergency';
 import type { IdName } from '@/types';
 
@@ -49,7 +62,12 @@ const readiness = (row: GridRow): string => {
     return `${Math.round((ready / total) * 1000) / 10}%`;
 };
 
-export default function EmergencyInput({ filters, rows: initialRows, options, can_write }: Props) {
+export default function EmergencyInput({
+    filters,
+    rows: initialRows,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<GridRow[]>(initialRows);
     const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
@@ -75,7 +93,11 @@ export default function EmergencyInput({ filters, rows: initialRows, options, ca
     };
 
     const columns = useMemo<readonly ColumnOrColumnGroup<GridRow>[]>(() => {
-        const editable = (key: keyof RowData, name: string, width = 100): Column<GridRow> => ({
+        const editable = (
+            key: keyof RowData,
+            name: string,
+            width = 100,
+        ): Column<GridRow> => ({
             key: key as string,
             name,
             width,
@@ -86,7 +108,14 @@ export default function EmergencyInput({ filters, rows: initialRows, options, ca
         });
 
         return [
-            { key: 'equipment_name', name: 'Fasilitas Darurat', minWidth: 220, frozen: true, headerCellClass: 'rdg-group-header', cellClass: 'font-medium' },
+            {
+                key: 'equipment_name',
+                name: 'Fasilitas Darurat',
+                minWidth: 220,
+                frozen: true,
+                headerCellClass: 'rdg-group-header',
+                cellClass: 'font-medium',
+            },
             editable('jml_total', 'Total', 80),
             editable('jml_ready', 'Ready', 80),
             editable('jml_not_ready', 'Not Ready', 90),
@@ -98,8 +127,22 @@ export default function EmergencyInput({ filters, rows: initialRows, options, ca
                 cellClass: 'text-center font-semibold',
                 renderCell: ({ row }) => readiness(row),
             },
-            { key: 'kendala', name: 'Kendala', width: 180, editable: can_write, renderEditCell: textEditor, headerCellClass: 'rdg-sub-header' },
-            { key: 'tindak_lanjut', name: 'Tindak Lanjut', width: 180, editable: can_write, renderEditCell: textEditor, headerCellClass: 'rdg-sub-header' },
+            {
+                key: 'kendala',
+                name: 'Kendala',
+                width: 180,
+                editable: can_write,
+                renderEditCell: textEditor,
+                headerCellClass: 'rdg-sub-header',
+            },
+            {
+                key: 'tindak_lanjut',
+                name: 'Tindak Lanjut',
+                width: 180,
+                editable: can_write,
+                renderEditCell: textEditor,
+                headerCellClass: 'rdg-sub-header',
+            },
         ];
     }, [can_write]);
 
@@ -130,77 +173,269 @@ export default function EmergencyInput({ filters, rows: initialRows, options, ca
                     tindak_lanjut: row.tindak_lanjut,
                 })),
             },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            {
+                preserveScroll: true,
+                onSuccess: () => setDirty(false),
+                onFinish: () => setSaving(false),
+            },
         );
     };
 
     return (
         <>
             <Head title="Input K3 — Kesiapan Fasilitas Darurat" />
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                <PageHeader
-                    title="Kesiapan Fasilitas Darurat"
-                    description="Ready/Not Ready tiap fasilitas darurat per periode (bulanan atau mingguan). % kesiapan dihitung otomatis dari Ready/Total."
-                    actions={
-                        <div className="flex flex-wrap gap-2">
-                            <K3InputExportButtons input="emergency" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year, week: filters.week }} />
-                            {can_write && (
-                                    <Button onClick={save} disabled={saving || rows.length === 0}>
-                                        {saving ? 'Menyimpan…' : 'Simpan'}
-                                    </Button>
-                            )}
+            {compact ? (
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Kesiapan Fasilitas Darurat"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                        extra={
+                            <OperasiSelect
+                                label="Periode"
+                                value={filters.week}
+                                onChange={(value) => visit({ week: value })}
+                                options={options.weeks}
+                                className="w-full"
+                            />
+                        }
+                    />
+
+                    {rows.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                            Belum ada fasilitas darurat pada master.
                         </div>
-                    }
-                />
-
-                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-                    <OperasiSelect
-                        label="Unit"
-                        value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                    />
-                    <OperasiSelect
-                        label="Bulan"
-                        value={String(filters.month)}
-                        onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                    />
-                    <OperasiSelect
-                        label="Periode"
-                        value={filters.week}
-                        onChange={(value) => visit({ week: value })}
-                        options={options.weeks}
-                    />
-                    {dirty && !saving && (
-                        <span className="text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>
-                    )}
-                </div>
-
-                {rows.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-                        Belum ada fasilitas darurat. Tambahkan lewat Master K3 &amp; Keamanan → Fasilitas Darurat.
-                    </div>
-                ) : (
-                    compact ? (
-                        <MobileGridList<GridRow>
-                            columns={columns}
+                    ) : (
+                        <MobileRowEditor<GridRow>
                             rows={rows}
                             rowKey={(row) => row.equipment_id}
-                            readOnly={!can_write}
-                            onRowsChange={(next) => {
-                                setRows(next);
+                            title={(row) => row.equipment_name}
+                            subtitle={(row) =>
+                                `Ready ${row.jml_ready ?? 0}/${row.jml_total ?? 0} · ${readiness(row)}`
+                            }
+                            canWrite={can_write}
+                            fields={[
+                                {
+                                    key: 'jml_total',
+                                    label: 'Jumlah Total',
+                                    type: 'number',
+                                    parse: (v) => (v === '' ? null : Number(v)),
+                                },
+                                {
+                                    key: 'jml_ready',
+                                    label: 'Jumlah Ready',
+                                    type: 'number',
+                                    parse: (v) => (v === '' ? null : Number(v)),
+                                },
+                                {
+                                    key: 'jml_not_ready',
+                                    label: 'Jumlah Not Ready',
+                                    type: 'number',
+                                    parse: (v) => (v === '' ? null : Number(v)),
+                                },
+                                {
+                                    key: 'persen_kesiapan',
+                                    label: '% Kesiapan',
+                                    type: 'display',
+                                    display: (row) => readiness(row),
+                                },
+                                {
+                                    key: 'kendala',
+                                    label: 'Kendala',
+                                    type: 'textarea',
+                                },
+                                {
+                                    key: 'tindak_lanjut',
+                                    label: 'Tindak Lanjut',
+                                    type: 'textarea',
+                                },
+                            ]}
+                            onChange={(index, key, value) => {
+                                setRows((current) =>
+                                    current.map((row, i) =>
+                                        i === index
+                                            ? { ...row, [key]: value }
+                                            : row,
+                                    ),
+                                );
+                                setDirty(true);
+                            }}
+                        />
+                    )}
+
+                    <StickyActionBar>
+                        <K3MobilePdfButton
+                            input="emergency"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                                week: filters.week,
+                            }}
+                        />
+                        {can_write && (
+                            <Button
+                                onClick={save}
+                                disabled={saving || rows.length === 0}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        )}
+                    </StickyActionBar>
+                </div>
+            ) : (
+                <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                    <PageHeader
+                        title="Kesiapan Fasilitas Darurat"
+                        description="Ready/Not Ready tiap fasilitas darurat per periode (bulanan atau mingguan). % kesiapan dihitung otomatis dari Ready/Total."
+                        actions={
+                            <div className="flex flex-wrap gap-2">
+                                <K3InputExportButtons
+                                    input="emergency"
+                                    query={{
+                                        unit_id: filters.unit_id,
+                                        month: filters.month,
+                                        year: filters.year,
+                                        week: filters.week,
+                                    }}
+                                />
+                                {can_write && (
+                                    <Button
+                                        onClick={save}
+                                        disabled={saving || rows.length === 0}
+                                    >
+                                        {saving ? 'Menyimpan…' : 'Simpan'}
+                                    </Button>
+                                )}
+                            </div>
+                        }
+                    />
+
+                    <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
+                        <OperasiSelect
+                            label="Unit"
+                            value={String(filters.unit_id)}
+                            onChange={(value) =>
+                                visit({ unit_id: Number(value) })
+                            }
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Bulan"
+                            value={String(filters.month)}
+                            onChange={(value) =>
+                                visit({ month: Number(value) })
+                            }
+                            options={OPERASI_MONTHS.map((label, index) => ({
+                                value: String(index + 1),
+                                label,
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Tahun"
+                            value={String(filters.year)}
+                            onChange={(value) => visit({ year: Number(value) })}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
+                        />
+                        <OperasiSelect
+                            label="Periode"
+                            value={filters.week}
+                            onChange={(value) => visit({ week: value })}
+                            options={options.weeks}
+                        />
+                        {dirty && !saving && (
+                            <span className="text-[13px] text-amber-600">
+                                Ada perubahan belum disimpan.
+                            </span>
+                        )}
+                    </div>
+
+                    {rows.length === 0 ? (
+                        <div className="rounded-md border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                            Belum ada fasilitas darurat. Tambahkan lewat Master
+                            K3 &amp; Keamanan → Fasilitas Darurat.
+                        </div>
+                    ) : compact ? (
+                        <MobileRowEditor<GridRow>
+                            rows={rows}
+                            rowKey={(row) => row.equipment_id}
+                            title={(row) => row.equipment_name}
+                            subtitle={(row) =>
+                                `Ready ${row.jml_ready ?? 0}/${row.jml_total ?? 0} · ${readiness(row)}`
+                            }
+                            canWrite={can_write}
+                            fields={[
+                                {
+                                    key: 'jml_total',
+                                    label: 'Jumlah Total',
+                                    type: 'number',
+                                    parse: (v) => (v === '' ? null : Number(v)),
+                                },
+                                {
+                                    key: 'jml_ready',
+                                    label: 'Jumlah Ready',
+                                    type: 'number',
+                                    parse: (v) => (v === '' ? null : Number(v)),
+                                },
+                                {
+                                    key: 'jml_not_ready',
+                                    label: 'Jumlah Not Ready',
+                                    type: 'number',
+                                    parse: (v) => (v === '' ? null : Number(v)),
+                                },
+                                {
+                                    key: 'persen_kesiapan',
+                                    label: '% Kesiapan',
+                                    type: 'display',
+                                    display: (row) => readiness(row),
+                                },
+                                {
+                                    key: 'kendala',
+                                    label: 'Kendala',
+                                    type: 'textarea',
+                                },
+                                {
+                                    key: 'tindak_lanjut',
+                                    label: 'Tindak Lanjut',
+                                    type: 'textarea',
+                                },
+                            ]}
+                            onChange={(index, key, value) => {
+                                setRows((current) =>
+                                    current.map((row, i) =>
+                                        i === index
+                                            ? { ...row, [key]: value }
+                                            : row,
+                                    ),
+                                );
                                 setDirty(true);
                             }}
                         />
                     ) : (
-                        <div className="operasi-grid overflow-hidden rounded-md border border-border" onPaste={onPaste}>
+                        <div
+                            className="operasi-grid overflow-hidden rounded-md border border-border"
+                            onPaste={onPaste}
+                        >
                             <style>{OPERASI_GRID_STYLES}</style>
                             <DataGrid
                                 className="rdg-light"
@@ -215,9 +450,9 @@ export default function EmergencyInput({ filters, rows: initialRows, options, ca
                                 onSelectedCellChange={onSelectedCellChange}
                             />
                         </div>
-                    )
-                )}
-            </div>
+                    )}
+                </div>
+            )}
         </>
     );
 }

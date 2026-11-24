@@ -2,14 +2,22 @@
 
 namespace App\Services\Operator;
 
+use App\Enums\AttendanceRequestStatus;
 use App\Enums\AttendanceRequestType;
+use App\Enums\EmployeePosition;
+use App\Enums\PermissionName;
+use App\Enums\RoleName;
 use App\Enums\ScheduleGroupType;
+use App\Enums\UnitTlStructure;
 use App\Models\AttendanceCode;
 use App\Models\AttendanceRequest;
 use App\Models\Employee;
 use App\Models\Unit;
+use App\Models\User;
 use App\Models\WorkSchedule;
 use App\Models\WorkScheduleEntry;
+use App\Services\AccessControl;
+use App\Support\Indonesian;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -37,7 +45,107 @@ class AttendanceRequestService
     /** Longest izin / sakit / cuti range, in days. */
     public const MAX_DAYS = 31;
 
-    public function __construct(private readonly AttendanceRoster $roster) {}
+    public function __construct(
+        private readonly AttendanceRoster $roster,
+        private readonly AccessControl $accessControl,
+    ) {}
+
+    /**
+     * Whether this request was submitted by a HAR field technician (Harmes,
+     * Harlist, ASME & Elec / Asmec / Aslist) and therefore routes to TL
+     * Pemeliharaan instead of TL Operasi.
+     */
+    public function isHarRequest(AttendanceRequest $request): bool
+    {
+        $request->loadMissing(['employee.user', 'requester']);
+
+        $employee = $request->employee;
+        if ($employee !== null && $employee->regu !== null && $employee->regu !== '') {
+            return false;
+        }
+
+        if ($employee !== null && (Employee::isHarFieldPosition($employee->position) || $employee->division === 'pemeliharaan')) {
+            return true;
+        }
+
+        foreach (array_filter([$request->requester, $employee?->user]) as $account) {
+            if ($account->isHarFieldAccount()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether the user holds any Pengajuan Absensi approval capability in the unit.
+     */
+    public function canApproveAny(User $user, Unit|int $unit): bool
+    {
+        if ($user->isReadOnly() || ! $user->canAccessUnit($unit)) {
+            return false;
+        }
+
+        return $user->isSuperAdmin()
+            || $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveOperasi)
+            || $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveHar);
+    }
+
+    /**
+     * Whether the user may approve, reject or undo this request: never their
+     * own request; HAR requests route to TL Pemeliharaan (or TL Ophar, or
+     * Project Leader in a containerized unit), while Operator / Operasi requests
+     * route to TL Operasi (or TL Ophar, Project Leader, Koordinator Operasi).
+     */
+    public function canApprove(User $user, AttendanceRequest $request): bool
+    {
+        if ($user->isReadOnly() || ! $user->canAccessUnit($request->unit_id)) {
+            return false;
+        }
+
+        $request->loadMissing(['employee.user', 'requester', 'unit']);
+
+        if ($this->isOwnRequest($user, $request)) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        if ($this->isHarRequest($request)) {
+            return $this->canApproveHarOnUnit($user, $request->unit);
+        }
+
+        return $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveOperasi);
+    }
+
+    public function isOwnRequest(User $user, AttendanceRequest $request): bool
+    {
+        $request->loadMissing('employee');
+
+        if ($request->employee?->user_id === $user->id) {
+            return true;
+        }
+
+        $user->loadMissing('employee');
+
+        return $user->employee !== null && $user->employee->is_active && $user->employee->id === $request->employee_id;
+    }
+
+    private function canApproveHarOnUnit(User $user, ?Unit $unit): bool
+    {
+        if ($user->hasPermissionTo(PermissionName::OperatorPengajuanApproveHar)) {
+            return true;
+        }
+
+        if ($unit === null || $unit->tlStructure() !== UnitTlStructure::Containerized) {
+            return false;
+        }
+
+        return $this->accessControl->roleNames($user)->contains(RoleName::ProjectLeaderOperasi->value)
+            || $user->employee?->canonicalPosition() === EmployeePosition::ProjectLeader;
+    }
 
     /**
      * The employees on the unit's absensi sheet (Kerja Shift, then Non Shift).
@@ -89,9 +197,48 @@ class AttendanceRequestService
         return $codes;
     }
 
+    /** Active / approved request statuses that count against quotas and overlaps. */
+    private const ACTIVE_STATUSES = [
+        AttendanceRequestStatus::MenungguPengganti->value,
+        AttendanceRequestStatus::MenungguPersetujuan->value,
+        AttendanceRequestStatus::Disetujui->value,
+    ];
+
     /**
-     * Check a new request: the range, the overlap with the employee's other
-     * open or approved requests and, for a tukar shift, the two schedules.
+     * Calendar months (`YYYY-MM`) where the employee has already used their
+     * monthly Izin quota (pending or approved; rejected / cancelled do not count).
+     *
+     * @return list<string>
+     */
+    public function izinUsedMonths(Employee $employee): array
+    {
+        $months = [];
+        $rows = AttendanceRequest::query()
+            ->where('employee_id', $employee->id)
+            ->where('type', AttendanceRequestType::Izin->value)
+            ->whereIn('status', self::ACTIVE_STATUSES)
+            ->get(['start_date', 'end_date']);
+
+        foreach ($rows as $row) {
+            $cursor = $row->start_date->copy()->startOfMonth();
+            $last = $row->end_date->copy()->startOfMonth();
+
+            while ($cursor->lte($last)) {
+                $months[$cursor->format('Y-m')] = true;
+                $cursor = $cursor->addMonthNoOverflow();
+            }
+        }
+
+        $list = array_keys($months);
+        sort($list);
+
+        return $list;
+    }
+
+    /**
+     * Check a new request: the range, the monthly Izin limit, the overlap with
+     * the employee's other open or approved requests and, for a tukar shift, the
+     * two schedules.
      *
      * @param  array{type: AttendanceRequestType, start_date: string, end_date: string, substitute: Employee|null, swap_date: string|null}  $data
      *
@@ -106,9 +253,32 @@ class AttendanceRequestService
             throw ValidationException::withMessages(['end_date' => 'Pengajuan paling lama '.self::MAX_DAYS.' hari.']);
         }
 
+        if ($data['type'] === AttendanceRequestType::Izin) {
+            $monthStart = $start->copy()->startOfMonth()->toDateString();
+            $monthEnd = $end->copy()->endOfMonth()->toDateString();
+
+            $hasMonthlyIzin = AttendanceRequest::query()
+                ->where('employee_id', $employee->id)
+                ->where('type', AttendanceRequestType::Izin->value)
+                ->whereIn('status', self::ACTIVE_STATUSES)
+                ->whereDate('start_date', '<=', $monthEnd)
+                ->whereDate('end_date', '>=', $monthStart)
+                ->exists();
+
+            if ($hasMonthlyIzin) {
+                $monthLabel = $start->isSameMonth($end)
+                    ? Indonesian::monthName($start->month).' '.$start->year
+                    : 'bulan tersebut';
+
+                throw ValidationException::withMessages([
+                    'type' => "Pengajuan izin hanya dapat dilakukan 1 kali per bulan (kuota {$monthLabel} sudah terpakai).",
+                ]);
+            }
+        }
+
         $overlap = AttendanceRequest::query()
             ->where('employee_id', $employee->id)
-            ->whereIn('status', ['menunggu_pengganti', 'menunggu_persetujuan', 'disetujui'])
+            ->whereIn('status', self::ACTIVE_STATUSES)
             ->whereDate('start_date', '<=', $end->toDateString())
             ->whereDate('end_date', '>=', $start->toDateString())
             ->exists();

@@ -12,7 +12,19 @@ import {
     Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
+import { dmyToIso, isoToDmy } from '@/components/pengusahaan/k3-cells';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -23,6 +35,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanApelKeamanan from '@/routes/k3/pengusahaan/apel-keamanan';
 import type { IdName } from '@/types';
@@ -104,7 +118,9 @@ export default function PengusahaanApelKeamananPage(props: Props) {
 
     const [noDokumen, setNoDokumen] = useState(initialRecord.no_dokumen);
     const [revisi, setRevisi] = useState(initialRecord.revisi);
-    const [tanggalDokumen, setTanggalDokumen] = useState(initialRecord.tanggal_dokumen);
+    const [tanggalDokumen, setTanggalDokumen] = useState(
+        initialRecord.tanggal_dokumen,
+    );
     const [catatan, setCatatan] = useState(initialRecord.catatan);
 
     const [items, setItems] = useState<ApelKeamananItem[]>(() =>
@@ -119,11 +135,18 @@ export default function PengusahaanApelKeamananPage(props: Props) {
 
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
-    const [dayRangeFilter, setDayRangeFilter] = useState<'all' | '1-10' | '11-20' | '21-end'>('all');
+    const [dayRangeFilter, setDayRangeFilter] = useState<
+        'all' | '1-10' | '11-20' | '21-end'
+    >('all');
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', val: string) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        val: string,
+    ) => {
         router.get(
             k3PengusahaanApelKeamanan.index().url,
             {
@@ -137,9 +160,15 @@ export default function PengusahaanApelKeamananPage(props: Props) {
         );
     };
 
-    const updateItem = (key: number, field: keyof ApelKeamananItem, value: unknown) => {
+    const updateItem = (
+        key: number,
+        field: keyof ApelKeamananItem,
+        value: unknown,
+    ) => {
         setItems((prev) =>
-            prev.map((it) => (it._key === key ? { ...it, [field]: value } : it)),
+            prev.map((it) =>
+                it._key === key ? { ...it, [field]: value } : it,
+            ),
         );
         setDirty(true);
     };
@@ -164,7 +193,10 @@ export default function PengusahaanApelKeamananPage(props: Props) {
 
                 if (it.shift.toLowerCase().includes('pagi')) {
                     regu = 'A';
-                } else if (it.shift.toLowerCase().includes('sore') || it.shift.toLowerCase().includes('siang')) {
+                } else if (
+                    it.shift.toLowerCase().includes('sore') ||
+                    it.shift.toLowerCase().includes('siang')
+                ) {
                     regu = 'B';
                 } else if (it.shift.toLowerCase().includes('malam')) {
                     regu = 'C';
@@ -193,8 +225,8 @@ export default function PengusahaanApelKeamananPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -255,7 +287,6 @@ export default function PengusahaanApelKeamananPage(props: Props) {
             if (item.kelengkapan_atribut.trim().toLowerCase() === 'lengkap') {
                 lengkapCount++;
             }
-
         }
 
         const avgPersonil = (sumPersonil / totalItems).toFixed(1);
@@ -274,11 +305,17 @@ export default function PengusahaanApelKeamananPage(props: Props) {
     // Screen view filter (print view always prints all items)
     const filteredItems = useMemo(() => {
         return items.filter((it) => {
-            if (dayRangeFilter === '1-10' && (it.hari_ke < 1 || it.hari_ke > 10)) {
+            if (
+                dayRangeFilter === '1-10' &&
+                (it.hari_ke < 1 || it.hari_ke > 10)
+            ) {
                 return false;
             }
 
-            if (dayRangeFilter === '11-20' && (it.hari_ke < 11 || it.hari_ke > 20)) {
+            if (
+                dayRangeFilter === '11-20' &&
+                (it.hari_ke < 11 || it.hari_ke > 20)
+            ) {
                 return false;
             }
 
@@ -289,6 +326,197 @@ export default function PengusahaanApelKeamananPage(props: Props) {
             return true;
         });
     }, [items, dayRangeFilter]);
+
+    if (compact) {
+        return (
+            <>
+                <Head title={`Checklist Apel Keamanan — ${unit.name}`} />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Apel Keamanan"
+                        backHref={k3Pengusahaan.index({ section: 'input' }).url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) =>
+                            handleFilterChange('unit_id', String(v))
+                        }
+                        month={filters.month}
+                        onMonthChange={(v) =>
+                            handleFilterChange('month', String(v))
+                        }
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) =>
+                            handleFilterChange('year', String(v))
+                        }
+                        extra={
+                            <OperasiSelect
+                                label="Rentang Tanggal"
+                                value={dayRangeFilter}
+                                onChange={(v) =>
+                                    setDayRangeFilter(
+                                        v as typeof dayRangeFilter,
+                                    )
+                                }
+                                options={[
+                                    { value: 'all', label: 'Semua Hari' },
+                                    { value: '1-10', label: 'Tgl 1 – 10' },
+                                    { value: '11-20', label: 'Tgl 11 – 20' },
+                                    {
+                                        value: '21-end',
+                                        label: 'Tgl 21 – Akhir',
+                                    },
+                                ]}
+                                className="w-full"
+                            />
+                        }
+                    />
+
+                    {can_write && (
+                        <K3MobileActionRow>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={setStandardRegu}
+                                className="gap-1.5"
+                            >
+                                <Sparkles className="size-3.5 text-amber-500" />
+                                Rotasi Regu
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={setAllStandard}
+                                className="gap-1.5 text-emerald-700 dark:text-emerald-400"
+                            >
+                                <CheckCircle2 className="size-3.5" />2 Pers.
+                                &amp; Lengkap
+                            </Button>
+                        </K3MobileActionRow>
+                    )}
+
+                    <MobileRowEditor<ApelKeamananItem>
+                        rows={filteredItems.map((it) => ({
+                            ...it,
+                            tanggal: dmyToIso(it.tanggal) || it.tanggal,
+                        }))}
+                        rowKey={(it) => it._key}
+                        title={(it) => `Hari #${it.hari_ke} · ${it.shift}`}
+                        subtitle={(it) =>
+                            `Regu ${it.tim_regu || '-'} · ${it.jumlah_personil} pers · ${it.kelengkapan_atribut}`
+                        }
+                        canWrite={can_write}
+                        fields={[
+                            {
+                                key: 'tim_regu',
+                                label: 'Tim / Regu',
+                                type: 'dropdown',
+                                options: ['A', 'B', 'C', 'D', '-'],
+                            },
+                            {
+                                key: 'shift',
+                                label: 'Shift',
+                                type: 'dropdown',
+                                options: ['Pagi', 'Siang', 'Sore', 'Malam'],
+                            },
+                            { key: 'waktu_apel', label: 'Waktu Apel' },
+                            {
+                                key: 'jumlah_personil',
+                                label: 'Jumlah Personil',
+                                type: 'number',
+                                parse: (v) => (v === '' ? 0 : Number(v)),
+                            },
+                            {
+                                key: 'kelengkapan_atribut',
+                                label: 'Kelengkapan Atribut',
+                                type: 'dropdown',
+                                options: ['Lengkap', 'Tidak Lengkap'],
+                            },
+                            {
+                                key: 'paraf_komandan_regu',
+                                label: 'Paraf Komandan Regu',
+                            },
+                            { key: 'keterangan', label: 'Keterangan' },
+                        ]}
+                        onChange={(idx, key, value) => {
+                            const val =
+                                key === 'tanggal'
+                                    ? isoToDmy(String(value))
+                                    : value;
+                            updateItem(filteredItems[idx]._key, key, val);
+                        }}
+                    />
+
+                    <K3MobileMetaAccordion
+                        noDokumen={noDokumen}
+                        revisi={revisi}
+                        tanggalDokumen={tanggalDokumen}
+                        onNoDokumenChange={(v) => {
+                            setNoDokumen(v);
+                            setDirty(true);
+                        }}
+                        onRevisiChange={(v) => {
+                            setRevisi(v);
+                            setDirty(true);
+                        }}
+                        onTanggalDokumenChange={(v) => {
+                            setTanggalDokumen(v);
+                            setDirty(true);
+                        }}
+                        canWrite={can_write}
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan apel keamanan…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            {dirty && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={resetChanges}
+                                    disabled={saving}
+                                    className="gap-1.5"
+                                >
+                                    <RotateCcw className="size-4" />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
 
     return (
         <div className="space-y-6 p-6">
@@ -302,7 +530,11 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => router.get(k3Pengusahaan.index({ section: 'input' }).url)}
+                        onClick={() =>
+                            router.get(
+                                k3Pengusahaan.index({ section: 'input' }).url,
+                            )
+                        }
                         title="Kembali ke Menu Input K3"
                     >
                         <ArrowLeft className="size-4" />
@@ -313,17 +545,24 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 Laporan Apel Satuan Keamanan
                             </h1>
                             {has_saved ? (
-                                <Badge variant="secondary" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <Badge
+                                    variant="secondary"
+                                    className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
                                     Tersimpan
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                >
                                     Draft
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Laporan apel harian satuan pengamanan per shift dan pemantauan kelengkapan atribut (SMT-FM-AK3-13.13).
+                            Laporan apel harian satuan pengamanan per shift dan
+                            pemantauan kelengkapan atribut (SMT-FM-AK3-13.13).
                         </p>
                     </div>
                 </div>
@@ -359,7 +598,9 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                             className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             <Save className="size-4" />
-                            <span>{saving ? 'Menyimpan...' : 'Simpan Data'}</span>
+                            <span>
+                                {saving ? 'Menyimpan...' : 'Simpan Data'}
+                            </span>
                         </Button>
                     )}
                 </div>
@@ -372,21 +613,32 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                         <OperasiSelect
                             label="Unit Layanan"
                             value={String(filters.unit_id)}
-                            options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                            onChange={(val) => handleFilterChange('unit_id', val)}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            onChange={(val) =>
+                                handleFilterChange('unit_id', val)
+                            }
                         />
 
                         <OperasiSelect
                             label="Bulan"
                             value={String(filters.month)}
-                            options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                            options={OPERASI_MONTHS.map((label, idx) => ({
+                                value: String(idx + 1),
+                                label,
+                            }))}
                             onChange={(val) => handleFilterChange('month', val)}
                         />
 
                         <OperasiSelect
                             label="Tahun"
                             value={String(filters.year)}
-                            options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
                             onChange={(val) => handleFilterChange('year', val)}
                         />
                     </div>
@@ -395,15 +647,22 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                     <div className="flex flex-wrap items-center gap-2.5">
                         <div className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300">
                             <Shield className="size-3.5 text-sky-600" />
-                            <span>{stats.totalDays} Hari ({stats.totalApel} Sesi Apel)</span>
+                            <span>
+                                {stats.totalDays} Hari ({stats.totalApel} Sesi
+                                Apel)
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                             <CheckCircle2 className="size-3.5 text-emerald-600" />
-                            <span>Atribut: {stats.lengkapPercent}% Lengkap</span>
+                            <span>
+                                Atribut: {stats.lengkapPercent}% Lengkap
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                             <Users className="size-3.5 text-indigo-600" />
-                            <span>Rerata: {stats.avgPersonil} Personil/Shift</span>
+                            <span>
+                                Rerata: {stats.avgPersonil} Personil/Shift
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -423,7 +682,6 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                             <span>Setel 2 Personil & Lengkap</span>
                         </Button>
 
-
                         <Button
                             type="button"
                             variant="outline"
@@ -438,14 +696,14 @@ export default function PengusahaanApelKeamananPage(props: Props) {
 
                         {/* Page / Range Navigation Tabs for Screen View */}
                         <div className="ml-auto flex items-center gap-1.5 text-xs">
-                            <span className="text-muted-foreground flex items-center gap-1">
+                            <span className="flex items-center gap-1 text-muted-foreground">
                                 <Filter className="size-3" /> Tampilkan:
                             </span>
-                            <div className="inline-flex rounded-md border p-0.5 bg-muted/30">
+                            <div className="inline-flex rounded-md border bg-muted/30 p-0.5">
                                 <button
                                     type="button"
                                     onClick={() => setDayRangeFilter('all')}
-                                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                                    className={`rounded px-2 py-0.5 text-xs transition-colors ${
                                         dayRangeFilter === 'all'
                                             ? 'bg-background font-bold text-foreground shadow-xs'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -456,7 +714,7 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setDayRangeFilter('1-10')}
-                                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                                    className={`rounded px-2 py-0.5 text-xs transition-colors ${
                                         dayRangeFilter === '1-10'
                                             ? 'bg-background font-bold text-foreground shadow-xs'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -467,7 +725,7 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setDayRangeFilter('11-20')}
-                                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                                    className={`rounded px-2 py-0.5 text-xs transition-colors ${
                                         dayRangeFilter === '11-20'
                                             ? 'bg-background font-bold text-foreground shadow-xs'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -478,7 +736,7 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 <button
                                     type="button"
                                     onClick={() => setDayRangeFilter('21-end')}
-                                    className={`px-2 py-0.5 rounded text-xs transition-colors ${
+                                    className={`rounded px-2 py-0.5 text-xs transition-colors ${
                                         dayRangeFilter === '21-end'
                                             ? 'bg-background font-bold text-foreground shadow-xs'
                                             : 'text-muted-foreground hover:text-foreground'
@@ -497,25 +755,27 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                 {/* Header KOP Dokumen Resmi Kembar Logo PLN & Lambang K3 */}
                 <div className="apel-header-box relative rounded border-2 border-black p-4 dark:border-border">
                     {/* Logo PLN Kiri */}
-                    <div className="absolute left-4 top-4 flex items-center">
+                    <div className="absolute top-4 left-4 flex items-center">
                         <img
                             src="/logo/sidebar-logo.png"
                             alt="PLN Nusantara Power"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
 
                     {/* Lambang K3 Kanan */}
-                    <div className="absolute right-4 top-4 flex items-center">
+                    <div className="absolute top-4 right-4 flex items-center">
                         <img
                             src="/logo/k3.png"
                             alt="Logo K3"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
@@ -529,7 +789,11 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                             UNIT PEMBANGKITAN KENDARI
                         </div>
                         <div className="text-[11px] font-bold text-foreground uppercase sm:text-xs">
-                            UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
+                            UNIT LAYANAN{' '}
+                            {unit.name.toUpperCase().startsWith('ULPLTD') ||
+                            unit.name.toUpperCase().startsWith('UP')
+                                ? unit.name.toUpperCase()
+                                : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
                         </div>
                     </div>
 
@@ -540,14 +804,15 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex-1 text-left sm:pr-4">
                             <h2 className="text-xs font-black tracking-wider text-foreground uppercase sm:text-sm">
-                                LAPORAN APEL SATUAN KEAMANAN PERIODE BULAN {monthName.toUpperCase()} TAHUN {filters.year}
+                                LAPORAN APEL SATUAN KEAMANAN PERIODE BULAN{' '}
+                                {monthName.toUpperCase()} TAHUN {filters.year}
                             </h2>
                         </div>
 
                         {/* Kotak Metadata Dokumen */}
-                        <div className="w-full sm:w-64 border border-black text-[9px] dark:border-border sm:text-[10px]">
+                        <div className="w-full border border-black text-[9px] sm:w-64 sm:text-[10px] dark:border-border">
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     No. dokumen
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -567,7 +832,7 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     No. revisi
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -587,7 +852,7 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Tanggal
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -596,7 +861,9 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                             type="text"
                                             value={tanggalDokumen}
                                             onChange={(e) => {
-                                                setTanggalDokumen(e.target.value);
+                                                setTanggalDokumen(
+                                                    e.target.value,
+                                                );
                                                 setDirty(true);
                                             }}
                                             className="w-full bg-transparent focus:outline-none"
@@ -612,9 +879,9 @@ export default function PengusahaanApelKeamananPage(props: Props) {
 
                 {/* Security Apel Table */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="excel-sheet apel-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet apel-table w-full border-collapse border border-black text-[10px] sm:text-[11px] dark:border-border">
                         <thead>
-                            <tr className="bg-muted/40 font-bold uppercase text-foreground">
+                            <tr className="bg-muted/40 font-bold text-foreground uppercase">
                                 <th className="w-10 border border-black px-1.5 py-1.5 text-center dark:border-border">
                                     NO
                                 </th>
@@ -644,11 +911,17 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                         <tbody>
                             {/* In screen view, show filteredItems. In print, print all items */}
                             {items.map((it, idx) => {
-                                const isVisibleOnScreen = filteredItems.some((f) => f._key === it._key);
+                                const isVisibleOnScreen = filteredItems.some(
+                                    (f) => f._key === it._key,
+                                );
 
                                 // Check if this item is the first row for this hari_ke
-                                const isFirstOfHari = idx === 0 || items[idx - 1].hari_ke !== it.hari_ke;
-                                const hariRows = items.filter((x) => x.hari_ke === it.hari_ke);
+                                const isFirstOfHari =
+                                    idx === 0 ||
+                                    items[idx - 1].hari_ke !== it.hari_ke;
+                                const hariRows = items.filter(
+                                    (x) => x.hari_ke === it.hari_ke,
+                                );
                                 const rowSpan = hariRows.length;
 
                                 // Date label formatted e.g. "1 Agustus 2026"
@@ -657,8 +930,10 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 return (
                                     <tr
                                         key={it._key}
-                                        className={`day-group hover:bg-muted/15 transition-colors ${
-                                            !isVisibleOnScreen ? 'no-screen hidden print:table-row' : ''
+                                        className={`day-group transition-colors hover:bg-muted/15 ${
+                                            !isVisibleOnScreen
+                                                ? 'no-screen hidden print:table-row'
+                                                : ''
                                         }`}
                                     >
                                         {/* NO & TANGGAL with rowSpan */}
@@ -666,13 +941,13 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                             <>
                                                 <td
                                                     rowSpan={rowSpan}
-                                                    className="border border-black px-1.5 py-1 text-center font-bold align-middle bg-card dark:border-border"
+                                                    className="border border-black bg-card px-1.5 py-1 text-center align-middle font-bold dark:border-border"
                                                 >
                                                     {it.hari_ke}
                                                 </td>
                                                 <td
                                                     rowSpan={rowSpan}
-                                                    className="border border-black px-2 py-1 text-center font-medium align-middle bg-card whitespace-nowrap dark:border-border"
+                                                    className="border border-black bg-card px-2 py-1 text-center align-middle font-medium whitespace-nowrap dark:border-border"
                                                 >
                                                     {dateLabel}
                                                 </td>
@@ -685,12 +960,20 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                                 <input
                                                     type="text"
                                                     value={it.tim_regu}
-                                                    onChange={(e) => updateItem(it._key, 'tim_regu', e.target.value)}
-                                                    className="w-full text-center bg-transparent focus:bg-background focus:outline-none"
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'tim_regu',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full bg-transparent text-center focus:bg-background focus:outline-none"
                                                     placeholder="A/B/C"
                                                 />
                                             ) : (
-                                                <span className="font-bold">{it.tim_regu}</span>
+                                                <span className="font-bold">
+                                                    {it.tim_regu}
+                                                </span>
                                             )}
                                         </td>
 
@@ -700,8 +983,14 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                                 <input
                                                     type="text"
                                                     value={it.shift}
-                                                    onChange={(e) => updateItem(it._key, 'shift', e.target.value)}
-                                                    className="w-full text-center bg-transparent focus:bg-background focus:outline-none"
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'shift',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full bg-transparent text-center focus:bg-background focus:outline-none"
                                                     placeholder="Pagi/Sore/Malam"
                                                 />
                                             ) : (
@@ -710,13 +999,19 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                         </td>
 
                                         {/* WAKTU APEL */}
-                                        <td className="border border-black px-1 py-0.5 text-center font-mono align-middle dark:border-border">
+                                        <td className="border border-black px-1 py-0.5 text-center align-middle font-mono dark:border-border">
                                             {can_write ? (
                                                 <input
                                                     type="text"
                                                     value={it.waktu_apel}
-                                                    onChange={(e) => updateItem(it._key, 'waktu_apel', e.target.value)}
-                                                    className="w-full text-center bg-transparent font-mono focus:bg-background focus:outline-none"
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'waktu_apel',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    className="w-full bg-transparent text-center font-mono focus:bg-background focus:outline-none"
                                                     placeholder="08:00"
                                                 />
                                             ) : (
@@ -732,11 +1027,21 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                                     min="0"
                                                     max="50"
                                                     value={it.jumlah_personil}
-                                                    onChange={(e) => updateItem(it._key, 'jumlah_personil', Number(e.target.value))}
-                                                    className="w-full text-center font-semibold bg-transparent focus:bg-background focus:outline-none"
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'jumlah_personil',
+                                                            Number(
+                                                                e.target.value,
+                                                            ),
+                                                        )
+                                                    }
+                                                    className="w-full bg-transparent text-center font-semibold focus:bg-background focus:outline-none"
                                                 />
                                             ) : (
-                                                <span className="font-semibold">{it.jumlah_personil}</span>
+                                                <span className="font-semibold">
+                                                    {it.jumlah_personil}
+                                                </span>
                                             )}
                                         </td>
 
@@ -746,34 +1051,84 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                                 <>
                                                     <div className="no-print flex justify-center">
                                                         <Select
-                                                            value={it.kelengkapan_atribut || 'Lengkap'}
-                                                            onValueChange={(val) => updateItem(it._key, 'kelengkapan_atribut', val)}
+                                                            value={
+                                                                it.kelengkapan_atribut ||
+                                                                'Lengkap'
+                                                            }
+                                                            onValueChange={(
+                                                                val,
+                                                            ) =>
+                                                                updateItem(
+                                                                    it._key,
+                                                                    'kelengkapan_atribut',
+                                                                    val,
+                                                                )
+                                                            }
                                                         >
-                                                            <SelectTrigger size="sm" className="h-7 w-full min-w-[95px] text-xs font-medium justify-between bg-transparent">
+                                                            <SelectTrigger
+                                                                size="sm"
+                                                                className="h-7 w-full min-w-[95px] justify-between bg-transparent text-xs font-medium"
+                                                            >
                                                                 <SelectValue placeholder="Pilih...">
-                                                                    <span className={it.kelengkapan_atribut === 'Lengkap' ? 'text-emerald-700 font-medium dark:text-emerald-400' : 'text-amber-700 font-semibold dark:text-amber-400'}>
-                                                                        {it.kelengkapan_atribut}
+                                                                    <span
+                                                                        className={
+                                                                            it.kelengkapan_atribut ===
+                                                                            'Lengkap'
+                                                                                ? 'font-medium text-emerald-700 dark:text-emerald-400'
+                                                                                : 'font-semibold text-amber-700 dark:text-amber-400'
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            it.kelengkapan_atribut
+                                                                        }
                                                                     </span>
                                                                 </SelectValue>
                                                             </SelectTrigger>
                                                             <SelectContent>
-                                                                <SelectItem value="Lengkap" className="text-xs">
-                                                                    <span className="text-emerald-700 font-medium dark:text-emerald-400">Lengkap</span>
+                                                                <SelectItem
+                                                                    value="Lengkap"
+                                                                    className="text-xs"
+                                                                >
+                                                                    <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                                                                        Lengkap
+                                                                    </span>
                                                                 </SelectItem>
-                                                                <SelectItem value="Tidak Lengkap" className="text-xs">
-                                                                    <span className="text-amber-700 font-semibold dark:text-amber-400">Tidak Lengkap</span>
+                                                                <SelectItem
+                                                                    value="Tidak Lengkap"
+                                                                    className="text-xs"
+                                                                >
+                                                                    <span className="font-semibold text-amber-700 dark:text-amber-400">
+                                                                        Tidak
+                                                                        Lengkap
+                                                                    </span>
                                                                 </SelectItem>
                                                             </SelectContent>
                                                         </Select>
                                                     </div>
                                                     <span className="hidden print:inline-block">
-                                                        <span className={it.kelengkapan_atribut === 'Lengkap' ? 'text-emerald-700 font-medium' : 'text-amber-700 font-semibold'}>
-                                                            {it.kelengkapan_atribut}
+                                                        <span
+                                                            className={
+                                                                it.kelengkapan_atribut ===
+                                                                'Lengkap'
+                                                                    ? 'font-medium text-emerald-700'
+                                                                    : 'font-semibold text-amber-700'
+                                                            }
+                                                        >
+                                                            {
+                                                                it.kelengkapan_atribut
+                                                            }
                                                         </span>
                                                     </span>
                                                 </>
                                             ) : (
-                                                <span className={it.kelengkapan_atribut === 'Lengkap' ? 'text-emerald-700 font-medium dark:text-emerald-400' : 'text-amber-700 font-semibold dark:text-amber-400'}>
+                                                <span
+                                                    className={
+                                                        it.kelengkapan_atribut ===
+                                                        'Lengkap'
+                                                            ? 'font-medium text-emerald-700 dark:text-emerald-400'
+                                                            : 'font-semibold text-amber-700 dark:text-amber-400'
+                                                    }
+                                                >
                                                     {it.kelengkapan_atribut}
                                                 </span>
                                             )}
@@ -785,12 +1140,20 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                                 <input
                                                     type="text"
                                                     value={it.keterangan}
-                                                    onChange={(e) => updateItem(it._key, 'keterangan', e.target.value)}
+                                                    onChange={(e) =>
+                                                        updateItem(
+                                                            it._key,
+                                                            'keterangan',
+                                                            e.target.value,
+                                                        )
+                                                    }
                                                     className="w-full bg-transparent focus:bg-background focus:outline-none"
                                                     placeholder="Keterangan / Catatan..."
                                                 />
                                             ) : (
-                                                <span>{it.keterangan || '—'}</span>
+                                                <span>
+                                                    {it.keterangan || '—'}
+                                                </span>
                                             )}
                                         </td>
                                     </tr>
@@ -801,8 +1164,8 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                 </div>
 
                 {/* Additional Notes Box */}
-                <div className="mt-4 border border-black p-3 text-[10px] dark:border-border sm:text-[11px]">
-                    <div className="font-bold uppercase text-foreground mb-1">
+                <div className="mt-4 border border-black p-3 text-[10px] sm:text-[11px] dark:border-border">
+                    <div className="mb-1 font-bold text-foreground uppercase">
                         Catatan Khusus / Informasi Keamanan:
                     </div>
                     {can_write ? (
@@ -814,10 +1177,10 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 setDirty(true);
                             }}
                             placeholder="Catatan koordinasi tim keamanan, kejadian menonjol, atau arahan khusus komandan regu..."
-                            className="w-full rounded border border-input bg-transparent p-2 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                            className="w-full rounded border border-input bg-transparent p-2 text-xs focus:ring-1 focus:ring-ring focus:outline-none"
                         />
                     ) : (
-                        <div className="text-muted-foreground whitespace-pre-wrap">
+                        <div className="whitespace-pre-wrap text-muted-foreground">
                             {catatan || 'Tidak ada catatan khusus.'}
                         </div>
                     )}
@@ -827,15 +1190,25 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                 <div className="mt-6 grid grid-cols-2 gap-8 text-center text-[10px] sm:text-xs">
                     <div>
                         <div className="text-muted-foreground">Mengetahui,</div>
-                        <div className="font-bold text-foreground">Team Leader K3 & Keamanan</div>
+                        <div className="font-bold text-foreground">
+                            Team Leader K3 & Keamanan
+                        </div>
                         <div className="h-14" />
-                        <div className="font-bold underline text-foreground">( ........................................ )</div>
+                        <div className="font-bold text-foreground underline">
+                            ( ........................................ )
+                        </div>
                     </div>
                     <div>
-                        <div className="text-muted-foreground">Kendari, {monthName} {filters.year}</div>
-                        <div className="font-bold text-foreground">Komandan Regu Satuan Pengamanan</div>
+                        <div className="text-muted-foreground">
+                            Kendari, {monthName} {filters.year}
+                        </div>
+                        <div className="font-bold text-foreground">
+                            Komandan Regu Satuan Pengamanan
+                        </div>
                         <div className="h-14" />
-                        <div className="font-bold underline text-foreground">( ........................................ )</div>
+                        <div className="font-bold text-foreground underline">
+                            ( ........................................ )
+                        </div>
                     </div>
                 </div>
             </div>

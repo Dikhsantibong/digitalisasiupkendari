@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
+use App\Models\HarDocumentRecord;
 use App\Models\HarLaporanGangguan;
 use App\Models\Machine;
 use App\Models\Unit;
@@ -45,18 +46,50 @@ class LaporanGangguanController extends Controller
         $now = Carbon::now();
         $year = (int) ($request->integer('year') ?: $now->year);
 
+        $machines = Machine::query()
+            ->where('unit_id', $unit->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'merk', 'type', 'serial_number', 'capacity_kw']);
+
+        $machineOptions = $machines->map(function (Machine $m) use ($unit): array {
+            $capNum = $m->capacity_kw !== null && (float) $m->capacity_kw > 0 ? (float) $m->capacity_kw : null;
+            $cap = $capNum !== null ? number_format($capNum, 2, '.', '') : '';
+            $mampu = $capNum !== null ? number_format(round($capNum * 0.9, 2), 2, '.', '') : '';
+
+            return [
+                'id' => $m->id,
+                'name' => $m->name,
+                'merek' => $m->name,
+                'type' => (string) ($m->type ?? ''),
+                'no_seri' => (string) ($m->serial_number ?? ''),
+                'fungsi_pembangkit' => $unit->name,
+                'daya_terpasang' => $cap,
+                'daya_mampu' => $mampu,
+            ];
+        })->keyBy('id');
+
         $reports = HarLaporanGangguan::query()
             ->where('unit_id', $unit->id)
             ->where('year', $year)
             ->orderBy('sort_order')
             ->orderByDesc('tanggal_laporan')
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->map(function (HarLaporanGangguan $report) use ($machineOptions, $unit): HarLaporanGangguan {
+                if ($report->machine_id !== null && $machineOptions->has($report->machine_id)) {
+                    $master = $machineOptions->get($report->machine_id);
+                    $report->merek = $master['merek'];
+                    $report->type = $master['type'] !== '' ? $master['type'] : $report->type;
+                    $report->no_seri = $master['no_seri'] !== '' ? $master['no_seri'] : $report->no_seri;
+                    $report->daya_terpasang = $master['daya_terpasang'] !== '' ? $master['daya_terpasang'] : $report->daya_terpasang;
+                    $report->daya_mampu = $master['daya_mampu'] !== '' ? $master['daya_mampu'] : $report->daya_mampu;
+                    $report->fungsi_pembangkit = ($report->fungsi_pembangkit !== null && trim((string) $report->fungsi_pembangkit) !== '')
+                        ? $report->fungsi_pembangkit
+                        : $unit->name;
+                }
 
-        $machines = Machine::query()
-            ->where('unit_id', $unit->id)
-            ->orderBy('name')
-            ->get(['id', 'name']);
+                return $report;
+            });
 
         return Inertia::render('har/formulir/laporan-gangguan/index', [
             'unit' => [
@@ -72,7 +105,7 @@ class LaporanGangguanController extends Controller
             'options' => [
                 'units' => $units->map(fn (Unit $u): array => ['id' => $u->id, 'name' => $u->name])->all(),
                 'years' => range($now->year - 3, $now->year + 1),
-                'machines' => $machines->all(),
+                'machines' => $machineOptions->values()->all(),
             ],
             'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLaporanGangguan),
         ]);
@@ -118,23 +151,33 @@ class LaporanGangguanController extends Controller
             'eviden' => ['nullable', 'string'],
         ]);
 
+        $machine = ! empty($validated['machine_id'])
+            ? Machine::query()->where('unit_id', $unit->id)->find((int) $validated['machine_id'])
+            : null;
+
+        $capNum = $machine?->capacity_kw !== null && (float) $machine->capacity_kw > 0
+            ? (float) $machine->capacity_kw
+            : null;
+        $cap = $capNum !== null ? number_format($capNum, 2, '.', '') : null;
+        $mampu = $capNum !== null ? number_format(round($capNum * 0.9, 2), 2, '.', '') : null;
+
         $data = [
             'nomor' => $validated['nomor'] ?? null,
             'tanggal_laporan' => ! empty($validated['tanggal_laporan']) ? Carbon::parse($validated['tanggal_laporan'])->toDateString() : null,
             'hal' => $validated['hal'] ?? null,
-            'form_code' => $validated['form_code'] ?: 'LH - 05',
-            'unit_kesatuan' => $validated['unit_kesatuan'] ?? null,
-            'machine_id' => $validated['machine_id'] ?? null,
-            'merek' => $validated['merek'] ?? null,
-            'type' => $validated['type'] ?? null,
-            'no_seri' => $validated['no_seri'] ?? null,
+            'form_code' => ($validated['form_code'] ?? null) ?: 'LH - 05',
+            'unit_kesatuan' => ($validated['unit_kesatuan'] ?? null) ?: $unit->name,
+            'machine_id' => $machine?->id ?? ($validated['machine_id'] ?? null),
+            'merek' => $machine !== null ? $machine->name : ($validated['merek'] ?? null),
+            'type' => $machine !== null ? ($machine->type ?: ($validated['type'] ?? null)) : ($validated['type'] ?? null),
+            'no_seri' => $machine !== null ? ($machine->serial_number ?: ($validated['no_seri'] ?? null)) : ($validated['no_seri'] ?? null),
             'rh' => $validated['rh'] ?? null,
             'jsb' => $validated['jsb'] ?? null,
             'jsmo' => $validated['jsmo'] ?? null,
             'jsi_terakhir' => $validated['jsi_terakhir'] ?? null,
-            'fungsi_pembangkit' => $validated['fungsi_pembangkit'] ?? null,
-            'daya_terpasang' => $validated['daya_terpasang'] ?? null,
-            'daya_mampu' => $validated['daya_mampu'] ?? null,
+            'fungsi_pembangkit' => ($validated['fungsi_pembangkit'] ?? null) ?: ($machine !== null ? $unit->name : null),
+            'daya_terpasang' => $machine !== null ? ($cap ?? ($validated['daya_terpasang'] ?? null)) : ($validated['daya_terpasang'] ?? null),
+            'daya_mampu' => $machine !== null ? ($mampu ?? ($validated['daya_mampu'] ?? null)) : ($validated['daya_mampu'] ?? null),
             'tanggal_jam_kerusakan' => $validated['tanggal_jam_kerusakan'] ?? null,
             'peralatan_rusak' => $validated['peralatan_rusak'] ?? null,
             'gejala' => $validated['gejala'] ?? null,
@@ -162,6 +205,11 @@ class LaporanGangguanController extends Controller
             ]);
         }
 
+        HarDocumentRecord::query()
+            ->where('unit_id', $unit->id)
+            ->where('year', (int) $validated['year'])
+            ->delete();
+
         $this->activityLogger->log(
             ActivityEvent::Created,
             "Menyimpan laporan gangguan pembangkit {$unit->name}",
@@ -180,12 +228,19 @@ class LaporanGangguanController extends Controller
         abort_unless($this->allowsFieldInput($user, PermissionName::HarInputWrite, PermissionName::HarLapanganLaporanGangguan), 403);
         abort_unless($user->canAccessUnit($laporanGangguan->unit_id), 403);
 
+        $unitId = $laporanGangguan->unit_id;
+        $year = $laporanGangguan->year;
         $laporanGangguan->delete();
+
+        HarDocumentRecord::query()
+            ->where('unit_id', $unitId)
+            ->where('year', $year)
+            ->delete();
 
         $this->activityLogger->log(
             ActivityEvent::Deleted,
             "Menghapus laporan gangguan #{$laporanGangguan->id}",
-            unit: $laporanGangguan->unit_id,
+            unit: $unitId,
         );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Laporan gangguan berhasil dihapus.']);
@@ -219,6 +274,20 @@ class LaporanGangguanController extends Controller
      */
     public function pdfView(Unit $unit, HarLaporanGangguan $laporanGangguan): array
     {
+        if ($laporanGangguan->machine_id !== null) {
+            $machine = $laporanGangguan->relationLoaded('machine')
+                ? $laporanGangguan->machine
+                : Machine::query()->find($laporanGangguan->machine_id);
+            if ($machine !== null) {
+                $laporanGangguan->merek = $machine->name;
+                $laporanGangguan->type = $machine->type ?: $laporanGangguan->type;
+                $laporanGangguan->no_seri = $machine->serial_number ?: $laporanGangguan->no_seri;
+                $laporanGangguan->daya_terpasang = ($machine->capacity_kw !== null && (float) $machine->capacity_kw > 0)
+                    ? (string) $machine->capacity_kw
+                    : $laporanGangguan->daya_terpasang;
+            }
+        }
+
         return ['har.formulir.laporan-gangguan-pdf', [
             'unit' => $unit,
             'report' => $laporanGangguan,
@@ -236,7 +305,7 @@ class LaporanGangguanController extends Controller
      */
     public function reports(Unit $unit, int $month, int $year): Collection
     {
-        return HarLaporanGangguan::query()->where('unit_id', $unit->id)->where('year', $year)
+        return HarLaporanGangguan::query()->with('machine')->where('unit_id', $unit->id)->where('year', $year)
             ->whereMonth('tanggal_laporan', $month)->orderBy('tanggal_laporan')->orderBy('id')->get();
     }
 }

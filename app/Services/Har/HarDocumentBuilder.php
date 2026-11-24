@@ -3,6 +3,7 @@
 namespace App\Services\Har;
 
 use App\Enums\ReportModule;
+use App\Http\Controllers\Har\AbnormalGangguanController;
 use App\Http\Controllers\Har\DailyMeetingController;
 use App\Http\Controllers\Har\LaporanGangguanController;
 use App\Http\Controllers\Har\LembarController;
@@ -16,6 +17,7 @@ use App\Models\HarLembarRow;
 use App\Models\HarMaterialPeralatan;
 use App\Models\HarProgram5s5rItem;
 use App\Models\HarTabelRow;
+use App\Models\KondisiAbnormal;
 use App\Models\Machine;
 use App\Models\Unit;
 use App\Services\Reports\ReportWorkflowService;
@@ -201,6 +203,15 @@ class HarDocumentBuilder
                 'view' => fn (): array => $tabels->pdfView($tabel, $unit, $month, $year),
             ];
         }
+
+        $sources[] = [
+            'group' => 'input',
+            'key' => 'tabel-abnormal-gangguan',
+            'title' => 'Laporan Kondisi Abnormal dan Gangguan Pembangkit',
+            'orientation' => 'landscape',
+            'saved' => KondisiAbnormal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->exists(),
+            'view' => fn (): array => app(AbnormalGangguanController::class)->pdfView($unit, $month, $year),
+        ];
 
         foreach (HarLembars::all() as $lembar) {
             if ($lembar->menu() === 'input') {

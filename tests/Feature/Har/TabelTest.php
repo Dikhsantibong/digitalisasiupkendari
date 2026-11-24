@@ -3,6 +3,7 @@
 namespace Tests\Feature\Har;
 
 use App\Enums\RoleName;
+use App\Http\Controllers\Har\AbnormalGangguanController;
 use App\Http\Controllers\Har\TabelController;
 use App\Models\HarTabelRow;
 use App\Models\KondisiAbnormal;
@@ -100,77 +101,82 @@ class TabelTest extends TestCase
             ->assertSessionHasErrors(['rows.0.tanggal_kejadian', 'rows.0.sistem', 'rows.0.status', 'rows.0.durasi']);
     }
 
-    public function test_abnormal_gangguan_keeps_one_status_per_row_and_totals_like_the_sheet(): void
+    public function test_abnormal_gangguan_shares_format_and_records_with_operasi_kondisi_abnormal(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
-        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
-
-        $this->actingAs($user)
-            ->post(route('har.input.abnormal-gangguan.store'), $period + ['rows' => [
-                ['uraian' => 'Bocor BBM pada trasfer Pump to T.25 KL', 'jenis' => 'MESIN', 'tanggal' => '2026-08-20', 'abnormal' => 1, 'durasi_abnormal' => 20],
-                ['uraian' => 'Temperature Coolant, Hunting', 'jenis' => 'MESIN #6', 'tanggal' => '2026-08-28', 'abnormal' => 1, 'durasi_abnormal' => 6],
-                ['uraian' => 'Silincer Sisi Kanan, miring', 'jenis' => 'MESIN #6', 'tanggal' => '2026-08-28', 'abnormal' => 1, 'gangguan' => 1, 'durasi_abnormal' => 8],
-            ]])
-            ->assertSessionHasNoErrors();
-
-        $rows = HarTabelRow::query()->where('tabel', 'abnormal-gangguan')->orderBy('sort_order')->get();
-        $this->assertCount(3, $rows);
-        // Both ticked: only the first (Abnormal) is kept.
-        $this->assertSame(1, $rows[2]->data['abnormal']);
-        $this->assertNull($rows[2]->data['gangguan']);
-
-        [$view, $data] = app(TabelController::class)->pdfView(HarTabels::find('abnormal-gangguan'), $unit, 8, 2026);
-        // TOTAL like the sheet: 3 abnormal, 34 jam, 0 gangguan, 0 jam.
-        $this->assertSame(['abnormal' => 3, 'durasi_abnormal' => 34, 'gangguan' => 0, 'durasi_gangguan' => 0], $data['totals']);
-        $html = view($view, $data)->render();
-        $this->assertStringContainsString('LAPORAN KONDISI ABNORMAL DAN GANGGUAN PEMBANGKIT', $html);
-        $this->assertStringContainsString('AGUSTUS 2026', $html);
-        $this->assertStringContainsString('KOLOM ABNORMAL DAN GANGGUAN', strtoupper($html));
-    }
-
-    public function test_abnormal_gangguan_reads_the_operasi_reports_before_its_own_rows(): void
-    {
-        $unit = Unit::factory()->create(['is_active' => true]);
-        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
+        $harUser = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
+        $opUser = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
         $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026];
         $mesin = Machine::factory()->create(['unit_id' => $unit->id, 'name' => 'MAK #2']);
-        $report = fn (array $data): KondisiAbnormal => KondisiAbnormal::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 8, 'no_urut' => 1] + $data);
-        $report(['tanggal' => '2026-08-20', 'uraian_kondisi' => 'Exhaust tinggi', 'is_abnormal' => 1, 'durasi_abnormal' => 2]);
-        $report(['tanggal' => '2026-08-03', 'uraian_kondisi' => 'Mesin trip', 'is_gangguan' => 1, 'durasi_gangguan' => 1.5, 'machine_id' => $mesin->id, 'peralatan' => 'Cylinder head']);
-        // Another month and another unit stay out.
-        KondisiAbnormal::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 9, 'no_urut' => 1, 'tanggal' => '2026-09-01', 'uraian_kondisi' => 'September', 'is_abnormal' => 1]);
-        KondisiAbnormal::query()->create(['unit_id' => Unit::factory()->create()->id, 'year' => 2026, 'month' => 8, 'no_urut' => 1, 'tanggal' => '2026-08-01', 'uraian_kondisi' => 'Unit lain', 'is_abnormal' => 1]);
 
-        // Pemeliharaan adds its own kejadian; the Operasi reports are not copied.
-        $this->actingAs($user)
-            ->post(route('har.input.abnormal-gangguan.store'), $period + ['rows' => [
-                ['uraian' => 'Bocor BBM transfer pump', 'jenis' => 'MESIN', 'tanggal' => '2026-08-21', 'abnormal' => 1, 'durasi_abnormal' => 3],
-            ]])
+        // 1. Operasi inputs an abnormal and a gangguan record via Operasi Kondisi Abnormal.
+        $this->actingAs($opUser)
+            ->post(route('operasi.input.kondisi-abnormal.store'), [
+                'unit_id' => $unit->id,
+                'tanggal' => '2026-08-03',
+                'jenis' => 'gangguan',
+                'jam_mulai' => '08:00',
+                'jam_selesai' => '09:30',
+                'machine_id' => $mesin->id,
+                'peralatan' => 'Cylinder head',
+                'uraian_kondisi' => 'Mesin trip karena suhu tinggi',
+                'parameter_terkait' => 'Exhaust 530 C',
+                'kronologi' => '08:00 alarm suhu tinggi, 08:05 trip',
+                'tl_pendek_sr' => true,
+                'tl_pendek_flm' => true,
+                'tl_pendek_keterangan' => 'SR-001',
+                'tl_panjang' => 'Overhaul top',
+                'dampak_sistem' => 'Beban dialihkan',
+                'dampak_pembangkit' => 'Derating 500 kW',
+            ])
+            ->assertRedirect()
             ->assertSessionHasNoErrors();
-        $this->assertSame(1, HarTabelRow::query()->where('tabel', 'abnormal-gangguan')->count());
-        $this->assertSame(4, KondisiAbnormal::query()->count());
 
-        $this->actingAs($user)
+        // 2. Pemeliharaan opens har.input.abnormal-gangguan and automatically sees the exact same record & fields.
+        $this->actingAs($harUser)
             ->get(route('har.input.abnormal-gangguan.index', $period))
+            ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->has('rows', 1)
-                ->where('rows.0.uraian', 'Bocor BBM transfer pump')
-                ->has('linked_rows', 2)
-                ->where('linked_rows.0.uraian', 'Mesin trip (MAK #2 · Cylinder head)')
-                ->where('linked_rows.0.gangguan', 1)
-                ->where('linked_rows.0.durasi_gangguan', 1.5)
-                ->where('linked_rows.0._source', 'Operasi')
-                ->where('linked_rows.1.uraian', 'Exhaust tinggi')
-                ->where('linked_rows.1.abnormal', 1)
-                ->whereNot('tabel.linked_note', null),
+                ->component('har/input/abnormal-gangguan/index')
+                ->has('entries', 1)
+                ->where('entries.0.uraian_kondisi', 'Mesin trip karena suhu tinggi')
+                ->where('entries.0.jenis', 'gangguan')
+                ->where('entries.0.durasi', 1.5)
+                ->where('entries.0.mesin', 'MAK #2')
+                ->where('entries.0.peralatan', 'Cylinder head')
+                ->where('entries.0.parameter_terkait', 'Exhaust 530 C')
+                ->where('entries.0.kronologi', '08:00 alarm suhu tinggi, 08:05 trip')
+                ->where('entries.0.tl_pendek_sr', 1)
+                ->where('entries.0.tl_pendek_flm', 1)
+                ->where('entries.0.tl_panjang', 'Overhaul top')
+                ->where('summary.total_gangguan_count', 1)
+                ->where('summary.total_gangguan_durasi', 1.5)
             );
 
-        // The PDF (and the Laporan Pemeliharaan) print the Operasi rows first and total all of them.
-        [$view, $data] = app(TabelController::class)->pdfView(HarTabels::find('abnormal-gangguan'), $unit, 8, 2026);
-        $this->assertSame(['Mesin trip (MAK #2 · Cylinder head)', 'Exhaust tinggi', 'Bocor BBM transfer pump'], array_column($data['rows'], 'uraian'));
-        $this->assertSame(['abnormal' => 2, 'durasi_abnormal' => 5, 'gangguan' => 1, 'durasi_gangguan' => 1.5], $data['totals']);
-        $this->assertStringContainsString('Sumber: Operasi', view($view, $data)->render());
+        // 3. Pemeliharaan adds another record from har.input.abnormal-gangguan.
+        $this->actingAs($harUser)
+            ->post(route('har.input.abnormal-gangguan.store'), [
+                'unit_id' => $unit->id,
+                'tanggal' => '2026-08-20',
+                'jenis' => 'abnormal',
+                'durasi' => 2,
+                'uraian_kondisi' => 'Bocor BBM pada transfer pump',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, KondisiAbnormal::query()->where('unit_id', $unit->id)->count());
+
+        // 4. Both records appear in the Pemeliharaan PDF and summary.
+        [$view, $data] = app(AbnormalGangguanController::class)->pdfView($unit, 8, 2026);
+        $this->assertSame(1, $data['totalAbnormalCount']);
+        $this->assertEquals(2.0, $data['totalAbnormalDurasi']);
+        $this->assertSame(1, $data['totalGangguanCount']);
+        $this->assertEquals(1.5, $data['totalGangguanDurasi']);
+        $html = view($view, $data)->render();
+        $this->assertStringContainsString('LAPORAN KONDISI ABNORMAL DAN GANGGUAN PEMBANGKIT', $html);
+        $this->assertStringContainsString('Mesin trip karena suhu tinggi', $html);
+        $this->assertStringContainsString('Bocor BBM pada transfer pump', $html);
     }
 
     public function test_months_are_kept_apart(): void
@@ -178,12 +184,12 @@ class TabelTest extends TestCase
         $unit = Unit::factory()->create(['is_active' => true]);
         $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
 
-        $this->actingAs($user)->post(route('har.input.abnormal-gangguan.store'), ['unit_id' => $unit->id, 'month' => 7, 'year' => 2026, 'rows' => [['uraian' => 'Juli', 'abnormal' => 1]]]);
-        $this->actingAs($user)->post(route('har.input.abnormal-gangguan.store'), ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'rows' => [['uraian' => 'Agustus', 'gangguan' => 1]]]);
+        $this->actingAs($user)->post(route('har.input.abnormal-gangguan.store'), ['unit_id' => $unit->id, 'tanggal' => '2026-07-10', 'jenis' => 'abnormal', 'uraian_kondisi' => 'Juli']);
+        $this->actingAs($user)->post(route('har.input.abnormal-gangguan.store'), ['unit_id' => $unit->id, 'tanggal' => '2026-08-10', 'jenis' => 'gangguan', 'uraian_kondisi' => 'Agustus']);
 
         $this->actingAs($user)
             ->get(route('har.input.abnormal-gangguan.index', ['unit_id' => $unit->id, 'month' => 7, 'year' => 2026]))
-            ->assertInertia(fn ($page) => $page->has('rows', 1)->where('rows.0.uraian', 'Juli'));
+            ->assertInertia(fn ($page) => $page->has('entries', 1)->where('entries.0.uraian_kondisi', 'Juli'));
     }
 
     public function test_manager_ul_can_view_but_not_save(): void

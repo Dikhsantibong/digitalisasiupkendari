@@ -1,10 +1,21 @@
 import { Head, router } from '@inertiajs/react';
 import { Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
-import { K3InputExportButtons } from '@/components/k3/input-export-buttons';
+import {
+    K3InputExportButtons,
+    K3MobilePdfButton,
+} from '@/components/k3/input-export-buttons';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Button } from '@/components/ui/button';
@@ -38,9 +49,16 @@ type Props = {
     can_write: boolean;
 };
 
-const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: i }));
+const hydrate = (rows: ServerRow[]): Row[] =>
+    rows.map((r, i) => ({ ...r, _key: i }));
 
-export default function ApdInventoryInput({ unit, filters, groups, rows: initial, options, can_write }: Props) {
+export default function ApdInventoryInput({
+    filters,
+    groups,
+    rows: initial,
+    options,
+    can_write,
+}: Props) {
     const [rows, setRows] = useState<Row[]>(() => hydrate(initial));
     const compact = useCompactLayout();
     const [nextKey, setNextKey] = useState(initial.length);
@@ -51,44 +69,239 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
     const [sig, setSig] = useState(signature);
 
     if (sig !== signature) {
- setSig(signature); setRows(hydrate(initial)); setNextKey(initial.length); setDirty(false); 
-}
+        setSig(signature);
+        setRows(hydrate(initial));
+        setNextKey(initial.length);
+        setDirty(false);
+    }
 
-    const orderedGroups = [...groups, ...rows.map((r) => r.grup).filter((g) => !groups.includes(g))].filter((g, i, a) => a.indexOf(g) === i);
+    const orderedGroups = [
+        ...groups,
+        ...rows.map((r) => r.grup).filter((g) => !groups.includes(g)),
+    ].filter((g, i, a) => a.indexOf(g) === i);
 
-    const visit = (patch: Partial<Props['filters']>) => router.get(apdInventory.index().url, { ...filters, ...patch }, { preserveState: true, preserveScroll: true, replace: true });
+    const visit = (patch: Partial<Props['filters']>) =>
+        router.get(
+            apdInventory.index().url,
+            { ...filters, ...patch },
+            { preserveState: true, preserveScroll: true, replace: true },
+        );
 
-    const updateText = (key: number, field: 'nama' | 'subkategori' | 'satuan' | 'lokasi' | 'keterangan' | 'foto', value: string) => {
-        setRows((p) => p.map((r) => (r._key === key ? { ...r, [field]: value } : r)));
+    const updateText = (
+        key: number,
+        field:
+            | 'nama'
+            | 'subkategori'
+            | 'satuan'
+            | 'lokasi'
+            | 'keterangan'
+            | 'foto',
+        value: string,
+    ) => {
+        setRows((p) =>
+            p.map((r) => (r._key === key ? { ...r, [field]: value } : r)),
+        );
         setDirty(true);
     };
     const updateNum = (key: number, value: string) => {
-        setRows((p) => p.map((r) => (r._key === key ? { ...r, jumlah: Math.max(0, parseInt(value, 10) || 0) } : r)));
+        setRows((p) =>
+            p.map((r) =>
+                r._key === key
+                    ? { ...r, jumlah: Math.max(0, parseInt(value, 10) || 0) }
+                    : r,
+            ),
+        );
         setDirty(true);
     };
     const addItem = (grup: string) => {
-        setRows((p) => [...p, { _key: nextKey, id: null, grup, subkategori: '', nama: '', jumlah: 0, satuan: '', lokasi: '', keterangan: '', foto: '' }]);
+        setRows((p) => [
+            ...p,
+            {
+                _key: nextKey,
+                id: null,
+                grup,
+                subkategori: '',
+                nama: '',
+                jumlah: 0,
+                satuan: '',
+                lokasi: '',
+                keterangan: '',
+                foto: '',
+            },
+        ]);
         setNextKey((k) => k + 1);
         setDirty(true);
     };
     const remove = (key: number) => {
- setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
-};
+        setRows((p) => p.filter((r) => r._key !== key));
+        setDirty(true);
+    };
 
     const save = () => {
         setSaving(true);
-        const ordered = orderedGroups.flatMap((g) => rows.filter((r) => r.grup === g));
+        const ordered = orderedGroups.flatMap((g) =>
+            rows.filter((r) => r.grup === g),
+        );
         router.post(
             apdInventory.store().url,
             {
-                unit_id: filters.unit_id, month: filters.month, year: filters.year,
-                rows: ordered.map((r) => ({ id: r.id, grup: r.grup, subkategori: r.subkategori, nama: r.nama, jumlah: r.jumlah, satuan: r.satuan, lokasi: r.lokasi, keterangan: r.keterangan, foto: r.foto })),
+                unit_id: filters.unit_id,
+                month: filters.month,
+                year: filters.year,
+                rows: ordered.map((r) => ({
+                    id: r.id,
+                    grup: r.grup,
+                    subkategori: r.subkategori,
+                    nama: r.nama,
+                    jumlah: r.jumlah,
+                    satuan: r.satuan,
+                    lokasi: r.lokasi,
+                    keterangan: r.keterangan,
+                    foto: r.foto,
+                })),
             },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            {
+                preserveScroll: true,
+                onSuccess: () => setDirty(false),
+                onFinish: () => setSaving(false),
+            },
         );
     };
 
     const totalCols = can_write ? 8 : 7;
+
+    if (compact) {
+        return (
+            <>
+                <Head title="Daftar Inventaris Alat Pelindung Diri" />
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Daftar Inventaris APD"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    <div className="flex flex-col gap-4">
+                        {orderedGroups.map((grup) => {
+                            const items = rows.filter((r) => r.grup === grup);
+
+                            return (
+                                <div key={grup} className="flex flex-col gap-2">
+                                    <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                        {grup}
+                                    </p>
+                                    <MobileRowEditor<Row>
+                                        rows={items}
+                                        fields={
+                                            [
+                                                {
+                                                    key: 'nama',
+                                                    label: 'Alat Pelindung Diri',
+                                                },
+                                                {
+                                                    key: 'jumlah',
+                                                    label: 'Jumlah',
+                                                    type: 'number',
+                                                },
+                                                {
+                                                    key: 'satuan',
+                                                    label: 'Satuan',
+                                                },
+                                                {
+                                                    key: 'lokasi',
+                                                    label: 'Lokasi',
+                                                },
+                                                {
+                                                    key: 'keterangan',
+                                                    label: 'Keterangan',
+                                                },
+                                                {
+                                                    key: 'foto',
+                                                    label: 'Foto (URL)',
+                                                    placeholder: 'https://…',
+                                                },
+                                            ] satisfies RowField<Row>[]
+                                        }
+                                        title={(r) => r.nama || 'Item baru'}
+                                        subtitle={(r) =>
+                                            `${r.jumlah} ${r.satuan || ''}${r.subkategori ? ` · ${r.subkategori}` : ''}`
+                                        }
+                                        onChange={(i, k, v) => {
+                                            const row = items[i];
+
+                                            if (k === 'jumlah') {
+                                                updateNum(row._key, String(v));
+                                            } else {
+                                                updateText(
+                                                    row._key,
+                                                    k as
+                                                        | 'nama'
+                                                        | 'subkategori'
+                                                        | 'satuan'
+                                                        | 'lokasi'
+                                                        | 'keterangan'
+                                                        | 'foto',
+                                                    String(v ?? ''),
+                                                );
+                                            }
+                                        }}
+                                        onRemove={(i) => remove(items[i]._key)}
+                                        canWrite={can_write}
+                                        rowKey={(r) => r._key}
+                                        removeLabel="Hapus item"
+                                    />
+                                    {can_write && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => addItem(grup)}
+                                            className="h-9 w-full justify-center gap-1.5 text-xs"
+                                        >
+                                            <Plus className="size-4" />
+                                            Tambah — {grup}
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <StickyActionBar>
+                        <K3MobilePdfButton
+                            input="apd-inventory"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                        />
+                        {can_write && (
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        )}
+                    </StickyActionBar>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -97,22 +310,64 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
                 <PageHeader
                     title="Daftar Inventaris Alat Pelindung Diri (APD)"
                     description="Pendataan stok APD per kelompok & subkategori: jumlah, satuan, lokasi penyimpanan, dan dokumentasi foto."
-                    actions={(
+                    actions={
                         <div className="flex flex-wrap gap-2">
-                            <K3InputExportButtons input="apd-inventory" query={{ unit_id: filters.unit_id, month: filters.month, year: filters.year }} />
+                            <K3InputExportButtons
+                                input="apd-inventory"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
                             {can_write && (
                                 <>
-                                    <Button onClick={save} disabled={saving || !dirty} className="gap-2"><Save className="size-4" />{saving ? 'Menyimpan…' : 'Simpan'}</Button>
+                                    <Button
+                                        onClick={save}
+                                        disabled={saving || !dirty}
+                                        className="gap-2"
+                                    >
+                                        <Save className="size-4" />
+                                        {saving ? 'Menyimpan…' : 'Simpan'}
+                                    </Button>
                                 </>
                             )}
                         </div>
-                    )}
+                    }
                 />
                 <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-                    <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} />
-                    <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((l, i) => ({ value: String(i + 1), label: l }))} />
-                    <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} />
-                    {dirty && <span className="pb-1 text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
+                    <OperasiSelect
+                        label="Unit"
+                        value={String(filters.unit_id)}
+                        onChange={(v) => visit({ unit_id: Number(v) })}
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
+                    />
+                    <OperasiSelect
+                        label="Bulan"
+                        value={String(filters.month)}
+                        onChange={(v) => visit({ month: Number(v) })}
+                        options={OPERASI_MONTHS.map((l, i) => ({
+                            value: String(i + 1),
+                            label: l,
+                        }))}
+                    />
+                    <OperasiSelect
+                        label="Tahun"
+                        value={String(filters.year)}
+                        onChange={(v) => visit({ year: Number(v) })}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
+                    />
+                    {dirty && (
+                        <span className="pb-1 text-[13px] text-amber-600">
+                            Ada perubahan belum disimpan.
+                        </span>
+                    )}
                 </div>
 
                 {compact ? (
@@ -122,26 +377,62 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
 
                             return (
                                 <div key={grup} className="flex flex-col gap-2">
-                                    <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{grup}</p>
+                                    <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                        {grup}
+                                    </p>
                                     <MobileRowEditor<Row>
                                         rows={items}
-                                        fields={[
-                                            { key: 'nama', label: 'Alat Pelindung Diri' },
-                                            { key: 'jumlah', label: 'Jumlah', type: 'number' },
-                                            { key: 'satuan', label: 'Satuan' },
-                                            { key: 'lokasi', label: 'Lokasi' },
-                                            { key: 'keterangan', label: 'Keterangan' },
-                                            { key: 'foto', label: 'Foto (URL)', placeholder: 'https://…' },
-                                        ] satisfies RowField<Row>[]}
+                                        fields={
+                                            [
+                                                {
+                                                    key: 'nama',
+                                                    label: 'Alat Pelindung Diri',
+                                                },
+                                                {
+                                                    key: 'jumlah',
+                                                    label: 'Jumlah',
+                                                    type: 'number',
+                                                },
+                                                {
+                                                    key: 'satuan',
+                                                    label: 'Satuan',
+                                                },
+                                                {
+                                                    key: 'lokasi',
+                                                    label: 'Lokasi',
+                                                },
+                                                {
+                                                    key: 'keterangan',
+                                                    label: 'Keterangan',
+                                                },
+                                                {
+                                                    key: 'foto',
+                                                    label: 'Foto (URL)',
+                                                    placeholder: 'https://…',
+                                                },
+                                            ] satisfies RowField<Row>[]
+                                        }
                                         title={(r) => r.nama || 'Item baru'}
-                                        subtitle={(r) => `${r.jumlah} ${r.satuan || ''}${r.subkategori ? ` · ${r.subkategori}` : ''}`}
+                                        subtitle={(r) =>
+                                            `${r.jumlah} ${r.satuan || ''}${r.subkategori ? ` · ${r.subkategori}` : ''}`
+                                        }
                                         onChange={(i, k, v) => {
                                             const row = items[i];
 
                                             if (k === 'jumlah') {
                                                 updateNum(row._key, String(v));
                                             } else {
-                                                updateText(row._key, k as 'nama' | 'subkategori' | 'satuan' | 'lokasi' | 'keterangan' | 'foto', String(v ?? ''));
+                                                updateText(
+                                                    row._key,
+                                                    k as
+                                                        | 'nama'
+                                                        | 'subkategori'
+                                                        | 'satuan'
+                                                        | 'lokasi'
+                                                        | 'keterangan'
+                                                        | 'foto',
+                                                    String(v ?? ''),
+                                                );
                                             }
                                         }}
                                         onRemove={(i) => remove(items[i]._key)}
@@ -150,7 +441,11 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
                                         removeLabel="Hapus item"
                                     />
                                     {can_write && (
-                                        <Button variant="outline" onClick={() => addItem(grup)} className="h-auto min-h-9 max-w-full gap-1.5 self-start py-2 text-left whitespace-normal">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => addItem(grup)}
+                                            className="h-auto min-h-9 max-w-full gap-1.5 self-start py-2 text-left whitespace-normal"
+                                        >
                                             <Plus className="size-4" />
                                             Tambah Item — {grup}
                                         </Button>
@@ -165,32 +460,47 @@ export default function ApdInventoryInput({ unit, filters, groups, rows: initial
                             <thead className="bg-muted/50">
                                 <tr className="[&>th]:border [&>th]:border-border [&>th]:p-2 [&>th]:font-bold [&>th]:text-foreground">
                                     <th className="w-10">No</th>
-                                    <th className="text-left">Alat Pelindung Diri</th>
+                                    <th className="text-left">
+                                        Alat Pelindung Diri
+                                    </th>
                                     <th className="w-20">Jumlah</th>
                                     <th className="w-24">Satuan</th>
                                     <th className="text-left">Lokasi</th>
                                     <th className="text-left">Keterangan</th>
                                     <th className="text-left">Foto (URL)</th>
-                                    {can_write && <th className="w-12">Aksi</th>}
+                                    {can_write && (
+                                        <th className="w-12">Aksi</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
                                 {orderedGroups.map((grup) => {
-                                    const items = rows.filter((r) => r.grup === grup);
+                                    const items = rows.filter(
+                                        (r) => r.grup === grup,
+                                    );
                                     let lastSub = '__none__';
                                     let n = 0;
 
                                     return (
                                         <Fragment key={grup}>
                                             <tr className="bg-muted/70">
-                                                <td colSpan={totalCols} className="border border-border p-1.5 text-left text-xs font-bold tracking-wide text-foreground uppercase">{grup}</td>
+                                                <td
+                                                    colSpan={totalCols}
+                                                    className="border border-border p-1.5 text-left text-xs font-bold tracking-wide text-foreground uppercase"
+                                                >
+                                                    {grup}
+                                                </td>
                                             </tr>
                                             {items.map((row) => {
-                                                const showSub = row.subkategori && row.subkategori !== lastSub;
+                                                const showSub =
+                                                    row.subkategori &&
+                                                    row.subkategori !== lastSub;
 
-                                                if (row.subkategori !== lastSub) {
-lastSub = row.subkategori;
-}
+                                                if (
+                                                    row.subkategori !== lastSub
+                                                ) {
+                                                    lastSub = row.subkategori;
+                                                }
 
                                                 n += 1;
 
@@ -199,30 +509,185 @@ lastSub = row.subkategori;
                                                         {showSub && (
                                                             <tr className="bg-muted/30">
                                                                 <td className="border border-border p-1 text-center text-[11px] font-semibold text-muted-foreground" />
-                                                                <td colSpan={totalCols - 1} className="border border-border p-1 text-left text-[11px] font-semibold text-foreground">{row.subkategori}</td>
+                                                                <td
+                                                                    colSpan={
+                                                                        totalCols -
+                                                                        1
+                                                                    }
+                                                                    className="border border-border p-1 text-left text-[11px] font-semibold text-foreground"
+                                                                >
+                                                                    {
+                                                                        row.subkategori
+                                                                    }
+                                                                </td>
                                                             </tr>
                                                         )}
-                                                        <tr className="[&>td]:border [&>td]:border-border [&>td]:p-1 hover:bg-muted/20">
-                                                            <td className="text-center">{n}</td>
+                                                        <tr className="hover:bg-muted/20 [&>td]:border [&>td]:border-border [&>td]:p-1">
+                                                            <td className="text-center">
+                                                                {n}
+                                                            </td>
                                                             <td className="min-w-[220px] pl-3 align-middle whitespace-normal">
-                                                                <AutoWrapCellInput value={row.nama} onChange={(val) => updateText(row._key, 'nama', val)} readOnly={!can_write} />
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.nama
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        updateText(
+                                                                            row._key,
+                                                                            'nama',
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
                                                             </td>
                                                             <td className="text-center">
-                                                                {can_write ? <Input type="number" min="0" value={row.jumlah || ''} onChange={(e) => updateNum(row._key, e.target.value)} className="h-8 w-16 text-center text-xs" placeholder="0" /> : row.jumlah}
+                                                                {can_write ? (
+                                                                    <Input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        value={
+                                                                            row.jumlah ||
+                                                                            ''
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            updateNum(
+                                                                                row._key,
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                            )
+                                                                        }
+                                                                        className="h-8 w-16 text-center text-xs"
+                                                                        placeholder="0"
+                                                                    />
+                                                                ) : (
+                                                                    row.jumlah
+                                                                )}
                                                             </td>
-                                                            <td className="min-w-[80px] align-middle whitespace-normal"><AutoWrapCellInput value={row.satuan} onChange={(val) => updateText(row._key, 'satuan', val)} readOnly={!can_write} /></td>
-                                                            <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.lokasi} onChange={(val) => updateText(row._key, 'lokasi', val)} emptyFallback="-" readOnly={!can_write} /></td>
-                                                            <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.keterangan} onChange={(val) => updateText(row._key, 'keterangan', val)} emptyFallback="-" readOnly={!can_write} /></td>
-                                                            <td className="min-w-[140px] align-middle whitespace-normal"><AutoWrapCellInput value={row.foto} onChange={(val) => updateText(row._key, 'foto', val)} placeholder="https://…" emptyFallback="-" readOnly={!can_write} /></td>
-                                                            {can_write && <td className="text-center"><Button variant="ghost" size="icon" className="size-7 text-muted-foreground hover:text-destructive" onClick={() => remove(row._key)}><Trash2 className="size-4" /></Button></td>}
+                                                            <td className="min-w-[80px] align-middle whitespace-normal">
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.satuan
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        updateText(
+                                                                            row._key,
+                                                                            'satuan',
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
+                                                            </td>
+                                                            <td className="min-w-[140px] align-middle whitespace-normal">
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.lokasi
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        updateText(
+                                                                            row._key,
+                                                                            'lokasi',
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    emptyFallback="-"
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
+                                                            </td>
+                                                            <td className="min-w-[140px] align-middle whitespace-normal">
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.keterangan
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        updateText(
+                                                                            row._key,
+                                                                            'keterangan',
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    emptyFallback="-"
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
+                                                            </td>
+                                                            <td className="min-w-[140px] align-middle whitespace-normal">
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.foto
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        updateText(
+                                                                            row._key,
+                                                                            'foto',
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    placeholder="https://…"
+                                                                    emptyFallback="-"
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
+                                                            </td>
+                                                            {can_write && (
+                                                                <td className="text-center">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        className="size-7 text-muted-foreground hover:text-destructive"
+                                                                        onClick={() =>
+                                                                            remove(
+                                                                                row._key,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <Trash2 className="size-4" />
+                                                                    </Button>
+                                                                </td>
+                                                            )}
                                                         </tr>
                                                     </Fragment>
                                                 );
                                             })}
                                             {can_write && (
                                                 <tr>
-                                                    <td colSpan={totalCols} className="border border-border p-1.5">
-                                                        <Button variant="outline" size="sm" onClick={() => addItem(grup)} className="gap-1.5 text-xs"><Plus className="size-3.5" />Tambah Item — {grup}</Button>
+                                                    <td
+                                                        colSpan={totalCols}
+                                                        className="border border-border p-1.5"
+                                                    >
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() =>
+                                                                addItem(grup)
+                                                            }
+                                                            className="gap-1.5 text-xs"
+                                                        >
+                                                            <Plus className="size-3.5" />
+                                                            Tambah Item — {grup}
+                                                        </Button>
                                                     </td>
                                                 </tr>
                                             )}
@@ -233,7 +698,11 @@ lastSub = row.subkategori;
                         </table>
                     </div>
                 )}
-                <p className="text-[12px] text-muted-foreground">* Untuk item dengan subkategori, isi kolom subkategori lewat data awal; item tambahan baru masuk tanpa subkategori (dapat dikelompokkan manual).</p>
+                <p className="text-[12px] text-muted-foreground">
+                    * Untuk item dengan subkategori, isi kolom subkategori lewat
+                    data awal; item tambahan baru masuk tanpa subkategori (dapat
+                    dikelompokkan manual).
+                </p>
             </div>
         </>
     );

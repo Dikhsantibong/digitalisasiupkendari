@@ -270,4 +270,46 @@ class LembarTest extends TestCase
     {
         $this->assertSame(29, collect(PatrolCheckPemeliharaanLembar::SYSTEMS)->sum(fn (array $s): int => count($s[1])));
     }
+
+    public function test_field_staff_can_check_patrol_check_pemeliharaan_but_cannot_add_or_edit_items(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $machine = Machine::factory()->forUnit($unit)->create();
+        $harmes = $this->userWithRole(RoleName::Harmes, $unit);
+        $period = ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'machine_id' => $machine->id];
+
+        $this->actingAs($harmes)
+            ->get($this->route('patrol-check-pemeliharaan', 'index', $period))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('can_write', true)
+                ->where('can_manage_items', false)
+                ->where('lembar.fixed_items', true)
+                ->has('rows', 29)
+            );
+
+        $this->actingAs($harmes)
+            ->post($this->route('patrol-check-pemeliharaan', 'store'), $period + [
+                'rows' => [
+                    ['section' => 'lubricating', 'fields' => ['peralatan' => 'Lube Oil Line Pipe'], 'cells' => ['main' => ['d1' => 'N']]],
+                    ['section' => 'lubricating', 'fields' => ['peralatan' => 'Item Baru Tambahan Operator'], 'cells' => ['main' => ['d1' => 'T']]],
+                ],
+                'catatan' => 'Pemeriksaan normal',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $savedRows = HarLembarRow::query()->where('lembar', 'patrol-check-pemeliharaan')->get();
+        $this->assertCount(1, $savedRows);
+        $this->assertSame('Lube Oil Line Pipe', $savedRows->first()->fields['peralatan']);
+
+        $this->actingAs($harmes)
+            ->get($this->route('patrol-check-pemeliharaan', 'index', $period))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('rows', 29)
+                ->where('rows.0.fields.peralatan', 'Lube Oil Line Pipe')
+                ->where('rows.0.cells.main.d1', 'N')
+            );
+    }
 }

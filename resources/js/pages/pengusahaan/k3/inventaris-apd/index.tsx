@@ -10,10 +10,22 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanInventarisApd from '@/routes/k3/pengusahaan/inventaris-apd';
 import type { IdName } from '@/types';
@@ -76,7 +88,9 @@ export default function PengusahaanInventarisApdPage(props: Props) {
 
     const [noDokumen, setNoDokumen] = useState(initialRecord.no_dokumen);
     const [revisi, setRevisi] = useState(initialRecord.revisi);
-    const [tanggalDokumen, setTanggalDokumen] = useState(initialRecord.tanggal_dokumen);
+    const [tanggalDokumen, setTanggalDokumen] = useState(
+        initialRecord.tanggal_dokumen,
+    );
     const [catatan, setCatatan] = useState(initialRecord.catatan);
     const [items, setItems] = useState<ApdInventoryItem[]>(() =>
         initialRecord.items.map((it, idx) => ({
@@ -90,10 +104,15 @@ export default function PengusahaanInventarisApdPage(props: Props) {
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
     const [nextKey, setNextKey] = useState(initialRecord.items.length + 10);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', value: string | number) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        value: string | number,
+    ) => {
         const nextFilters = { ...filters, [key]: Number(value) };
         router.get(k3PengusahaanInventarisApd.index().url, nextFilters, {
             preserveState: false,
@@ -103,7 +122,10 @@ export default function PengusahaanInventarisApdPage(props: Props) {
 
     const addItem = (kategori: 'I' | 'II') => {
         const catItems = items.filter((it) => it.kategori === kategori);
-        const lastNoGrup = catItems.length > 0 ? Math.max(...catItems.map((it) => it.no_grup)) : 0;
+        const lastNoGrup =
+            catItems.length > 0
+                ? Math.max(...catItems.map((it) => it.no_grup))
+                : 0;
 
         const newItem: ApdInventoryItem = {
             _key: nextKey,
@@ -122,7 +144,11 @@ export default function PengusahaanInventarisApdPage(props: Props) {
         setDirty(true);
     };
 
-    const updateItem = (key: number, field: keyof ApdInventoryItem, value: string | number) => {
+    const updateItem = (
+        key: number,
+        field: keyof ApdInventoryItem,
+        value: string | number,
+    ) => {
         setItems((prev) =>
             prev.map((item) => {
                 if (item._key !== key) {
@@ -157,8 +183,8 @@ export default function PengusahaanInventarisApdPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -199,7 +225,10 @@ export default function PengusahaanInventarisApdPage(props: Props) {
         let countPelengkap = 0;
 
         for (const item of items) {
-            const qty = item.jumlah !== '' && !isNaN(Number(item.jumlah)) ? Number(item.jumlah) : 0;
+            const qty =
+                item.jumlah !== '' && !isNaN(Number(item.jumlah))
+                    ? Number(item.jumlah)
+                    : 0;
 
             if (item.kategori === 'I') {
                 totalUtama += qty;
@@ -219,6 +248,190 @@ export default function PengusahaanInventarisApdPage(props: Props) {
         };
     }, [items]);
 
+    if (compact) {
+        const utamaItems = items.filter((it) => it.kategori === 'I');
+        const pelengkapItems = items.filter((it) => it.kategori !== 'I');
+        const groups: Array<{
+            kat: 'I' | 'II';
+            label: string;
+            rows: ApdInventoryItem[];
+        }> = [
+            {
+                kat: 'I',
+                label: 'I. Alat Pelindung Diri Utama',
+                rows: utamaItems,
+            },
+            {
+                kat: 'II',
+                label: 'II. Alat Pelindung Diri Pelengkap',
+                rows: pelengkapItems,
+            },
+        ];
+
+        return (
+            <>
+                <Head title={`Inventaris APD — ${unit.name}`} />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Inventaris APD"
+                        backHref={k3Pengusahaan.index({ section: 'input' }).url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => handleFilterChange('unit_id', v)}
+                        month={filters.month}
+                        onMonthChange={(v) => handleFilterChange('month', v)}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => handleFilterChange('year', v)}
+                    />
+
+                    <div className="flex flex-col gap-4">
+                        {groups.map((grp) => (
+                            <div key={grp.kat} className="flex flex-col gap-2">
+                                <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                    {grp.label}
+                                </p>
+                                <MobileRowEditor<ApdInventoryItem>
+                                    rows={grp.rows}
+                                    rowKey={(it) => it._key}
+                                    title={(it) =>
+                                        it.nama_alat || 'Nama APD belum diisi'
+                                    }
+                                    subtitle={(it) =>
+                                        `${it.jumlah || 0} unit · ${it.lokasi || '-'} · ${it.keterangan || '-'}`
+                                    }
+                                    canWrite={can_write}
+                                    removeLabel="Hapus APD"
+                                    fields={[
+                                        {
+                                            key: 'nama_alat',
+                                            label: 'Nama Alat Pelindung Diri',
+                                            placeholder: 'Mis. Safety Helmet',
+                                        },
+                                        {
+                                            key: 'jumlah',
+                                            label: 'Jumlah',
+                                            type: 'number',
+                                            parse: (v) =>
+                                                v === '' ? '' : Number(v),
+                                        },
+                                        {
+                                            key: 'lokasi',
+                                            label: 'Lokasi Penempatan',
+                                        },
+                                        {
+                                            key: 'keterangan',
+                                            label: 'Kondisi / Keterangan',
+                                            type: 'dropdown',
+                                            options: [
+                                                'Baik',
+                                                'Tidak Baik',
+                                                'Layak',
+                                                'Rusak',
+                                            ],
+                                        },
+                                    ]}
+                                    onChange={(idx, key, value) =>
+                                        updateItem(
+                                            grp.rows[idx]._key,
+                                            key,
+                                            value as string | number,
+                                        )
+                                    }
+                                    onRemove={(idx) =>
+                                        removeItem(grp.rows[idx]._key)
+                                    }
+                                />
+                                {can_write && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => addItem(grp.kat)}
+                                        className="w-full gap-1.5"
+                                    >
+                                        <Plus className="size-4" />
+                                        Tambah —{' '}
+                                        {grp.kat === 'I'
+                                            ? 'APD Utama'
+                                            : 'APD Pelengkap'}
+                                    </Button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <K3MobileMetaAccordion
+                        noDokumen={noDokumen}
+                        revisi={revisi}
+                        tanggalDokumen={tanggalDokumen}
+                        onNoDokumenChange={(v) => {
+                            setNoDokumen(v);
+                            setDirty(true);
+                        }}
+                        onRevisiChange={(v) => {
+                            setRevisi(v);
+                            setDirty(true);
+                        }}
+                        onTanggalDokumenChange={(v) => {
+                            setTanggalDokumen(v);
+                            setDirty(true);
+                        }}
+                        canWrite={can_write}
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan inventaris APD…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            {dirty && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={resetChanges}
+                                    disabled={saving}
+                                    className="gap-1.5"
+                                >
+                                    <RotateCcw className="size-4" />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <div className="space-y-6 p-6">
             <style>{PRINT_CSS}</style>
@@ -231,7 +444,11 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => router.get(k3Pengusahaan.index({ section: 'input' }).url)}
+                        onClick={() =>
+                            router.get(
+                                k3Pengusahaan.index({ section: 'input' }).url,
+                            )
+                        }
                         title="Kembali ke Menu Input K3"
                     >
                         <ArrowLeft className="size-4" />
@@ -242,17 +459,25 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                 Inventaris Alat Pelindung Diri
                             </h1>
                             {has_saved ? (
-                                <Badge variant="secondary" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <Badge
+                                    variant="secondary"
+                                    className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
                                     Tersimpan
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                >
                                     Draft
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Inventaris dan pemantauan kondisi kesiapan alat pelindung diri utama dan pelengkap (SMT-FM-AK3-01.01).
+                            Inventaris dan pemantauan kondisi kesiapan alat
+                            pelindung diri utama dan pelengkap
+                            (SMT-FM-AK3-01.01).
                         </p>
                     </div>
                 </div>
@@ -288,7 +513,9 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                             className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             <Save className="size-4" />
-                            <span>{saving ? 'Menyimpan...' : 'Simpan Data'}</span>
+                            <span>
+                                {saving ? 'Menyimpan...' : 'Simpan Data'}
+                            </span>
                         </Button>
                     )}
                 </div>
@@ -301,21 +528,32 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                         <OperasiSelect
                             label="Unit Layanan"
                             value={String(filters.unit_id)}
-                            options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                            onChange={(val) => handleFilterChange('unit_id', val)}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            onChange={(val) =>
+                                handleFilterChange('unit_id', val)
+                            }
                         />
 
                         <OperasiSelect
                             label="Bulan"
                             value={String(filters.month)}
-                            options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                            options={OPERASI_MONTHS.map((label, idx) => ({
+                                value: String(idx + 1),
+                                label,
+                            }))}
                             onChange={(val) => handleFilterChange('month', val)}
                         />
 
                         <OperasiSelect
                             label="Tahun"
                             value={String(filters.year)}
-                            options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
                             onChange={(val) => handleFilterChange('year', val)}
                         />
                     </div>
@@ -324,11 +562,17 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                     <div className="flex flex-wrap items-center gap-2.5">
                         <div className="flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-800 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300">
                             <HardHat className="size-3.5 text-sky-600" />
-                            <span>APD Utama: {summary.totalUtama} Item ({summary.countUtama} Baris)</span>
+                            <span>
+                                APD Utama: {summary.totalUtama} Item (
+                                {summary.countUtama} Baris)
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-300">
                             <Shield className="size-3.5 text-indigo-600" />
-                            <span>APD Pelengkap: {summary.totalPelengkap} Item ({summary.countPelengkap} Baris)</span>
+                            <span>
+                                APD Pelengkap: {summary.totalPelengkap} Item (
+                                {summary.countPelengkap} Baris)
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
                             <span>Total APD: {summary.totalAll} Unit</span>
@@ -342,25 +586,27 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                 {/* KOP Dokumen Resmi Kembar Logo PLN & Lambang K3 */}
                 <div className="apd-header-box relative rounded border-2 border-black p-4 dark:border-border">
                     {/* Logo PLN Kiri */}
-                    <div className="absolute left-4 top-4 flex items-center">
+                    <div className="absolute top-4 left-4 flex items-center">
                         <img
                             src="/logo/sidebar-logo.png"
                             alt="PLN Nusantara Power"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
 
                     {/* Lambang K3 Kanan */}
-                    <div className="absolute right-4 top-4 flex items-center">
+                    <div className="absolute top-4 right-4 flex items-center">
                         <img
                             src="/logo/k3.png"
                             alt="Logo K3"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
@@ -374,7 +620,11 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                             UNIT PEMBANGKITAN KENDARI
                         </div>
                         <div className="text-[11px] font-bold text-foreground uppercase sm:text-xs">
-                            UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
+                            UNIT LAYANAN{' '}
+                            {unit.name.toUpperCase().startsWith('ULPLTD') ||
+                            unit.name.toUpperCase().startsWith('UP')
+                                ? unit.name.toUpperCase()
+                                : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
                         </div>
                     </div>
 
@@ -388,14 +638,15 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                 INVENTARIS ALAT PELINDUNG DIRI
                             </h2>
                             <div className="text-[10px] font-bold text-muted-foreground uppercase sm:text-[11px]">
-                                PERIODE: BULAN {monthName.toUpperCase()} {filters.year}
+                                PERIODE: BULAN {monthName.toUpperCase()}{' '}
+                                {filters.year}
                             </div>
                         </div>
 
                         {/* Kotak Metadata SMT-FM-AK3-01.01 */}
-                        <div className="w-52 border border-black text-[9px] dark:border-border sm:w-56 sm:text-[10px]">
+                        <div className="w-52 border border-black text-[9px] sm:w-56 sm:text-[10px] dark:border-border">
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     No. Dokumen
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -415,7 +666,7 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Revisi
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -435,7 +686,7 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex">
-                                <div className="w-24 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-24 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Tanggal
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -444,7 +695,9 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                             type="text"
                                             value={tanggalDokumen}
                                             onChange={(e) => {
-                                                setTanggalDokumen(e.target.value);
+                                                setTanggalDokumen(
+                                                    e.target.value,
+                                                );
                                                 setDirty(true);
                                             }}
                                             className="w-full bg-transparent focus:outline-none"
@@ -462,7 +715,7 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                 <div className="mt-4 overflow-x-auto">
                     <table className="excel-sheet apd-table w-full border-collapse border border-black text-[11px] dark:border-border">
                         <thead>
-                            <tr className="bg-muted/40 font-bold uppercase text-foreground">
+                            <tr className="bg-muted/40 font-bold text-foreground uppercase">
                                 <th className="w-12 border border-black px-2 py-1.5 text-center dark:border-border">
                                     No
                                 </th>
@@ -488,7 +741,9 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                         <tbody>
                             {/* Render rows grouped by Kategori I and II */}
                             {(['I', 'II'] as const).map((kategoriKey) => {
-                                const catItems = items.filter((it) => it.kategori === kategoriKey);
+                                const catItems = items.filter(
+                                    (it) => it.kategori === kategoriKey,
+                                );
                                 const isUtama = kategoriKey === 'I';
                                 const catTitle = isUtama
                                     ? 'Peralatan Keselamatan Kerja Utama'
@@ -514,7 +769,9 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="size-6 text-primary hover:bg-primary/20"
-                                                        onClick={() => addItem(kategoriKey)}
+                                                        onClick={() =>
+                                                            addItem(kategoriKey)
+                                                        }
                                                         title={`Tambah Baris ${catTitle}`}
                                                     >
                                                         <Plus className="size-3.5" />
@@ -529,7 +786,10 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                             // Check if this is the first occurrence of this group
                                             const isFirstInGroup =
                                                 hasGroup &&
-                                                (idx === 0 || catItems[idx - 1].nama_grup !== item.nama_grup);
+                                                (idx === 0 ||
+                                                    catItems[idx - 1]
+                                                        .nama_grup !==
+                                                        item.nama_grup);
 
                                             return (
                                                 <Fragment key={item._key}>
@@ -540,7 +800,11 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                                 {item.no_grup}
                                                             </td>
                                                             <td
-                                                                colSpan={can_write ? 4 : 4}
+                                                                colSpan={
+                                                                    can_write
+                                                                        ? 4
+                                                                        : 4
+                                                                }
                                                                 className="border border-black px-3 py-1 font-semibold dark:border-border"
                                                             >
                                                                 {item.nama_grup}
@@ -554,27 +818,45 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                     <tr className="hover:bg-muted/10">
                                                         {/* Number cell: only shown if no group */}
                                                         <td className="border border-black px-2 py-1 text-center font-medium dark:border-border">
-                                                            {!hasGroup ? item.no_grup : ''}
+                                                            {!hasGroup
+                                                                ? item.no_grup
+                                                                : ''}
                                                         </td>
 
                                                         {/* Nama Alat Pelindung Diri */}
                                                         <td
                                                             className={`border border-black px-3 py-1 dark:border-border ${
-                                                                hasGroup ? 'pl-6' : ''
+                                                                hasGroup
+                                                                    ? 'pl-6'
+                                                                    : ''
                                                             }`}
                                                         >
                                                             {can_write ? (
                                                                 <input
                                                                     type="text"
-                                                                    value={item.nama_alat}
-                                                                    onChange={(e) =>
-                                                                        updateItem(item._key, 'nama_alat', e.target.value)
+                                                                    value={
+                                                                        item.nama_alat
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateItem(
+                                                                            item._key,
+                                                                            'nama_alat',
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
                                                                     }
                                                                     placeholder="Nama peralatan..."
                                                                     className="w-full bg-transparent focus:outline-none"
                                                                 />
                                                             ) : (
-                                                                <span>{item.nama_alat}</span>
+                                                                <span>
+                                                                    {
+                                                                        item.nama_alat
+                                                                    }
+                                                                </span>
                                                             )}
                                                         </td>
 
@@ -584,15 +866,30 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                                 <input
                                                                     type="number"
                                                                     min="0"
-                                                                    value={item.jumlah}
-                                                                    onChange={(e) =>
-                                                                        updateItem(item._key, 'jumlah', e.target.value)
+                                                                    value={
+                                                                        item.jumlah
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateItem(
+                                                                            item._key,
+                                                                            'jumlah',
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
                                                                     }
                                                                     placeholder="0"
                                                                     className="w-full bg-transparent text-center focus:outline-none"
                                                                 />
                                                             ) : (
-                                                                <span>{item.jumlah !== '' ? item.jumlah : '-'}</span>
+                                                                <span>
+                                                                    {item.jumlah !==
+                                                                    ''
+                                                                        ? item.jumlah
+                                                                        : '-'}
+                                                                </span>
                                                             )}
                                                         </td>
 
@@ -601,15 +898,28 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                             {can_write ? (
                                                                 <input
                                                                     type="text"
-                                                                    value={item.lokasi}
-                                                                    onChange={(e) =>
-                                                                        updateItem(item._key, 'lokasi', e.target.value)
+                                                                    value={
+                                                                        item.lokasi
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateItem(
+                                                                            item._key,
+                                                                            'lokasi',
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
                                                                     }
                                                                     placeholder="Lokasi..."
                                                                     className="w-full bg-transparent focus:outline-none"
                                                                 />
                                                             ) : (
-                                                                <span>{item.lokasi || '-'}</span>
+                                                                <span>
+                                                                    {item.lokasi ||
+                                                                        '-'}
+                                                                </span>
                                                             )}
                                                         </td>
 
@@ -618,15 +928,28 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                             {can_write ? (
                                                                 <input
                                                                     type="text"
-                                                                    value={item.keterangan}
-                                                                    onChange={(e) =>
-                                                                        updateItem(item._key, 'keterangan', e.target.value)
+                                                                    value={
+                                                                        item.keterangan
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) =>
+                                                                        updateItem(
+                                                                            item._key,
+                                                                            'keterangan',
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                        )
                                                                     }
                                                                     placeholder="Keterangan..."
                                                                     className="w-full bg-transparent focus:outline-none"
                                                                 />
                                                             ) : (
-                                                                <span>{item.keterangan || '-'}</span>
+                                                                <span>
+                                                                    {item.keterangan ||
+                                                                        '-'}
+                                                                </span>
                                                             )}
                                                         </td>
 
@@ -638,7 +961,11 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                                     variant="ghost"
                                                                     size="icon"
                                                                     className="size-6 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950"
-                                                                    onClick={() => removeItem(item._key)}
+                                                                    onClick={() =>
+                                                                        removeItem(
+                                                                            item._key,
+                                                                        )
+                                                                    }
                                                                     title="Hapus Baris"
                                                                 >
                                                                     <Trash2 className="size-3.5" />
@@ -673,12 +1000,11 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                             className="mt-1 w-full rounded border border-black p-2 text-[11px] dark:border-border"
                         />
                     ) : (
-                        <p className="mt-1 text-[11px] text-muted-foreground whitespace-pre-wrap">
+                        <p className="mt-1 text-[11px] whitespace-pre-wrap text-muted-foreground">
                             {catatan || '-'}
                         </p>
                     )}
                 </div>
-
             </div>
         </div>
     );

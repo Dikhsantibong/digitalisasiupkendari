@@ -54,7 +54,7 @@ class LaporanDocumentController extends Controller
      * v8 = Jadwal Shift Operator carries the real attendance from the presensi
      *      (hadir / tidak hadir marks, Hadir, Tdk Hadir, % Hadir).
      */
-    private const BODY_VERSION = 9;
+    private const BODY_VERSION = 11;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN OPERASI PEMBANGKIT';
 
@@ -96,7 +96,10 @@ class LaporanDocumentController extends Controller
                 return [
                     'document_number' => $documentNumber,
                     'content' => $record?->content_html !== null
-                        ? $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year)
+                        ? PatrolCheckMesinController::replaceSection412(
+                            $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year),
+                            PatrolCheckMesinController::renderLaporanProjectSectionHtml($unit, $year, $month),
+                        )
                         : $this->bodyHtml($definition, $data, $documentNumber, $unit, $month, $year),
                     'content_styles' => $this->styles($unit, $month, $year, $data),
                     'letterhead' => $this->letterhead($definition, $data),
@@ -143,7 +146,10 @@ class LaporanDocumentController extends Controller
         // Text mode: every Daftar Isi point prints in its own orientation and the
         // portrait & landscape pages are merged into one PDF.
         $content = $record?->content_html !== null
-            ? $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year)
+            ? PatrolCheckMesinController::replaceSection412(
+                $this->withCurrentSignatures($record->content_html, ReportModule::Operasi, $unit, $month, $year),
+                PatrolCheckMesinController::renderLaporanProjectSectionHtml($unit, $year, $month),
+            )
             : $this->bodyHtml($definition, $data, $this->documentNumber($unit, $month, $year), $unit, $month, $year);
 
         $pdf = $merger->renderSections(

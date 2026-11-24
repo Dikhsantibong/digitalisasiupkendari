@@ -28,17 +28,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Pengajuan Absensi (modul OPERATOR): an employee on the Jadwal Shift asks for
  * izin, sakit (with the surat dokter), cuti, or a tukar shift with a colleague.
- * A tukar shift first waits for the pengganti to confirm. The approver — any
- * holder of operator.absensi.write at the unit (Koordinator Operasi, Project
- * Leader), never for their own request — approves (the Jadwal Shift is
- * updated, see {@see AttendanceRequestService}) or rejects. The employee may
- * cancel while it is pending; the approver may cancel an approval, which puts
- * the previous codes back.
+ * A tukar shift first waits for the pengganti to confirm. Operator / Operasi
+ * requests are approved by TL Operasi (or TL Ophar / Project Leader /
+ * Koordinator Operasi), while HAR field requests (Harmes, Harlist, ASME & Elec
+ * / Asmec / Aslist) route to TL Pemeliharaan (or TL Ophar, or the Project
+ * Leader in a containerized unit) — see {@see AttendanceRequestService}. Once
+ * approved, the Jadwal Shift is updated; the employee may cancel while it is
+ * pending and the approver may cancel an approval, which puts the previous
+ * codes back.
  *
  * Who submits: operator.presensi (the field roles) with an employee record on
- * the unit's roster. Who sees the whole unit: the approvers and the read-only
- * supervisors (operator.absensi.view without presensi, e.g. TL Operasi);
- * everybody else sees their own requests and those they substitute in.
+ * the unit's roster. Who sees the whole unit: Operasi supervisors/approvers
+ * (operator.absensi.view without presensi, operator.absensi.write, or
+ * operator.pengajuan.approve_operasi); HAR approvers (operator.pengajuan.approve_har)
+ * see HAR requests at the unit; everybody else sees their own requests and
+ * those they substitute in.
  */
 class PengajuanController extends Controller
 {
@@ -54,7 +58,14 @@ class PengajuanController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperatorPresensi) || $user->hasPermissionTo(PermissionName::OperatorAbsensiView), 403);
+        abort_unless(
+            $user->hasPermissionTo(PermissionName::OperatorPresensi)
+            || $user->hasPermissionTo(PermissionName::OperatorAbsensiView)
+            || $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite)
+            || $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveOperasi)
+            || $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveHar),
+            403,
+        );
 
         $me = $this->presence->employeeOf($user);
         $units = Unit::query()->visibleTo($user)->orderBy('name')->get(['id', 'name']);
@@ -72,9 +83,18 @@ class PengajuanController extends Controller
         $to = $from->copy()->endOfMonth();
 
         $seesAll = $this->seesAll($user);
+        $seesUnitOperasi = $this->seesUnitOperasi($user);
         $mine = $me !== null && $me->unit_id === $unit->id ? $me : null;
 
-        $list = AttendanceRequest::query()->with(['employee:id,name,regu,position', 'substitute:id,name,regu', 'decider:id,name'])
+        $list = AttendanceRequest::query()
+            ->with([
+                'employee:id,name,regu,position,division,user_id',
+                'employee.user',
+                'requester',
+                'substitute:id,name,regu',
+                'decider:id,name',
+                'unit:id,name,tl_structure',
+            ])
             ->where('unit_id', $unit->id)
             ->where(fn ($query) => $query
                 ->where(fn ($q) => $q->whereDate('start_date', '<=', $to->toDateString())->whereDate('end_date', '>=', $from->toDateString()))
@@ -84,7 +104,13 @@ class PengajuanController extends Controller
                 ->where('employee_id', $mine?->id ?? 0)
                 ->orWhere('substitute_employee_id', $mine?->id ?? 0)))
             ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('id')
+            ->get()
+            ->when(
+                $seesAll && ! $seesUnitOperasi,
+                fn ($rows) => $rows->filter(fn (AttendanceRequest $r): bool => $this->requests->isHarRequest($r)
+                    || ($mine !== null && in_array($mine->id, [$r->employee_id, $r->substitute_employee_id], true)))->values(),
+            );
 
         $roster = $this->requests->rosterOf($unit);
         $canSubmit = $mine !== null && $user->hasPermissionTo(PermissionName::OperatorPresensi) && $roster->contains('id', $mine->id) && ! $user->isReadOnly();
@@ -111,8 +137,9 @@ class PengajuanController extends Controller
                 : [],
             'requests' => $list->map(fn (AttendanceRequest $r): array => $this->present($r, $user, $mine))->all(),
             'can_submit' => $canSubmit,
-            'can_approve' => $this->canApprove($user, $unit),
+            'can_approve' => $this->requests->canApproveAny($user, $unit),
             'sees_all' => $seesAll,
+            'izin_used_months' => $canSubmit && $mine !== null ? $this->requests->izinUsedMonths($mine) : [],
             'today' => $now->toDateString(),
         ]);
     }
@@ -148,9 +175,10 @@ class PengajuanController extends Controller
             'substitute' => $substitute,
             'swap_date' => $tukar ? ($validated['swap_date'] ?? null) : null,
         ];
-        $this->requests->validateNew($unit, $employee, $data);
-
         $attendance = DB::transaction(function () use ($request, $user, $employee, $unit, $validated, $data, $tukar, $substitute): AttendanceRequest {
+            Employee::query()->whereKey($employee->id)->lockForUpdate()->first();
+            $this->requests->validateNew($unit, $employee, $data);
+
             return AttendanceRequest::query()->create([
                 'unit_id' => $unit->id,
                 'employee_id' => $employee->id,
@@ -267,7 +295,7 @@ class PengajuanController extends Controller
         $own = $me !== null && $attendanceRequest->employee_id === $me->id;
 
         if ($attendanceRequest->status->isPending()) {
-            abort_unless($own || $this->canApprove($user, $attendanceRequest->unit_id), 403);
+            abort_unless($own || $this->requests->canApprove($user, $attendanceRequest), 403);
         } else {
             abort_unless($attendanceRequest->status === AttendanceRequestStatus::Disetujui, 422, 'Pengajuan ini sudah selesai.');
             $this->authorizeDecision($user, $attendanceRequest);
@@ -305,8 +333,12 @@ class PengajuanController extends Controller
         $user = $request->user();
         $me = $this->presence->employeeOf($user);
         $involved = $me !== null && in_array($me->id, [$attendanceRequest->employee_id, $attendanceRequest->substitute_employee_id], true);
+        $supervisor = $user->canAccessUnit($attendanceRequest->unit_id) && (
+            $this->seesUnitOperasi($user)
+            || $this->requests->canApprove($user, $attendanceRequest)
+        );
 
-        abort_unless($involved || ($this->seesAll($user) && $user->canAccessUnit($attendanceRequest->unit_id)), 403);
+        abort_unless($involved || $supervisor, 403);
         abort_unless($attendanceRequest->attachment_path !== null && Storage::disk(self::ATTACHMENT_DISK)->exists($attendanceRequest->attachment_path), 404);
 
         return Storage::disk(self::ATTACHMENT_DISK)->response($attendanceRequest->attachment_path);
@@ -318,13 +350,18 @@ class PengajuanController extends Controller
     private function present(AttendanceRequest $r, User $user, ?Employee $me): array
     {
         $own = $me !== null && $r->employee_id === $me->id;
-        $canApprove = $this->canApprove($user, $r->unit_id) && ! $own;
+        $canApprove = $this->requests->canApprove($user, $r);
 
         return [
             'id' => $r->id,
             'type' => $r->type->value,
             'type_label' => $r->type->label(),
-            'employee' => ['id' => $r->employee?->id, 'name' => $r->employee?->name, 'regu' => $r->employee?->regu],
+            'employee' => [
+                'id' => $r->employee?->id,
+                'name' => $r->employee?->name,
+                'regu' => $r->employee?->regu,
+                'position' => $r->employee?->position,
+            ],
             'substitute' => $r->substitute === null ? null : ['id' => $r->substitute->id, 'name' => $r->substitute->name, 'regu' => $r->substitute->regu],
             'start_date' => $r->start_date->toDateString(),
             'end_date' => $r->end_date->toDateString(),
@@ -355,23 +392,24 @@ class PengajuanController extends Controller
         ];
     }
 
-    private function canApprove(User $user, Unit|int $unit): bool
+    private function seesUnitOperasi(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite) && $user->canAccessUnit($unit) && ! $user->isReadOnly();
+        return $user->isSuperAdmin()
+            || $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite)
+            || $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveOperasi)
+            || ($user->hasPermissionTo(PermissionName::OperatorAbsensiView) && ! $user->hasPermissionTo(PermissionName::OperatorPresensi));
     }
 
-    /** Approvers, and the read-only supervisors who hold absensi.view without being on a roster themselves. */
+    /** Approvers and supervisors who see more than their own requests. */
     private function seesAll(User $user): bool
     {
-        return $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite)
-            || ($user->hasPermissionTo(PermissionName::OperatorAbsensiView) && ! $user->hasPermissionTo(PermissionName::OperatorPresensi));
+        return $this->seesUnitOperasi($user)
+            || $user->hasPermissionTo(PermissionName::OperatorPengajuanApproveHar);
     }
 
     private function authorizeDecision(User $user, AttendanceRequest $attendanceRequest): void
     {
-        abort_unless($this->canApprove($user, $attendanceRequest->unit_id), 403);
-
-        $me = $this->presence->employeeOf($user);
-        abort_if($me !== null && $attendanceRequest->employee_id === $me->id, 403, 'Pengajuan Anda sendiri disetujui oleh atasan lain.');
+        abort_if($this->requests->isOwnRequest($user, $attendanceRequest), 403, 'Pengajuan Anda sendiri disetujui oleh atasan lain.');
+        abort_unless($this->requests->canApprove($user, $attendanceRequest), 403);
     }
 }

@@ -10,11 +10,25 @@ import {
     Users,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { useSimplifiedMobileInput } from '@/hooks/use-mobile-module';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    useCompactLayout,
+    useSimplifiedMobileInput,
+} from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanJamKerja from '@/routes/k3/pengusahaan/jam-kerja';
@@ -93,7 +107,10 @@ const PRINT_CSS = `
 `;
 
 const formatDec = (val: number): string =>
-    new Intl.NumberFormat('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+    new Intl.NumberFormat('id-ID', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(val);
 
 export default function PengusahaanJamKerjaPage(props: Props) {
     const { unit, filters, options, record: initialRecord, can_write } = props;
@@ -101,10 +118,15 @@ export default function PengusahaanJamKerjaPage(props: Props) {
     const [form, setForm] = useState<JamKerjaData>(() => initialRecord);
     const [dirty, setDirty] = useState<boolean>(false);
     const [saving, setSaving] = useState<boolean>(false);
+    const compact = useCompactLayout();
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const updateField = <K extends keyof JamKerjaData>(key: K, value: JamKerjaData[K]) => {
+    const updateField = <K extends keyof JamKerjaData>(
+        key: K,
+        value: JamKerjaData[K],
+    ) => {
         setForm((prev) => ({ ...prev, [key]: value }));
         setDirty(true);
     };
@@ -116,7 +138,12 @@ export default function PengusahaanJamKerjaPage(props: Props) {
     };
 
     const navigatePeriod = (patch: Partial<Props['filters']>) => {
-        if (dirty && !window.confirm('Ada perubahan belum disimpan. Yakin ingin berpindah halaman?')) {
+        if (
+            dirty &&
+            !window.confirm(
+                'Ada perubahan belum disimpan. Yakin ingin berpindah halaman?',
+            )
+        ) {
             return;
         }
 
@@ -128,7 +155,11 @@ export default function PengusahaanJamKerjaPage(props: Props) {
     };
 
     const resetChanges = () => {
-        if (window.confirm('Batalkan seluruh perubahan dan kembalikan ke data tersimpan?')) {
+        if (
+            window.confirm(
+                'Batalkan seluruh perubahan dan kembalikan ke data tersimpan?',
+            )
+        ) {
             setForm(initialRecord);
             setDirty(false);
         }
@@ -166,12 +197,25 @@ export default function PengusahaanJamKerjaPage(props: Props) {
             (form.karyawan_tidak_tetap || 0) +
             (form.karyawan_tidak_tetap_shift || 0);
 
-        const jamTetap = (form.karyawan_tetap || 0) * (form.hari_tetap || 0) * (form.jam_tetap || 0);
-        const jamTetapShift = (form.karyawan_tetap_shift || 0) * (form.hari_tetap_shift || 0) * (form.jam_tetap_shift || 0);
-        const jamTidakTetap = (form.karyawan_tidak_tetap || 0) * (form.hari_tidak_tetap || 0) * (form.jam_tidak_tetap || 0);
-        const jamTidakTetapShift = (form.karyawan_tidak_tetap_shift || 0) * (form.hari_tidak_tetap_shift || 0) * (form.jam_tidak_tetap_shift || 0);
+        const jamTetap =
+            (form.karyawan_tetap || 0) *
+            (form.hari_tetap || 0) *
+            (form.jam_tetap || 0);
+        const jamTetapShift =
+            (form.karyawan_tetap_shift || 0) *
+            (form.hari_tetap_shift || 0) *
+            (form.jam_tetap_shift || 0);
+        const jamTidakTetap =
+            (form.karyawan_tidak_tetap || 0) *
+            (form.hari_tidak_tetap || 0) *
+            (form.jam_tidak_tetap || 0);
+        const jamTidakTetapShift =
+            (form.karyawan_tidak_tetap_shift || 0) *
+            (form.hari_tidak_tetap_shift || 0) *
+            (form.jam_tidak_tetap_shift || 0);
 
-        const totalJamOrang = jamTetap + jamTetapShift + jamTidakTetap + jamTidakTetapShift;
+        const totalJamOrang =
+            jamTetap + jamTetapShift + jamTidakTetap + jamTidakTetapShift;
 
         const totalLembur =
             (form.lembur_tetap || 0) +
@@ -180,9 +224,7 @@ export default function PengusahaanJamKerjaPage(props: Props) {
             (form.lembur_tidak_tetap_shift || 0);
 
         const totalAbsensiJam =
-            (form.cuti_jam || 0) +
-            (form.ijin_jam || 0) +
-            (form.sakit_jam || 0);
+            (form.cuti_jam || 0) + (form.ijin_jam || 0) + (form.sakit_jam || 0);
 
         const totalJamSeluruh = totalJamOrang + totalLembur - totalAbsensiJam;
 
@@ -199,9 +241,326 @@ export default function PengusahaanJamKerjaPage(props: Props) {
         };
     }, [form]);
 
+    if (compact) {
+        const regGroups: Array<{
+            title: string;
+            empKey: keyof JamKerjaData;
+            hariKey: keyof JamKerjaData;
+            jamKey: keyof JamKerjaData;
+            lemburKey: keyof JamKerjaData;
+            subtotal: number;
+        }> = [
+            {
+                title: 'Karyawan Tetap Non Shift',
+                empKey: 'karyawan_tetap',
+                hariKey: 'hari_tetap',
+                jamKey: 'jam_tetap',
+                lemburKey: 'lembur_tetap',
+                subtotal: calcs.jamTetap,
+            },
+            {
+                title: 'Karyawan Tetap Shift',
+                empKey: 'karyawan_tetap_shift',
+                hariKey: 'hari_tetap_shift',
+                jamKey: 'jam_tetap_shift',
+                lemburKey: 'lembur_tetap_shift',
+                subtotal: calcs.jamTetapShift,
+            },
+            {
+                title: 'Tidak Tetap Non Shift',
+                empKey: 'karyawan_tidak_tetap',
+                hariKey: 'hari_tidak_tetap',
+                jamKey: 'jam_tidak_tetap',
+                lemburKey: 'lembur_tidak_tetap',
+                subtotal: calcs.jamTidakTetap,
+            },
+            {
+                title: 'Tidak Tetap Shift',
+                empKey: 'karyawan_tidak_tetap_shift',
+                hariKey: 'hari_tidak_tetap_shift',
+                jamKey: 'jam_tidak_tetap_shift',
+                lemburKey: 'lembur_tidak_tetap_shift',
+                subtotal: calcs.jamTidakTetapShift,
+            },
+        ];
+        const absenRows: Array<{
+            label: string;
+            orgKey: keyof JamKerjaData;
+            hariKey: keyof JamKerjaData;
+            jamKey: keyof JamKerjaData;
+        }> = [
+            {
+                label: 'Cuti',
+                orgKey: 'cuti_orang',
+                hariKey: 'cuti_hari',
+                jamKey: 'cuti_jam',
+            },
+            {
+                label: 'Ijin',
+                orgKey: 'ijin_orang',
+                hariKey: 'ijin_hari',
+                jamKey: 'ijin_jam',
+            },
+            {
+                label: 'Sakit',
+                orgKey: 'sakit_orang',
+                hariKey: 'sakit_hari',
+                jamKey: 'sakit_jam',
+            },
+        ];
+
+        return (
+            <>
+                <Head
+                    title={`Laporan Hari Kerja & Jam Kerja Karyawan — ${unit.name}`}
+                />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Hari & Jam Kerja"
+                        backHref={k3Pengusahaan.index('input').url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        unitLabel="Unit Pembangkit"
+                        onUnitChange={(v) => navigatePeriod({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => navigatePeriod({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => navigatePeriod({ year: v })}
+                    />
+
+                    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                Tenaga Kerja &amp; Jam Kerja
+                            </span>
+                            <span className="text-xs font-bold text-primary">
+                                {calcs.totalKaryawan} org ·{' '}
+                                {formatDec(calcs.totalJamSeluruh)} jam
+                            </span>
+                        </div>
+                        {regGroups.map((g) => (
+                            <div
+                                key={g.empKey}
+                                className="flex flex-col gap-2 rounded-lg border border-border/80 bg-muted/20 p-2.5"
+                            >
+                                <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+                                    <span>{g.title}</span>
+                                    <span className="font-mono text-primary">
+                                        {formatDec(g.subtotal)} jam
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                        Jml Orang
+                                        <Input
+                                            type="number"
+                                            inputMode="decimal"
+                                            value={form[g.empKey] ?? 0}
+                                            onChange={(e) =>
+                                                updateNum(
+                                                    g.empKey,
+                                                    e.target.value,
+                                                )
+                                            }
+                                            disabled={!can_write}
+                                            className="h-9 text-xs"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                        Hari Kerja
+                                        <Input
+                                            type="number"
+                                            inputMode="decimal"
+                                            value={form[g.hariKey] ?? 0}
+                                            onChange={(e) =>
+                                                updateNum(
+                                                    g.hariKey,
+                                                    e.target.value,
+                                                )
+                                            }
+                                            disabled={!can_write}
+                                            className="h-9 text-xs"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                        Jam / Hari
+                                        <Input
+                                            type="number"
+                                            inputMode="decimal"
+                                            value={form[g.jamKey] ?? 0}
+                                            onChange={(e) =>
+                                                updateNum(
+                                                    g.jamKey,
+                                                    e.target.value,
+                                                )
+                                            }
+                                            disabled={!can_write}
+                                            className="h-9 text-xs"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                        Lembur (Jam)
+                                        <Input
+                                            type="number"
+                                            inputMode="decimal"
+                                            value={form[g.lemburKey] ?? 0}
+                                            onChange={(e) =>
+                                                updateNum(
+                                                    g.lemburKey,
+                                                    e.target.value,
+                                                )
+                                            }
+                                            disabled={!can_write}
+                                            className="h-9 text-xs"
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                Absensi (Pengurangan Jam)
+                            </span>
+                            <span className="text-xs font-bold text-rose-600 dark:text-rose-400">
+                                -{formatDec(calcs.totalAbsensiJam)} jam
+                            </span>
+                        </div>
+                        {absenRows.map((a) => (
+                            <div
+                                key={a.orgKey}
+                                className="grid grid-cols-3 gap-2 rounded-lg border border-border/80 bg-muted/20 p-2.5"
+                            >
+                                <div className="col-span-3 text-xs font-semibold text-foreground">
+                                    {a.label}
+                                </div>
+                                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                    Orang
+                                    <Input
+                                        type="number"
+                                        inputMode="decimal"
+                                        value={form[a.orgKey] ?? 0}
+                                        onChange={(e) =>
+                                            updateNum(a.orgKey, e.target.value)
+                                        }
+                                        disabled={!can_write}
+                                        className="h-9 text-xs"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                    Hari
+                                    <Input
+                                        type="number"
+                                        inputMode="decimal"
+                                        value={form[a.hariKey] ?? 0}
+                                        onChange={(e) =>
+                                            updateNum(a.hariKey, e.target.value)
+                                        }
+                                        disabled={!can_write}
+                                        className="h-9 text-xs"
+                                    />
+                                </label>
+                                <label className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                                    Total Jam
+                                    <Input
+                                        type="number"
+                                        inputMode="decimal"
+                                        value={form[a.jamKey] ?? 0}
+                                        onChange={(e) =>
+                                            updateNum(a.jamKey, e.target.value)
+                                        }
+                                        disabled={!can_write}
+                                        className="h-9 text-xs"
+                                    />
+                                </label>
+                            </div>
+                        ))}
+                    </div>
+
+                    <K3MobileMetaAccordion
+                        noDokumen={form.no_dokumen}
+                        revisi={form.revisi}
+                        tanggalDokumen={form.tgl_berlaku}
+                        onNoDokumenChange={(v) => updateField('no_dokumen', v)}
+                        onRevisiChange={(v) => updateField('revisi', v)}
+                        onTanggalDokumenChange={(v) =>
+                            updateField('tgl_berlaku', v)
+                        }
+                        canWrite={can_write}
+                        extra={
+                            <label className="col-span-2 flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                Halaman
+                                <Input
+                                    value={form.halaman}
+                                    onChange={(e) =>
+                                        updateField('halaman', e.target.value)
+                                    }
+                                    disabled={!can_write}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                        }
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={form.catatan ?? ''}
+                                onChange={(e) =>
+                                    updateField('catatan', e.target.value)
+                                }
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan jam kerja karyawan…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            {dirty && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={resetChanges}
+                                    disabled={saving}
+                                    className="gap-1.5"
+                                >
+                                    <RotateCcw className="size-4" />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
+
     return (
         <>
-            <Head title={`Laporan Hari Kerja & Jam Kerja Karyawan — ${unit.name}`} />
+            <Head
+                title={`Laporan Hari Kerja & Jam Kerja Karyawan — ${unit.name}`}
+            />
             <style>{PRINT_CSS}</style>
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -211,7 +570,9 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                         <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => router.get(k3Pengusahaan.index('input').url)}
+                            onClick={() =>
+                                router.get(k3Pengusahaan.index('input').url)
+                            }
                             title="Kembali ke Input K3"
                         >
                             <ArrowLeft className="size-4" />
@@ -221,7 +582,10 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                 <h1 className="text-xl font-bold text-foreground">
                                     Laporan Hari Kerja dan Jam Kerja Karyawan
                                 </h1>
-                                <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">
+                                <Badge
+                                    variant="outline"
+                                    className="border-primary/30 bg-primary/10 text-primary"
+                                >
                                     {unit.name}
                                 </Badge>
                                 <Badge variant="secondary" className="text-xs">
@@ -229,7 +593,9 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                 </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                                Akses 2 — Perhitungan hari kerja, jam reguler, lembur, dan absensi seluruh karyawan unit (Formulir FMZ-08.4.4.10).
+                                Akses 2 — Perhitungan hari kerja, jam reguler,
+                                lembur, dan absensi seluruh karyawan unit
+                                (Formulir FMZ-08.4.4.10).
                             </p>
                         </div>
                     </div>
@@ -276,20 +642,35 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                     <OperasiSelect
                         label="Unit Pembangkit"
                         value={String(filters.unit_id)}
-                        onChange={(value) => navigatePeriod({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                        onChange={(value) =>
+                            navigatePeriod({ unit_id: Number(value) })
+                        }
+                        options={options.units.map((u) => ({
+                            value: String(u.id),
+                            label: u.name,
+                        }))}
                     />
                     <OperasiSelect
                         label="Bulan"
                         value={String(filters.month)}
-                        onChange={(value) => navigatePeriod({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                        onChange={(value) =>
+                            navigatePeriod({ month: Number(value) })
+                        }
+                        options={OPERASI_MONTHS.map((label, idx) => ({
+                            value: String(idx + 1),
+                            label,
+                        }))}
                     />
                     <OperasiSelect
                         label="Tahun"
                         value={String(filters.year)}
-                        onChange={(value) => navigatePeriod({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                        onChange={(value) =>
+                            navigatePeriod({ year: Number(value) })
+                        }
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
                     />
                     {dirty && (
                         <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -340,7 +721,9 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                         alt="PLN Nusantara Power"
                                         className="mx-auto max-h-12 object-contain"
                                         onError={(e) => {
-                                            (e.target as HTMLElement).style.display = 'none';
+                                            (
+                                                e.target as HTMLElement
+                                            ).style.display = 'none';
                                         }}
                                     />
                                 </td>
@@ -351,7 +734,8 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                         PT PLN NUSANTARA POWER
                                     </div>
                                     <div className="text-sm font-extrabold text-foreground uppercase">
-                                        LAPORAN HARI KERJA DAN JAM KERJA KARYAWAN
+                                        LAPORAN HARI KERJA DAN JAM KERJA
+                                        KARYAWAN
                                     </div>
                                     <div className="text-xs font-semibold text-foreground uppercase">
                                         UNIT : ULPLTD {unit.name.toUpperCase()}
@@ -362,18 +746,28 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                 </td>
 
                                 {/* Metadata Dokumen Kanan */}
-                                <td className="w-56 border-l border-black p-1.5 text-left text-xs align-middle dark:border-border">
+                                <td className="w-56 border-l border-black p-1.5 text-left align-middle text-xs dark:border-border">
                                     <table className="w-full text-xs">
                                         <tbody>
                                             <tr>
-                                                <td className="w-24 py-0.5 font-semibold text-muted-foreground">No. Dokumen</td>
+                                                <td className="w-24 py-0.5 font-semibold text-muted-foreground">
+                                                    No. Dokumen
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={form.no_dokumen}
-                                                            onChange={(e) => updateField('no_dokumen', e.target.value)}
+                                                            value={
+                                                                form.no_dokumen
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'no_dokumen',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -382,14 +776,24 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Tgl. Berlaku</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Tgl. Berlaku
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
-                                                            value={form.tgl_berlaku}
-                                                            onChange={(e) => updateField('tgl_berlaku', e.target.value)}
+                                                            value={
+                                                                form.tgl_berlaku
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'tgl_berlaku',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -398,14 +802,22 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Revisi</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Revisi
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
                                                             value={form.revisi}
-                                                            onChange={(e) => updateField('revisi', e.target.value)}
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'revisi',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -414,14 +826,22 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td className="py-0.5 font-semibold text-muted-foreground">Halaman</td>
+                                                <td className="py-0.5 font-semibold text-muted-foreground">
+                                                    Halaman
+                                                </td>
                                                 <td className="py-0.5">:</td>
                                                 <td className="py-0.5 pl-1 font-mono">
                                                     {can_write ? (
                                                         <input
                                                             type="text"
                                                             value={form.halaman}
-                                                            onChange={(e) => updateField('halaman', e.target.value)}
+                                                            onChange={(e) =>
+                                                                updateField(
+                                                                    'halaman',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                             className="w-full bg-transparent text-xs focus:outline-none"
                                                         />
                                                     ) : (
@@ -440,52 +860,67 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                     <div className="mt-6 space-y-6 text-xs text-foreground">
                         {/* A. Karyawan */}
                         <div>
-                            <div className="font-bold text-sm">A. Karyawan:</div>
+                            <div className="text-sm font-bold">
+                                A. Karyawan:
+                            </div>
                             <div className="mt-2 space-y-1 pl-4">
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] sm:grid-cols-[180px_20px_100px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] items-center sm:grid-cols-[180px_20px_100px_60px]">
                                     <span>Tetap</span>
                                     <span>:</span>
                                     <NumInput
                                         value={form.karyawan_tetap}
-                                        onChange={(v) => updateNum('karyawan_tetap', v)}
+                                        onChange={(v) =>
+                                            updateNum('karyawan_tetap', v)
+                                        }
                                         canWrite={can_write}
                                     />
                                     <span className="pl-2">Orang</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] sm:grid-cols-[180px_20px_100px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] items-center sm:grid-cols-[180px_20px_100px_60px]">
                                     <span>Tetap (Shift)</span>
                                     <span>:</span>
                                     <NumInput
                                         value={form.karyawan_tetap_shift}
-                                        onChange={(v) => updateNum('karyawan_tetap_shift', v)}
+                                        onChange={(v) =>
+                                            updateNum('karyawan_tetap_shift', v)
+                                        }
                                         canWrite={can_write}
                                     />
                                     <span className="pl-2">Orang</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] sm:grid-cols-[180px_20px_100px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] items-center sm:grid-cols-[180px_20px_100px_60px]">
                                     <span>Tidak Tetap</span>
                                     <span>:</span>
                                     <NumInput
                                         value={form.karyawan_tidak_tetap}
-                                        onChange={(v) => updateNum('karyawan_tidak_tetap', v)}
+                                        onChange={(v) =>
+                                            updateNum('karyawan_tidak_tetap', v)
+                                        }
                                         canWrite={can_write}
                                     />
                                     <span className="pl-2">Orang</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] sm:grid-cols-[180px_20px_100px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] items-center sm:grid-cols-[180px_20px_100px_60px]">
                                     <span>Tidak Tetap (Shift)</span>
                                     <span>:</span>
                                     <NumInput
                                         value={form.karyawan_tidak_tetap_shift}
-                                        onChange={(v) => updateNum('karyawan_tidak_tetap_shift', v)}
+                                        onChange={(v) =>
+                                            updateNum(
+                                                'karyawan_tidak_tetap_shift',
+                                                v,
+                                            )
+                                        }
                                         canWrite={can_write}
                                     />
                                     <span className="pl-2">Orang</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] sm:grid-cols-[180px_20px_100px_60px] items-center border-t border-black pt-1 font-bold dark:border-border">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_96px_52px] items-center border-t border-black pt-1 font-bold sm:grid-cols-[180px_20px_100px_60px] dark:border-border">
                                     <span>Jumlah Karyawan</span>
                                     <span>:</span>
-                                    <span className="text-right font-bold pr-2">{calcs.totalKaryawan}</span>
+                                    <span className="pr-2 text-right font-bold">
+                                        {calcs.totalKaryawan}
+                                    </span>
                                     <span className="pl-2">Orang</span>
                                 </div>
                             </div>
@@ -493,86 +928,235 @@ export default function PengusahaanJamKerjaPage(props: Props) {
 
                         {/* B. Hari Kerja dan Jam Kerja / Orang / Bulan */}
                         <div>
-                            <div className="font-bold text-sm">B. Hari Kerja dan Jam Kerja / Orang / Bulan:</div>
+                            <div className="text-sm font-bold">
+                                B. Hari Kerja dan Jam Kerja / Orang / Bulan:
+                            </div>
                             <div className="mt-2 pl-4">
-                                <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center font-semibold text-muted-foreground pb-1">
+                                <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 pb-1 font-semibold text-muted-foreground sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                     <span />
                                     <span />
-                                    <span className="text-center underline">Hari Kerja</span>
-                                    <span className="text-center underline">Jam Kerja</span>
-                                    <span className="text-center underline">Lembur</span>
+                                    <span className="text-center underline">
+                                        Hari Kerja
+                                    </span>
+                                    <span className="text-center underline">
+                                        Jam Kerja
+                                    </span>
+                                    <span className="text-center underline">
+                                        Lembur
+                                    </span>
                                 </div>
 
                                 <div className="space-y-1">
                                     {/* Tetap */}
-                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                         <span>Tetap</span>
                                         <span>:</span>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.hari_tetap} onChange={(v) => updateNum('hari_tetap', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Hari</span>
+                                            <NumInput
+                                                value={form.hari_tetap}
+                                                onChange={(v) =>
+                                                    updateNum('hari_tetap', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Hari
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.jam_tetap} onChange={(v) => updateNum('jam_tetap', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.jam_tetap}
+                                                onChange={(v) =>
+                                                    updateNum('jam_tetap', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.lembur_tetap} onChange={(v) => updateNum('lembur_tetap', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.lembur_tetap}
+                                                onChange={(v) =>
+                                                    updateNum('lembur_tetap', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Tetap (Shift) */}
-                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                         <span>Tetap (Shift)</span>
                                         <span>:</span>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.hari_tetap_shift} onChange={(v) => updateNum('hari_tetap_shift', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Hari</span>
+                                            <NumInput
+                                                value={form.hari_tetap_shift}
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'hari_tetap_shift',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Hari
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.jam_tetap_shift} onChange={(v) => updateNum('jam_tetap_shift', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.jam_tetap_shift}
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'jam_tetap_shift',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.lembur_tetap_shift} onChange={(v) => updateNum('lembur_tetap_shift', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.lembur_tetap_shift}
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'lembur_tetap_shift',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Tidak Tetap */}
-                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                         <span>Tidak Tetap</span>
                                         <span>:</span>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.hari_tidak_tetap} onChange={(v) => updateNum('hari_tidak_tetap', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Hari</span>
+                                            <NumInput
+                                                value={form.hari_tidak_tetap}
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'hari_tidak_tetap',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Hari
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.jam_tidak_tetap} onChange={(v) => updateNum('jam_tidak_tetap', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.jam_tidak_tetap}
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'jam_tidak_tetap',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.lembur_tidak_tetap} onChange={(v) => updateNum('lembur_tidak_tetap', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.lembur_tidak_tetap}
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'lembur_tidak_tetap',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Tidak Tetap (Shift) */}
-                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                         <span>Tidak Tetap (Shift)</span>
                                         <span>:</span>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.hari_tidak_tetap_shift} onChange={(v) => updateNum('hari_tidak_tetap_shift', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Hari</span>
+                                            <NumInput
+                                                value={
+                                                    form.hari_tidak_tetap_shift
+                                                }
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'hari_tidak_tetap_shift',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Hari
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.jam_tidak_tetap_shift} onChange={(v) => updateNum('jam_tidak_tetap_shift', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={
+                                                    form.jam_tidak_tetap_shift
+                                                }
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'jam_tidak_tetap_shift',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.lembur_tidak_tetap_shift} onChange={(v) => updateNum('lembur_tidak_tetap_shift', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={
+                                                    form.lembur_tidak_tetap_shift
+                                                }
+                                                onChange={(v) =>
+                                                    updateNum(
+                                                        'lembur_tidak_tetap_shift',
+                                                        v,
+                                                    )
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -581,36 +1165,50 @@ export default function PengusahaanJamKerjaPage(props: Props) {
 
                         {/* C. Jumlah Jam Kerja Orang */}
                         <div>
-                            <div className="font-bold text-sm">C. Jumlah Jam Kerja Orang:</div>
+                            <div className="text-sm font-bold">
+                                C. Jumlah Jam Kerja Orang:
+                            </div>
                             <div className="mt-2 space-y-1 pl-4">
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] sm:grid-cols-[180px_20px_120px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] items-center sm:grid-cols-[180px_20px_120px_60px]">
                                     <span>Tetap</span>
                                     <span>:</span>
-                                    <span className="text-right font-mono pr-2">{formatDec(calcs.jamTetap)}</span>
+                                    <span className="pr-2 text-right font-mono">
+                                        {formatDec(calcs.jamTetap)}
+                                    </span>
                                     <span className="pl-2">Jam</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] sm:grid-cols-[180px_20px_120px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] items-center sm:grid-cols-[180px_20px_120px_60px]">
                                     <span>Tetap (Shift)</span>
                                     <span>:</span>
-                                    <span className="text-right font-mono pr-2">{calcs.jamTetapShift > 0 ? formatDec(calcs.jamTetapShift) : '-'}</span>
+                                    <span className="pr-2 text-right font-mono">
+                                        {calcs.jamTetapShift > 0
+                                            ? formatDec(calcs.jamTetapShift)
+                                            : '-'}
+                                    </span>
                                     <span className="pl-2">Jam</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] sm:grid-cols-[180px_20px_120px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] items-center sm:grid-cols-[180px_20px_120px_60px]">
                                     <span>Tidak Tetap</span>
                                     <span>:</span>
-                                    <span className="text-right font-mono pr-2">{formatDec(calcs.jamTidakTetap)}</span>
+                                    <span className="pr-2 text-right font-mono">
+                                        {formatDec(calcs.jamTidakTetap)}
+                                    </span>
                                     <span className="pl-2">Jam</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] sm:grid-cols-[180px_20px_120px_60px] items-center">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] items-center sm:grid-cols-[180px_20px_120px_60px]">
                                     <span>Tidak Tetap (Shift)</span>
                                     <span>:</span>
-                                    <span className="text-right font-mono pr-2">{formatDec(calcs.jamTidakTetapShift)}</span>
+                                    <span className="pr-2 text-right font-mono">
+                                        {formatDec(calcs.jamTidakTetapShift)}
+                                    </span>
                                     <span className="pl-2">Jam</span>
                                 </div>
-                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] sm:grid-cols-[180px_20px_120px_60px] items-center border-t border-black pt-1 font-bold dark:border-border">
+                                <div className="grid grid-cols-[minmax(0,1fr)_12px_104px_52px] items-center border-t border-black pt-1 font-bold sm:grid-cols-[180px_20px_120px_60px] dark:border-border">
                                     <span>Jumlah Jam</span>
                                     <span>:</span>
-                                    <span className="text-right font-mono font-bold pr-2">{formatDec(calcs.totalJamOrang)}</span>
+                                    <span className="pr-2 text-right font-mono font-bold">
+                                        {formatDec(calcs.totalJamOrang)}
+                                    </span>
                                     <span className="pl-2">Jam</span>
                                 </div>
                             </div>
@@ -620,80 +1218,171 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                         <div className="flex items-center pl-4 font-bold">
                             <span className="w-[180px] text-sm">D. Lembur</span>
                             <span className="w-[20px]">:</span>
-                            <span className="w-[120px] text-right font-mono pr-2">{formatDec(calcs.totalLembur)}</span>
-                            <span className="w-[60px] pl-2 font-normal">Jam</span>
+                            <span className="w-[120px] pr-2 text-right font-mono">
+                                {formatDec(calcs.totalLembur)}
+                            </span>
+                            <span className="w-[60px] pl-2 font-normal">
+                                Jam
+                            </span>
                         </div>
 
                         {/* E. Jumlah Absensi Karyawan */}
                         <div>
                             <div className="flex items-center pl-4 font-bold">
-                                <span className="w-[180px] text-sm">E. Jumlah Absensi Karyawan</span>
+                                <span className="w-[180px] text-sm">
+                                    E. Jumlah Absensi Karyawan
+                                </span>
                                 <span className="w-[20px]">:</span>
-                                <span className="w-[120px] text-right font-mono pr-2">{formatDec(calcs.totalAbsensiJam)}</span>
-                                <span className="w-[60px] pl-2 font-normal">Jam</span>
+                                <span className="w-[120px] pr-2 text-right font-mono">
+                                    {formatDec(calcs.totalAbsensiJam)}
+                                </span>
+                                <span className="w-[60px] pl-2 font-normal">
+                                    Jam
+                                </span>
                             </div>
 
                             <div className="mt-2 pl-4">
-                                <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center font-semibold text-muted-foreground pb-1">
+                                <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 pb-1 font-semibold text-muted-foreground sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                     <span />
                                     <span />
-                                    <span className="text-center underline">Jumlah</span>
-                                    <span className="text-center underline">Jumlah</span>
-                                    <span className="text-center underline">Jumlah</span>
+                                    <span className="text-center underline">
+                                        Jumlah
+                                    </span>
+                                    <span className="text-center underline">
+                                        Jumlah
+                                    </span>
+                                    <span className="text-center underline">
+                                        Jumlah
+                                    </span>
                                 </div>
 
                                 <div className="space-y-1">
                                     {/* Cuti */}
-                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                         <span>Cuti</span>
                                         <span>:</span>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.cuti_orang} onChange={(v) => updateNum('cuti_orang', v)} canWrite={can_write} className="w-full sm:w-16" />
+                                            <NumInput
+                                                value={form.cuti_orang}
+                                                onChange={(v) =>
+                                                    updateNum('cuti_orang', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
                                             <span>Orang</span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.cuti_hari} onChange={(v) => updateNum('cuti_hari', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Hari</span>
+                                            <NumInput
+                                                value={form.cuti_hari}
+                                                onChange={(v) =>
+                                                    updateNum('cuti_hari', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Hari
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.cuti_jam} onChange={(v) => updateNum('cuti_jam', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.cuti_jam}
+                                                onChange={(v) =>
+                                                    updateNum('cuti_jam', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Ijin */}
-                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                         <span>Ijin</span>
                                         <span>:</span>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.ijin_orang} onChange={(v) => updateNum('ijin_orang', v)} canWrite={can_write} className="w-full sm:w-16" />
+                                            <NumInput
+                                                value={form.ijin_orang}
+                                                onChange={(v) =>
+                                                    updateNum('ijin_orang', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
                                             <span>Orang</span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.ijin_hari} onChange={(v) => updateNum('ijin_hari', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Hari</span>
+                                            <NumInput
+                                                value={form.ijin_hari}
+                                                onChange={(v) =>
+                                                    updateNum('ijin_hari', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Hari
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.ijin_jam} onChange={(v) => updateNum('ijin_jam', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.ijin_jam}
+                                                onChange={(v) =>
+                                                    updateNum('ijin_jam', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Sakit */}
-                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0 items-center">
+                                    <div className="grid grid-cols-[minmax(0,1fr)_6px_repeat(3,64px)] items-center gap-x-1 sm:grid-cols-[180px_20px_120px_120px_120px] sm:gap-x-0">
                                         <span>Sakit</span>
                                         <span>:</span>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.sakit_orang} onChange={(v) => updateNum('sakit_orang', v)} canWrite={can_write} className="w-full sm:w-16" />
+                                            <NumInput
+                                                value={form.sakit_orang}
+                                                onChange={(v) =>
+                                                    updateNum('sakit_orang', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
                                             <span>Orang</span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.sakit_hari} onChange={(v) => updateNum('sakit_hari', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Hari</span>
+                                            <NumInput
+                                                value={form.sakit_hari}
+                                                onChange={(v) =>
+                                                    updateNum('sakit_hari', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Hari
+                                            </span>
                                         </div>
                                         <div className="flex items-center justify-center gap-1">
-                                            <NumInput value={form.sakit_jam} onChange={(v) => updateNum('sakit_jam', v)} canWrite={can_write} className="w-full sm:w-16" />
-                                            <span className="hidden sm:inline">Jam</span>
+                                            <NumInput
+                                                value={form.sakit_jam}
+                                                onChange={(v) =>
+                                                    updateNum('sakit_jam', v)
+                                                }
+                                                canWrite={can_write}
+                                                className="w-full sm:w-16"
+                                            />
+                                            <span className="hidden sm:inline">
+                                                Jam
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -702,16 +1391,21 @@ export default function PengusahaanJamKerjaPage(props: Props) {
 
                         {/* F. Jumlah Jam Kerja Seluruh Karyawan (Boxed) */}
                         <div className="border-t-2 border-black pt-4 dark:border-border">
-                            <div className="font-bold text-sm">F. Jumlah Jam Kerja Seluruh Karyawan:</div>
+                            <div className="text-sm font-bold">
+                                F. Jumlah Jam Kerja Seluruh Karyawan:
+                            </div>
                             <div className="mt-2 flex flex-wrap items-center justify-between gap-3 pl-4">
-                                <span className="italic text-muted-foreground">
-                                    = Jumlah Jam Kerja Karyawan + Lembur – Jumlah Absensi Karyawan =
+                                <span className="text-muted-foreground italic">
+                                    = Jumlah Jam Kerja Karyawan + Lembur –
+                                    Jumlah Absensi Karyawan =
                                 </span>
                                 <div className="flex items-center gap-2">
-                                    <div className="jk-box flex items-center justify-center border-2 border-black bg-muted/20 px-6 py-2 text-base font-extrabold font-mono dark:border-border">
+                                    <div className="jk-box flex items-center justify-center border-2 border-black bg-muted/20 px-6 py-2 font-mono text-base font-extrabold dark:border-border">
                                         {formatDec(calcs.totalJamSeluruh)}
                                     </div>
-                                    <span className="font-bold text-sm">Jam</span>
+                                    <span className="text-sm font-bold">
+                                        Jam
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -740,10 +1434,18 @@ function StatTile({
 
     return (
         <Card className="flex flex-row items-center gap-3 p-3 py-3 shadow-none">
-            <div className={`flex size-8 items-center justify-center rounded-lg ${tone}`}>{icon}</div>
+            <div
+                className={`flex size-8 items-center justify-center rounded-lg ${tone}`}
+            >
+                {icon}
+            </div>
             <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase text-muted-foreground">{label}</div>
-                <div className="truncate text-sm font-bold text-foreground">{value}</div>
+                <div className="text-[10px] font-medium text-muted-foreground uppercase">
+                    {label}
+                </div>
+                <div className="truncate text-sm font-bold text-foreground">
+                    {value}
+                </div>
             </div>
         </Card>
     );
@@ -761,7 +1463,11 @@ function NumInput({
     className?: string;
 }) {
     if (!canWrite) {
-        return <span className={`text-right font-mono text-xs ${className}`}>{value}</span>;
+        return (
+            <span className={`text-right font-mono text-xs ${className}`}>
+                {value}
+            </span>
+        );
     }
 
     return (
@@ -771,7 +1477,7 @@ function NumInput({
             step="any"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className={`h-7 border border-input rounded px-1.5 text-right font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary ${className}`}
+            className={`h-7 rounded border border-input px-1.5 text-right font-mono text-xs focus:ring-1 focus:ring-primary focus:outline-none ${className}`}
         />
     );
 }
@@ -780,6 +1486,9 @@ PengusahaanJamKerjaPage.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
         { title: 'Input K3', href: k3Pengusahaan.index('input') },
-        { title: 'Hari & Jam Kerja Karyawan', href: k3PengusahaanJamKerja.index() },
+        {
+            title: 'Hari & Jam Kerja Karyawan',
+            href: k3PengusahaanJamKerja.index(),
+        },
     ],
 };

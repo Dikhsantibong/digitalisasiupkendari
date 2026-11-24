@@ -80,6 +80,7 @@ export type RequestItem = {
     type_label: string;
     unit: string;
     employee: string;
+    position?: string | null;
     regu: string | null;
     substitute: string | null;
     start_date: string;
@@ -388,7 +389,7 @@ export function ReportQueue({
     );
 }
 
-/** The operators' pengajuan waiting for a decision: Setujui / Tolak. */
+/** Pengajuan absensi waiting for a decision: Setujui / Tolak. */
 export function RequestQueue({ items }: { items: RequestItem[] }) {
     const [dialog, setDialog] = useState<{
         item: RequestItem;
@@ -398,7 +399,7 @@ export function RequestQueue({ items }: { items: RequestItem[] }) {
     if (items.length === 0) {
         return (
             <p className="px-4 py-6 text-center text-[13px] text-muted-foreground">
-                Tidak ada pengajuan operator yang menunggu keputusan.
+                Tidak ada pengajuan absensi yang menunggu keputusan.
             </p>
         );
     }
@@ -414,7 +415,11 @@ export function RequestQueue({ items }: { items: RequestItem[] }) {
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-foreground">
                                 {item.type_label} · {item.employee}
-                                {item.regu ? ` (Regu ${item.regu})` : ''}
+                                {item.regu
+                                    ? ` (Regu ${item.regu})`
+                                    : item.position
+                                      ? ` (${item.position})`
+                                      : ''}
                             </p>
                             <p className="flex flex-wrap items-center gap-1 text-[13px] text-muted-foreground">
                                 <CalendarClock className="size-3.5" />

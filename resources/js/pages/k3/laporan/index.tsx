@@ -1,5 +1,9 @@
 import { Head, router } from '@inertiajs/react';
-import { Building2, FilePen } from 'lucide-react';
+import { Building2, ChevronRight, FilePen } from 'lucide-react';
+import {
+    K3MobileFilterCard,
+    K3MobileHeader,
+} from '@/components/k3/mobile-page-shell';
 import { ResumeCard } from '@/components/laporan/resume-card';
 import {
     OPERASI_MONTHS,
@@ -7,6 +11,7 @@ import {
 } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { usePermissions } from '@/hooks/use-permissions';
 import { dashboard } from '@/routes';
 import laporan from '@/routes/k3/laporan';
@@ -20,6 +25,7 @@ type Props = {
 };
 
 export default function K3LaporanIndex({ filters, options }: Props) {
+    const compact = useCompactLayout();
     const { can } = usePermissions();
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -36,6 +42,67 @@ export default function K3LaporanIndex({ filters, options }: Props) {
             year: filters.year,
         },
     };
+
+    if (compact) {
+        return (
+            <>
+                <Head title="Laporan K3 Lingkungan Pembangkit" />
+                <div className="flex flex-1 flex-col gap-3 p-3">
+                    <K3MobileHeader title="Laporan K3 Lingkungan Pembangkit" />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    <div className="flex flex-col gap-2">
+                        {can('k3.laporan.view') && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    router.get(document.edit(query).url)
+                                }
+                                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition active:scale-[0.99]"
+                            >
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <FilePen className="size-5" />
+                                </div>
+                                <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-foreground">
+                                    Laporan Project K3 Lingkungan
+                                </span>
+                                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                            </button>
+                        )}
+                        {can('k3.pengusahaan.view') && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    router.get(pengusahaan.edit(query).url)
+                                }
+                                className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 text-left transition active:scale-[0.99]"
+                            >
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                    <Building2 className="size-5" />
+                                </div>
+                                <span className="min-w-0 flex-1 text-[13.5px] font-semibold text-foreground">
+                                    Laporan K3 &amp; KAM
+                                </span>
+                                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                            </button>
+                        )}
+                    </div>
+
+                    <ResumeCard module="k3" filters={filters} />
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -79,7 +146,7 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                 <div className="flex flex-col gap-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         {can('k3.laporan.view') && (
-                            <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
+                            <div className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-primary bg-card p-5 shadow-xs">
                                 <div>
                                     <h2 className="text-base font-semibold text-foreground">
                                         Laporan Project K3 Lingkungan
@@ -108,7 +175,7 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                         )}
 
                         {can('k3.pengusahaan.view') && (
-                            <div className="flex flex-col justify-between gap-4 rounded-md border border-border border-l-4 border-l-primary bg-card p-5 shadow-xs">
+                            <div className="flex flex-col justify-between gap-4 rounded-md border border-l-4 border-border border-l-primary bg-card p-5 shadow-xs">
                                 <div>
                                     <div className="flex items-center justify-between gap-2">
                                         <h2 className="text-base font-semibold text-foreground">
@@ -116,12 +183,12 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                                         </h2>
                                     </div>
                                     <p className="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
-                                        Laporan K3 &amp; KAM
-                                        mencakup sampul resmi, evaluasi
-                                        keselamatan kerja, checklist patroli,
-                                        APAR, emergency facility, sertifikasi
-                                        peralatan, dan lampiran foto (gabungan
-                                        Portrait &amp; Landscape).
+                                        Laporan K3 &amp; KAM mencakup sampul
+                                        resmi, evaluasi keselamatan kerja,
+                                        checklist patroli, APAR, emergency
+                                        facility, sertifikasi peralatan, dan
+                                        lampiran foto (gabungan Portrait &amp;
+                                        Landscape).
                                     </p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">

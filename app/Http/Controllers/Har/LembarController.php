@@ -47,7 +47,11 @@ class LembarController extends Controller
         [$machines, $machine] = $this->machine($definition, $unit, $request);
 
         $saved = $this->savedRows($definition, $unit, $month, $year, $machine);
-        $rows = $saved->isNotEmpty() ? $this->present($saved) : $definition->defaultRows();
+        $presentedSaved = $this->present($saved);
+        $rows = $saved->isNotEmpty()
+            ? ($definition->fixedItems() ? $this->mergeWithDefaults($definition, $presentedSaved) : $presentedSaved)
+            : $definition->defaultRows();
+        $canManageItems = ! $definition->fixedItems() && $user->hasPermissionTo(PermissionName::HarInputWrite);
 
         return Inertia::render("har/{$definition->menu()}/{$definition->key()}/index", [
             'lembar' => $definition->toArray($month, $year),
@@ -61,9 +65,10 @@ class LembarController extends Controller
             ],
             'rows' => $rows,
             'catatan' => (string) $this->meta($definition, $unit, $month, $year, $machine)?->catatan,
-            'summary' => $saved->isNotEmpty() ? $definition->summary($this->present($saved), $month, $year) : null,
+            'summary' => $saved->isNotEmpty() ? $definition->summary($rows, $month, $year) : null,
             'has_saved' => $saved->isNotEmpty(),
             'can_write' => $this->allowsFieldInput($user, PermissionName::HarInputWrite, $definition->fieldPermission()),
+            'can_manage_items' => $canManageItems,
         ]);
     }
 
@@ -254,5 +259,34 @@ class LembarController extends Controller
             'fields' => $row->fields,
             'cells' => $row->cells,
         ])->values()->all();
+    }
+
+    /**
+     * Merge saved cell values onto the canonical fixed default rows so the
+     * standard item list is always complete and in order.
+     *
+     * @param  list<array{section: string|null, fields: array<string, mixed>, cells: array<string, array<string, string>>}>  $saved
+     * @return list<array{section: string|null, fields: array<string, mixed>, cells: array<string, array<string, string>>}>
+     */
+    private function mergeWithDefaults(HarLembar $definition, array $saved): array
+    {
+        $firstFieldKey = $definition->fields()[0]['key'] ?? 'peralatan';
+        $byKey = [];
+        foreach ($saved as $row) {
+            $name = trim((string) ($row['fields'][$firstFieldKey] ?? ''));
+            $key = ($row['section'] ?? '').'::'.$name;
+            $byKey[$key] = $row;
+        }
+
+        return array_map(function (array $defaultRow) use ($byKey, $firstFieldKey): array {
+            $name = trim((string) ($defaultRow['fields'][$firstFieldKey] ?? ''));
+            $key = ($defaultRow['section'] ?? '').'::'.$name;
+
+            if (isset($byKey[$key])) {
+                $defaultRow['cells'] = $byKey[$key]['cells'];
+            }
+
+            return $defaultRow;
+        }, $definition->defaultRows());
     }
 }

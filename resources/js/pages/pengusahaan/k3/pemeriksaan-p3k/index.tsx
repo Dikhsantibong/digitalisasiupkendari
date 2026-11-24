@@ -4,18 +4,40 @@ import {
     BriefcaseMedical,
     CheckCheck,
     CheckCircle2,
+    ChevronDown,
     Plus,
     Printer,
     RotateCcw,
     Save,
     Sparkles,
     Trash2,
+    X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
+import {
+    K3MobileActionRow,
+    K3MobileFilterCard,
+    K3MobileHeader,
+    K3MobileMetaAccordion,
+} from '@/components/k3/mobile-page-shell';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    OPERASI_MONTHS,
+    OperasiSelect,
+} from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import k3Pengusahaan from '@/routes/k3/pengusahaan';
 import k3PengusahaanPemeriksaanP3k from '@/routes/k3/pengusahaan/pemeriksaan-p3k';
 import type { IdName } from '@/types';
@@ -77,8 +99,12 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
 
     const [noDokumen, setNoDokumen] = useState(initialRecord.no_dokumen);
     const [revisi, setRevisi] = useState(initialRecord.revisi);
-    const [tanggalDokumen, setTanggalDokumen] = useState(initialRecord.tanggal_dokumen);
-    const [locations, setLocations] = useState<string[]>(initialRecord.locations);
+    const [tanggalDokumen, setTanggalDokumen] = useState(
+        initialRecord.tanggal_dokumen,
+    );
+    const [locations, setLocations] = useState<string[]>(
+        initialRecord.locations,
+    );
     const [catatan, setCatatan] = useState(initialRecord.catatan);
     const [newLocationName, setNewLocationName] = useState('');
     const [showAddLocation, setShowAddLocation] = useState(false);
@@ -94,10 +120,16 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
     const [nextKey, setNextKey] = useState(initialRecord.items.length + 10);
+    const compact = useCompactLayout();
+    const [openIdx, setOpenIdx] = useState<number | null>(null);
 
-    const monthName = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
+    const monthName =
+        OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
 
-    const handleFilterChange = (key: 'unit_id' | 'month' | 'year', value: string | number) => {
+    const handleFilterChange = (
+        key: 'unit_id' | 'month' | 'year',
+        value: string | number,
+    ) => {
         const nextFilters = { ...filters, [key]: Number(value) };
         router.get(k3PengusahaanPemeriksaanP3k.index().url, nextFilters, {
             preserveState: false,
@@ -124,7 +156,11 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
         setDirty(true);
     };
 
-    const updateItemField = (key: number, field: 'nama_isi' | 'standar_jumlah' | 'satuan' | 'keterangan', value: string | number) => {
+    const updateItemField = (
+        key: number,
+        field: 'nama_isi' | 'standar_jumlah' | 'satuan' | 'keterangan',
+        value: string | number,
+    ) => {
         setItems((prev) =>
             prev.map((item) => {
                 if (item._key !== key) {
@@ -144,7 +180,10 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
             nama_isi: '',
             standar_jumlah: 1,
             satuan: 'buah',
-            kondisi_lokasi: locations.reduce((acc, loc) => ({ ...acc, [loc]: 1 }), {}),
+            kondisi_lokasi: locations.reduce(
+                (acc, loc) => ({ ...acc, [loc]: 1 }),
+                {},
+            ),
             keterangan: 'Lengkap',
             sort_order: items.length,
         };
@@ -245,8 +284,8 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
         setDirty(false);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = (e?: React.FormEvent) => {
+        e?.preventDefault();
         setSaving(true);
 
         router.post(
@@ -291,7 +330,12 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
             for (const loc of locations) {
                 totalCells++;
                 const actual = item.kondisi_lokasi[loc];
-                const qty = actual !== undefined && actual !== '' && !isNaN(Number(actual)) ? Number(actual) : 0;
+                const qty =
+                    actual !== undefined &&
+                    actual !== '' &&
+                    !isNaN(Number(actual))
+                        ? Number(actual)
+                        : 0;
 
                 if (qty >= standard) {
                     completeCells++;
@@ -301,7 +345,10 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
             }
         }
 
-        const percentage = totalCells > 0 ? Math.round((completeCells / totalCells) * 100) : 100;
+        const percentage =
+            totalCells > 0
+                ? Math.round((completeCells / totalCells) * 100)
+                : 100;
 
         return {
             totalBoxes: locations.length,
@@ -311,6 +358,359 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
             percentage,
         };
     }, [items, locations]);
+
+    if (compact) {
+        const keteranganOptions = ['Lengkap', 'Kurang', 'Kadaluarsa', 'Kosong'];
+
+        return (
+            <>
+                <Head title={`Pemeriksaan P3K — ${unit.name}`} />
+                <style>{PRINT_CSS}</style>
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-16'}`}
+                >
+                    <K3MobileHeader
+                        title="Pemeriksaan P3K"
+                        backHref={k3Pengusahaan.index({ section: 'input' }).url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => handleFilterChange('unit_id', v)}
+                        month={filters.month}
+                        onMonthChange={(v) => handleFilterChange('month', v)}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => handleFilterChange('year', v)}
+                    />
+
+                    {can_write && (
+                        <div className="flex flex-col gap-2">
+                            <K3MobileActionRow>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={fillAllStandard}
+                                    className="gap-1.5 text-emerald-700 dark:text-emerald-400"
+                                >
+                                    <CheckCheck className="size-3.5" />
+                                    Sesuai Standar
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={setAllLengkap}
+                                    className="gap-1.5"
+                                >
+                                    <CheckCircle2 className="size-3.5 text-sky-600" />
+                                    Semua Lengkap
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() =>
+                                        setShowAddLocation((v) => !v)
+                                    }
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-3.5" />
+                                    Lokasi ({locations.length})
+                                </Button>
+                            </K3MobileActionRow>
+                            {showAddLocation && (
+                                <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
+                                    <div className="flex gap-2">
+                                        <Input
+                                            value={newLocationName}
+                                            onChange={(e) =>
+                                                setNewLocationName(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="Nama lokasi kotak P3K baru…"
+                                            className="h-9 flex-1 text-xs"
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={addLocation}
+                                            className="h-9 text-xs"
+                                        >
+                                            Tambah
+                                        </Button>
+                                    </div>
+                                    {locations.length > 1 && (
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {locations.map((loc) => (
+                                                <span
+                                                    key={loc}
+                                                    className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px]"
+                                                >
+                                                    {loc}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            removeLocation(loc)
+                                                        }
+                                                        aria-label={`Hapus lokasi ${loc}`}
+                                                        className="text-muted-foreground hover:text-destructive"
+                                                    >
+                                                        <X className="size-3" />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="flex flex-col gap-2">
+                        {items.map((item, idx) => {
+                            const isOpen = openIdx === idx;
+                            const ketOpts =
+                                item.keterangan &&
+                                !keteranganOptions.includes(item.keterangan)
+                                    ? [...keteranganOptions, item.keterangan]
+                                    : keteranganOptions;
+
+                            return (
+                                <div
+                                    key={item._key}
+                                    className="rounded-xl border border-border bg-card"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            setOpenIdx(isOpen ? null : idx)
+                                        }
+                                        className="flex w-full items-center gap-3 p-3 text-left"
+                                    >
+                                        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">
+                                            {idx + 1}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-[14px] font-medium text-foreground">
+                                                {item.nama_isi ||
+                                                    'Item P3K belum diisi'}
+                                            </span>
+                                            <span className="block truncate text-[12px] text-muted-foreground">
+                                                Standar {item.standar_jumlah}{' '}
+                                                {item.satuan} ·{' '}
+                                                {item.keterangan || '-'}
+                                            </span>
+                                        </span>
+                                        <ChevronDown
+                                            className={`size-4 shrink-0 text-muted-foreground transition ${isOpen ? 'rotate-180' : ''}`}
+                                        />
+                                    </button>
+                                    {isOpen && (
+                                        <div className="flex flex-col gap-3 border-t border-border p-3">
+                                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                Nama Isi Kotak P3K
+                                                <Input
+                                                    value={item.nama_isi}
+                                                    onChange={(e) =>
+                                                        updateItemField(
+                                                            item._key,
+                                                            'nama_isi',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    disabled={!can_write}
+                                                />
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2.5">
+                                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                    Standar
+                                                    <Input
+                                                        type="number"
+                                                        inputMode="numeric"
+                                                        value={
+                                                            item.standar_jumlah
+                                                        }
+                                                        onChange={(e) =>
+                                                            updateItemField(
+                                                                item._key,
+                                                                'standar_jumlah',
+                                                                Number(
+                                                                    e.target
+                                                                        .value,
+                                                                ) || 0,
+                                                            )
+                                                        }
+                                                        disabled={!can_write}
+                                                    />
+                                                </label>
+                                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                    Satuan
+                                                    <Input
+                                                        value={item.satuan}
+                                                        onChange={(e) =>
+                                                            updateItemField(
+                                                                item._key,
+                                                                'satuan',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        disabled={!can_write}
+                                                    />
+                                                </label>
+                                            </div>
+                                            <div className="flex flex-col gap-1.5">
+                                                <p className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">
+                                                    Jumlah per Kotak Lokasi
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-2.5">
+                                                    {locations.map((loc) => (
+                                                        <label
+                                                            key={loc}
+                                                            className="flex flex-col gap-1 text-[12px] text-muted-foreground"
+                                                        >
+                                                            <span className="truncate">
+                                                                {loc}
+                                                            </span>
+                                                            <Input
+                                                                type="number"
+                                                                inputMode="numeric"
+                                                                value={
+                                                                    item
+                                                                        .kondisi_lokasi[
+                                                                        loc
+                                                                    ] ?? ''
+                                                                }
+                                                                onChange={(e) =>
+                                                                    updateItemValue(
+                                                                        item._key,
+                                                                        loc,
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    !can_write
+                                                                }
+                                                                className="h-9"
+                                                            />
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                                Status / Keterangan
+                                                <Select
+                                                    value={
+                                                        item.keterangan ||
+                                                        undefined
+                                                    }
+                                                    onValueChange={(v) =>
+                                                        updateItemField(
+                                                            item._key,
+                                                            'keterangan',
+                                                            v,
+                                                        )
+                                                    }
+                                                    disabled={!can_write}
+                                                >
+                                                    <SelectTrigger className="h-10 w-full text-[13px]">
+                                                        <SelectValue placeholder="Pilih Keterangan" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {ketOpts.map((opt) => (
+                                                            <SelectItem
+                                                                key={opt}
+                                                                value={opt}
+                                                            >
+                                                                {opt}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </label>
+                                            {can_write && (
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        removeItem(item._key);
+                                                        setOpenIdx(null);
+                                                    }}
+                                                    className="self-start text-destructive"
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                    Hapus item
+                                                </Button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <K3MobileMetaAccordion
+                        noDokumen={noDokumen}
+                        revisi={revisi}
+                        tanggalDokumen={tanggalDokumen}
+                        onNoDokumenChange={(v) => {
+                            setNoDokumen(v);
+                            setDirty(true);
+                        }}
+                        onRevisiChange={(v) => {
+                            setRevisi(v);
+                            setDirty(true);
+                        }}
+                        onTanggalDokumenChange={(v) => {
+                            setTanggalDokumen(v);
+                            setDirty(true);
+                        }}
+                        canWrite={can_write}
+                    />
+
+                    <div className="rounded-xl border border-border bg-card p-3">
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Catatan
+                            <Textarea
+                                value={catatan}
+                                onChange={(e) => {
+                                    setCatatan(e.target.value);
+                                    setDirty(true);
+                                }}
+                                rows={2}
+                                disabled={!can_write}
+                                placeholder="Catatan pemeriksaan P3K…"
+                                className="text-xs"
+                            />
+                        </label>
+                    </div>
+
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button
+                                onClick={() => handleSubmit()}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={addItem}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                        </StickyActionBar>
+                    )}
+                </div>
+            </>
+        );
+    }
 
     return (
         <div className="space-y-6 p-6">
@@ -324,7 +724,11 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => router.get(k3Pengusahaan.index({ section: 'input' }).url)}
+                        onClick={() =>
+                            router.get(
+                                k3Pengusahaan.index({ section: 'input' }).url,
+                            )
+                        }
                         title="Kembali ke Menu Input K3"
                     >
                         <ArrowLeft className="size-4" />
@@ -335,17 +739,24 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                 Pemeriksaan Peralatan P3K
                             </h1>
                             {has_saved ? (
-                                <Badge variant="secondary" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                <Badge
+                                    variant="secondary"
+                                    className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                >
                                     Tersimpan
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                                <Badge
+                                    variant="outline"
+                                    className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                >
                                     Draft
                                 </Badge>
                             )}
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Pemeriksaan dan monitoring kelengkapan isi kotak P3K di seluruh lokasi unit (SMT-FM-AK3-10.01).
+                            Pemeriksaan dan monitoring kelengkapan isi kotak P3K
+                            di seluruh lokasi unit (SMT-FM-AK3-10.01).
                         </p>
                     </div>
                 </div>
@@ -381,7 +792,9 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                             className="gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             <Save className="size-4" />
-                            <span>{saving ? 'Menyimpan...' : 'Simpan Data'}</span>
+                            <span>
+                                {saving ? 'Menyimpan...' : 'Simpan Data'}
+                            </span>
                         </Button>
                     )}
                 </div>
@@ -394,21 +807,32 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                         <OperasiSelect
                             label="Unit Layanan"
                             value={String(filters.unit_id)}
-                            options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                            onChange={(val) => handleFilterChange('unit_id', val)}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            onChange={(val) =>
+                                handleFilterChange('unit_id', val)
+                            }
                         />
 
                         <OperasiSelect
                             label="Bulan"
                             value={String(filters.month)}
-                            options={OPERASI_MONTHS.map((label, idx) => ({ value: String(idx + 1), label }))}
+                            options={OPERASI_MONTHS.map((label, idx) => ({
+                                value: String(idx + 1),
+                                label,
+                            }))}
                             onChange={(val) => handleFilterChange('month', val)}
                         />
 
                         <OperasiSelect
                             label="Tahun"
                             value={String(filters.year)}
-                            options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                            options={options.years.map((y) => ({
+                                value: String(y),
+                                label: String(y),
+                            }))}
                             onChange={(val) => handleFilterChange('year', val)}
                         />
                     </div>
@@ -425,7 +849,9 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                         </div>
                         {stats.shortCells > 0 && (
                             <div className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                                <span>{stats.shortCells} Item Kurang / Habis</span>
+                                <span>
+                                    {stats.shortCells} Item Kurang / Habis
+                                </span>
                             </div>
                         )}
                     </div>
@@ -484,7 +910,9 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                 <input
                                     type="text"
                                     value={newLocationName}
-                                    onChange={(e) => setNewLocationName(e.target.value)}
+                                    onChange={(e) =>
+                                        setNewLocationName(e.target.value)
+                                    }
                                     placeholder="Nama lokasi baru..."
                                     className="h-8 rounded border px-2 text-xs"
                                     onKeyDown={(e) => {
@@ -522,25 +950,27 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                 {/* KOP Dokumen Resmi Kembar Logo PLN & Lambang K3 */}
                 <div className="p3k-header-box relative rounded border-2 border-black p-4 dark:border-border">
                     {/* Logo PLN Kiri */}
-                    <div className="absolute left-4 top-4 flex items-center">
+                    <div className="absolute top-4 left-4 flex items-center">
                         <img
                             src="/logo/sidebar-logo.png"
                             alt="PLN Nusantara Power"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
 
                     {/* Lambang K3 Kanan */}
-                    <div className="absolute right-4 top-4 flex items-center">
+                    <div className="absolute top-4 right-4 flex items-center">
                         <img
                             src="/logo/k3.png"
                             alt="Logo K3"
                             className="max-h-12 object-contain"
                             onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
+                                (e.target as HTMLElement).style.display =
+                                    'none';
                             }}
                         />
                     </div>
@@ -554,7 +984,11 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                             UNIT PEMBANGKITAN KENDARI
                         </div>
                         <div className="text-[11px] font-bold text-foreground uppercase sm:text-xs">
-                            UNIT LAYANAN {unit.name.toUpperCase().startsWith('ULPLTD') || unit.name.toUpperCase().startsWith('UP') ? unit.name.toUpperCase() : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
+                            UNIT LAYANAN{' '}
+                            {unit.name.toUpperCase().startsWith('ULPLTD') ||
+                            unit.name.toUpperCase().startsWith('UP')
+                                ? unit.name.toUpperCase()
+                                : `PUSAT LISTRIK TENAGA DIESEL ${unit.name.toUpperCase()}`}
                         </div>
                     </div>
 
@@ -565,7 +999,8 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                     <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
                         <div className="flex-1 text-center sm:pl-24">
                             <h2 className="text-sm font-black tracking-wider text-foreground uppercase sm:text-base">
-                                PEMERIKSAAN PERALATAN P3K PERIODE BULAN {monthName.toUpperCase()}
+                                PEMERIKSAAN PERALATAN P3K PERIODE BULAN{' '}
+                                {monthName.toUpperCase()}
                             </h2>
                             <div className="text-xs font-black tracking-wider text-foreground uppercase">
                                 TAHUN {filters.year}
@@ -573,9 +1008,9 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                         </div>
 
                         {/* Kotak Metadata SMT-FM-AK3-10.01 */}
-                        <div className="w-56 border border-black text-[9px] dark:border-border sm:text-[10px]">
+                        <div className="w-56 border border-black text-[9px] sm:text-[10px] dark:border-border">
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-20 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-20 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Nomor
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -595,7 +1030,7 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex border-b border-black dark:border-border">
-                                <div className="w-20 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-20 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Revisi
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -615,7 +1050,7 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                 </div>
                             </div>
                             <div className="flex">
-                                <div className="w-20 bg-muted/30 px-2 py-0.5 font-semibold border-r border-black dark:border-border">
+                                <div className="w-20 border-r border-black bg-muted/30 px-2 py-0.5 font-semibold dark:border-border">
                                     Tanggal
                                 </div>
                                 <div className="flex-1 px-2 py-0.5 font-mono">
@@ -624,7 +1059,9 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                             type="text"
                                             value={tanggalDokumen}
                                             onChange={(e) => {
-                                                setTanggalDokumen(e.target.value);
+                                                setTanggalDokumen(
+                                                    e.target.value,
+                                                );
                                                 setDirty(true);
                                             }}
                                             className="w-full bg-transparent focus:outline-none"
@@ -640,9 +1077,9 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
 
                 {/* Table Content */}
                 <div className="mt-4 overflow-x-auto">
-                    <table className="excel-sheet p3k-table w-full border-collapse border border-black text-[10px] dark:border-border sm:text-[11px]">
+                    <table className="excel-sheet p3k-table w-full border-collapse border border-black text-[10px] sm:text-[11px] dark:border-border">
                         <thead>
-                            <tr className="bg-muted/40 font-bold uppercase text-foreground">
+                            <tr className="bg-muted/40 font-bold text-foreground uppercase">
                                 <th className="w-10 border border-black px-1.5 py-1.5 text-center dark:border-border">
                                     NO
                                 </th>
@@ -664,16 +1101,19 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                     >
                                         <div className="flex items-center justify-center gap-1">
                                             <span>{loc}</span>
-                                            {can_write && locations.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeLocation(loc)}
-                                                    className="no-print text-muted-foreground hover:text-rose-500"
-                                                    title={`Hapus kolom ${loc}`}
-                                                >
-                                                    ×
-                                                </button>
-                                            )}
+                                            {can_write &&
+                                                locations.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            removeLocation(loc)
+                                                        }
+                                                        className="no-print text-muted-foreground hover:text-rose-500"
+                                                        title={`Hapus kolom ${loc}`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
                                         </div>
                                     </th>
                                 ))}
@@ -690,7 +1130,10 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                         </thead>
                         <tbody>
                             {items.map((item) => (
-                                <tr key={item._key} className="hover:bg-muted/10">
+                                <tr
+                                    key={item._key}
+                                    className="hover:bg-muted/10"
+                                >
                                     <td className="border border-black px-1 text-center font-medium dark:border-border">
                                         {item.no_urut}
                                     </td>
@@ -702,7 +1145,11 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                                 type="text"
                                                 value={item.nama_isi}
                                                 onChange={(e) =>
-                                                    updateItemField(item._key, 'nama_isi', e.target.value)
+                                                    updateItemField(
+                                                        item._key,
+                                                        'nama_isi',
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 className="w-full bg-transparent focus:outline-none"
                                             />
@@ -719,7 +1166,11 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                                 min="0"
                                                 value={item.standar_jumlah}
                                                 onChange={(e) =>
-                                                    updateItemField(item._key, 'standar_jumlah', Number(e.target.value))
+                                                    updateItemField(
+                                                        item._key,
+                                                        'standar_jumlah',
+                                                        Number(e.target.value),
+                                                    )
                                                 }
                                                 className="w-full bg-transparent text-center font-semibold focus:outline-none"
                                             />
@@ -735,7 +1186,11 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                                 type="text"
                                                 value={item.satuan}
                                                 onChange={(e) =>
-                                                    updateItemField(item._key, 'satuan', e.target.value)
+                                                    updateItemField(
+                                                        item._key,
+                                                        'satuan',
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 className="w-full bg-transparent text-center focus:outline-none"
                                             />
@@ -747,29 +1202,50 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                     {/* Cells for each Kotak Location */}
                                     {locations.map((loc) => {
                                         const val = item.kondisi_lokasi[loc];
-                                        const numericVal = val !== undefined && val !== '' && !isNaN(Number(val)) ? Number(val) : 0;
-                                        const isShortage = numericVal < Number(item.standar_jumlah);
+                                        const numericVal =
+                                            val !== undefined &&
+                                            val !== '' &&
+                                            !isNaN(Number(val))
+                                                ? Number(val)
+                                                : 0;
+                                        const isShortage =
+                                            numericVal <
+                                            Number(item.standar_jumlah);
 
                                         return (
                                             <td
                                                 key={loc}
                                                 className={`border border-black px-1 py-1 text-center dark:border-border ${
-                                                    isShortage ? 'bg-amber-100/50 text-amber-950 font-bold dark:bg-amber-950/40 dark:text-amber-300' : ''
+                                                    isShortage
+                                                        ? 'bg-amber-100/50 font-bold text-amber-950 dark:bg-amber-950/40 dark:text-amber-300'
+                                                        : ''
                                                 }`}
                                             >
                                                 {can_write ? (
                                                     <input
                                                         type="number"
                                                         min="0"
-                                                        value={val !== undefined ? val : ''}
+                                                        value={
+                                                            val !== undefined
+                                                                ? val
+                                                                : ''
+                                                        }
                                                         onChange={(e) =>
-                                                            updateItemValue(item._key, loc, e.target.value)
+                                                            updateItemValue(
+                                                                item._key,
+                                                                loc,
+                                                                e.target.value,
+                                                            )
                                                         }
                                                         placeholder="0"
                                                         className="w-full bg-transparent text-center focus:outline-none"
                                                     />
                                                 ) : (
-                                                    <span>{val !== undefined ? val : '-'}</span>
+                                                    <span>
+                                                        {val !== undefined
+                                                            ? val
+                                                            : '-'}
+                                                    </span>
                                                 )}
                                             </td>
                                         );
@@ -782,13 +1258,19 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                                 type="text"
                                                 value={item.keterangan}
                                                 onChange={(e) =>
-                                                    updateItemField(item._key, 'keterangan', e.target.value)
+                                                    updateItemField(
+                                                        item._key,
+                                                        'keterangan',
+                                                        e.target.value,
+                                                    )
                                                 }
                                                 placeholder="Keterangan..."
                                                 className="w-full bg-transparent text-center focus:outline-none"
                                             />
                                         ) : (
-                                            <span>{item.keterangan || '-'}</span>
+                                            <span>
+                                                {item.keterangan || '-'}
+                                            </span>
                                         )}
                                     </td>
 
@@ -800,7 +1282,9 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="size-6 text-rose-500 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950"
-                                                onClick={() => removeItem(item._key)}
+                                                onClick={() =>
+                                                    removeItem(item._key)
+                                                }
                                                 title="Hapus Item"
                                             >
                                                 <Trash2 className="size-3.5" />
@@ -830,12 +1314,11 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                             className="mt-1 w-full rounded border border-black p-2 text-[11px] dark:border-border"
                         />
                     ) : (
-                        <p className="mt-1 text-[11px] text-muted-foreground whitespace-pre-wrap">
+                        <p className="mt-1 text-[11px] whitespace-pre-wrap text-muted-foreground">
                             {catatan || '-'}
                         </p>
                     )}
                 </div>
-
             </div>
         </div>
     );

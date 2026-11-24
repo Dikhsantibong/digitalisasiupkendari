@@ -932,7 +932,7 @@ export default function Dashboard(props: Props) {
                     <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
                         <Panel
                             title="Perlu Persetujuan Anda"
-                            subtitle="Laporan di giliran Anda & pengajuan operator — review, lalu setujui atau tolak"
+                            subtitle="Laporan di giliran Anda & pengajuan absensi — review, lalu setujui atau tolak"
                             className="lg:col-span-8"
                             action={
                                 <Link
@@ -951,7 +951,7 @@ export default function Dashboard(props: Props) {
                                 {approvals.requests.length > 0 && (
                                     <div className="border-t border-border">
                                         <p className="px-4 pt-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                                            Pengajuan operator
+                                            Pengajuan absensi
                                         </p>
                                         <RequestQueue
                                             items={approvals.requests}

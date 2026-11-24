@@ -9,7 +9,8 @@ import {
 import type { StyleSpec } from '@/lib/jadwal-excel';
 
 export type Operasi5s5rExportRow = {
-    minggu: number;
+    day: number;
+    shift: string;
     programKey: string;
     programLabel: string;
     programIstilah: string;
@@ -27,8 +28,11 @@ export type Operasi5s5rExportRow = {
     keterangan: string | null;
 };
 
-export type Operasi5s5rExportWeek = {
-    minggu: number;
+export type Operasi5s5rExportSlot = {
+    day: number;
+    dateLabel: string;
+    weekday: string;
+    shift: string;
     rows: Operasi5s5rExportRow[];
 };
 
@@ -84,8 +88,9 @@ const put = (
 export async function downloadOperasi5s5rWorkbook(
     unitName: string,
     periodLabel: string,
-    weeks: Operasi5s5rExportWeek[],
+    slots: Operasi5s5rExportSlot[],
     filename: string,
+    documentTitle = 'JADWAL PROGRAM 5S 5R PENGOPERASIAN KIT',
 ) {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Program 5S 5R', {
@@ -121,7 +126,7 @@ export async function downloadOperasi5s5rWorkbook(
         'JASA PENDUKUNG TEKNIK 6 SITE',
         unitName.toUpperCase(),
         'LAPORAN PROJECT',
-        'JADWAL PROGRAM 5S 5R PENGOPERASIAN KIT',
+        documentTitle,
     ];
 
     titleLines.forEach((text, i) => {
@@ -160,7 +165,7 @@ export async function downloadOperasi5s5rWorkbook(
 
     // Row 5: Period label
     worksheet.getRow(5).height = 22;
-    put(worksheet, 5, 1, `Periode : ${periodLabel}`, {
+    put(worksheet, 5, 1, `Periode : ${periodLabel} (Per Shift Per Hari)`, {
         bold: true,
         italic: true,
         size: 10,
@@ -176,7 +181,7 @@ export async function downloadOperasi5s5rWorkbook(
     put(worksheet, 6, 1, 'Program Kerja 5S 5R', HEADER_ORANGE);
     mergeCells(worksheet, 5, 0, 5, 2);
 
-    put(worksheet, 7, 1, 'Periode', HEADER_GREY);
+    put(worksheet, 7, 1, 'Tanggal / Shift', HEADER_GREY);
     put(worksheet, 7, 2, 'Uraian', HEADER_GREY);
     put(worksheet, 7, 3, 'Detail', HEADER_GREY);
 
@@ -220,61 +225,127 @@ export async function downloadOperasi5s5rWorkbook(
     // Populate Data
     let currentRow = 8;
 
-    for (const week of weeks) {
-        const startWeekRow = currentRow;
+    for (const slot of slots) {
+        const startSlotRow = currentRow;
 
-        for (const row of week.rows) {
+        for (const row of slot.rows) {
             worksheet.getRow(currentRow).height = 36;
 
-            put(worksheet, currentRow, 1, `Minggu ke ${week.minggu}`, CELL_CENTER);
-            put(worksheet, currentRow, 2, `${row.programLabel}\n(${row.programIstilah})`, CELL_CENTER);
+            put(
+                worksheet,
+                currentRow,
+                1,
+                `${slot.weekday}, ${slot.dateLabel}\nShift ${slot.shift}`,
+                CELL_CENTER,
+            );
+            put(
+                worksheet,
+                currentRow,
+                2,
+                `${row.programLabel}\n(${row.programIstilah})`,
+                CELL_CENTER,
+            );
             put(worksheet, currentRow, 3, row.detail ?? '', CELL_LEFT);
             put(worksheet, currentRow, 4, row.pic ?? '', CELL_CENTER);
             put(worksheet, currentRow, 5, row.kondisi_awal ?? '', CELL_CENTER);
 
-            put(worksheet, currentRow, 6, row.membersihkan ? '✓' : '', CELL_CENTER);
-            put(worksheet, currentRow, 7, row.merapikan ? '✓' : '', CELL_CENTER);
-            put(worksheet, currentRow, 8, row.membuang_sampah ? '✓' : '', CELL_CENTER);
+            put(
+                worksheet,
+                currentRow,
+                6,
+                row.membersihkan ? '✓' : '',
+                CELL_CENTER,
+            );
+            put(
+                worksheet,
+                currentRow,
+                7,
+                row.merapikan ? '✓' : '',
+                CELL_CENTER,
+            );
+            put(
+                worksheet,
+                currentRow,
+                8,
+                row.membuang_sampah ? '✓' : '',
+                CELL_CENTER,
+            );
             put(worksheet, currentRow, 9, row.mengecat ? '✓' : '', CELL_CENTER);
             put(worksheet, currentRow, 10, row.lainnya ? '✓' : '', CELL_CENTER);
 
-            put(worksheet, currentRow, 11, row.progres === '0-25' ? '✓' : '', CELL_CENTER);
-            put(worksheet, currentRow, 12, row.progres === '26-50' ? '✓' : '', CELL_CENTER);
-            put(worksheet, currentRow, 13, row.progres === '51-75' ? '✓' : '', CELL_CENTER);
-            put(worksheet, currentRow, 14, row.progres === '76-100' ? '✓' : '', CELL_CENTER);
+            put(
+                worksheet,
+                currentRow,
+                11,
+                row.progres === '0-25' ? '✓' : '',
+                CELL_CENTER,
+            );
+            put(
+                worksheet,
+                currentRow,
+                12,
+                row.progres === '26-50' ? '✓' : '',
+                CELL_CENTER,
+            );
+            put(
+                worksheet,
+                currentRow,
+                13,
+                row.progres === '51-75' ? '✓' : '',
+                CELL_CENTER,
+            );
+            put(
+                worksheet,
+                currentRow,
+                14,
+                row.progres === '76-100' ? '✓' : '',
+                CELL_CENTER,
+            );
 
-            put(worksheet, currentRow, 15, row.kondisi_akhir ?? '', CELL_CENTER);
-            put(worksheet, currentRow, 16, row.jumlah !== null ? row.jumlah : '', CELL_CENTER);
+            put(
+                worksheet,
+                currentRow,
+                15,
+                row.kondisi_akhir ?? '',
+                CELL_CENTER,
+            );
+            put(
+                worksheet,
+                currentRow,
+                16,
+                row.jumlah !== null ? row.jumlah : '',
+                CELL_CENTER,
+            );
             put(worksheet, currentRow, 17, row.keterangan ?? '', CELL_LEFT);
 
             currentRow++;
         }
 
-        // Merge "Minggu ke X" column for the week
-        if (week.rows.length > 1) {
-            mergeCells(worksheet, startWeekRow - 1, 0, currentRow - 2, 0);
+        // Merge "Tanggal / Shift" column for the slot
+        if (slot.rows.length > 1) {
+            mergeCells(worksheet, startSlotRow - 1, 0, currentRow - 2, 0);
         }
     }
 
     // Set Column Widths
     worksheet.columns = [
-        { width: 14 }, // 1: Periode
-        { width: 16 }, // 2: Uraian
-        { width: 34 }, // 3: Detail
-        { width: 18 }, // 4: PIC
-        { width: 14 }, // 5: Kondisi Awal
-        { width: 14 }, // 6: Membersihkan
-        { width: 13 }, // 7: Merapikan
-        { width: 16 }, // 8: Membuang sampah
-        { width: 12 }, // 9: Mengecat
-        { width: 12 }, // 10: Lainnya
-        { width: 10 }, // 11: 0-25%
-        { width: 10 }, // 12: 26-50%
-        { width: 10 }, // 13: 51-75%
-        { width: 10 }, // 14: 76-100%
-        { width: 14 }, // 15: Kondisi Akhir
-        { width: 10 }, // 16: Jumlah
-        { width: 22 }, // 17: Keterangan
+        { width: 20 }, // Tanggal / Shift
+        { width: 16 }, // Uraian
+        { width: 38 }, // Detail
+        { width: 22 }, // PIC
+        { width: 14 }, // Kondisi Awal
+        { width: 13 }, // Membersihkan
+        { width: 11 }, // Merapikan
+        { width: 15 }, // Membuang sampah
+        { width: 11 }, // Mengecat
+        { width: 10 }, // Lainnya
+        { width: 9 }, // 0-25%
+        { width: 9 }, // 26-50%
+        { width: 9 }, // 51-75%
+        { width: 10 }, // 76-100%
+        { width: 14 }, // Kondisi Akhir
+        { width: 10 }, // Jumlah
+        { width: 25 }, // Keterangan
     ];
 
     await downloadWorkbook(workbook, filename);

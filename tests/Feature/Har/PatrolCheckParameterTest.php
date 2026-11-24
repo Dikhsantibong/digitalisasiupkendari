@@ -51,9 +51,24 @@ class PatrolCheckParameterTest extends TestCase
             ->assertInertia(fn ($page) => $page
                 ->component('har/input/patrol-check-parameter/index')
                 ->where('filters.machine_id', $first->id)
+                ->where('current_user_name', $user->name)
+                ->where('sheet.columns.1.key', 'jam')
+                ->where('sheet.columns.1.type', 'time')
                 ->has('days', 30)
                 ->where('days.4.is_red', true) // Sabtu 5 September 2026
                 ->where('has_saved', false));
+
+        // Saving readings without explicit pic automatically fills PIC from current user.
+        $this->actingAs($user)->post(route('har.input.patrol-check-parameter.store'), $period + [
+            'machine_id' => $first->id,
+            'readings' => [
+                '3' => ['jam' => '09:30', 'load' => '900'],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $autoSaved = HarPatrolCheckReading::query()->sole();
+        $this->assertSame($user->name, $autoSaved->values['pic']);
+        $this->assertSame('09:30', $autoSaved->values['jam']);
 
         $this->actingAs($user)->post(route('har.input.patrol-check-parameter.store'), $period + [
             'machine_id' => $first->id,
@@ -143,5 +158,56 @@ class PatrolCheckParameterTest extends TestCase
         $this->actingAs($manager)->post(route('har.input.patrol-check-parameter.store'), [
             'unit_id' => $unit->id, 'month' => 9, 'year' => 2026, 'machine_id' => $machine->id, 'readings' => [],
         ])->assertForbidden();
+    }
+
+    public function test_existing_numeric_json_readings_are_stringified_and_resubmittable(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $machine = Machine::factory()->create(['unit_id' => $unit->id]);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
+
+        HarPatrolCheckReading::query()->create([
+            'unit_id' => $unit->id,
+            'machine_id' => $machine->id,
+            'year' => 2026,
+            'month' => 11,
+            'day' => 5,
+            'values' => [
+                'pic' => 'Petugas Lama',
+                'jam' => '08:00',
+                'load' => 1150,
+                'exhaust_max' => 412.5,
+                'beban' => 980,
+            ],
+            'input_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)->get(route('har.input.patrol-check-parameter.index', [
+            'unit_id' => $unit->id, 'month' => 11, 'year' => 2026, 'machine_id' => $machine->id,
+        ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('readings.5.load', '1150')
+                ->where('readings.5.exhaust_max', '412.5')
+                ->where('readings.5.beban', '980'));
+
+        $this->actingAs($user)->post(route('har.input.patrol-check-parameter.store'), [
+            'unit_id' => $unit->id,
+            'month' => 11,
+            'year' => 2026,
+            'machine_id' => $machine->id,
+            'readings' => [
+                '5' => ['pic' => 'Petugas Lama', 'jam' => '08:00', 'load' => 1150, 'exhaust_max' => 412.5, 'beban' => 980],
+                '24' => ['jam' => '08:30', 'load' => '1200'],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $saved24 = HarPatrolCheckReading::query()
+            ->where('machine_id', $machine->id)
+            ->where('day', 24)
+            ->sole();
+        $this->assertSame($user->name, $saved24->values['pic']);
+        $this->assertSame('08:30', $saved24->values['jam']);
+        $this->assertSame('1200', $saved24->values['load']);
     }
 }

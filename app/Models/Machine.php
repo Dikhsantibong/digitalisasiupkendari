@@ -39,13 +39,16 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property int|null $logsheet_template_id
+ * @property int|null $patrol_check_template_id
  * @property-read Unit $unit
  * @property-read LogsheetTemplate|null $logsheetTemplate
+ * @property-read OperasiPatrolCheckTemplate|null $patrolCheckTemplate
  * @property-read Collection<int, LubricantType> $lubricantTypes
  */
 #[Fillable([
     'unit_id',
     'logsheet_template_id',
+    'patrol_check_template_id',
     'name',
     'merk',
     'type',
@@ -104,6 +107,16 @@ class Machine extends Model
     public function logsheetTemplate(): BelongsTo
     {
         return $this->belongsTo(LogsheetTemplate::class);
+    }
+
+    /**
+     * The Patrol Check template of this machine (null = default Cummins format).
+     *
+     * @return BelongsTo<OperasiPatrolCheckTemplate, $this>
+     */
+    public function patrolCheckTemplate(): BelongsTo
+    {
+        return $this->belongsTo(OperasiPatrolCheckTemplate::class, 'patrol_check_template_id');
     }
 
     /**

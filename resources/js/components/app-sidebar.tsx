@@ -96,6 +96,7 @@ import operasiInput from '@/routes/operasi/input';
 import operasiJadwal from '@/routes/operasi/jadwal';
 import laporan from '@/routes/operasi/laporan';
 import master from '@/routes/operasi/master';
+import patrolCheckTemplate from '@/routes/operasi/patrol-check-template';
 import absensi from '@/routes/operator/absensi';
 import logsheet from '@/routes/operator/logsheet';
 import logsheetTemplate from '@/routes/operator/logsheet-template';
@@ -264,6 +265,11 @@ export function AppSidebar() {
                     href: logsheetTemplate.index(),
                     icon: FileCog,
                 },
+                (can('operasi.master.view_any') || can('setting.manage')) && {
+                    title: 'Template Patrol Check',
+                    href: patrolCheckTemplate.index(),
+                    icon: ClipboardCheck,
+                },
                 can('har.master.view_any') && {
                     title: 'Master Pemeliharaan',
                     href: harMaster.index('maintenance-types'),
@@ -319,7 +325,13 @@ export function AppSidebar() {
                     href: absensi.index(),
                     icon: CalendarRange,
                 },
-                (can('operator.presensi') || can('operator.absensi.view')) && {
+                can([
+                    'operator.presensi',
+                    'operator.absensi.view',
+                    'operator.absensi.write',
+                    'operator.pengajuan.approve_operasi',
+                    'operator.pengajuan.approve_har',
+                ]) && {
                     title: 'Pengajuan Absensi',
                     href: pengajuan.index(),
                     icon: FilePen,

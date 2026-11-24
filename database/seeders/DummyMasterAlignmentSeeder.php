@@ -195,7 +195,7 @@ class DummyMasterAlignmentSeeder extends Seeder
                 };
 
                 $machine->update([
-                    'merk' => $machine->merk ?: 'Wärtsilä / Caterpillar',
+                    'merk' => $machine->merk ?: $machine->name,
                     'type' => $machine->type ?: 'V32 / 3516B',
                     'fuel_type' => $machine->fuel_type ?? FuelType::HsdOnly,
                     'serial_number' => $machine->serial_number ?: sprintf('%s-M%02d', $unit->code, $idx + 1),
