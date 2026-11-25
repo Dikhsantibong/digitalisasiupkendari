@@ -618,12 +618,22 @@ class DocumentGridBuilder
 
     /**
      * Render a grid (as saved from the spreadsheet editor) to an HTML table for
-     * PDF export. Honours merges, bold and alignment.
+     * PDF export. Honours merges, bold and alignment. A book (`sheets`: one
+     * grid per lembar, the laporan modul Excel mode, 2026-11-25) prints its
+     * sheets in order, each starting on a new page.
      *
      * @param  array<string, mixed>  $grid
      */
     public function gridToHtml(array $grid): string
     {
+        $sheets = array_values(array_filter((array) ($grid['sheets'] ?? []), 'is_array'));
+        if ($sheets !== []) {
+            return implode('<div style="page-break-after: always;"></div>', array_map(
+                fn (array $sheet): string => $this->gridToHtml(array_diff_key($sheet, ['sheets' => true])),
+                $sheets,
+            ));
+        }
+
         $rows = $grid['rows'] ?? [];
         $merges = $grid['merges'] ?? [];
 
@@ -669,7 +679,7 @@ class DocumentGridBuilder
                 $height = isset($cell['height']) ? 'height:'.$cell['height'].'px;' : '';
                 $style = "{$border} padding:2px 4px; text-align:{$align}; {$weight} {$height}";
                 $text = (string) ($cell['t'] ?? '');
-                $content = $text !== '' ? e($text) : '&nbsp;';
+                $content = $text !== '' ? nl2br(e($text), false) : '&nbsp;';
                 $html .= '<td'.$attrs.' style="'.$style.'">'.$content.'</td>';
             }
             $html .= '</tr>';

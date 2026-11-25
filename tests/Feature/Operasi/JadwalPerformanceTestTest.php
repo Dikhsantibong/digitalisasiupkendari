@@ -3,6 +3,8 @@
 namespace Tests\Feature\Operasi;
 
 use App\Enums\RoleName;
+use App\Http\Controllers\Operasi\JadwalPerformanceTestController;
+use App\Models\Machine;
 use App\Models\OperasiPerformanceTestMesin;
 use App\Models\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +26,11 @@ class JadwalPerformanceTestTest extends TestCase
     {
         $superAdmin = $this->userWithRole(RoleName::SuperAdmin);
         $unit = Unit::factory()->create(['name' => 'PLTD Containerized Poasia', 'is_active' => true]);
+        // A unit without a saved schedule lists its active machines from Master Data Mesin.
+        Machine::factory()->create(['unit_id' => $unit->id, 'name' => 'Mirrlees #2', 'is_active' => true]);
+        Machine::factory()->create(['unit_id' => $unit->id, 'name' => 'Mirrlees #1', 'is_active' => true]);
+        Machine::factory()->create(['unit_id' => $unit->id, 'name' => 'Mirrlees #3', 'is_active' => false]);
+        Machine::factory()->create(['name' => 'Cummins #6', 'is_active' => true]);
 
         $response = $this->actingAs($superAdmin)->get(route('operasi.jadwal.performance-test.index', [
             'unit_id' => $unit->id,
@@ -34,11 +41,19 @@ class JadwalPerformanceTestTest extends TestCase
         $response->assertInertia(fn ($page) => $page
             ->component('operasi/jadwal/performance-test/index')
             ->has('unit')
-            ->has('rows', 3)
+            ->has('rows', 2)
             ->where('filters.unit_id', $unit->id)
             ->where('filters.year', 2026)
-            ->where('rows.0.nama_mesin', 'MESIN#01 / CUMM #6')
+            ->where('rows.0.nama_mesin', 'MIRRLEES #1')
+            ->where('rows.1.nama_mesin', 'MIRRLEES #2')
+            ->where('rows.0.id', null)
+            ->has('machines', 2)
         );
+
+        [$view, $data] = app(JadwalPerformanceTestController::class)->pdfView($unit, 2026);
+        $html = view($view, $data)->render();
+        $this->assertStringContainsString('MIRRLEES #1', $html);
+        $this->assertStringNotContainsString('CUMM #6', $html);
     }
 
     public function test_unit_user_can_only_access_their_unit(): void

@@ -162,6 +162,30 @@ class LaporanTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('has_saved', true)->where('format', 'grid'));
     }
 
+    public function test_an_excel_book_one_sheet_per_lembar_is_saved_and_printed(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = Machine::factory()->forUnit($unit)->create(['fuel_type' => FuelType::HsdOnly]);
+        $user = $this->userWithRole(RoleName::KoordinatorOperasi, $unit);
+        $sheet = fn (string $name, string $text): array => ['name' => $name, 'cols' => 2, 'merges' => [], 'rows' => [[['t' => $text, 'b' => true], ['t' => '1']]]];
+        $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'month' => 8, 'year' => 2026];
+
+        $this->actingAs($user)
+            ->post(route('operasi.laporan.document.store', ['report' => self::REPORT]), $period + [
+                'format' => 'grid',
+                'content_grid' => [...$sheet('Sampul', 'LAPORAN OPERASI'), 'sheets' => [$sheet('Sampul', 'LAPORAN OPERASI'), $sheet('Jadwal FLM', 'FLM RUTIN')]],
+            ])
+            ->assertRedirect();
+
+        $record = OperasiReportDocument::query()->where('unit_id', $unit->id)->where('report_code', self::REPORT)->sole();
+        $this->assertSame(['Sampul', 'Jadwal FLM'], array_column($record->content_grid['sheets'], 'name'));
+
+        $this->actingAs($user)
+            ->get(route('operasi.laporan.document.pdf', ['report' => self::REPORT] + $period))
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+    }
+
     public function test_the_report_document_pdf_streams(): void
     {
         $unit = Unit::factory()->create();

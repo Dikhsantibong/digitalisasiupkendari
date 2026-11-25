@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { normalizeJadwalRows, toDayList } from '@/lib/day-list';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
 import {
     OPERASI_MONTHS,
@@ -35,6 +34,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
+import { normalizeJadwalRows, toDayList } from '@/lib/day-list';
 import {
     buildDocumentHeader,
     createSheet,
@@ -157,12 +157,18 @@ export default function PdmJadwalHarianIndex({
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
     const [editForm, setEditForm] = useState({
-        kategori: 'I. MESIN',
+        kategori: initialRows.find((r) => r.is_category_header)?.kategori ?? 'I. Harian',
         no_urut: '1',
         kegiatan: '',
         target: target_working_days,
     });
-    const [newCategory, setNewCategory] = useState('I. MESIN');
+    const [newCategory, setNewCategory] = useState(initialRows.find((r) => r.is_category_header)?.kategori ?? 'I. Harian');
+    // Groups of the sheet (I. Harian … IV. Non Rutin, or a month's own headings).
+    const categoryOptions = useMemo(() => {
+        const headings = rows.filter((r) => r.is_category_header).map((r) => r.kategori);
+
+        return Array.from(new Set(headings.length > 0 ? headings : ['I. Harian', 'II. Mingguan', 'III. Bulanan', 'IV. Non Rutin']));
+    }, [rows]);
     const [newKegiatan, setNewKegiatan] = useState('');
     const [newTarget, setNewTarget] = useState(target_working_days);
 
@@ -1060,9 +1066,11 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="I. MESIN" className="text-xs">I. MESIN</SelectItem>
-                                    <SelectItem value="II. Mingguan" className="text-xs">II. Mingguan</SelectItem>
-                                    <SelectItem value="III. Bulanan" className="text-xs">III. Bulanan</SelectItem>
+                                    {categoryOptions.map((kategori) => (
+                                        <SelectItem key={kategori} value={kategori} className="text-xs">
+                                            {kategori}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -1115,9 +1123,11 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="I. MESIN" className="text-xs">I. MESIN</SelectItem>
-                                    <SelectItem value="II. Mingguan" className="text-xs">II. Mingguan</SelectItem>
-                                    <SelectItem value="III. Bulanan" className="text-xs">III. Bulanan</SelectItem>
+                                    {categoryOptions.map((kategori) => (
+                                        <SelectItem key={kategori} value={kategori} className="text-xs">
+                                            {kategori}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>

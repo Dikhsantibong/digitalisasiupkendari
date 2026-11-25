@@ -1,7 +1,13 @@
 import * as XLSX from 'xlsx';
 
 /** A single document cell: text, optional bold, optional align (l/c/r). */
-export type GridCell = { t: string; b?: boolean; a?: 'l' | 'c' | 'r' };
+export type GridCell = {
+    t: string;
+    b?: boolean;
+    a?: 'l' | 'c' | 'r';
+    /** A text line (kop, title, paragraph) printed without the cell border. */
+    noborder?: boolean;
+};
 
 /** The canonical document grid stored on the server and rendered to PDF. */
 export type DocumentGrid = {
@@ -10,7 +16,14 @@ export type DocumentGrid = {
     col_widths?: number[];
     merges?: [number, number, number, number][];
     rows: GridCell[][];
+    /**
+     * A book (Laporan modul, 2026-11-25): one grid per lembar, shown as sheet
+     * tabs and printed one after another; the top-level fields mirror sheet 1.
+     */
+    sheets?: DocumentGrid[];
 };
+
+const BORDER_SIDE = ['thin', '#000000'];
 
 const ALIGN_TO_XS: Record<string, string> = { l: 'left', c: 'center', r: 'right' };
 const XS_TO_ALIGN: Record<string, 'l' | 'c' | 'r'> = {
@@ -39,11 +52,7 @@ export function gridToSheet(grid: DocumentGrid): Record<string, unknown> {
     const styles: Record<string, unknown>[] = [];
     const styleIndex = new Map<string, number>();
     const styleFor = (cell: GridCell): number | undefined => {
-        if (!cell.b && (!cell.a || cell.a === 'l')) {
-            return undefined;
-        }
-
-        const key = `${cell.b ? 1 : 0}-${cell.a ?? 'l'}`;
+        const key = `${cell.b ? 1 : 0}-${cell.a ?? 'l'}-${cell.noborder ? 0 : 1}`;
 
         if (!styleIndex.has(key)) {
             const style: Record<string, unknown> = {};
@@ -55,6 +64,18 @@ export function gridToSheet(grid: DocumentGrid): Record<string, unknown> {
             if (cell.a && cell.a !== 'l') {
                 style.align = ALIGN_TO_XS[cell.a];
             }
+
+            // Every cell prints with a border (gridToHtml) unless marked noborder.
+            if (!cell.noborder) {
+                style.border = {
+                    top: BORDER_SIDE,
+                    bottom: BORDER_SIDE,
+                    left: BORDER_SIDE,
+                    right: BORDER_SIDE,
+                };
+            }
+
+            style.textwrap = true;
 
             styleIndex.set(key, styles.length);
             styles.push(style);
@@ -157,10 +178,13 @@ export function sheetToGrid(data: Record<string, unknown>): DocumentGrid {
             const style = cell?.style !== undefined ? styles[cell.style as number] : undefined;
             const font = style?.font as { bold?: boolean } | undefined;
             const align = style?.align as string | undefined;
+            // A styled cell without a border was a borderless text line; unstyled cells keep the old default.
+            const noborder = style !== undefined && style.border === undefined;
             cells.push({
                 t: String(cell?.text ?? ''),
                 ...(font?.bold ? { b: true } : {}),
                 ...(align && XS_TO_ALIGN[align] ? { a: XS_TO_ALIGN[align] } : {}),
+                ...(noborder ? { noborder: true } : {}),
             });
         }
 
@@ -184,6 +208,21 @@ export function sheetToGrid(data: Record<string, unknown>): DocumentGrid {
         merges,
         rows,
     };
+}
+
+/** x-spreadsheet data for every sheet of a grid (a book's sheets, or the grid itself). */
+export function gridToSheets(grid: DocumentGrid): Record<string, unknown>[] {
+    const sheets = grid.sheets && grid.sheets.length > 0 ? grid.sheets : [grid];
+
+    return sheets.map(gridToSheet);
+}
+
+/** x-spreadsheet getData() (all sheets) back to a grid; several sheets become a book. */
+export function sheetsToGrid(data: unknown): DocumentGrid {
+    const list = (Array.isArray(data) ? data : [data]) as Record<string, unknown>[];
+    const sheets = list.map((sheet) => sheetToGrid(sheet));
+
+    return sheets.length > 1 ? { ...sheets[0], sheets } : sheets[0];
 }
 
 /** Download the grid as an .xlsx file (client-side, via SheetJS). */

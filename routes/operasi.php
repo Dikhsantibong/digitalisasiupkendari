@@ -12,6 +12,7 @@ use App\Http\Controllers\Operasi\InventarisController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestPeralatanController;
 use App\Http\Controllers\Operasi\JadwalController;
+use App\Http\Controllers\Operasi\JadwalKegiatanController;
 use App\Http\Controllers\Operasi\JadwalPerformanceTestController;
 use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\LaporanController;
@@ -63,6 +64,10 @@ Route::middleware(['auth', 'verified'])
     ->name('operasi.')
     ->group(function (): void {
         Route::get('jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
+        // Jadwal Kegiatan Operasi: harian, mingguan, bulanan & non rutin (user, 2026-11-25).
+        Route::get('jadwal/kegiatan', [JadwalKegiatanController::class, 'index'])->name('jadwal.kegiatan.index');
+        Route::post('jadwal/kegiatan', [JadwalKegiatanController::class, 'store'])->name('jadwal.kegiatan.store');
+        Route::get('jadwal/kegiatan/pdf', [JadwalKegiatanController::class, 'pdf'])->name('jadwal.kegiatan.pdf');
         Route::get('jadwal/flm', [FlmController::class, 'index'])->name('jadwal.flm.index');
         Route::post('jadwal/flm', [FlmController::class, 'store'])->name('jadwal.flm.store');
         Route::get('jadwal/flm/pdf', [FlmController::class, 'pdf'])->name('jadwal.flm.pdf');

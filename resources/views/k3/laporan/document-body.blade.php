@@ -359,7 +359,7 @@
                 @foreach($kegiatanRutin as $idx => $kr)
                     <tr>
                         <td class="text-center">{{ $kr['no'] ?? ($idx + 1) }}</td>
-                        <td>{{ $kr['grup'] ?? '—' }}</td>
+                        <td>{{ isset($kr['grup']) ? \App\Support\JadwalKegiatanGroups::label((string) $kr['grup']) : '—' }}</td>
                         <td>{{ $kr['kegiatan'] ?? '—' }}</td>
                         <td class="text-center">{{ $kr['target'] ?? '—' }}</td>
                         <td class="text-center">{{ $kr['jadwal'] ?? '—' }}</td>

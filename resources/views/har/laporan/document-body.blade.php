@@ -43,6 +43,8 @@
 
     // 1. Harian
     $harianRows = $jadwal['harian']['rows'] ?? [];
+    // Grouped I. Harian … IV. Non Rutin (2026-11-25); older payloads print as one Harian group.
+    $harianGroups = $jadwal['harian']['groups'] ?? ($harianRows === [] ? [] : [['roman' => 'I', 'label' => 'Harian', 'rows' => $harianRows]]);
 
     // 2. P0-P5
     $p0p5Rows = $jadwal['p0_p5']['rows'] ?? [];
@@ -388,7 +390,12 @@
             </tr>
         </thead>
         <tbody>
-            @forelse($harianRows as $row)
+            @forelse($harianGroups as $group)
+                <tr class="group-row">
+                    <td style="text-align: center; font-weight: bold; background: #e5e7eb;">{{ $group['roman'] }}</td>
+                    <td colspan="{{ count($days) + 6 }}" style="text-align: left; font-weight: bold; background: #e5e7eb; padding-left: 5px; text-transform: uppercase;">{{ $group['label'] }}</td>
+                </tr>
+                @foreach($group['rows'] as $row)
                 <tr>
                     <td>{{ $row['no_urut'] }}</td>
                     <td class="activity-name">{{ $row['kegiatan'] }}</td>
@@ -410,10 +417,11 @@
                     <td class="stat-cell">{{ $row['performance'] }}%</td>
                     <td class="keterangan-cell">{{ $row['keterangan'] }}</td>
                 </tr>
+                @endforeach
             @empty
                 <tr>
                     <td colspan="{{ count($days) + 7 }}" style="padding: 12px; text-align: center; color: #666;">
-                        Belum ada data jadwal harian untuk periode ini.
+                        Belum ada data jadwal kegiatan untuk periode ini.
                     </td>
                 </tr>
             @endforelse

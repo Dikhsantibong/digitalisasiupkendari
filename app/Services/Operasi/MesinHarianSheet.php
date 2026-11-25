@@ -159,8 +159,9 @@ class MesinHarianSheet
      */
     public function bebanFromLogsheet(Unit $unit, int $month, int $year, array $machines): array
     {
-        // Every logsheet template (jenis mesin) has its own LOAD parameter.
-        $loadIds = LogsheetParameter::query()->where('code', 'LOAD')->pluck('id')->all();
+        // Every logsheet template (jenis mesin) has its own LOAD parameter; PLTD Poasia
+        // also reads Beban on Logsheet Lokal 01 (L01_BEBAN).
+        $loadIds = LogsheetParameter::query()->whereIn('code', ['LOAD', 'L01_BEBAN'])->pluck('id')->all();
         if ($loadIds === [] || $machines === []) {
             return [];
         }

@@ -41,6 +41,7 @@ use App\Models\SecurityPatrol;
 use App\Models\Unit;
 use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
+use App\Support\JadwalKegiatanGroups;
 use App\Support\K3FormulirRegistry;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -383,7 +384,7 @@ class K3ReportBuilder
         $marked = fn (?array $map): array => array_values(array_map('intval', array_keys(array_filter($map ?? [], fn ($v): bool => trim((string) $v) !== ''))));
 
         $all = [
-            ...array_map(fn (array $k): array => $row('Jadwal Kegiatan Rutin ('.ucfirst((string) $k['grup']).')', (string) $k['kegiatan'], (int) $k['target'], $k['realisasi'], strtolower((string) $k['grup'])), $this->kegiatanRutin($unitId, $month, $year)),
+            ...array_map(fn (array $k): array => $row('Jadwal Kegiatan Rutin ('.JadwalKegiatanGroups::label((string) $k['grup']).')', (string) $k['kegiatan'], (int) $k['target'], $k['realisasi'], strtolower((string) $k['grup'])), $this->kegiatanRutin($unitId, $month, $year)),
             ...array_map(fn (array $p): array => $row('Jadwal Pekerjaan Rutin', (string) $p['uraian'], (int) $p['target'], array_map('intval', (array) $p['realisasi'])), $this->pekerjaanRutin($unitId, $month, $year)['rows']),
             ...array_map(fn (array $p): array => $row('Jadwal Patrol Check', (string) $p['uraian'], (int) $p['rencana_count'], $p['realisasi']), $this->patrolCheckJadwal($unitId, $month, $year)),
             ...array_map(fn (array $i): array => $row('Jadwal Instruksi Kerja', (string) $i['kegiatan'], (int) $i['rencana_count'], $i['realisasi']), $this->instruksiKerja($unitId, $month, $year)),

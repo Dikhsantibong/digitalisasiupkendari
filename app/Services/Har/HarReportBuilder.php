@@ -6,6 +6,7 @@ use App\Enums\EmployeePosition;
 use App\Enums\MaintenanceScope;
 use App\Enums\SchedulePlanType;
 use App\Enums\WoWaitingReason;
+use App\Http\Controllers\Har\JadwalHarianController;
 use App\Models\Employee;
 use App\Models\HarAxialConrod;
 use App\Models\HarBatteryVoltage;
@@ -37,6 +38,7 @@ use App\Models\Unit;
 use App\Models\WorkOrder;
 use App\Services\Reports\ReportSignatories;
 use App\Support\Indonesian;
+use App\Support\JadwalKegiatanGroups;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -866,52 +868,54 @@ class HarReportBuilder
             ->orderBy('id')
             ->get();
 
-        $defaultKegiatanHarian = [
-            'Absensi',
-            'Daily Meeting / Safety Breefing',
-            'Pengecekan kebocoran air, oli, bbm & udara',
-            'Pengecekan terminasi battery & pengukuran tegangan battery',
-            'Pengecekan sensor & terminasi socket pada sensor',
-            'Pengecekan level oli dan air pendingin',
-            'Pengukuran asap cerobong dan breather pada mesin yang operasi',
-            'Pengecekan vibrasi pada mesin yang operasi',
-            'Pengecekan parameter pada panel PCC 3300',
-            'Pengecekan terminasi pada panel GCP',
-            'Pembersihan panel GCP & body mesin',
-            'Analisis Data dan Pelaporan',
-        ];
-
+        // Grouped harian / mingguan / bulanan / non rutin (2026-11-25); rows saved
+        // before the groups are daily activities.
         if ($harianRecords->isEmpty()) {
-            $harianRows = collect($defaultKegiatanHarian)->map(function (string $kegiatan, int $idx) use ($targetWorkingDays): array {
-                return [
-                    'no_urut' => $idx + 1,
-                    'kegiatan' => $kegiatan,
-                    'target' => $targetWorkingDays,
-                    'rencana_count' => $targetWorkingDays,
-                    'realisasi_count' => 0,
-                    'performance' => 0,
-                    'jadwal' => [],
-                    'keterangan' => '',
-                ];
-            })->all();
+            $harianRows = [];
+            foreach (JadwalHarianController::DEFAULT_KEGIATAN as $grup => $items) {
+                $target = JadwalKegiatanGroups::defaultTarget($grup, $targetWorkingDays);
+                foreach ($items as $idx => $kegiatan) {
+                    $harianRows[] = [
+                        'grup' => $grup,
+                        'no_urut' => $idx + 1,
+                        'kegiatan' => $kegiatan,
+                        'target' => $target,
+                        'rencana_count' => $target,
+                        'realisasi_count' => 0,
+                        'performance' => 0,
+                        'jadwal' => [],
+                        'keterangan' => '',
+                    ];
+                }
+            }
         } else {
             $harianRows = $harianRecords->map(function (HarJadwalHarian $r, int $idx): array {
                 $jadwal = $r->jadwal ?? [];
                 $realisasi = count($jadwal);
-                $target = (int) ($r->target ?: 20);
+                $target = (int) $r->target;
                 $performance = $target > 0 ? round(($realisasi / $target) * 100) : 0;
 
                 return [
+                    'grup' => JadwalKegiatanGroups::normalize((string) ($r->grup ?? 'harian')),
                     'no_urut' => $r->no_urut ?: ($idx + 1),
                     'kegiatan' => $r->kegiatan,
                     'target' => $target,
-                    'rencana_count' => (int) ($r->rencana_count ?: 20),
+                    'rencana_count' => (int) ($r->rencana_count ?: $target),
                     'realisasi_count' => $realisasi,
                     'performance' => $performance,
                     'jadwal' => $jadwal,
                     'keterangan' => $r->keterangan ?? '',
                 ];
             })->all();
+        }
+
+        // Printed under the group headings I. Harian … IV. Non Rutin.
+        $harianGroups = [];
+        foreach (JadwalKegiatanGroups::GROUPS as $grup => [$roman, $label]) {
+            $groupRows = array_values(array_filter($harianRows, fn (array $row): bool => $row['grup'] === $grup));
+            if ($groupRows !== []) {
+                $harianGroups[] = ['roman' => $roman, 'label' => $label, 'rows' => $groupRows];
+            }
         }
 
         // 2. P0 - P5
@@ -1192,6 +1196,7 @@ class HarReportBuilder
             'target_working_days' => $targetWorkingDays,
             'harian' => [
                 'rows' => $harianRows,
+                'groups' => $harianGroups,
             ],
             'p0_p5' => [
                 'rows' => $p0p5Rows,

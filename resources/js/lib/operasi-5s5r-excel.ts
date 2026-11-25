@@ -104,10 +104,10 @@ export async function downloadOperasi5s5rWorkbook(
         },
     });
 
-    const TOTAL_COLS = 17;
+    const TOTAL_COLS = 16;
 
     // Kop lines
-    // Row 1 to 4: Left logo (col 1-3), Right logo (col 15-17), Center titles (col 4-14)
+    // Row 1 to 4: Left logo (col 1-3), Right logo (col 14-16), Center titles (col 4-13)
     for (let r = 1; r <= 4; r++) {
         for (let c = 1; c <= TOTAL_COLS; c++) {
             worksheet.getRow(r).getCell(c).border = {
@@ -120,7 +120,7 @@ export async function downloadOperasi5s5rWorkbook(
     }
 
     mergeCells(worksheet, 0, 0, 3, 2); // Left logo
-    mergeCells(worksheet, 0, 14, 3, 16); // Right logo
+    mergeCells(worksheet, 0, 13, 3, 15); // Right logo
 
     const titleLines = [
         'JASA PENDUKUNG TEKNIK 6 SITE',
@@ -138,7 +138,7 @@ export async function downloadOperasi5s5rWorkbook(
             valign: 'center',
             border: true,
         });
-        mergeCells(worksheet, i, 3, i, 13);
+        mergeCells(worksheet, i, 3, i, 12);
         worksheet.getRow(row).height = 18;
     });
 
@@ -158,7 +158,7 @@ export async function downloadOperasi5s5rWorkbook(
     if (mkp) {
         const id = workbook.addImage({ base64: mkp, extension: 'jpeg' });
         worksheet.addImage(id, {
-            tl: { col: 14.3, row: 0.3 },
+            tl: { col: 13.3, row: 0.3 },
             ext: { width: 62, height: 44 },
         });
     }
@@ -214,13 +214,9 @@ export async function downloadOperasi5s5rWorkbook(
     put(worksheet, 6, 15, 'Kondisi Akhir', HEADER_ORANGE);
     mergeCells(worksheet, 5, 14, 6, 14);
 
-    // Col 16: Jumlah
-    put(worksheet, 6, 16, 'Jumlah', HEADER_ORANGE);
+    // Col 16: Keterangan (kolom Jumlah dihapus, user 2026-11-25)
+    put(worksheet, 6, 16, 'Keterangan', HEADER_ORANGE);
     mergeCells(worksheet, 5, 15, 6, 15);
-
-    // Col 17: Keterangan
-    put(worksheet, 6, 17, 'Keterangan', HEADER_ORANGE);
-    mergeCells(worksheet, 5, 16, 6, 16);
 
     // Populate Data
     let currentRow = 8;
@@ -309,14 +305,7 @@ export async function downloadOperasi5s5rWorkbook(
                 row.kondisi_akhir ?? '',
                 CELL_CENTER,
             );
-            put(
-                worksheet,
-                currentRow,
-                16,
-                row.jumlah !== null ? row.jumlah : '',
-                CELL_CENTER,
-            );
-            put(worksheet, currentRow, 17, row.keterangan ?? '', CELL_LEFT);
+            put(worksheet, currentRow, 16, row.keterangan ?? '', CELL_LEFT);
 
             currentRow++;
         }
@@ -344,7 +333,6 @@ export async function downloadOperasi5s5rWorkbook(
         { width: 9 }, // 51-75%
         { width: 10 }, // 76-100%
         { width: 14 }, // Kondisi Akhir
-        { width: 10 }, // Jumlah
         { width: 25 }, // Keterangan
     ];
 

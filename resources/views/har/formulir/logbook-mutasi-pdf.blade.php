@@ -27,7 +27,7 @@
 <body>
     @php
         // Belum ada logbook: cetak satu lembar kosong berkop (tanpa data dummy).
-        $sheets = $logbooks !== [] ? $logbooks : [['hari_tanggal' => '', 'absensi' => [], 'apd' => [], 'rutin' => [], 'non_rutin' => [], 'kondisi_k3' => []]];
+        $sheets = $logbooks !== [] ? $logbooks : [['hari_tanggal' => '', 'absensi' => [], 'apd' => [], 'rutin' => [], 'non_rutin' => []]];
     @endphp
     @foreach($sheets as $logbook)
         @if(! $loop->first)
@@ -58,7 +58,6 @@
                         ['B. KESIAPAN APD', $logbook['apd'], 'item'],
                         ['C. JOB HARIAN RUTIN', $logbook['rutin'], 'uraian'],
                         ['D. JOB HARIAN NON RUTIN', $logbook['non_rutin'], 'uraian'],
-                        ['E. KONDISI K3 (UNSAFE ACTION & UNSAFE CONDITION)', $logbook['kondisi_k3'], 'uraian'],
                     ] as [$label, $rows, $key])
                         <tr class="section"><td colspan="3">{{ $label }}</td></tr>
                         @forelse($rows as $row)

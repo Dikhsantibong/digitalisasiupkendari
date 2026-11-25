@@ -51,7 +51,7 @@ class LogsheetTemplateTest extends TestCase
         $cummins = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true]);
         $operator = $this->userWithRole(RoleName::Operator, $unit);
 
-        $this->actingAs($operator)->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $mirrlees->id, 'log_date' => '2026-11-20']))
+        $this->actingAs($operator)->get(route('operator.logsheet.index', ['unit_id' => $unit->id, 'engine_id' => $mirrlees->id, 'log_date' => '2026-11-20', 'lembar' => 'lokal-02']))
             ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('template.name', 'Mirrlees (PLTD Poasia)')
@@ -77,7 +77,7 @@ class LogsheetTemplateTest extends TestCase
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'logsheet_template_id' => $this->mirrlees->id]);
         $operator = $this->userWithRole(RoleName::Operator, $unit);
-        $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-11-20'];
+        $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-11-20', 'lembar' => 'lokal-02'];
         $load = $this->param($this->mirrlees, 'LOAD');
         $level = $this->param($this->mirrlees, 'LEVEL_EXPANSION_TANK');
         $oli = $this->param($this->mirrlees, 'LEVEL_OLI_RUN');
@@ -117,9 +117,9 @@ class LogsheetTemplateTest extends TestCase
 
         $this->actingAs($admin)->post(route('operator.logsheet-template.store'), ['name' => 'SWD Kolaka', 'copy_from' => $this->mirrlees->id])->assertRedirect();
         $template = LogsheetTemplate::query()->where('name', 'SWD Kolaka')->sole();
-        // Lokal 02 (31) + Lokal 03 (39) + Cylinder Head (17), with their lembar.
-        $this->assertSame(87, $template->parameters()->count());
-        $this->assertCount(3, $template->sheetList());
+        // Lokal 01 (36) + Lokal 02 (31) + Lokal 03 (39) + Lokal 04 Cylinder Head (17), with their lembar.
+        $this->assertSame(123, $template->parameters()->count());
+        $this->assertCount(4, $template->sheetList());
 
         $first = $template->parameters()->orderBy('sort_order')->first();
         $this->actingAs($admin)->put(route('operator.logsheet-template.update', $template), [
@@ -162,7 +162,7 @@ class LogsheetTemplateTest extends TestCase
         $this->actingAs($admin)->delete(route('operator.logsheet-template.destroy', LogsheetTemplate::default()))->assertStatus(422);
     }
 
-    public function test_pltd_poasia_reads_three_lembar_each_with_its_own_interval(): void
+    public function test_pltd_poasia_reads_four_lembar_each_with_its_own_interval(): void
     {
         $unit = Unit::factory()->create();
         $engine = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'logsheet_template_id' => $this->mirrlees->id]);
@@ -171,10 +171,20 @@ class LogsheetTemplateTest extends TestCase
 
         $this->actingAs($operator)->get(route('operator.logsheet.index', $period))
             ->assertInertia(fn (AssertableInertia $page) => $page
-                ->has('sheets', 3)
-                ->where('sheets.0.name', 'Logsheet Lokal 02')
-                ->where('active_sheet.key', 'lokal-02')
+                ->has('sheets', 4)
+                ->where('sheets.0.name', 'Logsheet Lokal 01')
+                ->where('sheets.1.name', 'Logsheet Lokal 02')
+                ->where('sheets.3.name', 'Logsheet Lokal 04 (Cylinder Head)')
+                ->where('active_sheet.key', 'lokal-01')
+                ->where('active_sheet.summary', true)
+                // Beban, jam operasi, BBM, speed, governor, exhaust A1–B8 + T/C (2), jacket water … inter cooler.
+                ->has('parameters', 36)
+                ->where('parameters.5.group_label', 'Exhaust Temperature')
+                ->where('parameters.5.sub_channel', 'A1')
                 ->has('rows', 24));
+
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period + ['lembar' => 'lokal-02']))
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('active_sheet.summary', true)->where('parameters.0.name', 'Beban')->where('parameters.1.group_label', 'Temperature Stud Main Bearing')->has('rows', 24));
 
         $this->actingAs($operator)->get(route('operator.logsheet.index', $period + ['lembar' => 'lokal-03']))
             ->assertInertia(fn (AssertableInertia $page) => $page
@@ -196,7 +206,7 @@ class LogsheetTemplateTest extends TestCase
         $l02 = $this->param($this->mirrlees, 'LOAD');
         $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-03', 'sheet' => ['01:00' => ['p_'.$l03->id => '2200'], '03:00' => ['p_'.$l03->id => '2400']]])
             ->assertSessionHasNoErrors();
-        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['01:00' => ['p_'.$l02->id => '1500']]])->assertSessionHasNoErrors();
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-02', 'sheet' => ['01:00' => ['p_'.$l02->id => '1500']]])->assertSessionHasNoErrors();
         $this->actingAs($operator)->post(route('operator.logsheet.store'), $period + ['lembar' => 'lokal-03', 'time_slot' => '02:00', 'values' => []])->assertSessionHasErrors('time_slot');
 
         $sheet = OperatorLogsheet::query()->sole();
@@ -208,14 +218,43 @@ class LogsheetTemplateTest extends TestCase
         $this->actingAs($operator)->get(route('operator.logsheet.index', $period))
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('lembar_dipilih', false)
-                ->where('sheets.0.filled', 1)->where('sheets.0.total', 24)
-                ->where('sheets.1.filled', 2)->where('sheets.1.total', 12)
-                ->where('sheets.2.filled', 0));
+                ->where('sheets.0.filled', 0)->where('sheets.0.total', 24)
+                ->where('sheets.1.filled', 1)->where('sheets.1.total', 24)
+                ->where('sheets.2.filled', 2)->where('sheets.2.total', 12)
+                ->where('sheets.3.filled', 0));
 
         // MIN / MAX / RATA2 of Lokal 03, printed on its PDF.
         [$min, $max, $avg] = LogsheetLayout::summaryRows(collect([$l03]), [['time_slot' => '01:00', 'values' => ['p_'.$l03->id => '2200']], ['time_slot' => '03:00', 'values' => ['p_'.$l03->id => '2400']]]);
         $this->assertSame(['2200', '2400', '2300'], [$min['values']['p_'.$l03->id], $max['values']['p_'.$l03->id], $avg['values']['p_'.$l03->id]]);
         $this->actingAs($operator)->get(route('operator.logsheet.pdf', $period + ['lembar' => 'lokal-03']))->assertOk()->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_lokal_01_reference_notes_merge_over_the_exhaust_columns_like_the_form(): void
+    {
+        $parameters = LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-01')->orderBy('sort_order')->get();
+        $cells = LogsheetLayout::referenceCells($parameters, 'normal_value');
+
+        // Beban … Governor one cell each, then one note over Exhaust A1–B8, then T/C.
+        $this->assertSame(['1500', 'JAM', 'MFO', '1000', '75-90'], array_column(array_slice($cells, 0, 5), 'value'));
+        $this->assertSame(16, $cells[5]['colspan']);
+        $this->assertStringStartsWith('Pada beban 1900 - 2300 kw', $cells[5]['value']);
+        $this->assertSame(1, $cells[6]['colspan']);
+        $this->assertSame($parameters->count(), array_sum(array_column($cells, 'colspan')));
+
+        // Short equal values (Lokal 02 stud bearing "60") stay one cell per column; "Pembacaan langsung" merges IN / OUT.
+        $lokal02 = LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-02')->orderBy('sort_order')->get();
+        $cells02 = LogsheetLayout::referenceCells($lokal02, 'normal_value');
+        $this->assertSame(1, $cells02[1]['colspan']);
+        $this->assertContains(['value' => 'Pembacaan langsung', 'colspan' => 2], $cells02);
+
+        $unit = Unit::factory()->create();
+        $engine = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'logsheet_template_id' => $this->mirrlees->id]);
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-11-22'];
+        $bbm = $parameters->firstWhere('code', 'L01_BBM');
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-01', 'sheet' => ['01:00' => ['p_'.$bbm->id => 'XYZ']]])->assertSessionHasErrors();
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-01', 'sheet' => ['01:00' => ['p_'.$bbm->id => 'MFO']]])->assertSessionHasNoErrors();
+        $this->actingAs($operator)->get(route('operator.logsheet.pdf', $period + ['lembar' => 'lokal-01']))->assertOk()->assertHeader('content-type', 'application/pdf');
     }
 
     public function test_super_admin_edits_the_lembar_of_a_template(): void

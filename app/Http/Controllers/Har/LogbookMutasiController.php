@@ -87,7 +87,7 @@ class LogbookMutasiController extends Controller
             'apd' => ['present', 'array', 'max:30'],
             'apd.*.item' => ['nullable', 'string', 'max:100'],
             'apd.*.keterangan' => ['nullable', 'string', 'max:255'],
-            ...collect(['rutin', 'non_rutin', 'kondisi_k3'])->flatMap(fn (string $list): array => [
+            ...collect(['rutin', 'non_rutin'])->flatMap(fn (string $list): array => [
                 $list => ['present', 'array', 'max:60'],
                 "{$list}.*.uraian" => ['nullable', 'string', 'max:1000'],
                 "{$list}.*.keterangan" => ['nullable', 'string', 'max:1000'],
@@ -109,7 +109,9 @@ class LogbookMutasiController extends Controller
             'apd' => $keep($validated['apd'], 'item', ['item', 'keterangan']),
             'rutin' => $keep($validated['rutin'], 'uraian', ['uraian', 'keterangan']),
             'non_rutin' => $keep($validated['non_rutin'], 'uraian', ['uraian', 'keterangan']),
-            'kondisi_k3' => $keep($validated['kondisi_k3'], 'uraian', ['uraian', 'keterangan']),
+            // Section E (Kondisi K3) was removed: Unsafe Action & Condition is recorded only in K3
+            // (user, 2026-11-25). Earlier rows keep their stored value; new logbooks store none.
+            'kondisi_k3' => $logbook->exists ? ($logbook->kondisi_k3 ?? []) : [],
             'input_by' => $user->id,
         ])->save();
 
@@ -184,7 +186,7 @@ class LogbookMutasiController extends Controller
         return [
             'id' => $logbook->id,
             'tanggal' => $logbook->tanggal->format('Y-m-d'),
-            ...$logbook->only(['absensi', 'apd', 'rutin', 'non_rutin', 'kondisi_k3']),
+            ...$logbook->only(['absensi', 'apd', 'rutin', 'non_rutin']),
         ];
     }
 
@@ -204,7 +206,6 @@ class LogbookMutasiController extends Controller
             'apd' => array_map(fn (string $item): array => ['item' => $item, 'keterangan' => null], self::APD),
             'rutin' => array_map(fn (string $uraian): array => ['uraian' => $uraian, 'keterangan' => null], self::RUTIN),
             'non_rutin' => [],
-            'kondisi_k3' => [],
         ];
     }
 

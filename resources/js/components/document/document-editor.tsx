@@ -23,7 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useInMobileShell } from '@/hooks/use-mobile-module';
-import { downloadGridAsXlsx } from '@/lib/spreadsheet';
+import { reportBook } from '@/lib/report-book';
 import type { DocumentGrid, GridCell } from '@/lib/spreadsheet';
 import { cn } from '@/lib/utils';
 import type { Auth } from '@/types';
@@ -214,7 +214,13 @@ function LoadedDocumentEditor({
     // Text mode opens as a light read view; TinyMCE is only loaded to edit.
     const [editingText, setEditingText] = useState(false);
     const readEditorHtml = useRef<(() => string) | null>(null);
-    const [gridState, setGridState] = useState<DocumentGrid>(grid);
+    // Excel mode: one sheet per lembar (Sampul, then each input), built from the
+    // report text unless an Excel version was saved (user, 2026-11-25).
+    const [gridState, setGridState] = useState<DocumentGrid>(() =>
+        (hasSaved && format === 'grid') || typeof DOMParser === 'undefined'
+            ? grid
+            : reportBook(content),
+    );
     const [saving, setSaving] = useState(false);
     const [regenerating, setRegenerating] = useState(false);
     const [savedFormat, setSavedFormat] = useState<DocumentEditorMode | null>(
@@ -304,13 +310,35 @@ function LoadedDocumentEditor({
         window.open(`${pdfUrl}${separator}v=${previewKey}`, '_blank');
     };
 
-    const downloadXlsx = () => {
+    // Ekspor Excel: one workbook, Sampul + one sheet per lembar of the report (see report-workbook).
+    const [exporting, setExporting] = useState(false);
+    const downloadWorkbookXlsx = async () => {
+        setExporting(true);
+
+        try {
+            const { downloadReportWorkbook } =
+                await import('@/lib/report-workbook');
+            await downloadReportWorkbook(
+                mode === 'grid'
+                    ? gridState.sheets
+                        ? gridState
+                        : withExportHeader()
+                    : reportBook(mode === 'html' ? currentHtml() : html),
+                `${baseName}.xlsx`,
+            );
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    /** A single (older) saved grid gets the organisation lines on top, as before. */
+    const withExportHeader = (): DocumentGrid => {
         const cols = gridState.cols;
         const header: GridCell[][] = [
             ...xlsxHeaderLines.map((line): GridCell[] => [
-                { t: line.text, b: line.bold, a: 'c' },
+                { t: line.text, b: line.bold, a: 'c', noborder: true },
             ]),
-            [{ t: `${numberLabel}: ${documentNumber}` }],
+            [{ t: `${numberLabel}: ${documentNumber}`, noborder: true }],
         ];
         const offset = header.length;
         const shifted = (gridState.merges ?? []).map(
@@ -324,12 +352,12 @@ function LoadedDocumentEditor({
         const headerMerges = header.map(
             (_, i): [number, number, number, number] => [i, 0, i, cols - 1],
         );
-        const exportGrid: DocumentGrid = {
+
+        return {
             ...gridState,
             rows: [...header, ...gridState.rows],
             merges: [...headerMerges, ...shifted],
         };
-        downloadGridAsXlsx(exportGrid, `${baseName}.xlsx`);
     };
 
     const pdfMismatch = savedFormat !== null && savedFormat !== mode;
@@ -364,12 +392,14 @@ function LoadedDocumentEditor({
                                 {backLabel}
                             </Button>
                         )}
-                        {mode === 'grid' && (
-                            <Button variant="secondary" onClick={downloadXlsx}>
-                                <FileSpreadsheet className="size-4" />
-                                Unduh Excel
-                            </Button>
-                        )}
+                        <Button
+                            variant="secondary"
+                            onClick={downloadWorkbookXlsx}
+                            disabled={exporting}
+                        >
+                            <FileSpreadsheet className="size-4" />
+                            {exporting ? 'Menyiapkan…' : 'Unduh Excel'}
+                        </Button>
                         <Button variant="secondary" onClick={downloadPdf}>
                             <Download className="size-4" />
                             Unduh PDF

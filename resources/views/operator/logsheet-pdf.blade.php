@@ -74,8 +74,8 @@
             @foreach($referenceRows ?? [] as $reference)
                 <tr class="ref">
                     <td class="jam">{{ $reference['label'] }}</td>
-                    @foreach($parameters as $parameter)
-                        <td>{{ $parameter->{$reference['field']} }}</td>
+                    @foreach(\App\Services\Operator\LogsheetLayout::referenceCells($parameters, $reference['field']) as $cell)
+                        <td @if($cell['colspan'] > 1) colspan="{{ $cell['colspan'] }}" @endif>{{ $cell['value'] }}</td>
                     @endforeach
                 </tr>
             @endforeach

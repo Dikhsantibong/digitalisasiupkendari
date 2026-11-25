@@ -566,20 +566,28 @@ Detail Logsheet:
   Winding Temp L1–L3, TEG Battery, Ampere R/S/T, Cos Phi, Hour Meter, Freq, TEG, KVAR, kWh Meter, Flow
   Meter IN/OUT, Daily Tank Level, Bearing Generator Temp; slot 01:00–24:00 + 17:30, 18:30, 19:30, 20:30,
   21:30) — tampilan, PDF & Excel-nya tidak berubah.
-- Template **Mirrlees (PLTD Poasia)** — "Laporan Isian Data Operator Lokal", tiga lembar; dipakai mesin PLTD
-  Poasia (MIRRLEES #1, #2, #4, #5):
-  1. **Logsheet Lokal 02 — Setiap Jam** (01:00–24:00): Beban (kW), Temperature Stud Main Bearing Bank A & B
-     (1–9), Temp. Ruangan, Temp Crankshaft Flywheel, Oil In To Engine, Oil Out Engine, Level Oli Mesin/Carter
-     (Run, Stop — teks), Filter Auto Back Wash (IN, OUT), Level Expansion Tank (L/N/H), Trafo, Level Oil (L/N/H),
-     Temp Oil; Normal/Alarm/Trip dari form.
-  2. **Logsheet Lokal 03 — Setiap 2 Jam** (01:00, 03:00 … 23:00): Beban (N 2300 / A 1700 / T 2860),
+- Template **Mirrlees (PLTD Poasia)** — "Laporan Isian Data Operator Lokal", empat lembar (revisi 2026-11-25);
+  dipakai mesin PLTD Poasia (MIRRLEES #1, #2, #4, #5):
+  1. **Logsheet Lokal 01 — Setiap Jam** (01:00–24:00, baris **MIN / MAX / RATA2**): Beban (kW 1500/1300/2860),
+     Jam Operasi, BBM (HSD/MFO) yg digunakan (pilihan), Speed (RPM), Actuator Governor (%), Exhaust Temperature
+     Bank A (A1–A8) & Bank B (B1–B8) + T/C (Turbine Speed, Temperature), Jacket Water In/Out, L/O Before & After
+     Filter, Lub Oil T/C Press, Jacket Water Press, Charge Air Press, Inter Cooler Udara (Press In, Temp In/Out) &
+     Raw Water (Press Out, Temp In/Out). Catatan acuan Exhaust ("Pada beban 1900 - 2300 kw …") digabung satu sel
+     di atas A1–B8 seperti form (halaman, PDF & Excel); acuan teks panjang lain (mis. "Pembacaan langsung" Back
+     Wash) juga digabung, angka pendek tetap per kolom.
+  2. **Logsheet Lokal 02 — Setiap Jam** (01:00–24:00, baris **MIN / MAX / RATA2**): Beban (kW), Temperature Stud
+     Main Bearing Bank A & B (1–9), Temp. Ruangan, Temp Crankshaft Flywheel, Oil In To Engine, Oil Out Engine,
+     Level Oli Mesin/Carter (Run, Stop — teks), Filter Auto Back Wash (IN, OUT), Level Expansion Tank (L/N/H),
+     Trafo, Level Oil (L/N/H), Temp Oil; Normal/Alarm/Trip dari form.
+  3. **Logsheet Lokal 03 — Setiap 2 Jam** (01:00, 03:00 … 23:00): Beban (N 2300 / A 1700 / T 2860),
      Temperature Cam Shaft Door & Temperature Crank Shaft Door Bank A (A1–A8) & Bank B (B1–B8) (62/57/75 °C),
      Autonic B1 (50/47/54 °C), Press C O C (5/3/7 bar), Press Cooling Tip (0,6/0,4/1,2 bar), Press T Service
      Udara (26/20/30 bar), Kondisi Asap Silencer & Extraction (pilihan N/T/S); baris **MIN / MAX / RATA2**.
-  3. **Temperature Cylinder Head — Setiap 4 Jam** (baris form 01:00, 03:00 … 23:00): Beban (kW), Temperature
-     Cylinder Head Bank A (A1–A8) & Bank B (B1–B8).
+  4. **Logsheet Lokal 04 (Cylinder Head) — Setiap 4 Jam** (baris form 01:00, 03:00 … 23:00): Beban (kW),
+     Temperature Cylinder Head Bank A (A1–A8) & Bank B (B1–B8).
+  - **Logsheet Lokal 05 (Alat Bantu)** menyusul setelah formnya diberikan (dapat ditambah lewat Template Form Mesin).
 - PLTD Poasia Containerized tetap template Cummins satu lembar (tidak berubah).
-- Kode parameter **LOAD** (beban) dibaca Beban Tertinggi Operasi dari semua template; **KWH_METER** untuk
+- Kode parameter **LOAD** (beban) — serta **L01_BEBAN** Lokal 01 PLTD Poasia — dibaca Beban Tertinggi Operasi dari semua template; **KWH_METER** untuk
   ringkasan kWh Meter Akhir.
 - **Template Form Mesin** (menu Master Data, `/operator/template-logsheet`): Super Admin (`setting.manage`)
   membuat (kosong atau salin template lain), mengubah parameter (per lembar), lembar & jam (tambah/hapus lembar,
@@ -612,15 +620,22 @@ Detail Opname (BBM, Pelumas, kWh):
 
 ### 8.2 Operasi — Akses 1 (Laporan Project)
 
-**Jadwal (10):** Jadwal FLM · Program 5S 5R · Meeting Shift · Inventarisasi Tools
-& Material Operasi · Pembuatan IK · Pembuatan Data Teknis Pembangkit · Pemeriksaan
-Instalasi Blackstart · Commissioning Test Mesin · Commissioning Test Peralatan Non
-Mesin · Pelaksanaan Performance Test Mesin.
+**Jadwal (11):** **Jadwal Kegiatan Operasi** (harian, mingguan, bulanan & non rutin —
+baru 2026-11-25, `operasi/jadwal/kegiatan`, `operasi_jadwal_kegiatans`) · Jadwal FLM ·
+Program 5S 5R · Meeting Shift · Inventarisasi Tools & Material Operasi · Pembuatan IK ·
+Pembuatan Data Teknis Pembangkit · Pemeriksaan Instalasi Blackstart · Commissioning
+Test Mesin · Commissioning Test Peralatan Non Mesin · Pelaksanaan Performance Test Mesin.
 
-**Input (8):** Kondisi Abnormal & Gangguan · Instruksi Kerja (IK) · Material &
+**Input (9):** Kondisi Abnormal & Gangguan · Instruksi Kerja (IK) · Material &
 Peralatan · Permit to Work (PTW) · Monitoring FLM · Patrol Check Mesin · Checklist
-Commissioning Test Mesin · Program 5S 5R
-Pengoperasian KIT.
+Commissioning Test Mesin · **Performance Test Mesin** (satu data dengan Jadwal
+Pelaksanaan Performance Test Mesin) · Program 5S 5R Pengoperasian KIT.
+
+- **Performance Test Mesin** — daftar mesin diambil dari **Master Data Mesin**
+  (mesin aktif unit terpilih) selama unit/tahun itu belum punya jadwal tersimpan;
+  mengganti filter unit/tahun memuat ulang mesinnya (tidak lagi nama contoh
+  statis "MESIN#01 / CUMM #6"). Jadwal yang sudah disimpan tetap memakai baris
+  tersimpannya.
 
 Detail penting:
 - **Kondisi Abnormal & Gangguan** — indikasi, tanggal, abnormal/gangguan + durasi
@@ -646,7 +661,8 @@ Detail penting:
   diinput **per shift per hari** (`day` 1..31 × `shift` `Pagi` / `Sore` / `Malam`,
   tabel `operasi_program_5s5r_items` & `operasi_program_5s5r_evidences`) dengan
   5 program (`Ringkas/Seiri`, `Rapi/Seiton`, `Resik/Seiso`, `Rawat/Seiketsu`,
-  `Rajin/Shitsuke`), kondisi awal/akhir, tindakan, progres, jumlah, keterangan,
+  `Rajin/Shitsuke`), kondisi awal/akhir, tindakan, progres, keterangan (kolom
+  **Jumlah** dihapus 2026-11-25; nilai lama tetap tersimpan),
   dan maks. 3 foto eviden per shift per hari. Shift & nama petugas otomatis
   diambil dari jadwal shift user (`WorkScheduleEntry` + `Employee`). Otomatis
   masuk ke **Laporan Project Operasi (`#sec-4-14` Laporan 5S5R)** dan **Rekap
@@ -706,7 +722,8 @@ FJK Mesin, Gangguan Feeder) mencetak halaman placeholder.
 
 ### 8.4 Pemeliharaan (HAR) — Akses 1
 
-**Jadwal (8):** Kegiatan Harian Pemeliharaan · Kegiatan Pemeliharaan P0–P5 · Piket
+**Jadwal (8):** Kegiatan Pemeliharaan (harian, mingguan, bulanan & non rutin; kolom
+`har_jadwal_harians.grup`, data lama = harian) · Kegiatan Pemeliharaan P0–P5 · Piket
 Pemeliharaan (On Call) · Piket Patrol Check Harian · Meeting Pemeliharaan ·
 Pembuatan IK Pemeliharaan · Inventarisasi Tools & Material · Pemeriksaan Instalasi
 Blackstart.
@@ -720,6 +737,9 @@ kelengkapan dicek Harmes/Harlist lewat `har.lapangan.material_peralatan`; tabel
 `har_material_peralatans`, ikut Laporan Pemeliharaan).
 
 **Formulir (3):** Laporan Gangguan (LH-05) · Daily Meeting · Logbook Mutasi Harian.
+Logbook Mutasi Harian berisi A. Absensi · B. Kesiapan APD · C. Job Harian Rutin ·
+D. Job Harian Non Rutin; bagian **E. Kondisi K3** dihapus (2026-11-25) karena Unsafe
+Action & Condition hanya dicatat di K3 → Kondisi K3 (data lama tetap tersimpan, tidak ditampilkan).
 
 Detail penting:
 - **Work Order** — satu input dengan tab grup: WO PM / PdM / CM / ENJI (jenis
@@ -751,7 +771,8 @@ Detail penting:
 - **Program 5S 5R Pemeliharaan** (`har/input/program-5s5r`) — diinput **per
   shift per hari** (`day` 1..31 × `shift` `Pagi` / `Sore` / `Malam`, tabel
   `har_program_5s5r_items` & `har_program_5s5r_evidences`) dengan 5 program
-  (`Ringkas`..`Rajin`), kondisi awal/akhir, tindakan, progres, jumlah, keterangan,
+  (`Ringkas`..`Rajin`), kondisi awal/akhir, tindakan, progres, keterangan (kolom
+  **Jumlah** dihapus 2026-11-25),
   dan maks. 3 foto eviden per shift per hari. Otomatis masuk ke **Laporan
   Pemeliharaan (`program-5s5r`)** dan **Rekap 5S5R K3 (`K3DivisionFeed`)**.
 - Halaman lapangan Harmes/Harlist dibuka per halaman (`har.lapangan.*`).
@@ -805,7 +826,7 @@ Detail:
 
 ### 8.6 K3 & Keamanan — Akses 1
 
-**Jadwal (6):** On Call K3L · Kegiatan Rutin Harian, Mingguan & Bulanan K3L KIT ·
+**Jadwal (6):** On Call K3L · Kegiatan Harian, Mingguan, Bulanan & Non Rutin K3L KIT ·
 Pekerjaan Rutin K3L & Lingkungan 11 KIT · Patrol Check Harian K3L & Lingkungan ·
 Instruksi Kerja K3L · Pembuatan IK K3.
 
@@ -854,7 +875,7 @@ Detail penting:
 
 ### 8.8 Logistik & Gudang
 
-**Jadwal (9):** Kegiatan Logistik & Gudang (R rencana / D realisasi; I Mesin, II
+**Jadwal (9):** Kegiatan Logistik & Gudang (R rencana / D realisasi; I Harian, II
 Mingguan, III Bulanan, IV Non Rutin) · Shift Operator Logistik & Gudang (P/OF/S/I/C/M
 + rekap & % kehadiran) · Piket Patrol Check (On Call) · Pelaksanaan 5S5R · Meeting ·
 Inventarisasi Tools dan Material Bagian Lainnya · Pembuatan IK (tahunan, kolom
@@ -880,7 +901,8 @@ Pembangkit · Maturity Level Logistik & Gudang (level 0–5) · Inventaris Lainn
 
 ### 8.9 PdM & Maturity Level
 
-**Jadwal (4):** Kegiatan PdM & MATLEV · Piket Patrol Check PdM KIT · Program 5S 5R ·
+**Jadwal (4):** Kegiatan PdM & MATLEV (I Harian, II Mingguan, III Bulanan, IV Non
+Rutin; bulan yang tersimpan sebelumnya mendapat judul IV. Non Rutin kosong) · Piket Patrol Check PdM KIT · Program 5S 5R ·
 Meeting PdM KIT.
 
 **Input (12 + 1 menyusul):** Instruksi Kerja (IK) PdM (editor visual §9.2; template Pengukuran
@@ -1165,8 +1187,20 @@ Satu pintu: tombol **Buka Dokumen (Lihat, Edit & Cetak)** di menu Laporan modul.
 Editor (`components/document/document-editor.tsx`) memiliki tiga mode:
 
 1. **Teks** (ala-Word, TinyMCE) → PDF.
-2. **Excel** (spreadsheet, x-data-spreadsheet) → Excel (.xlsx) & PDF.
+2. **Excel** (spreadsheet, x-data-spreadsheet) → Excel (.xlsx) & PDF. Sejak 2026-11-25
+   mode Excel berupa **buku multi-sheet: 1 lembar = 1 sheet** — **Sampul** di sheet sendiri,
+   lalu Daftar Isi, Pengesahan, dan setiap jadwal/input pada sheet masing-masing (tab di
+   bawah editor). Nama sheet = nama inputan dari Daftar Isi (atau judul kop), disingkat
+   ≤ 31 karakter (mis. "Jadwal Performance Test Mesin", "Patrol Check Mirrlees #1").
+   Dibangun dari isi dokumen yang sama dengan PDF (`lib/report-book.ts`); grid tersimpan
+   `content_grid.sheets[]`, PDF mencetak tiap sheet di halaman baru
+   (`DocumentGridBuilder::gridToHtml`). Grid lama satu sheet tetap didukung.
 3. **Pratinjau PDF** — iframe hasil cetak persis (di HP: tombol buka/unduh).
+
+Tombol **Unduh Excel** (semua mode) mengunduh **satu file .xlsx berisi banyak sheet** yang
+sama (`lib/report-workbook.ts`, ExcelJS: sel gabungan, border tabel, lebar kolom); tombol
+**Unduh PDF** tetap. Berlaku untuk semua modul (Operasi, Pemeliharaan, K3, Logistik, PdM,
+Laporan UL, SLA, Pengusahaan, Keuangan) karena memakai editor yang sama.
 
 Tombol **Simpan** dan **Muat Ulang dari Data**. Isi disimpan per unit + jenis +
 periode (`*_document_records` / `operasi_report_documents`). No. Dokumen ISO
@@ -1534,6 +1568,12 @@ Aturan data:
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
 | 2026-11-23 | **Patrol Check Mesin per jenis mesin / unit (PLTD Poasia `POA-OPR-CHK-01`)**: ditambahkan master **Template Patrol Check** (`Operasi\PatrolCheckTemplateController`, `operasi_patrol_check_templates`, `machines.patrol_check_template_id`) di menu Master Data untuk mengatur format bulanan N/T (`Cummins (Containerized)` tetap utuh) maupun format pemeriksaan per shift `FORM PATROL CHECK MESIN & ALAT BANTU` (`POA-OPR-CHK-01`, 25 item `MESIN`/`ALAT BANTU`, parameter `Getar/Bunyi/Suhu/Tek-Level/Bocor-Visual`, Shift & Operator otomatis dari data jadwal shift/pegawai user, status `N` tanpa input lanjutan vs `TN` yang langsung menampilkan input wajib uraian alasan/tindakan awal & unggah eviden foto, multi-entri per shift di `operasi_patrol_check_entries`, otomatis menyinkronkan poin 12 `#sec-4-12` di Laporan Project Operasi, header berlogo PLN & MKP tanpa form tanda tangan di input karena pengesahan digabung ke Laporan Project, plus tampilan mobile kartu) (§6.1, §8.2) |
+| 2026-11-25 | **Jadwal Kegiatan seluruh divisi = Harian, Mingguan, Bulanan & Non Rutin**: Jadwal Kegiatan **Operasi** baru (menu Jadwal Operasi, desktop & HP); Pemeliharaan dikelompokkan (data lama → Harian; ikut Laporan Pemeliharaan per kelompok); K3 + grup Non Rutin; PdM & Logistik "I. MESIN" → "I. Harian", PdM + IV. Non Rutin. Satu halaman & controller bersama (`components/jadwal/kegiatan-jadwal-page.tsx`, `BaseJadwalKegiatanController`) (§8.2–8.7) |
+| 2026-11-25 | **Laporan semua modul — Excel multi-sheet**: mode Excel & tombol **Unduh Excel** kini 1 lembar = 1 sheet (Sampul sendiri, lalu tiap jadwal/input dengan nama sheet singkat dari Daftar Isi); simpan & PDF mendukung buku multi-sheet (§9) |
+| 2026-11-25 | **Logsheet PLTD Poasia direvisi mengikuti form**: lembar baru **Logsheet Lokal 01 (setiap jam)** — beban, jam operasi, BBM, speed, governor, exhaust A1–B8 + T/C, jacket water, L/O, charge air, inter cooler — dengan catatan acuan exhaust digabung satu sel; **Lokal 02** kini dengan baris MIN/MAX/RATA2; Temperature Cylinder Head menjadi **Logsheet Lokal 04**; Lokal 03 tetap; Lokal 05 Alat Bantu menyusul (§8.1) |
+| 2026-11-25 | **Program 5S 5R** (Operasi & Pemeliharaan): kolom **Jumlah** dihapus dari form (desktop & HP), PDF & Excel (§8.2, §8.4) |
+| 2026-11-25 | **Performance Test Mesin**: mesin diambil dari Master Data Mesin unit terpilih dan berganti saat filter diubah; baris 100%/REAL tabel diperbaiki; kartu **Performance Test Mesin** ditambahkan di Input Project Operasi (§8.2) |
+| 2026-11-25 | **Logbook Mutasi Harian Pemeliharaan**: bagian **E. Kondisi K3 (Unsafe Action & Unsafe Condition)** dihapus dari formulir, PDF & Laporan Pemeliharaan — Unsafe Action & Condition hanya di K3; data lama tetap tersimpan (§8.4) |
 | 2026-11-24 | **Patrol Check terhubung ke serah terima**: temuan abnormal (TN) Patrol Check Mesin pada jam shift otomatis muncul di Lembar Mutasi (Gangguan Mesin), PDF & Excel (§8.1) |
 | 2026-11-24 | **PTW lintas bidang**: PTW Operasi/operator dapat dilihat Pemeliharaan (hanya-baca, desktop & HP) (§8.4) |
 | 2026-11-24 | **Logsheet: TL & Project Leader dapat membuka kunci jam untuk koreksi** (izin baru `operator.logsheet.correct`: TL Operasi, TL Ophar, Project Leader, Super Admin) (§8.1) |

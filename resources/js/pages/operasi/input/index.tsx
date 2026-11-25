@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import {
+    Activity,
     AlertOctagon,
     ClipboardCheck,
     ClipboardList,
@@ -22,6 +23,7 @@ import materialPeralatan from '@/routes/operasi/input/material-peralatan';
 import patrolCheckMesin from '@/routes/operasi/input/patrol-check-mesin';
 import permitToWork from '@/routes/operasi/input/permit-to-work';
 import program5s5r from '@/routes/operasi/input/program-5s5r';
+import performanceTest from '@/routes/operasi/jadwal/performance-test';
 
 type InputCard = {
     title: string;
@@ -87,6 +89,14 @@ const INPUT_MENUS: InputCard[] = [
         icon: ClipboardList,
         url: checklistCommissioningMesin.index().url,
         buttonLabel: 'Buka Checklist Commissioning Mesin',
+    },
+    {
+        title: 'Performance Test Mesin',
+        description:
+            'Penandaan uji pembebanan (UJI BBN) 50%, 75%, 100% dan realisasi performance test per mesin per minggu — satu data dengan Jadwal Pelaksanaan Performance Test Mesin.',
+        icon: Activity,
+        url: performanceTest.index().url,
+        buttonLabel: 'Buka Performance Test Mesin',
     },
     {
         title: 'Program 5S 5R Pengoperasian KIT',

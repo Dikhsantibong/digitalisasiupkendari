@@ -174,10 +174,11 @@ class LogistikJadwal
      */
     private const SECTIONS = [
         'kegiatan' => [
-            'mesin' => ['I', 'MESIN', '', []],
+            // I. Harian (key kept as "mesin" so saved rows stay), II … IV (user, 2026-11-25).
+            'mesin' => ['I', 'Harian', '', []],
             'mingguan' => ['II', 'Mingguan', '', []],
             'bulanan' => ['III', 'Bulanan', '', []],
-            'non-rutin' => ['IV', 'NON RUTIN', '', []],
+            'non-rutin' => ['IV', 'Non Rutin', '', []],
         ],
         'inspeksi-5s5r' => [
             'ringkas' => ['1', 'RINGKAS (SEIRI)', 'Memastikan hanya peralatan dan material yang diperlukan berada di area kerja.', [

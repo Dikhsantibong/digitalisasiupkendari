@@ -10,12 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
- * Jadwal Kegiatan Harian Pemeliharaan per unit, bulan, dan tahun.
+ * Jadwal Kegiatan Pemeliharaan per unit, bulan, dan tahun — grup harian,
+ * mingguan, bulanan atau non_rutin (2026-11-25).
  *
  * @property int $id
  * @property int $unit_id
  * @property int $year
  * @property int $month
+ * @property string $grup
  * @property int|null $no_urut
  * @property string $kegiatan
  * @property int $target
@@ -34,6 +36,7 @@ use Illuminate\Support\Carbon;
     'unit_id',
     'year',
     'month',
+    'grup',
     'no_urut',
     'kegiatan',
     'target',

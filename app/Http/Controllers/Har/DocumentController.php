@@ -57,8 +57,10 @@ class DocumentController extends Controller
      * formulir (Daily Meeting, Logbook Mutasi, LH-05) & input tables (Rekap/Abnormal Gangguan,
      * Patrol Check, 5S5R), Daftar Isi page numbers;
      * v21 = Patrol Check Parameter Mesin (per mesin) added after the Patrol Check.
+     * v25 = Logbook Mutasi drops section E (Kondisi K3); recorded only in K3.
+     * v26 = Jadwal Kegiatan Pemeliharaan grouped Harian, Mingguan, Bulanan & Non Rutin.
      */
-    private const BODY_VERSION = 24;
+    private const BODY_VERSION = 26;
 
     private const FOOTER = 'PT PLN NUSANTARA POWER UP KENDARI - LAPORAN PEMELIHARAAN PEMBANGKIT';
 

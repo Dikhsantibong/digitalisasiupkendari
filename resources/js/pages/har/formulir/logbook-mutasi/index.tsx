@@ -19,7 +19,7 @@ import logbookRoutes from '@/routes/har/formulir/logbook-mutasi';
 import type { IdName } from '@/types';
 
 type Row = Record<string, string | null>;
-type ListKey = 'absensi' | 'apd' | 'rutin' | 'non_rutin' | 'kondisi_k3';
+type ListKey = 'absensi' | 'apd' | 'rutin' | 'non_rutin';
 type Lists = Record<ListKey, Row[]>;
 type Logbook = Lists & { id: number; tanggal: string };
 
@@ -84,14 +84,6 @@ const SECTIONS: Section[] = [
             { key: 'keterangan', label: 'Keterangan' },
         ],
     },
-    {
-        key: 'kondisi_k3',
-        title: 'E. Kondisi K3 (Unsafe Action & Unsafe Condition)',
-        columns: [
-            { key: 'uraian', label: 'Uraian' },
-            { key: 'keterangan', label: 'Keterangan' },
-        ],
-    },
 ];
 
 const cellInput =
@@ -108,12 +100,12 @@ const pickLists = (source: Lists): Lists => ({
     apd: source.apd,
     rutin: source.rutin,
     non_rutin: source.non_rutin,
-    kondisi_k3: source.kondisi_k3,
 });
 
 /**
  * Formulir Logbook Mutasi Harian Tim Pemeliharaan: satu logbook per tanggal
- * (absensi, APD, job rutin/non rutin, kondisi K3). Masuk Laporan Pemeliharaan.
+ * (absensi, APD, job rutin/non rutin). Masuk Laporan Pemeliharaan. Unsafe
+ * Action & Condition dicatat hanya di K3 → Kondisi K3.
  */
 export default function HarLogbookMutasiPage({
     unit,
@@ -190,7 +182,7 @@ export default function HarLogbookMutasiPage({
             >
                 <PageHeader
                     title="Logbook Mutasi Harian Tim Pemeliharaan"
-                    description={`Absensi, kesiapan APD, job harian rutin & non rutin, serta kondisi K3 — ${unit.name} · ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}.`}
+                    description={`Absensi, kesiapan APD, job harian rutin & non rutin — ${unit.name} · ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}.`}
                     actions={
                         !compact && can('har.input.view') ? (
                             <Button

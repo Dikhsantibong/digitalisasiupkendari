@@ -121,15 +121,13 @@ type Props = {
 
 const th = 'border border-slate-400 p-1.5';
 const td = 'border border-border';
-const cellInput =
-    'h-8 rounded-none border-0 bg-transparent px-1 text-xs shadow-none focus-visible:ring-1';
 const cellTextarea =
     'block min-h-16 w-full resize-y rounded-none border-0 bg-transparent px-1.5 py-1 text-xs focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none';
 
 /**
  * Input Program 5S 5R Pengoperasian KIT (Modul OPERASI):
  * per shift per hari (Pagi, Sore, Malam) lima program (Ringkas, Rapi, Resik, Rawat, Rajin)
- * dengan kondisi awal, tindakan, progres, kondisi akhir, jumlah, keterangan, dan foto eviden.
+ * dengan kondisi awal, tindakan, progres, kondisi akhir, keterangan, dan foto eviden.
  */
 export default function OperasiProgram5s5rInput({
     unit,
@@ -276,7 +274,6 @@ export default function OperasiProgram5s5rInput({
                                             progres: r.progres ?? '76-100',
                                             kondisi_akhir:
                                                 r.kondisi_akhir ?? 'Baik',
-                                            jumlah: r.jumlah ?? 1,
                                             keterangan:
                                                 r.keterangan ??
                                                 `Terlaksana rutin Shift ${activeSlot.shift}`,
@@ -708,34 +705,7 @@ export default function OperasiProgram5s5rInput({
                                         disabled={!can_write}
                                     />
                                 </div>
-                                <div className="grid grid-cols-[6rem_1fr] gap-2">
-                                    <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                        Jumlah
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            inputMode="numeric"
-                                            value={row.jumlah ?? ''}
-                                            onChange={(e) =>
-                                                setRow(
-                                                    activeSlot.day,
-                                                    activeSlot.shift,
-                                                    row.program,
-                                                    {
-                                                        jumlah:
-                                                            e.target.value ===
-                                                            ''
-                                                                ? null
-                                                                : Number(
-                                                                      e.target
-                                                                          .value,
-                                                                  ),
-                                                    },
-                                                )
-                                            }
-                                            disabled={!can_write}
-                                        />
-                                    </label>
+                                <div className="grid gap-2">
                                     <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                         Keterangan
                                         <Input
@@ -1233,9 +1203,6 @@ export default function OperasiProgram5s5rInput({
                                     <th className={`${th} w-28`} rowSpan={2}>
                                         Kondisi Akhir
                                     </th>
-                                    <th className={`${th} w-16`} rowSpan={2}>
-                                        Jumlah
-                                    </th>
                                     <th className={`${th} w-44`} rowSpan={2}>
                                         Keterangan
                                     </th>
@@ -1447,35 +1414,6 @@ export default function OperasiProgram5s5rInput({
                                                 options={options.kondisi}
                                                 className="justify-center"
                                                 disabled={!can_write}
-                                            />
-                                        </td>
-                                        <td className={`${td} p-0`}>
-                                            <Input
-                                                type="number"
-                                                min={0}
-                                                value={row.jumlah ?? ''}
-                                                onChange={(e) =>
-                                                    setRow(
-                                                        activeSlot.day,
-                                                        activeSlot.shift,
-                                                        row.program,
-                                                        {
-                                                            jumlah:
-                                                                e.target
-                                                                    .value ===
-                                                                ''
-                                                                    ? null
-                                                                    : Number(
-                                                                          e
-                                                                              .target
-                                                                              .value,
-                                                                      ),
-                                                        },
-                                                    )
-                                                }
-                                                className={`${cellInput} text-center`}
-                                                disabled={!can_write}
-                                                aria-label={`Jumlah ${programs[row.program]?.label} tanggal ${activeSlot.day} shift ${activeSlot.shift}`}
                                             />
                                         </td>
                                         <td className={`${td} p-0`}>

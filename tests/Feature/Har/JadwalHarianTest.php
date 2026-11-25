@@ -36,7 +36,7 @@ class JadwalHarianTest extends TestCase
             ->component('har/jadwal/harian/index')
             ->has('unit')
             ->has('days', 31)
-            ->has('rows', 12)
+            ->has('rows', 24)
             ->where('filters.unit_id', $unit->id)
             ->where('filters.month', 8)
             ->where('filters.year', 2026)

@@ -80,6 +80,40 @@ class LogsheetLayout
         return array_map(fn (string $label): array => ['label' => $label, 'values' => $out[$label]], array_keys($out));
     }
 
+    /** A reference text at least this long is merged over its neighbours (paper form). */
+    public const MERGE_REFERENCE_MIN_LENGTH = 15;
+
+    /**
+     * The cells of one reference row (Normal / Alarm / Trip): consecutive
+     * parameters of the same group sharing one long note (e.g. "Pada beban
+     * 1900 - 2300 kw nilai 380° C - 470° C …" over Exhaust A1–B8, "Pembacaan
+     * Langsung" over Back Wash IN / OUT) become one merged cell, like the paper
+     * form; short values (60, N, 4-5 …) stay one cell per column. Mirrored by
+     * referenceCells() in resources/js/lib/logsheet-layout.ts.
+     *
+     * @param  Collection<int, LogsheetParameter>  $parameters
+     * @return list<array{value: string, colspan: int}>
+     */
+    public static function referenceCells(Collection $parameters, string $field): array
+    {
+        $cells = [];
+        $previousKey = null;
+        foreach ($parameters->values() as $parameter) {
+            $value = (string) ($parameter->{$field} ?? '');
+            $group = $parameter->group_label ?: $parameter->name;
+            $key = mb_strlen($value) >= self::MERGE_REFERENCE_MIN_LENGTH ? json_encode([$group, $value]) : null;
+            if ($key !== null && $key === $previousKey) {
+                $cells[count($cells) - 1]['colspan']++;
+
+                continue;
+            }
+            $cells[] = ['value' => $value, 'colspan' => 1];
+            $previousKey = $key;
+        }
+
+        return $cells;
+    }
+
     /**
      * The reference rows printed under the head (only those the template fills).
      *

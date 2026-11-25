@@ -94,7 +94,7 @@ const INPUT_MENUS: InputCard[] = [
     {
         title: 'Jadwal Program 5S 5R Pemeliharaan',
         description:
-            'Pelaksanaan Ringkas, Rapi, Resik, Rawat, Rajin per minggu: kondisi awal/akhir, tindakan, progres, jumlah, keterangan, dan foto eviden.',
+            'Pelaksanaan Ringkas, Rapi, Resik, Rawat, Rajin per minggu: kondisi awal/akhir, tindakan, progres, keterangan, dan foto eviden.',
         icon: Sparkles,
         url: harProgram5s5r.index().url,
         buttonLabel: 'Buka Input Program 5S 5R',

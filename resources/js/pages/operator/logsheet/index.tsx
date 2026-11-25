@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
-import { headerRows, referenceRows, summaryRows } from '@/lib/logsheet-layout';
+import { headerRows, referenceCells, referenceRows, summaryRows } from '@/lib/logsheet-layout';
 import { downloadLogsheetWorkbook } from '@/lib/operator-logsheet-excel';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -537,9 +537,13 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                 {references.map((reference) => (
                                     <tr key={reference.field} className="bg-muted/60">
                                         <td className={cn(sheetTd, 'sticky left-0 z-10 bg-muted text-[10px] font-semibold whitespace-nowrap uppercase')}>{reference.label}</td>
-                                        {parameters.map((p) => (
-                                            <td key={p.id} className={cn(sheetTd, 'text-[11px] font-medium whitespace-nowrap text-muted-foreground')}>
-                                                {p[reference.field] ?? ''}
+                                        {referenceCells(parameters, reference.field).map((cell, i) => (
+                                            <td
+                                                key={i}
+                                                colSpan={cell.colspan}
+                                                className={cn(sheetTd, 'text-[11px] font-medium text-muted-foreground', cell.colspan > 1 ? 'text-center whitespace-normal' : 'whitespace-nowrap')}
+                                            >
+                                                {cell.value}
                                             </td>
                                         ))}
                                     </tr>

@@ -98,13 +98,36 @@ class LogbookMutasiTest extends TestCase
 
         [$view, $data] = app(LogbookMutasiController::class)->pdfView($unit, collect([$logbook]));
         $html = view($view, $data)->render();
-        foreach (['LOGBOOK MUTASI HARIAN TIM PEMELIHARAAN', 'SENIN, 31 AGUSTUS 2026', 'A. ABSENSI', 'Amirullah', 'B. KESIAPAN APD', 'C. JOB HARIAN RUTIN', 'PATROL CEK', 'D. JOB HARIAN NON RUTIN', 'Ganti filter oli mesin #2', 'E. KONDISI K3', 'Ceceran oli di area mesin'] as $text) {
+        foreach (['LOGBOOK MUTASI HARIAN TIM PEMELIHARAAN', 'SENIN, 31 AGUSTUS 2026', 'A. ABSENSI', 'Amirullah', 'B. KESIAPAN APD', 'C. JOB HARIAN RUTIN', 'PATROL CEK', 'D. JOB HARIAN NON RUTIN', 'Ganti filter oli mesin #2'] as $text) {
             $this->assertStringContainsString($text, $html);
         }
+        // Unsafe Action & Condition is recorded only in K3 (user, 2026-11-25).
+        $this->assertStringNotContainsString('KONDISI K3', $html);
+        $this->assertStringNotContainsString('Ceceran oli di area mesin', $html);
 
         $this->actingAs($user)->get(route('har.formulir.logbook-mutasi.pdf', $logbook))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_the_kondisi_k3_section_is_gone_and_old_data_is_kept(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $user = $this->userWithRole(RoleName::KoordinatorPemeliharaan, $unit);
+        $old = HarLogbookMutasi::query()->create([...$this->payload($unit), 'year' => 2026, 'month' => 8]);
+
+        $this->actingAs($user)
+            ->get(route('har.formulir.logbook-mutasi.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026, 'tanggal' => '2026-08-31']))
+            ->assertInertia(fn ($page) => $page->missing('logbook.kondisi_k3')->missing('template.kondisi_k3'));
+
+        // A save without the section keeps the stored rows; a new logbook stores none.
+        $payload = $this->payload($unit);
+        unset($payload['kondisi_k3']);
+        $this->actingAs($user)->post(route('har.formulir.logbook-mutasi.store'), $payload)->assertSessionHasNoErrors();
+        $this->assertSame('Ceceran oli di area mesin', $old->fresh()->kondisi_k3[0]['uraian']);
+
+        $this->actingAs($user)->post(route('har.formulir.logbook-mutasi.store'), $this->payload($unit, '2026-09-01'))->assertSessionHasNoErrors();
+        $this->assertSame([], HarLogbookMutasi::query()->whereDate('tanggal', '2026-09-01')->sole()->kondisi_k3);
     }
 
     public function test_validation_and_unit_protection(): void

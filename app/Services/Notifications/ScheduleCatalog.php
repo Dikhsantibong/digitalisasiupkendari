@@ -22,6 +22,7 @@ use App\Models\OperasiCommPeralatan;
 use App\Models\OperasiDataTeknis;
 use App\Models\OperasiFlmJadwal;
 use App\Models\OperasiInventarisJadwal;
+use App\Models\OperasiJadwalKegiatan;
 use App\Models\OperasiMeetingShiftJadwal;
 use App\Models\OperasiPembuatanIk;
 use App\Models\OperasiPerformanceTestMesin;
@@ -78,6 +79,7 @@ class ScheduleCatalog
     {
         $tables = [
             // Operasi
+            ['module' => 'operasi', 'label' => 'Kegiatan Operasi', 'model' => OperasiJadwalKegiatan::class, 'route' => 'operasi.jadwal.kegiatan.index', 'period' => 'month', 'cells' => ['jadwal'], 'title' => fn ($r): string => (string) $r->kegiatan],
             ['module' => 'operasi', 'label' => '5S 5R', 'model' => Operasi5s5rJadwal::class, 'route' => 'operasi.jadwal.program-5s-5r.index', 'period' => 'month', 'cells' => ['rencana'], 'title' => fn ($r): string => (string) $r->pelaksana],
             ['module' => 'operasi', 'label' => 'Inventarisasi Tools', 'model' => OperasiInventarisJadwal::class, 'route' => 'operasi.jadwal.inventarisasi-tools.index', 'period' => 'month', 'cells' => ['rencana'], 'title' => fn ($r): string => (string) $r->uraian],
             ['module' => 'operasi', 'label' => 'FLM', 'model' => OperasiFlmJadwal::class, 'route' => 'operasi.jadwal.flm.index', 'period' => 'month', 'cells' => ['days'], 'where' => fn (Builder $q) => $q->where('row_type', 'shift'), 'title' => fn ($r): string => (string) $r->label],

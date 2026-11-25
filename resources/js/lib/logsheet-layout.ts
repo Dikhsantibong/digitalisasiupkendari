@@ -81,6 +81,44 @@ export function referenceRows(parameters: LayoutParameter[]): ReferenceRow[] {
     );
 }
 
+/** A reference text at least this long is merged over its neighbours (paper form). */
+const MERGE_REFERENCE_MIN_LENGTH = 15;
+
+export type ReferenceCell = { value: string; colspan: number };
+
+/**
+ * The cells of one reference row: consecutive parameters of the same group
+ * sharing one long note (e.g. the Exhaust "Pada beban …" text, "Pembacaan
+ * Langsung") are merged; short values stay one cell per column. Mirrors
+ * LogsheetLayout::referenceCells.
+ */
+export function referenceCells(
+    parameters: LayoutParameter[],
+    field: ReferenceRow['field'],
+): ReferenceCell[] {
+    const cells: ReferenceCell[] = [];
+    let previousKey: string | null = null;
+
+    for (const p of parameters) {
+        const value = p[field] ?? '';
+        const group = p.group_label || p.name;
+        const key =
+            [...value].length >= MERGE_REFERENCE_MIN_LENGTH
+                ? JSON.stringify([group, value])
+                : null;
+
+        if (key !== null && key === previousKey) {
+            cells[cells.length - 1].colspan++;
+            continue;
+        }
+
+        cells.push({ value, colspan: 1 });
+        previousKey = key;
+    }
+
+    return cells;
+}
+
 export type SummaryRow = { label: string; values: Record<string, string> };
 
 /**

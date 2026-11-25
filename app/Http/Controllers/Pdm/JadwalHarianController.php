@@ -23,11 +23,12 @@ use Inertia\Response;
 class JadwalHarianController extends Controller
 {
     private const DEFAULT_STRUCTURE = [
+        // Harian, Mingguan, Bulanan & Non Rutin like every divisi (user, 2026-11-25).
         [
-            'kategori' => 'I. MESIN',
+            'kategori' => 'I. Harian',
             'header' => [
                 'no_urut' => 'I',
-                'kegiatan' => 'MESIN',
+                'kegiatan' => 'Harian',
             ],
             'items' => [
                 'Absensi',
@@ -69,6 +70,18 @@ class JadwalHarianController extends Controller
                 'Membuat jadwal kegiatan & piket Pdm KIT',
                 'Laporan Matlev Pdm KIT',
                 'Pembuatan IK & review IK Pdm pembangkit',
+            ],
+        ],
+        [
+            'kategori' => 'IV. Non Rutin',
+            'header' => [
+                'no_urut' => 'IV',
+                'kegiatan' => 'Non Rutin',
+            ],
+            'items' => [
+                'Pengukuran PdM tambahan atas permintaan / temuan abnormal',
+                'Analisis lanjutan & rekomendasi hasil PdM',
+                'Pendampingan pemeliharaan korektif / overhaul',
             ],
         ],
     ];
@@ -200,6 +213,24 @@ class JadwalHarianController extends Controller
                 'keterangan' => $r->keterangan ?? '',
                 'sort_order' => $r->sort_order,
             ])->all();
+
+            // A month saved before the Non Rutin group (2026-11-25) gets its empty heading to add to.
+            $hasNonRutin = collect($rows)->contains(fn (array $row): bool => $row['is_category_header'] && str_starts_with(strtoupper((string) $row['kategori']), 'IV'));
+            if (! $hasNonRutin) {
+                $rows[] = [
+                    'id' => null,
+                    'kategori' => 'IV. Non Rutin',
+                    'is_category_header' => true,
+                    'no_urut' => 'IV',
+                    'kegiatan' => 'Non Rutin',
+                    'target' => $targetWorkingDays,
+                    'rencana_count' => $targetWorkingDays,
+                    'realisasi_count' => 0,
+                    'jadwal' => [],
+                    'keterangan' => '',
+                    'sort_order' => count($rows),
+                ];
+            }
         }
 
         $monthName = Carbon::create($year, $month, 1)->locale('id')->isoFormat('MMMM');

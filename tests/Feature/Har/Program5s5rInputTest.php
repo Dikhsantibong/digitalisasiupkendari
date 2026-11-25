@@ -176,6 +176,8 @@ class Program5s5rInputTest extends TestCase
 
         [$view, $data] = app(Program5s5rController::class)->pdfView($unit, 8, 2026);
         $html = view($view, $data)->render();
+        // The Jumlah column was removed from the 5S5R form (user, 2026-11-25).
+        $this->assertStringNotContainsString('>Jumlah<', $html);
         $this->assertStringContainsString('JADWAL PROGRAM 5S 5R PEMELIHARAAN', $html);
         $this->assertStringContainsString('PLTD CONTAINERIZED POASIA', $html);
         $this->assertStringContainsString('AGUSTUS 2026', $html);

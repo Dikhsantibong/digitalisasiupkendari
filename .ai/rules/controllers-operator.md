@@ -57,3 +57,6 @@ Keputusan user (2026-11-24): `operator.logsheet.correct` (TL Operasi, TL Ophar, 
 
 ## Lembar Mutasi: Patrol Check abnormal
 Keputusan user (2026-11-24): `Services\Operator\MutasiPatrolFindings::findings(unit, tanggal, shift)` reads operasi_patrol_check_entries items with status TN whose tanggal+jam falls in the shift window (pagi 08–16, sore 16–22, malam 22–08 next day; the entry's text shift is not used) → prop `patrol_findings`, PDF `patrolFindings` (Gangguan Mesin cell) and Excel; read-only.
+
+## Logsheet reference notes merge only when long
+LogsheetLayout::referenceCells (mirrored in resources/js/lib/logsheet-layout.ts referenceCells) merges consecutive Normal/Alarm/Trip values of the same group (group_label, else name) only when the text is >= 15 chars (e.g. Mirrlees Lokal 01 exhaust "Pada beban …" over A1–B8, "Pembacaan langsung" over Back Wash IN/OUT). Short equal values (60, N, 4-5) stay one cell per column, as on the paper form. Page, PDF and Excel all use it. PLTD Poasia sheets: lokal-01, lokal-02, lokal-03, cylinder-head (named "Logsheet Lokal 04 (Cylinder Head)"; key kept so readings stay). Beban Tertinggi reads LOAD and L01_BEBAN.

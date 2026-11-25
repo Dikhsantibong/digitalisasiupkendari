@@ -6,7 +6,7 @@ import {
     mergeCells,
 } from '@/lib/jadwal-excel';
 import type { StyleSpec } from '@/lib/jadwal-excel';
-import { headerRows, referenceRows } from '@/lib/logsheet-layout';
+import { headerRows, referenceCells, referenceRows } from '@/lib/logsheet-layout';
 import type { LayoutParameter } from '@/lib/logsheet-layout';
 
 /**
@@ -187,9 +187,20 @@ export async function downloadLogsheetWorkbook(
         references.forEach((reference, k) => {
             const rr = top + head.length + 1 + k;
             put(sheet, rr, 1, reference.label, { ...CELL, bold: true, size: 8, fill: 'EDEDED' });
-            data.parameters.forEach((p, i) =>
-                put(sheet, rr, i + 2, p[reference.field] ?? '', { ...CELL, size: 8, fill: 'F7F7F7' }),
-            );
+            let col = 0;
+            referenceCells(data.parameters, reference.field).forEach((cell) => {
+                put(sheet, rr, col + 2, cell.value, { ...CELL, size: 8, fill: 'F7F7F7' });
+
+                for (let extra = 1; extra < cell.colspan; extra++) {
+                    put(sheet, rr, col + 2 + extra, '', { ...CELL, size: 8, fill: 'F7F7F7' });
+                }
+
+                if (cell.colspan > 1) {
+                    mergeCells(sheet, rr - 1, col + 1, rr - 1, col + cell.colspan);
+                }
+
+                col += cell.colspan;
+            });
         });
     } else {
         put(sheet, top, 1, 'JAM', HEAD);

@@ -56,7 +56,6 @@
                 <th colspan="{{ count($tindakan) }}">Tindakan</th>
                 <th colspan="{{ count($progres) }}">Progres</th>
                 <th rowspan="2" style="width: 38px;">Kondisi Akhir</th>
-                <th rowspan="2" style="width: 30px;">Jumlah</th>
                 <th rowspan="2" style="width: 60px;">Keterangan</th>
                 <th rowspan="2" style="width: 150px;">Eviden</th>
             </tr>
@@ -93,7 +92,6 @@
                             <td class="c">{{ $row['progres'] === $range ? '✓' : '' }}</td>
                         @endforeach
                         <td class="c">{{ $row['kondisi_akhir'] }}</td>
-                        <td class="c">{{ $row['jumlah'] }}</td>
                         <td>{{ $row['keterangan'] }}</td>
                         <td class="eviden">
                             @if($loop->first)

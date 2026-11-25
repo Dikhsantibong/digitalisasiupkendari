@@ -14,18 +14,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class JadwalPerformanceTestController extends Controller
 {
-    private const DEFAULT_MESINS = [
-        'MESIN#01 / CUMM #6',
-        'MESIN#02 / CUMM #7',
-        'MESIN#03 / CUMM #8',
-    ];
-
     private const MONTHS = [
         'JANUARY',
         'FEBRUARY',
@@ -62,18 +57,7 @@ class JadwalPerformanceTestController extends Controller
         $now = Carbon::now();
         $year = (int) ($request->integer('year') ?: $now->year);
 
-        // Mesin aktif unit untuk tabel rekap (Table 2)
-        $machines = Machine::query()
-            ->where('unit_id', $unit->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        if ($machines->isEmpty()) {
-            $machineList = collect(range(1, 3))->map(fn ($i) => ['id' => $i, 'name' => "MESIN #0{$i}"])->all();
-        } else {
-            $machineList = $machines->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])->all();
-        }
+        $machineList = $this->machinesOf($unit)->map(fn (Machine $m): array => ['id' => $m->id, 'name' => $m->name])->all();
 
         $savedRecords = OperasiPerformanceTestMesin::query()
             ->where('unit_id', $unit->id)
@@ -83,17 +67,7 @@ class JadwalPerformanceTestController extends Controller
             ->get();
 
         if ($savedRecords->isEmpty()) {
-            $rows = collect(self::DEFAULT_MESINS)->map(fn (string $nama, int $idx): array => [
-                'id' => null,
-                'no_urut' => $idx + 1,
-                'nama_mesin' => $nama,
-                'section' => 'A. PEMBUATAN DATA TEKNIKS',
-                'beban_50' => [],
-                'beban_75' => [],
-                'beban_100' => [],
-                'realisasi' => [],
-                'keterangan' => '',
-            ])->all();
+            $rows = array_map(fn (array $row): array => ['id' => null, ...$row], $this->rowsFromMaster($unit));
         } else {
             $rows = $savedRecords->map(fn (OperasiPerformanceTestMesin $r, int $idx): array => [
                 'id' => $r->id,
@@ -239,16 +213,7 @@ class JadwalPerformanceTestController extends Controller
             ->get();
 
         if ($records->isEmpty()) {
-            $rows = collect(self::DEFAULT_MESINS)->map(fn (string $nama, int $idx) => [
-                'no_urut' => $idx + 1,
-                'nama_mesin' => $nama,
-                'section' => 'A. PEMBUATAN DATA TEKNIKS',
-                'beban_50' => [],
-                'beban_75' => [],
-                'beban_100' => [],
-                'realisasi' => [],
-                'keterangan' => '',
-            ])->all();
+            $rows = $this->rowsFromMaster($unit);
         } else {
             $rows = $records->map(fn ($r, $idx) => [
                 'no_urut' => $r->no_urut ?: ($idx + 1),
@@ -315,5 +280,36 @@ class JadwalPerformanceTestController extends Controller
             'logoLeft' => $logoLeft,
             'logoRight' => $logoRight,
         ]];
+    }
+
+    /**
+     * The unit's active machines from Master Data Mesin.
+     *
+     * @return Collection<int, Machine>
+     */
+    private function machinesOf(Unit $unit): Collection
+    {
+        return Machine::query()->where('unit_id', $unit->id)->where('is_active', true)->orderBy('name')->get(['id', 'name']);
+    }
+
+    /**
+     * Blank rows for a unit & year without a saved schedule: one per active
+     * machine of the unit from Master Data Mesin (user, 2026-11-25), so the
+     * sheet follows the unit filter instead of fixed example names.
+     *
+     * @return list<array{no_urut: int, nama_mesin: string, section: string, beban_50: list<string>, beban_75: list<string>, beban_100: list<string>, realisasi: list<string>, keterangan: string}>
+     */
+    private function rowsFromMaster(Unit $unit): array
+    {
+        return $this->machinesOf($unit)->values()->map(fn (Machine $machine, int $idx): array => [
+            'no_urut' => $idx + 1,
+            'nama_mesin' => mb_strtoupper($machine->name),
+            'section' => 'A. PEMBUATAN DATA TEKNIKS',
+            'beban_50' => [],
+            'beban_75' => [],
+            'beban_100' => [],
+            'realisasi' => [],
+            'keterangan' => '',
+        ])->all();
     }
 }

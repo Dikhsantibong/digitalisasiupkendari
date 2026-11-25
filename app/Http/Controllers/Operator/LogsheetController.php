@@ -493,7 +493,7 @@ class LogsheetController extends Controller
     {
         $readings = ($logsheet?->readings ?? collect())->whereIn('parameter_id', $parameters->pluck('id')->all());
 
-        $loadId = $parameters->firstWhere('code', 'LOAD')?->id;
+        $loadId = $parameters->first(fn (LogsheetParameter $p): bool => in_array($p->code, ['LOAD', 'L01_BEBAN'], true))?->id;
         $kwhId = $parameters->firstWhere('code', 'KWH_METER')?->id;
 
         $loadValues = $readings->where('parameter_id', $loadId)

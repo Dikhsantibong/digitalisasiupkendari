@@ -20,6 +20,7 @@ const TONES = [
 type Entry = [key: string, title: string, short: string, icon: LucideIcon, href: string, component: string];
 
 const JADWAL: Entry[] = [
+    ['kegiatan', 'Jadwal Kegiatan Operasi', 'Kegiatan', CalendarClock, operasiJadwal.kegiatan.index().url, 'operasi/jadwal/kegiatan/index'],
     ['flm', 'Jadwal FLM', 'FLM', Wrench, operasiJadwal.flm.index().url, 'operasi/jadwal/flm/index'],
     ['program-5s-5r', 'Jadwal Program 5S 5R', '5S 5R', Sparkles, operasiJadwal.program5s5r.index().url, 'operasi/jadwal/program-5s-5r/index'],
     ['meeting-shift', 'Jadwal Meeting Shift', 'Meeting Shift', CalendarClock, operasiJadwal.meetingShift.index().url, 'operasi/jadwal/meeting-shift/index'],

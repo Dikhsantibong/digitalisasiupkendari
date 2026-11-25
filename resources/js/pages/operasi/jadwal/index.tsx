@@ -37,6 +37,7 @@ type JadwalCard = {
 
 // Targets whose page is built; the rest render as "Sementara Disusun".
 const AVAILABLE_TARGETS: string[] = [
+    '/operasi/jadwal/kegiatan',
     '/operasi/jadwal/flm',
     '/operasi/jadwal/program-5s-5r',
     '/operasi/jadwal/meeting-shift',
@@ -50,6 +51,12 @@ const AVAILABLE_TARGETS: string[] = [
 ];
 
 const JADWAL_LIST: JadwalCard[] = [
+    {
+        title: 'Jadwal Kegiatan Operasi',
+        description: 'Kegiatan operasi harian, mingguan, bulanan, dan non rutin per bulan — klik tanggal untuk menandai pelaksanaan (realisasi & kinerja).',
+        icon: CalendarDays,
+        target: '/operasi/jadwal/kegiatan',
+    },
     {
         title: 'Jadwal FLM',
         description: 'Jadwal pemeliharaan tingkat pertama (First Line Maintenance) oleh tim operasi pembangkit.',

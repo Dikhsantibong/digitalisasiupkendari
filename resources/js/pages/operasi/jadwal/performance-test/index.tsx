@@ -168,7 +168,6 @@ export default function JadwalPerformanceTestIndex({
     unit,
     filters,
     options,
-    machines,
     rows: initialRows,
     can_write,
 }: Props) {
@@ -189,7 +188,8 @@ export default function JadwalPerformanceTestIndex({
         router.get(
             performanceTest.index().url,
             { ...filters, ...patch },
-            { preserveState: true, preserveScroll: true },
+            // Not preserved: another unit / year brings its own rows (mesin dari Master Data).
+            { preserveState: false, preserveScroll: true },
         );
     };
 
@@ -990,7 +990,7 @@ count++;
                                                         {row.no_urut ||
                                                             rIdx + 1}
                                                     </td>
-                                                <td rowSpan={2} className="min-w-[220px] border border-black p-1 text-left align-middle whitespace-normal dark:border-white">
+                                                <td rowSpan={4} className="min-w-[220px] border border-black p-1 text-left align-middle whitespace-normal dark:border-white">
                                                     <AutoWrapCellInput
                                                         value={row.nama_mesin}
                                                         onChange={(val) => handleUpdateName(rIdx, val)}
