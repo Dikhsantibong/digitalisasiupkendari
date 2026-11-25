@@ -4,6 +4,7 @@ import {
     K3MobileFilterCard,
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
+import { LaporanExportButtons } from '@/components/laporan/laporan-export-buttons';
 import { ResumeCard } from '@/components/laporan/resume-card';
 import {
     OPERASI_MONTHS,
@@ -170,6 +171,12 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                                         <FilePen className="size-4" />
                                         Buka Dokumen (Lihat, Edit &amp; Cetak)
                                     </Button>
+                                    <LaporanExportButtons
+                                        editUrl={document.edit(query).url}
+                                        component="k3/laporan/document"
+                                        pdfUrl={document.pdf(query).url}
+                                        baseName={`Laporan-K3-${filters.unit_id}-${filters.month}-${filters.year}`}
+                                    />
                                 </div>
                             </div>
                         )}
@@ -202,6 +209,12 @@ export default function K3LaporanIndex({ filters, options }: Props) {
                                         <Building2 className="size-4" />
                                         Buka Dokumen (Lihat, Edit &amp; Cetak)
                                     </Button>
+                                    <LaporanExportButtons
+                                        editUrl={pengusahaan.edit(query).url}
+                                        component="k3/laporan/pengusahaan"
+                                        pdfUrl={pengusahaan.pdf(query).url}
+                                        baseName={`Laporan-Pengusahaan-K3-${filters.unit_id}-${filters.month}-${filters.year}`}
+                                    />
                                 </div>
                             </div>
                         )}

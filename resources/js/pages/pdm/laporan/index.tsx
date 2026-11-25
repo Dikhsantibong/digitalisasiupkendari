@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { CheckCircle2, CircleDashed, FilePen } from 'lucide-react';
+import { LaporanExportButtons } from '@/components/laporan/laporan-export-buttons';
 import { ResumeCard } from '@/components/laporan/resume-card';
 import {
     OPERASI_MONTHS,
@@ -113,6 +114,12 @@ export default function PdmLaporanIndex({ filters, options, contents }: Props) {
                                 <FilePen className="size-4" />
                                 Buka Dokumen (Lihat, Edit &amp; Cetak)
                             </Button>
+                            <LaporanExportButtons
+                                editUrl={document.edit(query).url}
+                                component="pdm/laporan/document"
+                                pdfUrl={document.pdf(query).url}
+                                baseName={`Laporan-PdM-${filters.unit_id}-${filters.month}-${filters.year}`}
+                            />
                         </div>
                     </div>
 

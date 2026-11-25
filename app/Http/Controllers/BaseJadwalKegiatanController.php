@@ -61,7 +61,7 @@ abstract class BaseJadwalKegiatanController extends Controller
     abstract protected function kopTitle(): string;
 
     /** PDF view (receives unit, monthName, year, days, groups, logos, kopTitle). */
-    protected function pdfView(): string
+    protected function pdfTemplate(): string
     {
         return 'reports.jadwal-kegiatan-pdf';
     }
@@ -193,6 +193,23 @@ abstract class BaseJadwalKegiatanController extends Controller
         abort_unless($user->canAccessUnit($unit), 403);
 
         [$month, $year] = $this->period($request);
+        [$view, $data] = $this->pdfView($unit, $month, $year);
+
+        $pdf = Pdf::loadView($view, $data)->setPaper('a4', 'landscape');
+
+        $name = str_replace(' ', '_', $this->label().' '.$unit->name);
+
+        return $pdf->download("{$name}_{$month}_{$year}.pdf");
+    }
+
+    /**
+     * The PDF view & data of a month — also embedded in the divisi's laporan
+     * (e.g. Laporan Operasi Pembangkit), like every other jadwal.
+     *
+     * @return array{0: string, 1: array<string, mixed>}
+     */
+    public function pdfView(Unit $unit, int $month, int $year): array
+    {
         [$days, $targetWorkingDays] = $this->buildDays($year, $month, withMeta: false);
         $records = $this->records($unit->id, $month, $year);
 
@@ -200,8 +217,8 @@ abstract class BaseJadwalKegiatanController extends Controller
         foreach (JadwalKegiatanGroups::GROUPS as $grup => [$roman, $label]) {
             $items = $records->filter(fn (Model $r): bool => JadwalKegiatanGroups::normalize((string) $r->grup) === $grup)->values();
             $rows = $items->isEmpty() && $records->isEmpty()
-                ? array_map(fn (string $k, int $i): array => $this->pdfRow($i + 1, $k, [], $targetWorkingDays, ''), $this->defaults()[$grup] ?? [], array_keys($this->defaults()[$grup] ?? []))
-                : $items->map(fn (Model $r, int $i): array => $this->pdfRow((int) ($r->no_urut ?: $i + 1), (string) $r->kegiatan, $r->jadwal ?? [], (int) ($r->target ?: $targetWorkingDays), (string) ($r->keterangan ?? '')))->all();
+                ? array_map(fn (string $k, int $i): array => $this->pdfRow($i + 1, $k, [], JadwalKegiatanGroups::defaultTarget($grup, $targetWorkingDays), ''), $this->defaults()[$grup] ?? [], array_keys($this->defaults()[$grup] ?? []))
+                : $items->map(fn (Model $r, int $i): array => $this->pdfRow((int) ($r->no_urut ?: $i + 1), (string) $r->kegiatan, $r->jadwal ?? [], $r->target !== null ? (int) $r->target : JadwalKegiatanGroups::defaultTarget($grup, $targetWorkingDays), (string) ($r->keterangan ?? '')))->all();
             $groups[] = ['roman' => $roman, 'label' => $label, 'rows' => $rows];
         }
 
@@ -209,7 +226,7 @@ abstract class BaseJadwalKegiatanController extends Controller
             ? "data:{$mime};base64,".base64_encode((string) file_get_contents(public_path($path)))
             : null;
 
-        $pdf = Pdf::loadView($this->pdfView(), [
+        return [$this->pdfTemplate(), [
             'unit' => $unit,
             'month' => $month,
             'year' => $year,
@@ -220,11 +237,9 @@ abstract class BaseJadwalKegiatanController extends Controller
             'documentLabel' => $this->label(),
             'logoLeft' => $logo('logo/sidebar-logo.png', 'image/png'),
             'logoRight' => $logo('logo/mkp.jpg', 'image/jpeg'),
-        ])->setPaper('a4', 'landscape');
-
-        $name = str_replace(' ', '_', $this->label().' '.$unit->name);
-
-        return $pdf->download("{$name}_{$month}_{$year}.pdf");
+            'has_saved' => $records->isNotEmpty(),
+            'rows' => array_merge(...array_column($groups, 'rows')),
+        ]];
     }
 
     /**

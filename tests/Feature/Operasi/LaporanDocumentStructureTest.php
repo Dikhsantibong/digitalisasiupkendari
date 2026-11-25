@@ -17,6 +17,7 @@ use App\Models\OperasiDataTeknis;
 use App\Models\OperasiFlmJadwal;
 use App\Models\OperasiFlmMonitoring;
 use App\Models\OperasiInventarisJadwal;
+use App\Models\OperasiJadwalKegiatan;
 use App\Models\OperasiMeetingShiftJadwal;
 use App\Models\OperasiPatrolCheckEntry;
 use App\Models\OperasiPatrolCheckMesin;
@@ -25,6 +26,7 @@ use App\Models\OperasiPembuatanIk;
 use App\Models\OperasiProgram5s5rItem;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
+use App\Services\Operasi\OperasiReportTables;
 use Database\Seeders\AttendanceCodeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -360,6 +362,27 @@ class LaporanDocumentStructureTest extends TestCase
         $end = strpos($html, 'class="op-section', $start);
 
         return substr($html, $start, $end === false ? null : $end - $start);
+    }
+
+    public function test_the_jadwal_kegiatan_operasi_is_in_the_report_with_its_four_groups(): void
+    {
+        [$unit, $engine] = $this->unitWithEngine();
+        OperasiJadwalKegiatan::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 8, 'grup' => 'harian', 'kegiatan' => 'Serah terima shift unik', 'target' => 20, 'jadwal' => [3, 4, 5]]);
+        OperasiJadwalKegiatan::factory()->create(['unit_id' => $unit->id, 'year' => 2026, 'month' => 8, 'grup' => 'non_rutin', 'kegiatan' => 'Penanganan gangguan unik', 'target' => 0, 'jadwal' => [12], 'sort_order' => 1]);
+
+        $html = $this->content($unit, $engine);
+
+        $this->assertStringContainsString('href="#sec-4-1-kegiatan"', $html);
+        $this->assertTrue(strpos($html, 'id="sec-4-1"') < strpos($html, 'id="sec-4-1-kegiatan"') && strpos($html, 'id="sec-4-1-kegiatan"') < strpos($html, 'id="sec-4-2"'));
+        $section = $this->section($html, 'sec-4-1-kegiatan');
+        $this->assertStringContainsString('class="op-v-', $section);
+        foreach (['Serah terima shift unik', 'Penanganan gangguan unik', 'HARIAN', 'MINGGUAN', 'BULANAN', 'NON RUTIN'] as $text) {
+            $this->assertStringContainsStringIgnoringCase($text, $section, $text);
+        }
+
+        $tables = app(OperasiReportTables::class)->build($unit, 8, 2026);
+        $resume = collect($tables['resume']['rows'])->keyBy('deskripsi')['Jadwal Kegiatan Operasi (Harian, Mingguan, Bulanan & Non Rutin)'];
+        $this->assertSame([20, 4], [$resume['target'], $resume['realisasi']]);
     }
 
     public function test_the_jadwal_shift_operator_carries_the_real_attendance(): void

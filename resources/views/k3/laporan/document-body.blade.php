@@ -70,7 +70,7 @@
         ['num' => 'V.', 'title' => 'LAPORAN K3LH PEMBANGKIT', 'anchor' => 'sec-5-1', 'indent' => false],
         ['num' => '', 'title' => '- Time Frame K3L', 'anchor' => 'sec-5-1', 'indent' => true],
         ['num' => '', 'title' => '- Form Inspeksi K3', 'anchor' => 'sec-5-2', 'indent' => true],
-        ['num' => '', 'title' => '- Jadwal Kegiatan Rutin Harian, Mingguan & Bulanan K3L KIT', 'anchor' => 'sec-5-3', 'indent' => true],
+        ['num' => '', 'title' => '- Jadwal Kegiatan Harian, Mingguan, Bulanan & Non Rutin K3L KIT', 'anchor' => 'sec-5-3', 'indent' => true],
         ['num' => '', 'title' => '- Jadwal Pekerjaan Rutin K3L & Lingkungan 6 site', 'anchor' => 'sec-5-4', 'indent' => true],
         ['num' => '', 'title' => '- Jadwal Daily Meeting Bersama Mekanik & Operasi', 'anchor' => 'sec-5-5', 'indent' => true],
         ['num' => '', 'title' => '- Jadwal Patrol Check Harian K3L & Lingkungan', 'anchor' => 'sec-5-6', 'indent' => true],
@@ -335,11 +335,11 @@
 
 <div class="page-break"></div>
 
-{{-- 3. Jadwal Kegiatan Rutin Harian, Mingguan & Bulanan K3L KIT (landscape) --}}
+{{-- 3. Jadwal Kegiatan Harian, Mingguan, Bulanan & Non Rutin K3L KIT (landscape) --}}
 <div class="k3-section k3-landscape" id="sec-5-3">
-    @include('k3.laporan.partials.kop', $kop + ['title' => 'JADWAL KEGIATAN RUTIN HARIAN, MINGGUAN & BULANAN K3L KIT'])
+    @include('k3.laporan.partials.kop', $kop + ['title' => 'JADWAL KEGIATAN HARIAN, MINGGUAN, BULANAN & NON RUTIN K3L KIT'])
 
-    <div class="k3-sub-title">3. Jadwal Kegiatan Rutin Harian, Mingguan &amp; Bulanan K3L KIT</div>
+    <div class="k3-sub-title">3. Jadwal Kegiatan Harian, Mingguan, Bulanan &amp; Non Rutin K3L KIT</div>
 
     @if(empty($kegiatanRutin))
         @include('k3.laporan.partials.no-data', ['message' => 'Belum ada data jadwal kegiatan rutin untuk periode ini.'])

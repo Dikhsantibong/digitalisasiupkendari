@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Building2, FilePenLine } from 'lucide-react';
 import { EmptyState } from '@/components/empty-state';
+import { LaporanExportButtons } from '@/components/laporan/laporan-export-buttons';
 import { ResumeCard } from '@/components/laporan/resume-card';
 import {
     OPERASI_MONTHS,
@@ -126,6 +127,12 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                                 Buka Dokumen Laporan Project (Lihat,
                                                 Edit &amp; Cetak)
                                             </Button>
+                                            <LaporanExportButtons
+                                                editUrl={document.edit(report.code, { query: reportQuery() }).url}
+                                                component="operasi/laporan/document"
+                                                pdfUrl={document.pdf(report.code, { query: reportQuery() }).url}
+                                                baseName={`Laporan-${report.code}-${filters.unit_id}-${filters.month}-${filters.year}`}
+                                            />
                                         </div>
                                     </div>
                                 ))}
@@ -163,6 +170,12 @@ export default function LaporanIndex({ filters, reports, options }: Props) {
                                             Buka Dokumen Laporan Operasi (Lihat,
                                             Edit &amp; Cetak)
                                         </Button>
+                                        <LaporanExportButtons
+                                            editUrl={pengusahaan.edit({ query: reportQuery() }).url}
+                                            component="operasi/laporan/pengusahaan"
+                                            pdfUrl={pengusahaan.pdf({ query: reportQuery() }).url}
+                                            baseName={`Laporan-Pengusahaan-Operasi-${filters.unit_id}-${filters.month}-${filters.year}`}
+                                        />
                                     </div>
                                 </div>
                             )}

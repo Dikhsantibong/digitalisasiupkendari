@@ -23,7 +23,8 @@ type SheetPart = {
     rows: SheetRow[];
 };
 
-const SECTION_CLASS = /^[a-z0-9]+-section$/;
+// A lembar: op-section, op-p-section (Laporan Operasi), section-box (Laporan K3 & KAM) …
+const SECTION_CLASS = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*-section|section-box)$/;
 const COVER_CLASS = /^[a-z0-9]+-cover$/;
 const SKIP_TAGS = new Set([
     'STYLE',
@@ -124,6 +125,14 @@ function tocTitles(root: ParentNode): Map<string, string> {
 }
 
 /** The section's own heading: its kop title, sub / part title, or first heading. */
+/** A heading's first line ("DAFTAR ISI<br><span>unit</span>" → "DAFTAR ISI"). */
+const firstLine = (element: Element): string => {
+    const holder = element.ownerDocument.createElement('div');
+    holder.innerHTML = element.innerHTML.split(/<br\s*\/?>/i)[0] ?? '';
+
+    return clean(holder.textContent ?? '');
+};
+
 function headingOf(section: Element): string | null {
     const selectors = [
         '[class*="kop-title"]',
@@ -138,7 +147,7 @@ function headingOf(section: Element): string | null {
 
     for (const selector of selectors) {
         const found = Array.from(section.querySelectorAll(selector))
-            .map((element) => clean(element.textContent ?? ''))
+            .map(firstLine)
             .find((text) => text !== '');
 
         if (found) {
@@ -351,6 +360,38 @@ function collectRows(node: Element, rows: SheetRow[]): void {
     flush();
 }
 
+/**
+ * A report without section wrappers (e.g. Laporan Pemeliharaan pengusahaan):
+ * its top-level blocks grouped into lembar, a new one at every `break-before`
+ * element or `page-break`; the whole report when it has no page breaks.
+ */
+function pageGroups(root: Element): Element[] {
+    const groups: Element[] = [];
+    let current: Element | null = null;
+
+    for (const node of Array.from(root.childNodes)) {
+        const element = node.nodeType === 1 ? (node as Element) : null;
+
+        if (element && hasClass(element, /^page-break$/)) {
+            current = null;
+            continue;
+        }
+
+        if (
+            current === null ||
+            (element && hasClass(element, /^break-before$/))
+        ) {
+            current = root.ownerDocument.createElement('div');
+            current.id = element?.id ?? '';
+            groups.push(current);
+        }
+
+        current.appendChild(node);
+    }
+
+    return groups.length > 0 ? groups : [root];
+}
+
 /** Split the report into its lembar (cover first, then every section). */
 function reportParts(html: string): SheetPart[] {
     const doc = new DOMParser().parseFromString(
@@ -372,13 +413,32 @@ function reportParts(html: string): SheetPart[] {
 
         return false;
     };
-    const blocks: Element[] = Array.from(root.querySelectorAll('*')).filter(
-        (element) =>
-            hasClass(element, SECTION_CLASS) && !insideSection(element),
+    // Pages laid out as top-level `break-before` blocks: one lembar per page.
+    const paged = Array.from(root.children).some((element) =>
+        hasClass(element, /^break-before$/),
     );
+    const insideCover = (element: Element): boolean => {
+        for (
+            let parent = element.parentElement;
+            parent && parent !== root;
+            parent = parent.parentElement
+        ) {
+            if (hasClass(parent, COVER_CLASS)) {
+                return true;
+            }
+        }
+
+        return false;
+    };
+    const blocks: Element[] = paged
+        ? []
+        : Array.from(root.querySelectorAll('*')).filter(
+              (element) =>
+                  hasClass(element, SECTION_CLASS) && !insideSection(element),
+          );
 
     if (blocks.length === 0) {
-        blocks.push(root);
+        blocks.push(...pageGroups(root));
     }
 
     // A cover drawn outside any section is its own lembar too.
@@ -387,7 +447,7 @@ function reportParts(html: string): SheetPart[] {
             (element) =>
                 hasClass(element, COVER_CLASS) &&
                 !blocks.some((block) => block.contains(element)) &&
-                !element.parentElement?.closest('[class*="-cover"]'),
+                !insideCover(element),
         )
         .reverse()
         .forEach((cover) => blocks.unshift(cover));

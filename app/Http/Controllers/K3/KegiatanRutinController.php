@@ -94,7 +94,7 @@ class KegiatanRutinController extends BaseJadwalKegiatanController
         return 'JADWAL KEGIATAN K3L';
     }
 
-    protected function pdfView(): string
+    protected function pdfTemplate(): string
     {
         return 'k3.jadwal.kegiatan-rutin-pdf';
     }

@@ -56,7 +56,7 @@ const JADWAL_LIST: JadwalCard[] = [
         target: '/k3/jadwal/on-call',
     },
     {
-        title: 'Jadwal Kegiatan Rutin Harian, Mingguan & Bulanan K3L KIT',
+        title: 'Jadwal Kegiatan Harian, Mingguan, Bulanan & Non Rutin K3L KIT',
         description:
             'Agenda berkala pelaksanaan program keselamatan kerja dan lindungan lingkungan di unit pembangkit.',
         icon: CalendarDays,

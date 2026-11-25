@@ -10,6 +10,7 @@ use App\Http\Controllers\Operasi\FlmMonitoringController;
 use App\Http\Controllers\Operasi\InventarisController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestController;
 use App\Http\Controllers\Operasi\JadwalCommissioningTestPeralatanController;
+use App\Http\Controllers\Operasi\JadwalKegiatanController;
 use App\Http\Controllers\Operasi\JadwalPerformanceTestController;
 use App\Http\Controllers\Operasi\KondisiAbnormalController;
 use App\Http\Controllers\Operasi\MaterialPeralatanController;
@@ -43,6 +44,7 @@ class OperasiReportTables
 {
     /** Daftar Isi point => [controller, title]. */
     public const TABLES = [
+        'kegiatan' => [JadwalKegiatanController::class, 'Jadwal Kegiatan Operasi'],
         'flm' => [FlmController::class, 'Jadwal FLM'],
         'flm_monitoring' => [FlmMonitoringController::class, 'Laporan Monitoring FLM'],
         'program_5s5r' => [Program5s5rController::class, 'Jadwal Program 5S 5R'],
@@ -202,7 +204,12 @@ class OperasiReportTables
             ->count();
         $daysInMonth = (int) Carbon::create($year, $month, 1)->daysInMonth;
 
+        $kegiatan = $hasSaved('kegiatan') ? $rows('kegiatan') : [];
         $activities = [
+            'Jadwal Kegiatan Operasi (Harian, Mingguan, Bulanan & Non Rutin)' => [
+                $sum($kegiatan, fn (array $r): int => (int) ($r['target'] ?? 0)),
+                $sum($kegiatan, fn (array $r): int => (int) ($r['realisasi_count'] ?? 0)),
+            ],
             'Jadwal First Line Maintenance (Rutin)' => [$sum($flm('rutin'), fn (array $r): int => (int) ($r['target'] ?? 0)), $sum($flm('rutin'), fn (array $r): int => (int) ($r['realisasi'] ?? 0))],
             'Jadwal First Line Maintenance (Non Rutin)' => [$sum($flm('non_rutin'), fn (array $r): int => (int) ($r['target'] ?? 0)), $sum($flm('non_rutin'), fn (array $r): int => (int) ($r['realisasi'] ?? 0))],
             'Jadwal 5S5R' => $dayPlan('program_5s5r'),

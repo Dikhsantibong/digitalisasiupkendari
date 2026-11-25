@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { Building2, FilePen } from 'lucide-react';
+import { LaporanExportButtons } from '@/components/laporan/laporan-export-buttons';
 import { ResumeCard } from '@/components/laporan/resume-card';
 import {
     OPERASI_MONTHS,
@@ -103,6 +104,12 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                                         Buka Dokumen Pemeliharaan (Lihat, Edit
                                         &amp; Cetak)
                                     </Button>
+                                    <LaporanExportButtons
+                                        editUrl={document.edit(query).url}
+                                        component="har/laporan/document"
+                                        pdfUrl={document.pdf(query).url}
+                                        baseName={`Laporan-HAR-${filters.unit_id}-${filters.month}-${filters.year}`}
+                                    />
                                 </div>
                             </div>
                         )}
@@ -133,6 +140,12 @@ export default function HarLaporanIndex({ filters, options }: Props) {
                                         Buka Dokumen Laporan Pemeliharaan (Lihat, Edit
                                         &amp; Cetak)
                                     </Button>
+                                    <LaporanExportButtons
+                                        editUrl={pengusahaan.edit(query).url}
+                                        component="har/laporan/pengusahaan"
+                                        pdfUrl={pengusahaan.pdf(query).url}
+                                        baseName={`Laporan-Pengusahaan-${filters.unit_id}-${filters.month}-${filters.year}`}
+                                    />
                                 </div>
                             </div>
                         )}

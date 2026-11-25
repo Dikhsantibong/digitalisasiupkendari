@@ -650,7 +650,7 @@ class K3ReportBuilder
             $rows = [];
             foreach (KegiatanRutinController::DEFAULT_KEGIATAN as $grup => $items) {
                 foreach ($items as $index => $kegiatan) {
-                    $rows[] = ['no' => $index + 1, 'grup' => $grup, 'kegiatan' => $kegiatan, 'target' => $target, 'realisasi' => [], 'keterangan' => ''];
+                    $rows[] = ['no' => $index + 1, 'grup' => $grup, 'kegiatan' => $kegiatan, 'target' => JadwalKegiatanGroups::defaultTarget((string) $grup, $target), 'realisasi' => [], 'keterangan' => ''];
                 }
             }
         } else {

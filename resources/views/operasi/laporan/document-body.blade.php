@@ -73,6 +73,7 @@
         ['num' => 'IV.', 'title' => 'RESUME STATISTIK', 'anchor' => 'sec-3', 'indent' => false],
         ['num' => 'V.', 'title' => 'LAPORAN OPERASI', 'anchor' => null, 'indent' => false],
         ['num' => '', 'title' => '- Jadwal shift operator', 'anchor' => 'sec-4-1', 'indent' => true],
+        ['num' => '', 'title' => '- Jadwal kegiatan harian, mingguan, bulanan & non rutin', 'anchor' => 'sec-4-1-kegiatan', 'indent' => true],
         ['num' => '', 'title' => '- Jadwal FLM', 'anchor' => 'sec-4-2', 'indent' => true],
         ['num' => '', 'title' => '- Laporan monitoring FLM', 'anchor' => 'sec-4-2-monitoring', 'indent' => true],
         ['num' => '', 'title' => '- Jadwal Program 5S 5R', 'anchor' => 'sec-4-3', 'indent' => true],
@@ -346,6 +347,13 @@
             % Hadir = jadwal kerja (P/S/M) yang diabsen &divide; jadwal kerja yang sudah lewat.
         </div>
     @endif
+</div>
+
+<div class="page-break"></div>
+
+{{-- 1.a Jadwal Kegiatan Operasi (Harian, Mingguan, Bulanan & Non Rutin) --}}
+<div class="op-section op-landscape" id="sec-4-1-kegiatan">
+    @include('operasi.laporan.partials.table-fragment', ['part' => $table('kegiatan')])
 </div>
 
 <div class="page-break"></div>
