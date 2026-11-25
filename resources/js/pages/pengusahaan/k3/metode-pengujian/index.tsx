@@ -351,32 +351,45 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                                 key: 'nama_peralatan',
                                 label: 'Nama Peralatan',
                                 placeholder: 'Mis. Crane / Tangki',
+                                span: 2,
                             },
-                            { key: 'no_pengesahan', label: 'No. Pengesahan' },
+                            {
+                                key: 'no_pengesahan',
+                                label: 'No. Pengesahan',
+                                span: 1,
+                            },
                             {
                                 key: 'nama_kategori_alat',
                                 label: 'Kategori Alat',
+                                span: 1,
                             },
                             ...TEST_COLUMNS.map(({ field, label }, i) => ({
                                 key: field,
                                 label,
                                 type: 'dropdown' as const,
                                 options: testOptions,
+                                span: (i === TEST_COLUMNS.length - 1 &&
+                                TEST_COLUMNS.length % 2 === 1
+                                    ? 2
+                                    : 1) as 1 | 2,
                                 group: i === 0 ? 'Metode Pengujian' : undefined,
                             })),
                             {
                                 key: 'sertifikasi_terakhir',
                                 label: 'Sertifikasi Terakhir',
                                 group: 'Sertifikasi',
+                                span: 1,
                             },
                             {
                                 key: 'sertifikasi_ulang',
                                 label: 'Sertifikasi Ulang',
+                                span: 1,
                             },
                             {
                                 key: 'keterangan',
                                 label: 'Keterangan',
                                 type: 'textarea',
+                                span: 2,
                             },
                         ]}
                         onChange={(idx, key, value) =>
@@ -388,6 +401,19 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                         }
                         onRemove={(idx) => deleteRow(rows[idx]._key)}
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Peralatan
+                        </Button>
+                    )}
 
                     <K3MobileMetaAccordion
                         noDokumen={meta.nomor_dokumen}
@@ -421,6 +447,7 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={save}
                                 disabled={saving || !dirty}
@@ -428,14 +455,6 @@ export default function PengusahaanMetodePengujianPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addRow}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

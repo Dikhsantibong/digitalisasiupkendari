@@ -13,6 +13,7 @@ import {
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -147,6 +148,57 @@ export default function AparCheckInput({
         );
     };
 
+    const mobileFields: RowField<GridRow>[] = [
+        {
+            key: 'tgl_periksa',
+            label: 'Tanggal Periksa',
+            type: 'date',
+            span: 1,
+        },
+        {
+            key: 'exp_date',
+            label: 'Tanggal Kadaluarsa',
+            type: 'date',
+            span: 1,
+        },
+        {
+            key: 'kondisi_tabung',
+            label: 'Kondisi Tabung',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            group: 'Pemeriksaan',
+            span: 1,
+        },
+        {
+            key: 'kondisi_nozzle',
+            label: 'Kondisi Nozzle',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            span: 1,
+        },
+        {
+            key: 'indikator_tekanan',
+            label: 'Indikator Tekanan',
+            type: 'dropdown',
+            options: ['Normal', 'Kurang', 'Kosong', 'Tidak Baik'],
+            span: 1,
+        },
+        {
+            key: 'kondisi_pin_segel',
+            label: 'Kondisi Pin/Segel',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            span: 1,
+        },
+        {
+            key: 'keterangan',
+            label: 'Keterangan',
+            type: 'textarea',
+            group: 'Lainnya',
+            span: 2,
+        },
+    ];
+
     return (
         <>
             <Head title="Input K3 — Inspeksi APAR/APAB" />
@@ -183,54 +235,7 @@ export default function AparCheckInput({
                                 `${row.tgl_periksa || '-'} · Tabung ${row.kondisi_tabung || '-'}`
                             }
                             canWrite={can_write}
-                            fields={[
-                                {
-                                    key: 'tgl_periksa',
-                                    label: 'Tanggal Periksa',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'kondisi_tabung',
-                                    label: 'Kondisi Tabung',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                    group: 'Pemeriksaan',
-                                },
-                                {
-                                    key: 'kondisi_nozzle',
-                                    label: 'Kondisi Nozzle',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                },
-                                {
-                                    key: 'indikator_tekanan',
-                                    label: 'Indikator Tekanan',
-                                    type: 'dropdown',
-                                    options: [
-                                        'Normal',
-                                        'Kurang',
-                                        'Kosong',
-                                        'Tidak Baik',
-                                    ],
-                                },
-                                {
-                                    key: 'kondisi_pin_segel',
-                                    label: 'Kondisi Pin/Segel',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                },
-                                {
-                                    key: 'exp_date',
-                                    label: 'Tanggal Kadaluarsa',
-                                    type: 'date',
-                                    group: 'Lainnya',
-                                },
-                                {
-                                    key: 'keterangan',
-                                    label: 'Keterangan',
-                                    type: 'textarea',
-                                },
-                            ]}
+                            fields={mobileFields}
                             onChange={(index, key, value) => {
                                 setRows((current) =>
                                     current.map((row, i) =>
@@ -348,54 +353,7 @@ export default function AparCheckInput({
                                 `${row.tgl_periksa || '-'} · Tabung ${row.kondisi_tabung || '-'}`
                             }
                             canWrite={can_write}
-                            fields={[
-                                {
-                                    key: 'tgl_periksa',
-                                    label: 'Tanggal Periksa',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'kondisi_tabung',
-                                    label: 'Kondisi Tabung',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                    group: 'Pemeriksaan',
-                                },
-                                {
-                                    key: 'kondisi_nozzle',
-                                    label: 'Kondisi Nozzle',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                },
-                                {
-                                    key: 'indikator_tekanan',
-                                    label: 'Indikator Tekanan',
-                                    type: 'dropdown',
-                                    options: [
-                                        'Normal',
-                                        'Kurang',
-                                        'Kosong',
-                                        'Tidak Baik',
-                                    ],
-                                },
-                                {
-                                    key: 'kondisi_pin_segel',
-                                    label: 'Kondisi Pin/Segel',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                },
-                                {
-                                    key: 'exp_date',
-                                    label: 'Tanggal Kadaluarsa',
-                                    type: 'date',
-                                    group: 'Lainnya',
-                                },
-                                {
-                                    key: 'keterangan',
-                                    label: 'Keterangan',
-                                    type: 'textarea',
-                                },
-                            ]}
+                            fields={mobileFields}
                             onChange={(index, key, value) => {
                                 setRows((current) =>
                                     current.map((row, i) =>

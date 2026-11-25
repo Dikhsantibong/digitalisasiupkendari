@@ -4,7 +4,6 @@ import {
     ClipboardCheck,
     ClipboardList,
     FileWarning,
-    Gauge,
     FileText,
     Image,
     NotebookPen,
@@ -23,7 +22,6 @@ import harInstruksiKerja from '@/routes/har/input/instruksi-kerja';
 import harLaporanGangguan from '@/routes/har/input/laporan-gangguan';
 import harInputLembar from '@/routes/har/input/lembar';
 import harMaterialPeralatan from '@/routes/har/input/material-peralatan';
-import harPatrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import harProgram5s5r from '@/routes/har/input/program-5s5r';
 import harServiceRequest from '@/routes/har/input/service-request';
 import harWorkOrder from '@/routes/har/input/work-order';
@@ -109,14 +107,7 @@ const INPUT_MENUS: InputCard[] = [
         url: harInputLembar.index('patrol-check-pemeliharaan').url,
         buttonLabel: 'Buka Input Patrol Check',
     },
-    {
-        title: 'Patrol Check Parameter Mesin',
-        description:
-            'Pembacaan harian per mesin: PIC, jam, load, temperatur & tekanan engine, temperatur/arus/tegangan generator, cos phi, kVAR, trafo, dan tegangan baterai.',
-        icon: Gauge,
-        url: harPatrolCheckParameter.index().url,
-        buttonLabel: 'Buka Input Parameter Mesin',
-    },
+    // Patrol Check Parameter Mesin removed (user, 2026-11-24): the readings are in the Logsheet Operator.
     {
         title: 'Material & Peralatan',
         description:

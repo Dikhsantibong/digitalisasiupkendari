@@ -664,6 +664,19 @@ export default function JadwalOnCallPage({
                         empty="Belum ada data personil on call untuk periode ini."
                     />
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={openAddPersonModal}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Personil
+                        </Button>
+                    )}
+
                     <StickyActionBar>
                         <Button
                             type="button"
@@ -675,26 +688,15 @@ export default function JadwalOnCallPage({
                             PDF
                         </Button>
                         {can_write && (
-                            <>
-                                <Button
-                                    type="button"
-                                    onClick={handleSave}
-                                    disabled={!dirty || saving}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={openAddPersonModal}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                type="button"
+                                onClick={handleSave}
+                                disabled={!dirty || saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>

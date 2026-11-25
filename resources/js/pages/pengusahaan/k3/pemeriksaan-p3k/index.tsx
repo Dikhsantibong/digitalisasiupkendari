@@ -651,6 +651,19 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                         })}
                     </div>
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItem}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Item P3K
+                        </Button>
+                    )}
+
                     <K3MobileMetaAccordion
                         noDokumen={noDokumen}
                         revisi={revisi}
@@ -689,6 +702,7 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={() => handleSubmit()}
                                 disabled={saving}
@@ -696,14 +710,6 @@ export default function PengusahaanPemeriksaanP3kPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addItem}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

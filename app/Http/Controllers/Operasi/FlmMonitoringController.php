@@ -7,6 +7,7 @@ use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\OperasiFlmMonitoring;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -20,6 +21,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -81,6 +83,8 @@ class FlmMonitoringController extends Controller
             'rows.*.kondisi_akhir' => ['nullable', 'string', 'max:255'],
             'rows.*.catatan' => ['nullable', 'string', 'max:255'],
             'rows.*.status' => ['required', Rule::in(['open', 'close'])],
+            // The finding's key: its reporter (name & shift) and closure survive the save-all.
+            'rows.*.uid' => ['nullable', 'string', 'max:36'],
             // A kept photo is its stored path; a new one is uploaded as {column}_file.
             'rows.*.foto_awal' => ['nullable', 'string', 'max:255'],
             'rows.*.foto_akhir' => ['nullable', 'string', 'max:255'],
@@ -97,8 +101,11 @@ class FlmMonitoringController extends Controller
         $previousPhotos = $this->saved($unit, $month, $year)
             ->flatMap(fn (OperasiFlmMonitoring $r): array => array_filter([$r->foto_awal, $r->foto_akhir]))->all();
         $keptPhotos = [];
+        $previous = $this->saved($unit, $month, $year)->filter(fn (OperasiFlmMonitoring $r): bool => $r->uid !== null)->keyBy('uid');
+        $employee = Employee::query()->where('user_id', $user->id)->where('is_active', true)->first();
+        $now = Carbon::now();
 
-        DB::transaction(function () use ($validated, $request, $unit, $month, $year, $user, $folder, &$keptPhotos): void {
+        DB::transaction(function () use ($validated, $request, $unit, $month, $year, $user, $folder, &$keptPhotos, $previous, $employee, $now): void {
             OperasiFlmMonitoring::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
 
             $number = 0;
@@ -115,8 +122,20 @@ class FlmMonitoringController extends Controller
                     continue;
                 }
                 $keptPhotos = [...$keptPhotos, ...array_filter($photos)];
+                $old = isset($row['uid']) ? $previous->get($row['uid']) : null;
+                $closedBefore = $old !== null && $old->status === 'close';
 
                 OperasiFlmMonitoring::query()->create([
+                    'uid' => $old?->uid ?? (string) Str::uuid(),
+                    // Who reported it (name & shift) stays the first reporter.
+                    'reported_by' => $old !== null ? $old->reported_by : $user->id,
+                    'reporter_name' => $old !== null ? $old->reporter_name : ($employee?->name ?? $user->name),
+                    'reporter_shift' => $old !== null ? $old->reporter_shift : OperasiFlmMonitoring::shiftLabel($employee),
+                    'reported_at' => $old?->reported_at ?? $now,
+                    // Closed: who and when (kept while it stays closed).
+                    'closed_by' => $row['status'] === 'close' ? ($closedBefore ? $old->closed_by : $user->id) : null,
+                    'closed_by_name' => $row['status'] === 'close' ? ($closedBefore ? $old->closed_by_name : ($employee?->name ?? $user->name)) : null,
+                    'closed_at' => $row['status'] === 'close' ? ($closedBefore ? $old->closed_at : $now) : null,
                     'unit_id' => $unit->id,
                     'year' => $year,
                     'month' => $month,
@@ -192,6 +211,10 @@ class FlmMonitoringController extends Controller
             'foto_akhir_url' => $this->photoUrl($r->foto_akhir, $embedPhotos),
             'catatan' => (string) ($r->catatan ?? ''),
             'status' => $r->status,
+            'uid' => $r->uid,
+            'reporter_name' => $r->reporter_name,
+            'reporter_shift' => $r->reporter_shift,
+            'closed_by_name' => $r->closed_by_name,
         ])->all();
 
         for ($n = count($rows) + 1; $n <= $minRows; $n++) {

@@ -140,6 +140,33 @@ export default function FireAlarmInput({
 
     const cols = can_write ? 7 : 6;
 
+    const mobileFields: RowField<Row>[] = [
+        { key: 'lokasi', label: 'Lokasi', span: 1 },
+        {
+            key: 'tanggal_periksa',
+            label: 'Tanggal Periksa',
+            type: 'date',
+            span: 1,
+        },
+        {
+            key: 'kondisi',
+            label: 'Kondisi',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            placeholder: 'Pilih Kondisi',
+            span: 1,
+        },
+        {
+            key: 'panel_indikator',
+            label: 'Panel Indikator',
+            type: 'dropdown',
+            options: ['Normal', 'Tidak Normal'],
+            placeholder: 'Pilih Panel Indikator',
+            span: 1,
+        },
+        { key: 'keterangan', label: 'Keterangan', type: 'textarea', span: 2 },
+    ];
+
     if (compact) {
         return (
             <>
@@ -165,31 +192,7 @@ export default function FireAlarmInput({
 
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                { key: 'lokasi', label: 'Lokasi' },
-                                {
-                                    key: 'tanggal_periksa',
-                                    label: 'Tanggal Periksa',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'kondisi',
-                                    label: 'Kondisi',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                    placeholder: 'Pilih Kondisi',
-                                },
-                                {
-                                    key: 'panel_indikator',
-                                    label: 'Panel Indikator',
-                                    type: 'dropdown',
-                                    options: ['Normal', 'Tidak Normal'],
-                                    placeholder: 'Pilih Panel Indikator',
-                                },
-                                { key: 'keterangan', label: 'Keterangan' },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.lokasi || 'Lokasi belum diisi'}
                         subtitle={(r) =>
                             `${r.kondisi || '-'} · Panel ${r.panel_indikator || '-'}`
@@ -199,6 +202,19 @@ export default function FireAlarmInput({
                         canWrite={can_write}
                         removeLabel="Hapus titik"
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Titik
+                        </Button>
+                    )}
 
                     <StickyActionBar>
                         <K3MobilePdfButton
@@ -210,24 +226,14 @@ export default function FireAlarmInput({
                             }}
                         />
                         {can_write && (
-                            <>
-                                <Button
-                                    onClick={save}
-                                    disabled={saving || !dirty}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={addRow}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>
@@ -313,22 +319,7 @@ export default function FireAlarmInput({
                 {compact ? (
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                { key: 'lokasi', label: 'Lokasi' },
-                                {
-                                    key: 'tanggal_periksa',
-                                    label: 'Tanggal Periksa',
-                                    type: 'date',
-                                },
-                                { key: 'kondisi', label: 'Kondisi' },
-                                {
-                                    key: 'panel_indikator',
-                                    label: 'Panel Indikator',
-                                },
-                                { key: 'keterangan', label: 'Keterangan' },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.lokasi || 'Lokasi belum diisi'}
                         subtitle={(r) =>
                             `${r.kondisi || '-'} · Panel ${r.panel_indikator || '-'}`

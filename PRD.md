@@ -538,9 +538,9 @@ Layer input lapangan operator — modul tersendiri (bukan sub-Operasi).
 | **Opname BBM** | Per unit + tanggal: **Opname Fisik** (tangki Storage & Setlink: cm, liter) dan **Opname Administrasi** (tangki Service: cm, liter; Flowmeter BBM per mesin: stand awal, stand akhir, pemakaian) | Operator & PL tulis; TL/Koordinator/Manager UL lihat |
 | **Opname Pelumas** | Per unit + tanggal, tiap jenis pelumas unit: stand awal, stand akhir, sub total | idem |
 | **Opname kWh** | Per unit + tanggal: kWh Produksi, kWh PS, Susut Trafo (nama kWh, stand awal, stand akhir, sub total) + ringkasan kWh PSST, kWh netto, SFC bruto & netto (§10.2) | idem |
-| **Lembar Mutasi** | Lembar serah terima shift: mesin (level/tambah BBM, pelumas, status operasi/standby/gangguan), tangki, peralatan, kejadian; **Serahkan** + paraf, **Terima** + paraf (regu lain) mengunci lembar | Leader Shift / PL / TL tulis; operator biasa lihat |
+| **Lembar Mutasi** | Lembar serah terima shift: mesin (**level tangki bahan bakar dalam cm** dan **tambah pelumas dalam liter** — angka, tanpa centang ✓ sejak 2026-11-24; level pelumas, status operasi/standby/gangguan); bagian **Gangguan Feeder / Start-Stop Mesin** menampilkan start/stop mesin pada jam shift itu **otomatis dari menu Start Stop Engine** (pagi 08–16, sore 16–22, malam 22–08; `MutasiStartStop`), ikut tercetak di PDF & Excel, di samping kejadian lain yang diketik; bagian **Gangguan Mesin** memuat otomatis **temuan abnormal (TN) Patrol Check Mesin** pada jam shift itu (mesin, peralatan, catatan, operator pemeriksa; `MutasiPatrolFindings`) agar ikut diserahterimakan, juga di PDF & Excel, tangki, peralatan, kejadian; **Serahkan** + paraf, **Terima** + paraf (regu lain) mengunci lembar | Leader Shift / PL / TL tulis; operator biasa lihat |
 | **Jadwal Shift** | Satu lembar per unit + bulan: Kerja Shift (regu A–D) & Non Shift; kuas kode + klik/geser sel; **Isi Otomatis** | Koordinator Operasi, PL (tulis); Operator, TL, Manager UL (lihat) |
-| **Pengajuan Absensi** | Izin (maks. **1 kali per bulan** per pegawai; yang ditolak/dibatalkan tidak menghabiskan kuota), sakit, cuti, **tukar shift** (dengan konfirmasi pengganti), lampiran; pengajuan operator disetujui **TL Operasi** (`operator.pengajuan.approve_operasi`, juga PL & Koordinator Operasi), pengajuan role HAR (Harmes, Harlist, ASME / Asmec / Aslist) disetujui **TL Pemeliharaan** (`operator.pengajuan.approve_har`; unit TL Ophar oleh **TL Ophar**, containerized oleh **Project Leader**) | Operator, PL, Harmes, Harlist, ASME ajukan |
+| **Pengajuan Absensi** | Izin (maks. **1 kali per bulan** per pegawai; yang ditolak/dibatalkan tidak menghabiskan kuota), sakit, cuti, **tukar shift** (2026-11-24: cukup pilih tanggal & rekan yang ditukar — tanpa batasan jadwal, tanpa tanggal balasan, alasan opsional; pengajuan masuk ke akun rekan untuk dikonfirmasi lalu disetujui TL; setelah disetujui **shift keduanya pada tanggal itu ditukar**, mis. Pagi ⇄ Sore), lampiran; pengajuan operator disetujui **TL Operasi** (`operator.pengajuan.approve_operasi`, juga PL & Koordinator Operasi), pengajuan role HAR (Harmes, Harlist, ASME / Asmec / Aslist) disetujui **TL Pemeliharaan** (`operator.pengajuan.approve_har`; unit TL Ophar oleh **TL Ophar**, containerized oleh **Project Leader**) | Operator, PL, Harmes, Harlist, ASME ajukan |
 | **Resume Statistik** | Kehadiran, tukar shift, dan pekerjaan per pegawai (operator hanya melihat dirinya) | Operator, PL, pengawas |
 
 Detail Logsheet:
@@ -589,6 +589,15 @@ Detail Logsheet:
 - Shift A–D; di HP shift terisi otomatis dari regu pada Jadwal Shift (atau regu
   pegawai).
 - Status draft → submitted; lembar terkirim tidak bisa diubah operator.
+- **Jam yang sudah lewat terkunci** (keputusan user 2026-11-24): setiap jam pembacaan bisa diisi sampai
+  **60 menit setelah jamnya** (WITA; `LogsheetController::LOCK_AFTER_MINUTES`), mis. jam 05:00 terkunci pukul
+  06:00; tanggal yang sudah lewat terkunci seluruhnya. Sel terkunci tampil hanya-baca (ikon gembok) di desktop,
+  kartu jam di HP bertanda "Terkunci", dan server menolak penyimpanan jam terkunci. **TL Operasi, TL Ophar,
+  Project Leader** (izin `operator.logsheet.correct`, migrasi `grant_operator_logsheet_correct_permission`) dan
+  Super Admin dapat **membuka kunci untuk koreksi** — halaman menampilkan "Mode koreksi" dan TL kini dapat
+  mengubah logsheet (sebelumnya hanya melihat). Koordinator Operasi tetap hanya melihat.
+  Tanggal bawaan halaman logsheet mengikuti tanggal **WITA** (sebelumnya UTC, sehingga pukul 00:00–08:00 WITA
+  terbuka tanggal kemarin).
 - Ekspor PDF & Excel untuk Logsheet, Lembar Mutasi, Jadwal Shift.
 
 Detail Opname (BBM, Pelumas, kWh):
@@ -746,6 +755,21 @@ Detail penting:
   dan maks. 3 foto eviden per shift per hari. Otomatis masuk ke **Laporan
   Pemeliharaan (`program-5s5r`)** dan **Rekap 5S5R K3 (`K3DivisionFeed`)**.
 - Halaman lapangan Harmes/Harlist dibuka per halaman (`har.lapangan.*`).
+- **FLM dari Operator** (menu Pemeliharaan, `/har/flm-operasi`, 2026-11-24): temuan **Monitoring FLM** yang diinput
+  operator (Operasi) tampil di Pemeliharaan dengan **nama & shift pelapor** (mis. "Sore · Regu B"), umur hari
+  open, foto, dan filter Open/Close/Semua. Pemegang `har.input.write` / `har.pengusahaan.write` (TL Pemeliharaan,
+  Koordinator & Office HAR, Staf) dapat **Close** FLM yang masih open (isi kondisi akhir + catatan; tercatat
+  siapa & kapan). FLM yang open **≥ 3 hari** diingatkan setiap hari (notifikasi Pekerjaan, mulai 07:00 WITA,
+  sekali per unit per hari) ke akun Pemeliharaan unit itu (`FlmReminders`). Pelapor & penutupan tersimpan per
+  temuan (`operasi_flm_monitorings.uid`, `reported_by/reporter_name/reporter_shift`, `closed_by/closed_at`)
+  sehingga tidak hilang saat halaman Operasi menyimpan ulang.
+- **PTW lintas bidang** (2026-11-24): Permit to Work yang diinput operator / Operasi (`operasi/input/permit-to-work`)
+  dapat **dilihat Pemeliharaan** (TL, Koordinator, Office, Staf HAR — `har.input.view|har.pengusahaan.view|har.laporan.view`)
+  beserta PDF-nya, hanya-baca; menu **PTW Operasi** di grup Pemeliharaan (desktop) dan di menu HP Pemeliharaan.
+  Penyimpanan tetap oleh Operasi/operator.
+- **Patrol Check Parameter Mesin dihapus dari Input Pemeliharaan** (2026-11-24): menu input (desktop & HP) dan
+  bagian Laporan Pemeliharaan tidak lagi memuatnya karena pembacaan parameter mesin sudah ada di **Logsheet
+  Operator**. Data lama tetap tersimpan.
 
 ### 8.5 Pemeliharaan — Akses 2 (Pengusahaan)
 
@@ -1277,14 +1301,19 @@ Draft ──Ajukan (Admin UL)──▶ Diajukan ──TL (Pengusahaan: TL Operas
    Rekap tidak disimpan, dihitung `AttendanceCalculator`.
 5. **Pengajuan:** izin/sakit/cuti menulis I/SKT/C pada setiap hari non-OFF; pengajuan
    **izin** dibatasi maksimal **1 kali per bulan** per pegawai (pengajuan izin yang
-   ditolak atau dibatalkan tidak menghabiskan kuota); tukar
-   shift memindahkan shift (pemohon OFF, pengganti mendapat kode) — pemohon harus
-   bekerja pada tanggal itu dan pengganti bebas; opsional tanggal balasan.
+   ditolak atau dibatalkan tidak menghabiskan kuota); **tukar shift** (disederhanakan
+   2026-11-24): pemohon memilih tanggal dan rekan yang ditukar, lalu Ajukan — **tidak
+   dibatasi** (pemohon boleh libur, rekan boleh sedang bertugas, tanpa tanggal balasan,
+   alasan opsional); TL yang membatasi saat menyetujui. Pengajuan masuk ke akun rekan
+   (konfirmasi; rekan tanpa akun langsung ke TL), lalu disetujui TL. Saat disetujui,
+   **kode jadwal keduanya pada tanggal itu ditukar** sesuai jadwal saat itu (hari
+   kosong = OFF), mis. A Pagi ⇄ B Sore; pengajuan lama yang punya tanggal balasan
+   ditukar juga pada tanggal tersebut.
    Pengajuan operator disetujui **TL Operasi** (serta Project Leader /
    Koordinator Operasi), sedangkan pengajuan staf HAR (Harmes, Harlist,
    ASME / Asmec / Aslist) disetujui **TL Pemeliharaan** (unit TL Ophar oleh
-   TL Ophar; unit containerized tanpa TL oleh Project Leader). Aturan dicek
-   ulang saat persetujuan; pembatalan pengajuan yang disetujui mengembalikan sel.
+   TL Ophar; unit containerized tanpa TL oleh Project Leader). Pembatalan pengajuan
+   yang disetujui mengembalikan sel.
 6. **Lembar Mutasi:** shift pagi 08–16, sore 16–22, malam 22–08 WITA (sebelum
    08:00 = shift malam hari sebelumnya). Lembar baru memuat mesin aktif dan
    membawa tangki, peralatan, dan status dari lembar sebelumnya.
@@ -1505,6 +1534,15 @@ Aturan data:
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
 | 2026-11-23 | **Patrol Check Mesin per jenis mesin / unit (PLTD Poasia `POA-OPR-CHK-01`)**: ditambahkan master **Template Patrol Check** (`Operasi\PatrolCheckTemplateController`, `operasi_patrol_check_templates`, `machines.patrol_check_template_id`) di menu Master Data untuk mengatur format bulanan N/T (`Cummins (Containerized)` tetap utuh) maupun format pemeriksaan per shift `FORM PATROL CHECK MESIN & ALAT BANTU` (`POA-OPR-CHK-01`, 25 item `MESIN`/`ALAT BANTU`, parameter `Getar/Bunyi/Suhu/Tek-Level/Bocor-Visual`, Shift & Operator otomatis dari data jadwal shift/pegawai user, status `N` tanpa input lanjutan vs `TN` yang langsung menampilkan input wajib uraian alasan/tindakan awal & unggah eviden foto, multi-entri per shift di `operasi_patrol_check_entries`, otomatis menyinkronkan poin 12 `#sec-4-12` di Laporan Project Operasi, header berlogo PLN & MKP tanpa form tanda tangan di input karena pengesahan digabung ke Laporan Project, plus tampilan mobile kartu) (§6.1, §8.2) |
+| 2026-11-24 | **Patrol Check terhubung ke serah terima**: temuan abnormal (TN) Patrol Check Mesin pada jam shift otomatis muncul di Lembar Mutasi (Gangguan Mesin), PDF & Excel (§8.1) |
+| 2026-11-24 | **PTW lintas bidang**: PTW Operasi/operator dapat dilihat Pemeliharaan (hanya-baca, desktop & HP) (§8.4) |
+| 2026-11-24 | **Logsheet: TL & Project Leader dapat membuka kunci jam untuk koreksi** (izin baru `operator.logsheet.correct`: TL Operasi, TL Ophar, Project Leader, Super Admin) (§8.1) |
+| 2026-11-24 | **Lembar Mutasi: start/stop mesin ditarik otomatis dari Start Stop Engine** per jam shift (pagi/sore/malam), tampil read-only & ikut PDF/Excel (§8.1) |
+| 2026-11-24 | **FLM dari Operator untuk Pemeliharaan**: lihat temuan Monitoring FLM operator (nama & shift pelapor), **Close** FLM open, pengingat harian untuk FLM open ≥ 3 hari (§8.4) |
+| 2026-11-24 | **Patrol Check Parameter Mesin** dihapus dari Input Pemeliharaan & Laporan Pemeliharaan — sudah tercakup Logsheet Operator (§8.4) |
+| 2026-11-24 | **Lembar Mutasi**: kolom Level tangki bahan bakar menjadi **cm** (angka, tanpa centang ✓) dan kolom Tambah bahan bakar diganti **Tambah pelumas (liter)**; tampilan HP, desktop, formulir kertas, PDF & Excel ikut berubah; nilai tambah bahan bakar lembar lama tetap tersimpan (§8.1) |
+| 2026-11-24 | **Tukar shift disederhanakan**: pilih tanggal & rekan → Ajukan → konfirmasi rekan → disetujui TL; tanpa batasan jadwal (TL yang membatasi), tanpa tanggal balasan, alasan opsional; saat disetujui shift keduanya ditukar (mis. Pagi ⇄ Sore) (§8.1, §10.2) |
+| 2026-11-24 | **Logsheet operator: jam yang sudah lewat terkunci** — setiap jam bisa diisi sampai 60 menit setelah jamnya (WITA), tanggal lampau terkunci; Super Admin tetap bisa mengoreksi (§8.1) |
 | 2026-11-23 | **Persetujuan Pengajuan Absensi (izin, sakit, cuti, tukar shift) per divisi & batas izin bulanan**: pengajuan dari **Operator** disetujui **TL Operasi** (`operator.pengajuan.approve_operasi`, di samping Project Leader & Koordinator Operasi), sedangkan pengajuan dari **role/staf HAR** (Harmes, Harlist, ASME & Elec / Asmec / Aslist) disetujui **TL Pemeliharaan** (`operator.pengajuan.approve_har`); pada unit **TL Ophar** keduanya oleh **TL Ophar**, dan pada unit **containerized** (tanpa TL) oleh **Project Leader**. Pengajuan **izin** dibatasi maksimal **1 kali per bulan** per pegawai (izin yang ditolak/dibatalkan tidak memakan kuota) (§5.2, §8.1, §8.10, §10.2) |
 | 2026-11-22 | **Logsheet PLTD Poasia multi-lembar**: Lokal 02 (setiap jam), **Lokal 03 (setiap 2 jam, baris MIN/MAX/RATA2)** dan **Temperature Cylinder Head (setiap 4 jam)**; operator memilih lembar lewat tab (desktop) atau **pilihan interval lebih dulu di HP**; lembar diatur di Template Form Mesin. PLTD Poasia Containerized tetap (§8.1). **Login HP** disederhanakan: hanya form login (§6.2) |
 | 2026-11-21 | **Logsheet operator per jenis mesin**: menu **Template Form Mesin** (parameter bertingkat Grup → Nama → Sub, Normal/Alarm/Trip, input angka/teks/pilihan, jam pembacaan, item Patrol Check, mesin pemakai). PLTD Poasia memakai form **Mirrlees (Logsheet Lokal02)**, Containerized tetap form Cummins (§8.1) |

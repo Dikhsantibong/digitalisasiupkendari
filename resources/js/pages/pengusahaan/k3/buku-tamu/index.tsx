@@ -407,39 +407,47 @@ export default function PengusahaanBukuTamuPage(props: Props) {
                                 key: 'tanggal',
                                 label: 'Tanggal',
                                 type: 'date',
+                                span: 1,
                                 parse: (v) => isoToDmy(String(v)),
+                            },
+                            {
+                                key: 'jumlah_kehadiran_tamu',
+                                label: 'Total Kehadiran',
+                                type: 'display',
+                                span: 1,
+                                display: (r) => String(r.jumlah_kehadiran_tamu),
                             },
                             {
                                 key: 'tamu_pln',
                                 label: 'Tamu PLN',
                                 type: 'number',
                                 group: 'Rincian Kehadiran',
+                                span: 1,
                             },
                             {
                                 key: 'instansi',
                                 label: 'Instansi',
                                 type: 'number',
+                                span: 1,
                             },
                             {
                                 key: 'kontraktor',
                                 label: 'Kontraktor / Vendor',
                                 type: 'number',
+                                span: 1,
                             },
                             {
                                 key: 'lainnya',
                                 label: 'Lainnya',
                                 type: 'number',
-                            },
-                            {
-                                key: 'jumlah_kehadiran_tamu',
-                                label: 'Total Kehadiran',
-                                type: 'display',
-                                display: (r) => String(r.jumlah_kehadiran_tamu),
+                                span: 1,
                             },
                             {
                                 key: 'keterangan',
                                 label: 'Keterangan',
+                                type: 'textarea',
                                 group: 'Lainnya',
+                                span: 2,
                             },
                         ]}
                         onChange={(idx, key, value) =>
@@ -447,6 +455,19 @@ export default function PengusahaanBukuTamuPage(props: Props) {
                         }
                         onRemove={(idx) => removeItem(items[idx]._key)}
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItem}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Baris Buku Tamu
+                        </Button>
+                    )}
 
                     <K3MobileMetaAccordion
                         noDokumen={noDokumen}
@@ -486,6 +507,7 @@ export default function PengusahaanBukuTamuPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}
@@ -493,14 +515,6 @@ export default function PengusahaanBukuTamuPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addItem}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

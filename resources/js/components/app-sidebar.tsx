@@ -74,6 +74,7 @@ import serviceUnits from '@/routes/admin/service-units';
 import units from '@/routes/admin/units';
 import users from '@/routes/admin/users';
 import approvals from '@/routes/approvals';
+import harFlmOperasi from '@/routes/har/flm-operasi';
 import harFormulir from '@/routes/har/formulir';
 import harInput from '@/routes/har/input';
 import harJadwal from '@/routes/har/jadwal';
@@ -93,6 +94,7 @@ import logistikJadwal from '@/routes/logistik/jadwal';
 import logistikLaporan from '@/routes/logistik/laporan';
 import monitoringRoutes from '@/routes/monitoring';
 import operasiInput from '@/routes/operasi/input';
+import operasiPtw from '@/routes/operasi/input/permit-to-work';
 import operasiJadwal from '@/routes/operasi/jadwal';
 import laporan from '@/routes/operasi/laporan';
 import master from '@/routes/operasi/master';
@@ -422,6 +424,18 @@ export function AppSidebar() {
                         icon: ClipboardCheck,
                     },
                 ...pengusahaanItems('har'),
+                // The operators' FLM findings, closed by Pemeliharaan (user, 2026-11-24).
+                can(['har.input.view', 'har.pengusahaan.view', 'har.laporan.view']) && {
+                    title: 'FLM dari Operator',
+                    href: harFlmOperasi.index(),
+                    icon: Wrench,
+                },
+                // PTW lintas bidang: the Operasi PTW, read-only for Pemeliharaan (user, 2026-11-24).
+                can(['har.input.view', 'har.pengusahaan.view', 'har.laporan.view']) && {
+                    title: 'PTW Operasi',
+                    href: operasiPtw.index(),
+                    icon: ClipboardCheck,
+                },
                 !laporanHub &&
                     can(['har.laporan.view', 'har.pengusahaan.view']) && {
                         title: 'Laporan',

@@ -5,7 +5,10 @@ namespace Tests\Feature\Operator;
 use App\Enums\RoleName;
 use App\Models\Employee;
 use App\Models\Machine;
+use App\Models\OperasiPatrolCheckEntry;
+use App\Models\OperasiPatrolCheckMesin;
 use App\Models\OperatorMutasi;
+use App\Models\OperatorStartStop;
 use App\Models\ServiceUnit;
 use App\Models\Unit;
 use App\Models\User;
@@ -70,7 +73,8 @@ class MutasiTest extends TestCase
             'tanggal' => '2026-09-09',
             'shift' => 'sore',
             'mesin' => [
-                ['machine_id' => null, 'nama' => 'CUMMINS #6', 'level_bbm' => '✓', 'tambah_bbm' => '1200', 'pelumas' => 'normal', 'status' => 'operasi'],
+                // Level tangki BBM in cm, tambah pelumas in liters (user, 2026-11-24); tambah_bbm is the legacy column, kept as sent.
+                ['machine_id' => null, 'nama' => 'CUMMINS #6', 'level_bbm' => '85.5', 'tambah_pelumas' => '12', 'tambah_bbm' => '1200', 'pelumas' => 'normal', 'status' => 'operasi'],
                 ['machine_id' => null, 'nama' => 'CUMMINS #7', 'level_bbm' => '', 'tambah_bbm' => null, 'pelumas' => 'rendah', 'status' => 'standby'],
             ],
             'tangki' => [['nama' => '1', 'level_cm' => '120'], ['nama' => '', 'level_cm' => '']],
@@ -111,6 +115,68 @@ class MutasiTest extends TestCase
                 ->where('can_receive', false));
     }
 
+    public function test_the_start_stop_of_the_shift_comes_from_start_stop_engine(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $machine = Machine::factory()->create(['unit_id' => $unit->id, 'is_active' => true, 'name' => 'Cummins #6']);
+        $record = fn (string $date, ?string $start, ?string $stop, string $cause = 'normal', ?string $note = null) => OperatorStartStop::query()->create([
+            'unit_id' => $unit->id, 'engine_id' => $machine->id, 'tanggal' => $date, 'start_time' => $start, 'stop_time' => $stop, 'penyebab_stop' => $cause, 'keterangan' => $note,
+        ]);
+        $record('2026-09-09', '17:10', '21:30', 'gangguan', 'Overheat');   // sore
+        $record('2026-09-09', '09:00', '12:00');                            // pagi
+        $record('2026-09-09', '23:15', '02:40');                            // malam, stops after midnight
+        $record('2026-09-08', '23:00', '01:00');                            // yesterday's malam
+
+        $events = fn (string $shift) => $this->actingAs($this->leader($unit))
+            ->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => $shift]))
+            ->viewData('page')['props']['start_stop'];
+
+        $this->assertSame(['17:10 Start Cummins #6', '21:30 Stop Cummins #6 — Gangguan: Overheat'], array_map(fn (array $e): string => $e['jam'].' '.$e['uraian'], $events('sore')));
+        $this->assertSame(['09:00', '12:00'], array_column($events('pagi'), 'jam'));
+        $this->assertSame(['23:15', '02:40'], array_column($events('malam'), 'jam'));
+
+        // The saved sheet's PDF prints them.
+        $this->actingAs($this->leader($unit))->post(route('operator.mutasi.store'), $this->payload($unit))->assertSessionHasNoErrors();
+        $this->actingAs($this->leader($unit))->get(route('operator.mutasi.pdf', OperatorMutasi::query()->sole()))
+            ->assertOk()->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_abnormal_patrol_check_findings_of_the_shift_are_handed_over(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $patrol = OperasiPatrolCheckMesin::query()->create(['unit_id' => $unit->id, 'nama_mesin' => 'MIRRLEES #1', 'year' => 2026, 'month' => 9]);
+        $entry = fn (string $date, string $jam, array $items) => OperasiPatrolCheckEntry::query()->create([
+            'patrol_check_mesin_id' => $patrol->id, 'tanggal' => $date, 'shift' => 'Shift B', 'jam' => $jam, 'operator_name' => 'Budi', 'items' => $items,
+        ]);
+        $tn = ['system' => 'FUEL SYSTEM', 'peralatan' => 'Fuel Line Pipe', 'status' => 'TN', 'catatan' => 'Rembes di sambungan'];
+        $entry('2026-09-09', '17:30', [$tn, ['system' => 'FUEL SYSTEM', 'peralatan' => 'Fuel Daily Tank', 'status' => 'N', 'catatan' => '']]);
+        $entry('2026-09-09', '09:00', [$tn]);               // pagi
+        $entry('2026-09-10', '03:00', [$tn]);               // malam of the 9th
+
+        $findings = fn (string $shift) => $this->actingAs($this->leader($unit))
+            ->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => $shift]))
+            ->viewData('page')['props']['patrol_findings'];
+
+        $sore = $findings('sore');
+        $this->assertCount(1, $sore);
+        $this->assertSame(['17:30', 'MIRRLEES #1', 'Fuel Line Pipe', 'Rembes di sambungan', 'Budi'], [$sore[0]['jam'], $sore[0]['mesin'], $sore[0]['peralatan'], $sore[0]['catatan'], $sore[0]['operator']]);
+        $this->assertCount(1, $findings('pagi'));
+        $this->assertSame(['03:00'], array_column($findings('malam'), 'jam'));
+    }
+
+    public function test_the_fuel_level_and_the_oil_top_up_are_numbers(): void
+    {
+        $unit = Unit::factory()->create(['is_active' => true]);
+        $mesin = fn (array $row): array => ['mesin' => [['machine_id' => null, 'nama' => 'CUMMINS #6', 'pelumas' => 'normal', 'status' => 'operasi', ...$row]]];
+
+        // The ✓ mark is gone: only numbers (cm / liter).
+        $this->actingAs($this->leader($unit))->post(route('operator.mutasi.store'), $this->payload($unit, $mesin(['level_bbm' => '✓'])))
+            ->assertSessionHasErrors('mesin.0.level_bbm');
+        $this->actingAs($this->leader($unit))->post(route('operator.mutasi.store'), $this->payload($unit, $mesin(['tambah_pelumas' => 'dua liter'])))
+            ->assertSessionHasErrors('mesin.0.tambah_pelumas');
+        $this->assertSame(0, OperatorMutasi::query()->count());
+    }
+
     public function test_the_operator_saves_a_draft_and_empty_rows_are_dropped(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
@@ -126,6 +192,7 @@ class MutasiTest extends TestCase
         $this->assertCount(1, $mutasi->peralatan);
         $this->assertCount(1, $mutasi->kejadian);
         $this->assertNull($mutasi->mesin[1]['level_bbm']);
+        $this->assertSame(['85.5', '12', '1200'], [$mutasi->mesin[0]['level_bbm'], $mutasi->mesin[0]['tambah_pelumas'], $mutasi->mesin[0]['tambah_bbm']]);
         $this->assertNull($mutasi->diserahkan_at);
 
         // Saving again updates the same sheet.

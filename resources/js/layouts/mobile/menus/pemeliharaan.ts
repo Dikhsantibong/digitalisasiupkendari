@@ -24,6 +24,7 @@ import {
     Zap,
 } from 'lucide-react';
 import type { MobileMenu } from '@/layouts/mobile/types';
+import flmOperasi from '@/routes/har/flm-operasi';
 import dailyMeeting from '@/routes/har/formulir/daily-meeting';
 import formulirLaporanGangguan from '@/routes/har/formulir/laporan-gangguan';
 import logbookMutasi from '@/routes/har/formulir/logbook-mutasi';
@@ -33,7 +34,6 @@ import attachment from '@/routes/har/input/attachment';
 import rekapGangguan from '@/routes/har/input/laporan-gangguan';
 import harLembar from '@/routes/har/input/lembar';
 import materialPeralatan from '@/routes/har/input/material-peralatan';
-import patrolCheckParameter from '@/routes/har/input/patrol-check-parameter';
 import program5s5r from '@/routes/har/input/program-5s5r';
 import serviceRequest from '@/routes/har/input/service-request';
 import workOrder from '@/routes/har/input/work-order';
@@ -51,6 +51,7 @@ import prelubeTest from '@/routes/har/pengusahaan/prelube-test';
 import rencanaRealisasi from '@/routes/har/pengusahaan/rencana-realisasi';
 import timingInjectionPump from '@/routes/har/pengusahaan/timing-injection-pump';
 import vibration from '@/routes/har/pengusahaan/vibration';
+import operasiPtw from '@/routes/operasi/input/permit-to-work';
 
 type Entry = [
     key: string,
@@ -144,16 +145,7 @@ const INPUT: Entry[] = [
         harLembar.index('patrol-check-pemeliharaan').url,
         'har/input/patrol-check-pemeliharaan/index',
     ],
-    [
-        'patrol_check_parameter',
-        'Patrol Check Parameter Mesin',
-        'Parameter',
-        'Pembacaan harian engine, generator, trafo & baterai',
-        Gauge,
-        'bg-orange-500/10 text-orange-600 dark:text-orange-400',
-        patrolCheckParameter.index().url,
-        'har/input/patrol-check-parameter/index',
-    ],
+    // Patrol Check Parameter Mesin removed (user, 2026-11-24): in the Logsheet Operator.
     [
         'material_peralatan',
         'Material & Peralatan',
@@ -374,4 +366,29 @@ export const PEMELIHARAAN_MENUS: MobileMenu[] = [
     ...toMenus(FORMULIR, 'har-formulir'),
     ...toMenus(INPUT_PENGUSAHAAN, 'har-input', 'har.pengusahaan.view'),
     ...toMenus(FORMULIR_PENGUSAHAAN, 'har-formulir', 'har.pengusahaan.view'),
+    // Cross-division (user, 2026-11-24): the operators' FLM findings to close, and the Operasi PTW (read-only).
+    {
+        key: 'har-flm-operasi',
+        group: 'har-input',
+        title: 'FLM dari Operator',
+        short: 'FLM Operator',
+        description: 'Temuan FLM operator — close yang masih open',
+        icon: Wrench,
+        tone: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
+        href: flmOperasi.index().url,
+        component: 'har/flm-operasi/index',
+        permission: ['har.input.view', 'har.pengusahaan.view', 'har.laporan.view'],
+    },
+    {
+        key: 'har-ptw-operasi',
+        group: 'har-input',
+        title: 'Permit to Work (Operasi)',
+        short: 'PTW Operasi',
+        description: 'PTW yang diinput operator / operasi',
+        icon: ClipboardCheck,
+        tone: 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
+        href: operasiPtw.index().url,
+        component: 'operasi/input/permit-to-work/index',
+        permission: ['har.input.view', 'har.pengusahaan.view', 'har.laporan.view'],
+    },
 ];

@@ -313,17 +313,20 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                             key: 'nama_alat',
                                             label: 'Nama Alat Pelindung Diri',
                                             placeholder: 'Mis. Safety Helmet',
+                                            span: 2,
                                         },
                                         {
                                             key: 'jumlah',
                                             label: 'Jumlah',
                                             type: 'number',
+                                            span: 1,
                                             parse: (v) =>
                                                 v === '' ? '' : Number(v),
                                         },
                                         {
                                             key: 'lokasi',
                                             label: 'Lokasi Penempatan',
+                                            span: 1,
                                         },
                                         {
                                             key: 'keterangan',
@@ -335,6 +338,7 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                                 'Layak',
                                                 'Rusak',
                                             ],
+                                            span: 2,
                                         },
                                     ]}
                                     onChange={(idx, key, value) =>
@@ -354,7 +358,7 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => addItem(grp.kat)}
-                                        className="w-full gap-1.5"
+                                        className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
                                     >
                                         <Plus className="size-4" />
                                         Tambah —{' '}
@@ -405,7 +409,7 @@ export default function PengusahaanInventarisApdPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
-                            {dirty && (
+                            {dirty ? (
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -416,6 +420,8 @@ export default function PengusahaanInventarisApdPage(props: Props) {
                                     <RotateCcw className="size-4" />
                                     Reset
                                 </Button>
+                            ) : (
+                                <div aria-hidden="true" />
                             )}
                             <Button
                                 onClick={() => handleSubmit()}

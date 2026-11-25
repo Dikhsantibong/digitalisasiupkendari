@@ -170,6 +170,15 @@ export default function ApdInventoryInput({
 
     const totalCols = can_write ? 8 : 7;
 
+    const mobileFields: RowField<Row>[] = [
+        { key: 'nama', label: 'Alat Pelindung Diri', span: 2 },
+        { key: 'jumlah', label: 'Jumlah', type: 'number', span: 1 },
+        { key: 'satuan', label: 'Satuan', span: 1 },
+        { key: 'lokasi', label: 'Lokasi', span: 1 },
+        { key: 'keterangan', label: 'Keterangan', span: 1 },
+        { key: 'foto', label: 'Foto (URL)', placeholder: 'https://…', span: 2 },
+    ];
+
     if (compact) {
         return (
             <>
@@ -204,36 +213,7 @@ export default function ApdInventoryInput({
                                     </p>
                                     <MobileRowEditor<Row>
                                         rows={items}
-                                        fields={
-                                            [
-                                                {
-                                                    key: 'nama',
-                                                    label: 'Alat Pelindung Diri',
-                                                },
-                                                {
-                                                    key: 'jumlah',
-                                                    label: 'Jumlah',
-                                                    type: 'number',
-                                                },
-                                                {
-                                                    key: 'satuan',
-                                                    label: 'Satuan',
-                                                },
-                                                {
-                                                    key: 'lokasi',
-                                                    label: 'Lokasi',
-                                                },
-                                                {
-                                                    key: 'keterangan',
-                                                    label: 'Keterangan',
-                                                },
-                                                {
-                                                    key: 'foto',
-                                                    label: 'Foto (URL)',
-                                                    placeholder: 'https://…',
-                                                },
-                                            ] satisfies RowField<Row>[]
-                                        }
+                                        fields={mobileFields}
                                         title={(r) => r.nama || 'Item baru'}
                                         subtitle={(r) =>
                                             `${r.jumlah} ${r.satuan || ''}${r.subkategori ? ` · ${r.subkategori}` : ''}`
@@ -382,36 +362,7 @@ export default function ApdInventoryInput({
                                     </p>
                                     <MobileRowEditor<Row>
                                         rows={items}
-                                        fields={
-                                            [
-                                                {
-                                                    key: 'nama',
-                                                    label: 'Alat Pelindung Diri',
-                                                },
-                                                {
-                                                    key: 'jumlah',
-                                                    label: 'Jumlah',
-                                                    type: 'number',
-                                                },
-                                                {
-                                                    key: 'satuan',
-                                                    label: 'Satuan',
-                                                },
-                                                {
-                                                    key: 'lokasi',
-                                                    label: 'Lokasi',
-                                                },
-                                                {
-                                                    key: 'keterangan',
-                                                    label: 'Keterangan',
-                                                },
-                                                {
-                                                    key: 'foto',
-                                                    label: 'Foto (URL)',
-                                                    placeholder: 'https://…',
-                                                },
-                                            ] satisfies RowField<Row>[]
-                                        }
+                                        fields={mobileFields}
                                         title={(r) => r.nama || 'Item baru'}
                                         subtitle={(r) =>
                                             `${r.jumlah} ${r.satuan || ''}${r.subkategori ? ` · ${r.subkategori}` : ''}`

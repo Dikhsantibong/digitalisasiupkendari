@@ -97,6 +97,8 @@ enum PermissionName: string
     // Operasi may later pull these figures, but the capabilities are their own.
     case OperatorLogsheetView = 'operator.logsheet.view';
     case OperatorLogsheetWrite = 'operator.logsheet.write';
+    // Open a locked (past) logsheet hour to correct it — TL & Project Leader (user, 2026-11-24).
+    case OperatorLogsheetCorrect = 'operator.logsheet.correct';
     case OperatorAbsensiView = 'operator.absensi.view';
     case OperatorAbsensiWrite = 'operator.absensi.write';
     case OperatorPresensi = 'operator.presensi';
@@ -285,6 +287,7 @@ enum PermissionName: string
 
             self::OperatorLogsheetView,
             self::OperatorLogsheetWrite,
+            self::OperatorLogsheetCorrect,
             self::OperatorAbsensiView,
             self::OperatorAbsensiWrite,
             self::OperatorPresensi,
@@ -466,6 +469,7 @@ enum PermissionName: string
             self::OperasiLapanganChecklistCommissioning => 'Input lapangan: Checklist Commissioning Test Mesin',
             self::OperasiLapanganProgram5s5r => 'Input lapangan: Program 5S 5R Pengoperasian KIT',
             self::OperatorLogsheetView => 'Melihat logsheet operator',
+            self::OperatorLogsheetCorrect => 'Mengoreksi logsheet operator yang sudah terkunci',
             self::OperatorLogsheetWrite => 'Mengisi logsheet operator',
             self::OperatorAbsensiView => 'Melihat jadwal & absensi shift',
             self::OperatorAbsensiWrite => 'Menjadwalkan & mengisi absensi shift',

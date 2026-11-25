@@ -380,11 +380,13 @@ export default function PengusahaanApatPage({
             key: 'nama_alat',
             label: 'Nama Alat',
             placeholder: 'Mis. Karung Goni',
+            span: 2,
         },
         {
             key: 'tanggal_inspeksi',
             label: 'Tanggal Inspeksi',
             type: 'date',
+            span: 1,
             parse: (v) => isoToDmy(String(v)),
         },
         {
@@ -392,10 +394,16 @@ export default function PengusahaanApatPage({
             label: 'Kondisi',
             type: 'dropdown',
             options: O.kondisi,
+            span: 1,
             parse: (v) => String(v) || 'Baik',
         },
-        { key: 'jumlah', label: 'Jumlah', type: 'number' },
-        { key: 'keterangan', label: 'Keterangan', placeholder: 'Keterangan' },
+        { key: 'jumlah', label: 'Jumlah', type: 'number', span: 1 },
+        {
+            key: 'keterangan',
+            label: 'Keterangan',
+            placeholder: 'Keterangan',
+            span: 1,
+        },
     ];
 
     const mobile = (

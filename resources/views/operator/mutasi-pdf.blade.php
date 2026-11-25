@@ -5,7 +5,8 @@
     $operasi = collect($mesin)->where('status', 'operasi')->values();
     $standby = collect($mesin)->where('status', 'standby')->values();
     $statusRows = max(3, $operasi->count(), $standby->count());
-    $kejadian = $mutasi->kejadian ?? [];
+    // Start / stop from Start Stop Engine first, then what the regu wrote (user, 2026-11-24).
+    $kejadian = [...array_map(fn (array $e): array => ['jam' => $e['jam'], 'uraian' => $e['uraian']], $startStop ?? []), ...($mutasi->kejadian ?? [])];
     $kejadianRows = max(18, count($kejadian));
     $peralatan = $mutasi->peralatan ?? [];
     $peralatanRows = max(6, count($peralatan));
@@ -50,8 +51,8 @@
         <thead>
             <tr>
                 <th rowspan="2" style="width: 17%;">MESIN</th>
-                <th rowspan="2" style="width: 13%;">Level tangki bahan bakar (Liter)</th>
-                <th rowspan="2" style="width: 13%;">Tambah bahan bakar (Liter)</th>
+                <th rowspan="2" style="width: 13%;">Level tangki bahan bakar (cm)</th>
+                <th rowspan="2" style="width: 13%;">Tambah pelumas (Liter)</th>
                 <th colspan="3">Level pelumas Mesin/RA (&#10003;)</th>
                 <th rowspan="2">Catatan</th>
             </tr>
@@ -66,7 +67,7 @@
                 <tr class="row">
                     <td>{{ $m['nama'] }}</td>
                     <td class="c">{!! $cell($m['level_bbm'] ?? null) !!}</td>
-                    <td class="c">{!! $cell($m['tambah_bbm'] ?? null) !!}</td>
+                    <td class="c">{!! $cell($m['tambah_pelumas'] ?? null) !!}</td>
                     @foreach(['normal', 'rendah', 'tinggi'] as $level)
                         <td class="c">{!! ($m['pelumas'] ?? null) === $level ? $check : '' !!}</td>
                     @endforeach
@@ -139,7 +140,12 @@
             @for($i = 0; $i < $statusRows; $i++)
                 <tr class="row">
                     @if($i === 0)
-                        <td rowspan="{{ $statusRows }}" style="vertical-align: top;">{!! nl2br(e($mutasi->gangguan_mesin ?? '')) !!}</td>
+                        <td rowspan="{{ $statusRows }}" style="vertical-align: top;">
+                            @foreach($patrolFindings ?? [] as $f)
+                                <div>&#9888; {{ $f['jam'] }} {{ $f['mesin'] }} — {{ $f['peralatan'] }}: {{ $f['catatan'] }} <i>(Patrol Check, {{ $f['operator'] }})</i></div>
+                            @endforeach
+                            {!! nl2br(e($mutasi->gangguan_mesin ?? '')) !!}
+                        </td>
                     @endif
                     <td>{{ $i + 1 }}. {{ $operasi[$i]['nama'] ?? '' }}</td>
                     <td>{{ $i + 1 }}. {{ $standby[$i]['nama'] ?? '' }}</td>

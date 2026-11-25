@@ -525,6 +525,19 @@ export default function K3KondisiK3Page({
                         />
                     )}
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Temuan K3
+                        </Button>
+                    )}
+
                     <div className="flex flex-col gap-1.5">
                         <span className="text-[13px] font-semibold text-foreground">
                             Catatan Evaluasi K3
@@ -544,6 +557,7 @@ export default function K3KondisiK3Page({
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={save}
                                 disabled={saving || !dirty}
@@ -551,14 +565,6 @@ export default function K3KondisiK3Page({
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addRow}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

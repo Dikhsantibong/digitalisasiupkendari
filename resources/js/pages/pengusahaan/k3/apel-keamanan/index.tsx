@@ -418,18 +418,21 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 label: 'Tim / Regu',
                                 type: 'dropdown',
                                 options: ['A', 'B', 'C', 'D', '-'],
+                                span: 1,
                             },
                             {
                                 key: 'shift',
                                 label: 'Shift',
                                 type: 'dropdown',
                                 options: ['Pagi', 'Siang', 'Sore', 'Malam'],
+                                span: 1,
                             },
-                            { key: 'waktu_apel', label: 'Waktu Apel' },
+                            { key: 'waktu_apel', label: 'Waktu Apel', span: 1 },
                             {
                                 key: 'jumlah_personil',
                                 label: 'Jumlah Personil',
                                 type: 'number',
+                                span: 1,
                                 parse: (v) => (v === '' ? 0 : Number(v)),
                             },
                             {
@@ -437,12 +440,19 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                 label: 'Kelengkapan Atribut',
                                 type: 'dropdown',
                                 options: ['Lengkap', 'Tidak Lengkap'],
+                                span: 1,
                             },
                             {
                                 key: 'paraf_komandan_regu',
                                 label: 'Paraf Komandan Regu',
+                                span: 1,
                             },
-                            { key: 'keterangan', label: 'Keterangan' },
+                            {
+                                key: 'keterangan',
+                                label: 'Keterangan',
+                                type: 'textarea',
+                                span: 2,
+                            },
                         ]}
                         onChange={(idx, key, value) => {
                             const val =
@@ -491,7 +501,7 @@ export default function PengusahaanApelKeamananPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
-                            {dirty && (
+                            {dirty ? (
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -502,6 +512,8 @@ export default function PengusahaanApelKeamananPage(props: Props) {
                                     <RotateCcw className="size-4" />
                                     Reset
                                 </Button>
+                            ) : (
+                                <div aria-hidden="true" />
                             )}
                             <Button
                                 onClick={() => handleSubmit()}

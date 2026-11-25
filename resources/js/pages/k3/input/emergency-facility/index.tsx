@@ -169,6 +169,39 @@ export default function EmergencyFacilityInput({
 
     const totalCols = can_write ? 9 : 8;
 
+    const mobileFields: RowField<Row>[] = [
+        { key: 'nama_peralatan', label: 'Nama Peralatan', span: 2 },
+        {
+            key: 'jml_total',
+            label: 'Jumlah Total',
+            type: 'number',
+            group: 'Kesiapan',
+            span: 1,
+        },
+        { key: 'jml_ready', label: 'Jumlah Ready', type: 'number', span: 1 },
+        {
+            key: 'jml_not_ready',
+            label: 'Not Ready · % Kesiapan',
+            type: 'display',
+            span: 2,
+            display: (r) =>
+                `${Math.max(0, r.jml_total - r.jml_ready)} · ${r.jml_total > 0 ? `${Math.round((r.jml_ready / r.jml_total) * 100)}%` : '-'}`,
+        },
+        {
+            key: 'lokasi',
+            label: 'Lokasi Penempatan',
+            group: 'Keterangan',
+            span: 2,
+        },
+        { key: 'kendala', label: 'Kendala', type: 'textarea', span: 2 },
+        {
+            key: 'tindak_lanjut',
+            label: 'Tindak Lanjut',
+            type: 'textarea',
+            span: 2,
+        },
+    ];
+
     if (compact) {
         return (
             <>
@@ -203,45 +236,7 @@ export default function EmergencyFacilityInput({
                                     </p>
                                     <MobileRowEditor<Row>
                                         rows={items}
-                                        fields={
-                                            [
-                                                {
-                                                    key: 'nama_peralatan',
-                                                    label: 'Nama Peralatan',
-                                                },
-                                                {
-                                                    key: 'jml_total',
-                                                    label: 'Jumlah Total',
-                                                    type: 'number',
-                                                    group: 'Kesiapan',
-                                                },
-                                                {
-                                                    key: 'jml_ready',
-                                                    label: 'Jumlah Ready',
-                                                    type: 'number',
-                                                },
-                                                {
-                                                    key: 'jml_not_ready',
-                                                    label: 'Not Ready · % Kesiapan',
-                                                    type: 'display',
-                                                    display: (r) =>
-                                                        `${Math.max(0, r.jml_total - r.jml_ready)} · ${r.jml_total > 0 ? `${Math.round((r.jml_ready / r.jml_total) * 100)}%` : '-'}`,
-                                                },
-                                                {
-                                                    key: 'lokasi',
-                                                    label: 'Lokasi Penempatan',
-                                                    group: 'Keterangan',
-                                                },
-                                                {
-                                                    key: 'kendala',
-                                                    label: 'Kendala',
-                                                },
-                                                {
-                                                    key: 'tindak_lanjut',
-                                                    label: 'Tindak Lanjut',
-                                                },
-                                            ] satisfies RowField<Row>[]
-                                        }
+                                        fields={mobileFields}
                                         title={(r) =>
                                             r.nama_peralatan || 'Peralatan baru'
                                         }
@@ -397,45 +392,7 @@ export default function EmergencyFacilityInput({
                                     </p>
                                     <MobileRowEditor<Row>
                                         rows={items}
-                                        fields={
-                                            [
-                                                {
-                                                    key: 'nama_peralatan',
-                                                    label: 'Nama Peralatan',
-                                                },
-                                                {
-                                                    key: 'jml_total',
-                                                    label: 'Jumlah Total',
-                                                    type: 'number',
-                                                    group: 'Kesiapan',
-                                                },
-                                                {
-                                                    key: 'jml_ready',
-                                                    label: 'Jumlah Ready',
-                                                    type: 'number',
-                                                },
-                                                {
-                                                    key: 'jml_not_ready',
-                                                    label: 'Not Ready · % Kesiapan',
-                                                    type: 'display',
-                                                    display: (r) =>
-                                                        `${Math.max(0, r.jml_total - r.jml_ready)} · ${r.jml_total > 0 ? `${Math.round((r.jml_ready / r.jml_total) * 100)}%` : '-'}`,
-                                                },
-                                                {
-                                                    key: 'lokasi',
-                                                    label: 'Lokasi Penempatan',
-                                                    group: 'Keterangan',
-                                                },
-                                                {
-                                                    key: 'kendala',
-                                                    label: 'Kendala',
-                                                },
-                                                {
-                                                    key: 'tindak_lanjut',
-                                                    label: 'Tindak Lanjut',
-                                                },
-                                            ] satisfies RowField<Row>[]
-                                        }
+                                        fields={mobileFields}
                                         title={(r) =>
                                             r.nama_peralatan || 'Peralatan baru'
                                         }

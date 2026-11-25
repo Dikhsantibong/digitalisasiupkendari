@@ -121,6 +121,20 @@ export default function RambuInput({
 
     const cols = can_write ? 6 : 5;
 
+    const mobileFields: RowField<Row>[] = [
+        { key: 'rambu', label: 'Rambu-Rambu K3', span: 2 },
+        { key: 'lokasi', label: 'Lokasi', span: 1 },
+        {
+            key: 'kondisi',
+            label: 'Kondisi',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            placeholder: 'Pilih Kondisi',
+            span: 1,
+        },
+        { key: 'keterangan', label: 'Keterangan', type: 'textarea', span: 2 },
+    ];
+
     if (compact) {
         return (
             <>
@@ -146,20 +160,7 @@ export default function RambuInput({
 
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                { key: 'rambu', label: 'Rambu-Rambu K3' },
-                                { key: 'lokasi', label: 'Lokasi' },
-                                {
-                                    key: 'kondisi',
-                                    label: 'Kondisi',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                    placeholder: 'Pilih Kondisi',
-                                },
-                                { key: 'keterangan', label: 'Keterangan' },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.rambu || 'Rambu belum diisi'}
                         subtitle={(r) =>
                             `${r.lokasi || '-'} · ${r.kondisi || '-'}`
@@ -169,6 +170,19 @@ export default function RambuInput({
                         canWrite={can_write}
                         removeLabel="Hapus rambu"
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Rambu
+                        </Button>
+                    )}
 
                     <StickyActionBar>
                         <K3MobilePdfButton
@@ -180,24 +194,14 @@ export default function RambuInput({
                             }}
                         />
                         {can_write && (
-                            <>
-                                <Button
-                                    onClick={save}
-                                    disabled={saving || !dirty}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={addRow}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>
@@ -283,14 +287,7 @@ export default function RambuInput({
                 {compact ? (
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                { key: 'rambu', label: 'Rambu-Rambu K3' },
-                                { key: 'lokasi', label: 'Lokasi' },
-                                { key: 'kondisi', label: 'Kondisi' },
-                                { key: 'keterangan', label: 'Keterangan' },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.rambu || 'Rambu belum diisi'}
                         subtitle={(r) =>
                             `${r.lokasi || '-'} · ${r.kondisi || '-'}`

@@ -12,6 +12,7 @@ import {
     Lock,
     NotebookPen,
     Plus,
+    Power,
     Save,
     Send,
     Trash2,
@@ -39,14 +40,24 @@ import type { IdName } from '@/types';
 type Mesin = {
     machine_id: number | null;
     nama: string;
+    /** Level tangki bahan bakar, cm (user, 2026-11-24: a number, no ✓). */
     level_bbm: string | null;
+    /** The former "tambah bahan bakar" of older sheets — kept, no longer entered. */
     tambah_bbm: string | null;
+    /** Tambah pelumas, liter. */
+    tambah_pelumas?: string | null;
     pelumas: string | null;
     status: string | null;
 };
+
+/** A stored level from before (e.g. "✓") is not a number: it starts blank. */
+const numberOrNull = (value: string | null | undefined) =>
+    value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value)) ? value : null;
 type Tangki = { nama: string | null; level_cm: string | null };
 type Alat = { nama: string | null; ada: boolean; jumlah: number | null };
 type Kejadian = { jam: string | null; uraian: string };
+type StartStopEvent = { jam: string; uraian: string; mesin: string; jenis: 'start' | 'stop' };
+type PatrolFinding = { jam: string; mesin: string; peralatan: string; system: string; catatan: string; operator: string };
 type Status = 'baru' | 'draft' | 'diserahkan' | 'diterima';
 
 type Mutasi = {
@@ -82,6 +93,10 @@ type Props = {
         status_mesin: string[];
     };
     mutasi: Mutasi;
+    /** Start / stop of the machines in this shift, from Start Stop Engine (read-only). */
+    start_stop?: StartStopEvent[];
+    /** Abnormal (TN) Patrol Check Mesin findings of this shift (read-only, handed over). */
+    patrol_findings?: PatrolFinding[];
     riwayat: {
         id: number;
         tanggal: string;
@@ -213,9 +228,13 @@ function MutasiForm({
     can_write,
     can_receive,
     leader_only = false,
+    start_stop = [],
+    patrol_findings = [],
 }: Props) {
     const compact = useCompactLayout();
-    const [mesin, setMesin] = useState<Mesin[]>(mutasi.mesin);
+    const [mesin, setMesin] = useState<Mesin[]>(() =>
+        mutasi.mesin.map((m) => ({ ...m, level_bbm: numberOrNull(m.level_bbm), tambah_pelumas: numberOrNull(m.tambah_pelumas) })),
+    );
     const [tangki, setTangki] = useState<Tangki[]>(
         mutasi.tangki.length ? mutasi.tangki : [{ nama: '1', level_cm: null }],
     );
@@ -328,6 +347,8 @@ function MutasiForm({
                     tangki: mutasi.tangki,
                     peralatan: mutasi.peralatan,
                     kejadian: mutasi.kejadian,
+                    start_stop: start_stop,
+                    patrol_findings: patrol_findings,
                     gangguan_mesin: mutasi.gangguan_mesin,
                     catatan: mutasi.catatan,
                     regu_penyerah: mutasi.regu_penyerah,
@@ -507,7 +528,7 @@ function MutasiForm({
                 <Section
                     icon={<Fuel className="size-4" />}
                     title="Mesin"
-                    hint="Level tangki & tambah bahan bakar (liter, atau ✓ bila sudah dicek), level pelumas mesin/RA dan status mesin."
+                    hint="Level tangki bahan bakar (cm), tambah pelumas (liter), level pelumas mesin/RA dan status mesin."
                 >
                     {mesin.length === 0 && (
                         <p className="text-sm text-muted-foreground">
@@ -526,7 +547,8 @@ function MutasiForm({
                                     </p>
                                     <div className="grid grid-cols-2 gap-2">
                                         <FuelInput
-                                            label="Level tangki BBM"
+                                            label="Level tangki BBM (cm)"
+                                            unit="cm"
                                             value={m.level_bbm}
                                             onChange={(v) =>
                                                 setMesinField(i, {
@@ -536,11 +558,12 @@ function MutasiForm({
                                             disabled={locked}
                                         />
                                         <FuelInput
-                                            label="Tambah BBM"
-                                            value={m.tambah_bbm}
+                                            label="Tambah pelumas (L)"
+                                            unit="Liter"
+                                            value={m.tambah_pelumas ?? null}
                                             onChange={(v) =>
                                                 setMesinField(i, {
-                                                    tambah_bbm: v,
+                                                    tambah_pelumas: v,
                                                 })
                                             }
                                             disabled={locked}
@@ -594,10 +617,10 @@ function MutasiForm({
                                                 Mesin
                                             </th>
                                             <th className="w-40 border border-border p-2">
-                                                Level tangki BBM (L)
+                                                Level tangki BBM (cm)
                                             </th>
                                             <th className="w-40 border border-border p-2">
-                                                Tambah BBM (L)
+                                                Tambah pelumas (L)
                                             </th>
                                             <th className="border border-border p-2">
                                                 Level pelumas mesin/RA
@@ -615,6 +638,7 @@ function MutasiForm({
                                                 </td>
                                                 <td className="border border-border p-1.5">
                                                     <FuelInput
+                                                        unit="cm"
                                                         value={m.level_bbm}
                                                         onChange={(v) =>
                                                             setMesinField(i, {
@@ -626,10 +650,11 @@ function MutasiForm({
                                                 </td>
                                                 <td className="border border-border p-1.5">
                                                     <FuelInput
-                                                        value={m.tambah_bbm}
+                                                        unit="Liter"
+                                                        value={m.tambah_pelumas ?? null}
                                                         onChange={(v) =>
                                                             setMesinField(i, {
-                                                                tambah_bbm: v,
+                                                                tambah_pelumas: v,
                                                             })
                                                         }
                                                         disabled={locked}
@@ -885,8 +910,9 @@ function MutasiForm({
                 <Section
                     icon={<Clock className="size-4" />}
                     title="Gangguan Feeder / Start-Stop Mesin"
-                    hint="Catat kejadian selama shift berikut jamnya (terima tugas, start/stop mesin, pompa, dll)."
+                    hint="Start/stop mesin diambil otomatis dari menu Start Stop Engine. Catat kejadian lain selama shift berikut jamnya (terima tugas, gangguan feeder, pompa, dll)."
                 >
+                    <StartStopList events={start_stop} />
                     {kejadian.length === 0 && (
                         <p className="text-sm text-muted-foreground">
                             Belum ada kejadian dicatat.
@@ -978,8 +1004,9 @@ function MutasiForm({
                     <Section
                         icon={<AlertTriangle className="size-4" />}
                         title="Gangguan Mesin"
-                        hint="Mesin operasi / standby diambil dari status mesin di atas."
+                        hint="Temuan abnormal (TN) Patrol Check Mesin pada shift ini ikut diserahterimakan otomatis. Mesin operasi / standby diambil dari status mesin di atas."
                     >
+                        <PatrolFindingList findings={patrol_findings} />
                         <Textarea
                             value={gangguan}
                             onChange={(e) => {
@@ -1045,8 +1072,8 @@ function MutasiForm({
                                     <thead>
                                         <tr>
                                             <th rowSpan={2} className={cn(paperTh, 'w-44')}>MESIN</th>
-                                            <th rowSpan={2} className={paperTh}>Level tangki bahan bakar (Liter)</th>
-                                            <th rowSpan={2} className={paperTh}>Tambah bahan bakar (Liter)</th>
+                                            <th rowSpan={2} className={paperTh}>Level tangki bahan bakar (cm)</th>
+                                            <th rowSpan={2} className={paperTh}>Tambah pelumas (Liter)</th>
                                             <th colSpan={options.pelumas.length} className={paperTh}>Level pelumas Mesin/RA (✓)</th>
                                         </tr>
                                         <tr>
@@ -1065,10 +1092,10 @@ function MutasiForm({
                                             <tr key={`${m.machine_id}-${i}`}>
                                                 <td className={cn(paperTd, 'px-2 font-semibold uppercase')}>{m.nama}</td>
                                                 <td className={paperTd}>
-                                                    <PaperFuel value={m.level_bbm} onChange={(v) => setMesinField(i, { level_bbm: v })} disabled={locked} />
+                                                    <PaperFuel unit="cm" value={m.level_bbm} onChange={(v) => setMesinField(i, { level_bbm: v })} disabled={locked} />
                                                 </td>
                                                 <td className={paperTd}>
-                                                    <PaperFuel value={m.tambah_bbm} onChange={(v) => setMesinField(i, { tambah_bbm: v })} disabled={locked} />
+                                                    <PaperFuel unit="Liter" value={m.tambah_pelumas ?? null} onChange={(v) => setMesinField(i, { tambah_pelumas: v })} disabled={locked} />
                                                 </td>
                                                 {options.pelumas.map((level) => (
                                                     <td key={level} className={paperTd}>
@@ -1261,7 +1288,16 @@ function MutasiForm({
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {kejadian.length === 0 && (
+                                    {start_stop.map((e, i) => (
+                                        <tr key={`ss-${i}`} className="bg-sky-50/60 dark:bg-sky-950/30">
+                                            <td className={cn(paperTd, 'text-center font-semibold tabular-nums')}>{e.jam}</td>
+                                            <td className={cn(paperTd, 'px-2')} colSpan={locked ? 1 : 2}>
+                                                {e.uraian}
+                                                <span className="ml-1 text-[10px] text-muted-foreground">(Start Stop Engine)</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {kejadian.length === 0 && start_stop.length === 0 && (
                                         <tr>
                                             <td colSpan={locked ? 2 : 3} className={cn(paperTd, 'p-3 text-center text-muted-foreground')}>Belum ada kejadian dicatat.</td>
                                         </tr>
@@ -1328,6 +1364,16 @@ function MutasiForm({
                         <div className="mt-3 grid grid-cols-[1fr_420px] border-2 border-black dark:border-white">
                             <div className="flex flex-col border-r-2 border-black dark:border-white">
                                 <div className={cn(paperTh, 'border-0 border-b border-black text-left')}>Gangguan Mesin ;</div>
+                                {patrol_findings.length > 0 && (
+                                    <div className="border-b border-black/40 bg-amber-50 p-2 text-xs dark:bg-amber-950/30">
+                                        {patrol_findings.map((f, i) => (
+                                            <p key={i}>
+                                                ⚠ {f.jam} <b>{f.mesin}</b> — {f.peralatan}: {f.catatan}{' '}
+                                                <span className="text-muted-foreground">(Patrol Check, {f.operator})</span>
+                                            </p>
+                                        ))}
+                                    </div>
+                                )}
                                 <textarea
                                     value={gangguan}
                                     onChange={(e) => {
@@ -1681,32 +1727,18 @@ function PaperTick({ checked, onClick, disabled, label }: { checked: boolean; on
     );
 }
 
-/** Liters typed in the cell, or ✓ when only checked. */
-function PaperFuel({ value, onChange, disabled }: { value: string | null; onChange: (value: string | null) => void; disabled: boolean }) {
-    const checked = value === '✓';
-
+/** A number typed in the cell (cm or liter) — no ✓ any more (user, 2026-11-24). */
+function PaperFuel({ value, onChange, disabled, unit }: { value: string | null; onChange: (value: string | null) => void; disabled: boolean; unit: string }) {
     return (
-        <div className="flex items-center">
-            <input
-                inputMode="decimal"
-                value={checked ? '✓' : (value ?? '')}
-                onChange={(e) => onChange(e.target.value.replace('✓', '') || null)}
-                disabled={disabled || checked}
-                placeholder="Liter"
-                className={cn(paperInput, checked && 'font-bold text-emerald-700 dark:text-emerald-400')}
-                aria-label="Liter"
-            />
-            <button
-                type="button"
-                onClick={() => onChange(checked ? null : '✓')}
-                disabled={disabled}
-                title="Tandai ✓ (sudah dicek)"
-                aria-label="Tandai sudah dicek"
-                className={cn('h-8 w-7 shrink-0 border-l border-black/30 text-xs font-bold', checked ? 'bg-emerald-600 text-white' : 'text-muted-foreground hover:bg-muted')}
-            >
-                ✓
-            </button>
-        </div>
+        <input
+            inputMode="decimal"
+            value={value ?? ''}
+            onChange={(e) => onChange(e.target.value.replace(',', '.').replace(/[^0-9.]/g, '') || null)}
+            disabled={disabled}
+            placeholder={unit}
+            className={paperInput}
+            aria-label={unit}
+        />
     );
 }
 
@@ -1752,20 +1784,20 @@ function Section({
     );
 }
 
-/** Liter value, or "✓" when only checked (as on the paper form). */
+/** A number (cm or liter) — the ✓ button was dropped (user, 2026-11-24). */
 function FuelInput({
     label,
+    unit,
     value,
     onChange,
     disabled,
 }: {
     label?: string;
+    unit: string;
     value: string | null;
     onChange: (value: string | null) => void;
     disabled: boolean;
 }) {
-    const checked = value === '✓';
-
     return (
         <div className="flex min-w-0 flex-col gap-1">
             {label && (
@@ -1773,31 +1805,80 @@ function FuelInput({
                     {label}
                 </span>
             )}
-            <div className="flex min-w-0 gap-1">
-                <Input
-                    inputMode="decimal"
-                    value={checked ? '' : (value ?? '')}
-                    onChange={(e) => onChange(e.target.value || null)}
-                    disabled={disabled || checked}
-                    placeholder={checked ? '✓ dicek' : 'Liter'}
-                    className="h-10 min-w-0 flex-1"
-                />
-                <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => onChange(checked ? null : '✓')}
-                    className={cn(
-                        'flex h-10 w-10 shrink-0 items-center justify-center rounded-md border text-base font-bold transition disabled:opacity-60',
-                        checked
-                            ? 'border-emerald-600 bg-emerald-600 text-white'
-                            : 'border-input text-muted-foreground',
-                    )}
-                    aria-label="Tandai sudah dicek"
-                    title="Tandai ✓ (sudah dicek)"
-                >
-                    ✓
-                </button>
-            </div>
+            <Input
+                inputMode="decimal"
+                value={value ?? ''}
+                onChange={(e) =>
+                    onChange(
+                        e.target.value
+                            .replace(',', '.')
+                            .replace(/[^0-9.]/g, '') || null,
+                    )
+                }
+                disabled={disabled}
+                placeholder={unit}
+                aria-label={label ?? unit}
+                className="h-10 min-w-0"
+            />
+        </div>
+    );
+}
+
+/** Abnormal (TN) items of the shift's Patrol Check Mesin — handed over with the sheet (edit them in Patrol Check). */
+function PatrolFindingList({ findings }: { findings: PatrolFinding[] }) {
+    if (findings.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="flex flex-col gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 p-2">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="size-3.5" />
+                Abnormal dari Patrol Check ({findings.length})
+            </p>
+            {findings.map((f, i) => (
+                <div key={i} className="text-sm">
+                    <span className="font-semibold tabular-nums">{f.jam}</span>{' '}
+                    <span className="font-medium">{f.mesin}</span> — {f.peralatan}
+                    {f.catatan && <span>: {f.catatan}</span>}
+                    <span className="block text-xs text-muted-foreground">
+                        {f.system} · dicek {f.operator}
+                    </span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+/** The shift's start / stop from Start Stop Engine — read-only (edit them in that menu). */
+function StartStopList({ events }: { events: StartStopEvent[] }) {
+    return (
+        <div className="flex flex-col gap-1.5 rounded-md border border-sky-500/30 bg-sky-500/5 p-2">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-sky-800 dark:text-sky-300">
+                <Power className="size-3.5" />
+                Dari Start Stop Engine
+            </p>
+            {events.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                    Belum ada start/stop mesin pada shift ini.
+                </p>
+            ) : (
+                events.map((e, i) => (
+                    <div key={i} className="flex items-start gap-2 text-sm">
+                        <span className="w-12 shrink-0 font-semibold tabular-nums">
+                            {e.jam}
+                        </span>
+                        <span
+                            className={cn(
+                                'min-w-0',
+                                e.jenis === 'stop' && 'text-rose-700 dark:text-rose-300',
+                            )}
+                        >
+                            {e.uraian}
+                        </span>
+                    </div>
+                ))
+            )}
         </div>
     );
 }

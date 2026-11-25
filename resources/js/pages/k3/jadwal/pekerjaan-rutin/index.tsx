@@ -424,6 +424,19 @@ export default function K3PekerjaanRutinPage({
                         onEditingChange={setMobileEditing}
                     />
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={openCreateModal}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Pekerjaan
+                        </Button>
+                    )}
+
                     <StickyActionBar>
                         <Button
                             type="button"
@@ -440,26 +453,15 @@ export default function K3PekerjaanRutinPage({
                             PDF
                         </Button>
                         {can_write && (
-                            <>
-                                <Button
-                                    type="button"
-                                    onClick={handleSave}
-                                    disabled={saving || !dirty}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={openCreateModal}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                type="button"
+                                onClick={handleSave}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>

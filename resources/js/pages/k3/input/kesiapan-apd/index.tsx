@@ -757,7 +757,7 @@ export default function K3KesiapanApdPage({
 
                     {can_write && (
                         <StickyActionBar>
-                            {dirty && (
+                            {dirty ? (
                                 <Button
                                     variant="outline"
                                     onClick={resetChanges}
@@ -767,6 +767,8 @@ export default function K3KesiapanApdPage({
                                     <RotateCcw className="size-4" />
                                     Reset
                                 </Button>
+                            ) : (
+                                <div aria-hidden="true" />
                             )}
                             <Button
                                 onClick={save}

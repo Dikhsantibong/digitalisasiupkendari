@@ -1,5 +1,11 @@
 import { Head, router } from '@inertiajs/react';
-import { AlertTriangle, ClipboardList, Plus, Trash2 } from 'lucide-react';
+import {
+    AlertTriangle,
+    ChevronDown,
+    ClipboardList,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -21,7 +27,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCompactLayout } from '@/hooks/use-mobile-module';
+import {
+    useCompactLayout,
+    useSimplifiedMobileInput,
+} from '@/hooks/use-mobile-module';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import formulir from '@/routes/k3/formulir';
 import recordRoutes from '@/routes/k3/formulir/record';
@@ -136,11 +146,23 @@ export function FormulirRecordPage(props: FormulirRecordPageProps) {
     const [rows, setRows] = useState<Record<string, Row[]>>(() =>
         toRowState(props.sections, form.sections),
     );
+    const [openRowKey, setOpenRowKey] = useState<string | null>(() => {
+        for (const section of form.sections) {
+            const first = rows[section.key]?.[0];
+
+            if (first) {
+                return first._key;
+            }
+        }
+
+        return null;
+    });
     const [header, setHeader] = useState<Record<string, string>>(initialHeader);
     const [catatan, setCatatan] = useState<string>(props.catatan);
     const [dirty, setDirty] = useState<boolean>(false);
     const [saving, setSaving] = useState<boolean>(false);
     const compact = useCompactLayout();
+    const simplified = useSimplifiedMobileInput();
     const doc = useFormulirDocument(props, () => setDirty(true));
 
     const isWeekly = form.period === 'weekly';
@@ -198,15 +220,21 @@ export function FormulirRecordPage(props: FormulirRecordPageProps) {
     };
 
     const addRow = (section: RecordSection) => {
+        const created = emptyRow(section);
+
         setRows((prev) => ({
             ...prev,
-            [section.key]: [...prev[section.key], emptyRow(section)],
+            [section.key]: [...prev[section.key], created],
         }));
+        setOpenRowKey(created._key);
         setDirty(true);
         toast.info(
             `Baris baru ditambahkan${section.label ? ` pada ${section.label}` : ''}.`,
         );
     };
+
+    const toggleOpenRow = (rowKey: string) =>
+        setOpenRowKey((prev) => (prev === rowKey ? null : rowKey));
 
     const deleteRow = (sectionKey: string, rowKey: string) => {
         setRows((prev) => ({
@@ -331,7 +359,15 @@ export function FormulirRecordPage(props: FormulirRecordPageProps) {
                             />
                         </MetaField>
                         <div
-                            className={`grid gap-2 ${compact || !isWeekly ? 'grid-cols-2' : 'grid-cols-3'}`}
+                            className={`grid gap-2 ${
+                                compact && isWeekly
+                                    ? simplified
+                                        ? 'grid-cols-1'
+                                        : 'grid-cols-2'
+                                    : !isWeekly
+                                      ? 'grid-cols-2'
+                                      : 'grid-cols-3'
+                            }`}
                         >
                             {isWeekly && (
                                 <MetaField label="Minggu">
@@ -401,7 +437,14 @@ export function FormulirRecordPage(props: FormulirRecordPageProps) {
                 )}
 
                 {form.header_fields.length > 0 && (
-                    <div className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-3">
+                    <div
+                        className={cn(
+                            'grid rounded-md border border-border',
+                            compact
+                                ? 'grid-cols-2 gap-2.5 p-2.5'
+                                : 'gap-3 p-3 md:grid-cols-3',
+                        )}
+                    >
                         {!compact && (
                             <MetaField label="Unit / Lokasi">
                                 <Input
@@ -423,7 +466,9 @@ export function FormulirRecordPage(props: FormulirRecordPageProps) {
                                         setDirty(true);
                                     }}
                                     disabled={!can_write}
-                                    className="h-8 text-xs"
+                                    className={
+                                        compact ? 'h-9 text-xs' : 'h-8 text-xs'
+                                    }
                                 />
                             </MetaField>
                         ))}
@@ -436,6 +481,8 @@ export function FormulirRecordPage(props: FormulirRecordPageProps) {
                         rows={rows}
                         canWrite={can_write}
                         showSectionRows
+                        openRowKey={openRowKey}
+                        onToggleRow={toggleOpenRow}
                         onChange={updateCell}
                         onAdd={addRow}
                         onDelete={deleteRow}
@@ -456,6 +503,8 @@ export function FormulirRecordPage(props: FormulirRecordPageProps) {
                                 rows={rows}
                                 canWrite={can_write}
                                 showSectionRows={false}
+                                openRowKey={openRowKey}
+                                onToggleRow={toggleOpenRow}
                                 onChange={updateCell}
                                 onAdd={addRow}
                                 onDelete={deleteRow}
@@ -542,6 +591,8 @@ function SectionTable({
     rows,
     canWrite,
     showSectionRows,
+    openRowKey,
+    onToggleRow,
     onChange,
     onAdd,
     onDelete,
@@ -550,6 +601,8 @@ function SectionTable({
     rows: Record<string, Row[]>;
     canWrite: boolean;
     showSectionRows: boolean;
+    openRowKey: string | null;
+    onToggleRow: (rowKey: string) => void;
     onChange: (
         sectionKey: string,
         rowKey: string,
@@ -565,7 +618,7 @@ function SectionTable({
     const hasGroup = bottom.length > 0;
     const totalColumns = columns.length + 1 + (canWrite ? 1 : 0);
 
-    // Phone: every row as a card with its columns as labelled fields.
+    // Phone: collapsible accordion cards with a compact 2-column field grid.
     if (compact) {
         return (
             <SectionCards
@@ -573,6 +626,8 @@ function SectionTable({
                 rows={rows}
                 canWrite={canWrite}
                 showSectionRows={showSectionRows}
+                openRowKey={openRowKey}
+                onToggleRow={onToggleRow}
                 onChange={onChange}
                 onAdd={onAdd}
                 onDelete={onDelete}
@@ -712,15 +767,85 @@ function SectionTable({
     );
 }
 
+const WIDE_COLUMN_KEYS = new Set([
+    'keterangan',
+    'rencana_perbaikan',
+    'temuan',
+    'tindakan',
+    'tindakan_perbaikan',
+    'tindakan_pengendalian',
+    'potensi_bahaya',
+    'tindak_lanjut',
+    'kriteria',
+    'spesifikasi',
+    'kontrol_k3',
+]);
+
+function computeRecordSpans(columns: RecordColumn[]): (1 | 2)[] {
+    const spans: (1 | 2)[] = columns.map((column) =>
+        column.item || WIDE_COLUMN_KEYS.has(column.key) ? 2 : 1,
+    );
+
+    // Balance any trailing odd half-row field before a full-width break or group heading.
+    let runStart = 0;
+
+    for (let i = 0; i <= columns.length; i++) {
+        const breaksRun =
+            i === columns.length ||
+            spans[i] === 2 ||
+            (i > 0 && columns[i].group !== columns[i - 1].group);
+
+        if (breaksRun) {
+            const runLen = i - runStart;
+
+            if (runLen % 2 === 1 && runLen > 0) {
+                spans[i - 1] = 2;
+            }
+
+            runStart = i + (spans[i] === 2 ? 1 : 0);
+        }
+    }
+
+    return spans;
+}
+
+function summarizeRecordRow(section: RecordSection, row: Row): string {
+    const itemColumn =
+        section.columns.find((column) => column.item) ?? section.columns[0];
+    const parts: string[] = [];
+
+    for (const column of section.columns) {
+        if (column.key === itemColumn?.key || column.key === 'keterangan') {
+            continue;
+        }
+
+        const raw = (row[column.key] ?? '').trim();
+
+        if (!raw || raw === '-') {
+            continue;
+        }
+
+        parts.push(column.type === 'select' ? `${column.label}: ${raw}` : raw);
+
+        if (parts.length >= 3) {
+            break;
+        }
+    }
+
+    return parts.join(' · ') || 'Belum diisi';
+}
+
 /**
- * Phone layout of {@link SectionTable}: a card per row (titled by its item
- * column), each column a labelled field using the same {@link RecordCell}.
+ * Phone layout of {@link SectionTable}: collapsible accordion cards with a
+ * clean 2-column field grid and concise row summaries.
  */
 function SectionCards({
     sections,
     rows,
     canWrite,
     showSectionRows,
+    openRowKey,
+    onToggleRow,
     onChange,
     onAdd,
     onDelete,
@@ -729,6 +854,8 @@ function SectionCards({
     rows: Record<string, Row[]>;
     canWrite: boolean;
     showSectionRows: boolean;
+    openRowKey: string | null;
+    onToggleRow: (rowKey: string) => void;
     onChange: (
         sectionKey: string,
         rowKey: string,
@@ -744,11 +871,12 @@ function SectionCards({
                 const itemColumn =
                     section.columns.find((column) => column.item) ??
                     section.columns[0];
+                const spans = computeRecordSpans(section.columns);
 
                 return (
                     <div key={section.key} className="flex flex-col gap-2">
                         {showSectionRows && section.label && (
-                            <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            <p className="text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">
                                 {section.letter ? `${section.letter}. ` : ''}
                                 {section.label}
                             </p>
@@ -758,69 +886,154 @@ function SectionCards({
                                 Belum ada baris.
                             </p>
                         )}
-                        {(rows[section.key] ?? []).map((row, index) => (
-                            <div
-                                key={row._key}
-                                className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
-                            >
-                                <div className="flex items-start gap-2">
-                                    <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">
-                                        {index + 1}
-                                    </span>
-                                    <span className="min-w-0 flex-1 pt-1 text-[14px] font-medium text-foreground">
-                                        {row[itemColumn?.key ?? ''] || '—'}
-                                    </span>
-                                    {canWrite && (
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() =>
-                                                onDelete(section.key, row._key)
-                                            }
-                                            className="size-8 text-muted-foreground hover:text-destructive"
-                                            aria-label="Hapus baris"
+                        {(rows[section.key] ?? []).map((row, index) => {
+                            const isOpen = openRowKey === row._key;
+                            const hasAttention = section.columns.some(
+                                (c) =>
+                                    c.type === 'select' &&
+                                    ATTENTION_VALUES.includes(row[c.key] ?? ''),
+                            );
+
+                            return (
+                                <div
+                                    key={row._key}
+                                    className="rounded-xl border border-border bg-card"
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => onToggleRow(row._key)}
+                                        className="flex w-full items-center gap-2.5 p-2.5 text-left"
+                                    >
+                                        <span
+                                            className={cn(
+                                                'flex size-7 shrink-0 items-center justify-center rounded-lg text-[12px] font-bold',
+                                                hasAttention
+                                                    ? 'bg-rose-500/10 text-rose-600'
+                                                    : 'bg-primary/10 text-primary',
+                                            )}
                                         >
-                                            <Trash2 className="size-4" />
-                                        </Button>
+                                            {index + 1}
+                                        </span>
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-[13px] font-medium text-foreground">
+                                                {row[itemColumn?.key ?? ''] ||
+                                                    'Baris baru'}
+                                            </span>
+                                            <span className="block truncate text-[11.5px] text-muted-foreground">
+                                                {summarizeRecordRow(
+                                                    section,
+                                                    row,
+                                                )}
+                                            </span>
+                                        </span>
+                                        <ChevronDown
+                                            className={cn(
+                                                'size-4 shrink-0 text-muted-foreground transition',
+                                                isOpen && 'rotate-180',
+                                            )}
+                                        />
+                                    </button>
+                                    {isOpen && (
+                                        <div className="grid grid-cols-2 gap-x-2.5 gap-y-2 border-t border-border p-3">
+                                            {section.columns.map(
+                                                (column, colIndex) => {
+                                                    const span =
+                                                        spans[colIndex];
+                                                    const showGroup =
+                                                        column.group &&
+                                                        column.group !==
+                                                            section.columns[
+                                                                colIndex - 1
+                                                            ]?.group;
+
+                                                    return (
+                                                        <Fragment
+                                                            key={column.key}
+                                                        >
+                                                            {showGroup && (
+                                                                <p className="col-span-2 mt-1 border-t border-border/50 pt-2 text-[10.5px] font-semibold tracking-wider text-muted-foreground uppercase first:mt-0 first:border-t-0 first:pt-0">
+                                                                    {
+                                                                        column.group
+                                                                    }
+                                                                </p>
+                                                            )}
+                                                            <label
+                                                                className={cn(
+                                                                    'flex min-w-0 flex-col gap-1 text-[11.5px] leading-tight font-medium text-muted-foreground',
+                                                                    span === 2
+                                                                        ? 'col-span-2'
+                                                                        : 'col-span-1',
+                                                                )}
+                                                            >
+                                                                <span className="truncate">
+                                                                    {
+                                                                        column.label
+                                                                    }
+                                                                </span>
+                                                                <RecordCell
+                                                                    column={
+                                                                        column
+                                                                    }
+                                                                    value={
+                                                                        row[
+                                                                            column
+                                                                                .key
+                                                                        ] ?? ''
+                                                                    }
+                                                                    canWrite={
+                                                                        canWrite
+                                                                    }
+                                                                    onChange={(
+                                                                        value,
+                                                                    ) =>
+                                                                        onChange(
+                                                                            section.key,
+                                                                            row._key,
+                                                                            column.key,
+                                                                            value,
+                                                                        )
+                                                                    }
+                                                                />
+                                                            </label>
+                                                        </Fragment>
+                                                    );
+                                                },
+                                            )}
+                                            {canWrite && (
+                                                <div className="col-span-2 flex justify-end border-t border-border/60 pt-1.5">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() =>
+                                                            onDelete(
+                                                                section.key,
+                                                                row._key,
+                                                            )
+                                                        }
+                                                        className="h-7 gap-1 px-2 text-xs text-destructive"
+                                                    >
+                                                        <Trash2 className="size-3.5" />
+                                                        Hapus baris
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
-                                <div className="grid grid-cols-1 gap-2.5">
-                                    {section.columns.map((column) => (
-                                        <label
-                                            key={column.key}
-                                            className="flex flex-col gap-1 text-[12px] text-muted-foreground"
-                                        >
-                                            {column.group
-                                                ? `${column.group} · ${column.label}`
-                                                : column.label}
-                                            <RecordCell
-                                                column={column}
-                                                value={row[column.key] ?? ''}
-                                                canWrite={canWrite}
-                                                onChange={(value) =>
-                                                    onChange(
-                                                        section.key,
-                                                        row._key,
-                                                        column.key,
-                                                        value,
-                                                    )
-                                                }
-                                            />
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                         {canWrite && section.addable && (
                             <Button
                                 type="button"
                                 variant="outline"
+                                size="sm"
                                 onClick={() => onAdd(section)}
-                                className="h-auto min-h-9 max-w-full gap-1.5 self-start py-2 text-left whitespace-normal"
+                                className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
                             >
                                 <Plus className="size-4" />
                                 Tambah Baris
-                                {section.label ? ` ${section.label}` : ''}
+                                {section.label ? ` — ${section.label}` : ''}
                             </Button>
                         )}
                     </div>
@@ -845,7 +1058,7 @@ function RecordCell({
 }) {
     const align = column.align === 'center' ? 'text-center' : '';
     const compact = useCompactLayout();
-    const touch = compact ? 'h-10 w-full text-sm' : '';
+    const touch = compact ? 'h-9 w-full min-w-0 text-xs' : '';
 
     if (!canWrite) {
         return (
@@ -870,7 +1083,7 @@ function RecordCell({
             <Select value={current} onValueChange={onChange}>
                 <SelectTrigger
                     size="sm"
-                    className={`h-7 w-full min-w-[90px] justify-center text-xs ${tone} ${touch}`}
+                    className={`h-7 w-full justify-center text-xs ${compact ? '' : 'min-w-[90px]'} ${tone} ${touch}`}
                 >
                     <SelectValue />
                 </SelectTrigger>
@@ -895,7 +1108,7 @@ function RecordCell({
                 type="date"
                 value={ISO_DATE.test(value) ? value : ''}
                 onChange={(e) => onChange(e.target.value || '-')}
-                className={`h-7 min-w-[130px] text-xs ${touch}`}
+                className={`h-7 text-xs ${compact ? 'px-2' : 'min-w-[130px]'} ${touch}`}
             />
         );
     }
@@ -904,7 +1117,7 @@ function RecordCell({
         <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className={`h-7 min-w-[80px] text-xs ${align} ${column.item ? 'min-w-[160px] font-medium' : ''} ${touch}`}
+            className={`h-7 text-xs ${align} ${column.item ? `font-medium ${compact ? '' : 'min-w-[160px]'}` : compact ? '' : 'min-w-[80px]'} ${touch}`}
         />
     );
 }

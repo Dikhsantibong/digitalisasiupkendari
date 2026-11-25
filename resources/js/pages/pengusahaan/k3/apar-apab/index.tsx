@@ -524,25 +524,29 @@ export default function PengusahaanAparApabPage({
             label: 'Lokasi',
             placeholder: 'Lokasi penempatan',
             group: 'Identitas',
+            span: 1,
         },
-        { key: 'no_rfid', label: 'No RFID', placeholder: '-' },
+        { key: 'no_rfid', label: 'No RFID', placeholder: '-', span: 1 },
         {
             key: 'tgl_periksa',
             label: 'Tanggal Periksa',
             type: 'date',
+            span: 1,
             parse: (v) => isoToDmy(String(v)),
         },
-        { key: 'merk_apar', label: 'Merk APAR', placeholder: 'Merk' },
+        { key: 'merk_apar', label: 'Merk APAR', placeholder: 'Merk', span: 1 },
         {
             key: 'jenis_apar',
             label: 'Jenis APAR',
             type: 'dropdown',
             options: withCurrent(O.jenis, ''),
+            span: 1,
         },
         {
             key: 'berat_kg',
             label: 'Berat (kg)',
             type: 'number',
+            span: 1,
             parse: (v) => String(v),
         },
         ...conditionColumns.map(
@@ -551,6 +555,7 @@ export default function PengusahaanAparApabPage({
                 label,
                 type: 'dropdown',
                 options: choices,
+                span: 1,
                 group: field === 'kondisi_tabung' ? 'Kondisi' : undefined,
                 parse: (v) => String(v) || choices[0],
             }),
@@ -559,6 +564,7 @@ export default function PengusahaanAparApabPage({
             key: 'keterangan',
             label: 'Keterangan / Masa Berlaku',
             placeholder: 'Ex. DD/MM/YYYY',
+            span: 2,
         },
     ];
 

@@ -474,7 +474,21 @@ export default function PengusahaanTimeFrameIndex({
                     )}
 
                     {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleAddRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Uraian Time Frame
+                        </Button>
+                    )}
+
+                    {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}
@@ -482,14 +496,6 @@ export default function PengusahaanTimeFrameIndex({
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={handleAddRow}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

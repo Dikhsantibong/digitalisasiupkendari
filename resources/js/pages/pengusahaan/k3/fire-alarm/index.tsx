@@ -360,11 +360,13 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                 key: 'lokasi',
                                 label: 'Lokasi Panel / Detektor',
                                 placeholder: 'Mis. Ruang Kontrol',
+                                span: 1,
                             },
                             {
                                 key: 'tanggal_periksa',
                                 label: 'Tanggal Periksa',
                                 type: 'date',
+                                span: 1,
                                 parse: (v) => isoToDmy(String(v)),
                             },
                             {
@@ -372,6 +374,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                 label: 'Kondisi',
                                 type: 'dropdown',
                                 options: ['Baik', 'Tidak Baik', 'Rusak'],
+                                span: 1,
                             },
                             {
                                 key: 'panel_indikator',
@@ -383,8 +386,14 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                                     'Tidak Baik',
                                     'Trouble',
                                 ],
+                                span: 1,
                             },
-                            { key: 'keterangan', label: 'Keterangan' },
+                            {
+                                key: 'keterangan',
+                                label: 'Keterangan',
+                                type: 'textarea',
+                                span: 2,
+                            },
                         ]}
                         onChange={(idx, key, value) =>
                             updateItem(
@@ -395,6 +404,19 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                         }
                         onRemove={(idx) => removeItem(items[idx]._key)}
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItem}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Titik Fire Alarm
+                        </Button>
+                    )}
 
                     <K3MobileMetaAccordion
                         noDokumen={noDokumen}
@@ -434,6 +456,7 @@ export default function PengusahaanFireAlarmPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={() => handleSubmit()}
                                 disabled={saving}
@@ -441,14 +464,6 @@ export default function PengusahaanFireAlarmPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addItem}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

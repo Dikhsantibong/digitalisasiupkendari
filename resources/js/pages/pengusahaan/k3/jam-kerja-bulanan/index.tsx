@@ -512,7 +512,7 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
-                            {dirty && (
+                            {dirty ? (
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -523,6 +523,8 @@ export default function PengusahaanJamKerjaBulananPage(props: Props) {
                                     <RotateCcw className="size-4" />
                                     Reset
                                 </Button>
+                            ) : (
+                                <div aria-hidden="true" />
                             )}
                             <Button
                                 onClick={() => handleSubmit()}

@@ -230,6 +230,61 @@ export default function CertificateInput({
     const thBase =
         'cert-th border border-black bg-yellow-200 p-1.5 text-center text-[11px] font-bold text-slate-900';
 
+    const mobileFields: RowField<Row>[] = [
+        {
+            key: 'category_code',
+            label: 'Nama Kategori Alat',
+            type: 'select',
+            options: options.categories.map((c) => c.code),
+            optionLabels: Object.fromEntries(
+                options.categories.map((c) => [c.code, c.name]),
+            ),
+            group: 'Peralatan',
+            span: 2,
+        },
+        { key: 'jenis', label: 'Jenis', span: 1 },
+        { key: 'kapasitas', label: 'Kapasitas', span: 1 },
+        { key: 'lokasi', label: 'Lokasi', span: 1 },
+        { key: 'merk_manufacture', label: 'Merk Manufacture', span: 1 },
+        { key: 'no_seri', label: 'No. Seri Alat', span: 1 },
+        { key: 'regulasi', label: 'Regulasi Peraturan', span: 1 },
+        {
+            key: 'ijin_awal_nomor',
+            label: 'Nomor',
+            group: 'Ijin Pemakaian Awal',
+            span: 1,
+        },
+        { key: 'ijin_awal_tanggal', label: 'Tanggal', type: 'date', span: 1 },
+        {
+            key: 'uji_terakhir_nomor',
+            label: 'Nomor',
+            group: 'Pemeriksaan Pengujian Terakhir',
+            span: 1,
+        },
+        {
+            key: 'uji_terakhir_tanggal',
+            label: 'Tanggal',
+            type: 'date',
+            span: 1,
+        },
+        {
+            key: 'uji_ulang_tanggal',
+            label: 'Pengujian Ulang (Tanggal)',
+            type: 'date',
+            group: 'Status',
+            span: 1,
+        },
+        {
+            key: 'masa_berlaku_tahun',
+            label: 'Status',
+            type: 'display',
+            display: (r) => statusOf(r),
+            span: 1,
+        },
+        { key: 'batasan_uji', label: 'Batasan Uji', span: 1 },
+        { key: 'keterangan', label: 'Keterangan', span: 1 },
+    ];
+
     if (compact) {
         return (
             <>
@@ -256,71 +311,7 @@ export default function CertificateInput({
 
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                {
-                                    key: 'category_code',
-                                    label: 'Nama Kategori Alat',
-                                    type: 'select',
-                                    options: options.categories.map(
-                                        (c) => c.code,
-                                    ),
-                                    optionLabels: Object.fromEntries(
-                                        options.categories.map((c) => [
-                                            c.code,
-                                            c.name,
-                                        ]),
-                                    ),
-                                    group: 'Peralatan',
-                                },
-                                { key: 'jenis', label: 'Jenis' },
-                                { key: 'kapasitas', label: 'Kapasitas' },
-                                { key: 'lokasi', label: 'Lokasi' },
-                                {
-                                    key: 'merk_manufacture',
-                                    label: 'Merk Manufacture',
-                                },
-                                { key: 'no_seri', label: 'No. Seri Alat' },
-                                {
-                                    key: 'regulasi',
-                                    label: 'Regulasi Peraturan',
-                                },
-                                {
-                                    key: 'ijin_awal_nomor',
-                                    label: 'Nomor',
-                                    group: 'Ijin Pemakaian Awal',
-                                },
-                                {
-                                    key: 'ijin_awal_tanggal',
-                                    label: 'Tanggal',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'uji_terakhir_nomor',
-                                    label: 'Nomor',
-                                    group: 'Pemeriksaan Pengujian Terakhir',
-                                },
-                                {
-                                    key: 'uji_terakhir_tanggal',
-                                    label: 'Tanggal',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'uji_ulang_tanggal',
-                                    label: 'Pengujian Ulang (Tanggal)',
-                                    type: 'date',
-                                    group: 'Status',
-                                },
-                                {
-                                    key: 'masa_berlaku_tahun',
-                                    label: 'Status',
-                                    type: 'display',
-                                    display: (r) => statusOf(r),
-                                },
-                                { key: 'batasan_uji', label: 'Batasan Uji' },
-                                { key: 'keterangan', label: 'Keterangan' },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) =>
                             options.categories.find(
                                 (c) => c.code === r.category_code,
@@ -343,30 +334,33 @@ export default function CertificateInput({
                         removeLabel="Hapus peralatan"
                     />
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Sertifikasi Peralatan
+                        </Button>
+                    )}
+
                     <StickyActionBar>
                         <K3MobilePdfButton
                             input="certificates"
                             query={{ unit_id: filters.unit_id }}
                         />
                         {can_write && (
-                            <>
-                                <Button
-                                    onClick={save}
-                                    disabled={saving || !dirty}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={addRow}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>
@@ -486,74 +480,7 @@ export default function CertificateInput({
                     {compact ? (
                         <MobileRowEditor<Row>
                             rows={rows}
-                            fields={
-                                [
-                                    {
-                                        key: 'category_code',
-                                        label: 'Nama Kategori Alat',
-                                        type: 'select',
-                                        options: options.categories.map(
-                                            (c) => c.code,
-                                        ),
-                                        optionLabels: Object.fromEntries(
-                                            options.categories.map((c) => [
-                                                c.code,
-                                                c.name,
-                                            ]),
-                                        ),
-                                        group: 'Peralatan',
-                                    },
-                                    { key: 'jenis', label: 'Jenis' },
-                                    { key: 'kapasitas', label: 'Kapasitas' },
-                                    { key: 'lokasi', label: 'Lokasi' },
-                                    {
-                                        key: 'merk_manufacture',
-                                        label: 'Merk Manufacture',
-                                    },
-                                    { key: 'no_seri', label: 'No. Seri Alat' },
-                                    {
-                                        key: 'regulasi',
-                                        label: 'Regulasi Peraturan',
-                                    },
-                                    {
-                                        key: 'ijin_awal_nomor',
-                                        label: 'Nomor',
-                                        group: 'Ijin Pemakaian Awal',
-                                    },
-                                    {
-                                        key: 'ijin_awal_tanggal',
-                                        label: 'Tanggal',
-                                        type: 'date',
-                                    },
-                                    {
-                                        key: 'uji_terakhir_nomor',
-                                        label: 'Nomor',
-                                        group: 'Pemeriksaan Pengujian Terakhir',
-                                    },
-                                    {
-                                        key: 'uji_terakhir_tanggal',
-                                        label: 'Tanggal',
-                                        type: 'date',
-                                    },
-                                    {
-                                        key: 'uji_ulang_tanggal',
-                                        label: 'Pengujian Ulang (Tanggal)',
-                                        type: 'date',
-                                        group: 'Status',
-                                    },
-                                    {
-                                        key: 'masa_berlaku_tahun',
-                                        label: 'Status',
-                                        type: 'display',
-                                        display: (r) => statusOf(r),
-                                    },
-                                    {
-                                        key: 'batasan_uji',
-                                        label: 'Batasan Uji',
-                                    },
-                                    { key: 'keterangan', label: 'Keterangan' },
-                                ] satisfies RowField<Row>[]
-                            }
+                            fields={mobileFields}
                             title={(r) =>
                                 options.categories.find(
                                     (c) => c.code === r.category_code,

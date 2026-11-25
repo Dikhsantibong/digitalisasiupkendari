@@ -18,7 +18,7 @@ use Illuminate\Support\Carbon;
  * @property int $unit_id
  * @property Carbon $tanggal
  * @property string $shift pagi|sore|malam
- * @property list<array{machine_id: int|null, nama: string, level_bbm: string|null, tambah_bbm: string|null, pelumas: string|null, status: string|null}> $mesin
+ * @property list<array{machine_id: int|null, nama: string, level_bbm: string|null, tambah_bbm: string|null, tambah_pelumas?: string|null, pelumas: string|null, status: string|null}> $mesin
  * @property list<array{nama: string, level_cm: string|null}> $tangki
  * @property list<array{nama: string, ada: bool, jumlah: int|null}> $peralatan
  * @property list<array{jam: string|null, uraian: string}> $kejadian

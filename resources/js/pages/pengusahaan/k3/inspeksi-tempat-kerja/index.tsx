@@ -560,6 +560,7 @@ export default function PengusahaanInspeksiTempatKerjaPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={handleSave}
                                 disabled={saving}

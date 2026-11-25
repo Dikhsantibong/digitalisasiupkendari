@@ -109,7 +109,7 @@ class PatrolCheckParameterTest extends TestCase
         $this->assertSame(0, HarPatrolCheckReading::query()->count());
     }
 
-    public function test_the_pdf_prints_the_month_on_one_landscape_page_and_reaches_the_report(): void
+    public function test_the_pdf_prints_the_month_on_one_landscape_page_but_no_longer_reaches_the_report(): void
     {
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Containerized Poasia']);
         $machine = Machine::factory()->create(['unit_id' => $unit->id, 'name' => 'Cummins #7']);
@@ -132,17 +132,9 @@ class PatrolCheckParameterTest extends TestCase
         $this->assertSame(1, $reader->setSourceFile(StreamReader::createByString((string) $response->getContent())));
         $this->assertSame('L', $reader->getTemplateSize($reader->importPage(1))['orientation']);
 
-        // Printed in the Laporan Pemeliharaan right after the Patrol Check, listed in the Daftar Isi.
-        $builder = app(HarDocumentBuilder::class);
-        $data = $builder->build($unit, 9, 2026);
-        $keys = array_column($data['parts'], 'key');
-        $part = collect($data['parts'])->firstWhere('key', "patrol-check-parameter-{$machine->id}");
-        $this->assertTrue($part['saved']);
-        $this->assertSame('landscape', $part['orientation']);
-        $this->assertSame(array_search("lembar-patrol-check-pemeliharaan-{$machine->id}", $keys, true) + 1, array_search($part['key'], $keys, true));
-        $body = $builder->bodyHtml($data);
-        $this->assertStringContainsString('Pembaca Parameter Uji', $body);
-        $this->assertStringContainsString('href="#part-patrol-check-parameter-'.$machine->id.'"', $body);
+        // No longer part of the Laporan Pemeliharaan (user, 2026-11-24): the readings are in the Logsheet Operator.
+        $data = app(HarDocumentBuilder::class)->build($unit, 9, 2026);
+        $this->assertNull(collect($data['parts'])->firstWhere('key', "patrol-check-parameter-{$machine->id}"));
     }
 
     public function test_manager_ul_can_view_but_not_save(): void

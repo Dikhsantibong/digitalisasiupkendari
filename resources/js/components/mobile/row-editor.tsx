@@ -1,5 +1,5 @@
 import { Check, ChevronDown, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,8 @@ export type RowField<R> = {
     placeholder?: string;
     /** Section heading shown above this field (e.g. "Status"). */
     group?: string;
+    /** Grid width inside the expanded mobile card: `1` (half-row) or `2` (full-row). */
+    span?: 1 | 2;
     /** For `display`: the text to show; defaults to the raw value. */
     display?: (row: R) => ReactNode;
     /** Hides the field for this row. */
@@ -41,6 +43,25 @@ export type RowField<R> = {
     /** Maps an input value to the row value (e.g. number or 1/0); defaults per type. */
     parse?: (value: string | boolean) => unknown;
 };
+
+function resolveFieldSpan<R>(field: RowField<R>): 1 | 2 {
+    if (field.span) {
+        return field.span;
+    }
+
+    if (
+        field.type === 'number' ||
+        field.type === 'date' ||
+        field.type === 'time' ||
+        field.type === 'dropdown' ||
+        field.type === 'check' ||
+        field.type === 'display'
+    ) {
+        return 1;
+    }
+
+    return 2;
+}
 
 /**
  * Phone layout of an editable table (one row per finding / item): each row is a
@@ -102,7 +123,7 @@ export function MobileRowEditor<R>({
         switch (field.type) {
             case 'display':
                 return (
-                    <span className="flex min-h-9 items-center rounded-md bg-muted/60 px-3 text-[13px] text-foreground">
+                    <span className="flex min-h-9 items-center rounded-md bg-muted/60 px-2.5 text-xs text-foreground">
                         {field.display
                             ? field.display(row)
                             : String(value ?? '—')}
@@ -116,6 +137,7 @@ export function MobileRowEditor<R>({
                         rows={2}
                         placeholder={field.placeholder}
                         disabled={disabled}
+                        className="text-xs"
                     />
                 );
             case 'select':
@@ -149,7 +171,7 @@ export function MobileRowEditor<R>({
                         onValueChange={(v) => set(index, field, v)}
                         disabled={disabled}
                     >
-                        <SelectTrigger className="h-10 w-full text-[13px]">
+                        <SelectTrigger className="h-9 w-full min-w-0 text-xs">
                             <SelectValue
                                 placeholder={
                                     field.placeholder ?? `Pilih ${field.label}`
@@ -158,7 +180,11 @@ export function MobileRowEditor<R>({
                         </SelectTrigger>
                         <SelectContent>
                             {mergedOptions.map((option) => (
-                                <SelectItem key={option} value={option}>
+                                <SelectItem
+                                    key={option}
+                                    value={option}
+                                    className="text-xs"
+                                >
                                     {field.optionLabels?.[option] ?? option}
                                 </SelectItem>
                             ))}
@@ -177,7 +203,7 @@ export function MobileRowEditor<R>({
                         onClick={() => set(index, field, !checked)}
                         disabled={disabled}
                         className={cn(
-                            'flex min-h-10 items-center gap-2 rounded-lg border px-3 text-[13px] font-medium transition active:scale-95 disabled:opacity-60',
+                            'flex min-h-9 w-full items-center gap-2 rounded-lg border px-2.5 text-xs font-medium transition active:scale-95 disabled:opacity-60',
                             checked
                                 ? 'border-primary bg-primary text-primary-foreground'
                                 : 'border-border bg-background',
@@ -185,13 +211,13 @@ export function MobileRowEditor<R>({
                     >
                         <span
                             className={cn(
-                                'flex size-4 items-center justify-center rounded border',
+                                'flex size-4 shrink-0 items-center justify-center rounded border',
                                 checked ? 'border-white' : 'border-input',
                             )}
                         >
                             {checked && <Check className="size-3" />}
                         </span>
-                        {field.label}
+                        <span className="truncate">{field.label}</span>
                     </button>
                 );
             }
@@ -216,6 +242,11 @@ export function MobileRowEditor<R>({
                         }
                         onChange={(e) => set(index, field, e.target.value)}
                         disabled={disabled}
+                        className={cn(
+                            'h-9 w-full min-w-0 text-xs',
+                            (field.type === 'date' || field.type === 'time') &&
+                                'px-2',
+                        )}
                     />
                 );
         }
@@ -258,40 +289,53 @@ export function MobileRowEditor<R>({
                             />
                         </button>
                         {isOpen && (
-                            <div className="flex flex-col gap-3 border-t border-border p-3">
-                                {visible.map((field, f) => (
-                                    <div
-                                        key={field.key}
-                                        className="flex flex-col gap-1.5"
-                                    >
-                                        {field.group &&
-                                            field.group !==
-                                                visible[f - 1]?.group && (
-                                                <p className="pt-1 text-[11.5px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            <div className="grid grid-cols-2 gap-x-2.5 gap-y-2 border-t border-border p-3">
+                                {visible.map((field, f) => {
+                                    const span = resolveFieldSpan(field);
+                                    const showGroup =
+                                        field.group &&
+                                        field.group !== visible[f - 1]?.group;
+
+                                    return (
+                                        <Fragment key={field.key}>
+                                            {showGroup && (
+                                                <p className="col-span-2 mt-1 border-t border-border/50 pt-2 text-[10.5px] font-semibold tracking-wider text-muted-foreground uppercase first:mt-0 first:border-t-0 first:pt-0">
                                                     {field.group}
                                                 </p>
                                             )}
-                                        {field.type !== 'check' && (
-                                            <span className="text-[12px] text-muted-foreground">
-                                                {field.label}
-                                            </span>
-                                        )}
-                                        {editor(row, index, field)}
-                                    </div>
-                                ))}
+                                            <div
+                                                className={cn(
+                                                    'flex min-w-0 flex-col gap-1',
+                                                    span === 2
+                                                        ? 'col-span-2'
+                                                        : 'col-span-1',
+                                                )}
+                                            >
+                                                {field.type !== 'check' && (
+                                                    <span className="truncate text-[11.5px] leading-tight font-medium text-muted-foreground">
+                                                        {field.label}
+                                                    </span>
+                                                )}
+                                                {editor(row, index, field)}
+                                            </div>
+                                        </Fragment>
+                                    );
+                                })}
                                 {canWrite && onRemove && (
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            onRemove(index);
-                                            setOpen(null);
-                                        }}
-                                        className="self-start text-destructive"
-                                    >
-                                        <Trash2 className="size-4" />
-                                        {removeLabel}
-                                    </Button>
+                                    <div className="col-span-2 flex justify-end border-t border-border/60 pt-1.5">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                onRemove(index);
+                                                setOpen(null);
+                                            }}
+                                            className="h-7 gap-1 px-2 text-xs text-destructive"
+                                        >
+                                            <Trash2 className="size-3.5" />
+                                            {removeLabel}
+                                        </Button>
+                                    </div>
                                 )}
                             </div>
                         )}

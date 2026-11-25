@@ -154,6 +154,35 @@ export default function CctvInput({
 
     const cols = can_write ? 9 : 8;
 
+    const mobileFields: RowField<Row>[] = [
+        { key: 'no_cctv', label: 'No CCTV', group: 'Identitas', span: 1 },
+        { key: 'tanggal', label: 'Tanggal', type: 'date', span: 1 },
+        { key: 'titik_lokasi', label: 'Titik Lokasi CCTV', span: 2 },
+        {
+            key: 'status',
+            label: 'Status',
+            type: 'select',
+            options: ['on', 'off', 'rusak'],
+            optionLabels: { on: 'ON', off: 'OFF', rusak: 'RUSAK' },
+            parse: (v) => String(v) || 'on',
+            span: 2,
+        },
+        {
+            key: 'foto_terpasang',
+            label: 'Foto Terpasang (URL)',
+            placeholder: 'https://…',
+            group: 'Dokumentasi',
+            span: 1,
+        },
+        {
+            key: 'foto_tampilan',
+            label: 'Foto Tampilan (URL)',
+            placeholder: 'https://…',
+            span: 1,
+        },
+        { key: 'keterangan', label: 'Keterangan', type: 'textarea', span: 2 },
+    ];
+
     if (compact) {
         return (
             <>
@@ -179,48 +208,7 @@ export default function CctvInput({
 
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                {
-                                    key: 'no_cctv',
-                                    label: 'No CCTV',
-                                    group: 'Identitas',
-                                },
-                                {
-                                    key: 'titik_lokasi',
-                                    label: 'Titik Lokasi CCTV',
-                                },
-                                {
-                                    key: 'tanggal',
-                                    label: 'Tanggal',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'status',
-                                    label: 'Status',
-                                    type: 'select',
-                                    options: ['on', 'off', 'rusak'],
-                                    optionLabels: {
-                                        on: 'ON',
-                                        off: 'OFF',
-                                        rusak: 'RUSAK',
-                                    },
-                                    parse: (v) => String(v) || 'on',
-                                },
-                                {
-                                    key: 'foto_terpasang',
-                                    label: 'Foto Terpasang (URL)',
-                                    placeholder: 'https://…',
-                                    group: 'Dokumentasi',
-                                },
-                                {
-                                    key: 'foto_tampilan',
-                                    label: 'Foto Tampilan (URL)',
-                                    placeholder: 'https://…',
-                                },
-                                { key: 'keterangan', label: 'Keterangan' },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.titik_lokasi || 'Lokasi belum diisi'}
                         subtitle={(r) =>
                             `No ${r.no_cctv || '-'} · ${r.status.toUpperCase()}`
@@ -230,6 +218,19 @@ export default function CctvInput({
                         canWrite={can_write}
                         removeLabel="Hapus CCTV"
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah CCTV
+                        </Button>
+                    )}
 
                     <StickyActionBar>
                         <K3MobilePdfButton
@@ -241,24 +242,14 @@ export default function CctvInput({
                             }}
                         />
                         {can_write && (
-                            <>
-                                <Button
-                                    onClick={save}
-                                    disabled={saving || !dirty}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={addRow}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>
@@ -344,48 +335,7 @@ export default function CctvInput({
                 {compact ? (
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                {
-                                    key: 'no_cctv',
-                                    label: 'No CCTV',
-                                    group: 'Identitas',
-                                },
-                                {
-                                    key: 'titik_lokasi',
-                                    label: 'Titik Lokasi CCTV',
-                                },
-                                {
-                                    key: 'tanggal',
-                                    label: 'Tanggal',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'status',
-                                    label: 'Status',
-                                    type: 'select',
-                                    options: ['on', 'off', 'rusak'],
-                                    optionLabels: {
-                                        on: 'ON',
-                                        off: 'OFF',
-                                        rusak: 'RUSAK',
-                                    },
-                                    parse: (v) => String(v) || 'on',
-                                },
-                                {
-                                    key: 'foto_terpasang',
-                                    label: 'Foto Terpasang (URL)',
-                                    placeholder: 'https://…',
-                                    group: 'Dokumentasi',
-                                },
-                                {
-                                    key: 'foto_tampilan',
-                                    label: 'Foto Tampilan (URL)',
-                                    placeholder: 'https://…',
-                                },
-                                { key: 'keterangan', label: 'Keterangan' },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.titik_lokasi || 'Lokasi belum diisi'}
                         subtitle={(r) =>
                             `No ${r.no_cctv || '-'} · ${r.status.toUpperCase()}`

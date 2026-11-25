@@ -238,6 +238,19 @@ export function K3Sheet({
 
                     {mobile}
 
+                    {canWrite && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={onAdd}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            {addLabel || 'Tambah'}
+                        </Button>
+                    )}
+
                     <div className="flex flex-col gap-1.5">
                         <span className="text-[13px] font-semibold text-foreground">
                             {catatanLabel}
@@ -254,6 +267,20 @@ export function K3Sheet({
 
                 {canWrite && (
                     <StickyActionBar>
+                        {dirty ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={onReset}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <RotateCcw className="size-4" />
+                                Reset
+                            </Button>
+                        ) : (
+                            <div aria-hidden="true" />
+                        )}
                         <Button
                             onClick={onSave}
                             disabled={saving}
@@ -261,14 +288,6 @@ export function K3Sheet({
                         >
                             <Save className="size-4" />
                             {saving ? 'Menyimpan…' : 'Simpan'}
-                        </Button>
-                        <Button
-                            variant="outline"
-                            onClick={onAdd}
-                            className="gap-1.5"
-                        >
-                            <Plus className="size-4" />
-                            {addLabel || 'Tambah'}
                         </Button>
                     </StickyActionBar>
                 )}

@@ -356,12 +356,14 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                 key: 'tanggal',
                                 label: 'Tanggal',
                                 type: 'date',
+                                span: 2,
                                 parse: (v) => isoToDmy(String(v)),
                             },
                             {
                                 key: 'waktu_pantau',
                                 label: 'Waktu Pantau',
                                 type: 'dropdown',
+                                span: 1,
                                 options: [
                                     'Setiap Saat',
                                     'Shift Pagi',
@@ -373,6 +375,7 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                 key: 'kondisi_pantau',
                                 label: 'Kondisi Pantau',
                                 type: 'dropdown',
+                                span: 1,
                                 options: [
                                     'Aman',
                                     'Baik',
@@ -385,14 +388,33 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                                 key: 'lokasi_cctv',
                                 label: 'Daftar Lokasi CCTV',
                                 type: 'textarea',
+                                span: 2,
                             },
-                            { key: 'keterangan', label: 'Keterangan' },
+                            {
+                                key: 'keterangan',
+                                label: 'Keterangan',
+                                type: 'textarea',
+                                span: 2,
+                            },
                         ]}
                         onChange={(idx, key, value) =>
                             updateItem(items[idx]._key, key, value)
                         }
                         onRemove={(idx) => removeItem(items[idx]._key)}
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItem}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Laporan CCTV
+                        </Button>
+                    )}
 
                     <K3MobileMetaAccordion
                         noDokumen={noDokumen}
@@ -432,6 +454,7 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={() => handleSubmit()}
                                 disabled={saving}
@@ -439,14 +462,6 @@ export default function PengusahaanLaporanCctvPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addItem}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

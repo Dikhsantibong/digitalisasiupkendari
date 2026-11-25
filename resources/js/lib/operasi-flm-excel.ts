@@ -24,6 +24,11 @@ export type FlmMonitoringRow = {
     foto_akhir_file?: File | null;
     catatan: string;
     status: 'open' | 'close';
+    /** The finding's key (keeps its reporter & closure across saves) and who reported / closed it. */
+    uid?: string | null;
+    reporter_name?: string | null;
+    reporter_shift?: string | null;
+    closed_by_name?: string | null;
 };
 
 /** The eviden photo columns, as in the PDF. */

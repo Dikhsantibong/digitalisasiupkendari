@@ -110,6 +110,7 @@ export function useFormulirDocument(
         props.document.format === 'html' ? 'html' : 'form',
     );
     const [previewKey, setPreviewKey] = useState<number>(0);
+    const compact = useCompactLayout();
 
     const update = (patch: Partial<DocumentSettings>) => {
         setSettings((prev) => ({ ...prev, ...patch }));
@@ -176,8 +177,8 @@ export function useFormulirDocument(
         /** Kolom dokumen untuk payload simpan (dibaca K3FormulirDocumentBuilder::documentRules). */
         payload: () => ({
             ...settings,
-            format,
-            content_html: format === 'html' ? htmlContent : null,
+            format: compact ? ('form' as const) : format,
+            content_html: !compact && format === 'html' ? htmlContent : null,
         }),
     };
 }
@@ -552,8 +553,8 @@ export function DocumentWorkspace({
 
     return (
         <div className="flex w-full min-w-0 flex-1 flex-col rounded-lg border border-border bg-card shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3 md:gap-3 md:p-4">
-                {!compact && (
+            {!compact && (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-3 md:gap-3 md:p-4">
                     <div>
                         <h3 className="text-base font-semibold text-foreground">
                             Isi Formulir &amp; Dokumen
@@ -563,39 +564,39 @@ export function DocumentWorkspace({
                             pada PDF.
                         </p>
                     </div>
-                )}
-                <div className="flex w-full flex-wrap overflow-hidden rounded-md border border-border text-xs sm:w-auto">
-                    <TabButton
-                        active={doc.viewTab === 'form'}
-                        onClick={() => doc.changeTab('form')}
-                        icon={<SlidersHorizontal className="size-3.5" />}
-                    >
-                        {compact ? 'Formulir' : 'Editor Formulir'}
-                    </TabButton>
-                    <TabButton
-                        active={doc.viewTab === 'html'}
-                        onClick={() => doc.changeTab('html')}
-                        icon={<FileCode2 className="size-3.5" />}
-                    >
-                        {compact ? 'Teks' : 'Editor Teks (HTML)'}
-                    </TabButton>
-                    <TabButton
-                        active={doc.viewTab === 'pdf'}
-                        onClick={openPreview}
-                        icon={<Printer className="size-3.5" />}
-                    >
-                        {compact ? 'PDF' : 'Pratinjau PDF'}
-                    </TabButton>
+                    <div className="flex w-full flex-wrap overflow-hidden rounded-md border border-border text-xs sm:w-auto">
+                        <TabButton
+                            active={doc.viewTab === 'form'}
+                            onClick={() => doc.changeTab('form')}
+                            icon={<SlidersHorizontal className="size-3.5" />}
+                        >
+                            Editor Formulir
+                        </TabButton>
+                        <TabButton
+                            active={doc.viewTab === 'html'}
+                            onClick={() => doc.changeTab('html')}
+                            icon={<FileCode2 className="size-3.5" />}
+                        >
+                            Editor Teks (HTML)
+                        </TabButton>
+                        <TabButton
+                            active={doc.viewTab === 'pdf'}
+                            onClick={openPreview}
+                            icon={<Printer className="size-3.5" />}
+                        >
+                            Pratinjau PDF
+                        </TabButton>
+                    </div>
                 </div>
-            </div>
+            )}
 
-            {doc.viewTab === 'form' && (
+            {(compact || doc.viewTab === 'form') && (
                 <div className="space-y-3 p-3 md:space-y-4 md:p-4">
                     {children}
                 </div>
             )}
 
-            {doc.viewTab === 'html' && (
+            {!compact && doc.viewTab === 'html' && (
                 <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
                         <span className="flex-1">
@@ -629,7 +630,7 @@ export function DocumentWorkspace({
                 </div>
             )}
 
-            {doc.viewTab === 'pdf' && (
+            {!compact && doc.viewTab === 'pdf' && (
                 <div className="space-y-3 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                         <span>
@@ -988,28 +989,44 @@ export function FormulirDocumentLayout({
                 <div className="flex w-full flex-col items-start gap-4 xl:flex-row xl:gap-6">
                     {compact ? (
                         <div className="flex w-full flex-col gap-2">
-                            <div className="flex flex-wrap items-end justify-between gap-2 rounded-lg border border-border bg-card p-3">
-                                <div className="min-w-0 flex-1 space-y-2">
+                            <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+                                        <span className="truncate font-semibold text-foreground">
+                                            {periodLabel}
+                                        </span>
+                                        {dirty ? (
+                                            <StatusBadge tone="warning">
+                                                Belum disimpan
+                                            </StatusBadge>
+                                        ) : hasSaved ? (
+                                            <StatusBadge tone="success">
+                                                Tersimpan
+                                            </StatusBadge>
+                                        ) : null}
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={
+                                            showMobileDocSettings
+                                                ? 'secondary'
+                                                : 'outline'
+                                        }
+                                        onClick={() =>
+                                            setShowMobileDocSettings(
+                                                (open) => !open,
+                                            )
+                                        }
+                                        className="h-8 shrink-0 gap-1 text-xs"
+                                    >
+                                        <SlidersHorizontal className="size-3.5" />
+                                        Kop &amp; TTD
+                                    </Button>
+                                </div>
+                                <div className="space-y-2 empty:hidden">
                                     {periodControls}
                                 </div>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={
-                                        showMobileDocSettings
-                                            ? 'secondary'
-                                            : 'outline'
-                                    }
-                                    onClick={() =>
-                                        setShowMobileDocSettings(
-                                            (open) => !open,
-                                        )
-                                    }
-                                    className="h-8 shrink-0 gap-1 text-xs"
-                                >
-                                    <SlidersHorizontal className="size-3.5" />
-                                    Kop &amp; PDF
-                                </Button>
                             </div>
                             {showMobileDocSettings && (
                                 <div className="space-y-3">
@@ -1107,7 +1124,7 @@ export function FormulirDocumentLayout({
                         onClick={doc.downloadPdf}
                         className="gap-1.5"
                     >
-                        <Download className="size-4" />
+                        <Download className="size-4 text-rose-600" />
                         PDF
                     </Button>
                     {canWrite && (

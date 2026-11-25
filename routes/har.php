@@ -11,6 +11,7 @@ use App\Http\Controllers\Har\CounterWeightController;
 use App\Http\Controllers\Har\CrankshaftDeflectionController;
 use App\Http\Controllers\Har\DailyMeetingController;
 use App\Http\Controllers\Har\DocumentController;
+use App\Http\Controllers\Har\FlmOperasiController;
 use App\Http\Controllers\Har\FormulirController;
 use App\Http\Controllers\Har\HydrotestController;
 use App\Http\Controllers\Har\InjectorPressureController;
@@ -58,6 +59,9 @@ Route::middleware(['auth', 'verified'])
     ->prefix('har')
     ->name('har.')
     ->group(function (): void {
+        // FLM dari Operator: the operators' Monitoring FLM findings, closed by Pemeliharaan (user, 2026-11-24).
+        Route::get('flm-operasi', [FlmOperasiController::class, 'index'])->name('flm-operasi.index');
+        Route::post('flm-operasi/{flm}/close', [FlmOperasiController::class, 'close'])->whereNumber('flm')->name('flm-operasi.close');
         Route::get('jadwal', [JadwalController::class, 'index'])->name('jadwal.index');
         Route::get('jadwal/harian', [JadwalHarianController::class, 'index'])->name('jadwal.harian.index');
         Route::post('jadwal/harian', [JadwalHarianController::class, 'store'])->name('jadwal.harian.store');

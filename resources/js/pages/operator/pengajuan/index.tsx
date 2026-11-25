@@ -37,7 +37,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import pengajuan from '@/routes/operator/pengajuan';
 import type { IdName, Tone } from '@/types';
@@ -120,9 +119,6 @@ const formatDate = (date: string) => {
 
     return `${day} ${OPERASI_MONTHS[month - 1].slice(0, 3)} ${year}`;
 };
-
-const isWorking = (code: string | undefined) =>
-    code === 'P' || code === 'S' || code === 'M';
 
 const SHIFT_LABEL: Record<string, string> = {
     P: 'Pagi',
@@ -211,7 +207,6 @@ export default function OperatorPengajuan({
         substitute_employee_id: '',
         swap_date: '',
     });
-    const [withSwap, setWithSwap] = useState(false);
     const [decision, setDecision] = useState<Decision>(null);
     const [note, setNote] = useState('');
     const [processing, setProcessing] = useState(false);
@@ -240,7 +235,7 @@ export default function OperatorPengajuan({
             ...data,
             end_date: tukar ? data.start_date : data.end_date,
             substitute_employee_id: tukar ? data.substitute_employee_id : '',
-            swap_date: tukar && withSwap ? data.swap_date : '',
+            swap_date: '',
         }));
         form.post(pengajuan.store().url, {
             preserveScroll: true,
@@ -252,7 +247,6 @@ export default function OperatorPengajuan({
                     'substitute_employee_id',
                     'swap_date',
                 );
-                setWithSwap(false);
             },
         });
     };
@@ -377,9 +371,11 @@ export default function OperatorPengajuan({
                             )}
 
                             {tukar ? (
+                                // Simplified tukar shift (user, 2026-11-24): pick the date and the colleague;
+                                // the two shifts that day are exchanged after the colleague and the TL agree.
                                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0">
                                     <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                        Tanggal shift yang ditukar
+                                        Tanggal
                                         <Input
                                             type="date"
                                             value={form.data.start_date}
@@ -390,24 +386,15 @@ export default function OperatorPengajuan({
                                                 )
                                             }
                                         />
-                                        <span
-                                            className={cn(
-                                                'text-[12px]',
-                                                isWorking(myCode)
-                                                    ? 'text-emerald-600'
-                                                    : 'text-amber-600',
-                                            )}
-                                        >
+                                        <span className="text-[12px]">
                                             Jadwal Anda: {codeText(myCode)}
-                                            {!isWorking(myCode) &&
-                                                ' — pilih tanggal Anda bertugas.'}
                                         </span>
                                         <InputError
                                             message={form.errors.start_date}
                                         />
                                     </label>
                                     <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                        Rekan pengganti
+                                        Tukar dengan
                                         <Select
                                             value={
                                                 form.data.substitute_employee_id
@@ -426,36 +413,29 @@ export default function OperatorPengajuan({
                                         >
                                             <SelectTrigger
                                                 className="h-10 w-full min-w-0 text-sm text-foreground"
-                                                aria-label="Rekan pengganti"
+                                                aria-label="Tukar dengan"
                                             >
                                                 <SelectValue placeholder="Pilih rekan…" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {colleagues.map((c) => {
-                                                    const code =
-                                                        c.codes[
-                                                            form.data.start_date
-                                                        ];
-
-                                                    return (
-                                                        <SelectItem
-                                                            key={c.id}
-                                                            value={String(c.id)}
-                                                            disabled={isWorking(
-                                                                code,
-                                                            )}
-                                                        >
-                                                            {c.name}
-                                                            {c.regu
-                                                                ? ` · Regu ${c.regu}`
-                                                                : ''}{' '}
-                                                            —{' '}
-                                                            {isWorking(code)
-                                                                ? `bertugas ${code}`
-                                                                : 'tersedia'}
-                                                        </SelectItem>
-                                                    );
-                                                })}
+                                                {colleagues.map((c) => (
+                                                    <SelectItem
+                                                        key={c.id}
+                                                        value={String(c.id)}
+                                                    >
+                                                        {c.name}
+                                                        {c.regu
+                                                            ? ` · Regu ${c.regu}`
+                                                            : ''}{' '}
+                                                        —{' '}
+                                                        {codeText(
+                                                            c.codes[
+                                                                form.data
+                                                                    .start_date
+                                                            ],
+                                                        )}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                         <InputError
@@ -465,64 +445,31 @@ export default function OperatorPengajuan({
                                             }
                                         />
                                     </label>
-                                    <div className="flex flex-col gap-2 sm:col-span-2">
-                                        <label className="flex items-center gap-2 text-[13px] text-foreground">
-                                            <input
-                                                type="checkbox"
-                                                checked={withSwap}
-                                                onChange={(e) =>
-                                                    setWithSwap(
-                                                        e.target.checked,
-                                                    )
-                                                }
-                                                className="size-4 accent-primary"
-                                            />
-                                            Saya membalas dengan menggantikan
-                                            shift rekan di tanggal lain (tukar
-                                            timbal balik)
-                                        </label>
-                                        {withSwap && (
-                                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground sm:max-w-sm">
-                                                Tanggal balasan
-                                                <Input
-                                                    type="date"
-                                                    value={form.data.swap_date}
-                                                    onChange={(e) =>
-                                                        form.setData(
-                                                            'swap_date',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                                {form.data.swap_date && (
-                                                    <span className="text-[12px]">
-                                                        Jadwal{' '}
-                                                        {substitute?.name ??
-                                                            'rekan'}
-                                                        :{' '}
-                                                        {codeText(
-                                                            substitute?.codes[
-                                                                form.data
-                                                                    .swap_date
-                                                            ],
-                                                        )}{' '}
-                                                        · Jadwal Anda:{' '}
-                                                        {codeText(
-                                                            me.codes[
-                                                                form.data
-                                                                    .swap_date
-                                                            ],
-                                                        )}
-                                                    </span>
+                                    {substitute && (
+                                        <p className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-[12.5px] text-foreground sm:col-span-2">
+                                            Setelah disetujui: Anda{' '}
+                                            <b>
+                                                {codeText(myCode)} →{' '}
+                                                {codeText(
+                                                    substitute.codes[
+                                                        form.data.start_date
+                                                    ],
                                                 )}
-                                                <InputError
-                                                    message={
-                                                        form.errors.swap_date
-                                                    }
-                                                />
-                                            </label>
-                                        )}
-                                    </div>
+                                            </b>
+                                            , {substitute.name}{' '}
+                                            <b>
+                                                {codeText(
+                                                    substitute.codes[
+                                                        form.data.start_date
+                                                    ],
+                                                )}{' '}
+                                                → {codeText(myCode)}
+                                            </b>
+                                            . Pengajuan dikirim ke{' '}
+                                            {substitute.name} untuk
+                                            dikonfirmasi, lalu disetujui TL.
+                                        </p>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 gap-3 sm:max-w-md">
@@ -574,7 +521,7 @@ export default function OperatorPengajuan({
 
                             <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                 {tukar
-                                    ? 'Alasan tukar shift'
+                                    ? 'Catatan (opsional)'
                                     : 'Alasan / keterangan'}
                                 <Textarea
                                     value={form.data.reason}
@@ -618,11 +565,10 @@ export default function OperatorPengajuan({
                                     disabled={
                                         form.processing ||
                                         izinQuotaUsed ||
-                                        form.data.reason.trim().length < 3 ||
-                                        (tukar &&
-                                            (!form.data
-                                                .substitute_employee_id ||
-                                                !isWorking(myCode)))
+                                        (tukar
+                                            ? !form.data.substitute_employee_id
+                                            : form.data.reason.trim().length <
+                                              3)
                                     }
                                     className="w-full sm:w-auto"
                                 >

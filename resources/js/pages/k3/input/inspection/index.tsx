@@ -13,6 +13,7 @@ import {
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -168,6 +169,25 @@ export default function InspectionInput({
         );
     };
 
+    const mobileFields: RowField<GridRow>[] = [
+        {
+            key: 'kondisi',
+            label: 'Kondisi',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            placeholder: 'Pilih Kondisi',
+            span: 1,
+        },
+        {
+            key: 'nilai',
+            label: 'Nilai / Skor',
+            placeholder: 'Contoh: 100%',
+            span: 1,
+        },
+        { key: 'tindak_lanjut', label: 'Tindak Lanjut', span: 2 },
+        { key: 'catatan', label: 'Catatan', type: 'textarea', span: 2 },
+    ];
+
     if (compact) {
         return (
             <>
@@ -282,29 +302,7 @@ export default function InspectionInput({
                                     `${row.kondisi || 'Belum diisi'}${row.nilai ? ` · Nilai ${row.nilai}` : ''}`
                                 }
                                 canWrite={can_write}
-                                fields={[
-                                    {
-                                        key: 'kondisi',
-                                        label: 'Kondisi',
-                                        type: 'dropdown',
-                                        options: ['Baik', 'Tidak Baik'],
-                                        placeholder: 'Pilih Kondisi',
-                                    },
-                                    {
-                                        key: 'nilai',
-                                        label: 'Nilai / Skor',
-                                        placeholder: 'Contoh: 100%',
-                                    },
-                                    {
-                                        key: 'tindak_lanjut',
-                                        label: 'Tindak Lanjut',
-                                    },
-                                    {
-                                        key: 'catatan',
-                                        label: 'Catatan',
-                                        type: 'textarea',
-                                    },
-                                ]}
+                                fields={mobileFields}
                                 onChange={(index, key, value) => {
                                     setRows((current) =>
                                         current.map((row, i) =>
@@ -508,29 +506,7 @@ export default function InspectionInput({
                                     `${row.kondisi || 'Belum diisi'}${row.nilai ? ` · Nilai ${row.nilai}` : ''}`
                                 }
                                 canWrite={can_write}
-                                fields={[
-                                    {
-                                        key: 'kondisi',
-                                        label: 'Kondisi',
-                                        type: 'dropdown',
-                                        options: ['Baik', 'Tidak Baik'],
-                                        placeholder: 'Pilih Kondisi',
-                                    },
-                                    {
-                                        key: 'nilai',
-                                        label: 'Nilai / Skor',
-                                        placeholder: 'Contoh: 100%',
-                                    },
-                                    {
-                                        key: 'tindak_lanjut',
-                                        label: 'Tindak Lanjut',
-                                    },
-                                    {
-                                        key: 'catatan',
-                                        label: 'Catatan',
-                                        type: 'textarea',
-                                    },
-                                ]}
+                                fields={mobileFields}
                                 onChange={(index, key, value) => {
                                     setRows((current) =>
                                         current.map((row, i) =>

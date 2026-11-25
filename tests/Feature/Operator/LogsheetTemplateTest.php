@@ -12,6 +12,7 @@ use App\Services\Operasi\MesinHarianSheet;
 use App\Services\Operator\LogsheetLayout;
 use Database\Seeders\LogsheetParameterSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Inertia\Testing\AssertableInertia;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
@@ -33,6 +34,8 @@ class LogsheetTemplateTest extends TestCase
         parent::setUp();
         $this->seedAccessControl();
         $this->seed(LogsheetParameterSeeder::class);
+        // Hours lock 60 min after their time (WITA): the tests start at 00:30 on the day they fill.
+        $this->travelTo(Carbon::parse('2026-11-20 00:30', 'Asia/Makassar'));
         $this->mirrlees = LogsheetTemplate::query()->where('code', 'mirrlees-pltd-poasia')->sole();
     }
 

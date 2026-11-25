@@ -9,7 +9,6 @@ use App\Http\Controllers\Har\LaporanGangguanController;
 use App\Http\Controllers\Har\LembarController;
 use App\Http\Controllers\Har\LogbookMutasiController;
 use App\Http\Controllers\Har\MaterialPeralatanController;
-use App\Http\Controllers\Har\PatrolCheckParameterController;
 use App\Http\Controllers\Har\Program5s5rController;
 use App\Http\Controllers\Har\TabelController;
 use App\Models\HarLaporanGangguan;
@@ -24,7 +23,6 @@ use App\Services\Reports\ReportWorkflowService;
 use App\Services\Reports\ScopedHtmlFragment;
 use App\Support\HarLembar\HarLembar;
 use App\Support\HarLembar\HarLembars;
-use App\Support\HarPatrolCheckParameter;
 use App\Support\HarTabel\HarTabels;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
@@ -219,21 +217,8 @@ class HarDocumentBuilder
             }
         }
 
-        // Patrol Check Parameter Mesin: one sheet per machine with readings
-        // (the first machine's blank sheet before anything is saved).
-        $parameters = app(PatrolCheckParameterController::class);
-        $withReadings = $parameters->machinesWithReadings($unit, $month, $year);
-        $parameterMachines = $withReadings->isNotEmpty() ? $withReadings->all() : [Machine::query()->where('unit_id', $unit->id)->orderBy('name')->first()];
-        foreach ($parameterMachines as $machine) {
-            $sources[] = [
-                'group' => 'input',
-                'key' => 'patrol-check-parameter'.($machine ? '-'.$machine->id : ''),
-                'title' => HarPatrolCheckParameter::TITLE.($machine ? ' — '.$machine->name : ''),
-                'orientation' => 'landscape',
-                'saved' => $withReadings->isNotEmpty(),
-                'view' => fn (): array => $parameters->pdfView($unit, $month, $year, $machine),
-            ];
-        }
+        // Patrol Check Parameter Mesin is no longer a Pemeliharaan input (user,
+        // 2026-11-24): the machine readings live in the Logsheet Operator.
 
         $sources[] = [
             'group' => 'input',

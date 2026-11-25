@@ -120,8 +120,8 @@ class PengajuanAbsensiTest extends TestCase
 
         $this->assertSame(['2026-08-15' => 'OFF'], $this->codes($this->operatorA, ['2026-08-15']));
         $this->assertSame(['2026-08-15' => 'P'], $this->codes($this->operatorB, ['2026-08-15']));
-        $this->assertStringContainsString('Menggantikan Andi', (string) $this->entry($this->operatorB, '2026-08-15')->note);
-        $this->assertStringContainsString('Digantikan Budi', (string) $this->entry($this->operatorA, '2026-08-15')->note);
+        $this->assertStringContainsString('Tukar shift dengan Andi', (string) $this->entry($this->operatorB, '2026-08-15')->note);
+        $this->assertStringContainsString('Tukar shift dengan Budi', (string) $this->entry($this->operatorA, '2026-08-15')->note);
         $this->assertContains('Tukar shift Andi Disetujui', $this->titles($this->userB));
 
         // "Isi Otomatis" keeps the swapped cells.
@@ -158,16 +158,10 @@ class PengajuanAbsensiTest extends TestCase
         [, $otherUnitEmployee] = $this->operator('Citra', 'C', Unit::factory()->create(['is_active' => true]));
         $post = fn (array $data) => $this->actingAs($this->userA)->post(route('operator.pengajuan.store'), ['reason' => 'Keperluan', ...$data]);
 
-        // Nothing to hand over on a day off; a busy pengganti; a pengganti of another unit.
-        $post(['type' => 'tukar_shift', 'start_date' => '2026-08-15', 'substitute_employee_id' => $this->operatorB->id])->assertSessionHasErrors('start_date');
-        $post(['type' => 'tukar_shift', 'start_date' => '2026-08-16', 'substitute_employee_id' => $this->operatorB->id])->assertSessionHasErrors('substitute_employee_id');
+        // Tukar shift: only a colleague of this unit (not oneself) — the schedule is not checked any more.
         $post(['type' => 'tukar_shift', 'start_date' => '2026-08-16', 'substitute_employee_id' => $otherUnitEmployee->id])->assertSessionHasErrors('substitute_employee_id');
         $post(['type' => 'tukar_shift', 'start_date' => '2026-08-16', 'substitute_employee_id' => $this->operatorA->id])->assertSessionHasErrors('substitute_employee_id');
         $post(['type' => 'tukar_shift', 'start_date' => '2026-08-16'])->assertSessionHasErrors('substitute_employee_id');
-
-        // The return day must be one the pengganti works and the employee does not.
-        $this->schedule($this->operatorB, ['2026-08-16' => 'OFF']);
-        $post(['type' => 'tukar_shift', 'start_date' => '2026-08-16', 'substitute_employee_id' => $this->operatorB->id, 'swap_date' => '2026-08-21'])->assertSessionHasErrors('swap_date');
 
         // A range too long, an end before the start, a short reason, a non-document attachment.
         $post(['type' => 'cuti', 'start_date' => '2026-08-01', 'end_date' => '2026-09-05'])->assertSessionHasErrors('end_date');
@@ -180,22 +174,29 @@ class PengajuanAbsensiTest extends TestCase
         $post(['type' => 'izin', 'start_date' => '2026-08-10', 'end_date' => '2026-08-11'])->assertRedirect()->assertSessionHasNoErrors();
         $post(['type' => 'cuti', 'start_date' => '2026-08-11', 'end_date' => '2026-08-13'])->assertSessionHasErrors('start_date');
         $this->assertSame(1, AttendanceRequest::query()->count());
+
+        // Unrestricted tukar shift (user, 2026-11-24): on a day off, with a colleague on duty, without a reason, even over another request.
+        $post(['type' => 'tukar_shift', 'start_date' => '2026-08-15', 'substitute_employee_id' => $this->operatorB->id, 'reason' => ''])->assertRedirect()->assertSessionHasNoErrors();
+        $post(['type' => 'tukar_shift', 'start_date' => '2026-08-11', 'substitute_employee_id' => $this->operatorB->id])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(3, AttendanceRequest::query()->count());
+        $this->assertSame('Tukar shift dengan Budi', AttendanceRequest::query()->whereDate('start_date', '2026-08-15')->value('reason'));
     }
 
-    public function test_the_approval_checks_the_schedule_again(): void
+    public function test_a_tukar_shift_exchanges_both_shifts_as_they_are_when_approved(): void
     {
         $this->schedule($this->operatorA, ['2026-08-15' => 'P']);
         $this->schedule($this->operatorB, ['2026-08-15' => 'OFF']);
         $request = $this->tukar();
         $this->actingAs($this->userB)->post(route('operator.pengajuan.respond', $request), ['accept' => true])->assertRedirect()->assertSessionHasNoErrors();
 
-        // Meanwhile the pengganti was put on a shift that day.
+        // Meanwhile the colleague was put on the Sore shift: A (Pagi) and B (Sore) simply swap.
         $this->schedule($this->operatorB, ['2026-08-15' => 'S']);
 
-        $this->actingAs($this->approver)->post(route('operator.pengajuan.approve', $request))->assertSessionHasErrors('substitute_employee_id');
+        $this->actingAs($this->approver)->post(route('operator.pengajuan.approve', $request))->assertRedirect()->assertSessionHasNoErrors();
 
-        $this->assertSame(AttendanceRequestStatus::MenungguPersetujuan, $request->refresh()->status);
-        $this->assertSame(['2026-08-15' => 'P'], $this->codes($this->operatorA, ['2026-08-15']));
+        $this->assertSame(AttendanceRequestStatus::Disetujui, $request->refresh()->status);
+        $this->assertSame(['2026-08-15' => 'S'], $this->codes($this->operatorA, ['2026-08-15']));
+        $this->assertSame(['2026-08-15' => 'P'], $this->codes($this->operatorB, ['2026-08-15']));
     }
 
     public function test_decline_reject_and_cancel(): void

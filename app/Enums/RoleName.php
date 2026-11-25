@@ -291,6 +291,8 @@ enum RoleName: string
                 // TL Operasi still verifies the operators' logsheets and sees
                 // the shift schedule, and approves operator attendance requests.
                 PermissionName::OperatorLogsheetView,
+                // ... and may correct a locked (past) logsheet hour (user, 2026-11-24).
+                PermissionName::OperatorLogsheetCorrect,
                 PermissionName::OperatorMutasiView,
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorPengajuanApproveOperasi,
@@ -388,6 +390,8 @@ enum RoleName: string
             // instead of a bare Operator — the Operator role itself is untouched.
             self::ProjectLeaderOperasi => [
                 ...$this->operatorBasePermissions(),
+                // Corrects a locked (past) logsheet hour (user, 2026-11-24).
+                PermissionName::OperatorLogsheetCorrect,
                 PermissionName::OperatorAbsensiView,
                 PermissionName::OperatorAbsensiWrite,
                 PermissionName::OperatorPresensi,

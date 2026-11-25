@@ -396,11 +396,17 @@ export default function PengusahaanHydrantPage({
     );
 
     const mobileFields: RowField<HydrantItem>[] = [
-        { key: 'lokasi', label: 'Lokasi', placeholder: 'Lokasi titik hydrant' },
+        {
+            key: 'lokasi',
+            label: 'Lokasi',
+            placeholder: 'Lokasi titik hydrant',
+            span: 1,
+        },
         {
             key: 'tanggal_periksa',
             label: 'Tanggal Periksa',
             type: 'date',
+            span: 1,
             parse: (v) => isoToDmy(String(v)),
         },
         ...CONDITIONS.map(
@@ -409,11 +415,17 @@ export default function PengusahaanHydrantPage({
                 label,
                 type: 'dropdown',
                 options: choices,
+                span: 1,
                 group: i === 0 ? 'Kondisi' : undefined,
                 parse: (v) => String(v) || choices[0],
             }),
         ),
-        { key: 'keterangan', label: 'Keterangan', placeholder: 'Keterangan' },
+        {
+            key: 'keterangan',
+            label: 'Keterangan',
+            placeholder: 'Keterangan',
+            span: 2,
+        },
     ];
 
     const mobile = (

@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { CheckCircle2, ChevronRight, Circle, Clock, FileDown, FileSpreadsheet, Plus, Save } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Circle, Clock, FileDown, FileSpreadsheet, Lock, Plus, Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -58,6 +58,11 @@ type Props = {
     active_sheet?: Sheet | null;
     /** Whether a lembar was picked (the phone asks for one first when the form has several). */
     lembar_dipilih?: boolean;
+    /** Hours whose reading time is over (slot + lock_after_minutes, WITA): read-only. */
+    locked_slots?: string[];
+    lock_after_minutes?: number;
+    /** TL / Project Leader: locked hours stay open for corrections. */
+    can_correct?: boolean;
 };
 
 type Sheet = { key: string; name: string; interval: string | null; summary: boolean; filled?: number; total?: number };
@@ -100,7 +105,7 @@ const sheetInput =
 const gridOf = (rows: Row[], parameters: Parameter[]): Record<string, Record<string, string>> =>
     Object.fromEntries(rows.map((row) => [row.time_slot, Object.fromEntries(parameters.map((p) => [`p_${p.id}`, toStr(row.values[`p_${p.id}`])]))]));
 
-export default function LogsheetInput({ filters, stats, header, parameters, rows, slots, shifts, options, can_write, is_submitted, template, sheets = [], active_sheet = null, lembar_dipilih = false }: Props) {
+export default function LogsheetInput({ filters, stats, header, parameters, rows, slots, shifts, options, can_write, is_submitted, template, sheets = [], active_sheet = null, lembar_dipilih = false, locked_slots = [], lock_after_minutes = 60, can_correct = false }: Props) {
     const [shift, setShift] = useState(header.shift ?? '');
     const [open, setOpen] = useState(false);
     const [slot, setSlot] = useState<string>(slots[0] ?? '');
@@ -175,6 +180,7 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     const head = useMemo(() => headerRows(parameters), [parameters]);
     const references = useMemo(() => referenceRows(parameters), [parameters]);
     const multiSheet = sheets.length > 1;
+    const isLocked = (slotValue: string) => locked_slots.includes(slotValue);
     // Phone: a form with several lembar first shows the interval choice, then that lembar's hours.
     const choosingSheet = compact && multiSheet && !lembar_dipilih;
     // Logsheet Lokal 03: MIN / MAX / RATA2 of each column, live from what is typed.
@@ -208,7 +214,8 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
     };
 
     const openFor = (row?: Row) => {
-        const target = row?.time_slot ?? slots.find((s) => !rows.find((r) => r.time_slot === s)?.filled) ?? slots[0] ?? '';
+        const open = slots.filter((s) => !isLocked(s));
+        const target = row?.time_slot ?? open.find((s) => !rows.find((r) => r.time_slot === s)?.filled) ?? open[0] ?? '';
         setSlot(target);
         setForm(valuesForSlot(target));
         setOpen(true);
@@ -264,10 +271,11 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                 {!compact && (
                 <PageHeader
                     title="Logsheet Operator"
-                    description="Pembacaan parameter mesin per jam. Satu lembar per mesin per hari. Ketik langsung di tabel, lalu tekan Simpan."
+                    description={`Pembacaan parameter mesin per jam. Satu lembar per mesin per hari. Ketik langsung di tabel, lalu tekan Simpan. Jam yang sudah lewat lebih dari ${lock_after_minutes} menit terkunci.`}
                     actions={
                         can_write && !noEngine ? (
                             <div className="flex flex-wrap items-center gap-3">
+                                {errors.sheet && <span className="text-[13px] text-destructive">{errors.sheet}</span>}
                                 {dirtySlots.length > 0 && <span className="text-[13px] text-amber-600">{dirtySlots.length} jam belum disimpan</span>}
                                 <Button onClick={saveGrid} disabled={saving || dirtySlots.length === 0}>
                                     <Save className="size-4" />
@@ -344,6 +352,13 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                             <SummaryCard key={stat.label} label={stat.label} value={stat.value} unit={stat.unit} hint={stat.hint} />
                         ))}
                     </div>
+                )}
+
+                {!noEngine && can_correct && (
+                    <p className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[12.5px] text-amber-800 dark:text-amber-300">
+                        <Lock className="size-4 shrink-0" />
+                        Mode koreksi: Anda dapat mengubah jam yang sudah terkunci (lewat {lock_after_minutes} menit).
+                    </p>
                 )}
 
                 {!noEngine && multiSheet && !compact && (
@@ -436,16 +451,19 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                     <button
                                         key={row.time_slot}
                                         type="button"
-                                        disabled={!can_write}
+                                        disabled={!can_write || isLocked(row.time_slot)}
                                         onClick={() => openFor(row)}
                                         className={cn(
                                             'relative flex items-center gap-2.5 rounded-xl border p-3 text-left transition active:scale-[0.98] disabled:active:scale-100',
                                             row.filled
                                                 ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40'
                                                 : 'border-border bg-card',
+                                            isLocked(row.time_slot) && !row.filled && 'bg-muted/60 opacity-70',
                                         )}
                                     >
-                                        {row.filled ? (
+                                        {isLocked(row.time_slot) && !row.filled ? (
+                                            <Lock className="size-5 shrink-0 text-muted-foreground" />
+                                        ) : row.filled ? (
                                             <CheckCircle2 className="size-6 shrink-0 fill-emerald-600 text-white" />
                                         ) : (
                                             <Circle className="size-6 shrink-0 text-muted-foreground/40" />
@@ -465,7 +483,8 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                                     row.filled ? 'font-medium text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground',
                                                 )}
                                             >
-                                                {row.filled ? `Sudah diisi · ${filled}/${parameters.length}` : 'Belum diisi'}
+                                                {row.filled ? `Sudah diisi · ${filled}/${parameters.length}` : isLocked(row.time_slot) ? 'Terkunci · lewat jam' : 'Belum diisi'}
+                                                {row.filled && isLocked(row.time_slot) ? ' · terkunci' : ''}
                                             </span>
                                         </span>
                                     </button>
@@ -539,14 +558,15 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                             >
                                                 {row.time_slot}
                                                 {dirtySlots.includes(row.time_slot) && <span className="ml-0.5 text-amber-600">•</span>}
+                                                {isLocked(row.time_slot) && <Lock className="ml-0.5 inline size-3 text-muted-foreground" aria-label="Terkunci" />}
                                             </td>
                                             {parameters.map((p) => {
                                                 const key = `p_${p.id}`;
                                                 const error = errors[`sheet.${row.time_slot}.${key}`];
 
                                                 return (
-                                                    <td key={p.id} className={cn(sheetTd, 'p-0', error && 'bg-destructive/10')} title={error}>
-                                                        {can_write ? (
+                                                    <td key={p.id} className={cn(sheetTd, 'p-0', error && 'bg-destructive/10', isLocked(row.time_slot) && 'bg-muted/50')} title={error}>
+                                                        {can_write && !isLocked(row.time_slot) ? (
                                                             <CellInput
                                                                 parameter={p}
                                                                 value={grid[row.time_slot]?.[key] ?? ''}
@@ -627,14 +647,15 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                             >
                                                 {row.time_slot}
                                                 {dirtySlots.includes(row.time_slot) && <span className="ml-0.5 text-amber-600">•</span>}
+                                                {isLocked(row.time_slot) && <Lock className="ml-0.5 inline size-3 text-muted-foreground" aria-label="Terkunci" />}
                                             </td>
                                             {mainParameters.map((p) => {
                                                 const key = `p_${p.id}`;
                                                 const error = errors[`sheet.${row.time_slot}.${key}`];
 
                                                 return (
-                                                    <td key={p.id} className={cn(sheetTd, 'p-0', error && 'bg-destructive/10')} title={error}>
-                                                        {can_write ? (
+                                                    <td key={p.id} className={cn(sheetTd, 'p-0', error && 'bg-destructive/10', isLocked(row.time_slot) && 'bg-muted/50')} title={error}>
+                                                        {can_write && !isLocked(row.time_slot) ? (
                                                             <input
                                                                 inputMode="decimal"
                                                                 value={grid[row.time_slot]?.[key] ?? ''}
@@ -678,8 +699,8 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                 <tr>
                                     <td className={cn(sheetTd, 'sticky left-0 z-10 bg-card font-semibold')}>Suhu</td>
                                     {rows.map((row) => (
-                                        <td key={row.time_slot} className={cn(sheetTd, 'p-0')}>
-                                            {can_write ? (
+                                        <td key={row.time_slot} className={cn(sheetTd, 'p-0', isLocked(row.time_slot) && 'bg-muted/50')}>
+                                            {can_write && !isLocked(row.time_slot) ? (
                                                 <input
                                                     inputMode="decimal"
                                                     value={grid[row.time_slot]?.[`p_${bearingParam.id}`] ?? ''}
@@ -724,8 +745,9 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                     </SelectTrigger>
                                     <SelectContent>
                                         {slots.map((s) => (
-                                            <SelectItem key={s} value={s}>
+                                            <SelectItem key={s} value={s} disabled={isLocked(s)}>
                                                 {s}
+                                                {isLocked(s) ? ' · terkunci' : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

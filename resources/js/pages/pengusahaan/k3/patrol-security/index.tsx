@@ -455,6 +455,19 @@ export default function PengusahaanPatrolSecurityPage(props: Props) {
                         )}
                     />
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addCheckpoint}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Lokasi Patroli
+                        </Button>
+                    )}
+
                     <div className="rounded-xl border border-border bg-card p-3">
                         <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
                             Catatan
@@ -474,6 +487,7 @@ export default function PengusahaanPatrolSecurityPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={() => handleSubmit()}
                                 disabled={saving}
@@ -481,14 +495,6 @@ export default function PengusahaanPatrolSecurityPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addCheckpoint}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

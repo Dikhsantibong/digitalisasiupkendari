@@ -447,20 +447,27 @@ export default function MetodePengujianPeralatanPage(props: Props) {
                                     key: 'nama_peralatan',
                                     label: 'Nama Peralatan',
                                     placeholder: 'Mis. Crane',
+                                    span: 2,
                                 },
                                 {
                                     key: 'no_pengesahan',
                                     label: 'No. Pengesahan',
+                                    span: 1,
                                 },
                                 {
                                     key: 'nama_kategori_alat',
                                     label: 'Nama Kategori Alat',
+                                    span: 1,
                                 },
                                 ...TEST_FIELDS.map(({ field, label }, i) => ({
                                     key: field,
                                     label,
                                     type: 'dropdown' as const,
                                     options: testingOptions,
+                                    span: (i === TEST_FIELDS.length - 1 &&
+                                    TEST_FIELDS.length % 2 === 1
+                                        ? 2
+                                        : 1) as 1 | 2,
                                     group:
                                         i === 0
                                             ? 'Metode Pemeriksaan'
@@ -469,16 +476,19 @@ export default function MetodePengujianPeralatanPage(props: Props) {
                                 {
                                     key: 'sertifikasi_terakhir',
                                     label: 'Sertifikasi Terakhir',
+                                    span: 1,
                                     group: 'Sertifikasi',
                                 },
                                 {
                                     key: 'sertifikasi_ulang',
                                     label: 'Sertifikasi Ulang',
+                                    span: 1,
                                 },
                                 {
                                     key: 'keterangan',
                                     label: 'Keterangan',
                                     type: 'textarea',
+                                    span: 2,
                                 },
                             ]}
                             onChange={(idx, key, value) =>
@@ -496,7 +506,7 @@ export default function MetodePengujianPeralatanPage(props: Props) {
                                 variant="outline"
                                 size="sm"
                                 onClick={addRow}
-                                className="w-full gap-1.5"
+                                className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
                             >
                                 <Plus className="size-4" />
                                 Tambah Peralatan

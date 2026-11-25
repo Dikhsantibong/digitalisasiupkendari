@@ -449,23 +449,27 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                                 key: 'rambu_k3',
                                 label: 'Nama / Jenis Rambu K3',
                                 placeholder: 'Mis. Dilarang Merokok',
+                                span: 1,
                             },
                             {
                                 key: 'lokasi',
                                 label: 'Lokasi Pemasangan',
                                 placeholder: 'Area Engine',
+                                span: 1,
                             },
                             {
                                 key: 'tingkat_pelanggaran',
                                 label: 'Tingkat Pelanggaran',
                                 type: 'dropdown',
                                 options: TINGKAT_PELANGGARAN_OPTIONS,
+                                span: 1,
                             },
                             {
                                 key: 'keterangan',
                                 label: 'Kategori / Keterangan',
                                 type: 'dropdown',
                                 options: KETERANGAN_OPTIONS,
+                                span: 1,
                             },
                         ]}
                         onChange={(idx, key, value) =>
@@ -473,6 +477,19 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                         }
                         onRemove={(idx) => removeItem(filteredItems[idx]._key)}
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItem}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Rambu K3
+                        </Button>
+                    )}
 
                     <K3MobileMetaAccordion
                         noDokumen={noDokumen}
@@ -529,6 +546,7 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={() => handleSubmit()}
                                 disabled={saving}
@@ -536,14 +554,6 @@ export default function PengusahaanInspeksiRambuPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addItem}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

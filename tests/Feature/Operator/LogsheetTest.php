@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\Unit;
 use Database\Seeders\LogsheetParameterSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\Concerns\InteractsWithAccessControl;
 use Tests\TestCase;
 
@@ -27,6 +28,8 @@ class LogsheetTest extends TestCase
 
         $this->seedAccessControl();
         $this->seed(LogsheetParameterSeeder::class);
+        // Hours lock 60 min after their time (WITA): the tests start at 00:30 on the day they fill.
+        $this->travelTo(Carbon::parse('2026-08-10 00:30', 'Asia/Makassar'));
     }
 
     private function engineForUnit(Unit $unit): Machine
@@ -207,6 +210,49 @@ class LogsheetTest extends TestCase
         $this->actingAs($operator)->post(route('operator.logsheet.store'), [
             'unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10', 'time_slot' => '01:00', 'values' => [],
         ])->assertRedirect()->assertSessionHasNoErrors();
+    }
+
+    public function test_hours_past_their_time_are_locked(): void
+    {
+        $unit = Unit::factory()->create();
+        $engine = $this->engineForUnit($unit);
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+        $load = LogsheetParameter::query()->ofTemplate(LogsheetTemplate::default())->where('code', 'LOAD')->value('id');
+        $period = ['unit_id' => $unit->id, 'engine_id' => $engine->id, 'log_date' => '2026-08-10'];
+
+        // 05:10 WITA: 01:00–04:00 are over (+60 min); 04:00 locks at 05:00, 05:00 at 06:00.
+        $this->travelTo(Carbon::parse('2026-08-10 05:10', 'Asia/Makassar'));
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period))
+            ->assertInertia(fn ($page) => $page->where('locked_slots', ['01:00', '02:00', '03:00', '04:00'])->where('lock_after_minutes', 60));
+
+        $this->actingAs($operator)->post(route('operator.logsheet.store'), $period + ['time_slot' => '03:00', 'values' => ['p_'.$load => '100']])
+            ->assertSessionHasErrors('time_slot');
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['04:00' => ['p_'.$load => '100'], '05:00' => ['p_'.$load => '110']]])
+            ->assertSessionHasErrors('sheet');
+        $this->assertSame(0, OperatorLogsheet::query()->count());
+
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['sheet' => ['05:00' => ['p_'.$load => '110']]])->assertSessionHasNoErrors();
+        $this->assertSame(1, OperatorLogsheet::query()->sole()->readings()->count());
+
+        // A past day is locked whole for the operator.
+        $this->travelTo(Carbon::parse('2026-08-11 08:00', 'Asia/Makassar'));
+        $this->actingAs($operator)->get(route('operator.logsheet.index', $period))->assertInertia(fn ($page) => $page->has('locked_slots', 29)->where('can_correct', false));
+
+        // TL Operasi, TL Ophar, Project Leader (and Super Admin) open locked hours to correct them (user, 2026-11-24).
+        foreach ([RoleName::TeamLeaderOperasi, RoleName::TeamLeaderOphar, RoleName::ProjectLeaderOperasi] as $i => $role) {
+            $corrector = $this->userWithRole($role, $unit);
+            $this->actingAs($corrector)->get(route('operator.logsheet.index', $period))
+                ->assertInertia(fn ($page) => $page->where('can_write', true)->where('can_correct', true)->where('locked_slots', []));
+            $this->actingAs($corrector)->post(route('operator.logsheet.store'), $period + ['time_slot' => '03:00', 'values' => ['p_'.$load => (string) (100 + $i)]])
+                ->assertSessionHasNoErrors();
+        }
+        $this->assertSame('102', rtrim(rtrim((string) OperatorLogsheet::query()->sole()->readings()->where('time_slot', '03:00')->value('value'), '0'), '.'));
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))->post(route('operator.logsheet.store'), $period + ['time_slot' => '03:00', 'values' => ['p_'.$load => '100']])
+            ->assertSessionHasNoErrors();
+
+        // The Koordinator Operasi only watches.
+        $this->actingAs($this->userWithRole(RoleName::KoordinatorOperasi, $unit))->post(route('operator.logsheet.store'), $period + ['time_slot' => '03:00', 'values' => []])
+            ->assertForbidden();
     }
 
     public function test_tl_operasi_can_view_but_not_write(): void

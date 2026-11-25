@@ -51,6 +51,12 @@ class LogsheetController extends Controller
     /** @var list<string> */
     private const SHIFTS = ['A', 'B', 'C', 'D'];
 
+    /**
+     * A reading hour stays open this many minutes after its time (WITA), then
+     * locks (user, 2026-11-24): e.g. the 05:00 reading can be filled until 06:00.
+     */
+    public const LOCK_AFTER_MINUTES = 60;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
@@ -66,7 +72,7 @@ class LogsheetController extends Controller
         $machines = Machine::query()->where('unit_id', $unit->id)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'logsheet_template_id']);
         $engine = $machines->firstWhere('id', (int) $request->integer('engine_id')) ?? $machines->first();
 
-        $logDate = ($request->date('log_date') ?? Carbon::now())->toDateString();
+        $logDate = ($request->date('log_date') ?? Carbon::now('Asia/Makassar'))->toDateString();
 
         $template = LogsheetTemplate::forMachine($engine);
         // The active lembar (sheet) of the form: PLTD Poasia has several, each with its own interval.
@@ -111,13 +117,18 @@ class LogsheetController extends Controller
             'active_sheet' => $activeSheet === null ? null : ['key' => $activeSheet['key'], 'name' => $activeSheet['name'], 'interval' => $activeSheet['interval'], 'summary' => $activeSheet['summary']],
             'rows' => $rows,
             'slots' => $slots,
+            // Hours already past (+ LOCK_AFTER_MINUTES): shown read-only and refused on save.
+            'locked_slots' => $this->lockedSlots($logDate, $slots, $user),
+            'lock_after_minutes' => self::LOCK_AFTER_MINUTES,
             'shifts' => self::SHIFTS,
             'options' => [
                 'units' => $units->all(),
                 'machines' => $machines->map(fn (Machine $m): array => ['id' => $m->id, 'name' => $m->name])->all(),
             ],
             // The operator can always edit the sheet; TL/Manager never write.
-            'can_write' => $user->hasPermissionTo(PermissionName::OperatorLogsheetWrite),
+            'can_write' => $this->writes($user),
+            // TL & Project Leader may open locked hours to correct them.
+            'can_correct' => $this->corrects($user),
             'is_submitted' => $isSubmitted,
         ]);
     }
@@ -129,7 +140,7 @@ class LogsheetController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetWrite), 403);
+        abort_unless($this->writes($user), 403);
 
         [$unit, $engine] = $this->resolveTarget($request);
 
@@ -143,6 +154,9 @@ class LogsheetController extends Controller
             'values.*' => ['nullable', 'max:60'],
         ]);
         $this->checkValues($validated['values'] ?? [], $parameters, 'values');
+        if (in_array($validated['time_slot'], $this->lockedSlots($validated['log_date'], [$validated['time_slot']], $user), true)) {
+            throw ValidationException::withMessages(['time_slot' => "Jam {$validated['time_slot']} sudah lewat, tidak bisa diisi lagi."]);
+        }
 
         $logDate = Carbon::parse($validated['log_date'])->toDateString();
         $logsheet = $this->findOrNewSheet($engine->id, $logDate);
@@ -179,7 +193,7 @@ class LogsheetController extends Controller
     public function storeSheet(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetWrite), 403);
+        abort_unless($this->writes($user), 403);
 
         [$unit, $engine] = $this->resolveTarget($request);
 
@@ -199,6 +213,10 @@ class LogsheetController extends Controller
         abort_if($unknown !== [], 422, 'Jam tidak dikenal.');
         foreach ($validated['sheet'] as $slot => $values) {
             $this->checkValues($values, $parameters, "sheet.{$slot}");
+        }
+        $locked = $this->lockedSlots($validated['log_date'], $slots, $user);
+        if ($locked !== []) {
+            throw ValidationException::withMessages(['sheet' => 'Jam '.implode(', ', $locked).' sudah lewat, tidak bisa diisi lagi.']);
         }
 
         $logDate = Carbon::parse($validated['log_date'])->toDateString();
@@ -239,7 +257,7 @@ class LogsheetController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperatorLogsheetView), 403);
 
         [$unit, $engine] = $this->resolveTarget($request);
-        $logDate = ($request->date('log_date') ?? Carbon::now())->toDateString();
+        $logDate = ($request->date('log_date') ?? Carbon::now('Asia/Makassar'))->toDateString();
         $lembar = $this->lembarOf($request, $engine);
         [$parameters, $logsheet, $rows] = $this->sheet($engine, $logDate, $lembar);
         $date = Carbon::parse($logDate);
@@ -333,6 +351,48 @@ class LogsheetController extends Controller
     private function slotsOf(?Machine $engine, ?string $lembar = null): array
     {
         return LogsheetTemplate::forMachine($engine)?->sheet($lembar)['slots'] ?? LogsheetTemplate::DEFAULT_SLOTS;
+    }
+
+    /**
+     * The hours of a day whose reading time is over: slot time (WITA, 24:00 =
+     * the next midnight) + LOCK_AFTER_MINUTES has passed. TL, Project Leader & Super Admin
+     * (operator.logsheet.correct) may still correct a sheet.
+     *
+     * @param  list<string>  $slots
+     * @return list<string>
+     */
+    private function lockedSlots(string $logDate, array $slots, User $user): array
+    {
+        if ($this->corrects($user)) {
+            return [];
+        }
+
+        $now = Carbon::now('Asia/Makassar');
+        $day = Carbon::parse(Carbon::parse($logDate)->toDateString(), 'Asia/Makassar');
+
+        return array_values(array_filter($slots, function (string $slot) use ($now, $day): bool {
+            [$hour, $minute] = array_map('intval', explode(':', $slot));
+
+            return $now->greaterThanOrEqualTo($day->copy()->addHours($hour)->addMinutes($minute + self::LOCK_AFTER_MINUTES));
+        }));
+    }
+
+    /**
+     * Fill the logsheet: the operator (operator.logsheet.write), or a TL /
+     * Project Leader correcting it (operator.logsheet.correct).
+     */
+    private function writes(User $user): bool
+    {
+        return $user->hasPermissionTo(PermissionName::OperatorLogsheetWrite) || $this->corrects($user);
+    }
+
+    /**
+     * Open locked hours (user, 2026-11-24): TL Operasi, TL Ophar, Project Leader
+     * — and Super Admin, who holds every permission.
+     */
+    private function corrects(User $user): bool
+    {
+        return ! $user->isReadOnly() && $user->hasPermissionTo(PermissionName::OperatorLogsheetCorrect);
     }
 
     /**

@@ -529,7 +529,7 @@ export default function PengusahaanJamKerjaPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
-                            {dirty && (
+                            {dirty ? (
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -540,6 +540,8 @@ export default function PengusahaanJamKerjaPage(props: Props) {
                                     <RotateCcw className="size-4" />
                                     Reset
                                 </Button>
+                            ) : (
+                                <div aria-hidden="true" />
                             )}
                             <Button
                                 onClick={save}

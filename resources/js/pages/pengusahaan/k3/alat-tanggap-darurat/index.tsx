@@ -275,6 +275,7 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                                 key: 'jenis',
                                 label: 'Jenis Alat Tanggap Darurat',
                                 placeholder: 'Mis. APAR / Kotak P3K',
+                                span: 2,
                             },
                             {
                                 key: 'siap_pakai',
@@ -282,18 +283,21 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                                 type: 'number',
                                 parse: (v) => (v === '' ? '' : Number(v)),
                                 group: 'Status Unit',
+                                span: 1,
                             },
                             {
                                 key: 'kadaluarsa',
                                 label: 'Kadaluarsa',
                                 type: 'number',
                                 parse: (v) => (v === '' ? '' : Number(v)),
+                                span: 1,
                             },
                             {
                                 key: 'kosong',
                                 label: 'Kosong',
                                 type: 'number',
                                 parse: (v) => (v === '' ? '' : Number(v)),
+                                span: 2,
                             },
                             {
                                 key: 'tgl_diisi_kembali',
@@ -301,6 +305,7 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                                 type: 'date',
                                 parse: (v) => isoToDmy(String(v)),
                                 group: 'Lainnya',
+                                span: 1,
                             },
                             {
                                 key: 'keterangan',
@@ -312,6 +317,7 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                                     'Kadaluarsa',
                                     'Kosong',
                                 ],
+                                span: 1,
                             },
                         ]}
                         onChange={(idx, key, value) =>
@@ -323,6 +329,19 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                         }
                         onRemove={(idx) => removeItem(items[idx]._key)}
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItem}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Alat Tanggap Darurat
+                        </Button>
+                    )}
 
                     <K3MobileMetaAccordion
                         noDokumen={noDokumen}
@@ -362,6 +381,7 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={() => handleSubmit()}
                                 disabled={saving}
@@ -369,14 +389,6 @@ export default function PengusahaanAlatTanggapDaruratPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addItem}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

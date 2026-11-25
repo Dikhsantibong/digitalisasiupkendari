@@ -517,6 +517,19 @@ export default function AirLimbahPage({
                         </div>
                     )}
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={openCreateModal}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Catatan Air Limbah
+                        </Button>
+                    )}
+
                     <StickyActionBar>
                         <K3MobilePdfButton
                             input="air-limbah"
@@ -528,24 +541,14 @@ export default function AirLimbahPage({
                             pdfUrl={pdfUrl}
                         />
                         {can_write && (
-                            <>
-                                <Button
-                                    onClick={handleSave}
-                                    disabled={!dirty || saving}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={openCreateModal}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                onClick={handleSave}
+                                disabled={!dirty || saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>

@@ -21,13 +21,18 @@ export type MutasiExcel = {
         nama: string;
         level_bbm: string | null;
         tambah_bbm: string | null;
+        tambah_pelumas?: string | null;
         pelumas: string | null;
         status: string | null;
     }[];
     tangki: { nama: string | null; level_cm: string | null }[];
     peralatan: { nama: string | null; ada: boolean; jumlah: number | null }[];
     kejadian: { jam: string | null; uraian: string }[];
+    /** Start / stop of the shift from Start Stop Engine, printed before the typed events. */
+    start_stop?: { jam: string; uraian: string }[];
     gangguan_mesin: string | null;
+    /** Abnormal (TN) Patrol Check findings of the shift, printed before the typed text. */
+    patrol_findings?: { jam: string; mesin: string; peralatan: string; catatan: string; operator: string }[];
     catatan: string | null;
     regu_penyerah: string | null;
     penyerah_nama: string | null;
@@ -161,8 +166,8 @@ export async function downloadMutasiWorkbook(
     // Mesin.
     let r = 5;
     block(sheet, r, 1, r + 1, 1, 'MESIN', HEAD);
-    block(sheet, r, 2, r + 1, 2, 'Level tangki bahan bakar (Liter)', HEAD);
-    block(sheet, r, 3, r + 1, 3, 'Tambah bahan bakar (Liter)', HEAD);
+    block(sheet, r, 2, r + 1, 2, 'Level tangki bahan bakar (cm)', HEAD);
+    block(sheet, r, 3, r + 1, 3, 'Tambah pelumas (Liter)', HEAD);
     block(sheet, r, 4, r, 6, 'Level pelumas Mesin/RA (✓)', HEAD);
     block(sheet, r, 7, r + 1, 7, 'Catatan', HEAD);
     ['NORMAL', 'RENDAH', 'TINGGI'].forEach((label, i) =>
@@ -178,7 +183,7 @@ export async function downloadMutasiWorkbook(
         const m = data.mesin[i];
         put(sheet, r + i, 1, m?.nama ?? '', LEFT);
         put(sheet, r + i, 2, mark(m?.level_bbm ?? null), CELL);
-        put(sheet, r + i, 3, mark(m?.tambah_bbm ?? null), CELL);
+        put(sheet, r + i, 3, mark(m?.tambah_pelumas ?? null), CELL);
         ['normal', 'rendah', 'tinggi'].forEach((level, j) =>
             put(sheet, r + i, 4 + j, m?.pelumas === level ? '✓' : '', {
                 ...CELL,
@@ -234,10 +239,11 @@ export async function downloadMutasiWorkbook(
     block(sheet, r, 2, r, COLS, 'Uraian', HEAD);
     r++;
 
-    const kejadianRows = Math.max(12, data.kejadian.length);
+    const events = [...(data.start_stop ?? []), ...data.kejadian];
+    const kejadianRows = Math.max(12, events.length);
 
     for (let i = 0; i < kejadianRows; i++) {
-        const k = data.kejadian[i];
+        const k = events[i];
         put(sheet, r + i, 1, k?.jam ?? '', CELL);
         block(sheet, r + i, 2, r + i, COLS, k?.uraian ?? '', LEFT);
     }
@@ -258,7 +264,15 @@ export async function downloadMutasiWorkbook(
         1,
         r + statusRows - 1,
         5,
-        data.gangguan_mesin ?? '',
+        [
+            ...(data.patrol_findings ?? []).map(
+                (f) =>
+                    `⚠ ${f.jam} ${f.mesin} — ${f.peralatan}: ${f.catatan} (Patrol Check, ${f.operator})`,
+            ),
+            data.gangguan_mesin ?? '',
+        ]
+            .filter((line) => line !== '')
+            .join('\n'),
         TOP_LEFT,
     );
 

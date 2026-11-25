@@ -30,11 +30,11 @@ use Illuminate\Validation\ValidationException;
  *
  * - Izin / sakit / cuti: every day of the range that is not an OFF day gets
  *   the absence code (I, SKT, C), so it never counts against % hadir.
- * - Tukar shift: the employee's working shift on `start_date` goes to the
- *   pengganti (who must be free that day) and the employee gets OFF. With a
- *   `swap_date` the employee pays it back: the pengganti's shift that day goes
- *   to the employee. The rules are checked when submitting and again when
- *   approving, since the schedule may have changed in between.
+ * - Tukar shift (simplified, user 2026-11-24): the employee picks a colleague
+ *   and their two Jadwal Shift codes on `start_date` are exchanged (a blank
+ *   day counts as OFF) — e.g. A on Pagi with B on Sore. No schedule rule is
+ *   checked: the colleague confirms and the TL decides. A legacy `swap_date`
+ *   is exchanged the same way.
  *
  * Every changed cell carries attendance_request_id and a note, and is kept in
  * `applied` with its previous code, so "Isi Otomatis" leaves it alone and
@@ -249,6 +249,16 @@ class AttendanceRequestService
         $start = Carbon::parse($data['start_date']);
         $end = Carbon::parse($data['end_date']);
 
+        // Tukar shift: only a colleague on this unit's roster; the TL decides the rest (user, 2026-11-24).
+        if ($data['type'] === AttendanceRequestType::TukarShift) {
+            $substitute = $data['substitute'];
+            if ($substitute === null || $substitute->id === $employee->id || ! $this->onRoster($unit, $substitute)) {
+                throw ValidationException::withMessages(['substitute_employee_id' => 'Pilih rekan yang akan ditukar dari jadwal shift unit ini.']);
+            }
+
+            return;
+        }
+
         if ($start->diffInDays($end) + 1 > self::MAX_DAYS) {
             throw ValidationException::withMessages(['end_date' => 'Pengajuan paling lama '.self::MAX_DAYS.' hari.']);
         }
@@ -286,21 +296,12 @@ class AttendanceRequestService
         if ($overlap) {
             throw ValidationException::withMessages(['start_date' => 'Sudah ada pengajuan Anda yang menunggu atau disetujui pada tanggal tersebut.']);
         }
-
-        if ($data['type'] === AttendanceRequestType::TukarShift) {
-            $substitute = $data['substitute'];
-            if ($substitute === null || $substitute->id === $employee->id || ! $this->onRoster($unit, $substitute)) {
-                throw ValidationException::withMessages(['substitute_employee_id' => 'Pilih rekan pengganti dari jadwal shift unit ini.']);
-            }
-
-            $this->checkSwap($employee, $substitute, $start, $data['swap_date'] !== null ? Carbon::parse($data['swap_date']) : null);
-        }
     }
 
     /**
      * Write an approved request on the Jadwal Shift.
      *
-     * @throws ValidationException when a tukar shift no longer fits the schedule
+     * @throws ValidationException when an absence code is missing from the master
      */
     public function apply(AttendanceRequest $request, int $userId): void
     {
@@ -312,17 +313,14 @@ class AttendanceRequestService
             $label = "{$request->type->label()} (pengajuan #{$request->id})";
 
             if ($request->type === AttendanceRequestType::TukarShift) {
-                [$given, $returned] = $this->checkSwap($request->employee, $request->substitute, $request->start_date, $request->swap_date);
                 $off = $codes->get('OFF') ?? throw ValidationException::withMessages(['status' => 'Kode OFF belum ada di master kode absensi.']);
                 $requester = $request->employee;
-                $substitute = $request->substitute;
+                $substitute = $request->substitute
+                    ?? throw ValidationException::withMessages(['substitute_employee_id' => 'Rekan yang ditukar tidak ditemukan.']);
 
-                $applied[] = $this->put($request, $requester, $request->start_date, $off, "Digantikan {$substitute->name} — {$label}", $userId);
-                $applied[] = $this->put($request, $substitute, $request->start_date, $given, "Menggantikan {$requester->name} — {$label}", $userId);
-
-                if ($request->swap_date !== null && $returned !== null) {
-                    $applied[] = $this->put($request, $substitute, $request->swap_date, $off, "Digantikan {$requester->name} — balasan {$label}", $userId);
-                    $applied[] = $this->put($request, $requester, $request->swap_date, $returned, "Menggantikan {$substitute->name} — balasan {$label}", $userId);
+                $applied = [...$applied, ...$this->exchange($request, $requester, $substitute, $request->start_date, $off, $label, $userId)];
+                if ($request->swap_date !== null && ! $request->swap_date->isSameDay($request->start_date)) {
+                    $applied = [...$applied, ...$this->exchange($request, $requester, $substitute, $request->swap_date, $off, "balasan {$label}", $userId)];
                 }
             } else {
                 $absence = $codes->get((string) $request->type->attendanceCode())
@@ -369,48 +367,20 @@ class AttendanceRequestService
     }
 
     /**
-     * A tukar shift fits when the employee works on the date and the
-     * pengganti is free; with a swap date, the other way round on that day.
+     * Exchange two employees' codes on a date (a blank day counts as OFF):
+     * the employee takes the colleague's shift and the colleague the employee's.
      *
-     * @return array{0: AttendanceCode, 1: AttendanceCode|null} the shift handed over, and the one paid back
-     *
-     * @throws ValidationException
+     * @return list<array{employee_id: int, date: string, from: string|null, to: string|null}>
      */
-    private function checkSwap(Employee $employee, ?Employee $substitute, CarbonInterface $date, ?CarbonInterface $swapDate): array
+    private function exchange(AttendanceRequest $request, Employee $employee, Employee $colleague, CarbonInterface $date, AttendanceCode $off, string $label, int $userId): array
     {
-        $given = $this->codeOn($employee, $date);
-        if ($given === null || ! $given->hitung_hadir) {
-            throw ValidationException::withMessages(['start_date' => 'Pada '.$date->format('d/m/Y').' Anda tidak terjadwal shift kerja, jadi tidak ada shift yang ditukar.']);
-        }
+        $mine = $this->codeOn($employee, $date) ?? $off;
+        $theirs = $this->codeOn($colleague, $date) ?? $off;
 
-        if ($substitute === null) {
-            throw ValidationException::withMessages(['substitute_employee_id' => 'Rekan pengganti tidak ditemukan.']);
-        }
-
-        $busy = $this->codeOn($substitute, $date);
-        if ($busy !== null && $busy->hitung_hadir) {
-            throw ValidationException::withMessages(['substitute_employee_id' => "{$substitute->name} sudah terjadwal shift {$busy->code} pada ".$date->format('d/m/Y').'.']);
-        }
-
-        if ($swapDate === null) {
-            return [$given, null];
-        }
-
-        if ($swapDate->isSameDay($date)) {
-            throw ValidationException::withMessages(['swap_date' => 'Tanggal balasan harus berbeda dari tanggal shift yang ditukar.']);
-        }
-
-        $returned = $this->codeOn($substitute, $swapDate);
-        if ($returned === null || ! $returned->hitung_hadir) {
-            throw ValidationException::withMessages(['swap_date' => 'Pada '.$swapDate->format('d/m/Y')." {$substitute->name} tidak terjadwal shift kerja untuk Anda gantikan."]);
-        }
-
-        $mine = $this->codeOn($employee, $swapDate);
-        if ($mine !== null && $mine->hitung_hadir) {
-            throw ValidationException::withMessages(['swap_date' => "Anda sudah terjadwal shift {$mine->code} pada ".$swapDate->format('d/m/Y').'.']);
-        }
-
-        return [$given, $returned];
+        return [
+            $this->put($request, $employee, $date, $theirs, "Tukar shift dengan {$colleague->name} ({$mine->code} → {$theirs->code}) — {$label}", $userId),
+            $this->put($request, $colleague, $date, $mine, "Tukar shift dengan {$employee->name} ({$theirs->code} → {$mine->code}) — {$label}", $userId),
+        ];
     }
 
     /**

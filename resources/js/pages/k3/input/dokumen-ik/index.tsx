@@ -533,6 +533,18 @@ export default function DokumenIkPage({
                                 </p>
                             )}
                         </div>
+                        {compact && can_write && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setPickerOpen(true)}
+                                className="mt-2 h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                            >
+                                <FilePlus2 className="size-4" />
+                                Tambah IK Baru
+                            </Button>
+                        )}
                     </aside>
 
                     {/* Workspace */}
@@ -687,7 +699,7 @@ export default function DokumenIkPage({
 
             {compact && can_write && (
                 <StickyActionBar>
-                    {docs.length > 0 && (
+                    {docs.length > 0 ? (
                         <Button
                             type="button"
                             variant="outline"
@@ -703,17 +715,10 @@ export default function DokumenIkPage({
                             <FileDown className="size-4 text-rose-600" />
                             PDF
                         </Button>
+                    ) : (
+                        <div aria-hidden="true" />
                     )}
-                    {draft && saveButton}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setPickerOpen(true)}
-                        className="gap-1.5"
-                    >
-                        <FilePlus2 className="size-4" />
-                        Tambah IK
-                    </Button>
+                    {draft ? saveButton : <div aria-hidden="true" />}
                 </StickyActionBar>
             )}
         </>

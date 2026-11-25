@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Services\Notifications\AttendanceReminders;
+use App\Services\Notifications\FlmReminders;
 use App\Services\Notifications\ScheduleReminders;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -16,13 +17,15 @@ class SendReminders extends Command
     /**
      * Execute the console command.
      */
-    public function handle(AttendanceReminders $attendance, ScheduleReminders $schedules): int
+    public function handle(AttendanceReminders $attendance, ScheduleReminders $schedules, FlmReminders $flm): int
     {
         $now = Carbon::now();
         $absen = $attendance->run($now);
         $jadwal = $schedules->run($now);
+        // FLM findings still open after a few days, to Pemeliharaan (user, 2026-11-24).
+        $flmOpen = $flm->run($now);
 
-        $this->info("Pengingat terkirim — absen: {$absen}, jadwal: {$jadwal}.");
+        $this->info("Pengingat terkirim — absen: {$absen}, jadwal: {$jadwal}, FLM open: {$flmOpen}.");
 
         return self::SUCCESS;
     }

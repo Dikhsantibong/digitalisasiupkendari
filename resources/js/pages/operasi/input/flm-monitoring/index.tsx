@@ -110,7 +110,8 @@ export default function OperasiFlmMonitoringInput({ unit, filters, options, rows
             flmMonitoring.store().url,
             {
                 ...query,
-                rows: rows.map(({ mesin, tanggal, masalah, kondisi_awal, kondisi_akhir, catatan, status, foto_awal, foto_akhir, foto_awal_file, foto_akhir_file }) => ({
+                rows: rows.map(({ uid, mesin, tanggal, masalah, kondisi_awal, kondisi_akhir, catatan, status, foto_awal, foto_akhir, foto_awal_file, foto_akhir_file }) => ({
+                    uid: uid ?? null,
                     mesin,
                     tanggal,
                     masalah,

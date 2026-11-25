@@ -467,6 +467,7 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                                 key: 'nama_peralatan',
                                                 label: 'Nama Peralatan',
                                                 placeholder: 'Mis. APAR',
+                                                span: 2,
                                             },
                                             {
                                                 key: 'jml_total',
@@ -474,17 +475,20 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                                 type: 'number',
                                                 parse: (v) => String(v),
                                                 group: 'Kesiapan',
+                                                span: 1,
                                             },
                                             {
                                                 key: 'jml_ready',
                                                 label: 'Jumlah Ready',
                                                 type: 'number',
                                                 parse: (v) => String(v),
+                                                span: 1,
                                             },
                                             {
                                                 key: 'jml_not_ready',
                                                 label: 'Not Ready · % Kesiapan',
                                                 type: 'display',
+                                                span: 2,
                                                 display: (r) =>
                                                     `${r.jml_not_ready || 0} · ${r.persen_kesiapan}`,
                                             },
@@ -492,14 +496,19 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                                 key: 'lokasi',
                                                 label: 'Lokasi Penempatan',
                                                 group: 'Keterangan',
+                                                span: 2,
                                             },
                                             {
                                                 key: 'kendala',
                                                 label: 'Kendala',
+                                                type: 'textarea',
+                                                span: 2,
                                             },
                                             {
                                                 key: 'tindak_lanjut',
                                                 label: 'Tindak Lanjut',
+                                                type: 'textarea',
+                                                span: 2,
                                             },
                                         ]}
                                         onChange={(idx, key, value) =>
@@ -519,7 +528,7 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => addRowToGroup(grup)}
-                                            className="w-full gap-1.5"
+                                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
                                         >
                                             <Plus className="size-4" />
                                             Tambah — {grup}
@@ -568,7 +577,7 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
-                            {dirty && (
+                            {dirty ? (
                                 <Button
                                     type="button"
                                     variant="outline"
@@ -579,6 +588,8 @@ export default function PengusahaanEmergencyFacilityPage(props: Props) {
                                     <RotateCcw className="size-4" />
                                     Reset
                                 </Button>
+                            ) : (
+                                <div aria-hidden="true" />
                             )}
                             <Button
                                 onClick={() => handleSubmit()}

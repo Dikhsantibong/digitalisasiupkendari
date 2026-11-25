@@ -290,11 +290,13 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
                                     key: 'tanggal_kejadian',
                                     label: 'Tanggal Kejadian',
                                     type: 'date',
+                                    span: 1,
                                 },
                                 {
                                     key: 'fungsi',
                                     label: 'Fungsi / Bagian',
                                     type: 'dropdown',
+                                    span: 1,
                                     options: [
                                         'Operasi',
                                         'Pemeliharaan',
@@ -306,33 +308,39 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
                                 {
                                     key: 'lokasi_kejadian',
                                     label: 'Lokasi Kejadian',
+                                    span: 2,
                                 },
                                 {
                                     key: 'luka_ringan',
                                     label: 'Luka Ringan',
                                     type: 'number',
                                     group: 'Dampak',
+                                    span: 1,
                                 },
                                 {
                                     key: 'luka_berat',
                                     label: 'Luka Berat',
                                     type: 'number',
+                                    span: 1,
                                 },
                                 {
                                     key: 'meninggal',
                                     label: 'Meninggal',
                                     type: 'number',
+                                    span: 1,
                                 },
                                 {
                                     key: 'kerugian_material',
                                     label: 'Kerugian Material (Rp)',
                                     type: 'number',
+                                    span: 1,
                                 },
                                 {
                                     key: 'keterangan',
                                     label: 'Keterangan',
                                     type: 'textarea',
                                     group: 'Lainnya',
+                                    span: 2,
                                 },
                             ]}
                             onChange={(idx, key, value) =>
@@ -344,6 +352,19 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
                             }
                             onRemove={(idx) => removeItem(items[idx]._key)}
                         />
+                    )}
+
+                    {can_write && !isNihil && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addItem}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Kejadian Masyarakat
+                        </Button>
                     )}
 
                     <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
@@ -388,6 +409,7 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={() => handleSubmit()}
                                 disabled={saving}
@@ -396,16 +418,6 @@ export default function PengusahaanKecelakaanMasyarakatPage(props: Props) {
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
                             </Button>
-                            {!isNihil && (
-                                <Button
-                                    variant="outline"
-                                    onClick={addItem}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            )}
                         </StickyActionBar>
                     )}
                 </div>

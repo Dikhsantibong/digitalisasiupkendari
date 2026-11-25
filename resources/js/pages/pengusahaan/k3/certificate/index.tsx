@@ -300,51 +300,72 @@ export default function PengusahaanCertificateIndex({
                                     ]),
                                 ),
                                 group: 'Peralatan',
+                                span: 2,
                             },
-                            { key: 'jenis', label: 'Jenis / Tipe Alat' },
-                            { key: 'kapasitas', label: 'Kapasitas' },
-                            { key: 'lokasi', label: 'Lokasi' },
+                            {
+                                key: 'jenis',
+                                label: 'Jenis / Tipe Alat',
+                                span: 1,
+                            },
+                            { key: 'kapasitas', label: 'Kapasitas', span: 1 },
+                            { key: 'lokasi', label: 'Lokasi', span: 1 },
                             {
                                 key: 'merk_manufacture',
                                 label: 'Merk / Manufacture',
+                                span: 1,
                             },
-                            { key: 'no_seri', label: 'No. Seri' },
+                            { key: 'no_seri', label: 'No. Seri', span: 2 },
                             {
                                 key: 'regulasi',
                                 label: 'Regulasi',
                                 group: 'Perizinan & Uji',
+                                span: 1,
                             },
-                            { key: 'ijin_awal_nomor', label: 'No. Izin Awal' },
+                            {
+                                key: 'ijin_awal_nomor',
+                                label: 'No. Izin Awal',
+                                span: 1,
+                            },
                             {
                                 key: 'ijin_awal_tanggal',
                                 label: 'Tgl Izin Awal',
                                 type: 'date',
+                                span: 1,
                             },
                             {
                                 key: 'uji_terakhir_nomor',
                                 label: 'No. Uji Terakhir',
+                                span: 1,
                             },
                             {
                                 key: 'uji_terakhir_tanggal',
                                 label: 'Tgl Uji Terakhir',
                                 type: 'date',
+                                span: 1,
                             },
                             {
                                 key: 'uji_ulang_tanggal',
                                 label: 'Tgl Uji Ulang',
                                 type: 'date',
+                                span: 1,
                             },
-                            { key: 'batasan_uji', label: 'Batasan Uji' },
+                            {
+                                key: 'batasan_uji',
+                                label: 'Batasan Uji',
+                                span: 2,
+                            },
                             {
                                 key: 'masa_berlaku_tahun',
                                 label: 'Masa Berlaku (Thn)',
                                 type: 'number',
+                                span: 1,
                                 parse: (v) => (v === '' ? null : Number(v)),
                             },
                             {
                                 key: 'keterangan',
                                 label: 'Status',
                                 type: 'display',
+                                span: 1,
                                 display: (r) => statusOf(r),
                             },
                         ]}
@@ -378,7 +399,21 @@ export default function PengusahaanCertificateIndex({
                     />
 
                     {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Sertifikasi Peralatan
+                        </Button>
+                    )}
+
+                    {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={save}
                                 disabled={saving || !dirty}
@@ -386,14 +421,6 @@ export default function PengusahaanCertificateIndex({
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addRow}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

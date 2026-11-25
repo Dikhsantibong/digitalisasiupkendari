@@ -305,11 +305,7 @@ export default function AccidentInput({
                                     ),
                                     optionLabels: categoryLabels,
                                     group: 'Kejadian',
-                                },
-                                {
-                                    key: 'incident_date',
-                                    label: 'Tanggal',
-                                    type: 'date',
+                                    span: 2,
                                 },
                                 {
                                     key: 'is_nihil',
@@ -320,34 +316,47 @@ export default function AccidentInput({
                                         tidak: 'Ada Kejadian',
                                         ya: 'NIHIL (Nol Kejadian)',
                                     },
+                                    span: 2,
                                 },
-                                { key: 'fungsi', label: 'Fungsi' },
-                                { key: 'lokasi', label: 'Lokasi' },
+                                {
+                                    key: 'incident_date',
+                                    label: 'Tanggal',
+                                    type: 'date',
+                                    span: 1,
+                                },
+                                { key: 'fungsi', label: 'Fungsi', span: 1 },
+                                { key: 'lokasi', label: 'Lokasi', span: 2 },
                                 {
                                     key: 'luka_ringan',
                                     label: 'Luka Ringan',
                                     type: 'number',
                                     group: 'Korban & Kerugian',
+                                    span: 1,
                                 },
                                 {
                                     key: 'luka_berat',
                                     label: 'Luka Berat',
                                     type: 'number',
+                                    span: 1,
                                 },
                                 {
                                     key: 'meninggal',
                                     label: 'Meninggal',
                                     type: 'number',
+                                    span: 1,
                                 },
                                 {
                                     key: 'kerugian_material',
                                     label: 'Kerugian (Rp)',
                                     type: 'number',
+                                    span: 1,
                                 },
                                 {
                                     key: 'keterangan',
                                     label: 'Keterangan',
+                                    type: 'textarea',
                                     group: 'Lainnya',
+                                    span: 2,
                                 },
                             ] satisfies RowField<GridRow>[]
                         }
@@ -377,6 +386,19 @@ export default function AccidentInput({
                         removeLabel="Hapus kejadian"
                     />
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Kejadian
+                        </Button>
+                    )}
+
                     <StickyActionBar>
                         <K3MobilePdfButton
                             input="accidents"
@@ -387,24 +409,14 @@ export default function AccidentInput({
                             }}
                         />
                         {can_write && (
-                            <>
-                                <Button
-                                    onClick={() => persist(rows)}
-                                    disabled={saving}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={addRow}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                onClick={() => persist(rows)}
+                                disabled={saving}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>

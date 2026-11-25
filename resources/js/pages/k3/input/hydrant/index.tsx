@@ -150,6 +150,60 @@ export default function HydrantInput({
 
     const cols = can_write ? 11 : 10;
 
+    const mobileFields: RowField<Row>[] = [
+        { key: 'lokasi', label: 'Lokasi', span: 1 },
+        {
+            key: 'jenis',
+            label: 'Jenis',
+            type: 'dropdown',
+            options: ['Indoor', 'Outdoor', 'Hydrant Box', 'Pillar Hydrant'],
+            placeholder: 'Pilih Jenis',
+            span: 1,
+        },
+        { key: 'tanggal', label: 'Tanggal', type: 'date', span: 1 },
+        {
+            key: 'tekanan',
+            label: 'Tekanan',
+            type: 'dropdown',
+            options: ['Baik', 'Kurang', 'Tidak Baik'],
+            placeholder: 'Pilih Tekanan',
+            span: 1,
+        },
+        {
+            key: 'hose',
+            label: 'Hose',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            group: 'Kondisi',
+            placeholder: 'Pilih Kondisi Hose',
+            span: 1,
+        },
+        {
+            key: 'nozzle',
+            label: 'Nozzle',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            placeholder: 'Pilih Kondisi Nozzle',
+            span: 1,
+        },
+        {
+            key: 'box',
+            label: 'Box',
+            type: 'dropdown',
+            options: ['Baik', 'Tidak Baik'],
+            placeholder: 'Pilih Kondisi Box',
+            span: 1,
+        },
+        { key: 'keterangan', label: 'Keterangan', span: 1 },
+        {
+            key: 'foto',
+            label: 'Foto (URL)',
+            placeholder: 'https://…',
+            group: 'Dokumentasi',
+            span: 2,
+        },
+    ];
+
     if (compact) {
         return (
             <>
@@ -175,67 +229,7 @@ export default function HydrantInput({
 
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                { key: 'lokasi', label: 'Lokasi' },
-                                {
-                                    key: 'jenis',
-                                    label: 'Jenis',
-                                    type: 'dropdown',
-                                    options: [
-                                        'Indoor',
-                                        'Outdoor',
-                                        'Hydrant Box',
-                                        'Pillar Hydrant',
-                                    ],
-                                    placeholder: 'Pilih Jenis',
-                                },
-                                {
-                                    key: 'tanggal',
-                                    label: 'Tanggal',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'hose',
-                                    label: 'Hose',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                    group: 'Kondisi',
-                                    placeholder: 'Pilih Kondisi Hose',
-                                },
-                                {
-                                    key: 'nozzle',
-                                    label: 'Nozzle',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                    placeholder: 'Pilih Kondisi Nozzle',
-                                },
-                                {
-                                    key: 'box',
-                                    label: 'Box',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Tidak Baik'],
-                                    placeholder: 'Pilih Kondisi Box',
-                                },
-                                {
-                                    key: 'tekanan',
-                                    label: 'Tekanan',
-                                    type: 'dropdown',
-                                    options: ['Baik', 'Kurang', 'Tidak Baik'],
-                                    placeholder: 'Pilih Tekanan',
-                                },
-                                {
-                                    key: 'keterangan',
-                                    label: 'Keterangan',
-                                    group: 'Lainnya',
-                                },
-                                {
-                                    key: 'foto',
-                                    label: 'Foto (URL)',
-                                    placeholder: 'https://…',
-                                },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.lokasi || 'Lokasi belum diisi'}
                         subtitle={(r) =>
                             `${r.jenis || '-'} · Hose ${r.hose || '-'} · Tekanan ${r.tekanan || '-'}`
@@ -245,6 +239,19 @@ export default function HydrantInput({
                         canWrite={can_write}
                         removeLabel="Hapus titik hydrant"
                     />
+
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Titik Hydrant
+                        </Button>
+                    )}
 
                     <StickyActionBar>
                         <K3MobilePdfButton
@@ -256,24 +263,14 @@ export default function HydrantInput({
                             }}
                         />
                         {can_write && (
-                            <>
-                                <Button
-                                    onClick={save}
-                                    disabled={saving || !dirty}
-                                    className="gap-1.5"
-                                >
-                                    <Save className="size-4" />
-                                    {saving ? 'Menyimpan…' : 'Simpan'}
-                                </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={addRow}
-                                    className="gap-1.5"
-                                >
-                                    <Plus className="size-4" />
-                                    Tambah
-                                </Button>
-                            </>
+                            <Button
+                                onClick={save}
+                                disabled={saving || !dirty}
+                                className="gap-1.5"
+                            >
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : 'Simpan'}
+                            </Button>
                         )}
                     </StickyActionBar>
                 </div>
@@ -359,35 +356,7 @@ export default function HydrantInput({
                 {compact ? (
                     <MobileRowEditor<Row>
                         rows={rows}
-                        fields={
-                            [
-                                { key: 'lokasi', label: 'Lokasi' },
-                                { key: 'jenis', label: 'Jenis' },
-                                {
-                                    key: 'tanggal',
-                                    label: 'Tanggal',
-                                    type: 'date',
-                                },
-                                {
-                                    key: 'hose',
-                                    label: 'Hose',
-                                    group: 'Kondisi',
-                                },
-                                { key: 'nozzle', label: 'Nozzle' },
-                                { key: 'box', label: 'Box' },
-                                { key: 'tekanan', label: 'Tekanan' },
-                                {
-                                    key: 'keterangan',
-                                    label: 'Keterangan',
-                                    group: 'Lainnya',
-                                },
-                                {
-                                    key: 'foto',
-                                    label: 'Foto (URL)',
-                                    placeholder: 'https://…',
-                                },
-                            ] satisfies RowField<Row>[]
-                        }
+                        fields={mobileFields}
                         title={(r) => r.lokasi || 'Lokasi belum diisi'}
                         subtitle={(r) =>
                             `${r.jenis || '-'} · Hose ${r.hose || '-'} · Tekanan ${r.tekanan || '-'}`

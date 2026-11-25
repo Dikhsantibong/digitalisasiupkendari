@@ -12,6 +12,8 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\Operator\AttendanceRoster;
+use App\Services\Operator\MutasiPatrolFindings;
+use App\Services\Operator\MutasiStartStop;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -42,7 +44,11 @@ class MutasiController extends Controller
     /** Largest accepted paraf PNG (decoded bytes). */
     private const MAX_PARAF_BYTES = 1_500_000;
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly MutasiStartStop $startStop,
+        private readonly MutasiPatrolFindings $patrolFindings,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -67,6 +73,10 @@ class MutasiController extends Controller
                 'status_mesin' => OperatorMutasi::STATUS_MESIN,
             ],
             'mutasi' => $mutasi ? $this->present($mutasi) : $this->draft($unit, $tanggal, $shift),
+            // Start / stop of the machines in this shift, read from Start Stop Engine (user, 2026-11-24).
+            'start_stop' => $this->startStop->events($unit->id, $tanggal, $shift),
+            // Abnormal (TN) Patrol Check Mesin findings of this shift, handed over (user, 2026-11-24).
+            'patrol_findings' => $this->patrolFindings->findings($unit->id, $tanggal, $shift),
             'riwayat' => OperatorMutasi::query()->where('unit_id', $unit->id)
                 ->orderByDesc('tanggal')->orderByDesc('id')->limit(12)->get()
                 ->map(fn (OperatorMutasi $m): array => [
@@ -101,7 +111,10 @@ class MutasiController extends Controller
             'mesin' => ['present', 'array', 'max:40'],
             'mesin.*.machine_id' => ['nullable', 'integer'],
             'mesin.*.nama' => ['required', 'string', 'max:100'],
-            'mesin.*.level_bbm' => ['nullable', 'string', 'max:30'],
+            // Level tangki bahan bakar in cm and tambah pelumas in liters — numbers only, no ✓ (user, 2026-11-24).
+            'mesin.*.level_bbm' => ['nullable', 'numeric', 'min:0'],
+            'mesin.*.tambah_pelumas' => ['nullable', 'numeric', 'min:0'],
+            // Kept as sent: the former "tambah bahan bakar" of older sheets.
             'mesin.*.tambah_bbm' => ['nullable', 'string', 'max:30'],
             'mesin.*.pelumas' => ['nullable', Rule::in(OperatorMutasi::PELUMAS)],
             'mesin.*.status' => ['nullable', Rule::in(OperatorMutasi::STATUS_MESIN)],
@@ -149,6 +162,7 @@ class MutasiController extends Controller
                 'nama' => trim($m['nama']),
                 'level_bbm' => $this->text($m['level_bbm'] ?? null),
                 'tambah_bbm' => $this->text($m['tambah_bbm'] ?? null),
+                'tambah_pelumas' => $this->text($m['tambah_pelumas'] ?? null),
                 'pelumas' => $m['pelumas'] ?? null,
                 'status' => $m['status'] ?? null,
             ])->values()->all(),
@@ -240,6 +254,8 @@ class MutasiController extends Controller
             'hariTanggal' => Indonesian::dayName($tanggal).', '.Indonesian::longDate($tanggal),
             'parafPenyerah' => $this->embed($mutasi->paraf_penyerah),
             'parafPenerima' => $this->embed($mutasi->paraf_penerima),
+            'startStop' => $this->startStop->events($unit->id, $mutasi->tanggal->toDateString(), $mutasi->shift),
+            'patrolFindings' => $this->patrolFindings->findings($unit->id, $mutasi->tanggal->toDateString(), $mutasi->shift),
             ...JadwalPdf::logos(),
         ])->setPaper('a4', 'portrait');
 
@@ -270,6 +286,7 @@ class MutasiController extends Controller
                 'nama' => Str::upper($machine->name),
                 'level_bbm' => null,
                 'tambah_bbm' => null,
+                'tambah_pelumas' => null,
                 'pelumas' => null,
                 'status' => $previousMesin->get((string) $machine->id)['status'] ?? null,
             ])->values()->all();

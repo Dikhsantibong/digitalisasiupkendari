@@ -13,6 +13,7 @@ import {
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
+import type { RowField } from '@/components/mobile/row-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -181,6 +182,44 @@ export default function EmergencyInput({
         );
     };
 
+    const mobileFields: RowField<GridRow>[] = [
+        {
+            key: 'jml_total',
+            label: 'Jumlah Total',
+            type: 'number',
+            span: 1,
+            parse: (v) => (v === '' ? null : Number(v)),
+        },
+        {
+            key: 'jml_ready',
+            label: 'Jumlah Ready',
+            type: 'number',
+            span: 1,
+            parse: (v) => (v === '' ? null : Number(v)),
+        },
+        {
+            key: 'jml_not_ready',
+            label: 'Jumlah Not Ready',
+            type: 'number',
+            span: 1,
+            parse: (v) => (v === '' ? null : Number(v)),
+        },
+        {
+            key: 'persen_kesiapan',
+            label: '% Kesiapan',
+            type: 'display',
+            span: 1,
+            display: (row) => readiness(row),
+        },
+        { key: 'kendala', label: 'Kendala', type: 'textarea', span: 2 },
+        {
+            key: 'tindak_lanjut',
+            label: 'Tindak Lanjut',
+            type: 'textarea',
+            span: 2,
+        },
+    ];
+
     return (
         <>
             <Head title="Input K3 — Kesiapan Fasilitas Darurat" />
@@ -226,42 +265,7 @@ export default function EmergencyInput({
                                 `Ready ${row.jml_ready ?? 0}/${row.jml_total ?? 0} · ${readiness(row)}`
                             }
                             canWrite={can_write}
-                            fields={[
-                                {
-                                    key: 'jml_total',
-                                    label: 'Jumlah Total',
-                                    type: 'number',
-                                    parse: (v) => (v === '' ? null : Number(v)),
-                                },
-                                {
-                                    key: 'jml_ready',
-                                    label: 'Jumlah Ready',
-                                    type: 'number',
-                                    parse: (v) => (v === '' ? null : Number(v)),
-                                },
-                                {
-                                    key: 'jml_not_ready',
-                                    label: 'Jumlah Not Ready',
-                                    type: 'number',
-                                    parse: (v) => (v === '' ? null : Number(v)),
-                                },
-                                {
-                                    key: 'persen_kesiapan',
-                                    label: '% Kesiapan',
-                                    type: 'display',
-                                    display: (row) => readiness(row),
-                                },
-                                {
-                                    key: 'kendala',
-                                    label: 'Kendala',
-                                    type: 'textarea',
-                                },
-                                {
-                                    key: 'tindak_lanjut',
-                                    label: 'Tindak Lanjut',
-                                    type: 'textarea',
-                                },
-                            ]}
+                            fields={mobileFields}
                             onChange={(index, key, value) => {
                                 setRows((current) =>
                                     current.map((row, i) =>
@@ -384,42 +388,7 @@ export default function EmergencyInput({
                                 `Ready ${row.jml_ready ?? 0}/${row.jml_total ?? 0} · ${readiness(row)}`
                             }
                             canWrite={can_write}
-                            fields={[
-                                {
-                                    key: 'jml_total',
-                                    label: 'Jumlah Total',
-                                    type: 'number',
-                                    parse: (v) => (v === '' ? null : Number(v)),
-                                },
-                                {
-                                    key: 'jml_ready',
-                                    label: 'Jumlah Ready',
-                                    type: 'number',
-                                    parse: (v) => (v === '' ? null : Number(v)),
-                                },
-                                {
-                                    key: 'jml_not_ready',
-                                    label: 'Jumlah Not Ready',
-                                    type: 'number',
-                                    parse: (v) => (v === '' ? null : Number(v)),
-                                },
-                                {
-                                    key: 'persen_kesiapan',
-                                    label: '% Kesiapan',
-                                    type: 'display',
-                                    display: (row) => readiness(row),
-                                },
-                                {
-                                    key: 'kendala',
-                                    label: 'Kendala',
-                                    type: 'textarea',
-                                },
-                                {
-                                    key: 'tindak_lanjut',
-                                    label: 'Tindak Lanjut',
-                                    type: 'textarea',
-                                },
-                            ]}
+                            fields={mobileFields}
                             onChange={(index, key, value) => {
                                 setRows((current) =>
                                     current.map((row, i) =>

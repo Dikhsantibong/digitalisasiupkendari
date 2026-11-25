@@ -158,7 +158,8 @@ class PengajuanController extends Controller
             'type' => ['required', Rule::in(AttendanceRequestType::values())],
             'start_date' => ['required', 'date_format:Y-m-d'],
             'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
-            'reason' => ['required', 'string', 'min:3', 'max:1000'],
+            // A tukar shift needs no reason (user, 2026-11-24): pick the colleague and submit.
+            'reason' => ['nullable', 'required_unless:type,tukar_shift', 'string', 'min:3', 'max:1000'],
             'attachment' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
             'substitute_employee_id' => ['nullable', 'required_if:type,tukar_shift', 'integer'],
             'swap_date' => ['nullable', 'date_format:Y-m-d'],
@@ -186,7 +187,7 @@ class PengajuanController extends Controller
                 'type' => $data['type'],
                 'start_date' => $data['start_date'],
                 'end_date' => $data['end_date'],
-                'reason' => trim($validated['reason']),
+                'reason' => trim((string) ($validated['reason'] ?? '')) ?: ($tukar ? "Tukar shift dengan {$substitute?->name}" : '-'),
                 'attachment_path' => $request->file('attachment')?->store("attendance-requests/{$unit->id}", self::ATTACHMENT_DISK),
                 'substitute_employee_id' => $substitute?->id,
                 'swap_date' => $data['swap_date'],

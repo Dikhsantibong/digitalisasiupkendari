@@ -563,6 +563,19 @@ export default function PengusahaanEvaluasiPengujianPage(props: Props) {
                         })}
                     </div>
 
+                    {can_write && (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addRow}
+                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
+                        >
+                            <Plus className="size-4" />
+                            Tambah Evaluasi Peralatan
+                        </Button>
+                    )}
+
                     <K3MobileMetaAccordion
                         noDokumen={meta.nomor_dokumen}
                         revisi={meta.revisi}
@@ -595,6 +608,7 @@ export default function PengusahaanEvaluasiPengujianPage(props: Props) {
 
                     {can_write && (
                         <StickyActionBar>
+                            <div aria-hidden="true" />
                             <Button
                                 onClick={save}
                                 disabled={saving || !dirty}
@@ -602,14 +616,6 @@ export default function PengusahaanEvaluasiPengujianPage(props: Props) {
                             >
                                 <Save className="size-4" />
                                 {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={addRow}
-                                className="gap-1.5"
-                            >
-                                <Plus className="size-4" />
-                                Tambah
                             </Button>
                         </StickyActionBar>
                     )}

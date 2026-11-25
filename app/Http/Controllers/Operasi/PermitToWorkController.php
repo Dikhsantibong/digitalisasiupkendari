@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Concerns\AuthorizesFieldInput;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Har\FlmOperasiController;
 use App\Models\OperasiPermitToWork;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -28,7 +29,9 @@ class PermitToWorkController extends Controller
         $user = $request->user();
         abort_unless(
             $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganPermitToWork) ||
-            $user->hasPermissionTo(PermissionName::OperasiLaporanView),
+            $user->hasPermissionTo(PermissionName::OperasiLaporanView) ||
+            // PTW lintas bidang (user, 2026-11-24): Pemeliharaan reads the operators' PTW (no writing).
+            FlmOperasiController::views($user),
             403
         );
 
@@ -169,7 +172,9 @@ class PermitToWorkController extends Controller
         $user = $request->user();
         abort_unless(
             $this->allowsFieldInput($user, PermissionName::OperasiInputView, PermissionName::OperasiLapanganPermitToWork) ||
-            $user->hasPermissionTo(PermissionName::OperasiLaporanView),
+            $user->hasPermissionTo(PermissionName::OperasiLaporanView) ||
+            // PTW lintas bidang (user, 2026-11-24): Pemeliharaan reads the operators' PTW (no writing).
+            FlmOperasiController::views($user),
             403
         );
 
