@@ -1,5 +1,4 @@
 import { Head, router } from '@inertiajs/react';
-import { Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
@@ -14,7 +13,6 @@ import {
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -156,7 +154,7 @@ export default function EmergencyInput({
         },
     });
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             emergency.store().url,
@@ -176,7 +174,10 @@ export default function EmergencyInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -257,6 +258,18 @@ export default function EmergencyInput({
                             Belum ada fasilitas darurat pada master.
                         </div>
                     ) : (
+                        <>
+                        <div className="flex justify-end">
+                            <K3MobilePdfButton
+                                input="emergency"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                    week: filters.week,
+                                }}
+                            />
+                        </div>
                         <MobileRowEditor<GridRow>
                             rows={rows}
                             rowKey={(row) => row.equipment_id}
@@ -276,30 +289,16 @@ export default function EmergencyInput({
                                 );
                                 setDirty(true);
                             }}
-                        />
-                    )}
-
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="emergency"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
-                                week: filters.week,
+                            flow={{
+                                onSave: (done) => save(done),
+                                saving,
+                                dirty: dirty,
+                                formSubtitle: 'Kondisi Darurat',
                             }}
                         />
-                        {can_write && (
-                            <Button
-                                onClick={save}
-                                disabled={saving || rows.length === 0}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
-                    </StickyActionBar>
+                        </>
+                    )}
+
                 </div>
             ) : (
                 <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -319,7 +318,7 @@ export default function EmergencyInput({
                                 />
                                 {can_write && (
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || rows.length === 0}
                                     >
                                         {saving ? 'Menyimpan…' : 'Simpan'}

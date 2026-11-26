@@ -22,6 +22,8 @@ import type {
 } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { toast } from 'sonner';
+import { MobileFormScreen } from '@/components/mobile/entry-flow';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -1023,10 +1025,596 @@ export default function WorkOrderInput({
         );
     };
 
+    const modalForm = (
+                    <form
+                        id="wo-form"
+                        onSubmit={handleModalSubmit}
+                        className="space-y-3 py-1"
+                    >
+                        {/* Baris 1: WONUM & Mesin */}
+                        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                            <div className="space-y-1">
+                                <Label htmlFor="wonum" className="text-xs">
+                                    WONUM{' '}
+                                    <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    id="wonum"
+                                    placeholder="Contoh: WO-2026-001"
+                                    value={formData.wonum}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            wonum: e.target.value,
+                                        }))
+                                    }
+                                    required
+                                    autoFocus
+                                    className="h-9 text-xs sm:text-sm"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="engine_name"
+                                    className="text-xs"
+                                >
+                                    Mesin / Peralatan
+                                </Label>
+                                {machineOptions.length > 0 ? (
+                                    <Select
+                                        value={
+                                            formData.engine_name || NONE_VALUE
+                                        }
+                                        onValueChange={(val) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                engine_name:
+                                                    val === NONE_VALUE
+                                                        ? ''
+                                                        : val,
+                                            }))
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="engine_name"
+                                            className="h-9 text-xs sm:text-sm"
+                                        >
+                                            <SelectValue placeholder="Pilih Mesin (Opsional)" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-60">
+                                            <SelectItem
+                                                value={NONE_VALUE}
+                                                className="text-muted-foreground"
+                                            >
+                                                — Tanpa Mesin / Umum —
+                                            </SelectItem>
+                                            {machineOptions.map((m) => (
+                                                <SelectItem
+                                                    key={m.id}
+                                                    value={m.name}
+                                                >
+                                                    {m.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <Input
+                                        id="engine_name"
+                                        placeholder="Nama mesin (opsional)"
+                                        value={formData.engine_name}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                engine_name: e.target.value,
+                                            }))
+                                        }
+                                        className="h-9 text-xs sm:text-sm"
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Baris 2: Deskripsi */}
+                        <div className="space-y-1">
+                            <Label htmlFor="description" className="text-xs">
+                                Deskripsi Pekerjaan
+                            </Label>
+                            <textarea
+                                id="description"
+                                rows={2}
+                                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+                                placeholder="Tuliskan uraian pekerjaan atau kendala Work Order..."
+                                value={formData.description}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        description: e.target.value,
+                                    }))
+                                }
+                            />
+                        </div>
+
+                        {/* Baris 3: Jenis, Work Group, Status, Siklus (2x2 di HP, 4 kolom di Desktop) */}
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                            <div className="space-y-1">
+                                <Label htmlFor="type_code" className="text-xs">
+                                    Jenis
+                                </Label>
+                                <Select
+                                    value={formData.type_code || NONE_VALUE}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            type_code:
+                                                val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="type_code"
+                                        className="h-9 text-xs"
+                                    >
+                                        <SelectValue placeholder="Pilih Jenis" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
+                                            — Tanpa Jenis —
+                                        </SelectItem>
+                                        {typeOptions.map((t) => (
+                                            <SelectItem
+                                                key={t.code}
+                                                value={t.code}
+                                            >
+                                                {t.code}{' '}
+                                                {t.name && t.name !== t.code
+                                                    ? `— ${t.name}`
+                                                    : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="work_group_code"
+                                    className="text-xs"
+                                >
+                                    Work Group
+                                </Label>
+                                <Select
+                                    value={
+                                        formData.work_group_code || NONE_VALUE
+                                    }
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            work_group_code:
+                                                val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="work_group_code"
+                                        className="h-9 text-xs"
+                                    >
+                                        <SelectValue placeholder="Pilih WG" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
+                                            — Tanpa WG —
+                                        </SelectItem>
+                                        {workGroupOptions.map((w) => (
+                                            <SelectItem
+                                                key={w.code}
+                                                value={w.code}
+                                            >
+                                                {w.code}{' '}
+                                                {w.name && w.name !== w.code
+                                                    ? `— ${w.name}`
+                                                    : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="status_code"
+                                    className="text-xs"
+                                >
+                                    Status
+                                </Label>
+                                <Select
+                                    value={formData.status_code || NONE_VALUE}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            status_code:
+                                                val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="status_code"
+                                        className="h-9 text-xs"
+                                    >
+                                        <SelectValue placeholder="Pilih Status" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
+                                            — Tanpa Status —
+                                        </SelectItem>
+                                        {statusOptions.map((s) => (
+                                            <SelectItem
+                                                key={s.code}
+                                                value={s.code}
+                                            >
+                                                {s.code}{' '}
+                                                {s.name && s.name !== s.code
+                                                    ? `— ${s.name}`
+                                                    : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label htmlFor="cycle_code" className="text-xs">
+                                    Siklus
+                                </Label>
+                                <Select
+                                    value={formData.cycle_code || NONE_VALUE}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            cycle_code:
+                                                val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="cycle_code"
+                                        className="h-9 text-xs"
+                                    >
+                                        <SelectValue placeholder="Pilih Siklus" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
+                                            — Tanpa Siklus —
+                                        </SelectItem>
+                                        {cycleOptions.map((c) => (
+                                            <SelectItem
+                                                key={c.code}
+                                                value={c.code}
+                                            >
+                                                {c.code}{' '}
+                                                {c.name && c.name !== c.code
+                                                    ? `— ${c.name}`
+                                                    : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Baris 4: Tanggal (Report Date, Sched Start, Sched Finish) */}
+                        <div className="grid grid-cols-3 gap-2">
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="report_date"
+                                    className="text-xs"
+                                >
+                                    Report Date
+                                </Label>
+                                <Input
+                                    id="report_date"
+                                    type="date"
+                                    value={formData.report_date}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            report_date: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 px-2 text-xs"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="sched_start"
+                                    className="text-xs"
+                                >
+                                    Sched Start
+                                </Label>
+                                <Input
+                                    id="sched_start"
+                                    type="date"
+                                    value={formData.sched_start}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            sched_start: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 px-2 text-xs"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="sched_finish"
+                                    className="text-xs"
+                                >
+                                    Sched Finish
+                                </Label>
+                                <Input
+                                    id="sched_finish"
+                                    type="date"
+                                    value={formData.sched_finish}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            sched_finish: e.target.value,
+                                        }))
+                                    }
+                                    className="h-9 px-2 text-xs"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Baris 5: Waiting Reason, Assetnum, Owner Group, WO Prior Text (2x2 di HP, 4 kolom di Desktop) */}
+                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="waiting_reason"
+                                    className="text-xs"
+                                >
+                                    Waiting Reason
+                                </Label>
+                                <Select
+                                    value={
+                                        formData.waiting_reason || NONE_VALUE
+                                    }
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            waiting_reason:
+                                                val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="waiting_reason"
+                                        className="h-9 text-xs"
+                                    >
+                                        <SelectValue placeholder="Pilih Alasan..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
+                                            — Tidak Ada Waiting —
+                                        </SelectItem>
+                                        {waitingReasonOptions.map((w) => (
+                                            <SelectItem
+                                                key={w.value}
+                                                value={w.value}
+                                            >
+                                                {w.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {(
+                                [
+                                    [
+                                        'assetnum',
+                                        'Assetnum',
+                                        'WUAWTD002MJA10AV001',
+                                    ],
+                                    [
+                                        'owner_group',
+                                        'Owner Group',
+                                        'MECHD (= WG)',
+                                    ],
+                                    [
+                                        'priority_text',
+                                        'WO Prior Text',
+                                        'Urgent',
+                                    ],
+                                ] as const
+                            ).map(([key, label, placeholder]) => (
+                                <div key={key} className="space-y-1">
+                                    <Label htmlFor={key} className="text-xs">
+                                        {label}
+                                    </Label>
+                                    <Input
+                                        id={key}
+                                        placeholder={placeholder}
+                                        value={formData[key]}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                [key]: e.target.value,
+                                            }))
+                                        }
+                                        className="h-9 text-xs"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+
+                        {showMaterials && (
+                            <div className="space-y-2 rounded-md border border-border bg-muted/20 p-2.5">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-semibold">
+                                        Rincian Material / Jasa yang ditunggu
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 gap-1 text-xs"
+                                        onClick={() =>
+                                            setFormMaterials((list) => [
+                                                ...list,
+                                                blankMaterial(),
+                                            ])
+                                        }
+                                    >
+                                        <Plus className="size-3.5" />
+                                        Tambah Item
+                                    </Button>
+                                </div>
+                                {formMaterials.length === 0 && (
+                                    <p className="text-xs text-muted-foreground">
+                                        Belum ada item — WO tetap tampil satu
+                                        baris di laporan.
+                                    </p>
+                                )}
+                                {formMaterials.map((material, index) => (
+                                    <div
+                                        key={index}
+                                        className="grid grid-cols-1 gap-1.5 rounded border border-border/60 bg-card p-2 sm:grid-cols-[1fr_1fr_90px_auto] sm:items-center sm:border-0 sm:bg-transparent sm:p-0"
+                                    >
+                                        <Input
+                                            placeholder="Deskripsi (mis. Piston Ring 1)"
+                                            aria-label={`Deskripsi (mis. Piston Ring 1) item ${index + 1}`}
+                                            value={material.description ?? ''}
+                                            onChange={(e) =>
+                                                setFormMaterials((list) =>
+                                                    list.map((m, i) =>
+                                                        i === index
+                                                            ? {
+                                                                  ...m,
+                                                                  description:
+                                                                      e.target
+                                                                          .value,
+                                                              }
+                                                            : m,
+                                                    ),
+                                                )
+                                            }
+                                            className="h-8 text-xs"
+                                        />
+                                        <div className="grid grid-cols-[1fr_80px_auto] items-center gap-1.5 sm:contents">
+                                            <Input
+                                                placeholder="No Stockcode / Part"
+                                                aria-label={`No Stockcode / Part item ${index + 1}`}
+                                                value={material.stockcode ?? ''}
+                                                onChange={(e) =>
+                                                    setFormMaterials((list) =>
+                                                        list.map((m, i) =>
+                                                            i === index
+                                                                ? {
+                                                                      ...m,
+                                                                      stockcode:
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                  }
+                                                                : m,
+                                                        ),
+                                                    )
+                                                }
+                                                className="h-8 text-xs"
+                                            />
+                                            <Input
+                                                placeholder="Jumlah"
+                                                aria-label={`Jumlah item ${index + 1}`}
+                                                value={material.amount ?? ''}
+                                                onChange={(e) =>
+                                                    setFormMaterials((list) =>
+                                                        list.map((m, i) =>
+                                                            i === index
+                                                                ? {
+                                                                      ...m,
+                                                                      amount: e
+                                                                          .target
+                                                                          .value,
+                                                                  }
+                                                                : m,
+                                                        ),
+                                                    )
+                                                }
+                                                className="h-8 text-xs"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    setFormMaterials((list) =>
+                                                        list.filter(
+                                                            (_, i) =>
+                                                                i !== index,
+                                                        ),
+                                                    )
+                                                }
+                                                className="inline-flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                                aria-label={`Hapus item ${index + 1}`}
+                                            >
+                                                <X className="size-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <p className="text-[11px] text-muted-foreground">
+                                    Tiap item jadi satu baris di tabel WO
+                                    Waiting Material dan Jasa (A17),
+                                    dikelompokkan per Bidang dari Work Group
+                                    (MECHD Mekanik, ELECD Listrik, INSTD Kontrol
+                                    &amp; Instrumen, CIVD Sipil).
+                                </p>
+                            </div>
+                        )}
+
+                        {!compact && (
+                        <DialogFooter className="gap-2 pt-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setModalOpen(false)}
+                            >
+                                Batal
+                            </Button>
+                            <Button type="submit" size="sm" disabled={saving}>
+                                {saving
+                                    ? 'Menyimpan…'
+                                    : editingRowKey !== null
+                                      ? 'Perbarui'
+                                      : 'Simpan'}
+                            </Button>
+                        </DialogFooter>
+                        )}
+                    </form>
+    );
+
     return (
         <>
             <Head title="Input HAR — Work Order" />
-            <div className="flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6">
+            <div className={cn('flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6', compact && can_write && 'pb-28')}>
                 {!compact && (
                     <PageHeader
                         title="Work Order"
@@ -1115,7 +1703,8 @@ export default function WorkOrderInput({
                                     </span>
                                 )}
                             </Button>
-                            {can_write && (
+                            {/* Phone: Tambah sits in the bottom bar. */}
+                            {!compact && can_write && (
                                 <Button
                                     type="button"
                                     size="sm"
@@ -1126,7 +1715,8 @@ export default function WorkOrderInput({
                                     WO Baru
                                 </Button>
                             )}
-                            {can_write && dirty && (
+                            {/* Phone: Simpan sits in the bottom bar. */}
+                            {!compact && can_write && dirty && (
                                 <Button
                                     type="button"
                                     size="sm"
@@ -1929,7 +2519,51 @@ export default function WorkOrderInput({
                 )}
             </div>
 
-            {/* Modal Dialog Form Create / Edit Work Order (Compact & Screen-Efficient) */}
+            {/* Phone: Tambah (left) & Simpan (right); the form opens on its own screen (user, 2026-11-27). */}
+            {compact && can_write && !modalOpen && (
+                <StickyActionBar>
+                    <Button size="lg" variant="outline" onClick={openCreateModal}>
+                        <Plus className="size-4" />
+                        Tambah
+                    </Button>
+                    <Button
+                        size="lg"
+                        onClick={() => saveRows(rows, 'Perubahan berhasil disimpan')}
+                        disabled={saving || !dirty}
+                    >
+                        <Save className="size-4" />
+                        {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                    </Button>
+                </StickyActionBar>
+            )}
+
+            {compact ? (
+                modalOpen && (
+                    <MobileFormScreen
+                        title={editingRowKey !== null ? 'Edit Work Order' : 'Work Order baru'}
+                        subtitle="Work Order"
+                        onBack={() => setModalOpen(false)}
+                        formId="wo-form"
+                        saving={saving}
+                        canWrite={can_write}
+                        onDelete={
+                            editingRowKey !== null
+                                ? () => {
+                                      const row = rows.find((r) => r._key === editingRowKey);
+
+                                      if (row) {
+                                          setModalOpen(false);
+                                          handleDeleteRow(row);
+                                      }
+                                  }
+                                : undefined
+                        }
+                        deleteLabel="Hapus Work Order"
+                    >
+                        {modalForm}
+                    </MobileFormScreen>
+                )
+            ) : (
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto p-4 sm:p-6">
                     <DialogHeader className="space-y-1">
@@ -1945,588 +2579,10 @@ export default function WorkOrderInput({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form
-                        onSubmit={handleModalSubmit}
-                        className="space-y-3 py-1"
-                    >
-                        {/* Baris 1: WONUM & Mesin */}
-                        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                            <div className="space-y-1">
-                                <Label htmlFor="wonum" className="text-xs">
-                                    WONUM{' '}
-                                    <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                    id="wonum"
-                                    placeholder="Contoh: WO-2026-001"
-                                    value={formData.wonum}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            wonum: e.target.value,
-                                        }))
-                                    }
-                                    required
-                                    autoFocus
-                                    className="h-9 text-xs sm:text-sm"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="engine_name"
-                                    className="text-xs"
-                                >
-                                    Mesin / Peralatan
-                                </Label>
-                                {machineOptions.length > 0 ? (
-                                    <Select
-                                        value={
-                                            formData.engine_name || NONE_VALUE
-                                        }
-                                        onValueChange={(val) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                engine_name:
-                                                    val === NONE_VALUE
-                                                        ? ''
-                                                        : val,
-                                            }))
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="engine_name"
-                                            className="h-9 text-xs sm:text-sm"
-                                        >
-                                            <SelectValue placeholder="Pilih Mesin (Opsional)" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-60">
-                                            <SelectItem
-                                                value={NONE_VALUE}
-                                                className="text-muted-foreground"
-                                            >
-                                                — Tanpa Mesin / Umum —
-                                            </SelectItem>
-                                            {machineOptions.map((m) => (
-                                                <SelectItem
-                                                    key={m.id}
-                                                    value={m.name}
-                                                >
-                                                    {m.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                ) : (
-                                    <Input
-                                        id="engine_name"
-                                        placeholder="Nama mesin (opsional)"
-                                        value={formData.engine_name}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                engine_name: e.target.value,
-                                            }))
-                                        }
-                                        className="h-9 text-xs sm:text-sm"
-                                    />
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Baris 2: Deskripsi */}
-                        <div className="space-y-1">
-                            <Label htmlFor="description" className="text-xs">
-                                Deskripsi Pekerjaan
-                            </Label>
-                            <textarea
-                                id="description"
-                                rows={2}
-                                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
-                                placeholder="Tuliskan uraian pekerjaan atau kendala Work Order..."
-                                value={formData.description}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        description: e.target.value,
-                                    }))
-                                }
-                            />
-                        </div>
-
-                        {/* Baris 3: Jenis, Work Group, Status, Siklus (2x2 di HP, 4 kolom di Desktop) */}
-                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                            <div className="space-y-1">
-                                <Label htmlFor="type_code" className="text-xs">
-                                    Jenis
-                                </Label>
-                                <Select
-                                    value={formData.type_code || NONE_VALUE}
-                                    onValueChange={(val) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            type_code:
-                                                val === NONE_VALUE ? '' : val,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="type_code"
-                                        className="h-9 text-xs"
-                                    >
-                                        <SelectValue placeholder="Pilih Jenis" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem
-                                            value={NONE_VALUE}
-                                            className="text-muted-foreground"
-                                        >
-                                            — Tanpa Jenis —
-                                        </SelectItem>
-                                        {typeOptions.map((t) => (
-                                            <SelectItem
-                                                key={t.code}
-                                                value={t.code}
-                                            >
-                                                {t.code}{' '}
-                                                {t.name && t.name !== t.code
-                                                    ? `— ${t.name}`
-                                                    : ''}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="work_group_code"
-                                    className="text-xs"
-                                >
-                                    Work Group
-                                </Label>
-                                <Select
-                                    value={
-                                        formData.work_group_code || NONE_VALUE
-                                    }
-                                    onValueChange={(val) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            work_group_code:
-                                                val === NONE_VALUE ? '' : val,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="work_group_code"
-                                        className="h-9 text-xs"
-                                    >
-                                        <SelectValue placeholder="Pilih WG" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem
-                                            value={NONE_VALUE}
-                                            className="text-muted-foreground"
-                                        >
-                                            — Tanpa WG —
-                                        </SelectItem>
-                                        {workGroupOptions.map((w) => (
-                                            <SelectItem
-                                                key={w.code}
-                                                value={w.code}
-                                            >
-                                                {w.code}{' '}
-                                                {w.name && w.name !== w.code
-                                                    ? `— ${w.name}`
-                                                    : ''}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="status_code"
-                                    className="text-xs"
-                                >
-                                    Status
-                                </Label>
-                                <Select
-                                    value={formData.status_code || NONE_VALUE}
-                                    onValueChange={(val) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            status_code:
-                                                val === NONE_VALUE ? '' : val,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="status_code"
-                                        className="h-9 text-xs"
-                                    >
-                                        <SelectValue placeholder="Pilih Status" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem
-                                            value={NONE_VALUE}
-                                            className="text-muted-foreground"
-                                        >
-                                            — Tanpa Status —
-                                        </SelectItem>
-                                        {statusOptions.map((s) => (
-                                            <SelectItem
-                                                key={s.code}
-                                                value={s.code}
-                                            >
-                                                {s.code}{' '}
-                                                {s.name && s.name !== s.code
-                                                    ? `— ${s.name}`
-                                                    : ''}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label htmlFor="cycle_code" className="text-xs">
-                                    Siklus
-                                </Label>
-                                <Select
-                                    value={formData.cycle_code || NONE_VALUE}
-                                    onValueChange={(val) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            cycle_code:
-                                                val === NONE_VALUE ? '' : val,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="cycle_code"
-                                        className="h-9 text-xs"
-                                    >
-                                        <SelectValue placeholder="Pilih Siklus" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem
-                                            value={NONE_VALUE}
-                                            className="text-muted-foreground"
-                                        >
-                                            — Tanpa Siklus —
-                                        </SelectItem>
-                                        {cycleOptions.map((c) => (
-                                            <SelectItem
-                                                key={c.code}
-                                                value={c.code}
-                                            >
-                                                {c.code}{' '}
-                                                {c.name && c.name !== c.code
-                                                    ? `— ${c.name}`
-                                                    : ''}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {/* Baris 4: Tanggal (Report Date, Sched Start, Sched Finish) */}
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="report_date"
-                                    className="text-xs"
-                                >
-                                    Report Date
-                                </Label>
-                                <Input
-                                    id="report_date"
-                                    type="date"
-                                    value={formData.report_date}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            report_date: e.target.value,
-                                        }))
-                                    }
-                                    className="h-9 px-2 text-xs"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="sched_start"
-                                    className="text-xs"
-                                >
-                                    Sched Start
-                                </Label>
-                                <Input
-                                    id="sched_start"
-                                    type="date"
-                                    value={formData.sched_start}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            sched_start: e.target.value,
-                                        }))
-                                    }
-                                    className="h-9 px-2 text-xs"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="sched_finish"
-                                    className="text-xs"
-                                >
-                                    Sched Finish
-                                </Label>
-                                <Input
-                                    id="sched_finish"
-                                    type="date"
-                                    value={formData.sched_finish}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            sched_finish: e.target.value,
-                                        }))
-                                    }
-                                    className="h-9 px-2 text-xs"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Baris 5: Waiting Reason, Assetnum, Owner Group, WO Prior Text (2x2 di HP, 4 kolom di Desktop) */}
-                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="waiting_reason"
-                                    className="text-xs"
-                                >
-                                    Waiting Reason
-                                </Label>
-                                <Select
-                                    value={
-                                        formData.waiting_reason || NONE_VALUE
-                                    }
-                                    onValueChange={(val) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            waiting_reason:
-                                                val === NONE_VALUE ? '' : val,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="waiting_reason"
-                                        className="h-9 text-xs"
-                                    >
-                                        <SelectValue placeholder="Pilih Alasan..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem
-                                            value={NONE_VALUE}
-                                            className="text-muted-foreground"
-                                        >
-                                            — Tidak Ada Waiting —
-                                        </SelectItem>
-                                        {waitingReasonOptions.map((w) => (
-                                            <SelectItem
-                                                key={w.value}
-                                                value={w.value}
-                                            >
-                                                {w.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {(
-                                [
-                                    [
-                                        'assetnum',
-                                        'Assetnum',
-                                        'WUAWTD002MJA10AV001',
-                                    ],
-                                    [
-                                        'owner_group',
-                                        'Owner Group',
-                                        'MECHD (= WG)',
-                                    ],
-                                    [
-                                        'priority_text',
-                                        'WO Prior Text',
-                                        'Urgent',
-                                    ],
-                                ] as const
-                            ).map(([key, label, placeholder]) => (
-                                <div key={key} className="space-y-1">
-                                    <Label htmlFor={key} className="text-xs">
-                                        {label}
-                                    </Label>
-                                    <Input
-                                        id={key}
-                                        placeholder={placeholder}
-                                        value={formData[key]}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                [key]: e.target.value,
-                                            }))
-                                        }
-                                        className="h-9 text-xs"
-                                    />
-                                </div>
-                            ))}
-                        </div>
-
-                        {showMaterials && (
-                            <div className="space-y-2 rounded-md border border-border bg-muted/20 p-2.5">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-semibold">
-                                        Rincian Material / Jasa yang ditunggu
-                                    </Label>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 gap-1 text-xs"
-                                        onClick={() =>
-                                            setFormMaterials((list) => [
-                                                ...list,
-                                                blankMaterial(),
-                                            ])
-                                        }
-                                    >
-                                        <Plus className="size-3.5" />
-                                        Tambah Item
-                                    </Button>
-                                </div>
-                                {formMaterials.length === 0 && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Belum ada item — WO tetap tampil satu
-                                        baris di laporan.
-                                    </p>
-                                )}
-                                {formMaterials.map((material, index) => (
-                                    <div
-                                        key={index}
-                                        className="grid grid-cols-1 gap-1.5 rounded border border-border/60 bg-card p-2 sm:grid-cols-[1fr_1fr_90px_auto] sm:items-center sm:border-0 sm:bg-transparent sm:p-0"
-                                    >
-                                        <Input
-                                            placeholder="Deskripsi (mis. Piston Ring 1)"
-                                            aria-label={`Deskripsi (mis. Piston Ring 1) item ${index + 1}`}
-                                            value={material.description ?? ''}
-                                            onChange={(e) =>
-                                                setFormMaterials((list) =>
-                                                    list.map((m, i) =>
-                                                        i === index
-                                                            ? {
-                                                                  ...m,
-                                                                  description:
-                                                                      e.target
-                                                                          .value,
-                                                              }
-                                                            : m,
-                                                    ),
-                                                )
-                                            }
-                                            className="h-8 text-xs"
-                                        />
-                                        <div className="grid grid-cols-[1fr_80px_auto] items-center gap-1.5 sm:contents">
-                                            <Input
-                                                placeholder="No Stockcode / Part"
-                                                aria-label={`No Stockcode / Part item ${index + 1}`}
-                                                value={material.stockcode ?? ''}
-                                                onChange={(e) =>
-                                                    setFormMaterials((list) =>
-                                                        list.map((m, i) =>
-                                                            i === index
-                                                                ? {
-                                                                      ...m,
-                                                                      stockcode:
-                                                                          e
-                                                                              .target
-                                                                              .value,
-                                                                  }
-                                                                : m,
-                                                        ),
-                                                    )
-                                                }
-                                                className="h-8 text-xs"
-                                            />
-                                            <Input
-                                                placeholder="Jumlah"
-                                                aria-label={`Jumlah item ${index + 1}`}
-                                                value={material.amount ?? ''}
-                                                onChange={(e) =>
-                                                    setFormMaterials((list) =>
-                                                        list.map((m, i) =>
-                                                            i === index
-                                                                ? {
-                                                                      ...m,
-                                                                      amount: e
-                                                                          .target
-                                                                          .value,
-                                                                  }
-                                                                : m,
-                                                        ),
-                                                    )
-                                                }
-                                                className="h-8 text-xs"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    setFormMaterials((list) =>
-                                                        list.filter(
-                                                            (_, i) =>
-                                                                i !== index,
-                                                        ),
-                                                    )
-                                                }
-                                                className="inline-flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                aria-label={`Hapus item ${index + 1}`}
-                                            >
-                                                <X className="size-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                                <p className="text-[11px] text-muted-foreground">
-                                    Tiap item jadi satu baris di tabel WO
-                                    Waiting Material dan Jasa (A17),
-                                    dikelompokkan per Bidang dari Work Group
-                                    (MECHD Mekanik, ELECD Listrik, INSTD Kontrol
-                                    &amp; Instrumen, CIVD Sipil).
-                                </p>
-                            </div>
-                        )}
-
-                        <DialogFooter className="gap-2 pt-2 sm:gap-0">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setModalOpen(false)}
-                            >
-                                Batal
-                            </Button>
-                            <Button type="submit" size="sm" disabled={saving}>
-                                {saving
-                                    ? 'Menyimpan…'
-                                    : editingRowKey !== null
-                                      ? 'Perbarui'
-                                      : 'Simpan'}
-                            </Button>
-                        </DialogFooter>
-                    </form>
+                    {modalForm}
                 </DialogContent>
             </Dialog>
+            )}
         </>
     );
 }

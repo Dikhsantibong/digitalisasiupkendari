@@ -10,9 +10,15 @@ import {
 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
+import {
+    EntryBadge,
+    formScreenOpen,
+    MobileEntryCard,
+    MobileEntryList,
+    MobileFrame,
+} from '@/components/mobile/entry-flow';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -195,6 +201,8 @@ export function HarFormulirPage({
     } = props;
     const compact = useCompactLayout();
     const inShell = useInMobileShell();
+    // Phone (user, 2026-11-27): the saved formulir as cards; a record opens on its own screen (?form=1).
+    const formOpen = compact && formScreenOpen();
     const [form, setForm] = useState<FormValues>(props.form);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -212,7 +220,9 @@ export function HarFormulirPage({
     const machineName =
         machines.find((m) => m.id === filters.machine_id)?.name ?? '—';
 
-    const visit = (patch: Partial<HarFormulirProps['filters']>) => {
+    const visit = (
+        patch: Partial<HarFormulirProps['filters']> & { form?: 1 | null },
+    ) => {
         if (
             dirty &&
             !window.confirm(
@@ -224,7 +234,8 @@ export function HarFormulirPage({
 
         router.get(
             indexUrl,
-            { ...filters, ...patch },
+            // The phone form screen stays open while another machine / date is picked.
+            { ...filters, ...(formOpen ? { form: 1 } : {}), ...patch },
             { preserveScroll: true, replace: true },
         );
     };
@@ -315,7 +326,14 @@ export function HarFormulirPage({
             {
                 preserveScroll: true,
                 forceFormData: hasFile,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+
+                    // Phone: saved — back to the list of records.
+                    if (formOpen) {
+                        router.get(indexUrl, { ...filters }, { replace: true });
+                    }
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -387,15 +405,84 @@ export function HarFormulirPage({
     const showIdentitySection =
         visibleIdentity.length > 0 || (compact && hasCylinders);
 
+    if (compact && !formOpen) {
+        return (
+            <>
+                <Head title={`${document.title} — ${unit.name}`} />
+                <MobileEntryList
+                    heading={document.title}
+                    count={machines.length === 0 ? 0 : history.length}
+                    empty={
+                        machines.length === 0
+                            ? 'Unit ini belum memiliki data mesin aktif. Tambahkan mesin di master data terlebih dahulu.'
+                            : `Belum ada ${document.title} untuk ${machineName}. Tekan Tambah untuk mengisi.`
+                    }
+                    canWrite={can_write && machines.length > 0}
+                    onAdd={() =>
+                        visit({
+                            test_date: new Date().toLocaleDateString('sv-SE'),
+                            form: 1,
+                        })
+                    }
+                    onSave={() => undefined}
+                    above={
+                        machines.length > 0 && (
+                            <OperasiSelect
+                                label="Mesin"
+                                value={filters.machine_id ? String(filters.machine_id) : ''}
+                                onChange={(value) => visit({ machine_id: Number(value) })}
+                                options={machines.map((m) => ({ value: String(m.id), label: m.name }))}
+                                className="w-full"
+                            />
+                        )
+                    }
+                >
+                    {history.map((item) => (
+                        <MobileEntryCard
+                            key={item.id}
+                            title={formatDate(item.test_date)}
+                            subtitle={machineName}
+                            badge={<EntryBadge tone="done">Tersimpan</EntryBadge>}
+                            meta={[['Diperbarui', item.updated_at ? new Date(item.updated_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '']]}
+                            onClick={() => visit({ test_date: item.test_date, form: 1 })}
+                        />
+                    ))}
+                </MobileEntryList>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title={`${document.title} — ${unit.name}`} />
 
-            <div
+            <MobileFrame
+                phone={compact}
                 className={cn(
                     'flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6',
                     compact && 'pb-28',
                 )}
+                screen={{
+                    title: has_saved ? formatDate(filters.test_date) : 'Formulir baru',
+                    subtitle: `${document.title} · ${machineName}`,
+                    onBack: () => visit({ form: null }),
+                    canWrite: can_write,
+                    onSave: save,
+                    saving,
+                    saveDisabled: !dirty || !filters.machine_id,
+                    extraAction: (
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={openPdf}
+                            disabled={!filters.machine_id}
+                            className="gap-1.5"
+                        >
+                            <FileDown className="size-4" />
+                            PDF
+                        </Button>
+                    ),
+                }}
             >
                 {/* Header: full header with badges & description on Desktop only; hidden in mobile shell (bar already holds title) */}
                 {!compact ? (
@@ -540,7 +627,7 @@ export function HarFormulirPage({
                     )}
                 </div>
 
-                {history.length > 0 && (
+                {!compact && history.length > 0 && (
                     <div
                         className={cn(
                             'flex items-center gap-1.5 text-xs',
@@ -1045,9 +1132,7 @@ export function HarFormulirPage({
                         )}
                     </div>
                 )}
-            </div>
-
-            {compact && <StickyActionBar>{actions}</StickyActionBar>}
+            </MobileFrame>
         </>
     );
 }

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { MobileEntryCard, MobileEntryList, MobileFrame } from '@/components/mobile/entry-flow';
 import { PageHeader } from '@/components/page-header';
 import { PdfPreviewFrame } from '@/components/pdf-preview-frame';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -834,6 +834,8 @@ export function CompactSelect({
  * Kerangka halaman Formulir K3 (pola Formulir Prelube Test): header + status,
  * kolom kiri (metadata, penandatangan, page settings) dan kolom kanan (tab editor).
  */
+const FORM_OPEN_KEY = 'k3-formulir-form-open';
+
 export function FormulirDocumentLayout({
     title,
     description,
@@ -877,11 +879,69 @@ export function FormulirDocumentLayout({
     const [showMobileDocSettings, setShowMobileDocSettings] =
         useState<boolean>(false);
     const compact = useCompactLayout();
+    // Phone (user, 2026-11-27): the saved periods as cards; a period opens its form on its own screen.
+    // Opening another period reloads the page, so the wish to see its form survives in sessionStorage.
+    const [formOpen, setFormOpen] = useState<boolean>(() => {
+        try {
+            const wanted = window.sessionStorage.getItem(FORM_OPEN_KEY) === '1';
+            window.sessionStorage.removeItem(FORM_OPEN_KEY);
+
+            return wanted;
+        } catch {
+            return false;
+        }
+    });
+
+    if (compact && !formOpen) {
+        return (
+            <MobileEntryList
+                heading={title}
+                count={history.length}
+                empty={`Belum ada ${title} tersimpan. Tekan Tambah untuk mengisi periode ${periodLabel}.`}
+                canWrite={canWrite}
+                onAdd={() => setFormOpen(true)}
+                onSave={() => undefined}
+            >
+                {history.map((entry) => (
+                    <MobileEntryCard
+                        key={entry.key}
+                        title={entry.label}
+                        subtitle={entry.description}
+                        onClick={() => {
+                            try {
+                                window.sessionStorage.setItem(FORM_OPEN_KEY, '1');
+                            } catch {
+                                // Storage blocked: the period opens on its list.
+                            }
+
+                            entry.onOpen();
+                        }}
+                    />
+                ))}
+            </MobileEntryList>
+        );
+    }
 
     return (
         <>
-            <div
+            <MobileFrame
+                phone={compact}
                 className={`flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6 ${compact ? 'pb-28' : ''}`}
+                screen={{
+                    title: periodLabel,
+                    subtitle: title,
+                    onBack: () => setFormOpen(false),
+                    canWrite,
+                    onSave: () => onSave(() => setFormOpen(false)),
+                    saving,
+                    saveDisabled: !dirty,
+                    extraAction: (
+                        <Button size="lg" variant="outline" onClick={doc.downloadPdf} className="gap-1.5">
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                    ),
+                }}
             >
                 {!compact && (
                     <PageHeader
@@ -1115,34 +1175,8 @@ export function FormulirDocumentLayout({
                         </div>
                     </div>
                 )}
-            </div>
+            </MobileFrame>
 
-            {compact && (
-                <StickyActionBar>
-                    <Button
-                        variant="outline"
-                        onClick={doc.downloadPdf}
-                        className="gap-1.5"
-                    >
-                        <Download className="size-4 text-rose-600" />
-                        PDF
-                    </Button>
-                    {canWrite && (
-                        <Button
-                            onClick={() => onSave()}
-                            disabled={saving || !dirty}
-                            className="gap-1.5"
-                        >
-                            <Save className="size-4" />
-                            {saving
-                                ? 'Menyimpan…'
-                                : dirty
-                                  ? 'Simpan'
-                                  : 'Tersimpan'}
-                        </Button>
-                    )}
-                </StickyActionBar>
-            )}
 
             <HistoryDialog
                 open={showHistory}

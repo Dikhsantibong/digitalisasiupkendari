@@ -136,7 +136,7 @@ export default function EmergencyFacilityInput({
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         const ordered = orderedGroups.flatMap((g) =>
             rows.filter((r) => r.grup === g),
@@ -161,7 +161,10 @@ export default function EmergencyFacilityInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -271,6 +274,13 @@ export default function EmergencyFacilityInput({
                                         canWrite={can_write}
                                         rowKey={(r) => r._key}
                                         removeLabel="Hapus peralatan"
+                                        flow={{
+                                            bar: false,
+                                            onSave: (done) => save(done),
+                                            saving,
+                                            dirty: dirty,
+                                            formSubtitle: 'Fasilitas Tanggap Darurat',
+                                        }}
                                     />
                                     {can_write && (
                                         <Button
@@ -299,7 +309,7 @@ export default function EmergencyFacilityInput({
                         />
                         {can_write && (
                             <Button
-                                onClick={save}
+                                onClick={() => save()}
                                 disabled={saving || !dirty}
                                 className="gap-1.5"
                             >
@@ -333,7 +343,7 @@ export default function EmergencyFacilityInput({
                             {can_write && (
                                 <>
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || !dirty}
                                         className="gap-2"
                                     >

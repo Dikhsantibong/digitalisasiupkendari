@@ -11,7 +11,6 @@ import {
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -96,7 +95,7 @@ export default function FireAlarmInput({
         setRows((p) => p.filter((_, idx) => idx !== i));
         setDirty(true);
     };
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             fireAlarm.store().url,
@@ -108,7 +107,10 @@ export default function FireAlarmInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -190,6 +192,16 @@ export default function FireAlarmInput({
                         onYearChange={(v) => visit({ year: v })}
                     />
 
+                    <div className="flex justify-end">
+                        <K3MobilePdfButton
+                                input="fire-alarm"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
+                    </div>
                     <MobileRowEditor<Row>
                         rows={rows}
                         fields={mobileFields}
@@ -201,41 +213,16 @@ export default function FireAlarmInput({
                         onRemove={removeRow}
                         canWrite={can_write}
                         removeLabel="Hapus titik"
+                        flow={{
+                            onSave: (done) => save(done),
+                            saving,
+                            dirty: dirty,
+                            onAdd: addRow,
+                            formSubtitle: 'Inspeksi Fire Alarm',
+                        }}
                     />
 
-                    {can_write && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addRow}
-                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
-                        >
-                            <Plus className="size-4" />
-                            Tambah Titik
-                        </Button>
-                    )}
 
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="fire-alarm"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
-                            }}
-                        />
-                        {can_write && (
-                            <Button
-                                onClick={save}
-                                disabled={saving || !dirty}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
-                    </StickyActionBar>
                 </div>
             </>
         );
@@ -269,7 +256,7 @@ export default function FireAlarmInput({
                                         Tambah Baris
                                     </Button>
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || !dirty}
                                         className="gap-2"
                                     >

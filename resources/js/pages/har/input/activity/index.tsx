@@ -5,6 +5,7 @@ import ActivityController from '@/actions/App/Http/Controllers/Har/ActivityContr
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { FormField } from '@/components/form-field';
+import { EntryBadge, entryDate, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { MobileRecordList } from '@/components/mobile/record-list';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
@@ -117,6 +118,50 @@ export default function ActivitiesInput({
         setEditing(activity);
         setOpen(true);
     };
+
+    if (compact) {
+        // Phone (user, 2026-11-27): the month's activities as cards; Tambah / a card opens the form on its own
+        // screen, Simpan saves and returns to the list.
+        return (
+            <>
+                <Head title="Input HAR — Log Kegiatan" />
+                <MobileEntryList
+                    heading="Log kegiatan"
+                    count={activities.length}
+                    empty="Belum ada kegiatan HARMES periode ini. Tekan Tambah untuk mengisi."
+                    canWrite={can_write}
+                    onAdd={openCreate}
+                    onSave={() => undefined}
+                >
+                    {activities.map((a) => (
+                        <MobileEntryCard
+                            key={a.id}
+                            title={entryDate(a.activity_date) || a.activity_date}
+                            subtitle={a.work_result ?? undefined}
+                            badge={a.wonum ? <EntryBadge tone="info">{a.wonum}</EntryBadge> : undefined}
+                            meta={[
+                                ['Mesin', a.engine_name ?? ''],
+                                ['Uraian', `${a.tasks_count} pekerjaan`],
+                                ['Material', `${a.materials_count} item`],
+                            ]}
+                            onClick={can_write ? () => openEdit(a) : undefined}
+                        />
+                    ))}
+                </MobileEntryList>
+
+                {can_write && open && (
+                    <ActivityForm
+                        key={editing?.id ?? 'new'}
+                        filters={filters}
+                        options={options}
+                        editing={editing}
+                        onDone={() => setOpen(false)}
+                        screen
+                    />
+                )}
+            </>
+        );
+    }
 
     return (
         <>
@@ -305,11 +350,14 @@ function ActivityForm({
     options,
     editing,
     onDone,
+    screen = false,
 }: {
     filters: Props['filters'];
     options: Props['options'];
     editing: Activity | null;
     onDone: () => void;
+    /** Phones: the form on its own screen with Kembali / Simpan at the bottom. */
+    screen?: boolean;
 }) {
     const [form, setForm] = useState({
         activity_date: editing?.activity_date ?? '',
@@ -371,7 +419,7 @@ function ActivityForm({
         }
     };
 
-    return (
+    const body = (
         <div className="flex flex-col gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -614,13 +662,41 @@ function ActivityForm({
                 ))}
             </SubList>
 
-            <div className="flex justify-end">
-                <Button onClick={submit} disabled={saving}>
-                    {saving ? 'Menyimpan…' : 'Simpan'}
-                </Button>
-            </div>
+            {!screen && (
+                <div className="flex justify-end">
+                    <Button onClick={submit} disabled={saving}>
+                        {saving ? 'Menyimpan…' : 'Simpan'}
+                    </Button>
+                </div>
+            )}
         </div>
     );
+
+    if (screen) {
+        return (
+            <MobileFormScreen
+                title={editing ? 'Ubah kegiatan' : 'Kegiatan baru'}
+                subtitle="Log Kegiatan HARMES"
+                onBack={onDone}
+                onSave={submit}
+                saving={saving}
+                onDelete={
+                    editing
+                        ? () => {
+                              if (window.confirm('Hapus kegiatan ini? Uraian & material ikut terhapus permanen.')) {
+                                  router.delete(ActivityController.destroy(editing.id).url, { preserveScroll: true, onSuccess: onDone });
+                              }
+                          }
+                        : undefined
+                }
+                deleteLabel="Hapus kegiatan"
+            >
+                {body}
+            </MobileFormScreen>
+        );
+    }
+
+    return body;
 }
 
 function updateMaterial(

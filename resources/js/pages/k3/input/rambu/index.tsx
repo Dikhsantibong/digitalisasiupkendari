@@ -11,7 +11,6 @@ import {
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -92,7 +91,7 @@ export default function RambuInput({
         setRows((p) => p.filter((_, idx) => idx !== i));
         setDirty(true);
     };
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             rambu.store().url,
@@ -104,7 +103,10 @@ export default function RambuInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -158,6 +160,16 @@ export default function RambuInput({
                         onYearChange={(v) => visit({ year: v })}
                     />
 
+                    <div className="flex justify-end">
+                        <K3MobilePdfButton
+                                input="rambu"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
+                    </div>
                     <MobileRowEditor<Row>
                         rows={rows}
                         fields={mobileFields}
@@ -169,41 +181,16 @@ export default function RambuInput({
                         onRemove={removeRow}
                         canWrite={can_write}
                         removeLabel="Hapus rambu"
+                        flow={{
+                            onSave: (done) => save(done),
+                            saving,
+                            dirty: dirty,
+                            onAdd: addRow,
+                            formSubtitle: 'Inspeksi Rambu',
+                        }}
                     />
 
-                    {can_write && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addRow}
-                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
-                        >
-                            <Plus className="size-4" />
-                            Tambah Rambu
-                        </Button>
-                    )}
 
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="rambu"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
-                            }}
-                        />
-                        {can_write && (
-                            <Button
-                                onClick={save}
-                                disabled={saving || !dirty}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
-                    </StickyActionBar>
                 </div>
             </>
         );
@@ -237,7 +224,7 @@ export default function RambuInput({
                                         Tambah Baris
                                     </Button>
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || !dirty}
                                         className="gap-2"
                                     >

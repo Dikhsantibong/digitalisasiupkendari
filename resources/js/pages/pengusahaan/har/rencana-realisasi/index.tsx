@@ -4,6 +4,7 @@ import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
 import type { DayValueField } from '@/components/mobile/day-values-form';
+import { EntryBadge, MobileEntryCard, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
@@ -128,6 +129,8 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
     const [scopes, setScopes] = useState(() => normalize(initialScopes));
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    // Phone: one machine's sheet on its own screen (the list shows every machine as a card).
+    const [editingEngine, setEditingEngine] = useState<number | null>(null);
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -184,7 +187,7 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
         }
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             rencanaRealisasi.store().url,
@@ -207,7 +210,10 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -449,7 +455,7 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
                 </Button>
             )}
             {can_write && (
-                <Button size={compact ? 'default' : 'sm'} onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                <Button size={compact ? 'default' : 'sm'} onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                     <Save className="size-4" />
                     {saving ? 'Menyimpan…' : 'Simpan'}
                 </Button>
@@ -532,37 +538,68 @@ export default function RencanaRealisasiPage({ filters, unit_label, days, scopes
                 ) : compact ? (
                     <div className="flex flex-col gap-3">
                         <p className="rounded-lg bg-muted/50 px-3 py-2 text-[12px] font-semibold text-foreground">{style.title(tab.plan, monthName, filters.year)}</p>
-                        <MobileDayValuesForm<MachineRow>
-                            key={tab.key}
-                            days={days}
-                            rows={rows}
-                            rowKey={(row) => row.engine_id}
-                            title={(row) => `${row.name}${row.type ? ` / ${row.type}` : ''}`}
-                            fields={mobileFields}
-                            value={(row, field, day) =>
-                                field === 'durasi' ? (row.realisasi.durasi[String(day)] ?? '') : (row[field as Plan].days[String(day)] ?? '')
-                            }
-                            onChange={(row, field, day, value) =>
-                                field === 'durasi' ? setDay(row.engine_id, 'durasi', day, value) : setDay(row.engine_id, 'days', day, value)
-                            }
-                            details={(row) => (
-                                <>
-                                    <TimelineField
-                                        label="Kondisi mesin (jika tidak beroperasi)"
-                                        value={row[tab.plan].status_note}
-                                        onChange={(v) => setText(row.engine_id, 'status_note', v)}
-                                        readOnly={!can_write}
-                                        placeholder="mis. Gangguan crankshaft"
-                                    />
-                                    {isHar && (
-                                        <TimelineField label="Jam Operasi" value={row[tab.plan].jam_operasi} onChange={(v) => setText(row.engine_id, 'jam_operasi', v)} readOnly={!can_write} />
+                        {rows.map((row) => (
+                            <MobileEntryCard
+                                key={row.engine_id}
+                                title={`${row.name}${row.type ? ` / ${row.type}` : ''}`}
+                                subtitle={
+                                    row[tab.plan].status_note
+                                        ? `Tidak beroperasi: ${row[tab.plan].status_note}`
+                                        : `${Object.keys(row[tab.plan].days).length} tanggal terisi bulan ini`
+                                }
+                                badge={
+                                    Object.keys(row[tab.plan].days).length > 0 ? (
+                                        <EntryBadge tone="done">Terisi</EntryBadge>
+                                    ) : (
+                                        <EntryBadge>Kosong</EntryBadge>
+                                    )
+                                }
+                                onClick={() => setEditingEngine(row.engine_id)}
+                            />
+                        ))}
+                        {editingEngine !== null && rows.some((row) => row.engine_id === editingEngine) && (
+                            <MobileFormScreen
+                                title={rows.find((row) => row.engine_id === editingEngine)?.name ?? 'Mesin'}
+                                subtitle={tab.label}
+                                onBack={() => setEditingEngine(null)}
+                                canWrite={can_write}
+                                onSave={() => save(() => setEditingEngine(null))}
+                                saving={saving}
+                                saveDisabled={!dirty}
+                            >
+                                <MobileDayValuesForm<MachineRow>
+                                    key={tab.key}
+                                    days={days}
+                                    rows={rows.filter((row) => row.engine_id === editingEngine)}
+                                    rowKey={(row) => row.engine_id}
+                                    title={(row) => `${row.name}${row.type ? ` / ${row.type}` : ''}`}
+                                    fields={mobileFields}
+                                    value={(row, field, day) =>
+                                        field === 'durasi' ? (row.realisasi.durasi[String(day)] ?? '') : (row[field as Plan].days[String(day)] ?? '')
+                                    }
+                                    onChange={(row, field, day, value) =>
+                                        field === 'durasi' ? setDay(row.engine_id, 'durasi', day, value) : setDay(row.engine_id, 'days', day, value)
+                                    }
+                                    details={(row) => (
+                                        <>
+                                            <TimelineField
+                                                label="Kondisi mesin (jika tidak beroperasi)"
+                                                value={row[tab.plan].status_note}
+                                                onChange={(v) => setText(row.engine_id, 'status_note', v)}
+                                                readOnly={!can_write}
+                                                placeholder="mis. Gangguan crankshaft"
+                                            />
+                                            {isHar && (
+                                                <TimelineField label="Jam Operasi" value={row[tab.plan].jam_operasi} onChange={(v) => setText(row.engine_id, 'jam_operasi', v)} readOnly={!can_write} />
+                                            )}
+                                            <TimelineField label="Keterangan" value={row[tab.plan].keterangan} onChange={(v) => setText(row.engine_id, 'keterangan', v)} readOnly={!can_write} />
+                                        </>
                                     )}
-                                    <TimelineField label="Keterangan" value={row[tab.plan].keterangan} onChange={(v) => setText(row.engine_id, 'keterangan', v)} readOnly={!can_write} />
-                                </>
-                            )}
-                            summary={(row) => (row[tab.plan].status_note ? `Tidak beroperasi: ${row[tab.plan].status_note}` : `${Object.keys(row[tab.plan].days).length} tanggal terisi bulan ini`)}
-                            readOnly={!can_write}
-                        />
+                                    summary={(row) => (row[tab.plan].status_note ? `Tidak beroperasi: ${row[tab.plan].status_note}` : `${Object.keys(row[tab.plan].days).length} tanggal terisi bulan ini`)}
+                                    readOnly={!can_write}
+                                />
+                            </MobileFormScreen>
+                        )}
                     </div>
                 ) : (
                     <>

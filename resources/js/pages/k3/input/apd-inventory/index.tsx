@@ -137,7 +137,7 @@ export default function ApdInventoryInput({
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         const ordered = orderedGroups.flatMap((g) =>
             rows.filter((r) => r.grup === g),
@@ -162,7 +162,10 @@ export default function ApdInventoryInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -241,6 +244,13 @@ export default function ApdInventoryInput({
                                         canWrite={can_write}
                                         rowKey={(r) => r._key}
                                         removeLabel="Hapus item"
+                                        flow={{
+                                            bar: false,
+                                            onSave: (done) => save(done),
+                                            saving,
+                                            dirty: dirty,
+                                            formSubtitle: 'Inventaris APD',
+                                        }}
                                     />
                                     {can_write && (
                                         <Button
@@ -269,7 +279,7 @@ export default function ApdInventoryInput({
                         />
                         {can_write && (
                             <Button
-                                onClick={save}
+                                onClick={() => save()}
                                 disabled={saving || !dirty}
                                 className="gap-1.5"
                             >
@@ -303,7 +313,7 @@ export default function ApdInventoryInput({
                             {can_write && (
                                 <>
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || !dirty}
                                         className="gap-2"
                                     >

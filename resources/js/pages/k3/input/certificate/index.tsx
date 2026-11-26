@@ -11,7 +11,6 @@ import {
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -179,7 +178,7 @@ export default function CertificateInput({
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             certificate.store().url,
@@ -209,7 +208,10 @@ export default function CertificateInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -309,6 +311,12 @@ export default function CertificateInput({
                         }
                     />
 
+                    <div className="flex justify-end">
+                        <K3MobilePdfButton
+                                input="certificates"
+                                query={{ unit_id: filters.unit_id }}
+                            />
+                    </div>
                     <MobileRowEditor<Row>
                         rows={rows}
                         fields={mobileFields}
@@ -332,37 +340,16 @@ export default function CertificateInput({
                         canWrite={can_write}
                         rowKey={(r) => r._key}
                         removeLabel="Hapus peralatan"
+                        flow={{
+                            onSave: (done) => save(done),
+                            saving,
+                            dirty: dirty,
+                            onAdd: addRow,
+                            formSubtitle: 'Sertifikat',
+                        }}
                     />
 
-                    {can_write && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addRow}
-                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
-                        >
-                            <Plus className="size-4" />
-                            Tambah Sertifikasi Peralatan
-                        </Button>
-                    )}
 
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="certificates"
-                            query={{ unit_id: filters.unit_id }}
-                        />
-                        {can_write && (
-                            <Button
-                                onClick={save}
-                                disabled={saving || !dirty}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
-                    </StickyActionBar>
                 </div>
             </>
         );
@@ -390,7 +377,7 @@ export default function CertificateInput({
                             )}
                             {can_write && (
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={saving || !dirty}
                                     className="gap-2"
                                 >

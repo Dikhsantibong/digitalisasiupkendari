@@ -2,7 +2,6 @@ import { Head, router } from '@inertiajs/react';
 import {
     AlertTriangle,
     BellRing,
-    CalendarRange,
     Cctv,
     ChevronRight,
     ClipboardCheck,
@@ -44,7 +43,6 @@ import k3KondisiK3 from '@/routes/k3/input/kondisi-k3';
 import k3Patrol from '@/routes/k3/input/patrol';
 import k3Rambu from '@/routes/k3/input/rambu';
 import k3Rekap5s5r from '@/routes/k3/input/rekap-5s5r';
-import k3TimeFrame from '@/routes/k3/input/time-frame';
 import k3Monitoring from '@/routes/k3/monitoring';
 
 type InputCard = {
@@ -57,14 +55,6 @@ type InputCard = {
 };
 
 const INPUT_MENUS: InputCard[] = [
-    {
-        title: 'Time Frame',
-        description:
-            'Pencatatan target rencana dan realisasi program kerja K3 pada periode berjalan.',
-        icon: CalendarRange,
-        url: k3TimeFrame.index().url,
-        buttonLabel: 'Buka Input Time Frame',
-    },
     {
         title: 'Laporan Kecelakaan',
         description:

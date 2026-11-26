@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
-import { FileText, Trash2, Upload } from 'lucide-react';
-import { useRef } from 'react';
+import { FileText, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import {
     K3InputExportButtons,
@@ -10,6 +10,7 @@ import {
     K3MobileFilterCard,
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
+import { MobileFormScreen } from '@/components/mobile/entry-flow';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -48,6 +49,8 @@ export default function K3Attachments({
 }: Props) {
     const compact = useCompactLayout();
     const fileRef = useRef<HTMLInputElement>(null);
+    // Phone (user, 2026-11-27): the upload form on its own screen; Simpan uploads and returns to the list.
+    const [uploadOpen, setUploadOpen] = useState(false);
     const form = useForm<{
         title: string;
         category: string;
@@ -79,6 +82,7 @@ export default function K3Attachments({
             forceFormData: true,
             onSuccess: () => {
                 form.reset();
+                setUploadOpen(false);
 
                 if (fileRef.current) {
                     fileRef.current.value = '';
@@ -108,78 +112,17 @@ export default function K3Attachments({
                         onYearChange={(v) => visit({ year: v })}
                     />
 
-                    {can_write && (
-                        <form
-                            onSubmit={submit}
-                            className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
-                        >
-                            <div className="grid grid-cols-2 gap-2.5">
-                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                    Judul
-                                    <Input
-                                        value={form.data.title}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                'title',
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                        className="h-9 text-xs"
-                                    />
-                                    {form.errors.title && (
-                                        <span className="text-[11px] text-destructive">
-                                            {form.errors.title}
-                                        </span>
-                                    )}
-                                </label>
-                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                    Kategori
-                                    <Input
-                                        value={form.data.category}
-                                        onChange={(e) =>
-                                            form.setData(
-                                                'category',
-                                                e.target.value,
-                                            )
-                                        }
-                                        className="h-9 text-xs"
-                                    />
-                                </label>
-                            </div>
-                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                Berkas (JPG/PNG/PDF, maks 10MB)
-                                <Input
-                                    ref={fileRef}
-                                    type="file"
-                                    accept=".jpg,.jpeg,.png,.webp,.pdf"
-                                    onChange={(e) =>
-                                        form.setData(
-                                            'file',
-                                            e.target.files?.[0] ?? null,
-                                        )
-                                    }
-                                    required
-                                    className="h-9 text-xs"
-                                />
-                                {form.errors.file && (
-                                    <span className="text-[11px] text-destructive">
-                                        {form.errors.file}
-                                    </span>
-                                )}
-                            </label>
-                            <Button
-                                type="submit"
-                                disabled={form.processing}
-                                className="h-9 w-full gap-1.5"
-                            >
-                                <Upload className="size-4" />
-                                {form.processing
-                                    ? 'Mengunggah…'
-                                    : 'Unggah Berkas'}
-                            </Button>
-                        </form>
-                    )}
+
+                    <div className="flex justify-end">
+                        <K3MobilePdfButton
+                            input="attachments"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                        />
+                    </div>
 
                     {attachments.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
@@ -243,17 +186,93 @@ export default function K3Attachments({
                         </div>
                     )}
 
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="attachments"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
-                            }}
-                        />
-                    </StickyActionBar>
                 </div>
+
+                {can_write && (
+                    <StickyActionBar>
+                        <Button size="lg" variant="outline" onClick={() => setUploadOpen(true)}>
+                            <Plus className="size-4" />
+                            Tambah
+                        </Button>
+                        <Button size="lg" disabled>
+                            <Save className="size-4" />
+                            Tersimpan
+                        </Button>
+                    </StickyActionBar>
+                )}
+
+                {uploadOpen && can_write && (
+                    <MobileFormScreen
+                        title="Unggah lampiran"
+                        subtitle="Lampiran K3"
+                        onBack={() => setUploadOpen(false)}
+                        formId="k3-attachment-form"
+                        saving={form.processing}
+                        saveLabel="Unggah"
+                    >
+                        <form
+                            id="k3-attachment-form"
+                            onSubmit={submit}
+                            className="flex flex-col gap-2.5"
+                        >
+                            <div className="grid grid-cols-2 gap-2.5">
+                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Judul
+                                    <Input
+                                        value={form.data.title}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'title',
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                        className="h-9 text-xs"
+                                    />
+                                    {form.errors.title && (
+                                        <span className="text-[11px] text-destructive">
+                                            {form.errors.title}
+                                        </span>
+                                    )}
+                                </label>
+                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                    Kategori
+                                    <Input
+                                        value={form.data.category}
+                                        onChange={(e) =>
+                                            form.setData(
+                                                'category',
+                                                e.target.value,
+                                            )
+                                        }
+                                        className="h-9 text-xs"
+                                    />
+                                </label>
+                            </div>
+                            <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
+                                Berkas (JPG/PNG/PDF, maks 10MB)
+                                <Input
+                                    ref={fileRef}
+                                    type="file"
+                                    accept=".jpg,.jpeg,.png,.webp,.pdf"
+                                    onChange={(e) =>
+                                        form.setData(
+                                            'file',
+                                            e.target.files?.[0] ?? null,
+                                        )
+                                    }
+                                    required
+                                    className="h-9 text-xs"
+                                />
+                                {form.errors.file && (
+                                    <span className="text-[11px] text-destructive">
+                                        {form.errors.file}
+                                    </span>
+                                )}
+                            </label>
+                        </form>
+                    </MobileFormScreen>
+                )}
             </>
         );
     }

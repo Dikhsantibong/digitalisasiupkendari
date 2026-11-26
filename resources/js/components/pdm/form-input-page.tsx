@@ -134,7 +134,7 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
         touch();
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         const imageFields = form.fields.filter((f) => f.type === 'images');
         const payload = {
             ...query,
@@ -153,6 +153,7 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
             onSuccess: () => {
                 setDirty(false);
                 setUploads({});
+                onSaved?.();
             },
             onFinish: () => setSaving(false),
         });
@@ -478,6 +479,10 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
                     <MobileCompactRows
                         canWrite={can_write}
                         focus={focus}
+                        onSave={(done) => save(done)}
+                        saving={saving}
+                        dirty={dirty}
+                        formSubtitle={form.title}
                         rows={flat.map(({ section, row, i }, index) => {
                             const summaryLine = rowSummary(section.columns, row);
                             const quick = tickOnly(section);
@@ -544,7 +549,7 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
 
                 {can_write && (
                     <StickyActionBar>
-                        <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                        <Button onClick={() => save()} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
                             <Save className="size-4" />
                             {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
                         </Button>
@@ -573,7 +578,7 @@ export function PdmFormInputPage({ form, kop_lines, unit, filters, options, docu
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>

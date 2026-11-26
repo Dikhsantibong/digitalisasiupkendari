@@ -11,6 +11,12 @@ import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
+import {
+    EntryBadge,
+    MobileEntryCard,
+    MobileEntryList,
+    MobileFormScreen,
+} from '@/components/mobile/entry-flow';
 import { MobileModeBar } from '@/components/mobile/mode-bar';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
@@ -148,6 +154,8 @@ export function HarLembarPage({
     // Phone: one section open at a time; a row's detail fields open on demand.
     const [openSection, setOpenSection] = useState<string | null>(null);
     const [detailRow, setDetailRow] = useState<number | null>(null);
+    // Phone (fixed-item sheets, e.g. Patrol Check): the checked dates as cards, or one date's form.
+    const [checkFormOpen, setCheckFormOpen] = useState(false);
     const { can } = usePermissions();
     // Phone layout edits one grid column (a date / week) at a time; start on today's date when shown.
     const [selectedColumn, setSelectedColumn] = useState<string>(() => {
@@ -358,7 +366,7 @@ export function HarLembarPage({
         );
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             routes.store(lembar.key).url,
@@ -369,6 +377,7 @@ export function HarLembarPage({
                     const props = page.props as unknown as HarLembarPageProps;
                     setRows(normalize(props.rows, lembar.lines));
                     setDirty(false);
+                    onSaved?.();
                 },
                 onFinish: () => setSaving(false),
             },
@@ -492,33 +501,87 @@ export function HarLembarPage({
             lembar.grid.find((c) => c.key === selectedColumn) ?? lembar.grid[0];
         const lineKey = lembar.lines[0]?.key ?? 'main';
         const labelFieldKey = before[0]?.key ?? 'peralatan';
+        const checkedColumns = lembar.grid.filter((c) =>
+            rows.some((row) => lembar.lines.some((line) => row.cells[line.key]?.[c.key])),
+        );
 
         return (
             <>
                 <Head title={`${lembar.title} - ${unit.name}`} />
-                <div
-                    className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}
-                >
-                    {lembar.per_machine && (
-                        <OperasiSelect
-                            label="Mesin"
-                            value={String(filters.machine_id ?? '')}
-                            onChange={(v) => visit({ machine_id: Number(v) })}
-                            options={options.machines.map((m) => ({
-                                value: String(m.id),
-                                label: m.name,
-                            }))}
-                            className="w-full"
-                        />
-                    )}
+                {!checkFormOpen ? (
+                    <MobileEntryList
+                        heading={`${lembar.title} ${periodLabel}`}
+                        count={checkedColumns.length}
+                        empty={`Belum ada ${lembar.title.toLowerCase()} ${periodLabel}. Tekan Tambah untuk mengisi.`}
+                        canWrite={can_write && !(lembar.per_machine && !filters.machine_id)}
+                        onAdd={() => {
+                            const now = new Date();
+                            const today =
+                                now.getFullYear() === filters.year && now.getMonth() + 1 === filters.month
+                                    ? lembar.grid.find((c) => c.label === String(now.getDate()))
+                                    : undefined;
 
-                    {lembar.per_machine && options.machines.length === 0 && (
-                        <p className="text-[13px] text-amber-600">
-                            Unit ini belum punya data mesin — tambahkan di
-                            Master Mesin.
-                        </p>
-                    )}
+                            if (today) {
+                                setSelectedColumn(today.key);
+                            }
 
+                            setCheckFormOpen(true);
+                        }}
+                        onSave={() => save()}
+                        saving={saving}
+                        dirty={dirty}
+                        above={
+                            <>
+                                {lembar.per_machine && (
+                                    <OperasiSelect
+                                        label="Mesin"
+                                        value={String(filters.machine_id ?? '')}
+                                        onChange={(v) => visit({ machine_id: Number(v) })}
+                                        options={options.machines.map((m) => ({
+                                            value: String(m.id),
+                                            label: m.name,
+                                        }))}
+                                        className="w-full"
+                                    />
+                                )}
+
+                                {lembar.per_machine && options.machines.length === 0 && (
+                                    <p className="text-[13px] text-amber-600">
+                                        Unit ini belum punya data mesin — tambahkan di
+                                        Master Mesin.
+                                    </p>
+                                )}
+                            </>
+                        }
+                    >
+                        {checkedColumns.map((c) => {
+                            const marks = rows.map((row) => row.cells[lineKey]?.[c.key]).filter(Boolean);
+                            const trouble = marks.filter((code) => code !== codes[0]).length;
+
+                            return (
+                                <MobileEntryCard
+                                    key={c.key}
+                                    title={`${c.sub ? `${c.sub}, ` : ''}${c.label} ${periodLabel}`}
+                                    badge={<EntryBadge tone={trouble > 0 ? 'danger' : 'done'}>{trouble > 0 ? `${trouble} ${codes[1] ?? 'T'}` : 'Normal'}</EntryBadge>}
+                                    meta={[['Diperiksa', `${marks.length} / ${rows.length} item`]]}
+                                    onClick={() => {
+                                        setSelectedColumn(c.key);
+                                        setCheckFormOpen(true);
+                                    }}
+                                />
+                            );
+                        })}
+                    </MobileEntryList>
+                ) : (
+                    <MobileFormScreen
+                        title={column ? `${column.sub ? `${column.sub}, ` : ''}${column.label} ${periodLabel}` : lembar.title}
+                        subtitle={`${lembar.title}${machineName ? ` · ${machineName}` : ''}`}
+                        onBack={() => setCheckFormOpen(false)}
+                        canWrite={can_write}
+                        onSave={() => save(() => setCheckFormOpen(false))}
+                        saving={saving}
+                        saveDisabled={!dirty || (lembar.per_machine && !filters.machine_id)}
+                    >
                     <DayStrip
                         items={lembar.grid.map((c) => ({
                             key: c.key,
@@ -642,27 +705,7 @@ export function HarLembarPage({
                             />
                         </label>
                     )}
-                </div>
-
-                {can_write && (
-                    <StickyActionBar>
-                        <Button
-                            size="lg"
-                            onClick={save}
-                            disabled={
-                                saving ||
-                                !dirty ||
-                                (lembar.per_machine && !filters.machine_id)
-                            }
-                        >
-                            <Save className="size-4" />
-                            {saving
-                                ? 'Menyimpan…'
-                                : dirty
-                                  ? 'Simpan'
-                                  : 'Tersimpan'}
-                        </Button>
-                    </StickyActionBar>
+                    </MobileFormScreen>
                 )}
             </>
         );
@@ -1067,7 +1110,7 @@ export function HarLembarPage({
                     <StickyActionBar>
                         <Button
                             size="lg"
-                            onClick={save}
+                            onClick={() => save()}
                             disabled={
                                 saving ||
                                 !dirty ||
@@ -1138,7 +1181,7 @@ export function HarLembarPage({
                             </Button>
                             {can_write && (
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={
                                         saving ||
                                         !dirty ||

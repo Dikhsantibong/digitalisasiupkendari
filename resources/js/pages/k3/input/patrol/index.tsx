@@ -12,6 +12,7 @@ import {
     K3MobileFilterCard,
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
+import { MobileEntryCard, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { MobileMatrixForm } from '@/components/mobile/matrix-form';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
@@ -65,6 +66,8 @@ export default function PatrolInput({
     const compact = useCompactLayout();
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    // Phone (user, 2026-11-27): one location's month on its own screen.
+    const [openLocation, setOpenLocation] = useState<number | null>(null);
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -130,7 +133,7 @@ export default function PatrolInput({
         },
     });
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         const payload = rows.map((row) => {
             const daysMap: Record<string, string | number | null> = {};
@@ -151,7 +154,10 @@ export default function PatrolInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -185,35 +191,58 @@ export default function PatrolInput({
                             Belum ada lokasi patroli pada master.
                         </div>
                     ) : (
-                        <MobileMatrixForm<GridRow>
-                            columns={Array.from({ length: days }, (_, i) => ({
-                                key: `day_${i + 1}`,
-                                label: String(i + 1),
-                            }))}
-                            rows={rows}
-                            rowKey={(row) => row.location_id}
-                            rowLabel={(row) => row.location_name}
-                            rowSub={(row) =>
-                                `Total bulan ini: ${rowTotal(row, days)}`
-                            }
-                            value={(row, column) =>
-                                row[column] === null ||
-                                row[column] === undefined
-                                    ? ''
-                                    : String(row[column])
-                            }
-                            onChange={(index, column, value) => {
-                                setRows((current) =>
-                                    current.map((row, i) =>
-                                        i === index
-                                            ? { ...row, [column]: value }
-                                            : row,
-                                    ),
-                                );
-                                setDirty(true);
-                            }}
-                            readOnly={!can_write}
-                        />
+                        <div className="flex flex-col gap-2">
+                            {rows.map((row) => (
+                                <MobileEntryCard
+                                    key={row.location_id}
+                                    title={row.location_name}
+                                    subtitle={`Total bulan ini: ${rowTotal(row, days)}`}
+                                    onClick={() => setOpenLocation(row.location_id)}
+                                />
+                            ))}
+                        </div>
+                    )}
+
+                    {openLocation !== null && (
+                        <MobileFormScreen
+                            title={rows.find((row) => row.location_id === openLocation)?.location_name ?? 'Lokasi'}
+                            subtitle="Patroli Keamanan"
+                            onBack={() => setOpenLocation(null)}
+                            canWrite={can_write}
+                            onSave={() => save(() => setOpenLocation(null))}
+                            saving={saving}
+                            saveDisabled={!dirty}
+                        >
+                            <MobileMatrixForm<GridRow>
+                                columns={Array.from({ length: days }, (_, i) => ({
+                                    key: `day_${i + 1}`,
+                                    label: String(i + 1),
+                                }))}
+                                rows={rows.filter((row) => row.location_id === openLocation)}
+                                rowKey={(row) => row.location_id}
+                                rowLabel={(row) => row.location_name}
+                                rowSub={(row) =>
+                                    `Total bulan ini: ${rowTotal(row, days)}`
+                                }
+                                value={(row, column) =>
+                                    row[column] === null ||
+                                    row[column] === undefined
+                                        ? ''
+                                        : String(row[column])
+                                }
+                                onChange={(index, column, value) => {
+                                    setRows((current) =>
+                                        current.map((row) =>
+                                            row.location_id === openLocation
+                                                ? { ...row, [column]: value }
+                                                : row,
+                                        ),
+                                    );
+                                    setDirty(true);
+                                }}
+                                readOnly={!can_write}
+                            />
+                        </MobileFormScreen>
                     )}
 
                     <StickyActionBar>
@@ -227,7 +256,7 @@ export default function PatrolInput({
                         />
                         {can_write && (
                             <Button
-                                onClick={save}
+                                onClick={() => save()}
                                 disabled={saving || rows.length === 0}
                                 className="gap-1.5"
                             >
@@ -260,7 +289,7 @@ export default function PatrolInput({
                             />
                             {can_write && (
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={saving || rows.length === 0}
                                 >
                                     {saving ? 'Menyimpan…' : 'Simpan'}

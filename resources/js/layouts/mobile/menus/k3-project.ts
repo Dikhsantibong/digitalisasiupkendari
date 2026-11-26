@@ -83,6 +83,7 @@ const section = (group: MobileMenuGroup, permission: string, description: string
  */
 export const K3_PROJECT_MENUS: MobileMenu[] = [
     ...section('k3p-jadwal', 'k3.input.view', 'Jadwal K3 & Lingkungan', [
+        ['time-frame', 'Time Frame Kinerja K3 & Lingkungan', 'Time Frame', CalendarRange, k3TimeFrame.index().url, 'k3/input/time-frame/index'],
         ['on-call', 'Jadwal On Call K3L', 'On Call', PhoneCall, '/k3/jadwal/on-call', 'k3/jadwal/on-call/index'],
         ['kegiatan-rutin', 'Jadwal Kegiatan Rutin K3L KIT', 'Kegiatan Rutin', CalendarDays, '/k3/jadwal/kegiatan-rutin', 'k3/jadwal/kegiatan-rutin/index'],
         ['pekerjaan-rutin', 'Jadwal Pekerjaan Rutin K3L & Lingkungan', 'Pekerjaan Rutin', Leaf, '/k3/jadwal/pekerjaan-rutin', 'k3/jadwal/pekerjaan-rutin/index'],
@@ -91,7 +92,6 @@ export const K3_PROJECT_MENUS: MobileMenu[] = [
         ['pembuatan-ik', 'Jadwal Pembuatan IK K3', 'Pembuatan IK', FilePen, '/k3/jadwal/pembuatan-ik', 'k3/jadwal/pembuatan-ik/index'],
     ]),
     ...section('k3p-input', 'k3.input.view', 'Input K3 & Keamanan', [
-        ['time-frame', 'Time Frame', 'Time Frame', CalendarRange, k3TimeFrame.index().url, 'k3/input/time-frame/index'],
         ['accidents', 'Laporan Kecelakaan', 'Kecelakaan', ClipboardCheck, k3Accident.index().url, 'k3/input/accident/index'],
         ['inspections', 'Inspeksi Checklist', 'Inspeksi', ClipboardList, k3Inspection.index().url, 'k3/input/inspection/index'],
         ['apar-checks', 'Inspeksi APAR/APAB', 'APAR/APAB', Flame, k3AparCheck.index().url, 'k3/input/apar-check/index'],

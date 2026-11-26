@@ -129,7 +129,7 @@ export default function LogistikRekomendasiInput({
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             rekomendasi.store().url,
@@ -151,7 +151,10 @@ export default function LogistikRekomendasiInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                setDirty(false);
+                onSaved?.();
+            },
                 onFinish: () => setSaving(false),
             },
         );
@@ -225,6 +228,10 @@ export default function LogistikRekomendasiInput({
                     <MobileCompactRows
                         canWrite={can_write}
                         focus={focus}
+                        onSave={(done) => save(done)}
+                        saving={saving}
+                        dirty={dirty}
+                        formSubtitle={"Rekomendasi"}
                         rows={rows.map((row, index) => ({
                             key: index,
                             index,
@@ -278,8 +285,12 @@ export default function LogistikRekomendasiInput({
                 </div>
                 {can_write && (
                     <StickyActionBar>
+                        <Button variant="outline" onClick={addRow} className="h-11 w-full gap-1.5">
+                            <Plus className="size-4" />
+                            Tambah
+                        </Button>
                         <Button
-                            onClick={save}
+                            onClick={() => save()}
                             disabled={saving || !dirty}
                             className="h-11 w-full gap-1.5"
                         >
@@ -337,7 +348,7 @@ export default function LogistikRekomendasiInput({
                             </Button>
                             {can_write && (
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={saving || !dirty}
                                     className="gap-1.5"
                                 >

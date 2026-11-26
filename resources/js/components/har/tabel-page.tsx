@@ -1,8 +1,8 @@
 import { Head, router } from '@inertiajs/react';
-import { Check, ChevronDown, Download, Plus, Save, Trash2 } from 'lucide-react';
+import { Check, Download, Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { EntryBadge, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -84,6 +84,8 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [openRow, setOpenRow] = useState<number | null>(0);
+    // Phone: the open row's form on its own screen.
+    const [mobileFormOpen, setMobileFormOpen] = useState(false);
     const compact = useCompactLayout();
     const { can } = usePermissions();
 
@@ -129,7 +131,7 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             urls.store,
@@ -139,6 +141,7 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                 onSuccess: (page) => {
                     setRows(fill((page.props as unknown as HarTabelPageProps).rows));
                     setDirty(false);
+                    onSaved?.();
                 },
                 onFinish: () => setSaving(false),
             },
@@ -244,112 +247,115 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
             }
         };
 
+        // Phone (user, 2026-11-27): the month's rows as cards; Tambah / a card opens its form on its own screen,
+        // Simpan saves the table and returns to the list.
+        // A row counts once one of its text columns is filled (blank PDF rows may carry defaults like "-").
+        const isFilled = (row: Row) => tabel.columns.some((c) => ['text', 'textarea'].includes(c.type) && row[c.key] !== null && String(row[c.key]).trim() !== '' && String(row[c.key]).trim() !== '-');
+        const listed = rows.map((row, index) => ({ row, index })).filter(({ row }) => isFilled(row));
+        const editing = openRow !== null && openRow >= 0 && openRow < rows.length && mobileFormOpen ? openRow : null;
+        const metaOf = (row: Row): [string, string][] =>
+            tabel.columns
+                .filter((c) => c.type !== 'textarea' && row[c.key] !== null && row[c.key] !== '')
+                .slice(0, 4)
+                .map((c) => [c.label, c.type === 'check' ? '✓' : display(c, row[c.key] ?? null)]);
+
         return (
             <>
                 <Head title={`${tabel.title} - ${unit.name}`} />
-                <div className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}>
-                    <PageHeader title={tabel.title} description={`${unit.name} · ${periodLabel}`} />
+                <MobileEntryList
+                    heading={`${tabel.title} ${periodLabel}`}
+                    count={linked.length + listed.length}
+                    empty={`Belum ada data ${periodLabel}. Tekan Tambah untuk mengisi.`}
+                    canWrite={can_write}
+                    onAdd={() => {
+                        const blank = rows.findIndex((row) => !isFilled(row));
 
-                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-3">
-                        <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" labelClassName="col-span-2" />
-                        <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, i) => ({ value: String(i + 1), label }))} className="w-full" />
-                        <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
-                    </div>
+                        if (blank >= 0) {
+                            setOpenRow(blank);
+                        } else {
+                            setRows((c) => [...c, blankRow(tabel.columns)]);
+                            setOpenRow(rows.length);
+                        }
 
-                    <div className="flex items-center justify-between px-0.5">
-                        <p className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{rows.length} data</p>
-                        {dirty ? <StatusBadge tone="warning">Belum disimpan</StatusBadge> : has_saved ? <StatusBadge tone="success">Tersimpan</StatusBadge> : null}
-                    </div>
-
-                    {tabel.linked_note && <p className="px-0.5 text-[12px] text-muted-foreground">{tabel.linked_note}</p>}
-
+                        setMobileFormOpen(true);
+                    }}
+                    onSave={() => save()}
+                    saving={saving}
+                    dirty={dirty}
+                    above={
+                        <>
+                            <div className="grid grid-cols-2 gap-3">
+                                <OperasiSelect label="Unit" value={String(filters.unit_id)} onChange={(v) => visit({ unit_id: Number(v) })} options={options.units.map((u) => ({ value: String(u.id), label: u.name }))} className="w-full" labelClassName="col-span-2" />
+                                <OperasiSelect label="Bulan" value={String(filters.month)} onChange={(v) => visit({ month: Number(v) })} options={OPERASI_MONTHS.map((label, i) => ({ value: String(i + 1), label }))} className="w-full" />
+                                <OperasiSelect label="Tahun" value={String(filters.year)} onChange={(v) => visit({ year: Number(v) })} options={options.years.map((y) => ({ value: String(y), label: String(y) }))} className="w-full" />
+                            </div>
+                            {tabel.linked_note && linked.length > 0 && <p className="px-0.5 text-[12px] text-muted-foreground">{tabel.linked_note}</p>}
+                        </>
+                    }
+                >
                     {linked.map((row, index) => (
-                        <div key={`linked-${index}`} className="rounded-xl border border-border bg-muted/30 p-3">
-                            <div className="flex items-center gap-3">
-                                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">{index + 1}</span>
-                                <span className="min-w-0 flex-1 text-[14px] font-medium text-foreground">{summaryOf(row)}</span>
-                                <span className="shrink-0 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10.5px] font-bold text-primary uppercase">{String(row._source ?? '')}</span>
-                            </div>
-                            <p className="mt-1.5 pl-11 text-[12px] text-muted-foreground">
-                                {tabel.columns
-                                    .filter((c) => c.type !== 'textarea' && row[c.key] !== null && row[c.key] !== '')
-                                    .map((c) => (c.type === 'check' ? c.label : `${c.label}: ${display(c, row[c.key] ?? null)}`))
-                                    .join(' · ')}
-                            </p>
-                        </div>
+                        <MobileEntryCard
+                            key={`linked-${index}`}
+                            leading={index + 1}
+                            title={summaryOf(row)}
+                            badge={<EntryBadge tone="info">{String(row._source ?? '')}</EntryBadge>}
+                            meta={metaOf(row)}
+                        />
                     ))}
-
-                    {rows.map((row, index) => {
-                        const open = openRow === index;
-
-                        return (
-                            <div key={index} className="rounded-xl border border-border bg-card">
-                                <button type="button" onClick={() => setOpenRow(open ? null : index)} className="flex w-full items-center gap-3 p-3 text-left">
-                                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary">{linked.length + index + 1}</span>
-                                    <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">{summaryOf(row)}</span>
-                                    <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition ${open ? 'rotate-180' : ''}`} />
-                                </button>
-                                {open && (
-                                    <div className="flex flex-col gap-3 border-t border-border p-3">
-                                        {tabel.columns.map((column) => (
-                                            <div key={column.key} className="flex flex-col gap-1.5">
-                                                {column.type !== 'check' && (
-                                                    <span className="text-[12px] font-medium text-muted-foreground">
-                                                        {column.group ? `${column.group} · ${column.label}` : column.label}
-                                                    </span>
-                                                )}
-                                                {mobileEditor(index, column, row[column.key] ?? null)}
-                                            </div>
-                                        ))}
-                                        {can_write && (
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => {
-                                                    setRows((c) => c.filter((_, i) => i !== index));
-                                                    setOpenRow(null);
-                                                    setDirty(true);
-                                                }}
-                                                className="self-start text-destructive"
-                                            >
-                                                <Trash2 className="size-4" />
-                                                Hapus data ini
-                                            </Button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
-
-                    {tabel.notes.length > 0 && (
-                        <ol className="list-decimal pl-5 text-xs text-muted-foreground">
-                            {tabel.notes.map((note) => (
-                                <li key={note}>{note}</li>
-                            ))}
-                        </ol>
-                    )}
-                </div>
-
-                {can_write && (
-                    <StickyActionBar>
-                        <Button
-                            size="lg"
-                            variant="outline"
+                    {listed.map(({ row, index }, position) => (
+                        <MobileEntryCard
+                            key={index}
+                            leading={linked.length + position + 1}
+                            title={summaryOf(row)}
+                            meta={metaOf(row)}
                             onClick={() => {
-                                setRows((c) => [...c, blankRow(tabel.columns)]);
-                                setOpenRow(rows.length);
-                                setDirty(true);
+                                setOpenRow(index);
+                                setMobileFormOpen(true);
                             }}
-                        >
-                            <Plus className="size-4" />
-                            Tambah
-                        </Button>
-                        <Button size="lg" onClick={save} disabled={saving || !dirty}>
-                            <Save className="size-4" />
-                            {saving ? 'Menyimpan…' : 'Simpan'}
-                        </Button>
-                    </StickyActionBar>
+                        />
+                    ))}
+                </MobileEntryList>
+
+                {editing !== null && (
+                    <MobileFormScreen
+                        title={isFilled(rows[editing]) ? summaryOf(rows[editing]) : 'Data baru'}
+                        subtitle={`${tabel.title} · ${periodLabel}`}
+                        onBack={() => setMobileFormOpen(false)}
+                        canWrite={can_write}
+                        onSave={() => save(() => setMobileFormOpen(false))}
+                        saving={saving}
+                        saveDisabled={!dirty}
+                        onDelete={
+                            isFilled(rows[editing])
+                                ? () => {
+                                      if (window.confirm('Hapus data ini? Tekan Simpan di daftar untuk menyimpan perubahan.')) {
+                                          setRows((c) => c.filter((_, i) => i !== editing));
+                                          setMobileFormOpen(false);
+                                          setDirty(true);
+                                      }
+                                  }
+                                : undefined
+                        }
+                        deleteLabel="Hapus data ini"
+                    >
+                        {tabel.columns.map((column) => (
+                            <div key={column.key} className="flex flex-col gap-1.5">
+                                {column.type !== 'check' && (
+                                    <span className="text-[12px] font-medium text-muted-foreground">
+                                        {column.group ? `${column.group} · ${column.label}` : column.label}
+                                    </span>
+                                )}
+                                {mobileEditor(editing, column, rows[editing][column.key] ?? null)}
+                            </div>
+                        ))}
+                        {tabel.notes.length > 0 && (
+                            <ol className="list-decimal pl-5 text-xs text-muted-foreground">
+                                {tabel.notes.map((note) => (
+                                    <li key={note}>{note}</li>
+                                ))}
+                            </ol>
+                        )}
+                    </MobileFormScreen>
                 )}
             </>
         );
@@ -370,7 +376,7 @@ export function HarTabelPage({ tabel, kop_lines, unit, filters, options, rows: i
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>

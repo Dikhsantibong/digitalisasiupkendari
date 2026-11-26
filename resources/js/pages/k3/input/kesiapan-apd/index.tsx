@@ -17,6 +17,7 @@ import {
     K3MobileFilterCard,
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
+import { MobileEntryCard, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -104,6 +105,8 @@ export default function K3KesiapanApdPage({
     const [nextKey, setNextKey] = useState<number>(initialRows.length + 10);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    // Phone (user, 2026-11-27): one item's form on its own screen.
+    const [openKey, setOpenKey] = useState<number | null>(null);
     const compact = useCompactLayout();
 
     // Sync when filters change
@@ -197,7 +200,7 @@ export default function K3KesiapanApdPage({
         toast.info('Perubahan dibatalkan ke data awal.');
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         if (!can_write) {
             return;
         }
@@ -238,6 +241,7 @@ export default function K3KesiapanApdPage({
                 preserveScroll: true,
                 onSuccess: () => {
                     setDirty(false);
+                    onSaved?.();
                 },
                 onFinish: () => setSaving(false),
             },
@@ -387,8 +391,24 @@ export default function K3KesiapanApdPage({
                                     ) : (
                                         <div className="flex flex-col gap-2.5">
                                             {groupItems.map((row) => (
+                                                <Fragment key={row._key}>
+                                                    <MobileEntryCard
+                                                        leading={row.no_urut ?? '-'}
+                                                        title={row.inspeksi || 'Item belum diisi'}
+                                                        subtitle={[row.kelayakan_apd, row.peralatan_kelayakan, row.keterangan].filter((v) => v && v !== '-').join(' · ') || undefined}
+                                                        onClick={() => setOpenKey(row._key)}
+                                                    />
+                                                    {openKey === row._key && (
+                                                        <MobileFormScreen
+                                                            title={row.inspeksi || 'Item baru'}
+                                                            subtitle={group}
+                                                            onBack={() => setOpenKey(null)}
+                                                            canWrite={can_write}
+                                                            onSave={() => save(() => setOpenKey(null))}
+                                                            saving={saving}
+                                                            saveDisabled={!dirty}
+                                                        >
                                                 <div
-                                                    key={row._key}
                                                     className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
                                                 >
                                                     <div className="flex items-center gap-2">
@@ -718,6 +738,9 @@ export default function K3KesiapanApdPage({
                                                         className="h-9 text-xs"
                                                     />
                                                 </div>
+                                                        </MobileFormScreen>
+                                                    )}
+                                                </Fragment>
                                             ))}
                                         </div>
                                     )}
@@ -726,7 +749,10 @@ export default function K3KesiapanApdPage({
                                             type="button"
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => addItem(group)}
+                                            onClick={() => {
+                                                setOpenKey(nextKey);
+                                                addItem(group);
+                                            }}
                                             className="h-9 w-full justify-center gap-1.5 text-xs"
                                         >
                                             <Plus className="size-4" />
@@ -771,7 +797,7 @@ export default function K3KesiapanApdPage({
                                 <div aria-hidden="true" />
                             )}
                             <Button
-                                onClick={save}
+                                onClick={() => save()}
                                 disabled={saving || !dirty}
                                 className="gap-1.5"
                             >
@@ -808,7 +834,7 @@ export default function K3KesiapanApdPage({
                                 )}
                                 {can_write && (
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || !dirty}
                                         className="no-print h-8 gap-1.5 text-xs font-semibold"
                                     >
@@ -1564,7 +1590,7 @@ export default function K3KesiapanApdPage({
                                     </Button>
                                 )}
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={saving || !dirty}
                                     className="gap-1.5 text-xs font-semibold"
                                 >

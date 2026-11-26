@@ -22,6 +22,8 @@ import type {
 } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { toast } from 'sonner';
+import { MobileFormScreen } from '@/components/mobile/entry-flow';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -629,10 +631,221 @@ export default function ServiceRequestInput({
         [rows, options.statuses],
     );
 
+    const modalForm = (
+                    <form
+                        id="sr-form"
+                        onSubmit={handleModalSubmit}
+                        className="space-y-3 py-1"
+                    >
+                        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                            <div className="space-y-1">
+                                <Label htmlFor="sr_number" className="text-xs">
+                                    No. SR{' '}
+                                    <span className="text-destructive">*</span>
+                                </Label>
+                                <Input
+                                    id="sr_number"
+                                    placeholder="Contoh: SR-2026-001"
+                                    value={formData.sr_number}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            sr_number: e.target.value,
+                                        }))
+                                    }
+                                    required
+                                    autoFocus
+                                    className="h-9 text-xs sm:text-sm"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="engine_name"
+                                    className="text-xs"
+                                >
+                                    Mesin / Peralatan
+                                </Label>
+                                {machineOptions.length > 0 ? (
+                                    <Select
+                                        value={
+                                            formData.engine_name || NONE_VALUE
+                                        }
+                                        onValueChange={(val) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                engine_name:
+                                                    val === NONE_VALUE
+                                                        ? ''
+                                                        : val,
+                                            }))
+                                        }
+                                    >
+                                        <SelectTrigger
+                                            id="engine_name"
+                                            className="h-9 text-xs sm:text-sm"
+                                        >
+                                            <SelectValue placeholder="Pilih Mesin (Opsional)" />
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-60">
+                                            <SelectItem
+                                                value={NONE_VALUE}
+                                                className="text-muted-foreground"
+                                            >
+                                                — Tanpa Mesin / Umum —
+                                            </SelectItem>
+                                            {machineOptions.map((m) => (
+                                                <SelectItem
+                                                    key={m.id}
+                                                    value={m.name}
+                                                >
+                                                    {m.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <Input
+                                        id="engine_name"
+                                        placeholder="Nama mesin (opsional)"
+                                        value={formData.engine_name}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                engine_name: e.target.value,
+                                            }))
+                                        }
+                                        className="h-9 text-xs sm:text-sm"
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <div className="space-y-1">
+                                <Label
+                                    htmlFor="category_code"
+                                    className="text-xs"
+                                >
+                                    Kategori
+                                </Label>
+                                <Select
+                                    value={formData.category_code || NONE_VALUE}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            category_code:
+                                                val === NONE_VALUE ? '' : val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="category_code"
+                                        className="h-9 text-xs sm:text-sm"
+                                    >
+                                        <SelectValue placeholder="Pilih Kategori" />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-60">
+                                        <SelectItem
+                                            value={NONE_VALUE}
+                                            className="text-muted-foreground"
+                                        >
+                                            — Tanpa Kategori —
+                                        </SelectItem>
+                                        {categoryOptions.map((cat) => (
+                                            <SelectItem
+                                                key={cat.code}
+                                                value={cat.code}
+                                            >
+                                                {cat.code}{' '}
+                                                {cat.name &&
+                                                cat.name !== cat.code
+                                                    ? `— ${cat.name}`
+                                                    : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label htmlFor="status" className="text-xs">
+                                    Status
+                                </Label>
+                                <Select
+                                    value={formData.status || 'open'}
+                                    onValueChange={(val) =>
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            status: val,
+                                        }))
+                                    }
+                                >
+                                    <SelectTrigger
+                                        id="status"
+                                        className="h-9 text-xs sm:text-sm"
+                                    >
+                                        <SelectValue placeholder="Pilih Status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {options.statuses.map((st) => (
+                                            <SelectItem
+                                                key={st.value}
+                                                value={st.value}
+                                            >
+                                                {st.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <Label htmlFor="description" className="text-xs">
+                                Deskripsi Pekerjaan / Kendala
+                            </Label>
+                            <textarea
+                                id="description"
+                                rows={3}
+                                className="flex min-h-[70px] w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
+                                placeholder="Tuliskan deskripsi kendala, temuan, atau perbaikan..."
+                                value={formData.description}
+                                onChange={(e) =>
+                                    setFormData((prev) => ({
+                                        ...prev,
+                                        description: e.target.value,
+                                    }))
+                                }
+                            />
+                        </div>
+
+                        {!compact && (
+                        <DialogFooter className="gap-2 pt-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setModalOpen(false)}
+                            >
+                                Batal
+                            </Button>
+                            <Button type="submit" size="sm" disabled={saving}>
+                                {saving
+                                    ? 'Menyimpan…'
+                                    : editingRowKey !== null
+                                      ? 'Perbarui'
+                                      : 'Simpan'}
+                            </Button>
+                        </DialogFooter>
+                        )}
+                    </form>
+    );
+
     return (
         <>
             <Head title="Input HAR — Service Request" />
-            <div className="flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6">
+            <div className={cn('flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6', compact && can_write && 'pb-28')}>
                 {!compact && (
                     <PageHeader
                         title="Service Request"
@@ -721,7 +934,8 @@ export default function ServiceRequestInput({
                                     </span>
                                 )}
                             </Button>
-                            {can_write && (
+                            {/* Phone: Tambah sits in the bottom bar. */}
+                            {!compact && can_write && (
                                 <Button
                                     type="button"
                                     size="sm"
@@ -732,7 +946,8 @@ export default function ServiceRequestInput({
                                     SR Baru
                                 </Button>
                             )}
-                            {can_write && dirty && (
+                            {/* Phone: Simpan sits in the bottom bar. */}
+                            {!compact && can_write && dirty && (
                                 <Button
                                     type="button"
                                     size="sm"
@@ -1329,7 +1544,51 @@ export default function ServiceRequestInput({
                 )}
             </div>
 
-            {/* Modal Dialog Form Create / Edit Service Request (Compact & Screen-Efficient) */}
+            {/* Phone: Tambah (left) & Simpan (right); the form opens on its own screen (user, 2026-11-27). */}
+            {compact && can_write && !modalOpen && (
+                <StickyActionBar>
+                    <Button size="lg" variant="outline" onClick={openCreateModal}>
+                        <Plus className="size-4" />
+                        Tambah
+                    </Button>
+                    <Button
+                        size="lg"
+                        onClick={() => saveRows(rows, 'Perubahan berhasil disimpan')}
+                        disabled={saving || !dirty}
+                    >
+                        <Save className="size-4" />
+                        {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                    </Button>
+                </StickyActionBar>
+            )}
+
+            {compact ? (
+                modalOpen && (
+                    <MobileFormScreen
+                        title={editingRowKey !== null ? 'Edit Service Request' : 'Service Request baru'}
+                        subtitle="Service Request"
+                        onBack={() => setModalOpen(false)}
+                        formId="sr-form"
+                        saving={saving}
+                        canWrite={can_write}
+                        onDelete={
+                            editingRowKey !== null
+                                ? () => {
+                                      const row = rows.find((r) => r._key === editingRowKey);
+
+                                      if (row) {
+                                          setModalOpen(false);
+                                          handleDeleteRow(row);
+                                      }
+                                  }
+                                : undefined
+                        }
+                        deleteLabel="Hapus Service Request"
+                    >
+                        {modalForm}
+                    </MobileFormScreen>
+                )
+            ) : (
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogContent className="max-h-[92vh] p-4 sm:max-w-lg sm:p-6">
                     <DialogHeader className="space-y-1">
@@ -1345,213 +1604,10 @@ export default function ServiceRequestInput({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <form
-                        onSubmit={handleModalSubmit}
-                        className="space-y-3 py-1"
-                    >
-                        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                            <div className="space-y-1">
-                                <Label htmlFor="sr_number" className="text-xs">
-                                    No. SR{' '}
-                                    <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                    id="sr_number"
-                                    placeholder="Contoh: SR-2026-001"
-                                    value={formData.sr_number}
-                                    onChange={(e) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            sr_number: e.target.value,
-                                        }))
-                                    }
-                                    required
-                                    autoFocus
-                                    className="h-9 text-xs sm:text-sm"
-                                />
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="engine_name"
-                                    className="text-xs"
-                                >
-                                    Mesin / Peralatan
-                                </Label>
-                                {machineOptions.length > 0 ? (
-                                    <Select
-                                        value={
-                                            formData.engine_name || NONE_VALUE
-                                        }
-                                        onValueChange={(val) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                engine_name:
-                                                    val === NONE_VALUE
-                                                        ? ''
-                                                        : val,
-                                            }))
-                                        }
-                                    >
-                                        <SelectTrigger
-                                            id="engine_name"
-                                            className="h-9 text-xs sm:text-sm"
-                                        >
-                                            <SelectValue placeholder="Pilih Mesin (Opsional)" />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-60">
-                                            <SelectItem
-                                                value={NONE_VALUE}
-                                                className="text-muted-foreground"
-                                            >
-                                                — Tanpa Mesin / Umum —
-                                            </SelectItem>
-                                            {machineOptions.map((m) => (
-                                                <SelectItem
-                                                    key={m.id}
-                                                    value={m.name}
-                                                >
-                                                    {m.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                ) : (
-                                    <Input
-                                        id="engine_name"
-                                        placeholder="Nama mesin (opsional)"
-                                        value={formData.engine_name}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                engine_name: e.target.value,
-                                            }))
-                                        }
-                                        className="h-9 text-xs sm:text-sm"
-                                    />
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5">
-                            <div className="space-y-1">
-                                <Label
-                                    htmlFor="category_code"
-                                    className="text-xs"
-                                >
-                                    Kategori
-                                </Label>
-                                <Select
-                                    value={formData.category_code || NONE_VALUE}
-                                    onValueChange={(val) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            category_code:
-                                                val === NONE_VALUE ? '' : val,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="category_code"
-                                        className="h-9 text-xs sm:text-sm"
-                                    >
-                                        <SelectValue placeholder="Pilih Kategori" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60">
-                                        <SelectItem
-                                            value={NONE_VALUE}
-                                            className="text-muted-foreground"
-                                        >
-                                            — Tanpa Kategori —
-                                        </SelectItem>
-                                        {categoryOptions.map((cat) => (
-                                            <SelectItem
-                                                key={cat.code}
-                                                value={cat.code}
-                                            >
-                                                {cat.code}{' '}
-                                                {cat.name &&
-                                                cat.name !== cat.code
-                                                    ? `— ${cat.name}`
-                                                    : ''}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label htmlFor="status" className="text-xs">
-                                    Status
-                                </Label>
-                                <Select
-                                    value={formData.status || 'open'}
-                                    onValueChange={(val) =>
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            status: val,
-                                        }))
-                                    }
-                                >
-                                    <SelectTrigger
-                                        id="status"
-                                        className="h-9 text-xs sm:text-sm"
-                                    >
-                                        <SelectValue placeholder="Pilih Status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {options.statuses.map((st) => (
-                                            <SelectItem
-                                                key={st.value}
-                                                value={st.value}
-                                            >
-                                                {st.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <Label htmlFor="description" className="text-xs">
-                                Deskripsi Pekerjaan / Kendala
-                            </Label>
-                            <textarea
-                                id="description"
-                                rows={3}
-                                className="flex min-h-[70px] w-full rounded-md border border-input bg-transparent px-3 py-1.5 text-xs shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
-                                placeholder="Tuliskan deskripsi kendala, temuan, atau perbaikan..."
-                                value={formData.description}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({
-                                        ...prev,
-                                        description: e.target.value,
-                                    }))
-                                }
-                            />
-                        </div>
-
-                        <DialogFooter className="gap-2 pt-2 sm:gap-0">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setModalOpen(false)}
-                            >
-                                Batal
-                            </Button>
-                            <Button type="submit" size="sm" disabled={saving}>
-                                {saving
-                                    ? 'Menyimpan…'
-                                    : editingRowKey !== null
-                                      ? 'Perbarui'
-                                      : 'Simpan'}
-                            </Button>
-                        </DialogFooter>
-                    </form>
+                    {modalForm}
                 </DialogContent>
             </Dialog>
+            )}
         </>
     );
 }

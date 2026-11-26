@@ -70,12 +70,15 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             permitToWork.store().url,
             { ...query, rows: rows.map(({ uraian, tanggal, status }) => ({ uraian, tanggal, status })) },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            { preserveScroll: true, onSuccess: () => {
+                setDirty(false);
+                onSaved?.();
+            }, onFinish: () => setSaving(false) },
         );
     };
 
@@ -115,7 +118,7 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>
@@ -138,6 +141,10 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
                         <MobileCompactRows
                             canWrite={can_write}
                             focus={focus}
+                            onSave={(done) => save(done)}
+                            saving={saving}
+                            dirty={dirty}
+                            formSubtitle={"Permit to Work"}
                             rows={rows.map((row, index) => ({
                                 key: index,
                                 index,
@@ -231,7 +238,11 @@ export default function PdmPermitToWorkInput({ unit, kop_lines, filters, options
 
             {compact && can_write && (
                 <StickyActionBar>
-                    <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                    <Button variant="outline" onClick={addRow} className="h-11 w-full gap-1.5">
+                        <Plus className="size-4" />
+                        Tambah
+                    </Button>
+                    <Button onClick={() => save()} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
                         <Save className="size-4" />
                         {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
                     </Button>

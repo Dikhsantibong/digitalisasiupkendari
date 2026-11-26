@@ -136,7 +136,7 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         const hasFiles = Object.values(uploads).some((files) => files.length > 0);
         const payload = rows.map(({ section, nama, pic, days, target, keterangan, evidence }, index) => ({
             section,
@@ -158,6 +158,7 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                 setRows(normalize((page.props as unknown as LogistikJadwalSheetPageProps).rows));
                 setDirty(false);
                 setUploads({});
+                onSaved?.();
             },
             onFinish: () => setSaving(false),
         });
@@ -904,7 +905,7 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>

@@ -98,12 +98,15 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
         touch();
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             sampleMonitoring.store().url,
             { ...query, ...header, targets, rows },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            { preserveScroll: true, onSuccess: () => {
+                setDirty(false);
+                onSaved?.();
+            }, onFinish: () => setSaving(false) },
         );
     };
 
@@ -166,6 +169,10 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
                     <MobileCompactRows
                         canWrite={can_write}
                         focus={focus?.section === key ? focus : null}
+                        onSave={(done) => save(done)}
+                        saving={saving}
+                        dirty={dirty}
+                        formSubtitle={"Sample Monitoring"}
                         rows={rows[key].map((row, index) => {
                             const line = rowSummary(section.columns, row);
 
@@ -235,7 +242,7 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>
@@ -343,7 +350,7 @@ export default function PdmSampleMonitoringInput({ unit, kop_lines, filters, opt
 
             {compact && can_write && (
                 <StickyActionBar>
-                    <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                    <Button onClick={() => save()} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
                         <Save className="size-4" />
                         {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
                     </Button>

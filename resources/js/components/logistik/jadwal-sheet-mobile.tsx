@@ -12,6 +12,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
+import { MobileFormScreen } from '@/components/mobile/entry-screen';
 import { MobileModeBar } from '@/components/mobile/mode-bar';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
@@ -63,7 +64,8 @@ export type LogistikSheetMobileProps = {
     onAddPhotos: (index: number, files: FileList | null) => void;
     onRemoveKeptPhoto: (index: number, photo: number) => void;
     onRemoveNewPhoto: (index: number, photo: number) => void;
-    onSave: () => void;
+    /** Saves the sheet; `done` runs once saved (the phone form screen closes). */
+    onSave: (done?: () => void) => void;
     onExportExcel: () => void;
     pdfUrl: string;
 };
@@ -126,6 +128,8 @@ export function LogistikSheetMobile(props: LogistikSheetMobileProps) {
         }));
         setOpenGroup(section ?? null);
         props.onAddRow(section);
+        // Phone entry flow (user, 2026-11-27): the new row's details open on their own screen.
+        setOpenRow(rows.length);
     };
     const [selected, setSelected] = useState(() => {
         const today = new Date();
@@ -437,13 +441,22 @@ export function LogistikSheetMobile(props: LogistikSheetMobileProps) {
                     <>
                         <button
                             type="button"
-                            onClick={() => setOpenRow(open ? null : index)}
+                            onClick={() => setOpenRow(index)}
                             className="self-start text-[12px] font-medium text-primary"
                         >
-                            {open ? 'Tutup detail' : 'Ubah detail baris'}
+                            Ubah detail baris
                         </button>
                         {open && (
-                            <div className="flex flex-col gap-2 rounded-lg bg-muted/40 p-2.5">
+                            <MobileFormScreen
+                                title={row.nama || 'Baris baru'}
+                                subtitle={sheet.title}
+                                onBack={() => setOpenRow(null)}
+                                canWrite={canWrite}
+                                onSave={() => props.onSave(() => setOpenRow(null))}
+                                saving={saving}
+                                saveDisabled={!dirty}
+                            >
+                                <div className="flex flex-col gap-3">
                                 <Field label={sheet.row_label || 'Nama'}>
                                     <Input
                                         value={row.nama}
@@ -517,6 +530,7 @@ export function LogistikSheetMobile(props: LogistikSheetMobileProps) {
                                     </Button>
                                 )}
                             </div>
+                            </MobileFormScreen>
                         )}
                     </>
                 )}
@@ -749,22 +763,22 @@ export function LogistikSheetMobile(props: LogistikSheetMobileProps) {
                     );
                 })}
 
-                {canAdd && layout !== 'kegiatan' && (
-                    <Button
-                        variant="outline"
-                        onClick={() => addRow()}
-                        className="gap-1.5"
-                    >
-                        <Plus className="size-4" />
-                        Tambah Baris
-                    </Button>
-                )}
             </div>
 
             {canWrite && (editing || dirty) && (
                 <StickyActionBar>
+                    {canAdd && layout !== 'kegiatan' && (
+                        <Button
+                            variant="outline"
+                            onClick={() => addRow()}
+                            className="h-11 w-full gap-1.5"
+                        >
+                            <Plus className="size-4" />
+                            Tambah
+                        </Button>
+                    )}
                     <Button
-                        onClick={props.onSave}
+                        onClick={() => props.onSave()}
                         disabled={saving || !dirty}
                         className="h-11 w-full gap-1.5"
                     >

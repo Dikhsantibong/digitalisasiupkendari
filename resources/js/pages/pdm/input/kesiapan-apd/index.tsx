@@ -152,7 +152,7 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         const incomplete = rows.findIndex((row) => row.inspeksi.trim() === '');
 
         if (incomplete !== -1) {
@@ -165,7 +165,10 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
         router.post(
             kesiapanApd.store().url,
             { ...query, rows, meta },
-            { preserveScroll: true, onSuccess: () => setDirty(false), onFinish: () => setSaving(false) },
+            { preserveScroll: true, onSuccess: () => {
+                setDirty(false);
+                onSaved?.();
+            }, onFinish: () => setSaving(false) },
         );
     };
 
@@ -212,7 +215,7 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                                 PDF
                             </Button>
                             {can_write && (
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>
@@ -235,6 +238,10 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
                     <MobileCompactRows
                         canWrite={can_write}
                         focus={focus}
+                        onSave={(done) => save(done)}
+                        saving={saving}
+                        dirty={dirty}
+                        formSubtitle={"Kesiapan APD"}
                         rows={groups.flatMap((group, groupIndex) =>
                             group.items.map(({ row, index }) => {
                                 const answered = ANSWER_COLUMNS.filter((column) => row[column.key]).length;
@@ -408,7 +415,7 @@ export default function PdmKesiapanApdInput({ unit, kop_lines, filters, options,
 
             {compact && can_write && (
                 <StickyActionBar>
-                    <Button onClick={save} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
+                    <Button onClick={() => save()} disabled={saving || !dirty} className="h-11 w-full gap-1.5">
                         <Save className="size-4" />
                         {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
                     </Button>

@@ -25,6 +25,7 @@ import {
     K3MobileFilterCard,
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
+import { MobileEntryCard, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -114,6 +115,7 @@ export default function K3KondisiK3Page({
     const [nextKey, setNextKey] = useState<number>(initialRows.length + 10);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [openRowIndex, setOpenRowIndex] = useState<number | null>(null);
     const compact = useCompactLayout();
     const [previewImage, setPreviewImage] = useState<{
         url: string;
@@ -189,7 +191,7 @@ export default function K3KondisiK3Page({
         toast.info('Perubahan dibatalkan ke data awal.');
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         if (!can_write) {
             return;
         }
@@ -224,6 +226,7 @@ export default function K3KondisiK3Page({
                 preserveScroll: true,
                 onSuccess: () => {
                     setDirty(false);
+                    onSaved?.();
                 },
                 onFinish: () => setSaving(false),
             },
@@ -255,38 +258,8 @@ export default function K3KondisiK3Page({
         };
     }, [rows]);
 
-    return (
-        <>
-            <Head
-                title={`Laporan Unsafe Action & Unsafe Condition - ${unit.name}`}
-            />
-            {compact ? (
-                <div
-                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-20'}`}
-                >
-                    <K3MobileHeader
-                        title="Kondisi K3 (Unsafe Action & Condition)"
-                        backHref={k3Input.index().url}
-                    />
-
-                    <K3MobileFilterCard
-                        unitId={filters.unit_id}
-                        units={options.units}
-                        onUnitChange={(v) => visit({ unit_id: v })}
-                        month={filters.month}
-                        onMonthChange={(v) => visit({ month: v })}
-                        year={filters.year}
-                        years={options.years}
-                        onYearChange={(v) => visit({ year: v })}
-                    />
-
-                    {rows.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
-                            Belum ada temuan pada periode ini.
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-3">
-                            {rows.map((row, idx) => (
+    // Phone (user, 2026-11-27): one row's form on its own screen.
+    const renderMobileRow = (row: (typeof rows)[number], idx: number) => (
                                 <div
                                     key={row._key}
                                     className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3"
@@ -513,6 +486,47 @@ export default function K3KondisiK3Page({
                                         </div>
                                     </div>
                                 </div>
+    );
+
+    return (
+        <>
+            <Head
+                title={`Laporan Unsafe Action & Unsafe Condition - ${unit.name}`}
+            />
+            {compact ? (
+                <div
+                    className={`flex flex-1 flex-col gap-3 p-3 print:hidden ${can_write ? 'pb-24' : 'pb-20'}`}
+                >
+                    <K3MobileHeader
+                        title="Kondisi K3 (Unsafe Action & Condition)"
+                        backHref={k3Input.index().url}
+                    />
+
+                    <K3MobileFilterCard
+                        unitId={filters.unit_id}
+                        units={options.units}
+                        onUnitChange={(v) => visit({ unit_id: v })}
+                        month={filters.month}
+                        onMonthChange={(v) => visit({ month: v })}
+                        year={filters.year}
+                        years={options.years}
+                        onYearChange={(v) => visit({ year: v })}
+                    />
+
+                    {rows.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                            Belum ada temuan pada periode ini.
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-3">
+                            {rows.map((row, idx) => (
+                                <MobileEntryCard
+                                    key={idx}
+                                    leading={idx + 1}
+                                    title={row.temuan || 'Temuan belum diisi'}
+                                    subtitle={[row.kategori, row.lokasi, row.kondisi].filter(Boolean).join(' · ') || undefined}
+                                    onClick={() => setOpenRowIndex(idx)}
+                                />
                             ))}
                         </div>
                     )}
@@ -523,19 +537,6 @@ export default function K3KondisiK3Page({
                             summary={division_summary}
                             onPreview={setPreviewImage}
                         />
-                    )}
-
-                    {can_write && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addRow}
-                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
-                        >
-                            <Plus className="size-4" />
-                            Tambah Temuan K3
-                        </Button>
                     )}
 
                     <div className="flex flex-col gap-1.5">
@@ -557,16 +558,32 @@ export default function K3KondisiK3Page({
 
                     {can_write && (
                         <StickyActionBar>
-                            <div aria-hidden="true" />
-                            <Button
-                                onClick={save}
-                                disabled={saving || !dirty}
-                                className="gap-1.5"
-                            >
+                            <Button size="lg" variant="outline" onClick={() => {
+                                addRow();
+                                setOpenRowIndex(rows.length);
+                            }}>
+                                <Plus className="size-4" />
+                                Tambah
+                            </Button>
+                            <Button size="lg" onClick={() => save()} disabled={saving || !dirty}>
                                 <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
+                                {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
                             </Button>
                         </StickyActionBar>
+                    )}
+
+                    {openRowIndex !== null && rows[openRowIndex] !== undefined && (
+                        <MobileFormScreen
+                            title={`Data #${openRowIndex + 1}`}
+                            subtitle="Kondisi K3 (Unsafe Action & Condition)"
+                            onBack={() => setOpenRowIndex(null)}
+                            canWrite={can_write}
+                            onSave={() => save(() => setOpenRowIndex(null))}
+                            saving={saving}
+                            saveDisabled={!dirty}
+                        >
+                            {renderMobileRow(rows[openRowIndex], openRowIndex)}
+                        </MobileFormScreen>
                     )}
                 </div>
             ) : (
@@ -596,7 +613,7 @@ export default function K3KondisiK3Page({
                                 )}
                                 {can_write && (
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || !dirty}
                                         className="no-print h-8 gap-1.5 text-xs font-semibold"
                                     >
@@ -1286,7 +1303,7 @@ export default function K3KondisiK3Page({
                                     </Button>
                                 )}
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={saving || !dirty}
                                     className="gap-1.5 text-xs font-semibold"
                                 >

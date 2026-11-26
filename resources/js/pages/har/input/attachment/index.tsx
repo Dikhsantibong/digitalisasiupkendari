@@ -5,6 +5,7 @@ import AttachmentController from '@/actions/App/Http/Controllers/Har/AttachmentC
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { EmptyState } from '@/components/empty-state';
 import { FormField } from '@/components/form-field';
+import { entryDate, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import attachment from '@/routes/har/input/attachment';
 import type { IdName } from '@/types';
@@ -47,6 +49,9 @@ export default function AttachmentsInput({ filters, attachments, options, can_wr
     const [form, setForm] = useState({ title: '', caption: '', taken_date: '', engine_id: '', wo_id: '' });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the upload form, or one photo, on its own screen.
+    const [screen, setScreen] = useState<'new' | Attachment | null>(null);
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -58,7 +63,7 @@ export default function AttachmentsInput({ filters, attachments, options, can_wr
 
     const set = (key: keyof typeof form, value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-    const upload = () => {
+    const upload = (onUploaded?: () => void) => {
         const file = fileRef.current?.files?.[0];
 
         if (!file) {
@@ -91,6 +96,8 @@ export default function AttachmentsInput({ filters, attachments, options, can_wr
                     if (fileRef.current) {
                         fileRef.current.value = '';
                     }
+
+                    onUploaded?.();
                 },
                 onError: (e) => setErrors(e),
                 onFinish: () => setSaving(false),
@@ -98,39 +105,7 @@ export default function AttachmentsInput({ filters, attachments, options, can_wr
         );
     };
 
-    return (
-        <>
-            <Head title="Input HAR — Lampiran Foto" />
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                <PageHeader
-                    title="Lampiran Foto"
-                    description="Unggah foto pekerjaan penting untuk lampiran laporan HAR."
-                />
-
-                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
-                    <OperasiSelect
-                        label="Unit"
-                        value={String(filters.unit_id)}
-                        onChange={(value) => visit({ unit_id: Number(value) })}
-                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
-                    />
-                    <OperasiSelect
-                        label="Bulan"
-                        value={String(filters.month)}
-                        onChange={(value) => visit({ month: Number(value) })}
-                        options={MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(value) => visit({ year: Number(value) })}
-                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
-                    />
-                </div>
-
-                {can_write && (
-                    <div className="rounded-md border border-border bg-card p-4">
-                        <h2 className="mb-3 text-base font-semibold">Unggah Foto</h2>
+    const uploadFields = (
                         <div className="grid gap-4 md:grid-cols-3">
                             <FormField label="Judul" required error={errors.title}>
                                 <Input value={form.title} onChange={(e) => set('title', e.target.value)} autoComplete="off" />
@@ -165,8 +140,111 @@ export default function AttachmentsInput({ filters, attachments, options, can_wr
                                 <Input value={form.caption} onChange={(e) => set('caption', e.target.value)} autoComplete="off" />
                             </FormField>
                         </div>
+    );
+
+    if (compact) {
+        // Phone (user, 2026-11-27): the month's photos as cards; Tambah opens the upload form on its own screen,
+        // Simpan uploads and returns to the list; a card opens the photo.
+        return (
+            <>
+                <Head title="Input HAR — Lampiran Foto" />
+                <MobileEntryList
+                    heading="Lampiran foto"
+                    count={attachments.length}
+                    empty="Belum ada foto pekerjaan periode ini. Tekan Tambah untuk mengunggah."
+                    canWrite={can_write}
+                    onAdd={() => setScreen('new')}
+                    onSave={() => undefined}
+                >
+                    {attachments.map((a) => (
+                        <MobileEntryCard
+                            key={a.id}
+                            title={a.title}
+                            subtitle={a.caption ?? undefined}
+                            meta={[
+                                ['Tanggal', entryDate(a.taken_date)],
+                                ['Mesin', a.engine_name ?? ''],
+                                ['WO', a.wonum ?? ''],
+                            ]}
+                            footer={<img src={a.url} alt={a.title} className="h-36 w-full rounded-lg object-cover" />}
+                            onClick={() => setScreen(a)}
+                        />
+                    ))}
+                </MobileEntryList>
+
+                {screen === 'new' && can_write && (
+                    <MobileFormScreen
+                        title="Unggah foto"
+                        subtitle="Lampiran Foto"
+                        onBack={() => setScreen(null)}
+                        onSave={() => upload(() => setScreen(null))}
+                        saving={saving}
+                        saveLabel="Unggah"
+                    >
+                        {uploadFields}
+                    </MobileFormScreen>
+                )}
+
+                {screen !== null && screen !== 'new' && (
+                    <MobileFormScreen
+                        title={screen.title}
+                        subtitle="Lampiran Foto"
+                        onBack={() => setScreen(null)}
+                        canWrite={can_write}
+                        onDelete={() => {
+                            if (window.confirm('Hapus foto ini? Foto lampiran akan dihapus permanen.')) {
+                                router.delete(AttachmentController.destroy(screen.id).url, { preserveScroll: true, onSuccess: () => setScreen(null) });
+                            }
+                        }}
+                        deleteLabel="Hapus foto"
+                    >
+                        <img src={screen.url} alt={screen.title} className="w-full rounded-lg object-contain" />
+                        <p className="text-[12px] text-muted-foreground">
+                            {[screen.engine_name, screen.wonum, entryDate(screen.taken_date)].filter(Boolean).join(' · ') || '—'}
+                        </p>
+                        {screen.caption && <p className="text-[13px]">{screen.caption}</p>}
+                    </MobileFormScreen>
+                )}
+            </>
+        );
+    }
+
+    return (
+        <>
+            <Head title="Input HAR — Lampiran Foto" />
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                <PageHeader
+                    title="Lampiran Foto"
+                    description="Unggah foto pekerjaan penting untuk lampiran laporan HAR."
+                />
+
+                <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3">
+                    <OperasiSelect
+                        label="Unit"
+                        value={String(filters.unit_id)}
+                        onChange={(value) => visit({ unit_id: Number(value) })}
+                        options={options.units.map((u) => ({ value: String(u.id), label: u.name }))}
+                    />
+                    <OperasiSelect
+                        label="Bulan"
+                        value={String(filters.month)}
+                        onChange={(value) => visit({ month: Number(value) })}
+                        options={MONTHS.map((label, index) => ({ value: String(index + 1), label }))}
+                    />
+                    <OperasiSelect
+                        label="Tahun"
+                        value={String(filters.year)}
+                        onChange={(value) => visit({ year: Number(value) })}
+                        options={options.years.map((y) => ({ value: String(y), label: String(y) }))}
+                    />
+                </div>
+
+                {can_write && (
+                    <div className="rounded-md border border-border bg-card p-4">
+                        <h2 className="mb-3 text-base font-semibold">Unggah Foto</h2>
+                        {uploadFields}
                         <div className="mt-4 flex justify-end">
-                            <Button onClick={upload} disabled={saving}>
+                            <Button onClick={() => upload()} disabled={saving}>
                                 <Upload className="size-4" />
                                 {saving ? 'Mengunggah…' : 'Unggah'}
                             </Button>

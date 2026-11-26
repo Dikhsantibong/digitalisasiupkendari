@@ -1,5 +1,4 @@
 import { Head, router } from '@inertiajs/react';
-import { Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
@@ -14,7 +13,6 @@ import {
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -141,7 +139,7 @@ export default function InspectionInput({
         },
     });
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             inspection.store().url,
@@ -163,7 +161,10 @@ export default function InspectionInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -294,6 +295,17 @@ export default function InspectionInput({
                                 </label>
                             </div>
 
+                            <div className="flex justify-end">
+                                <K3MobilePdfButton
+                                input="inspections"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                    form_code: filters.form_code,
+                                }}
+                            />
+                            </div>
                             <MobileRowEditor<GridRow>
                                 rows={rows}
                                 rowKey={(row) => row._key}
@@ -318,31 +330,16 @@ export default function InspectionInput({
                                     );
                                     setDirty(true);
                                 }}
+                                flow={{
+                                    onSave: (done) => save(done),
+                                    saving,
+                                    dirty: dirty,
+                                    formSubtitle: 'Inspeksi K3',
+                                }}
                             />
                         </>
                     )}
 
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="inspections"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
-                                form_code: filters.form_code,
-                            }}
-                        />
-                        {can_write && (
-                            <Button
-                                onClick={save}
-                                disabled={saving || filters.form_code === ''}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
-                    </StickyActionBar>
                 </div>
             </>
         );
@@ -368,7 +365,7 @@ export default function InspectionInput({
                             />
                             {can_write && (
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={
                                         saving || filters.form_code === ''
                                     }

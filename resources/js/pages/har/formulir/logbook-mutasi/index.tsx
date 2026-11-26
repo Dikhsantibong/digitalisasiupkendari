@@ -1,8 +1,8 @@
 import { Head, router } from '@inertiajs/react';
 import { BookOpen, Download, Plus, Save, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
+import { formScreenOpen, MobileEntryCard, MobileEntryList, MobileFrame } from '@/components/mobile/entry-flow';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -118,6 +118,8 @@ export default function HarLogbookMutasiPage({
 }: Props) {
     const compact = useCompactLayout();
     const { can } = usePermissions();
+    // Phone (user, 2026-11-27): the month's logbooks as cards; a logbook opens on its own screen (?form=1).
+    const formOpen = compact && formScreenOpen();
     const today = new Date();
     const sameMonth =
         today.getFullYear() === filters.year &&
@@ -130,7 +132,7 @@ export default function HarLogbookMutasiPage({
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    const go = (query: Partial<Props['filters']>) => {
+    const go = (query: Partial<Props['filters']> & { form?: 1 | null }) => {
         if (
             dirty &&
             !window.confirm('Perubahan belum disimpan akan hilang. Lanjutkan?')
@@ -142,6 +144,7 @@ export default function HarLogbookMutasiPage({
             unit_id: filters.unit_id,
             month: filters.month,
             year: filters.year,
+            ...(formOpen ? { form: 1 } : {}),
             ...query,
         });
     };
@@ -157,7 +160,14 @@ export default function HarLogbookMutasiPage({
             logbookRoutes.store().url,
             { unit_id: filters.unit_id, tanggal, ...lists },
             {
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+
+                    // Phone: saved — back to the list of logbooks.
+                    if (formOpen) {
+                        router.get(logbookRoutes.index().url, { unit_id: filters.unit_id, month: filters.month, year: filters.year });
+                    }
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -174,11 +184,62 @@ export default function HarLogbookMutasiPage({
         }
     };
 
+    if (compact && !formOpen) {
+        return (
+            <>
+                <Head title={`Logbook Mutasi Harian - ${unit.name}`} />
+                <MobileEntryList
+                    heading={`Logbook ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}`}
+                    count={logbooks.length}
+                    empty="Belum ada logbook mutasi bulan ini. Tekan Tambah untuk mengisi."
+                    canWrite={can_write}
+                    onAdd={() => go({ tanggal: null, form: 1 })}
+                    onSave={() => undefined}
+                >
+                    {logbooks.map((item) => (
+                        <MobileEntryCard
+                            key={item.id}
+                            title={formatDate(item.tanggal)}
+                            meta={[
+                                ['Hadir', `${item.hadir} orang`],
+                                ['Pekerjaan', `${item.pekerjaan} pekerjaan`],
+                            ]}
+                            onClick={() => go({ tanggal: item.tanggal, form: 1 })}
+                        />
+                    ))}
+                </MobileEntryList>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title={`Logbook Mutasi Harian - ${unit.name}`} />
-            <div
+            <MobileFrame
+                phone={compact}
                 className={`flex flex-1 flex-col gap-3 p-3 md:gap-4 md:p-6 ${compact ? 'pb-28' : ''}`}
+                screen={{
+                    title: logbook ? formatDate(logbook.tanggal) : 'Logbook baru',
+                    subtitle: 'Logbook Mutasi Harian',
+                    onBack: () => go({ tanggal: null, form: null }),
+                    canWrite: can_write,
+                    onSave: save,
+                    saving,
+                    saveDisabled: !dirty && logbook !== null,
+                    onDelete: logbook ? remove : undefined,
+                    deleteLabel: 'Hapus logbook',
+                    extraAction: logbook ? (
+                        <Button
+                            size="lg"
+                            variant="outline"
+                            onClick={() => window.open(logbookRoutes.pdf(logbook.id).url, '_blank')}
+                            className="gap-1.5"
+                        >
+                            <Download className="size-4 text-rose-600" />
+                            PDF
+                        </Button>
+                    ) : undefined,
+                }}
             >
                 <PageHeader
                     title="Logbook Mutasi Harian Tim Pemeliharaan"
@@ -234,42 +295,7 @@ export default function HarLogbookMutasiPage({
                 </div>
 
                 <div className="flex flex-col items-start gap-3 lg:flex-row lg:gap-4">
-                    {compact ? (
-                        <div
-                            className="flex w-full [scrollbar-width:none] items-center gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden"
-                            aria-label="Daftar logbook"
-                        >
-                            {can_write && (
-                                <Button
-                                    size="sm"
-                                    variant={
-                                        logbook === null ? 'default' : 'outline'
-                                    }
-                                    onClick={() => go({ tanggal: null })}
-                                    className="h-8 shrink-0 gap-1 px-2.5 text-xs"
-                                >
-                                    <Plus className="size-3.5" />
-                                    Baru
-                                </Button>
-                            )}
-                            {logbooks.map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    onClick={() =>
-                                        go({ tanggal: item.tanggal })
-                                    }
-                                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
-                                        logbook?.id === item.id
-                                            ? 'border-primary bg-primary text-primary-foreground'
-                                            : 'border-border bg-card text-foreground'
-                                    }`}
-                                >
-                                    {formatDate(item.tanggal)}
-                                </button>
-                            ))}
-                        </div>
-                    ) : (
+                    {compact ? null : (
                         <aside
                             className="w-full shrink-0 rounded-md border border-border bg-card lg:w-72"
                             aria-label="Daftar logbook"
@@ -367,7 +393,7 @@ export default function HarLogbookMutasiPage({
                                     {can_write && (
                                         <Button
                                             size="sm"
-                                            onClick={save}
+                                            onClick={() => save()}
                                             disabled={
                                                 saving ||
                                                 (!dirty && logbook !== null)
@@ -402,17 +428,6 @@ export default function HarLogbookMutasiPage({
                                     className="h-9 text-sm"
                                 />
                             </div>
-                            {compact && logbook && can_write && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={remove}
-                                    className="h-9 gap-1 text-destructive"
-                                >
-                                    <Trash2 className="size-4" />
-                                    Hapus
-                                </Button>
-                            )}
                         </div>
 
                         {SECTIONS.map((section) => (
@@ -642,41 +657,8 @@ export default function HarLogbookMutasiPage({
                         )}
                     </section>
                 </div>
-            </div>
+            </MobileFrame>
 
-            {compact && (
-                <StickyActionBar>
-                    {logbook && (
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                window.open(
-                                    logbookRoutes.pdf(logbook.id).url,
-                                    '_blank',
-                                )
-                            }
-                            className="gap-1.5"
-                        >
-                            <Download className="size-4 text-rose-600" />
-                            PDF
-                        </Button>
-                    )}
-                    {can_write && (
-                        <Button
-                            onClick={save}
-                            disabled={saving || (!dirty && logbook !== null)}
-                            className="gap-1.5"
-                        >
-                            <Save className="size-4" />
-                            {saving
-                                ? 'Menyimpan…'
-                                : dirty || logbook === null
-                                  ? 'Simpan'
-                                  : 'Tersimpan'}
-                        </Button>
-                    )}
-                </StickyActionBar>
-            )}
         </>
     );
 }

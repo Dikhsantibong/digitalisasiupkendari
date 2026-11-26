@@ -24,6 +24,7 @@ import {
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { MeetingAttendanceForm } from '@/components/har/meeting-attendance-form';
+import { EntryBadge, formScreenOpen, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -46,6 +47,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { usePermissions } from '@/hooks/use-permissions';
 import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
@@ -191,6 +193,9 @@ export default function HarDailyMeetingPage({
 }: Props) {
     const { can } = usePermissions();
     const [creating, setCreating] = useState(false);
+    const compact = useCompactLayout();
+    // Phone (user, 2026-11-27): the month's meetings as cards; a meeting opens on its own screen (?form=1).
+    const formOpen = compact && formScreenOpen();
     // The device date (the server clock runs in UTC, a day behind WITA in the early morning).
     const [localToday] = useState(
         () => new Date().toLocaleDateString('en-CA') || today,
@@ -207,7 +212,7 @@ export default function HarDailyMeetingPage({
         }
     }
 
-    const go = (query: Partial<Props['filters']>) => {
+    const go = (query: Partial<Props['filters']> & { form?: 1 | null }) => {
         setCreating(false);
         router.get(dailyMeetingRoutes.index().url, {
             unit_id: filters.unit_id,
@@ -240,6 +245,75 @@ export default function HarDailyMeetingPage({
     )
         ? localToday
         : `${filters.year}-${String(filters.month).padStart(2, '0')}-01`;
+
+    if (compact) {
+        return (
+            <>
+                <Head title={`Daily Meeting Pemeliharaan - ${unit.name}`} />
+                <MobileEntryList
+                    heading={`Meeting ${month} ${filters.year}`}
+                    count={meetings.length}
+                    empty="Belum ada daily meeting bulan ini. Tekan Tambah untuk membuat meeting & QR absensi."
+                    canWrite={can_write}
+                    onAdd={() => setCreating(true)}
+                    onSave={() => undefined}
+                >
+                    {meetings.map((m) => (
+                        <MobileEntryCard
+                            key={m.id}
+                            title={m.acara}
+                            subtitle={longDate(m.tanggal)}
+                            badge={<EntryBadge tone={m.absensi_dibuka ? 'done' : 'neutral'}>{m.absensi_dibuka ? 'Absensi dibuka' : 'Ditutup'}</EntryBadge>}
+                            meta={[
+                                ['Waktu', m.waktu ?? ''],
+                                ['Hadir', `${m.peserta} orang`],
+                            ]}
+                            onClick={() => go({ meeting_id: m.id, form: 1 })}
+                        />
+                    ))}
+                </MobileEntryList>
+
+                {creating && can_write && (
+                    <MobileFormScreen
+                        title="Meeting baru"
+                        subtitle="Daily Meeting Pemeliharaan"
+                        onBack={() => setCreating(false)}
+                        formId="daily-meeting-form"
+                    >
+                        <DetailsForm
+                            unitId={filters.unit_id}
+                            initial={{
+                                acara: 'Meeting HAR',
+                                tanggal: defaultDate,
+                                ...parseWaktu(null),
+                                tempat: '',
+                            }}
+                            submitLabel="Buat Meeting & Tampilkan QR"
+                            formId="daily-meeting-form"
+                        />
+                    </MobileFormScreen>
+                )}
+
+                {!creating && formOpen && meeting && (
+                    <MobileFormScreen
+                        title={meeting.acara}
+                        subtitle={longDate(meeting.tanggal)}
+                        onBack={() => go({ meeting_id: null })}
+                        canWrite={false}
+                    >
+                        <MeetingWorkspace
+                            key={meeting.id}
+                            meeting={meeting}
+                            unitId={filters.unit_id}
+                            maxEviden={options.max_eviden}
+                            signers={signers}
+                            canWrite={can_write}
+                        />
+                    </MobileFormScreen>
+                )}
+            </>
+        );
+    }
 
     return (
         <>
@@ -512,6 +586,7 @@ function DetailsForm({
     submitLabel,
     onCancel,
     onSaved,
+    formId,
 }: {
     unitId: number;
     meetingId?: number;
@@ -519,6 +594,8 @@ function DetailsForm({
     submitLabel: string;
     onCancel?: () => void;
     onSaved?: () => void;
+    /** Phones: the form is submitted by the form screen's Simpan; its own buttons are hidden. */
+    formId?: string;
 }) {
     const [d, setD] = useState<Details>(initial);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -549,7 +626,7 @@ function DetailsForm({
     };
 
     return (
-        <form onSubmit={submit} className="flex flex-col gap-4">
+        <form id={formId} onSubmit={submit} className="flex flex-col gap-4">
             <FormField
                 label="Acara"
                 icon={<Users className="size-4" />}
@@ -661,7 +738,7 @@ function DetailsForm({
                     )}
                 </div>
             </FormField>
-            <div className="flex flex-wrap justify-end gap-2 pt-1">
+            <div className={cn('flex flex-wrap justify-end gap-2 pt-1', formId && 'hidden')}>
                 {onCancel && (
                     <Button type="button" variant="ghost" onClick={onCancel}>
                         Batal

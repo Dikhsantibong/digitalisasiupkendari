@@ -1,6 +1,7 @@
 import { ChevronDown, Search, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { MobileFormScreen } from '@/components/mobile/entry-screen';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -52,6 +53,10 @@ export function MobileCompactRows({
     empty = 'Belum ada baris.',
     removeLabel = 'Hapus baris',
     focus = null,
+    onSave,
+    saving = false,
+    dirty = false,
+    formSubtitle,
 }: {
     rows: CompactRow[];
     sections?: CompactSection[];
@@ -64,6 +69,15 @@ export function MobileCompactRows({
     removeLabel?: string;
     /** Opens the row at this index (e.g. the row just added by "Tambah"); a new nonce re-triggers. */
     focus?: { index: number; nonce: number } | null;
+    /**
+     * Phone entry flow (user, 2026-11-27): with it, an opened row shows on its
+     * own screen (MobileFormScreen) whose Simpan saves the page and returns to
+     * the list; without it the row opens in place as before.
+     */
+    onSave?: (done: () => void) => void;
+    saving?: boolean;
+    dirty?: boolean;
+    formSubtitle?: ReactNode;
 }) {
     const [open, setOpen] = useState<string | number | null>(null);
     const [query, setQuery] = useState('');
@@ -86,12 +100,16 @@ export function MobileCompactRows({
     const term = query.trim().toLowerCase();
     const filtered = useMemo(
         () =>
-            term
+            (term
                 ? rows.filter((row) =>
                       row.searchText.toLowerCase().includes(term),
                   )
-                : rows,
-        [rows, term],
+                : rows
+            ).filter(
+                // The entry flow lists the filled rows only (blank PDF padding rows stay out of sight).
+                (row) => !onSave || !row.empty || row.key === open,
+            ),
+        [rows, term, onSave, open],
     );
     const sectionOf = (row: CompactRow) =>
         sections.length === 1 && sections[0].key === null
@@ -114,6 +132,9 @@ export function MobileCompactRows({
 
         return map;
     }, [rows, sections]);
+
+    // The entry flow: the opened row, shown on its own screen.
+    const screenRow = onSave ? rows.find((row) => row.key === open) : undefined;
 
     return (
         <div className="flex flex-col gap-3">
@@ -141,7 +162,9 @@ export function MobileCompactRows({
                     (row) => sectionOf(row) === section.key,
                 );
                 const total = rows.filter(
-                    (row) => sectionOf(row) === section.key,
+                    (row) =>
+                        sectionOf(row) === section.key &&
+                        (!onSave || !row.empty),
                 ).length;
                 const openRow = list.find((row) => row.key === open);
                 const limit = limits[sectionKey] ?? pageSize;
@@ -256,12 +279,12 @@ export function MobileCompactRows({
                                                 />
                                             )}
                                         </button>
-                                        {row.quick && !isOpen && (
+                                        {row.quick && (!isOpen || onSave) && (
                                             <div className="-mt-1 px-3 pb-3 pl-14">
                                                 {row.quick}
                                             </div>
                                         )}
-                                        {isOpen && (
+                                        {isOpen && !onSave && (
                                             <div className="flex flex-col gap-3 border-t border-border p-3">
                                                 {renderEditor(row.index)}
                                                 {canWrite && onRemove && (
@@ -307,6 +330,31 @@ export function MobileCompactRows({
                     </div>
                 );
             })}
+
+            {onSave && screenRow && (
+                <MobileFormScreen
+                    title={screenRow.title}
+                    subtitle={formSubtitle}
+                    onBack={() => setOpen(null)}
+                    canWrite={canWrite}
+                    onSave={() => onSave(() => setOpen(null))}
+                    saving={saving}
+                    saveDisabled={!dirty}
+                    onDelete={
+                        onRemove
+                            ? () => {
+                                  if (window.confirm(`${removeLabel}? Tekan Simpan untuk menyimpan perubahan.`)) {
+                                      setOpen(null);
+                                      onRemove(screenRow.index);
+                                  }
+                              }
+                            : undefined
+                    }
+                    deleteLabel={removeLabel}
+                >
+                    {renderEditor(screenRow.index)}
+                </MobileFormScreen>
+            )}
         </div>
     );
 }

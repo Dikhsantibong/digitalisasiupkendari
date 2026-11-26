@@ -28,8 +28,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
-import k3Input from '@/routes/k3/input';
 import timeFrame from '@/routes/k3/input/time-frame';
+import k3Jadwal from '@/routes/k3/jadwal';
 import type { IdName } from '@/types';
 
 type DayInfo = {
@@ -270,7 +270,7 @@ export default function TimeFrameInput({
                 >
                     <K3MobileHeader
                         title="Time Frame Kinerja K3L"
-                        backHref={k3Input.index().url}
+                        backHref={k3Jadwal.index().url}
                     />
 
                     <K3MobileFilterCard
@@ -424,8 +424,8 @@ export default function TimeFrameInput({
                             <Button
                                 variant="outline"
                                 size="icon"
-                                onClick={() => router.get(k3Input.index().url)}
-                                title="Kembali ke Input K3"
+                                onClick={() => router.get(k3Jadwal.index().url)}
+                                title="Kembali ke Jadwal K3"
                             >
                                 <ArrowLeft className="size-4" />
                             </Button>
@@ -948,7 +948,7 @@ export default function TimeFrameInput({
 TimeFrameInput.layout = {
     breadcrumbs: [
         { title: 'Dashboard', href: dashboard() },
-        { title: 'Input K3 & Keamanan', href: k3Input.index() },
+        { title: 'Jadwal K3 & Lingkungan', href: k3Jadwal.index() },
         { title: 'Time Frame K3 & Lingkungan', href: timeFrame.index() },
     ],
 };

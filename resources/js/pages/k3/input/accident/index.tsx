@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Plus, Save, ShieldCheck, Trash2 } from 'lucide-react';
+import { Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
@@ -14,7 +14,6 @@ import {
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -212,7 +211,7 @@ export default function AccidentInput({
         keterangan: row.keterangan,
     });
 
-    const persist = (nextRows: GridRow[]) => {
+    const persist = (nextRows: GridRow[], onSaved?: () => void) => {
         setSaving(true);
         router.post(
             accident.store().url,
@@ -224,7 +223,10 @@ export default function AccidentInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -291,6 +293,16 @@ export default function AccidentInput({
                         </Button>
                     )}
 
+                    <div className="flex justify-end">
+                        <K3MobilePdfButton
+                            input="accidents"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                        />
+                    </div>
                     <MobileRowEditor<GridRow>
                         rows={rows}
                         rowKey={(r) => r._key}
@@ -384,41 +396,14 @@ export default function AccidentInput({
                         onRemove={(i) => removeRow(rows[i]._key)}
                         canWrite={can_write}
                         removeLabel="Hapus kejadian"
+                        flow={{
+                            onSave: (done) => persist(rows, done),
+                            saving,
+                            dirty,
+                            onAdd: addRow,
+                            formSubtitle: 'Laporan Kecelakaan',
+                        }}
                     />
-
-                    {can_write && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={addRow}
-                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
-                        >
-                            <Plus className="size-4" />
-                            Tambah Kejadian
-                        </Button>
-                    )}
-
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="accidents"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
-                            }}
-                        />
-                        {can_write && (
-                            <Button
-                                onClick={() => persist(rows)}
-                                disabled={saving}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
-                    </StickyActionBar>
                 </div>
             </>
         );

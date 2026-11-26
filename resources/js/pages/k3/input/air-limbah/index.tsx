@@ -19,6 +19,7 @@ import {
     K3MobileFilterCard,
     K3MobileHeader,
 } from '@/components/k3/mobile-page-shell';
+import { MobileFormScreen } from '@/components/mobile/entry-flow';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
@@ -227,7 +228,7 @@ export default function AirLimbahPage({
         );
     };
 
-    const handleSave = () => {
+    const handleSave = (onSaved?: () => void, rowsToSave: Row[] = rows) => {
         if (!can_write) {
             return;
         }
@@ -239,7 +240,7 @@ export default function AirLimbahPage({
                 unit_id: filters.unit_id,
                 month: filters.month,
                 year: filters.year,
-                rows: rows.map((r, i) => ({
+                rows: rowsToSave.map((r, i) => ({
                     id: r.id,
                     area_penyiraman: r.area_penyiraman,
                     tanggal: r.tanggal || null,
@@ -261,6 +262,7 @@ export default function AirLimbahPage({
                     toast.success(
                         'Logbook pemantauan air limbah berhasil disimpan.',
                     );
+                    onSaved?.();
                 },
                 onError: (errs) => {
                     const firstMsg = Object.values(errs)[0];
@@ -333,12 +335,14 @@ export default function AirLimbahPage({
         setForm(nextForm);
     };
 
-    const handleFormSubmit = () => {
+    const handleFormSubmit = (): Row[] | null => {
         if (!form.area_penyiraman.trim()) {
             toast.error('Area penyiraman wajib diisi.');
 
-            return;
+            return null;
         }
+
+        let nextRows: Row[];
 
         const debitAwal = parseFloat(form.debit_awal) || 0;
         const debitAkhir = parseFloat(form.debit_akhir) || 0;
@@ -363,12 +367,12 @@ export default function AirLimbahPage({
                 keterangan: form.keterangan.trim(),
                 sort_order: rows.length,
             };
-            setRows([...rows, newRow]);
+            nextRows = [...rows, newRow];
+            setRows(nextRows);
             setNextKey((k) => k + 1);
         } else {
             // Update existing
-            setRows(
-                rows.map((r) =>
+            nextRows = rows.map((r) =>
                     r._key === editingKey
                         ? {
                               ...r,
@@ -387,8 +391,8 @@ export default function AirLimbahPage({
                               keterangan: form.keterangan.trim(),
                           }
                         : r,
-                ),
-            );
+                );
+            setRows(nextRows);
         }
 
         setDirty(true);
@@ -398,6 +402,8 @@ export default function AirLimbahPage({
                 ? 'Baris baru ditambahkan ke tabel.'
                 : 'Data baris berhasil diperbarui.',
         );
+
+        return nextRows;
     };
 
     const handleDeleteRow = (key: number) => {
@@ -415,6 +421,192 @@ export default function AirLimbahPage({
     };
 
     const pdfUrl = `${airLimbah.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`;
+
+    const modalBody = (
+                    <div className="grid gap-4 py-3">
+                        {/* Area Penyiraman */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="area_penyiraman">
+                                Area Penyiraman
+                            </Label>
+                            <Input
+                                id="area_penyiraman"
+                                value={form.area_penyiraman}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        area_penyiraman: e.target.value,
+                                    })
+                                }
+                                placeholder="Contoh: Taman Area Kantor"
+                                list="default-areas-list"
+                            />
+                            <datalist id="default-areas-list">
+                                {defaultAreas.map((area) => (
+                                    <option key={area} value={area} />
+                                ))}
+                            </datalist>
+                            <div className="flex flex-wrap gap-1 pt-1">
+                                {defaultAreas.map((area) => (
+                                    <button
+                                        key={area}
+                                        type="button"
+                                        onClick={() =>
+                                            setForm({
+                                                ...form,
+                                                area_penyiraman: area,
+                                            })
+                                        }
+                                        className="rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                                    >
+                                        + {area}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Tanggal & Waktu */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="tanggal">Tanggal</Label>
+                                <Input
+                                    id="tanggal"
+                                    type="date"
+                                    value={form.tanggal}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            tanggal: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="waktu_penyiraman">
+                                    Waktu Penyiraman
+                                </Label>
+                                <Input
+                                    id="waktu_penyiraman"
+                                    value={form.waktu_penyiraman}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            waktu_penyiraman: e.target.value,
+                                        })
+                                    }
+                                    placeholder="Contoh: 16.00 WITA"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Metode Pemanfaatan */}
+                        <div className="space-y-1.5">
+                            <Label htmlFor="metode_pemanfaatan">
+                                Metode Pemanfaatan
+                            </Label>
+                            <Input
+                                id="metode_pemanfaatan"
+                                value={form.metode_pemanfaatan}
+                                onChange={(e) =>
+                                    setForm({
+                                        ...form,
+                                        metode_pemanfaatan: e.target.value,
+                                    })
+                                }
+                                placeholder="Contoh: Penyiraman Tanaman"
+                            />
+                        </div>
+
+                        {/* Debit Flow Meter */}
+                        <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+                            <Label className="text-xs font-semibold text-foreground">
+                                Debit Air (Flow Meter)
+                            </Label>
+                            <div className="grid grid-cols-3 gap-2">
+                                <div className="space-y-1">
+                                    <span className="text-[11px] text-muted-foreground">
+                                        Awal
+                                    </span>
+                                    <Input
+                                        type="number"
+                                        step="any"
+                                        value={form.debit_awal}
+                                        onChange={(e) =>
+                                            handleDebitChange(
+                                                'debit_awal',
+                                                e.target.value,
+                                            )
+                                        }
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[11px] text-muted-foreground">
+                                        Akhir
+                                    </span>
+                                    <Input
+                                        type="number"
+                                        step="any"
+                                        value={form.debit_akhir}
+                                        onChange={(e) =>
+                                            handleDebitChange(
+                                                'debit_akhir',
+                                                e.target.value,
+                                            )
+                                        }
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <span className="text-[11px] font-semibold text-primary">
+                                        Jumlah (Selisih)
+                                    </span>
+                                    <Input
+                                        type="number"
+                                        step="any"
+                                        value={form.debit_jumlah}
+                                        readOnly
+                                        className="bg-primary/10 font-bold text-primary"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Frekuensi & PIC */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="frekuensi">
+                                    Rotasi & Frekuensi (kali/bulan)
+                                </Label>
+                                <Input
+                                    id="frekuensi"
+                                    value={form.frekuensi}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            frekuensi: e.target.value,
+                                        })
+                                    }
+                                    placeholder="Contoh: 1"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="pic">PIC Pelaksana</Label>
+                                <Input
+                                    id="pic"
+                                    value={form.pic}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            pic: e.target.value,
+                                        })
+                                    }
+                                    placeholder="Contoh: K3L"
+                                />
+                            </div>
+                        </div>
+                    </div>
+    );
 
     return (
         <>
@@ -442,6 +634,18 @@ export default function AirLimbahPage({
                         years={options.years}
                         onYearChange={(v) => handleFilterChange('year', v)}
                     />
+
+                    <div className="flex justify-end">
+                        <K3MobilePdfButton
+                            input="air-limbah"
+                            query={{
+                                unit_id: filters.unit_id,
+                                month: filters.month,
+                                year: filters.year,
+                            }}
+                            pdfUrl={pdfUrl}
+                        />
+                    </div>
 
                     {rows.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
@@ -517,40 +721,19 @@ export default function AirLimbahPage({
                         </div>
                     )}
 
-                    {can_write && (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={openCreateModal}
-                            className="h-9 w-full justify-center gap-1.5 border-dashed text-xs"
-                        >
-                            <Plus className="size-4" />
-                            Tambah Catatan Air Limbah
-                        </Button>
-                    )}
 
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="air-limbah"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
-                            }}
-                            pdfUrl={pdfUrl}
-                        />
-                        {can_write && (
-                            <Button
-                                onClick={handleSave}
-                                disabled={!dirty || saving}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
+                    {can_write && (
+                        <StickyActionBar>
+                            <Button size="lg" variant="outline" onClick={openCreateModal}>
+                                <Plus className="size-4" />
+                                Tambah
                             </Button>
-                        )}
-                    </StickyActionBar>
+                            <Button size="lg" onClick={() => handleSave()} disabled={!dirty || saving}>
+                                <Save className="size-4" />
+                                {saving ? 'Menyimpan…' : dirty ? 'Simpan' : 'Tersimpan'}
+                            </Button>
+                        </StickyActionBar>
+                    )}
                 </div>
             ) : (
                 <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 print:hidden">
@@ -630,7 +813,7 @@ export default function AirLimbahPage({
                                     </Button>
                                     <Button
                                         size="sm"
-                                        onClick={handleSave}
+                                        onClick={() => handleSave()}
                                         disabled={!dirty || saving}
                                         className="gap-1.5"
                                     >
@@ -927,7 +1110,26 @@ export default function AirLimbahPage({
                 </div>
             )}
 
-            {/* Modal Dialog for Create & Edit */}
+            {/* Modal Dialog for Create & Edit — phones: its own screen; Simpan adds the row and saves (user, 2026-11-27) */}
+            {compact ? (
+                modalOpen && (
+                    <MobileFormScreen
+                        title={editingKey === null ? 'Catatan air limbah baru' : 'Ubah catatan air limbah'}
+                        subtitle="Pemanfaatan Air Limbah"
+                        onBack={() => setModalOpen(false)}
+                        onSave={() => {
+                            const next = handleFormSubmit();
+
+                            if (next) {
+                                handleSave(undefined, next);
+                            }
+                        }}
+                        saving={saving}
+                    >
+                        {modalBody}
+                    </MobileFormScreen>
+                )
+            ) : (
             <Dialog open={modalOpen} onOpenChange={setModalOpen}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
@@ -943,189 +1145,7 @@ export default function AirLimbahPage({
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-4 py-3">
-                        {/* Area Penyiraman */}
-                        <div className="space-y-1.5">
-                            <Label htmlFor="area_penyiraman">
-                                Area Penyiraman
-                            </Label>
-                            <Input
-                                id="area_penyiraman"
-                                value={form.area_penyiraman}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        area_penyiraman: e.target.value,
-                                    })
-                                }
-                                placeholder="Contoh: Taman Area Kantor"
-                                list="default-areas-list"
-                            />
-                            <datalist id="default-areas-list">
-                                {defaultAreas.map((area) => (
-                                    <option key={area} value={area} />
-                                ))}
-                            </datalist>
-                            <div className="flex flex-wrap gap-1 pt-1">
-                                {defaultAreas.map((area) => (
-                                    <button
-                                        key={area}
-                                        type="button"
-                                        onClick={() =>
-                                            setForm({
-                                                ...form,
-                                                area_penyiraman: area,
-                                            })
-                                        }
-                                        className="rounded bg-muted px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
-                                    >
-                                        + {area}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Tanggal & Waktu */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="tanggal">Tanggal</Label>
-                                <Input
-                                    id="tanggal"
-                                    type="date"
-                                    value={form.tanggal}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            tanggal: e.target.value,
-                                        })
-                                    }
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="waktu_penyiraman">
-                                    Waktu Penyiraman
-                                </Label>
-                                <Input
-                                    id="waktu_penyiraman"
-                                    value={form.waktu_penyiraman}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            waktu_penyiraman: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Contoh: 16.00 WITA"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Metode Pemanfaatan */}
-                        <div className="space-y-1.5">
-                            <Label htmlFor="metode_pemanfaatan">
-                                Metode Pemanfaatan
-                            </Label>
-                            <Input
-                                id="metode_pemanfaatan"
-                                value={form.metode_pemanfaatan}
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        metode_pemanfaatan: e.target.value,
-                                    })
-                                }
-                                placeholder="Contoh: Penyiraman Tanaman"
-                            />
-                        </div>
-
-                        {/* Debit Flow Meter */}
-                        <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-                            <Label className="text-xs font-semibold text-foreground">
-                                Debit Air (Flow Meter)
-                            </Label>
-                            <div className="grid grid-cols-3 gap-2">
-                                <div className="space-y-1">
-                                    <span className="text-[11px] text-muted-foreground">
-                                        Awal
-                                    </span>
-                                    <Input
-                                        type="number"
-                                        step="any"
-                                        value={form.debit_awal}
-                                        onChange={(e) =>
-                                            handleDebitChange(
-                                                'debit_awal',
-                                                e.target.value,
-                                            )
-                                        }
-                                        placeholder="0"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <span className="text-[11px] text-muted-foreground">
-                                        Akhir
-                                    </span>
-                                    <Input
-                                        type="number"
-                                        step="any"
-                                        value={form.debit_akhir}
-                                        onChange={(e) =>
-                                            handleDebitChange(
-                                                'debit_akhir',
-                                                e.target.value,
-                                            )
-                                        }
-                                        placeholder="0"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <span className="text-[11px] font-semibold text-primary">
-                                        Jumlah (Selisih)
-                                    </span>
-                                    <Input
-                                        type="number"
-                                        step="any"
-                                        value={form.debit_jumlah}
-                                        readOnly
-                                        className="bg-primary/10 font-bold text-primary"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Frekuensi & PIC */}
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="frekuensi">
-                                    Rotasi & Frekuensi (kali/bulan)
-                                </Label>
-                                <Input
-                                    id="frekuensi"
-                                    value={form.frekuensi}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            frekuensi: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Contoh: 1"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="pic">PIC Pelaksana</Label>
-                                <Input
-                                    id="pic"
-                                    value={form.pic}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            pic: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Contoh: K3L"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    {modalBody}
 
                     <DialogFooter className="gap-2 sm:gap-0">
                         <Button
@@ -1135,7 +1155,7 @@ export default function AirLimbahPage({
                         >
                             Batal
                         </Button>
-                        <Button type="button" onClick={handleFormSubmit}>
+                        <Button type="button" onClick={() => handleFormSubmit()}>
                             {editingKey === null
                                 ? 'Tambahkan ke Tabel'
                                 : 'Simpan Perubahan'}
@@ -1143,6 +1163,7 @@ export default function AirLimbahPage({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+            )}
 
             {/* Print View Container */}
             <div className="print-container hidden print:block">

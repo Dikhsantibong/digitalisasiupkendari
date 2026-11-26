@@ -2,7 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { Download, FileWarning, Plus, Save, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { entryDate, MobileEntryCard, MobileEntryList, MobileFrame } from '@/components/mobile/entry-flow';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -307,6 +307,8 @@ export default function LaporanGangguanInput({
     );
     const [saving, setSaving] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    // Phone (user, 2026-11-27): the reports as cards, or one report's form on its own screen.
+    const [reportOpen, setReportOpen] = useState(false);
 
     // Reset editor when the unit/year context changes.
     const signature = `${filters.unit_id}-${filters.year}`;
@@ -366,7 +368,7 @@ export default function LaporanGangguanInput({
         setIsDirty(false);
     };
 
-    const handleSave = () => {
+    const handleSave = (onSaved?: () => void) => {
         if (!can_write) {
             return;
         }
@@ -392,6 +394,8 @@ export default function LaporanGangguanInput({
                             toForm(nextReports[0], options.machines, unit.name),
                         );
                     }
+
+                    onSaved?.();
                 },
                 onFinish: () => setSaving(false),
             },
@@ -435,14 +439,71 @@ export default function LaporanGangguanInput({
         </div>
     );
 
+    if (compact && !reportOpen) {
+        return (
+            <>
+                <Head title="Input Laporan Gangguan" />
+                <MobileEntryList
+                    heading={`Laporan gangguan ${filters.year}`}
+                    count={reports.length}
+                    empty={`Belum ada laporan gangguan (LH-05) tahun ${filters.year}. Tekan Tambah untuk mengisi.`}
+                    canWrite={can_write}
+                    onAdd={() => {
+                        newReport();
+                        setReportOpen(true);
+                    }}
+                    onSave={() => undefined}
+                >
+                    {reports.map((r) => (
+                        <MobileEntryCard
+                            key={r.id}
+                            title={r.hal || r.nomor || 'Laporan gangguan'}
+                            subtitle={r.nomor ?? undefined}
+                            meta={[
+                                ['Tanggal', entryDate(r.tanggal_laporan)],
+                                ['Mesin', options.machines.find((m) => m.id === r.machine_id)?.name ?? ''],
+                            ]}
+                            onClick={() => {
+                                selectReport(r);
+                                setReportOpen(true);
+                            }}
+                        />
+                    ))}
+                </MobileEntryList>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Input Laporan Gangguan" />
-            <div
+            <MobileFrame
+                phone={compact}
                 className={cn(
                     'flex flex-1 flex-col gap-3 p-3 md:gap-5 md:p-6',
                     compact && 'pb-28',
                 )}
+                screen={{
+                    title: form.id === null ? 'Laporan gangguan baru' : 'Ubah laporan gangguan',
+                    subtitle: 'Laporan Gangguan (LH-05)',
+                    onBack: () => setReportOpen(false),
+                    canWrite: can_write,
+                    onSave: () => handleSave(() => setReportOpen(false)),
+                    saving,
+                    saveDisabled: !isDirty,
+                    extraAction:
+                        form.id !== null ? (
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                onClick={() => window.open(laporanGangguanRoutes.pdf(form.id!).url, '_blank', 'noopener')}
+                                className="gap-1.5"
+                            >
+                                <Download className="size-4" />
+                                PDF
+                            </Button>
+                        ) : undefined,
+                }}
             >
                 {!compact && (
                     <PageHeader
@@ -479,7 +540,7 @@ export default function LaporanGangguanInput({
                                             Laporan Baru
                                         </Button>
                                         <Button
-                                            onClick={handleSave}
+                                            onClick={() => handleSave()}
                                             disabled={saving || !isDirty}
                                             className="gap-2"
                                         >
@@ -518,39 +579,8 @@ export default function LaporanGangguanInput({
                 </div>
 
                 <div className="grid gap-3 lg:grid-cols-[270px_1fr] lg:gap-4">
-                    {/* List of reports: compact horizontal strip + selector on Mobile, sidebar on Desktop */}
-                    {compact ? (
-                        <div className="flex [scrollbar-width:none] items-center gap-2 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden">
-                            {can_write && (
-                                <Button
-                                    variant={
-                                        form.id === null ? 'default' : 'outline'
-                                    }
-                                    size="sm"
-                                    onClick={newReport}
-                                    className="h-8 shrink-0 gap-1 px-2.5 text-xs"
-                                >
-                                    <Plus className="size-3.5" />
-                                    Baru
-                                </Button>
-                            )}
-                            {reports.map((r) => (
-                                <button
-                                    type="button"
-                                    key={r.id}
-                                    onClick={() => selectReport(r)}
-                                    className={cn(
-                                        'shrink-0 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors',
-                                        form.id === r.id
-                                            ? 'border-primary bg-primary text-primary-foreground'
-                                            : 'border-border bg-card text-foreground',
-                                    )}
-                                >
-                                    {r.hal || r.nomor || `#${r.id}`}
-                                </button>
-                            ))}
-                        </div>
-                    ) : (
+                    {/* List of reports: the phone list page, sidebar on Desktop */}
+                    {compact ? null : (
                         <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-xs">
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-bold tracking-wider text-foreground uppercase">
@@ -1502,7 +1532,7 @@ export default function LaporanGangguanInput({
                                     )}
                                 </div>
                                 <Button
-                                    onClick={handleSave}
+                                    onClick={() => handleSave()}
                                     disabled={saving || !isDirty}
                                     className="gap-2"
                                 >
@@ -1513,42 +1543,8 @@ export default function LaporanGangguanInput({
                         )}
                     </div>
                 </div>
-            </div>
+            </MobileFrame>
 
-            {compact && (
-                <StickyActionBar>
-                    {form.id !== null && (
-                        <Button
-                            variant="outline"
-                            onClick={() =>
-                                window.open(
-                                    laporanGangguanRoutes.pdf(form.id!).url,
-                                    '_blank',
-                                    'noopener',
-                                )
-                            }
-                            className="gap-1.5"
-                        >
-                            <Download className="size-4" />
-                            PDF
-                        </Button>
-                    )}
-                    {can_write && (
-                        <Button
-                            onClick={handleSave}
-                            disabled={saving || !isDirty}
-                            className="gap-1.5"
-                        >
-                            <Save className="size-4" />
-                            {saving
-                                ? 'Menyimpan…'
-                                : isDirty
-                                  ? 'Simpan'
-                                  : 'Tersimpan'}
-                        </Button>
-                    )}
-                </StickyActionBar>
-            )}
         </>
     );
 }

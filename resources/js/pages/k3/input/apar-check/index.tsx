@@ -1,5 +1,4 @@
 import { Head, router } from '@inertiajs/react';
-import { Save } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import DataGrid, { textEditor } from 'react-data-grid';
 import type { Column, ColumnOrColumnGroup } from 'react-data-grid';
@@ -14,7 +13,6 @@ import {
 } from '@/components/k3/mobile-page-shell';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -121,7 +119,7 @@ export default function AparCheckInput({
         },
     });
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             aparCheck.store().url,
@@ -142,7 +140,10 @@ export default function AparCheckInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -227,6 +228,17 @@ export default function AparCheckInput({
                             Belum ada APAR/APAB pada master.
                         </div>
                     ) : (
+                        <>
+                        <div className="flex justify-end">
+                            <K3MobilePdfButton
+                                input="apar-checks"
+                                query={{
+                                    unit_id: filters.unit_id,
+                                    month: filters.month,
+                                    year: filters.year,
+                                }}
+                            />
+                        </div>
                         <MobileRowEditor<GridRow>
                             rows={rows}
                             rowKey={(row) => row.extinguisher_id}
@@ -249,29 +261,16 @@ export default function AparCheckInput({
                                 );
                                 setDirty(true);
                             }}
-                        />
-                    )}
-
-                    <StickyActionBar>
-                        <K3MobilePdfButton
-                            input="apar-checks"
-                            query={{
-                                unit_id: filters.unit_id,
-                                month: filters.month,
-                                year: filters.year,
+                            flow={{
+                                onSave: (done) => save(done),
+                                saving,
+                                dirty: dirty,
+                                formSubtitle: 'Inspeksi APAR/APAB',
                             }}
                         />
-                        {can_write && (
-                            <Button
-                                onClick={save}
-                                disabled={saving || rows.length === 0}
-                                className="gap-1.5"
-                            >
-                                <Save className="size-4" />
-                                {saving ? 'Menyimpan…' : 'Simpan'}
-                            </Button>
-                        )}
-                    </StickyActionBar>
+                        </>
+                    )}
+
                 </div>
             ) : (
                 <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -290,7 +289,7 @@ export default function AparCheckInput({
                                 />
                                 {can_write && (
                                     <Button
-                                        onClick={save}
+                                        onClick={() => save()}
                                         disabled={saving || rows.length === 0}
                                     >
                                         {saving ? 'Menyimpan…' : 'Simpan'}

@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import type { Users } from 'lucide-react';
 import {
     CalendarDays,
+    CalendarRange,
     ChevronRight,
     FilePen,
     FileText,
@@ -39,6 +40,7 @@ type JadwalCard = {
 
 // Targets whose page is built; the rest render as "Sementara Disusun".
 const AVAILABLE_TARGETS: string[] = [
+    '/k3/input/time-frame',
     '/k3/jadwal/kegiatan-rutin',
     '/k3/jadwal/instruksi-kerja',
     '/k3/jadwal/patrol-check',
@@ -48,6 +50,14 @@ const AVAILABLE_TARGETS: string[] = [
 ];
 
 const JADWAL_LIST: JadwalCard[] = [
+    {
+        // Moved from Input K3 (user, 2026-11-27): a plan (rencana) & realisasi time line, for the Koordinator K3.
+        title: 'Time Frame Kinerja K3 & Lingkungan',
+        description:
+            'Rencana (RENC) dan realisasi (REAL) program kerja K3 & Lingkungan per hari dalam sebulan, beserta target dan kinerja.',
+        icon: CalendarRange,
+        target: '/k3/input/time-frame',
+    },
     {
         title: 'Jadwal On Call K3L',
         description:

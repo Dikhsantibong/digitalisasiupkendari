@@ -17,7 +17,12 @@ import {
 import { useState } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    EntryBadge,
+    MobileEntryCard,
+    MobileEntryList,
+    MobileFormScreen,
+} from '@/components/mobile/entry-flow';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -159,6 +164,8 @@ export default function HarProgram5s5rInput({
     const [saving, setSaving] = useState(false);
     const [exportingExcel, setExportingExcel] = useState(false);
     const compact = useCompactLayout();
+    // Phone: the list of filled shifts, or one shift's form on its own screen.
+    const [formOpen, setFormOpen] = useState(false);
     const [openProgram, setOpenProgram] = useState<string | null>(null);
     const { can } = usePermissions();
 
@@ -330,7 +337,7 @@ export default function HarProgram5s5rInput({
         markSlotDirty(slotKey);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         if (!activeSlot) {
             return;
         }
@@ -378,6 +385,7 @@ export default function HarProgram5s5rInput({
                     setUploads({});
                     setDirtySlots({});
                     setDirty(false);
+                    onSaved?.();
                 },
                 onFinish: () => setSaving(false),
             },
@@ -457,9 +465,58 @@ export default function HarProgram5s5rInput({
         return (
             <>
                 <Head title={`Program 5S 5R Pemeliharaan - ${unit.name}`} />
-                <div
-                    className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}
-                >
+                {!formOpen ? (
+                    <MobileEntryList
+                        heading={`Program 5S 5R ${periodLabel}`}
+                        count={savedSlots.length}
+                        empty={`Belum ada Program 5S 5R ${periodLabel}. Tekan Tambah untuk mengisi shift Anda.`}
+                        canWrite={can_write}
+                        onAdd={() => {
+                            const now = new Date();
+
+                            if (now.getFullYear() === filters.year && now.getMonth() + 1 === filters.month && days.some((d) => d.day === now.getDate())) {
+                                setSelectedDay(now.getDate());
+                            }
+
+                            if (user_context?.shift) {
+                                setSelectedShift(user_context.shift);
+                            }
+
+                            setFormOpen(true);
+                        }}
+                        onSave={() => save()}
+                        saving={saving}
+                        dirty={dirty}
+                    >
+                        {savedSlots.map((slot) => (
+                            <MobileEntryCard
+                                key={slot.slot_key}
+                                title={`${slot.weekday}, ${slot.date_label}`}
+                                subtitle={`Shift ${slot.shift}`}
+                                badge={
+                                    <EntryBadge tone={slot.rows.filter((r) => r.saved).length >= 5 ? 'done' : 'open'}>
+                                        {slot.rows.filter((r) => r.saved).length}/5 terisi
+                                    </EntryBadge>
+                                }
+                                meta={[['Foto eviden', `${slot.evidence.length} foto`]]}
+                                onClick={() => {
+                                    setSelectedDay(slot.day);
+                                    setSelectedShift(slot.shift);
+                                    setFormOpen(true);
+                                }}
+                            />
+                        ))}
+                    </MobileEntryList>
+                ) : (
+                    <MobileFormScreen
+                        title={activeSlot ? `${activeSlot.date_label} · Shift ${activeSlot.shift}` : 'Program 5S 5R'}
+                        subtitle="Program 5S 5R"
+                        onBack={() => setFormOpen(false)}
+                        canWrite={can_write}
+                        onSave={() => save(() => setFormOpen(false))}
+                        saving={saving}
+                        saveDisabled={!dirty}
+                    >
                     <DayStrip
                         items={days.map((d) => ({
                             key: String(d.day),
@@ -840,23 +897,7 @@ export default function HarProgram5s5rInput({
                             )}
                         </div>
                     )}
-                </div>
-
-                {can_write && (
-                    <StickyActionBar>
-                        <Button
-                            size="lg"
-                            onClick={save}
-                            disabled={saving || !dirty}
-                        >
-                            <Save className="size-4" />
-                            {saving
-                                ? 'Menyimpan…'
-                                : dirty
-                                  ? `Simpan Shift ${selectedShift}`
-                                  : 'Tersimpan'}
-                        </Button>
-                    </StickyActionBar>
+                    </MobileFormScreen>
                 )}
             </>
         );
@@ -902,7 +943,7 @@ export default function HarProgram5s5rInput({
                             </Button>
                             {can_write && (
                                 <Button
-                                    onClick={save}
+                                    onClick={() => save()}
                                     disabled={saving || !dirty}
                                     className="gap-1.5"
                                 >

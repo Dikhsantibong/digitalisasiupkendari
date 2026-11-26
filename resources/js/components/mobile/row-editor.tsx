@@ -1,7 +1,12 @@
-import { Check, ChevronDown, Trash2 } from 'lucide-react';
+import { Check, ChevronDown, Plus, Save, Trash2 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
+import {
+    MobileEntryCard,
+    MobileFormScreen,
+} from '@/components/mobile/entry-screen';
+import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -67,6 +72,23 @@ function resolveFieldSpan<R>(field: RowField<R>): 1 | 2 {
  * The labelled fields of one row (the open card of MobileRowEditor, or a row's
  * own form screen in the phone entry flow — MobileFormScreen).
  */
+/** The entry flow of MobileRowEditor (see its `flow` prop). */
+export type RowEditorFlow<R> = {
+    /** Saves the page's rows; calls `done` once saved. */
+    onSave: (done: () => void) => void;
+    saving: boolean;
+    dirty: boolean;
+    /** Appends a row (it then opens on its own screen); absent = no Tambah. */
+    onAdd?: () => void;
+    addLabel?: string;
+    /** false: the page draws the bottom bar itself (e.g. one bar for several grouped editors). */
+    bar?: boolean;
+    /** Rows shown on the list (default: all). */
+    isFilled?: (row: R) => boolean;
+    empty?: ReactNode;
+    formSubtitle?: ReactNode;
+};
+
 export function MobileRowFields<R>({
     row,
     index,
@@ -282,6 +304,7 @@ export function MobileRowEditor<R>({
     canWrite,
     rowKey,
     removeLabel = 'Hapus baris',
+    flow,
 }: {
     rows: R[];
     fields: RowField<R>[];
@@ -292,10 +315,152 @@ export function MobileRowEditor<R>({
     canWrite: boolean;
     rowKey?: (row: R, index: number) => string | number;
     removeLabel?: string;
+    /**
+     * The phone entry flow (user, 2026-11-27): the rows as cards with Tambah /
+     * Simpan pinned at the bottom; Tambah or a card opens the row on its own
+     * screen, whose Simpan saves (onSave) and returns to the list. Without it
+     * the rows stay collapsible cards edited in place.
+     */
+    flow?: RowEditorFlow<R>;
 }) {
     const [open, setOpen] = useState<number | null>(
-        rows.length === 1 ? 0 : null,
+        rows.length === 1 && !flow ? 0 : null,
     );
+    // Flow: the row opened on its own screen; a row just added (Tambah here or on the page) opens at once.
+    const [screenRow, setScreenRow] = useState<number | null>(null);
+    const [knownLength, setKnownLength] = useState(rows.length);
+    // The just-added row as it was created: left unchanged with Kembali, it is removed again.
+    const [addedRow, setAddedRow] = useState<{
+        index: number;
+        snapshot: string;
+    } | null>(null);
+
+    if (rows.length !== knownLength) {
+        setKnownLength(rows.length);
+
+        if (flow && rows.length === knownLength + 1) {
+            setScreenRow(rows.length - 1);
+            setAddedRow({
+                index: rows.length - 1,
+                snapshot: JSON.stringify(rows[rows.length - 1]),
+            });
+        }
+    }
+
+    const closeScreen = () => {
+        if (
+            onRemove &&
+            addedRow !== null &&
+            screenRow === addedRow.index &&
+            JSON.stringify(rows[addedRow.index]) === addedRow.snapshot
+        ) {
+            onRemove(addedRow.index);
+        }
+
+        setAddedRow(null);
+        setScreenRow(null);
+    };
+
+    if (flow) {
+        const filled = flow.isFilled ?? (() => true);
+        const listed = rows
+            .map((row, index) => ({ row, index }))
+            .filter(({ row }) => filled(row));
+        const current =
+            screenRow !== null && screenRow < rows.length
+                ? rows[screenRow]
+                : undefined;
+
+        return (
+            <>
+                {listed.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-border bg-card/60 p-8 text-center text-[13px] text-muted-foreground">
+                        {flow.empty ??
+                            'Belum ada data. Tekan Tambah untuk mengisi.'}
+                    </div>
+                ) : (
+                    <div className="flex flex-col gap-2">
+                        {listed.map(({ row, index }, position) => (
+                            <MobileEntryCard
+                                key={rowKey?.(row, index) ?? index}
+                                leading={position + 1}
+                                title={title(row, index)}
+                                subtitle={subtitle?.(row, index)}
+                                onClick={() => setScreenRow(index)}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                {canWrite && flow.bar !== false && (
+                    <StickyActionBar>
+                        {flow.onAdd && (
+                            <Button
+                                size="lg"
+                                variant="outline"
+                                onClick={flow.onAdd}
+                            >
+                                <Plus className="size-4" />
+                                {flow.addLabel ?? 'Tambah'}
+                            </Button>
+                        )}
+                        <Button
+                            size="lg"
+                            onClick={() => flow.onSave(() => undefined)}
+                            disabled={flow.saving || !flow.dirty}
+                        >
+                            <Save className="size-4" />
+                            {flow.saving
+                                ? 'Menyimpan…'
+                                : flow.dirty
+                                  ? 'Simpan'
+                                  : 'Tersimpan'}
+                        </Button>
+                    </StickyActionBar>
+                )}
+
+                {screenRow !== null && current !== undefined && (
+                    <MobileFormScreen
+                        title={title(current, screenRow)}
+                        subtitle={flow.formSubtitle}
+                        onBack={closeScreen}
+                        canWrite={canWrite}
+                        onSave={() =>
+                            flow.onSave(() => {
+                                setAddedRow(null);
+                                setScreenRow(null);
+                            })
+                        }
+                        saving={flow.saving}
+                        saveDisabled={!flow.dirty}
+                        onDelete={
+                            onRemove
+                                ? () => {
+                                      if (
+                                          window.confirm(
+                                              `${removeLabel}? Tekan Simpan untuk menyimpan perubahan.`,
+                                          )
+                                      ) {
+                                          onRemove(screenRow);
+                                          setScreenRow(null);
+                                      }
+                                  }
+                                : undefined
+                        }
+                        deleteLabel={removeLabel}
+                    >
+                        <MobileRowFields
+                            row={current}
+                            index={screenRow}
+                            fields={fields}
+                            onChange={onChange}
+                            canWrite={canWrite}
+                        />
+                    </MobileFormScreen>
+                )}
+            </>
+        );
+    }
 
     if (rows.length === 0) {
         return (
