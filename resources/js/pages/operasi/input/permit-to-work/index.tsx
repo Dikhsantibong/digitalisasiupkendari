@@ -9,6 +9,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import { EntryBadge, entryDate, MobileRowFlow } from '@/components/mobile/entry-flow';
 import { MobileRowEditor } from '@/components/mobile/row-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
@@ -152,7 +153,7 @@ export default function PermitToWorkInput({
         setIsDirty(true);
     };
 
-    const handleSave = () => {
+    const handleSave = (onSaved?: () => void) => {
         setSaving(true);
         router.post(
             permitToWorkRoutes.store().url,
@@ -164,7 +165,10 @@ export default function PermitToWorkInput({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setIsDirty(false),
+                onSuccess: () => {
+                    setIsDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -189,6 +193,57 @@ export default function PermitToWorkInput({
     const totalPtw = activeRows.length;
     const completionRate =
         totalPtw > 0 ? Math.round((totalClose / totalPtw) * 100) : 0;
+
+    if (compact) {
+        // Phone (user, 2026-11-26): the filled PTW as cards; Tambah / a card opens its form, Simpan saves & returns.
+        return (
+            <>
+                <Head title="Input Laporan Permit to Work (PTW)" />
+                <MobileRowFlow
+                    rows={rows}
+                    canWrite={can_write}
+                    isFilled={filled}
+                    rowKey={(row) => row.no_urut}
+                    heading="Permit to Work"
+                    empty="Belum ada izin kerja (PTW) periode ini. Tekan Tambah untuk mengisi."
+                    title={(row) => row.uraian || 'Izin kerja'}
+                    badge={(row) => <EntryBadge tone={row.status === 'close' ? 'done' : 'open'}>{row.status}</EntryBadge>}
+                    meta={(row) => [['Tanggal', entryDate(row.tanggal)]]}
+                    formTitle={(row, index, isNew) => (isNew ? 'Izin kerja baru' : `PTW #${index + 1}`)}
+                    formSubtitle="Permit to Work"
+                    onChange={(index, key, value) => handleRowChange(index, key, value)}
+                    onRemove={(index) => handleClearRow(index)}
+                    removeLabel="Hapus izin kerja ini"
+                    onAdd={() => {
+                        const blank = rows.findIndex((row) => !filled(row));
+
+                        if (blank >= 0) {
+                            return blank;
+                        }
+
+                        handleAddRow();
+
+                        return rows.length;
+                    }}
+                    onSave={(done) => handleSave(done)}
+                    saving={saving}
+                    dirty={isDirty}
+                    fields={[
+                        { key: 'uraian', label: 'Uraian pekerjaan', type: 'textarea' },
+                        { key: 'tanggal', label: 'Tanggal', type: 'date' },
+                        {
+                            key: 'status',
+                            label: 'Status',
+                            type: 'select',
+                            options: ['OPEN', 'CLOSE'],
+                            parse: (value) => (value === 'CLOSE' ? 'close' : 'open'),
+                            display: (row) => row.status.toUpperCase(),
+                        },
+                    ]}
+                />
+            </>
+        );
+    }
 
     return (
         <>
@@ -216,7 +271,7 @@ export default function PermitToWorkInput({
                                         Tambah Baris
                                     </Button>
                                     <Button
-                                        onClick={handleSave}
+                                        onClick={() => handleSave()}
                                         disabled={saving || !isDirty}
                                         className="gap-2"
                                     >
@@ -497,7 +552,7 @@ export default function PermitToWorkInput({
                                     Tambah Baris
                                 </Button>
                                 <Button
-                                    onClick={handleSave}
+                                    onClick={() => handleSave()}
                                     disabled={saving || !isDirty}
                                     size="sm"
                                     className="gap-2"
@@ -516,7 +571,7 @@ export default function PermitToWorkInput({
                         <Plus className="size-4" />
                         Tambah
                     </Button>
-                    <Button size="lg" onClick={handleSave} disabled={saving || !isDirty}>
+                    <Button size="lg" onClick={() => handleSave()} disabled={saving || !isDirty}>
                         <Save className="size-4" />
                         {saving ? 'Menyimpan…' : 'Simpan'}
                     </Button>

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
+import { EntryBadge, MobileRowFlow } from '@/components/mobile/entry-flow';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
@@ -261,7 +262,7 @@ return;
     };
 
     // Save
-    const handleSave = () => {
+    const handleSave = (onSaved?: () => void) => {
         if (!can_write) {
 return;
 }
@@ -275,12 +276,16 @@ return;
                 tanggal: filters.tanggal,
                 machine_id: filters.machine_id,
                 nama_mesin: filters.nama_mesin,
-                rows,
+                // A kegiatan added on the phone and left empty is not sent.
+                rows: rows.filter((row) => row.kegiatan.trim() !== ''),
                 catatan,
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -454,6 +459,106 @@ return SPECS.label;
         await downloadWorkbook(workbook, filename);
     };
 
+    if (compact) {
+        // Phone (user, 2026-11-26): the kegiatan of the checklist as cards; Tambah / a card opens its form on
+        // its own screen, Simpan saves the checklist and returns to the list.
+        const sections = Array.from(
+            new Set(['PERSIAPAN', ...rows.map((row) => row.section).filter(Boolean)]),
+        );
+
+        return (
+            <>
+                <Head
+                    title={`Checklist Commissioning Test Mesin - ${filters.nama_mesin} - ${unit.name}`}
+                />
+                <MobileRowFlow
+                    rows={rows}
+                    canWrite={can_write}
+                    isFilled={(row) => row.kegiatan.trim() !== ''}
+                    rowKey={(row, index) => `${row.no}-${index}`}
+                    heading={`Kegiatan ${filters.nama_mesin}`}
+                    empty="Belum ada kegiatan commissioning. Tekan Tambah untuk mengisi."
+                    title={(row) => row.kegiatan}
+                    subtitle={(row) => row.section}
+                    badge={(row) =>
+                        row.status ? (
+                            <EntryBadge
+                                tone={
+                                    row.status === 'ABNORMAL' || row.status === 'TIDAK SIAP OPERASI'
+                                        ? 'danger'
+                                        : 'done'
+                                }
+                            >
+                                {row.status}
+                            </EntryBadge>
+                        ) : (
+                            <EntryBadge>Belum</EntryBadge>
+                        )
+                    }
+                    meta={(row) => [
+                        ['PIC', row.pic],
+                        ['Paraf', row.paraf],
+                    ]}
+                    formTitle={(row, index, isNew) => (isNew ? 'Kegiatan baru' : row.kegiatan || 'Kegiatan')}
+                    formSubtitle={`${filters.nama_mesin} · ${filters.tanggal}`}
+                    onChange={(index, key, value) =>
+                        handleUpdateRow(index, key, String(value ?? ''))
+                    }
+                    onRemove={(index) => handleDeleteRow(index)}
+                    removeLabel="Hapus kegiatan ini"
+                    onAdd={() => {
+                        setRows((prev) => [
+                            ...prev,
+                            {
+                                no: prev.length + 1,
+                                section: 'PERSIAPAN',
+                                kegiatan: '',
+                                status: '',
+                                pic: '',
+                                paraf: '',
+                            },
+                        ]);
+
+                        return rows.length;
+                    }}
+                    onSave={(done) => handleSave(done)}
+                    saving={saving}
+                    dirty={dirty}
+                    above={
+                        <div className="grid grid-cols-2 gap-2">
+                            <OperasiSelect
+                                label="Mesin"
+                                value={filters.nama_mesin}
+                                onChange={(value) => {
+                                    const matched = options.machines.find((m) => m.name === value);
+                                    visit({ nama_mesin: value, machine_id: matched ? matched.id : null });
+                                }}
+                                options={options.machines.map((m) => ({ value: m.name, label: m.name }))}
+                                className="w-full"
+                            />
+                            <label className="flex flex-col gap-1.5 text-xs font-medium">
+                                Tanggal Kegiatan
+                                <Input
+                                    type="date"
+                                    value={filters.tanggal}
+                                    onChange={(e) => visit({ tanggal: e.target.value })}
+                                    className="h-9 text-xs"
+                                />
+                            </label>
+                        </div>
+                    }
+                    fields={[
+                        { key: 'section', label: 'Bagian', type: 'dropdown', options: sections, span: 2 },
+                        { key: 'kegiatan', label: 'Kegiatan', type: 'textarea' },
+                        { key: 'status', label: 'Status kesiapan', type: 'select', options: [...STATUS_LIST] },
+                        { key: 'pic', label: 'PIC', type: 'text', span: 1 },
+                        { key: 'paraf', label: 'Paraf', type: 'text', span: 1 },
+                    ]}
+                />
+            </>
+        );
+    }
+
     return (
         <>
             <Head
@@ -527,7 +632,7 @@ return SPECS.label;
                                 </Button>
                                 <Button
                                     size="sm"
-                                    onClick={handleSave}
+                                    onClick={() => handleSave()}
                                     disabled={!dirty || saving}
                                     className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
                                 >

@@ -14,6 +14,10 @@ import type { FormEvent } from 'react';
 import InputError from '@/components/input-error';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import {
+    MobileEntryList,
+    MobileFormScreen,
+} from '@/components/mobile/entry-flow';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -37,6 +41,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { useCompactLayout } from '@/hooks/use-mobile-module';
 import { dashboard } from '@/routes';
 import pengajuan from '@/routes/operator/pengajuan';
 import type { IdName, Tone } from '@/types';
@@ -210,6 +215,9 @@ export default function OperatorPengajuan({
     const [decision, setDecision] = useState<Decision>(null);
     const [note, setNote] = useState('');
     const [processing, setProcessing] = useState(false);
+    const compact = useCompactLayout();
+    // Phone: the new-request form on its own screen.
+    const [formOpen, setFormOpen] = useState(false);
 
     const tukar = form.data.type === 'tukar_shift';
     const izinQuotaUsed =
@@ -241,6 +249,7 @@ export default function OperatorPengajuan({
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
+                setFormOpen(false);
                 form.reset(
                     'reason',
                     'attachment',
@@ -288,57 +297,9 @@ export default function OperatorPengajuan({
     const actionable = requests.filter((r) => r.can.respond || r.can.approve);
     const others = requests.filter((r) => !(r.can.respond || r.can.approve));
 
-    return (
-        <>
-            <Head title="Pengajuan Absensi" />
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                <PageHeader
-                    title="Pengajuan Absensi"
-                    description="Ajukan izin, sakit, cuti, atau tukar shift. Tukar shift dikonfirmasi rekan pengganti, lalu pengajuan operator disetujui TL Operasi (atau Project Leader / Koordinator Operasi) dan pengajuan HAR disetujui TL Pemeliharaan — setelah disetujui, Jadwal Shift ikut berubah otomatis."
-                />
-
-                <Card className="grid grid-cols-2 gap-3 p-3 py-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end">
-                    {sees_all && options.units.length > 1 && (
-                        <OperasiSelect
-                            label="Unit"
-                            value={String(filters.unit_id)}
-                            onChange={(v) => visit({ unit_id: Number(v) })}
-                            options={options.units.map((u) => ({
-                                value: String(u.id),
-                                label: u.name,
-                            }))}
-                            className="w-full sm:w-56"
-                            labelClassName="col-span-2 sm:col-span-1"
-                        />
-                    )}
-                    <OperasiSelect
-                        label="Bulan"
-                        value={String(filters.month)}
-                        onChange={(v) => visit({ month: Number(v) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({
-                            value: String(index + 1),
-                            label,
-                        }))}
-                        className="w-full sm:w-40"
-                    />
-                    <OperasiSelect
-                        label="Tahun"
-                        value={String(filters.year)}
-                        onChange={(v) => visit({ year: Number(v) })}
-                        options={options.years.map((y) => ({
-                            value: String(y),
-                            label: String(y),
-                        }))}
-                        className="w-full sm:w-28"
-                    />
-                    <p className="col-span-2 self-center text-[12px] text-muted-foreground sm:ml-auto">
-                        {unit.name}
-                    </p>
-                </Card>
-
-                {can_submit && me && (
-                    <Card className="gap-0 p-0 py-0">
+    const requestForm = (
                         <form
+                            id="pengajuan-form"
                             onSubmit={submit}
                             className="flex flex-col gap-3 p-4"
                         >
@@ -559,6 +520,7 @@ export default function OperatorPengajuan({
                                 </label>
                             )}
 
+                            {!compact && (
                             <div className="flex justify-end">
                                 <Button
                                     type="submit"
@@ -578,66 +540,11 @@ export default function OperatorPengajuan({
                                         : 'Kirim Pengajuan'}
                                 </Button>
                             </div>
+                            )}
                         </form>
-                    </Card>
-                )}
+    );
 
-                {!can_submit && !sees_all && (
-                    <p className="rounded-md border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground">
-                        Akun Anda belum terdaftar di Jadwal Shift unit ini, jadi
-                        belum dapat membuat pengajuan.
-                    </p>
-                )}
-
-                {actionable.length > 0 && (
-                    <section className="flex flex-col gap-2">
-                        <h2 className="text-sm font-semibold text-foreground">
-                            Perlu tindakan Anda ({actionable.length})
-                        </h2>
-                        {actionable.map((r) => (
-                            <RequestCard
-                                key={r.id}
-                                request={r}
-                                onAccept={accept}
-                                onDecide={(action) =>
-                                    setDecision({ request: r, action })
-                                }
-                            />
-                        ))}
-                    </section>
-                )}
-
-                <section className="flex flex-col gap-2">
-                    <h2 className="text-sm font-semibold text-foreground">
-                        {sees_all ? 'Pengajuan unit' : 'Pengajuan saya'} —{' '}
-                        {OPERASI_MONTHS[filters.month - 1]} {filters.year}
-                    </h2>
-                    {others.length === 0 ? (
-                        <p className="rounded-md border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">
-                            Belum ada pengajuan pada periode ini.
-                        </p>
-                    ) : (
-                        others.map((r) => (
-                            <RequestCard
-                                key={r.id}
-                                request={r}
-                                onAccept={accept}
-                                onDecide={(action) =>
-                                    setDecision({ request: r, action })
-                                }
-                            />
-                        ))
-                    )}
-                </section>
-
-                {can_approve && (
-                    <p className="text-[12px] text-muted-foreground">
-                        Anda dapat menyetujui pengajuan di unit ini. Pengajuan
-                        Anda sendiri disetujui oleh atasan lain.
-                    </p>
-                )}
-            </div>
-
+    const decisionDialog = (
             <Dialog
                 open={decision !== null}
                 onOpenChange={(open) => !open && setDecision(null)}
@@ -725,6 +632,185 @@ export default function OperatorPengajuan({
                     )}
                 </DialogContent>
             </Dialog>
+    );
+
+    if (compact) {
+        // Phone (user, 2026-11-26): the month's requests as cards; Tambah opens the new request on its own
+        // screen, Simpan sends it and returns to the list.
+        const cards = (list: AttendanceRequestRow[]) =>
+            list.map((r) => (
+                <RequestCard
+                    key={r.id}
+                    request={r}
+                    onAccept={accept}
+                    onDecide={(action) => setDecision({ request: r, action })}
+                />
+            ));
+
+        return (
+            <>
+                <Head title="Pengajuan Absensi" />
+                <MobileEntryList
+                    count={requests.length}
+                    empty={
+                        can_submit
+                            ? `Belum ada pengajuan ${OPERASI_MONTHS[filters.month - 1]} ${filters.year}. Tekan Tambah untuk mengajukan izin, sakit, cuti, atau tukar shift.`
+                            : 'Akun Anda belum terdaftar di Jadwal Shift unit ini, jadi belum dapat membuat pengajuan.'
+                    }
+                    canWrite={can_submit && me !== null}
+                    onAdd={() => setFormOpen(true)}
+                    onSave={() => undefined}
+                >
+                    {actionable.length > 0 && (
+                        <p className="px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            Perlu tindakan Anda · {actionable.length}
+                        </p>
+                    )}
+                    {cards(actionable)}
+                    {others.length > 0 && (
+                        <p className="mt-1 px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                            {sees_all ? 'Pengajuan unit' : 'Pengajuan saya'} · {OPERASI_MONTHS[filters.month - 1]} {filters.year} · {others.length}
+                        </p>
+                    )}
+                    {cards(others)}
+                </MobileEntryList>
+
+                {formOpen && can_submit && me && (
+                    <MobileFormScreen
+                        title="Pengajuan baru"
+                        subtitle="Izin, sakit, cuti, atau tukar shift"
+                        onBack={() => setFormOpen(false)}
+                        formId="pengajuan-form"
+                        saving={form.processing}
+                        saveDisabled={
+                    form.processing ||
+                    izinQuotaUsed ||
+                    (tukar
+                    ? !form.data.substitute_employee_id
+                    : form.data.reason.trim().length < 3)
+                        }
+                        saveLabel="Kirim"
+                    >
+                        {requestForm}
+                    </MobileFormScreen>
+                )}
+
+                {decisionDialog}
+            </>
+        );
+    }
+
+    return (
+        <>
+            <Head title="Pengajuan Absensi" />
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+                <PageHeader
+                    title="Pengajuan Absensi"
+                    description="Ajukan izin, sakit, cuti, atau tukar shift. Tukar shift dikonfirmasi rekan pengganti, lalu pengajuan operator disetujui TL Operasi (atau Project Leader / Koordinator Operasi) dan pengajuan HAR disetujui TL Pemeliharaan — setelah disetujui, Jadwal Shift ikut berubah otomatis."
+                />
+
+                <Card className="grid grid-cols-2 gap-3 p-3 py-3 sm:flex sm:flex-row sm:flex-wrap sm:items-end">
+                    {sees_all && options.units.length > 1 && (
+                        <OperasiSelect
+                            label="Unit"
+                            value={String(filters.unit_id)}
+                            onChange={(v) => visit({ unit_id: Number(v) })}
+                            options={options.units.map((u) => ({
+                                value: String(u.id),
+                                label: u.name,
+                            }))}
+                            className="w-full sm:w-56"
+                            labelClassName="col-span-2 sm:col-span-1"
+                        />
+                    )}
+                    <OperasiSelect
+                        label="Bulan"
+                        value={String(filters.month)}
+                        onChange={(v) => visit({ month: Number(v) })}
+                        options={OPERASI_MONTHS.map((label, index) => ({
+                            value: String(index + 1),
+                            label,
+                        }))}
+                        className="w-full sm:w-40"
+                    />
+                    <OperasiSelect
+                        label="Tahun"
+                        value={String(filters.year)}
+                        onChange={(v) => visit({ year: Number(v) })}
+                        options={options.years.map((y) => ({
+                            value: String(y),
+                            label: String(y),
+                        }))}
+                        className="w-full sm:w-28"
+                    />
+                    <p className="col-span-2 self-center text-[12px] text-muted-foreground sm:ml-auto">
+                        {unit.name}
+                    </p>
+                </Card>
+
+                {can_submit && me && (
+                    <Card className="gap-0 p-0 py-0">
+                        {requestForm}
+                    </Card>
+                )}
+
+                {!can_submit && !sees_all && (
+                    <p className="rounded-md border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground">
+                        Akun Anda belum terdaftar di Jadwal Shift unit ini, jadi
+                        belum dapat membuat pengajuan.
+                    </p>
+                )}
+
+                {actionable.length > 0 && (
+                    <section className="flex flex-col gap-2">
+                        <h2 className="text-sm font-semibold text-foreground">
+                            Perlu tindakan Anda ({actionable.length})
+                        </h2>
+                        {actionable.map((r) => (
+                            <RequestCard
+                                key={r.id}
+                                request={r}
+                                onAccept={accept}
+                                onDecide={(action) =>
+                                    setDecision({ request: r, action })
+                                }
+                            />
+                        ))}
+                    </section>
+                )}
+
+                <section className="flex flex-col gap-2">
+                    <h2 className="text-sm font-semibold text-foreground">
+                        {sees_all ? 'Pengajuan unit' : 'Pengajuan saya'} —{' '}
+                        {OPERASI_MONTHS[filters.month - 1]} {filters.year}
+                    </h2>
+                    {others.length === 0 ? (
+                        <p className="rounded-md border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">
+                            Belum ada pengajuan pada periode ini.
+                        </p>
+                    ) : (
+                        others.map((r) => (
+                            <RequestCard
+                                key={r.id}
+                                request={r}
+                                onAccept={accept}
+                                onDecide={(action) =>
+                                    setDecision({ request: r, action })
+                                }
+                            />
+                        ))
+                    )}
+                </section>
+
+                {can_approve && (
+                    <p className="text-[12px] text-muted-foreground">
+                        Anda dapat menyetujui pengajuan di unit ini. Pengajuan
+                        Anda sendiri disetujui oleh atasan lain.
+                    </p>
+                )}
+            </div>
+
+            {decisionDialog}
         </>
     );
 }

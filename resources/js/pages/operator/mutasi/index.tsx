@@ -20,9 +20,9 @@ import {
     X,
 } from 'lucide-react';
 import { useState } from 'react';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { EntryBadge, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { SignaturePad } from '@/components/signature-pad';
@@ -232,6 +232,10 @@ function MutasiForm({
     patrol_findings = [],
 }: Props) {
     const compact = useCompactLayout();
+    // Phone: a sheet opens on its own screen (?form=1); without it the page is the list of sheets.
+    const formOpen =
+        typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('form') === '1';
     const [mesin, setMesin] = useState<Mesin[]>(() =>
         mutasi.mesin.map((m) => ({ ...m, level_bbm: numberOrNull(m.level_bbm), tambah_pelumas: numberOrNull(m.tambah_pelumas) })),
     );
@@ -265,7 +269,7 @@ function MutasiForm({
 
     const touch = () => setDirty(true);
 
-    const go = (query: Partial<Props['filters']>) => {
+    const go = (query: Partial<Props['filters']> & { form?: 1 | null }) => {
         if (
             dirty &&
             !window.confirm('Perubahan belum disimpan akan hilang. Lanjutkan?')
@@ -273,7 +277,8 @@ function MutasiForm({
             return;
         }
 
-        router.get(mutasiRoutes.index().url, { ...filters, ...query });
+        // The phone form screen stays open while another date / shift is picked.
+        router.get(mutasiRoutes.index().url, { ...filters, ...(formOpen ? { form: 1 } : {}), ...query });
     };
 
     const setMesinField = (index: number, patch: Partial<Mesin>) => {
@@ -376,14 +381,70 @@ function MutasiForm({
     const canHandOver =
         !!reguPenyerah && (!!paraf || !!mutasi.paraf_penyerah_url);
 
+    if (compact && !formOpen) {
+        // Phone (user, 2026-11-26): the unit's sheets as cards; Tambah opens the current shift's sheet,
+        // a card opens that sheet, each on its own screen (?form=1); saving returns to this list.
+        return (
+            <>
+                <Head title={`Lembar Mutasi Operator - ${unit.name}`} />
+                <MobileEntryList
+                    heading="Lembar mutasi"
+                    count={riwayat.length}
+                    empty="Belum ada lembar mutasi. Tekan Tambah untuk mengisi lembar shift Anda."
+                    canWrite={can_write}
+                    onAdd={() => router.get(mutasiRoutes.index().url, { unit_id: filters.unit_id, form: 1 })}
+                    onSave={() => undefined}
+                >
+                    {riwayat.map((r) => (
+                        <MobileEntryCard
+                            key={r.id}
+                            title={dateLabel(r.tanggal)}
+                            subtitle={`Shift ${r.shift.charAt(0).toUpperCase()}${r.shift.slice(1)}`}
+                            badge={
+                                <EntryBadge tone={r.status === 'diterima' ? 'done' : r.status === 'diserahkan' ? 'info' : 'open'}>
+                                    {r.status}
+                                </EntryBadge>
+                            }
+                            meta={[
+                                ['Penyerah', r.regu_penyerah ? `Regu ${r.regu_penyerah}` : ''],
+                                ['Penerima', r.regu_penerima ? `Regu ${r.regu_penerima}` : ''],
+                            ]}
+                            onClick={() => go({ tanggal: r.tanggal, shift: r.shift, form: 1 })}
+                        />
+                    ))}
+                </MobileEntryList>
+            </>
+        );
+    }
+
     return (
         <>
             <Head title={`Lembar Mutasi Operator - ${unit.name}`} />
-            <div
+            <MutasiFrame
+                phone={compact}
                 className={cn(
                     'flex flex-1 flex-col gap-4 p-4 md:p-6',
                     compact && can_write && 'pb-28',
                 )}
+                screen={{
+                    title: `Mutasi ${dateLabel(filters.tanggal)}`,
+                    subtitle: `Shift ${shiftInfo?.label ?? filters.shift} · ${status.label}`,
+                    onBack: () => go({ form: null }),
+                    canWrite: can_write,
+                    onSave: () => save(false),
+                    saving,
+                    extraAction: can_write ? (
+                        <Button
+                            size="lg"
+                            onClick={() => save(true)}
+                            disabled={saving || !canHandOver}
+                            className="gap-1.5"
+                        >
+                            <Send className="size-4" />
+                            Serahkan
+                        </Button>
+                    ) : undefined,
+                }}
             >
                 <PageHeader
                     title="Lembar Mutasi Operator"
@@ -1623,7 +1684,7 @@ function MutasiForm({
                     </div>
                 )}
 
-                {riwayat.length > 0 && (
+                {!compact && riwayat.length > 0 && (
                     <Section
                         icon={<History className="size-4" />}
                         title="Riwayat Lembar"
@@ -1672,31 +1733,8 @@ function MutasiForm({
                         </div>
                     </Section>
                 )}
-            </div>
+            </MutasiFrame>
 
-            {compact && can_write && (
-                <StickyActionBar>
-                    <div className="grid w-full grid-cols-2 gap-2">
-                        <Button
-                            variant="outline"
-                            onClick={() => save(false)}
-                            disabled={saving}
-                            className="h-11 gap-1.5"
-                        >
-                            <Save className="size-4" />
-                            Simpan
-                        </Button>
-                        <Button
-                            onClick={() => save(true)}
-                            disabled={saving || !canHandOver}
-                            className="h-11 gap-1.5"
-                        >
-                            <Send className="size-4" />
-                            Serahkan
-                        </Button>
-                    </div>
-                </StickyActionBar>
-            )}
         </>
     );
 }
@@ -1955,3 +1993,25 @@ OperatorMutasiPage.layout = {
         { title: 'Lembar Mutasi Operator', href: mutasiRoutes.index() },
     ],
 };
+
+/**
+ * The sheet's frame: the page body on desktop, the phone form screen (own top
+ * bar, Kembali / Simpan / Serahkan at the bottom) inside the mobile shell.
+ */
+function MutasiFrame({
+    phone,
+    className,
+    screen,
+    children,
+}: {
+    phone: boolean;
+    className: string;
+    screen: Omit<ComponentProps<typeof MobileFormScreen>, 'children'>;
+    children: ReactNode;
+}) {
+    if (phone) {
+        return <MobileFormScreen {...screen}>{children}</MobileFormScreen>;
+    }
+
+    return <div className={className}>{children}</div>;
+}

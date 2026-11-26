@@ -14,7 +14,12 @@ import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    EntryBadge,
+    MobileEntryCard,
+    MobileEntryList,
+    MobileFormScreen,
+} from '@/components/mobile/entry-flow';
 import { EvidencePhotoField } from '@/components/operasi/evidence-photo-field';
 import {
     OPERASI_MONTHS,
@@ -241,6 +246,8 @@ function MonthlyPatrolCheckView({
     const [saving, setSaving] = useState(false);
     const compact = useCompactLayout();
     const { can } = usePermissions();
+    // Phone: the checked days as cards, or one day's check on its own screen.
+    const [formOpen, setFormOpen] = useState(false);
     // Phone layout edits one date at a time; start on today when the month is shown.
     const [selectedDay, setSelectedDay] = useState<number>(() => {
         const now = new Date();
@@ -493,7 +500,7 @@ function MonthlyPatrolCheckView({
     };
 
     // Save
-    const handleSave = () => {
+    const handleSave = (onSaved?: () => void) => {
         if (!can_write) {
             return;
         }
@@ -517,7 +524,10 @@ function MonthlyPatrolCheckView({
             {
                 forceFormData: true,
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onFinish: () => setSaving(false),
             },
         );
@@ -873,33 +883,84 @@ function MonthlyPatrolCheckView({
         };
         const shiftValue = (map: Record<string, string>) =>
             map[String(day.day)] || '';
+        const checkedDays = daysInfo.filter((d) => items.some((item) => item.checks?.[String(d.day)]));
 
         return (
             <>
                 <Head
                     title={`Patrol Check Mesin - ${filters.nama_mesin} - ${unit.name}`}
                 />
-                <div
-                    className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}
-                >
-                    <OperasiSelect
-                        label="Mesin"
-                        value={filters.nama_mesin}
-                        onChange={(value) => {
-                            const matched = options.machines.find(
-                                (m) => m.name === value,
-                            );
-                            visit({
-                                nama_mesin: value,
-                                machine_id: matched ? matched.id : null,
-                            });
+                {!formOpen ? (
+                    <MobileEntryList
+                        heading={`Patrol check ${periodLabel}`}
+                        count={checkedDays.length}
+                        empty={`Belum ada patrol check ${filters.nama_mesin || ''} ${periodLabel}. Tekan Tambah untuk mengisi.`}
+                        canWrite={can_write}
+                        onAdd={() => {
+                            const now = new Date();
+
+                            if (now.getFullYear() === filters.year && now.getMonth() + 1 === filters.month) {
+                                setSelectedDay(Math.min(now.getDate(), daysInMonth));
+                            }
+
+                            setFormOpen(true);
                         }}
-                        options={options.machines.map((m) => ({
-                            value: m.name,
-                            label: m.name,
-                        }))}
-                        className="w-full"
-                    />
+                        onSave={() => handleSave()}
+                        saving={saving}
+                        dirty={dirty}
+                        above={
+                                <OperasiSelect
+                                    label="Mesin"
+                                    value={filters.nama_mesin}
+                                    onChange={(value) => {
+                                        const matched = options.machines.find(
+                                            (m) => m.name === value,
+                                        );
+                                        visit({
+                                            nama_mesin: value,
+                                            machine_id: matched ? matched.id : null,
+                                        });
+                                    }}
+                                    options={options.machines.map((m) => ({
+                                        value: m.name,
+                                        label: m.name,
+                                    }))}
+                                    className="w-full"
+                                />
+                        }
+                    >
+                        {checkedDays.map((d) => {
+                            const key = String(d.day);
+                            const trouble = items.filter((item) => item.checks?.[key] === 'T').length;
+                            const normal = items.filter((item) => item.checks?.[key] === 'N').length;
+
+                            return (
+                                <MobileEntryCard
+                                    key={d.day}
+                                    title={`${d.day_name}, ${d.day} ${periodLabel}`}
+                                    badge={<EntryBadge tone={trouble > 0 ? 'danger' : 'done'}>{trouble > 0 ? `${trouble} T` : 'Normal'}</EntryBadge>}
+                                    meta={[
+                                        ['Normal', `${normal} item`],
+                                        ['Petugas', [shiftPagi[key], shiftSore[key], shiftMalam[key]].filter(Boolean).join(' / ')],
+                                    ]}
+                                    onClick={() => {
+                                        setSelectedDay(d.day);
+                                        setFormOpen(true);
+                                    }}
+                                />
+                            );
+                        })}
+                    </MobileEntryList>
+                ) : (
+                    <MobileFormScreen
+                        title={day ? `${day.day_name}, ${day.day} ${periodLabel}` : 'Patrol check'}
+                        subtitle={`Patrol Check · ${filters.nama_mesin}`}
+                        onBack={() => setFormOpen(false)}
+                        canWrite={can_write}
+                        onSave={() => handleSave(() => setFormOpen(false))}
+                        saving={saving}
+                        saveDisabled={!dirty || !filters.nama_mesin}
+                    >
 
                     <DayStrip
                         items={daysInfo.map((d) => ({
@@ -1098,23 +1159,7 @@ function MonthlyPatrolCheckView({
                             placeholder="Catatan teknis atau temuan selama patrol check…"
                         />
                     </label>
-                </div>
-
-                {can_write && (
-                    <StickyActionBar>
-                        <Button
-                            size="lg"
-                            onClick={handleSave}
-                            disabled={saving || !dirty || !filters.nama_mesin}
-                        >
-                            <Save className="size-4" />
-                            {saving
-                                ? 'Menyimpan…'
-                                : dirty
-                                  ? 'Simpan'
-                                  : 'Tersimpan'}
-                        </Button>
-                    </StickyActionBar>
+                    </MobileFormScreen>
                 )}
             </>
         );
@@ -1194,7 +1239,7 @@ function MonthlyPatrolCheckView({
                                 </Button>
                                 <Button
                                     size="sm"
-                                    onClick={handleSave}
+                                    onClick={() => handleSave()}
                                     disabled={!dirty || saving}
                                     className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
                                 >

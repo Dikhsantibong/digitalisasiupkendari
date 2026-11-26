@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Save } from 'lucide-react';
 import { useState } from 'react';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { EntryBadge, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -86,6 +86,8 @@ export function OpnameSheetPage({
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    // Phone: the day's opname as a card, or its form on its own screen.
+    const [formOpen, setFormOpen] = useState(false);
 
     const valueOf = (section: string, item: string, field: string) => draft[section]?.[item]?.[field] ?? '';
     const setValue = (section: string, item: string, field: string, value: string) => {
@@ -104,7 +106,7 @@ export function OpnameSheetPage({
         router.get(indexUrl, { ...filters, ...patch }, { preserveScroll: true });
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         setErrors({});
         router.post(
@@ -121,7 +123,10 @@ export function OpnameSheetPage({
             },
             {
                 preserveScroll: true,
-                onSuccess: () => setDirty(false),
+                onSuccess: () => {
+                    setDirty(false);
+                    onSaved?.();
+                },
                 onError: (errs) => setErrors(errs),
                 onFinish: () => setSaving(false),
             },
@@ -233,14 +238,55 @@ export function OpnameSheetPage({
     );
 
     if (compact) {
+        // Phone (user, 2026-11-26): the day's opname as a card; Tambah / the card opens the sheet on its own
+        // screen, Simpan saves and returns to the list.
+        const itemCount = sections.reduce((sum, section) => sum + section.items.length, 0);
+        const filledCount = sections.reduce(
+            (sum, section) => sum + section.items.filter((item) => Object.values(draft[section.key]?.[item.key] ?? {}).some((value) => value.trim() !== '')).length,
+            0,
+        );
+
         return (
             <>
                 <Head title={title} />
-                <div className={cn('flex flex-col gap-3 p-4', can_write && 'pb-28')}>
-                    <p className="px-0.5 text-[13px] font-semibold text-foreground">
-                        {tanggal_label}
-                        {saved?.at && <span className="ml-1 font-normal text-muted-foreground">· tersimpan {saved.at}</span>}
-                    </p>
+                <MobileEntryList
+                    heading={title}
+                    count={saved ? 1 : 0}
+                    empty={`Belum ada ${title} ${tanggal_label}. Tekan Tambah untuk mengisi.`}
+                    canWrite={can_write}
+                    onAdd={() => setFormOpen(true)}
+                    onSave={() => save()}
+                    saving={saving}
+                    dirty={dirty}
+                    above={
+                        <label className="flex flex-col gap-1.5 text-[12px] font-medium text-muted-foreground">
+                            Tanggal opname
+                            <Input type="date" value={filters.tanggal} onChange={(e) => e.target.value && visit({ tanggal: e.target.value })} className="h-10" />
+                        </label>
+                    }
+                >
+                    <MobileEntryCard
+                        title={tanggal_label}
+                        subtitle={saved?.at ? `Tersimpan ${saved.at}${saved.by ? ` oleh ${saved.by}` : ''}` : undefined}
+                        badge={<EntryBadge tone="done">Tersimpan</EntryBadge>}
+                        meta={[
+                            ['Terisi', `${filledCount} / ${itemCount} baris`],
+                            ...(kwh ? ([['kWh Netto', kwh.find((row) => row.label.startsWith('kWh Netto'))?.value ?? '']] as [string, string][]) : []),
+                        ]}
+                        onClick={() => setFormOpen(true)}
+                    />
+                </MobileEntryList>
+
+                {formOpen && (
+                    <MobileFormScreen
+                        title={title}
+                        subtitle={tanggal_label}
+                        onBack={() => setFormOpen(false)}
+                        canWrite={can_write}
+                        onSave={() => save(() => setFormOpen(false))}
+                        saving={saving}
+                        saveDisabled={!dirty}
+                    >
 
                     {sections.map((section) => (
                         <div key={section.key} className="flex flex-col gap-2">
@@ -275,15 +321,7 @@ export function OpnameSheetPage({
 
                     {kwhCard}
                     {catatanField}
-                </div>
-
-                {can_write && (
-                    <StickyActionBar>
-                        <Button size="lg" onClick={save} disabled={saving || !dirty} className="flex-1">
-                            <Save className="size-4" />
-                            {saving ? 'Menyimpan…' : 'Simpan'}
-                        </Button>
-                    </StickyActionBar>
+                    </MobileFormScreen>
                 )}
             </>
         );
@@ -300,7 +338,7 @@ export function OpnameSheetPage({
                         can_write ? (
                             <div className="flex flex-wrap items-center gap-3">
                                 {dirty && <span className="text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>

@@ -4,8 +4,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
-import { DayStrip } from '@/components/mobile/day-strip';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import { EntryBadge, entryDate, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -91,7 +90,9 @@ export default function StartStopIndex({ unit, units, filters, period_label, day
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
-    const days = Array.from({ length: days_in_month }, (_, i) => i + 1);
+    // Phone: the row whose form is open on its own screen.
+    const [editingKey, setEditingKey] = useState<string | null>(null);
+    const [dirtyBeforeAdd, setDirtyBeforeAdd] = useState(false);
     const dateOf = (day: number) => `${prefix}-${String(day).padStart(2, '0')}`;
     const machineName = (id: number | null) => machines.find((m) => m.id === id)?.name ?? '';
 
@@ -142,7 +143,7 @@ export default function StartStopIndex({ unit, units, filters, period_label, day
         setDirty(true);
     };
 
-    const save = () => {
+    const save = (onSaved?: () => void) => {
         setSaving(true);
         setErrors({});
         router.post(
@@ -168,6 +169,7 @@ export default function StartStopIndex({ unit, units, filters, period_label, day
                     setRows((page.props as unknown as Props).rows.map(toRow));
                     setDeletedIds([]);
                     setDirty(false);
+                    onSaved?.();
                 },
                 onError: (errs) => {
                     setErrors(errs);
@@ -184,112 +186,162 @@ export default function StartStopIndex({ unit, units, filters, period_label, day
     const gangguanCount = rows.filter((row) => row.penyebab_stop === 'gangguan').length;
 
     if (compact) {
-        const dayRows = rows.filter((row) => row.tanggal === dateOf(selectedDay));
+        // Phone (user, 2026-11-26): the month's start/stop as cards; Tambah / a card opens its form on its own
+        // screen, Simpan saves and returns to the list.
+        const listed = [...rows].sort((a, b) => (a.tanggal === b.tanggal ? 0 : a.tanggal < b.tanggal ? -1 : 1));
+        const row = rows.find((r) => r.key === editingKey);
+        const isEmpty = (r: Row) => r.id === null && r.engine_id === null && TIMES.every(([key]) => r[key] === '') && r.keterangan === '';
+        const closeForm = () => {
+            if (row && isEmpty(row)) {
+                // An empty new entry left with Kembali: as if Tambah was never pressed.
+                setRows((current) => current.filter((r) => r.key !== row.key));
+                setDirty(dirtyBeforeAdd);
+            }
+
+            setEditingKey(null);
+        };
+        const hours = row ? runHours(row.start_time, row.stop_time) : null;
 
         return (
             <>
                 <Head title="Start Stop Engine" />
-                <div className={cn('flex flex-col gap-3 p-4', can_write && 'pb-28')}>
-                    <DayStrip
-                        items={days.map((day) => ({ key: String(day), label: String(day), sub: 'Tgl', done: rows.some((row) => row.tanggal === dateOf(day)) }))}
-                        value={String(selectedDay)}
-                        onChange={(key) => setSelectedDay(Number(key))}
-                    />
-                    <p className="px-0.5 text-[13px] font-semibold text-foreground">
-                        Tanggal {selectedDay} {OPERASI_MONTHS[filters.month - 1]} · {dayRows.length} catatan
-                    </p>
-
-                    {dayRows.length === 0 && (
-                        <p className="rounded-xl border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">
-                            Belum ada start/stop mesin tanggal ini.{can_write && ' Tekan Tambah untuk mengisi.'}
-                        </p>
-                    )}
-
-                    {dayRows.map((row) => {
-                        const hours = runHours(row.start_time, row.stop_time);
+                <MobileEntryList
+                    heading={`Start Stop ${period_label}`}
+                    count={listed.length}
+                    empty={`Belum ada start/stop mesin ${period_label}. Tekan Tambah untuk mengisi.`}
+                    canWrite={can_write}
+                    onAdd={() => {
+                        const key = `new-${nextKey + 1}`;
+                        setDirtyBeforeAdd(dirty);
+                        addRow(dateOf(selectedDay));
+                        setEditingKey(key);
+                    }}
+                    onSave={() => save()}
+                    saving={saving}
+                    dirty={dirty}
+                >
+                    {listed.map((r) => {
+                        const runtime = runHours(r.start_time, r.stop_time);
 
                         return (
-                            <div key={row.key} className={cn('flex flex-col gap-3 rounded-xl border bg-card p-3', row.penyebab_stop === 'gangguan' ? 'border-rose-400' : 'border-border')}>
-                                <div className="flex items-center justify-between gap-2">
-                                    <span className="text-[11px] font-semibold text-muted-foreground">Mesin</span>
-                                    <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-1 text-[12px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-                                        {hours !== null ? `${NUMBER.format(hours)} jam` : '– jam'}
-                                    </span>
-                                </div>
-                                <Select
-                                    value={row.engine_id === null ? undefined : String(row.engine_id)}
-                                    onValueChange={(value) => update(row.key, { engine_id: Number(value) })}
-                                    disabled={!can_write}
-                                >
-                                    <SelectTrigger
-                                        className={cn('-mt-1 h-11 w-full text-[14px] font-semibold', errorOf(row, 'engine_id') && 'border-destructive')}
-                                        aria-label="Mesin"
-                                    >
-                                        <SelectValue placeholder="Pilih mesin…" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {machines.map((m) => (
-                                            <SelectItem key={m.id} value={String(m.id)} className="py-2.5 text-[14px]">
-                                                {m.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errorOf(row, 'engine_id') && <p className="-mt-1 text-[12px] text-destructive">{errorOf(row, 'engine_id')}</p>}
-                                <div className="grid grid-cols-2 gap-2">
-                                    {TIMES.map(([key, label]) => (
-                                        <label key={key} className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
-                                            {label}
-                                            <input
-                                                type="time"
-                                                value={row[key]}
-                                                onChange={(e) => update(row.key, { [key]: e.target.value })}
-                                                disabled={!can_write}
-                                                className={cn('h-10 w-full rounded-md border bg-background px-2 text-[15px] font-semibold tabular-nums', errorOf(row, key) ? 'border-destructive' : 'border-input')}
-                                            />
-                                        </label>
-                                    ))}
-                                </div>
-                                <div className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
-                                    Penyebab stop
-                                    <ChoiceChips
-                                        options={Object.keys(penyebab)}
-                                        labels={penyebab}
-                                        value={row.penyebab_stop}
-                                        onChange={(value) => value && update(row.key, { penyebab_stop: value as Penyebab })}
-                                        disabled={!can_write}
-                                        tone={(value) => (value === 'gangguan' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white')}
-                                    />
-                                </div>
-                                <input
-                                    value={row.keterangan}
-                                    onChange={(e) => update(row.key, { keterangan: e.target.value })}
-                                    disabled={!can_write}
-                                    placeholder={row.penyebab_stop === 'gangguan' ? 'Keterangan gangguan, mis. trip lube oil pressure' : 'Keterangan (opsional)'}
-                                    className="h-10 w-full rounded-md border border-input bg-background px-2 text-[13px]"
-                                />
-                                {can_write && (
-                                    <Button variant="ghost" size="sm" onClick={() => removeRow(row)} className="self-start text-destructive">
-                                        <Trash2 className="size-4" />
-                                        Hapus
-                                    </Button>
-                                )}
-                            </div>
+                            <MobileEntryCard
+                                key={r.key}
+                                title={machineName(r.engine_id) || 'Mesin belum dipilih'}
+                                subtitle={r.keterangan || undefined}
+                                badge={<EntryBadge tone={r.penyebab_stop === 'gangguan' ? 'danger' : 'done'}>{penyebab[r.penyebab_stop]}</EntryBadge>}
+                                meta={[
+                                    ['Tanggal', entryDate(r.tanggal)],
+                                    ['Jam operasi', runtime !== null ? `${NUMBER.format(runtime)} jam` : ''],
+                                    ['Start', r.start_time],
+                                    ['Stop', r.stop_time],
+                                ]}
+                                onClick={() => {
+                                    setSelectedDay(Number(r.tanggal.slice(8, 10)));
+                                    setEditingKey(r.key);
+                                }}
+                            />
                         );
                     })}
-                </div>
+                </MobileEntryList>
 
-                {can_write && (
-                    <StickyActionBar>
-                        <Button size="lg" variant="outline" onClick={() => addRow(dateOf(selectedDay))}>
-                            <Plus className="size-4" />
-                            Tambah
-                        </Button>
-                        <Button size="lg" onClick={save} disabled={saving || !dirty}>
-                            <Save className="size-4" />
-                            {saving ? 'Menyimpan…' : 'Simpan'}
-                        </Button>
-                    </StickyActionBar>
+                {row && (
+                    <MobileFormScreen
+                        title={row.id === null ? 'Start stop baru' : machineName(row.engine_id) || 'Start stop'}
+                        subtitle={`Start Stop Engine · ${period_label}`}
+                        onBack={closeForm}
+                        canWrite={can_write}
+                        onSave={() => save(() => setEditingKey(null))}
+                        saving={saving}
+                        saveDisabled={!dirty || row.engine_id === null}
+                        onDelete={
+                            row.id !== null || !isEmpty(row)
+                                ? () => {
+                                      removeRow(row);
+                                      setEditingKey(null);
+                                  }
+                                : undefined
+                        }
+                        deleteLabel="Hapus data ini"
+                    >
+                        <div className="grid grid-cols-2 gap-2">
+                            <label className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
+                                Tanggal
+                                <input
+                                    type="date"
+                                    value={row.tanggal}
+                                    min={dateOf(1)}
+                                    max={dateOf(days_in_month)}
+                                    onChange={(e) => e.target.value.startsWith(prefix) && update(row.key, { tanggal: e.target.value })}
+                                    disabled={!can_write}
+                                    className="h-10 w-full rounded-md border border-input bg-background px-2 text-[14px]"
+                                />
+                            </label>
+                            <div className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
+                                Jam operasi
+                                <span className="flex h-10 items-center rounded-md bg-emerald-100 px-2 text-[14px] font-semibold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                                    {hours !== null ? `${NUMBER.format(hours)} jam` : '– jam'}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
+                            Mesin
+                            <Select
+                                value={row.engine_id === null ? undefined : String(row.engine_id)}
+                                onValueChange={(value) => update(row.key, { engine_id: Number(value) })}
+                                disabled={!can_write}
+                            >
+                                <SelectTrigger
+                                    className={cn('h-11 w-full text-[14px] font-semibold', errorOf(row, 'engine_id') && 'border-destructive')}
+                                    aria-label="Mesin"
+                                >
+                                    <SelectValue placeholder="Pilih mesin…" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {machines.map((m) => (
+                                        <SelectItem key={m.id} value={String(m.id)} className="py-2.5 text-[14px]">
+                                            {m.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {errorOf(row, 'engine_id') && <p className="text-[12px] font-normal text-destructive">{errorOf(row, 'engine_id')}</p>}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            {TIMES.map(([key, label]) => (
+                                <label key={key} className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
+                                    {label}
+                                    <input
+                                        type="time"
+                                        value={row[key]}
+                                        onChange={(e) => update(row.key, { [key]: e.target.value })}
+                                        disabled={!can_write}
+                                        className={cn('h-10 w-full rounded-md border bg-background px-2 text-[15px] font-semibold tabular-nums', errorOf(row, key) ? 'border-destructive' : 'border-input')}
+                                    />
+                                </label>
+                            ))}
+                        </div>
+                        <div className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
+                            Penyebab stop
+                            <ChoiceChips
+                                options={Object.keys(penyebab)}
+                                labels={penyebab}
+                                value={row.penyebab_stop}
+                                onChange={(value) => value && update(row.key, { penyebab_stop: value as Penyebab })}
+                                disabled={!can_write}
+                                tone={(value) => (value === 'gangguan' ? 'border-rose-600 bg-rose-600 text-white' : 'border-emerald-600 bg-emerald-600 text-white')}
+                            />
+                        </div>
+                        <label className="flex flex-col gap-1 text-[11px] font-semibold text-muted-foreground">
+                            Keterangan
+                            <input
+                                value={row.keterangan}
+                                onChange={(e) => update(row.key, { keterangan: e.target.value })}
+                                disabled={!can_write}
+                                placeholder={row.penyebab_stop === 'gangguan' ? 'Keterangan gangguan, mis. trip lube oil pressure' : 'Keterangan (opsional)'}
+                                className="h-10 w-full rounded-md border border-input bg-background px-2 text-[13px] font-normal"
+                            />
+                        </label>
+                    </MobileFormScreen>
                 )}
             </>
         );
@@ -308,7 +360,7 @@ export default function StartStopIndex({ unit, units, filters, period_label, day
                         can_write ? (
                             <div className="flex flex-wrap items-center gap-3">
                                 {dirty && <span className="text-[13px] text-amber-600">Ada perubahan belum disimpan.</span>}
-                                <Button onClick={save} disabled={saving || !dirty} className="gap-1.5">
+                                <Button onClick={() => save()} disabled={saving || !dirty} className="gap-1.5">
                                     <Save className="size-4" />
                                     {saving ? 'Menyimpan…' : 'Simpan'}
                                 </Button>

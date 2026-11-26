@@ -14,7 +14,8 @@ import {
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
-import { MobileRowEditor } from '@/components/mobile/row-editor';
+import { EntryBadge, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
+import { MobileRowEditor, MobileRowFields } from '@/components/mobile/row-editor';
 import type { RowField } from '@/components/mobile/row-editor';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { OperasiSelect } from '@/components/operasi/filter-select';
@@ -284,6 +285,7 @@ export function MaterialPeralatanPage({
     };
 
     const [newRowGroup, setNewRowGroup] = useState<Kategori>('MATERIAL');
+    const [mobileEditing, setMobileEditing] = useState<{ category: Kategori; index: number; isNew: boolean } | null>(null);
 
     const handleAddItem = (category: Kategori) =>
         setList(category, (list) => [
@@ -330,9 +332,13 @@ export function MaterialPeralatanPage({
         });
     };
 
-    const handleSave = () => {
+    const handleSave = (onSaved?: () => void) => {
         setSaving(true);
         setErrors({});
+        const onSuccess = (page: Page) => {
+            reload(page);
+            onSaved?.();
+        };
 
         const period = { unit_id: filters.unit_id, month: filters.month, year: filters.year };
         const onError = (errs: Record<string, string>) => {
@@ -344,7 +350,7 @@ export function MaterialPeralatanPage({
             router.post(
                 routes.store().url,
                 { ...period, items: allItems },
-                { preserveScroll: true, onSuccess: reload, onError, onFinish: () => setSaving(false) },
+                { preserveScroll: true, onSuccess, onError, onFinish: () => setSaving(false) },
             );
 
             return;
@@ -358,7 +364,7 @@ export function MaterialPeralatanPage({
                     .filter((item) => item.id)
                     .map(({ id, kelengkapan, uraian_kondisi }) => ({ id, kelengkapan, uraian_kondisi })),
             },
-            { preserveScroll: true, onSuccess: reload, onError, onFinish: () => setSaving(false) },
+            { preserveScroll: true, onSuccess, onError, onFinish: () => setSaving(false) },
         );
     };
 
@@ -618,6 +624,117 @@ export function MaterialPeralatanPage({
 
     const saveLabel = saving ? 'Menyimpan...' : can_manage ? 'Simpan Perubahan' : 'Simpan Pengecekan';
 
+    if (compact) {
+        // Phone (user, 2026-11-26): the items as cards per group; a card (or Tambah) opens its form on its own
+        // screen, Simpan there saves the sheet and returns to the list.
+        const current = mobileEditing === null ? undefined : (mobileEditing.category === 'PERALATAN' ? peralatan : material)[mobileEditing.index];
+        const card = (category: Kategori, item: MaterialItem, index: number) => (
+            <MobileEntryCard
+                key={`${category}-${item.id ?? `new-${index}`}`}
+                title={item.nama_item || 'Item baru'}
+                badge={
+                    <EntryBadge tone={item.kelengkapan === null ? 'neutral' : isAbnormal(item) ? 'danger' : 'done'}>
+                        {item.kelengkapan === null ? 'Belum dicek' : (options.kelengkapan[item.kelengkapan] ?? item.kelengkapan)}
+                    </EntryBadge>
+                }
+                subtitle={isAbnormal(item) ? (item.uraian_kondisi ?? undefined) : undefined}
+                meta={[
+                    ['Stok akhir', `${item.stok_akhir} ${item.satuan}`],
+                    ['Kode', item.kode_material],
+                ]}
+                onClick={() => setMobileEditing({ category, index, isNew: false })}
+            />
+        );
+        const group = (category: Kategori, title: string, items: MaterialItem[]) =>
+            items.length > 0 && (
+                <>
+                    <p className="mt-1 px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
+                        {title} · {items.length} item
+                    </p>
+                    {items.map((item, index) => card(category, item, index))}
+                </>
+            );
+
+        return (
+            <>
+                <Head title="Input Material & Peralatan" />
+                <MobileEntryList
+                    count={allItems.length}
+                    empty="Belum ada item material / peralatan periode ini."
+                    canWrite={canSave}
+                    above={
+                        allItems.length > 0 && (
+                            <p className="px-0.5 text-[12px] text-muted-foreground">
+                                Dicek {checkedCount} / {allItems.length} item
+                                {abnormalCount > 0 && <span className="text-rose-600"> · {abnormalCount} tidak normal</span>}
+                            </p>
+                        )
+                    }
+                    onAdd={
+                        can_manage
+                            ? () => {
+                                  handleAddItem('MATERIAL');
+                                  setMobileEditing({ category: 'MATERIAL', index: material.length, isNew: true });
+                              }
+                            : uncheckedCount > 0
+                              ? markUncheckedLengkap
+                              : undefined
+                    }
+                    addLabel={can_manage ? 'Tambah' : 'Sisa Lengkap'}
+                    onSave={() => handleSave()}
+                    saving={saving}
+                    dirty={isDirty}
+                >
+                    {group('PERALATAN', 'Peralatan', peralatan)}
+                    {group('MATERIAL', 'Material / Consumable', material)}
+                </MobileEntryList>
+
+                {mobileEditing !== null && current !== undefined && (
+                    <MobileFormScreen
+                        title={mobileEditing.isNew ? 'Item baru' : current.nama_item || 'Item'}
+                        subtitle={`${GROUP_LABEL[mobileEditing.category]} · Material & Peralatan`}
+                        onBack={() => setMobileEditing(null)}
+                        canWrite={canSave}
+                        onSave={() => handleSave(() => setMobileEditing(null))}
+                        saving={saving}
+                        saveDisabled={!isDirty}
+                        onDelete={
+                            can_manage
+                                ? () => {
+                                      handleDeleteItem(mobileEditing.category, mobileEditing.index);
+                                      setMobileEditing(null);
+                                  }
+                                : undefined
+                        }
+                        deleteLabel="Hapus item"
+                    >
+                        <MobileRowFields
+                            row={current}
+                            index={mobileEditing.index}
+                            fields={mobileFields}
+                            canWrite={canSave}
+                            onChange={(index, key, value) => {
+                                if (key === 'kategori' && value && value !== mobileEditing.category) {
+                                    // Moved to the other group: it lands at the end there.
+                                    const to = value as Kategori;
+                                    moveToGroup(mobileEditing.category, index, to);
+                                    setMobileEditing({ category: to, index: (to === 'PERALATAN' ? peralatan : material).length, isNew: mobileEditing.isNew });
+
+                                    return;
+                                }
+
+                                mobileChange(mobileEditing.category)(index, key, value);
+                            }}
+                        />
+                        {errorOf(mobileEditing.category, mobileEditing.index) && (
+                            <p className="text-[12px] text-destructive">{errorOf(mobileEditing.category, mobileEditing.index)}</p>
+                        )}
+                    </MobileFormScreen>
+                )}
+            </>
+        );
+    }
+
     return (
         <>
             <Head title="Input Material & Peralatan" />
@@ -643,7 +760,7 @@ export function MaterialPeralatanPage({
                                 </Button>
                             )}
                             {canSave && !compact && (
-                                <Button onClick={handleSave} disabled={saving || !isDirty} className="gap-2">
+                                <Button onClick={() => handleSave()} disabled={saving || !isDirty} className="gap-2">
                                     <Save className="size-4" />
                                     {saveLabel}
                                 </Button>
@@ -782,7 +899,7 @@ export function MaterialPeralatanPage({
                             <span className="text-xs text-muted-foreground">
                                 * Stok Akhir = Stok Awal + Material Masuk - Material Keluar · Kelengkapan Lengkap = kondisi Normal
                             </span>
-                            <Button onClick={handleSave} disabled={saving || !isDirty} size="sm" className="gap-2">
+                            <Button onClick={() => handleSave()} disabled={saving || !isDirty} size="sm" className="gap-2">
                                 <Save className="size-4" />
                                 {saveLabel}
                             </Button>
@@ -799,7 +916,7 @@ export function MaterialPeralatanPage({
                             Sisa Lengkap
                         </Button>
                     )}
-                    <Button size="lg" onClick={handleSave} disabled={saving || !isDirty}>
+                    <Button size="lg" onClick={() => handleSave()} disabled={saving || !isDirty}>
                         <Save className="size-4" />
                         {saving ? 'Menyimpan…' : 'Simpan'}
                     </Button>

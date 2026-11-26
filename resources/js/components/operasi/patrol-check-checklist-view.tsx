@@ -15,7 +15,12 @@ import {
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
-import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
+import {
+    EntryBadge,
+    MobileEntryCard,
+    MobileEntryList,
+    MobileFormScreen,
+} from '@/components/mobile/entry-flow';
 import { EvidencePhotoField } from '@/components/operasi/evidence-photo-field';
 import {
     OPERASI_MONTHS,
@@ -179,7 +184,6 @@ export function PatrolCheckChecklistView({
     const [catatan, setCatatan] = useState(active_entry.catatan);
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [confirmDelete, setConfirmDelete] = useState(false);
     const [areaFilter, setAreaFilter] = useState<string>('ALL');
 
     const handleDateChange = (nextDate: string) => {
@@ -427,7 +431,6 @@ export function PatrolCheckChecklistView({
 
         router.delete(patrolCheckMesinEntry.destroy(entryId).url, {
             preserveScroll: true,
-            onSuccess: () => setConfirmDelete(false),
         });
     };
 
@@ -566,106 +569,123 @@ export function PatrolCheckChecklistView({
     // MOBILE COMPACT VIEW
     // ------------------------------------------------------------------
     if (compact) {
+        // Phone (user, 2026-11-26): the month's checks as cards first; Tambah / a card opens the check on its
+        // own screen (?form=1), Simpan saves and the server sends the page back to the list.
+        const formOpen =
+            typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).get('form') === '1';
+
+        if (!formOpen) {
+            return (
+                <>
+                    <Head
+                        title={`Patrol Check - ${filters.nama_mesin} - ${unit.name}`}
+                    />
+                    <MobileEntryList
+                        heading={`${patrol_meta.form_number} · ${periodLabel}`}
+                        count={entries.length}
+                        empty={`Belum ada pemeriksaan ${filters.nama_mesin || ''} ${periodLabel}. Tekan Tambah untuk mengisi.`}
+                        canWrite={can_write}
+                        onAdd={() => visit({ entry_id: null, new: 1, form: 1 })}
+                        onSave={() => undefined}
+                        above={
+                            <OperasiSelect
+                                label="Mesin"
+                                value={filters.nama_mesin}
+                                onChange={(value) => {
+                                    const matched = options.machines.find(
+                                        (m) => m.name === value,
+                                    );
+                                    visit({
+                                        nama_mesin: value,
+                                        machine_id: matched ? matched.id : null,
+                                        entry_id: null,
+                                        new: 1,
+                                    });
+                                }}
+                                options={options.machines.map((m) => ({
+                                    value: m.name,
+                                    label: m.name,
+                                }))}
+                                className="w-full"
+                            />
+                        }
+                    >
+                        {entries.map((entry) => (
+                            <MobileEntryCard
+                                key={entry.id}
+                                title={`${entry.tanggal_label} · ${entry.jam}`}
+                                subtitle={
+                                    entry.shift
+                                        .toLowerCase()
+                                        .startsWith('shift')
+                                        ? entry.shift
+                                        : `Shift ${entry.shift}`
+                                }
+                                badge={
+                                    <EntryBadge
+                                        tone={
+                                            entry.tn_count > 0
+                                                ? 'danger'
+                                                : 'done'
+                                        }
+                                    >
+                                        {entry.tn_count > 0
+                                            ? `${entry.tn_count} TN`
+                                            : 'Normal'}
+                                    </EntryBadge>
+                                }
+                                meta={[
+                                    ['Normal', `${entry.normal_count} item`],
+                                    ['Tidak normal', `${entry.tn_count} item`],
+                                ]}
+                                onClick={() =>
+                                    visit({
+                                        entry_id: entry.id,
+                                        new: null,
+                                        form: 1,
+                                    })
+                                }
+                            />
+                        ))}
+                    </MobileEntryList>
+                </>
+            );
+        }
+
         return (
             <>
                 <Head
                     title={`Patrol Check - ${filters.nama_mesin} - ${unit.name}`}
                 />
-                <div
-                    className={`flex flex-col gap-3 p-4 ${can_write ? 'pb-28' : ''}`}
+                <MobileFormScreen
+                    title={
+                        active_entry.id
+                            ? 'Ubah pemeriksaan'
+                            : 'Pemeriksaan baru'
+                    }
+                    subtitle={`${filters.nama_mesin} · ${patrol_meta.form_number}`}
+                    onBack={() =>
+                        visit({ entry_id: null, new: null, form: null })
+                    }
+                    canWrite={can_write}
+                    onSave={handleSave}
+                    saving={saving}
+                    saveDisabled={missingTnItems.length > 0}
+                    saveLabel={active_entry.id ? 'Simpan Perubahan' : 'Simpan'}
+                    onDelete={
+                        active_entry.id !== null
+                            ? () => {
+                                  if (
+                                      window.confirm('Hapus pemeriksaan ini?')
+                                  ) {
+                                      handleDeleteEntry(active_entry.id!);
+                                  }
+                              }
+                            : undefined
+                    }
+                    deleteLabel="Hapus pemeriksaan ini"
                 >
-                    <OperasiSelect
-                        label="Mesin"
-                        value={filters.nama_mesin}
-                        onChange={(value) => {
-                            const matched = options.machines.find(
-                                (m) => m.name === value,
-                            );
-                            visit({
-                                nama_mesin: value,
-                                machine_id: matched ? matched.id : null,
-                                entry_id: null,
-                                new: 1,
-                            });
-                        }}
-                        options={options.machines.map((m) => ({
-                            value: m.name,
-                            label: m.name,
-                        }))}
-                        className="w-full"
-                    />
-
-                    {/* Saved check switcher */}
-                    <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3">
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
-                                {patrol_meta.form_number} · {entries.length}{' '}
-                                pemeriksaan
-                            </span>
-                            {can_write && (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant={
-                                        active_entry.id === null
-                                            ? 'default'
-                                            : 'outline'
-                                    }
-                                    className="h-7 gap-1 px-2 text-xs"
-                                    onClick={() =>
-                                        visit({ entry_id: null, new: 1 })
-                                    }
-                                >
-                                    <Plus className="size-3.5" />
-                                    Baru
-                                </Button>
-                            )}
-                        </div>
-
-                        {entries.length > 0 && (
-                            <div className="-mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-1">
-                                {entries.map((entry) => {
-                                    const active = active_entry.id === entry.id;
-
-                                    return (
-                                        <button
-                                            key={entry.id}
-                                            type="button"
-                                            onClick={() =>
-                                                visit({
-                                                    entry_id: entry.id,
-                                                    new: null,
-                                                })
-                                            }
-                                            className={cn(
-                                                'flex shrink-0 snap-start flex-col items-start rounded-lg border px-2.5 py-1.5 text-left text-[11.5px]',
-                                                active
-                                                    ? 'border-primary bg-primary/10 text-foreground ring-1 ring-primary'
-                                                    : 'border-border bg-background text-muted-foreground',
-                                            )}
-                                        >
-                                            <span className="font-semibold text-foreground">
-                                                {entry.tanggal_label} ·{' '}
-                                                {entry.jam}
-                                            </span>
-                                            <span className="flex items-center gap-1.5">
-                                                <span>{entry.shift}</span>
-                                                <span className="text-emerald-600">
-                                                    {entry.normal_count}N
-                                                </span>
-                                                {entry.tn_count > 0 && (
-                                                    <span className="font-semibold text-rose-600">
-                                                        {entry.tn_count}TN
-                                                    </span>
-                                                )}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
                     {/* Check Identity Card */}
                     <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
                         <div className="flex items-center justify-between gap-2">
@@ -938,62 +958,7 @@ export function PatrolCheckChecklistView({
                             placeholder="Catatan penting atau tindak lanjut pemeriksaan..."
                         />
                     </label>
-
-                    {can_write && active_entry.id !== null && (
-                        <div className="flex justify-end">
-                            {confirmDelete ? (
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        onClick={() => setConfirmDelete(false)}
-                                    >
-                                        Batal
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="destructive"
-                                        onClick={() =>
-                                            handleDeleteEntry(active_entry.id!)
-                                        }
-                                    >
-                                        Ya, Hapus Pemeriksaan Ini
-                                    </Button>
-                                </div>
-                            ) : (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    className="gap-1.5 text-destructive"
-                                    onClick={() => setConfirmDelete(true)}
-                                >
-                                    <Trash2 className="size-4" />
-                                    Hapus Pemeriksaan Ini
-                                </Button>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                {can_write && (
-                    <StickyActionBar>
-                        <Button
-                            size="lg"
-                            onClick={handleSave}
-                            disabled={saving || missingTnItems.length > 0}
-                        >
-                            <Save className="size-4" />
-                            {saving
-                                ? 'Menyimpan…'
-                                : active_entry.id
-                                  ? 'Simpan Perubahan'
-                                  : 'Simpan Pemeriksaan'}
-                        </Button>
-                    </StickyActionBar>
-                )}
+                </MobileFormScreen>
             </>
         );
     }

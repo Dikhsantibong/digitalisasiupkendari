@@ -64,43 +64,22 @@ function resolveFieldSpan<R>(field: RowField<R>): 1 | 2 {
 }
 
 /**
- * Phone layout of an editable table (one row per finding / item): each row is a
- * collapsible card whose cells become labelled fields. The page keeps its own
- * row state and handlers; this only renders them without a table.
+ * The labelled fields of one row (the open card of MobileRowEditor, or a row's
+ * own form screen in the phone entry flow — MobileFormScreen).
  */
-export function MobileRowEditor<R>({
-    rows,
+export function MobileRowFields<R>({
+    row,
+    index,
     fields,
-    title,
-    subtitle,
     onChange,
-    onRemove,
     canWrite,
-    rowKey,
-    removeLabel = 'Hapus baris',
 }: {
-    rows: R[];
+    row: R;
+    index: number;
     fields: RowField<R>[];
-    title: (row: R, index: number) => ReactNode;
-    subtitle?: (row: R, index: number) => ReactNode;
     onChange: (index: number, key: keyof R & string, value: never) => void;
-    onRemove?: (index: number) => void;
     canWrite: boolean;
-    rowKey?: (row: R, index: number) => string | number;
-    removeLabel?: string;
 }) {
-    const [open, setOpen] = useState<number | null>(
-        rows.length === 1 ? 0 : null,
-    );
-
-    if (rows.length === 0) {
-        return (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">
-                Belum ada baris. Tekan Tambah untuk mengisi.
-            </p>
-        );
-    }
-
     const set = (index: number, field: RowField<R>, raw: string | boolean) => {
         const value = field.parse
             ? field.parse(raw)
@@ -252,11 +231,84 @@ export function MobileRowEditor<R>({
         }
     };
 
+    const visible = fields.filter((field) => !field.hidden?.(row));
+
+    return (
+        <div className="grid grid-cols-2 gap-x-2.5 gap-y-2">
+            {visible.map((field, f) => {
+                const span = resolveFieldSpan(field);
+                const showGroup =
+                    field.group && field.group !== visible[f - 1]?.group;
+
+                return (
+                    <Fragment key={field.key}>
+                        {showGroup && (
+                            <p className="col-span-2 mt-1 border-t border-border/50 pt-2 text-[10.5px] font-semibold tracking-wider text-muted-foreground uppercase first:mt-0 first:border-t-0 first:pt-0">
+                                {field.group}
+                            </p>
+                        )}
+                        <div
+                            className={cn(
+                                'flex min-w-0 flex-col gap-1',
+                                span === 2 ? 'col-span-2' : 'col-span-1',
+                            )}
+                        >
+                            {field.type !== 'check' && (
+                                <span className="truncate text-[11.5px] leading-tight font-medium text-muted-foreground">
+                                    {field.label}
+                                </span>
+                            )}
+                            {editor(row, index, field)}
+                        </div>
+                    </Fragment>
+                );
+            })}
+        </div>
+    );
+}
+
+/**
+ * Phone layout of an editable table (one row per finding / item): each row is a
+ * collapsible card whose cells become labelled fields. The page keeps its own
+ * row state and handlers; this only renders them without a table.
+ */
+export function MobileRowEditor<R>({
+    rows,
+    fields,
+    title,
+    subtitle,
+    onChange,
+    onRemove,
+    canWrite,
+    rowKey,
+    removeLabel = 'Hapus baris',
+}: {
+    rows: R[];
+    fields: RowField<R>[];
+    title: (row: R, index: number) => ReactNode;
+    subtitle?: (row: R, index: number) => ReactNode;
+    onChange: (index: number, key: keyof R & string, value: never) => void;
+    onRemove?: (index: number) => void;
+    canWrite: boolean;
+    rowKey?: (row: R, index: number) => string | number;
+    removeLabel?: string;
+}) {
+    const [open, setOpen] = useState<number | null>(
+        rows.length === 1 ? 0 : null,
+    );
+
+    if (rows.length === 0) {
+        return (
+            <p className="rounded-xl border border-dashed border-border p-6 text-center text-[13px] text-muted-foreground">
+                Belum ada baris. Tekan Tambah untuk mengisi.
+            </p>
+        );
+    }
+
     return (
         <div className="flex flex-col gap-2">
             {rows.map((row, index) => {
                 const isOpen = open === index;
-                const visible = fields.filter((field) => !field.hidden?.(row));
 
                 return (
                     <div
@@ -289,40 +341,16 @@ export function MobileRowEditor<R>({
                             />
                         </button>
                         {isOpen && (
-                            <div className="grid grid-cols-2 gap-x-2.5 gap-y-2 border-t border-border p-3">
-                                {visible.map((field, f) => {
-                                    const span = resolveFieldSpan(field);
-                                    const showGroup =
-                                        field.group &&
-                                        field.group !== visible[f - 1]?.group;
-
-                                    return (
-                                        <Fragment key={field.key}>
-                                            {showGroup && (
-                                                <p className="col-span-2 mt-1 border-t border-border/50 pt-2 text-[10.5px] font-semibold tracking-wider text-muted-foreground uppercase first:mt-0 first:border-t-0 first:pt-0">
-                                                    {field.group}
-                                                </p>
-                                            )}
-                                            <div
-                                                className={cn(
-                                                    'flex min-w-0 flex-col gap-1',
-                                                    span === 2
-                                                        ? 'col-span-2'
-                                                        : 'col-span-1',
-                                                )}
-                                            >
-                                                {field.type !== 'check' && (
-                                                    <span className="truncate text-[11.5px] leading-tight font-medium text-muted-foreground">
-                                                        {field.label}
-                                                    </span>
-                                                )}
-                                                {editor(row, index, field)}
-                                            </div>
-                                        </Fragment>
-                                    );
-                                })}
+                            <div className="flex flex-col gap-2 border-t border-border p-3">
+                                <MobileRowFields
+                                    row={row}
+                                    index={index}
+                                    fields={fields}
+                                    onChange={onChange}
+                                    canWrite={canWrite}
+                                />
                                 {canWrite && onRemove && (
-                                    <div className="col-span-2 flex justify-end border-t border-border/60 pt-1.5">
+                                    <div className="flex justify-end border-t border-border/60 pt-1.5">
                                         <Button
                                             variant="ghost"
                                             size="sm"

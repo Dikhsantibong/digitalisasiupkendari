@@ -6,7 +6,6 @@ import {
     ClipboardList,
     Download,
     FileSpreadsheet,
-    Pencil,
     Plus,
     Save,
     Trash2,
@@ -17,6 +16,11 @@ import type { FormEvent, ReactNode } from 'react';
 import { toast } from 'sonner';
 import InputError from '@/components/input-error';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
+import {
+    MobileEntryCard,
+    MobileEntryList,
+    MobileFormScreen,
+} from '@/components/mobile/entry-flow';
 import { EvidencePhotoField } from '@/components/operasi/evidence-photo-field';
 import {
     OPERASI_MONTHS,
@@ -25,7 +29,6 @@ import {
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
 import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -276,60 +279,6 @@ export function KondisiAbnormalInputView({
             )
             .join('|') + `@${filters.unit_id}-${filters.month}-${filters.year}`;
     const [newFormKey, setNewFormKey] = useState(0);
-    const entryCards = (
-        <div className="flex flex-col gap-2">
-            {entries.map((entry) => (
-                <button
-                    key={entry.id}
-                    type="button"
-                    onClick={() => entry.can_edit && setEditing(entry)}
-                    className="flex flex-col gap-1.5 rounded-xl border border-border bg-card p-3 text-left disabled:cursor-default"
-                >
-                    <span className="flex items-center justify-between gap-2">
-                        <span className="text-[12px] font-semibold text-muted-foreground">
-                            {formatDate(entry.tanggal)}
-                        </span>
-                        <span
-                            className={cn(
-                                'rounded-md px-1.5 py-0.5 text-[10.5px] font-bold uppercase',
-                                JENIS_TONE[entry.jenis],
-                            )}
-                        >
-                            {options.jenis[entry.jenis]} · {hours(entry.durasi)}
-                        </span>
-                    </span>
-                    <span className="text-[14px] text-foreground">
-                        {entry.uraian_kondisi}
-                    </span>
-                    {(entry.tl_panjang || entry.dampak_pembangkit) && (
-                        <span className="text-[12px] text-muted-foreground">
-                            {entry.tl_panjang || entry.dampak_pembangkit}
-                        </span>
-                    )}
-                    <span className="flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
-                        {tindak
-                            .filter(([key]) => entry[key] === 1)
-                            .map(([key, label]) => (
-                                <Badge key={key} variant="secondary">
-                                    {label}
-                                </Badge>
-                            ))}
-                        {entry.eviden_url && (
-                            <Badge variant="secondary" className="gap-1">
-                                <Camera className="size-3" />
-                                Eviden
-                            </Badge>
-                        )}
-                        {entry.input_by && <span>oleh {entry.input_by}</span>}
-                        {entry.can_edit && (
-                            <Pencil className="ml-auto size-3.5" />
-                        )}
-                    </span>
-                </button>
-            ))}
-        </div>
-    );
-
     const tiles = (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <Tile
@@ -406,46 +355,66 @@ export function KondisiAbnormalInputView({
     );
 
     if (compact) {
+        // Phone (user, 2026-11-26): the list of reports first; Tambah or a card opens the form on its own screen.
         return (
             <>
                 <Head title={pageTitle} />
-                <div className="flex flex-col gap-3 p-4 pb-8">
-                    {can_write && (
-                        <div className="rounded-xl border border-border bg-card p-3">
-                            <p className="mb-2 text-[14px] font-semibold text-foreground">
-                                Laporan baru
-                            </p>
-                            <EntryDialog
-                                key={`new-${newFormKey}`}
-                                inline
-                                entry={null}
-                                unitId={filters.unit_id}
-                                defaultDate={defaultDate(filters, today)}
-                                options={options}
-                                routeMap={routeMap}
-                                onClose={() => setNewFormKey((key) => key + 1)}
-                            />
-                        </div>
-                    )}
+                <MobileEntryList
+                    heading={`Laporan ${periodLabel}`}
+                    count={entries.length}
+                    empty={`Belum ada laporan ${periodLabel}. Tekan Tambah untuk melaporkan kejadian abnormal / gangguan.`}
+                    canWrite={can_write}
+                    onAdd={() => setEditing('new')}
+                    onSave={() => undefined}
+                >
+                    {entries.map((entry) => (
+                        <MobileEntryCard
+                            key={entry.id}
+                            title={entry.uraian_kondisi}
+                            subtitle={entry.tl_panjang || entry.dampak_pembangkit || undefined}
+                            badge={
+                                <span
+                                    className={cn(
+                                        'rounded-md px-1.5 py-0.5 text-[10.5px] font-bold uppercase',
+                                        JENIS_TONE[entry.jenis],
+                                    )}
+                                >
+                                    {options.jenis[entry.jenis]}
+                                </span>
+                            }
+                            meta={[
+                                ['Tanggal', formatDate(entry.tanggal)],
+                                ['Durasi', hours(entry.durasi)],
+                                ['Tindak lanjut', tindak.filter(([key]) => entry[key] === 1).map(([, label]) => label).join(', ')],
+                                ['Oleh', entry.input_by ?? ''],
+                            ]}
+                            footer={
+                                entry.eviden_url ? (
+                                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                        <Camera className="size-3" />
+                                        Ada eviden foto
+                                    </span>
+                                ) : undefined
+                            }
+                            onClick={entry.can_edit ? () => setEditing(entry) : undefined}
+                        />
+                    ))}
+                </MobileEntryList>
 
-                    {entries.length > 0 && (
-                        <p className="mt-1 px-0.5 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">
-                            Laporan {periodLabel} · {entries.length}
-                        </p>
-                    )}
-                    {entryCards}
-                </div>
-
-                {editing !== null && editing !== 'new' && (
+                {editing !== null && (
                     <EntryDialog
-                        key={editing.id}
-                        entry={editing}
+                        key={editing === 'new' ? `new-${newFormKey}` : editing.id}
+                        screen
+                        entry={editing === 'new' ? null : editing}
                         unitId={filters.unit_id}
                         defaultDate={defaultDate(filters, today)}
                         options={options}
                         routeMap={routeMap}
-                        onClose={() => setEditing(null)}
-                        onDelete={() => remove(editing)}
+                        onClose={() => {
+                            setEditing(null);
+                            setNewFormKey((key) => key + 1);
+                        }}
+                        onDelete={editing === 'new' ? undefined : () => remove(editing)}
                     />
                 )}
             </>
@@ -1364,6 +1333,7 @@ function EntryDialog({
     onClose,
     onDelete,
     inline = false,
+    screen = false,
 }: {
     entry: Entry | null;
     unitId: number;
@@ -1374,6 +1344,8 @@ function EntryDialog({
     onDelete?: () => void;
     /** The form right on the page (phones) instead of a dialog. */
     inline?: boolean;
+    /** Phones: the form on its own screen, Simpan in the bottom bar (MobileFormScreen). */
+    screen?: boolean;
 }) {
     const tindak = Object.entries(options.tindak_pendek) as [
         TindakKey,
@@ -1424,8 +1396,9 @@ function EntryDialog({
         }
     };
 
+    const formId = `kondisi-abnormal-${entry?.id ?? 'new'}`;
     const body = (
-        <form onSubmit={submit} className="flex min-w-0 flex-col gap-3">
+        <form id={formId} onSubmit={submit} className="flex min-w-0 flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
                 <Field label="Tanggal" error={form.errors.tanggal}>
                     <Input
@@ -1636,6 +1609,7 @@ function EntryDialog({
                 />
             </Field>
 
+            {!screen && (
             <DialogFooter className="gap-2 sm:justify-between">
                 {onDelete ? (
                     <Button
@@ -1673,8 +1647,26 @@ function EntryDialog({
                     </Button>
                 </div>
             </DialogFooter>
+            )}
         </form>
     );
+
+    if (screen) {
+        return (
+            <MobileFormScreen
+                title={entry ? 'Ubah laporan' : 'Laporan baru'}
+                subtitle="Kondisi abnormal / gangguan"
+                onBack={onClose}
+                formId={formId}
+                saving={form.processing}
+                saveDisabled={form.data.uraian_kondisi.trim() === ''}
+                onDelete={onDelete}
+                deleteLabel="Hapus laporan"
+            >
+                {body}
+            </MobileFormScreen>
+        );
+    }
 
     if (inline) {
         return body;
