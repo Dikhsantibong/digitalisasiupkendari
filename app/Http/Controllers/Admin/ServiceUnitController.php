@@ -168,6 +168,6 @@ class ServiceUnitController extends Controller
             'message' => 'Unit layanan berhasil dihapus. Unit pembangkit di bawahnya kini tanpa induk.',
         ]);
 
-        return to_route('admin.service-units.index');
+        return back(fallback: route('admin.service-units.index'));
     }
 }

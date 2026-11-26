@@ -268,4 +268,37 @@ class UserManagementTest extends TestCase
             ])
             ->assertSessionHasErrors('is_shift_leader');
     }
+
+    public function test_deleting_a_user_preserves_pagination_and_filter_query_url(): void
+    {
+        $superAdmin = $this->userWithRole(RoleName::SuperAdmin);
+        $target = User::factory()->create();
+        $paginatedUrl = route('admin.users.index', ['status' => 'active', 'page' => 2]);
+
+        $this->actingAs($superAdmin)
+            ->from($paginatedUrl)
+            ->delete(route('admin.users.destroy', $target))
+            ->assertRedirect($paginatedUrl);
+
+        $this->assertDatabaseMissing('users', ['id' => $target->id]);
+    }
+
+    public function test_users_can_be_exported_as_pdf_and_excel_data(): void
+    {
+        $superAdmin = $this->userWithRole(RoleName::SuperAdmin);
+        $unit = Unit::factory()->create(['name' => 'PLTD Poasia']);
+        $operator = $this->userWithRole(RoleName::Operator, $unit);
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.users.export-data', ['unit_id' => $unit->id]))
+            ->assertOk()
+            ->assertJsonPath('tables.0.key', 'users')
+            ->assertJsonPath('accounts.0.email', $operator->email);
+
+        $pdfResponse = $this->actingAs($superAdmin)
+            ->get(route('admin.users.pdf', ['unit_id' => $unit->id]))
+            ->assertOk();
+
+        $this->assertSame('application/pdf', $pdfResponse->headers->get('Content-Type'));
+    }
 }

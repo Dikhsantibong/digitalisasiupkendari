@@ -1,0 +1,1 @@
+import{n as e,t}from"./jsx-runtime-C4t2BJVY.js";import{n,t as r}from"./form-input-page-B8CQ7TYi.js";var i=e(),a=t();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`pendukung`,`Laporan Pendukung Logistik & Gudang`)};export{o as default};

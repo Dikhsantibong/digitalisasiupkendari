@@ -1,5 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { Pencil, Plus } from 'lucide-react';
+import { Download, FileSpreadsheet, Pencil, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import EmployeeController from '@/actions/App/Http/Controllers/Admin/EmployeeController';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { DataPagination } from '@/components/data-pagination';
@@ -18,6 +20,8 @@ import {
 } from '@/components/ui/table';
 import { useIndexFilters } from '@/hooks/use-index-filters';
 import { usePermissions } from '@/hooks/use-permissions';
+import { downloadK3InputWorkbook } from '@/lib/k3-input-excel';
+import type { K3InputExport } from '@/lib/k3-input-excel';
 import { dashboard } from '@/routes';
 import employees from '@/routes/admin/employees';
 import type { EmployeeRow, IdName, Paginated } from '@/types';
@@ -44,6 +48,7 @@ export default function EmployeesIndex({
     options,
 }: Props) {
     const { can } = usePermissions();
+    const [exporting, setExporting] = useState(false);
     const { values, setFilter, setSearch, reset, isFiltered } = useIndexFilters(
         employees.index().url,
         {
@@ -55,6 +60,56 @@ export default function EmployeesIndex({
         },
     );
 
+    const buildExportQuery = (): string => {
+        const params = new URLSearchParams();
+
+        Object.entries(values).forEach(([key, val]) => {
+            if (
+                val !== undefined &&
+                val !== null &&
+                String(val).trim() !== ''
+            ) {
+                params.set(key, String(val).trim());
+            }
+        });
+
+        const qs = params.toString();
+
+        return qs ? `?${qs}` : '';
+    };
+
+    const handleOpenPdf = () => {
+        window.open(
+            `/admin/employees/export/pdf${buildExportQuery()}`,
+            '_blank',
+        );
+    };
+
+    const handleDownloadExcel = async () => {
+        setExporting(true);
+
+        try {
+            const response = await fetch(
+                `/admin/employees/export/data${buildExportQuery()}`,
+                {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(String(response.status));
+            }
+
+            const payload = (await response.json()) as K3InputExport;
+            await downloadK3InputWorkbook(payload);
+        } catch {
+            toast.error('Gagal membuat file Excel data pegawai.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
     return (
         <>
             <Head title="Master Pegawai" />
@@ -63,14 +118,37 @@ export default function EmployeesIndex({
                     title="Master Pegawai"
                     description="Data pegawai dan penempatannya pada unit pembangkit atau unit layanan."
                     actions={
-                        can('employee.create') && (
-                            <Button asChild>
-                                <Link href={employees.create()}>
-                                    <Plus className="size-4" />
-                                    Tambah Pegawai
-                                </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleDownloadExcel}
+                                disabled={exporting}
+                                className="gap-1.5"
+                            >
+                                <FileSpreadsheet className="size-4 text-emerald-600" />
+                                {exporting ? 'Menyiapkan…' : 'Excel'}
                             </Button>
-                        )
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleOpenPdf}
+                                className="gap-1.5"
+                            >
+                                <Download className="size-4 text-rose-600" />
+                                PDF
+                            </Button>
+                            {can('employee.create') && (
+                                <Button size="sm" asChild>
+                                    <Link href={employees.create()}>
+                                        <Plus className="size-4" />
+                                        Tambah Pegawai
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
                     }
                 />
 

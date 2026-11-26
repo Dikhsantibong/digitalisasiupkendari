@@ -1,5 +1,6 @@
 import { Form } from '@inertiajs/react';
 import { Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,8 +34,10 @@ export function ConfirmDeleteDialog({
     trigger?: ReactNode;
     children?: ReactNode;
 }) {
+    const [open, setOpen] = useState(false);
+
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {trigger ?? children ?? (
                     <Button
@@ -51,7 +54,11 @@ export function ConfirmDeleteDialog({
                 <DialogTitle>{title}</DialogTitle>
                 <DialogDescription>{description}</DialogDescription>
 
-                <Form {...action} options={{ preserveScroll: true }}>
+                <Form
+                    {...action}
+                    options={{ preserveScroll: true }}
+                    onSuccess={() => setOpen(false)}
+                >
                     {({ processing }) => (
                         <DialogFooter className="gap-2">
                             <DialogClose asChild>

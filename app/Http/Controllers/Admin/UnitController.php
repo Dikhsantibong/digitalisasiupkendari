@@ -191,7 +191,7 @@ class UnitController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Unit pembangkit berhasil dihapus.']);
 
-        return to_route('admin.units.index');
+        return back(fallback: route('admin.units.index'));
     }
 
     /**

@@ -142,7 +142,7 @@ class RoleController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Role berhasil dihapus.']);
 
-        return to_route('admin.roles.index');
+        return back(fallback: route('admin.roles.index'));
     }
 
     /**

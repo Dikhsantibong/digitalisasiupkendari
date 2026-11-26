@@ -28,8 +28,12 @@ Route::middleware(['auth', 'verified'])
 
         Route::resource('machines', MachineController::class)->except(['show']);
 
+        Route::get('employees/export/pdf', [EmployeeController::class, 'pdf'])->name('employees.pdf');
+        Route::get('employees/export/data', [EmployeeController::class, 'exportData'])->name('employees.export-data');
         Route::resource('employees', EmployeeController::class)->except(['show']);
 
+        Route::get('users/export/pdf', [UserController::class, 'pdf'])->name('users.pdf');
+        Route::get('users/export/data', [UserController::class, 'exportData'])->name('users.export-data');
         Route::resource('users', UserController::class);
 
         // Pindah Akun (Super Admin "masuk sebagai"): the rules live in App\Services\Impersonation.

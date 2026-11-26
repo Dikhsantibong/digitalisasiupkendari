@@ -119,7 +119,7 @@ class MachineController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Mesin berhasil dihapus.']);
 
-        return to_route('admin.machines.index');
+        return back(fallback: route('admin.machines.index'));
     }
 
     /**

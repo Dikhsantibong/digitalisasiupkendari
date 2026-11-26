@@ -1,5 +1,15 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { LogIn, Pencil, Plus } from 'lucide-react';
+import {
+    Check,
+    Copy,
+    Download,
+    FileSpreadsheet,
+    LogIn,
+    Pencil,
+    Plus,
+} from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import UserController from '@/actions/App/Http/Controllers/Admin/UserController';
 import { ConfirmDeleteDialog } from '@/components/confirm-delete-dialog';
 import { DataPagination } from '@/components/data-pagination';
@@ -20,9 +30,65 @@ import { useIndexFilters } from '@/hooks/use-index-filters';
 import { usePermissions } from '@/hooks/use-permissions';
 import { formatDateTime } from '@/lib/format';
 import { openAccountSwitcher } from '@/lib/impersonation';
+import { downloadK3InputWorkbook } from '@/lib/k3-input-excel';
+import type { K3InputExport } from '@/lib/k3-input-excel';
 import { dashboard } from '@/routes';
 import users from '@/routes/admin/users';
 import type { Auth, IdName, Paginated, UserRow } from '@/types';
+
+async function writeTextToClipboard(text: string): Promise<boolean> {
+    if (navigator?.clipboard?.writeText) {
+        try {
+            await navigator.clipboard.writeText(text);
+
+            return true;
+        } catch {
+            // Fall through to legacy textarea copy when clipboard permission is restricted.
+        }
+    }
+
+    try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        return ok;
+    } catch {
+        return false;
+    }
+}
+
+function resolveUserScopeTitle(
+    user: Pick<UserRow, 'name' | 'assignments'>,
+    fallbackUnitName?: string,
+): string {
+    const unitScope =
+        user.assignments.find(
+            (a) => a.scope_label && a.scope_label !== 'Global',
+        )?.scope_label ??
+        fallbackUnitName ??
+        user.assignments[0]?.scope_label ??
+        'UP Kendari';
+
+    return `Akun KIT-SIPP ${unitScope}`;
+}
+
+export function formatUserAccountClipboardText(
+    user: Pick<UserRow, 'name' | 'email' | 'assignments'>,
+    fallbackUnitName?: string,
+): string {
+    return [
+        resolveUserScopeTitle(user, fallbackUnitName),
+        `Email: ${user.email}`,
+        `Username: ${user.name}`,
+    ].join('\n');
+}
 
 type Props = {
     users: Paginated<UserRow>;
@@ -45,6 +111,9 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
     const auth = usePage().props.auth as Auth | undefined;
     const canImpersonate = auth?.canImpersonate ?? false;
     const authUserId = auth?.user.id;
+    const [exporting, setExporting] = useState(false);
+    const [copyingAll, setCopyingAll] = useState(false);
+    const [copiedUserId, setCopiedUserId] = useState<number | null>(null);
     const { values, setFilter, setSearch, reset, isFiltered } = useIndexFilters(
         users.index().url,
         {
@@ -56,6 +125,122 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
         },
     );
 
+    const selectedUnitName = values.unit_id
+        ? options.units.find((u) => String(u.id) === String(values.unit_id))
+              ?.name
+        : undefined;
+
+    const buildExportQuery = (): string => {
+        const params = new URLSearchParams();
+
+        Object.entries(values).forEach(([key, val]) => {
+            if (
+                val !== undefined &&
+                val !== null &&
+                String(val).trim() !== ''
+            ) {
+                params.set(key, String(val).trim());
+            }
+        });
+
+        const qs = params.toString();
+
+        return qs ? `?${qs}` : '';
+    };
+
+    const handleOpenPdf = () => {
+        window.open(`/admin/users/export/pdf${buildExportQuery()}`, '_blank');
+    };
+
+    const handleDownloadExcel = async () => {
+        setExporting(true);
+
+        try {
+            const response = await fetch(
+                `/admin/users/export/data${buildExportQuery()}`,
+                {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(String(response.status));
+            }
+
+            const payload = (await response.json()) as K3InputExport;
+            await downloadK3InputWorkbook(payload);
+        } catch {
+            toast.error('Gagal membuat file Excel data pengguna.');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handleCopySingleUser = async (user: UserRow) => {
+        const text = formatUserAccountClipboardText(user, selectedUnitName);
+        const ok = await writeTextToClipboard(text);
+
+        if (ok) {
+            setCopiedUserId(user.id);
+            toast.success(`Data akun ${user.name} disalin ke clipboard.`);
+            window.setTimeout(() => {
+                setCopiedUserId((prev) => (prev === user.id ? null : prev));
+            }, 2000);
+        } else {
+            toast.error('Gagal menyalin data akun ke clipboard.');
+        }
+    };
+
+    const handleCopyAllFilteredAccounts = async () => {
+        setCopyingAll(true);
+
+        try {
+            const response = await fetch(
+                `/admin/users/export/data${buildExportQuery()}`,
+                {
+                    headers: { Accept: 'application/json' },
+                    credentials: 'same-origin',
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(String(response.status));
+            }
+
+            const payload = (await response.json()) as K3InputExport & {
+                accounts?: UserRow[];
+            };
+            const list =
+                payload.accounts && payload.accounts.length > 0
+                    ? payload.accounts
+                    : page.data;
+
+            if (list.length === 0) {
+                toast.info('Tidak ada data akun untuk disalin.');
+
+                return;
+            }
+
+            const text = list
+                .map((u) => formatUserAccountClipboardText(u, selectedUnitName))
+                .join('\n\n');
+            const ok = await writeTextToClipboard(text);
+
+            if (ok) {
+                toast.success(
+                    `${list.length} data akun berhasil disalin ke clipboard.`,
+                );
+            } else {
+                toast.error('Gagal menyalin daftar akun ke clipboard.');
+            }
+        } catch {
+            toast.error('Gagal memuat data akun untuk disalin.');
+        } finally {
+            setCopyingAll(false);
+        }
+    };
+
     return (
         <>
             <Head title="Pengguna" />
@@ -64,14 +249,49 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
                     title="Pengguna"
                     description="Akun beserta role dan penempatannya di dalam organisasi."
                     actions={
-                        can('user.create') && (
-                            <Button asChild>
-                                <Link href={users.create()}>
-                                    <Plus className="size-4" />
-                                    Tambah Pengguna
-                                </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCopyAllFilteredAccounts}
+                                disabled={copyingAll}
+                                className="gap-1.5"
+                                title="Salin seluruh data akun sesuai filter ke clipboard"
+                            >
+                                <Copy className="size-4 text-primary" />
+                                {copyingAll ? 'Menyalin…' : 'Salin Akun'}
                             </Button>
-                        )
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleDownloadExcel}
+                                disabled={exporting}
+                                className="gap-1.5"
+                            >
+                                <FileSpreadsheet className="size-4 text-emerald-600" />
+                                {exporting ? 'Menyiapkan…' : 'Excel'}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleOpenPdf}
+                                className="gap-1.5"
+                            >
+                                <Download className="size-4 text-rose-600" />
+                                PDF
+                            </Button>
+                            {can('user.create') && (
+                                <Button size="sm" asChild>
+                                    <Link href={users.create()}>
+                                        <Plus className="size-4" />
+                                        Tambah Pengguna
+                                    </Link>
+                                </Button>
+                            )}
+                        </div>
                     }
                 />
 
@@ -157,7 +377,7 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
                                     <TableHead>Penugasan</TableHead>
                                     <TableHead>Login Terakhir</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead className="w-24 text-right">
+                                    <TableHead className="w-32 text-right">
                                         Aksi
                                     </TableHead>
                                 </TableRow>
@@ -245,6 +465,25 @@ export default function UsersIndex({ users: page, filters, options }: Props) {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-1">
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        handleCopySingleUser(
+                                                            user,
+                                                        )
+                                                    }
+                                                    aria-label={`Salin akun ${user.name}`}
+                                                    title="Salin data akun ke clipboard"
+                                                >
+                                                    {copiedUserId ===
+                                                    user.id ? (
+                                                        <Check className="size-4 text-emerald-600" />
+                                                    ) : (
+                                                        <Copy className="size-4" />
+                                                    )}
+                                                </Button>
                                                 {canImpersonate &&
                                                     user.is_active &&
                                                     user.id !== authUserId && (

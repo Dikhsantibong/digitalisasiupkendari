@@ -325,4 +325,41 @@ class EmployeeManagementTest extends TestCase
             ActivityLog::query()->where('event', ActivityEvent::Deleted->value)->count(),
         );
     }
+
+    public function test_deleting_an_employee_preserves_pagination_and_filter_query_url(): void
+    {
+        $unit = Unit::factory()->create();
+        $employee = Employee::factory()->for($unit)->create();
+        $paginatedUrl = route('admin.employees.index', ['unit_id' => $unit->id, 'page' => 2]);
+
+        $this->actingAs($this->userWithRole(RoleName::SuperAdmin))
+            ->from($paginatedUrl)
+            ->delete(route('admin.employees.destroy', $employee))
+            ->assertRedirect($paginatedUrl);
+
+        $this->assertDatabaseMissing('employees', ['id' => $employee->id]);
+    }
+
+    public function test_employees_can_be_exported_as_pdf_and_excel_data(): void
+    {
+        $unit = Unit::factory()->create(['name' => 'PLTD Poasia']);
+        Employee::factory()->for($unit)->create([
+            'name' => 'Pegawai Uji Ekspor',
+            'nip' => 'PLTD-POASIA-PEG-999',
+        ]);
+
+        $superAdmin = $this->userWithRole(RoleName::SuperAdmin);
+
+        $this->actingAs($superAdmin)
+            ->get(route('admin.employees.export-data', ['unit_id' => $unit->id]))
+            ->assertOk()
+            ->assertJsonPath('tables.0.key', 'employees')
+            ->assertJsonPath('tables.0.rows.0.cells.1', 'Pegawai Uji Ekspor');
+
+        $pdfResponse = $this->actingAs($superAdmin)
+            ->get(route('admin.employees.pdf', ['unit_id' => $unit->id]))
+            ->assertOk();
+
+        $this->assertSame('application/pdf', $pdfResponse->headers->get('Content-Type'));
+    }
 }

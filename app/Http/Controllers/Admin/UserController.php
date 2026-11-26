@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\ActivityEvent;
+use App\Http\Controllers\Concerns\EmbedsReportLogo;
+use App\Http\Controllers\Concerns\RendersReportPdf;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
@@ -16,59 +18,27 @@ use App\Services\AccessControl;
 use App\Services\ActivityLogger;
 use App\Services\Operator\AttendanceRoster;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class UserController extends Controller
 {
+    use EmbedsReportLogo;
+    use RendersReportPdf;
+
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', User::class);
 
-        $viewer = $request->user();
-
-        $users = User::query()
-            ->with([
-                'employee:id,user_id,unit_id,nip,regu,is_shift_leader',
-                'roleAssignments.role:id,display_name',
-                'roleAssignments.unit:id,name',
-                'roleAssignments.serviceUnit:id,name',
-            ])
-            ->unless($viewer->hasGlobalAccess(), function (Builder $query) use ($viewer): void {
-                $query->whereHas('roleAssignments', function (Builder $query) use ($viewer): void {
-                    $query->whereIn('unit_id', $viewer->accessibleUnitIds())
-                        ->orWhereIn('service_unit_id', $viewer->accessibleServiceUnitIds());
-                });
-            })
-            ->when($request->string('search')->trim()->value(), function (Builder $query, string $search): void {
-                $query->where(function (Builder $query) use ($search): void {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('employee_id', 'like', "%{$search}%");
-                });
-            })
-            ->when($request->input('role_id'), function (Builder $query, $roleId): void {
-                $query->whereHas('roleAssignments', fn (Builder $query) => $query->where('role_id', $roleId));
-            })
-            ->when($request->input('unit_id'), function (Builder $query, $unitId): void {
-                $query->whereHas('roleAssignments', fn (Builder $query) => $query->where('unit_id', $unitId));
-            })
-            ->when($request->input('regu'), function (Builder $query, string $regu): void {
-                if ($regu === 'leader') {
-                    $query->whereHas('employee', fn (Builder $q) => $q->where('is_shift_leader', true)->whereNotNull('regu'));
-                } elseif (in_array($regu, AttendanceRoster::REGU, true)) {
-                    $query->whereHas('employee', fn (Builder $q) => $q->where('regu', $regu));
-                }
-            })
-            ->when($request->filled('status'), function (Builder $query) use ($request): void {
-                $query->where('is_active', $request->input('status') === 'active');
-            })
-            ->orderBy('name')
+        $users = $this->filteredQuery($request)
             ->paginate(15)
             ->withQueryString();
 
@@ -76,6 +46,40 @@ class UserController extends Controller
             'users' => $users->through(fn (User $user): array => $this->presentUser($user)),
             'filters' => $request->only(['search', 'role_id', 'unit_id', 'regu', 'status']),
             'options' => $this->options($request),
+        ]);
+    }
+
+    public function pdf(Request $request): HttpResponse
+    {
+        $this->authorize('viewAny', User::class);
+
+        [$table, $unitHeaderName, $filenameBase] = $this->buildExportPayload($request);
+
+        $html = view('admin.export-table-pdf', [
+            'table' => $table,
+            'unitHeaderName' => $unitHeaderName,
+        ])->render();
+
+        return $this->streamReportPdf(
+            $request,
+            'k3.input.export-raw',
+            ['html' => $this->embedAssets($html)],
+            $filenameBase.'.pdf',
+            'landscape',
+        );
+    }
+
+    public function exportData(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', User::class);
+
+        [$table, $unitHeaderName, $filenameBase, $accounts] = $this->buildExportPayload($request);
+
+        return response()->json([
+            'filename' => $filenameBase.'.xlsx',
+            'unit_header' => $unitHeaderName,
+            'tables' => [$table],
+            'accounts' => $accounts,
         ]);
     }
 
@@ -198,7 +202,7 @@ class UserController extends Controller
 
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Pengguna berhasil dihapus.']);
 
-        return to_route('admin.users.index');
+        return back(fallback: route('admin.users.index'));
     }
 
     /**
@@ -315,5 +319,140 @@ class UserController extends Controller
                 ->get(['id', 'name'])
                 ->all(),
         ];
+    }
+
+    /**
+     * @return Builder<User>
+     */
+    private function filteredQuery(Request $request): Builder
+    {
+        $viewer = $request->user();
+
+        return User::query()
+            ->with([
+                'employee:id,user_id,unit_id,nip,regu,is_shift_leader',
+                'roleAssignments.role:id,display_name',
+                'roleAssignments.unit:id,name',
+                'roleAssignments.serviceUnit:id,name',
+            ])
+            ->unless($viewer->hasGlobalAccess(), function (Builder $query) use ($viewer): void {
+                $query->whereHas('roleAssignments', function (Builder $query) use ($viewer): void {
+                    $query->whereIn('unit_id', $viewer->accessibleUnitIds())
+                        ->orWhereIn('service_unit_id', $viewer->accessibleServiceUnitIds());
+                });
+            })
+            ->when($request->string('search')->trim()->value(), function (Builder $query, string $search): void {
+                $query->where(function (Builder $query) use ($search): void {
+                    $query->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('employee_id', 'like', "%{$search}%");
+                });
+            })
+            ->when($request->input('role_id'), function (Builder $query, $roleId): void {
+                $query->whereHas('roleAssignments', fn (Builder $query) => $query->where('role_id', $roleId));
+            })
+            ->when($request->input('unit_id'), function (Builder $query, $unitId): void {
+                $query->whereHas('roleAssignments', fn (Builder $query) => $query->where('unit_id', $unitId));
+            })
+            ->when($request->input('regu'), function (Builder $query, string $regu): void {
+                if ($regu === 'leader') {
+                    $query->whereHas('employee', fn (Builder $q) => $q->where('is_shift_leader', true)->whereNotNull('regu'));
+                } elseif (in_array($regu, AttendanceRoster::REGU, true)) {
+                    $query->whereHas('employee', fn (Builder $q) => $q->where('regu', $regu));
+                }
+            })
+            ->when($request->filled('status'), function (Builder $query) use ($request): void {
+                $query->where('is_active', $request->input('status') === 'active');
+            })
+            ->orderBy('name');
+    }
+
+    /**
+     * @return array{0: array<string, mixed>, 1: string, 2: string, 3: list<array<string, mixed>>}
+     */
+    private function buildExportPayload(Request $request): array
+    {
+        $users = $this->filteredQuery($request)->get();
+        $unit = $request->filled('unit_id')
+            ? Unit::query()->find($request->integer('unit_id'))
+            : null;
+        $role = $request->filled('role_id')
+            ? Role::query()->find($request->integer('role_id'))
+            : null;
+
+        $scopeLabel = $unit?->name ?? 'Semua Unit UP Kendari';
+        $unitHeaderName = strtoupper($unit?->name ?? 'PT PLN NUSANTARA POWER UP KENDARI');
+
+        $meta = [
+            ['Total Pengguna', $users->count().' akun'],
+        ];
+        if ($role !== null) {
+            $meta[] = ['Filter Role', $role->display_name];
+        }
+        if ($request->filled('regu')) {
+            $reguVal = (string) $request->input('regu');
+            $meta[] = ['Filter Regu', $reguVal === 'leader' ? 'Leader Shift' : 'Regu '.$reguVal];
+        }
+        if ($request->filled('status')) {
+            $meta[] = ['Filter Status', $request->input('status') === 'active' ? 'Aktif' : 'Nonaktif'];
+        }
+        if ($request->filled('search')) {
+            $meta[] = ['Pencarian', (string) $request->string('search')->trim()];
+        }
+
+        $rows = [];
+        $accounts = [];
+        foreach ($users as $index => $user) {
+            $presented = $this->presentUser($user);
+            $accounts[] = $presented;
+
+            $assignmentText = collect($presented['assignments'])
+                ->map(fn (array $a): string => "{$a['role']} · {$a['scope_label']}")
+                ->implode('; ') ?: 'Belum ditugaskan';
+            $reguLabel = $presented['regu']
+                ? 'Regu '.$presented['regu'].($presented['is_shift_leader'] ? ' (Leader Shift)' : '')
+                : '-';
+
+            $rows[] = [
+                'kind' => 'data',
+                'cells' => [
+                    (string) ($index + 1),
+                    $user->name,
+                    $user->email,
+                    $user->employee_id ?: '-',
+                    $assignmentText,
+                    $reguLabel,
+                    $user->last_login_at ? $user->last_login_at->format('d/m/Y H:i') : '-',
+                    $user->is_active ? 'Aktif' : 'Nonaktif',
+                ],
+            ];
+        }
+
+        $table = [
+            'key' => 'users',
+            'title' => 'DATA AKUN PENGGUNA KIT-SIPP',
+            'document_number' => '',
+            'unit' => $scopeLabel,
+            'period' => now()->format('d/m/Y'),
+            'meta' => $meta,
+            'columns' => [
+                ['label' => 'No', 'width' => 6, 'align' => 'c'],
+                ['label' => 'Username / Nama', 'width' => 26, 'align' => 'l'],
+                ['label' => 'Email', 'width' => 30, 'align' => 'l'],
+                ['label' => 'NIP', 'width' => 22, 'align' => 'l'],
+                ['label' => 'Penugasan & Role', 'width' => 32, 'align' => 'l'],
+                ['label' => 'Regu Shift', 'width' => 16, 'align' => 'c'],
+                ['label' => 'Login Terakhir', 'width' => 16, 'align' => 'c'],
+                ['label' => 'Status', 'width' => 12, 'align' => 'c'],
+            ],
+            'rows' => $rows,
+            'has_data' => $rows !== [],
+            'saved' => true,
+            'dense' => false,
+        ];
+
+        $slug = Str::slug($scopeLabel, '_');
+
+        return [$table, $unitHeaderName, "Data_Pengguna_{$slug}", $accounts];
     }
 }
