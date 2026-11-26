@@ -68,14 +68,15 @@ class OpnameSheet
                     ->map(fn (LubricantType $type): array => ['key' => "l{$type->id}", 'name' => $type->name, 'group' => 'stand', 'note' => $type->unit_of_measure?->label()])
                     ->values()->all(),
             ]],
-            OpnameJenis::Kwh => array_map(fn (KwhMeterKategori $kategori): array => [
+            OpnameJenis::Kwh => array_values(array_filter(array_map(fn (KwhMeterKategori $kategori): array => [
                 'key' => $kategori->value,
                 'title' => $kategori->label(),
                 'name_label' => $kategori === KwhMeterKategori::SusutTrafo ? 'Nama' : 'Nama kWh',
                 'totals' => ['subtotal'],
                 'groups' => [['key' => 'stand', 'label' => '', 'fields' => self::stand()]],
                 'items' => $this->kwhItems($unit, $kategori),
-            ], KwhMeterKategori::cases()),
+                // kWh Netto meters only where the unit has them: the other units' sheet is unchanged.
+            ], KwhMeterKategori::cases()), fn (array $section): bool => $section['key'] !== KwhMeterKategori::Netto->value || $section['items'] !== [])),
         };
     }
 
@@ -255,7 +256,7 @@ class OpnameSheet
         $meters = KwhMeter::query()->with('machine:id,name')->where('unit_id', $unit->id)->where('kategori', $kategori)->where('is_active', true)
             ->orderBy('sort_order')->orderBy('name')->get();
 
-        if ($meters->isEmpty() && $kategori !== KwhMeterKategori::SusutTrafo) {
+        if ($meters->isEmpty() && ! in_array($kategori, [KwhMeterKategori::SusutTrafo, KwhMeterKategori::Netto], true)) {
             return $this->machines($unit)->map(fn (Machine $m): array => ['key' => "m{$m->id}", 'name' => $m->name, 'group' => 'stand', 'note' => null])->all();
         }
 

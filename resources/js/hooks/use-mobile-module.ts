@@ -4,7 +4,7 @@ import { createContext, useContext } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MOBILE_MODULES } from '@/layouts/mobile/modules';
 import type { MobileMenu, MobileModule } from '@/layouts/mobile/modules';
-import type { Auth } from '@/types';
+import type { Auth, BreadcrumbItem } from '@/types';
 
 /** Account pages every shell user reaches (from the bell), shown inside the shell rather than the desktop layout. */
 const SHELL_PAGES: MobileMenu[] = [
@@ -86,7 +86,9 @@ function parentMenuOf(
  * menu pages. The viewport is not considered here (unknown while rendering on
  * the server).
  */
-export function useMobileModuleCandidate(): ResolvedMobileModule | null {
+export function useMobileModuleCandidate(
+    breadcrumbs: BreadcrumbItem[] = [],
+): ResolvedMobileModule | null {
     const page = usePage();
     const auth = page.props.auth as Auth | undefined;
     const roleNames = (auth?.roles ?? []).map((role) => role.name);
@@ -129,6 +131,42 @@ export function useMobileModuleCandidate(): ResolvedMobileModule | null {
                     ? (SUB_PAGE_TITLES[subPage] ?? parent.title)
                     : (current?.title ?? module.title),
                 backHref: parent ? parent.href : module.homeHref,
+            };
+        }
+
+        if (module.allPages) {
+            // A page outside the menus (a document, a hub, the settings …) stays in the shell too.
+            const hrefOf = (item: BreadcrumbItem | undefined) =>
+                item === undefined
+                    ? null
+                    : typeof item.href === 'string'
+                      ? item.href
+                      : item.href.url;
+            const last = breadcrumbs[breadcrumbs.length - 1];
+            const previous =
+                breadcrumbs.length > 1
+                    ? hrefOf(breadcrumbs[breadcrumbs.length - 2])
+                    : null;
+            const redirect =
+                previous !== null &&
+                module.backTo?.paths.test(previous.split('?')[0])
+                    ? menus.find(
+                          (item) => item.component === module.backTo?.component,
+                      )
+                    : undefined;
+            // Back to that menu page for the same unit & period as the page open now.
+            const query =
+                typeof window === 'undefined' ? '' : window.location.search;
+
+            return {
+                module,
+                menus,
+                isHome: false,
+                current: null,
+                title: last?.title ?? module.title,
+                backHref: redirect
+                    ? `${redirect.href.split('?')[0]}${query}`
+                    : (previous ?? module.homeHref),
             };
         }
     }

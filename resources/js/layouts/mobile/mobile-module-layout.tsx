@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import {
+    FingerprintPending,
+    useAttendancePending,
+} from '@/components/operator/attendance-pending';
+import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuTrigger,
@@ -84,7 +88,12 @@ function UserButton({ onDark = false }: { onDark?: boolean }) {
 }
 
 function MenuTile({ menu }: { menu: MobileMenu }) {
-    const Icon = menu.icon;
+    const attendancePending = useAttendancePending();
+    // Red dot on Absen while an absen is still owed by the Jadwal Shift.
+    const Icon =
+        menu.key === 'presensi' && attendancePending
+            ? FingerprintPending
+            : menu.icon;
 
     return (
         <Link

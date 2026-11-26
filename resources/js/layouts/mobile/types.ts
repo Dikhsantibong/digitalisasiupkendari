@@ -113,4 +113,17 @@ export type MobileModule = {
      * section's full name ("Jadwal Operasi") instead of the short one ("Jadwal").
      */
     fullGroupLabels?: boolean;
+    /**
+     * Every page the account opens stays in the shell on a phone, not only the
+     * menu pages (Project Leader, user 2026-11-26: "layout mobile di seluruh
+     * halamannya") — a page outside the menus is titled by its last breadcrumb
+     * and its back arrow goes to the breadcrumb before it.
+     */
+    allPages?: boolean;
+    /**
+     * With `allPages`: a back arrow that would go to one of these paths goes
+     * to the menu page of `component` instead (the Project Leader opens the
+     * report documents from its one Laporan page, not the per-module ones).
+     */
+    backTo?: { paths: RegExp; component: string };
 };

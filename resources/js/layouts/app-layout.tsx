@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/react';
 import { AccountSwitcher } from '@/components/impersonation/account-switcher';
 import { ImpersonationBanner } from '@/components/impersonation/impersonation-banner';
 import { MobileTableCards } from '@/components/mobile/table-cards';
+import { AttendanceAlertBanner } from '@/components/operator/attendance-alert-banner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileModuleCandidate } from '@/hooks/use-mobile-module';
 import AppLayoutTemplate from '@/layouts/app/app-sidebar-layout';
@@ -38,15 +39,19 @@ function AppLayoutContent({
 }) {
     // On a phone, pages of a module registered in layouts/mobile/modules.ts
     // swap to the sidebar-less mobile shell.
-    const candidate = useMobileModuleCandidate();
+    const candidate = useMobileModuleCandidate(breadcrumbs);
     const isMobile = useIsMobile();
     const { component, props } = usePage();
     const page = (
-        <MobileTableCards
-            enabled={isMobile && TABLE_CARD_PAGES.test(component)}
-        >
-            {children}
-        </MobileTableCards>
+        <>
+            {/* The absen still owed by the user's Jadwal Shift (operators & project leader). */}
+            <AttendanceAlertBanner />
+            <MobileTableCards
+                enabled={isMobile && TABLE_CARD_PAGES.test(component)}
+            >
+                {children}
+            </MobileTableCards>
+        </>
     );
 
     // Kantor induk UP Kendari & Manager UL: the view-focused Portal Pemantauan instead of the sidebar app.

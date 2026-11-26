@@ -158,6 +158,10 @@ export function OpnameSheetPage({
             { label: 'Susut Trafo', value: NUMBER.format(total('susut_trafo')) },
             { label: 'kWh PSST (PS + Susut Trafo)', value: NUMBER.format(psst) },
             { label: 'kWh Netto (Produksi − PSST)', value: NUMBER.format(netto), strong: true },
+            // A unit with kWh Netto meters (master): their reading, beside the computed netto.
+            ...(sections.some((s) => s.key === 'netto')
+                ? [{ label: 'Total kWh Netto (meter)', value: NUMBER.format(total('netto')) }]
+                : []),
             { label: 'Pemakaian BBM (Opname BBM)', value: bbm !== null ? `${NUMBER.format(bbm)} L` : '–' },
             { label: 'SFC Bruto (kWh Produksi ÷ BBM)', value: bbm ? `${RATIO.format(produksi / bbm)} kWh/L` : '–', strong: true },
             { label: 'SFC Netto (kWh Netto ÷ BBM)', value: bbm ? `${RATIO.format(netto / bbm)} kWh/L` : '–', strong: true },

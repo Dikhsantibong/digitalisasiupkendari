@@ -179,6 +179,30 @@ class OpnameMenuTest extends TestCase
         $this->assertSame(KwhMeterKategori::Produksi, KwhMeter::query()->sole()->kategori);
     }
 
+    public function test_kwh_netto_meters_get_their_own_section_only_where_the_unit_has_them(): void
+    {
+        $operator = $this->userWithRole(RoleName::Operator, $this->unit);
+        $koordinator = $this->userWithRole(RoleName::KoordinatorOperasi, $this->unit);
+        KwhMeter::factory()->forUnit($this->unit)->create(['name' => 'kWh Bruto MIRRLEES #1', 'kategori' => KwhMeterKategori::Produksi]);
+
+        // The master accepts the Netto kategori.
+        $this->actingAs($koordinator)->post(route('operasi.master.store', 'kwh-meters'), [
+            'unit_id' => $this->unit->id, 'name' => 'kWh Netto MIRRLEES #1', 'kategori' => 'netto', 'is_active' => 1,
+        ])->assertSessionHasNoErrors();
+        $netto = KwhMeter::query()->where('kategori', 'netto')->sole();
+
+        $this->actingAs($operator)->get(route('operator.opname-kwh.index'))
+            ->assertInertia(fn ($page) => $page
+                ->where('sections', fn ($list): bool => collect($list)->pluck('key')->all() === ['produksi', 'ps', 'susut_trafo', 'netto'])
+                ->where('sections.3.items', fn ($items): bool => collect($items)->pluck('key')->all() === ["k{$netto->id}"]));
+
+        // Another unit without Netto meters: unchanged sheet, no machine rows standing in for Netto.
+        $other = Unit::factory()->create(['is_active' => true]);
+        Machine::factory()->create(['unit_id' => $other->id, 'is_active' => true]);
+        $this->actingAs($this->userWithRole(RoleName::Operator, $other))->get(route('operator.opname-kwh.index'))
+            ->assertInertia(fn ($page) => $page->where('sections', fn ($list): bool => collect($list)->pluck('key')->all() === ['produksi', 'ps', 'susut_trafo']));
+    }
+
     public function test_a_user_without_the_logsheet_permission_is_refused(): void
     {
         $user = User::factory()->create();

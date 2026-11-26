@@ -95,6 +95,12 @@ export const MOBILE_MODULES: MobileModule[] = [
         homeComponents: ['dashboard'],
         homeHref: dashboard().url,
         fullGroupLabels: true,
+        // Every page of the account in the phone shell (documents, hubs, settings …), not only its menus.
+        allPages: true,
+        backTo: {
+            paths: /^\/(?:operasi|har|k3|logistik|pdm)\/laporan$/,
+            component: 'laporan/index',
+        },
         menus: uniqueMenus(
             [
                 ...PROJECT_LEADER_LAPORAN_MENUS,

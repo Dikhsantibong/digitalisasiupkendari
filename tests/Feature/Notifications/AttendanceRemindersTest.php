@@ -174,6 +174,45 @@ class AttendanceRemindersTest extends TestCase
         $this->assertSame([], $this->keysOf($colleague));
     }
 
+    public function test_the_banner_shows_the_absen_owed_by_the_jadwal_shift(): void
+    {
+        $this->schedule('2026-10-05', $this->pagi);
+        $reminders = app(AttendanceReminders::class);
+        $at = fn (string $wita) => Carbon::parse($wita, PresenceRecorder::TIMEZONE)->utc();
+
+        $this->assertNull($reminders->pendingFor($this->operator, $at('2026-10-05 07:00')), 'too early');
+        $this->assertSame('segera', $reminders->pendingFor($this->operator, $at('2026-10-05 07:40'))['kind']);
+        $late = $reminders->pendingFor($this->operator, $at('2026-10-05 13:00'));
+        $this->assertSame('terlambat', $late['kind']);
+        $this->assertStringContainsString('Shift Pagi (08:00–16:00)', $late['message']);
+        $this->assertSame('/operator/presensi', $late['url']);
+
+        EmployeePresence::factory()->create([
+            'employee_id' => $this->employee->id,
+            'unit_id' => $this->unit->id,
+            'work_date' => '2026-10-05',
+            'check_in_at' => $at('2026-10-05 07:55'),
+            'check_out_at' => null,
+        ]);
+
+        $this->assertNull($reminders->pendingFor($this->operator, $at('2026-10-05 13:00')), 'checked in');
+        $this->assertSame('pulang', $reminders->pendingFor($this->operator, $at('2026-10-05 16:30'))['kind']);
+        $this->assertNull($reminders->pendingFor($this->operator, $at('2026-10-05 21:00')), 'checkout window over');
+    }
+
+    public function test_the_banner_is_shared_with_the_operator_only(): void
+    {
+        $this->schedule('2026-10-05', $this->pagi);
+        Carbon::setTestNow(Carbon::parse('2026-10-05 09:00', PresenceRecorder::TIMEZONE)->utc());
+
+        $this->actingAs($this->operator)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('attendanceAlert.kind', 'terlambat'));
+
+        $koordinator = $this->userWithRole(RoleName::KoordinatorK3, $this->unit);
+        $this->actingAs($koordinator)->get(route('dashboard'))
+            ->assertInertia(fn ($page) => $page->where('attendanceAlert', null));
+    }
+
     private function schedule(string $date, AttendanceCode $code, ?Employee $employee = null): void
     {
         $carbon = Carbon::parse($date);

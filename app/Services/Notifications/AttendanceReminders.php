@@ -5,11 +5,13 @@ namespace App\Services\Notifications;
 use App\Enums\NotificationCategory;
 use App\Enums\PermissionName;
 use App\Models\AttendanceCode;
+use App\Models\Employee;
 use App\Models\EmployeePresence;
 use App\Models\User;
 use App\Models\WorkScheduleEntry;
 use App\Notifications\ReminderNotification;
 use App\Services\Operator\PresenceRecorder;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 /**
@@ -109,6 +111,80 @@ class AttendanceReminders
         }
 
         return $sent;
+    }
+
+    /**
+     * The absen the user still owes right now according to their Jadwal Shift
+     * (user, 2026-11-26): shown as a banner on every page of their account, so
+     * the notice does not depend on the reminder cron. Null when nothing is
+     * due — not scheduled, OFF / cuti, already checked in (and out), or the
+     * user may not take the absen (operator.presensi).
+     * - "segera": from 30 minutes before a working shift, not checked in yet;
+     * - "terlambat": the shift has started and there is no absen masuk;
+     * - "pulang": checked in, the shift ended and no absen pulang (4 hours).
+     *
+     * @return array{kind: 'segera'|'terlambat'|'pulang', work_date: string, title: string, message: string, url: string}|null
+     */
+    public function pendingFor(User $user, CarbonInterface $now): ?array
+    {
+        if (! $user->hasPermissionTo(PermissionName::OperatorPresensi)) {
+            return null;
+        }
+
+        $employee = Employee::query()->where('user_id', $user->id)->where('is_active', true)->first(['id']);
+
+        if ($employee === null) {
+            return null;
+        }
+
+        $local = $now->copy()->timezone(PresenceRecorder::TIMEZONE);
+        $from = $local->copy()->startOfDay()->subDay()->toDateString();
+        $to = $local->copy()->startOfDay()->addDay()->toDateString();
+
+        $entries = WorkScheduleEntry::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('work_date', '>=', $from)
+            ->whereDate('work_date', '<=', $to)
+            ->whereNotNull('attendance_code_id')
+            ->whereHas('attendanceCode', fn ($q) => $q->where('hitung_hadir', true)->whereNotNull('jam_mulai'))
+            ->with('attendanceCode')
+            ->get()
+            ->sortBy(fn (WorkScheduleEntry $entry): string => $entry->work_date->toDateString());
+
+        if ($entries->isEmpty()) {
+            return null;
+        }
+
+        $presences = EmployeePresence::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('work_date', '>=', $from)
+            ->whereDate('work_date', '<=', $to)
+            ->get()
+            ->keyBy(fn (EmployeePresence $p): string => $p->work_date->toDateString());
+        $url = route('operator.presensi.index', absolute: false);
+
+        foreach ($entries as $entry) {
+            $code = $entry->attendanceCode;
+            $date = $entry->work_date->toDateString();
+            [$start, $end] = $this->shiftWindow($date, $code);
+            $presence = $presences->get($date);
+            $shift = "Shift {$code->label} ({$start->format('H:i')}–{$end->format('H:i')})";
+            $day = $start->copy()->locale('id')->isoFormat('dddd, D MMMM YYYY');
+
+            if ($presence === null && $local->betweenIncluded($start->copy()->subMinutes(self::BEFORE_START_MINUTES), $start->copy()->subSecond())) {
+                return ['kind' => 'segera', 'work_date' => $date, 'title' => "{$shift} segera dimulai", 'message' => "Jadwal Anda {$day}. Silakan absen masuk dari area kantor unit.", 'url' => $url];
+            }
+
+            if ($presence === null && $local->betweenIncluded($start, $end)) {
+                return ['kind' => 'terlambat', 'work_date' => $date, 'title' => 'Anda belum absen masuk', 'message' => "{$shift} sudah dimulai pukul {$start->format('H:i')} ({$day}). Segera absen masuk; tanpa absen Anda tercatat tidak hadir.", 'url' => $url];
+            }
+
+            if ($presence !== null && $presence->check_out_at === null && $local->betweenIncluded($end, $end->copy()->addHours(self::CHECKOUT_WINDOW_HOURS))) {
+                return ['kind' => 'pulang', 'work_date' => $date, 'title' => 'Anda belum absen pulang', 'message' => "{$shift} sudah selesai pukul {$end->format('H:i')}. Jangan lupa absen pulang.", 'url' => $url];
+            }
+        }
+
+        return null;
     }
 
     /**

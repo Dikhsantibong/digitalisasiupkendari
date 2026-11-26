@@ -43,6 +43,10 @@ import { NavCollapsible } from '@/components/nav-collapsible';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
+    FingerprintPending,
+    useAttendancePending,
+} from '@/components/operator/attendance-pending';
+import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
@@ -144,6 +148,7 @@ export function AppSidebar() {
     };
 
     const approvalCount = (usePage().props.auth as Auth).approvals ?? null;
+    const attendancePending = useAttendancePending();
 
     // Akses 2 (TL & Staf) menus of a module, listed inside the module's own
     // group before its Laporan (registry: lib/pengusahaan-menus.ts, shown to
@@ -290,7 +295,8 @@ export function AppSidebar() {
                 can('operator.presensi') && {
                     title: 'Absensi',
                     href: presensi.index(),
-                    icon: Fingerprint,
+                    // Red dot while an absen is still owed by the Jadwal Shift.
+                    icon: attendancePending ? FingerprintPending : Fingerprint,
                 },
                 can('operator.logsheet.view') && {
                     title: 'Logsheet Operator',

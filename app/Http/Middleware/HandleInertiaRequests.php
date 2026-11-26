@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\AccessControl;
 use App\Services\Impersonation;
+use App\Services\Notifications\AttendanceReminders;
 use App\Services\Reports\ApprovalInbox;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -64,6 +65,8 @@ class HandleInertiaRequests extends Middleware
                 'canImpersonate' => ($user?->isSuperAdmin() ?? false) && ! app(Impersonation::class)->isActive($request),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            // The absen the user still owes by their Jadwal Shift (banner on every page; null when none).
+            'attendanceAlert' => fn (): ?array => $user === null ? null : app(AttendanceReminders::class)->pendingFor($user, now()),
             // The bell's first count; it then refreshes itself from notifications.feed.
             'notifications' => fn (): array => [
                 'unread' => $user?->unreadNotifications()->count() ?? 0,
