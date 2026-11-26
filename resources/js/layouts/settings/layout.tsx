@@ -4,6 +4,7 @@ import Heading from '@/components/heading';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useCurrentUrl } from '@/hooks/use-current-url';
+import { useInMobileShell } from '@/hooks/use-mobile-module';
 import { cn, toUrl } from '@/lib/utils';
 import { edit } from '@/routes/profile';
 import { edit as editSecurity } from '@/routes/security';
@@ -11,12 +12,12 @@ import type { NavItem } from '@/types';
 
 const sidebarNavItems: NavItem[] = [
     {
-        title: 'Profile',
+        title: 'Profil Akun',
         href: edit(),
         icon: null,
     },
     {
-        title: 'Security',
+        title: 'Keamanan & 2FA',
         href: editSecurity(),
         icon: null,
     },
@@ -24,12 +25,23 @@ const sidebarNavItems: NavItem[] = [
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
     const { isCurrentOrParentUrl } = useCurrentUrl();
+    const inMobileShell = useInMobileShell();
+
+    if (inMobileShell) {
+        return (
+            <div className="px-4 py-4">
+                <section className="mx-auto max-w-xl space-y-6">
+                    {children}
+                </section>
+            </div>
+        );
+    }
 
     return (
         <div className="px-4 py-6">
             <Heading
-                title="Settings"
-                description="Manage your profile and account settings"
+                title="Profil & Pengaturan"
+                description="Kelola informasi akun, email, kata sandi, dan tanda tangan digital Anda"
             />
 
             <div className="flex flex-col lg:flex-row lg:space-x-12">
@@ -66,7 +78,7 @@ export default function SettingsLayout({ children }: PropsWithChildren) {
                 <Separator className="my-6 lg:hidden" />
 
                 <div className="flex-1 md:max-w-2xl">
-                    <section className="max-w-xl space-y-12">
+                    <section className="max-w-xl space-y-8">
                         {children}
                     </section>
                 </div>

@@ -117,8 +117,8 @@ class LogsheetTemplateTest extends TestCase
 
         $this->actingAs($admin)->post(route('operator.logsheet-template.store'), ['name' => 'SWD Kolaka', 'copy_from' => $this->mirrlees->id])->assertRedirect();
         $template = LogsheetTemplate::query()->where('name', 'SWD Kolaka')->sole();
-        // Lokal 01 (36) + Lokal 02 (31) + Lokal 03 (39) + Lokal 04 Cylinder Head (17), with their lembar.
-        $this->assertSame(123, $template->parameters()->count());
+        // Lokal 01 (36) + Lokal 02 (31) + Lokal 03 (38, without Beban) + Lokal 04 Cylinder Head (16, without Beban), with their lembar.
+        $this->assertSame(121, $template->parameters()->count());
         $this->assertCount(4, $template->sheetList());
 
         $first = $template->parameters()->orderBy('sort_order')->first();
@@ -190,21 +190,31 @@ class LogsheetTemplateTest extends TestCase
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->where('active_sheet.interval', 'Setiap 2 Jam')
                 ->where('active_sheet.summary', true)
-                // Beban, cam & crank shaft door bank A/B (32), Autonic, 3 pressures, 2 asap.
-                ->has('parameters', 39)
-                ->where('parameters.1.group_label', 'Temperature Cam Shaft Door')
-                ->where('parameters.1.sub_channel', 'A1')
+                // Cam & crank shaft door bank A/B (32), Autonic, 3 pressures, 2 asap (no Beban on 2-hour sheet).
+                ->has('parameters', 38)
+                ->where('parameters.0.group_label', 'Temperature Cam Shaft Door')
+                ->where('parameters.0.sub_channel', 'A1')
                 ->has('rows', 12)
                 ->where('rows.0.time_slot', '01:00')
                 ->where('rows.11.time_slot', '23:00'));
 
         $this->actingAs($operator)->get(route('operator.logsheet.index', $period + ['lembar' => 'cylinder-head']))
-            ->assertInertia(fn (AssertableInertia $page) => $page->has('parameters', 17)->has('rows', 12));
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->has('parameters', 16)
+                ->where('parameters.0.group_label', 'Temperature Cylinder Head')
+                ->where('parameters.0.sub_channel', 'A1')
+                ->has('rows', 12));
+
+        // Only hourly sheets (lokal-01 & lokal-02) carry a Beban parameter; 2-hour and 4-hour sheets do not.
+        $this->assertTrue(LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-01')->where('name', 'Beban')->exists());
+        $this->assertTrue(LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-02')->where('name', 'Beban')->exists());
+        $this->assertFalse(LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-03')->where('name', 'Beban')->exists());
+        $this->assertFalse(LogsheetParameter::query()->ofSheet($this->mirrlees, 'cylinder-head')->where('name', 'Beban')->exists());
 
         // Lokal 03 and Lokal 02 share 01:00: saving one never clears the other; 02:00 is not a Lokal 03 slot.
-        $l03 = LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-03')->where('code', 'L03_BEBAN')->sole();
+        $l03 = LogsheetParameter::query()->ofSheet($this->mirrlees, 'lokal-03')->where('code', 'L03_CAM_A1')->sole();
         $l02 = $this->param($this->mirrlees, 'LOAD');
-        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-03', 'sheet' => ['01:00' => ['p_'.$l03->id => '2200'], '03:00' => ['p_'.$l03->id => '2400']]])
+        $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-03', 'sheet' => ['01:00' => ['p_'.$l03->id => '60'], '03:00' => ['p_'.$l03->id => '64']]])
             ->assertSessionHasNoErrors();
         $this->actingAs($operator)->post(route('operator.logsheet.sheet'), $period + ['lembar' => 'lokal-02', 'sheet' => ['01:00' => ['p_'.$l02->id => '1500']]])->assertSessionHasNoErrors();
         $this->actingAs($operator)->post(route('operator.logsheet.store'), $period + ['lembar' => 'lokal-03', 'time_slot' => '02:00', 'values' => []])->assertSessionHasErrors('time_slot');
@@ -212,7 +222,7 @@ class LogsheetTemplateTest extends TestCase
         $sheet = OperatorLogsheet::query()->sole();
         $this->assertSame(3, $sheet->readings()->count());
         $this->actingAs($operator)->get(route('operator.logsheet.index', $period + ['lembar' => 'lokal-03']))
-            ->assertInertia(fn (AssertableInertia $page) => $page->where('rows.0.values.p_'.$l03->id, '2200')->where('stats.0.value', '2 / 12')->where('lembar_dipilih', true));
+            ->assertInertia(fn (AssertableInertia $page) => $page->where('rows.0.values.p_'.$l03->id, '60')->where('stats.0.value', '2 / 12')->where('lembar_dipilih', true));
 
         // The phone's lembar choice: filled hours per lembar; no lembar picked yet.
         $this->actingAs($operator)->get(route('operator.logsheet.index', $period))
@@ -224,8 +234,8 @@ class LogsheetTemplateTest extends TestCase
                 ->where('sheets.3.filled', 0));
 
         // MIN / MAX / RATA2 of Lokal 03, printed on its PDF.
-        [$min, $max, $avg] = LogsheetLayout::summaryRows(collect([$l03]), [['time_slot' => '01:00', 'values' => ['p_'.$l03->id => '2200']], ['time_slot' => '03:00', 'values' => ['p_'.$l03->id => '2400']]]);
-        $this->assertSame(['2200', '2400', '2300'], [$min['values']['p_'.$l03->id], $max['values']['p_'.$l03->id], $avg['values']['p_'.$l03->id]]);
+        [$min, $max, $avg] = LogsheetLayout::summaryRows(collect([$l03]), [['time_slot' => '01:00', 'values' => ['p_'.$l03->id => '60']], ['time_slot' => '03:00', 'values' => ['p_'.$l03->id => '64']]]);
+        $this->assertSame(['60', '64', '62'], [$min['values']['p_'.$l03->id], $max['values']['p_'.$l03->id], $avg['values']['p_'.$l03->id]]);
         $this->actingAs($operator)->get(route('operator.logsheet.pdf', $period + ['lembar' => 'lokal-03']))->assertOk()->assertHeader('content-type', 'application/pdf');
     }
 

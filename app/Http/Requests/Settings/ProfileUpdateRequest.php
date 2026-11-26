@@ -10,6 +10,15 @@ class ProfileUpdateRequest extends FormRequest
 {
     use ProfileValidationRules;
 
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('name') && $this->user() !== null) {
+            $this->merge([
+                'name' => $this->user()->name,
+            ]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *

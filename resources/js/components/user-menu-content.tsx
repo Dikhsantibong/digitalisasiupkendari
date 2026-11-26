@@ -61,7 +61,7 @@ export function UserMenuContent({
                                 onClick={cleanup}
                             >
                                 <Settings className="mr-2" />
-                                Settings
+                                Profil & Pengaturan
                             </Link>
                         </DropdownMenuItem>
                     </DropdownMenuGroup>

@@ -1,12 +1,12 @@
 import { usePage } from '@inertiajs/react';
-import { BadgeCheck, Bell } from 'lucide-react';
+import { BadgeCheck, Bell, ShieldCheck, UserCog } from 'lucide-react';
 import { createContext, useContext } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { MOBILE_MODULES } from '@/layouts/mobile/modules';
 import type { MobileMenu, MobileModule } from '@/layouts/mobile/modules';
 import type { Auth, BreadcrumbItem } from '@/types';
 
-/** Account pages every shell user reaches (from the bell), shown inside the shell rather than the desktop layout. */
+/** Account pages every shell user reaches (from the bell or account menu), shown inside the shell rather than the desktop layout. */
 const SHELL_PAGES: MobileMenu[] = [
     {
         key: 'notifikasi',
@@ -29,6 +29,28 @@ const SHELL_PAGES: MobileMenu[] = [
         tone: 'bg-primary/10 text-primary',
         href: '/persetujuan',
         component: 'laporan/persetujuan',
+        permission: [],
+    },
+    {
+        key: 'profil',
+        group: 'umum',
+        title: 'Profil & Pengaturan',
+        description: 'Informasi akun, email, kata sandi & tanda tangan',
+        icon: UserCog,
+        tone: 'bg-primary/10 text-primary',
+        href: '/settings/profile',
+        component: 'settings/profile',
+        permission: [],
+    },
+    {
+        key: 'keamanan',
+        group: 'umum',
+        title: 'Keamanan Akun',
+        description: 'Kata sandi & autentikasi dua faktor',
+        icon: ShieldCheck,
+        tone: 'bg-primary/10 text-primary',
+        href: '/settings/security',
+        component: 'settings/security',
         permission: [],
     },
 ];

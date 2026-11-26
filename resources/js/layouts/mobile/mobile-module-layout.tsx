@@ -3,6 +3,7 @@ import { ArrowLeft, BadgeCheck, ChevronRight, Menu, Search, X } from 'lucide-rea
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { AttendanceAlertBanner } from '@/components/operator/attendance-alert-banner';
 import {
     FingerprintPending,
     useAttendancePending,
@@ -81,7 +82,7 @@ function UserButton({ onDark = false }: { onDark?: boolean }) {
                 <Menu className="size-5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-60" align="end">
-                <UserMenuContent user={auth.user} showSettings={false} />
+                <UserMenuContent user={auth.user} />
             </DropdownMenuContent>
         </DropdownMenu>
     );
@@ -193,6 +194,9 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
                     <UserButton onDark />
                 </div>
             </header>
+
+            {/* The absen still owed by the user's Jadwal Shift: visible right on the mobile home screen. */}
+            <AttendanceAlertBanner className="mx-0 mt-0 rounded-2xl p-3.5 shadow-sm" />
 
             {/* Approvers (Team Leader, Koordinator, Project Leader): what waits for their decision. */}
             {auth.approvals != null && (

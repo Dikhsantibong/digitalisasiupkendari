@@ -381,6 +381,7 @@ Aturan tambahan:
 - **Login di HP** (keputusan user 2026-11-22): hanya logo dan form login (email, kata sandi, ingat saya,
   lupa kata sandi, Masuk, Install Aplikasi); panel identitas KIT-SIPP, catatan akses, dan footer hanya
   tampil di desktop.
+- **Profil & Pengaturan di HP** (keputusan user 2026-11-27): menu hamburger akun pada shell HP menampilkan **Profil & Pengaturan** (`/settings/profile`) yang tetap berada di dalam shell HP (`SHELL_PAGES`). Halaman profil menampilkan **Informasi Akun & Kepegawaian (Read-Only / Tidak Dapat Diedit)** seperti Nama Lengkap, NIP/NID, Jabatan, Role Akun, Unit Pembangkit/Layanan, Divisi, dan Regu Shift, serta menyediakan fitur mandiri bagi pengguna untuk **mengubah alamat email**, **mengubah kata sandi (password)**, dan **menggambar tanda tangan digital di kanvas (`SignaturePad`)** (atau mengunggah gambar tanda tangan).
 
 ---
 
@@ -405,8 +406,11 @@ Aturan tambahan:
   dan diarahkan ke akun yang sama. Akun kantor induk (`manager-up@…` dst.) & e-mail pribadi
   tidak berubah.
 - Akun nonaktif ditolak; login terakhir (waktu & IP) dicatat.
-- Profil: ubah nama/email, kata sandi, 2FA, passkey, preferensi notifikasi,
-  dan perangkat push.
+- Profil (`/settings/profile`, desktop & shell HP):
+  - **Informasi Akun & Kepegawaian (Read-Only / Tidak Dapat Diedit)**: menampilkan Nama Lengkap, NIP / NID, Jabatan, Role Akun, Unit Pembangkit, Unit Layanan, Divisi, dan Regu Shift sesuai akun pengguna (`accountInfo`).
+  - **Ubah Email & Kata Sandi**: pengguna dapat memperbarui alamat email (`PATCH /settings/profile`) dan kata sandi (`PUT /settings/password`) secara mandiri langsung pada halaman profil.
+  - **Tanda Tangan Digital (`POST /settings/profile/signature`)**: pengguna dapat menggambar tanda tangan langsung pada kanvas interaktif (`SignaturePad`), mengunggah file gambar tanda tangan (PNG/JPG), atau menghapus tanda tangan yang tersimpan pada profil kepegawaiannya (`employees.signature_path`).
+  - Keamanan lanjutan (`/settings/security`): 2FA, passkey, preferensi notifikasi, dan perangkat push.
 
 ### 7.2 Dashboard
 
@@ -579,11 +583,11 @@ Detail Logsheet:
      Main Bearing Bank A & B (1–9), Temp. Ruangan, Temp Crankshaft Flywheel, Oil In To Engine, Oil Out Engine,
      Level Oli Mesin/Carter (Run, Stop — teks), Filter Auto Back Wash (IN, OUT), Level Expansion Tank (L/N/H),
      Trafo, Level Oil (L/N/H), Temp Oil; Normal/Alarm/Trip dari form.
-  3. **Logsheet Lokal 03 — Setiap 2 Jam** (01:00, 03:00 … 23:00): Beban (N 2300 / A 1700 / T 2860),
+  3. **Logsheet Lokal 03 — Setiap 2 Jam** (01:00, 03:00 … 23:00, tanpa inputan parameter Beban):
      Temperature Cam Shaft Door & Temperature Crank Shaft Door Bank A (A1–A8) & Bank B (B1–B8) (62/57/75 °C),
      Autonic B1 (50/47/54 °C), Press C O C (5/3/7 bar), Press Cooling Tip (0,6/0,4/1,2 bar), Press T Service
      Udara (26/20/30 bar), Kondisi Asap Silencer & Extraction (pilihan N/T/S); baris **MIN / MAX / RATA2**.
-  4. **Logsheet Lokal 04 (Cylinder Head) — Setiap 4 Jam** (baris form 01:00, 03:00 … 23:00): Beban (kW),
+  4. **Logsheet Lokal 04 (Cylinder Head) — Setiap 4 Jam** (baris form 01:00, 03:00 … 23:00, tanpa inputan parameter Beban):
      Temperature Cylinder Head Bank A (A1–A8) & Bank B (B1–B8).
   - **Logsheet Lokal 05 (Alat Bantu)** menyusul setelah formnya diberikan (dapat ditambah lewat Template Form Mesin).
 - PLTD Poasia Containerized tetap template Cummins satu lembar (tidak berubah).
@@ -1568,6 +1572,8 @@ Aturan data:
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
 | 2026-11-23 | **Patrol Check Mesin per jenis mesin / unit (PLTD Poasia `POA-OPR-CHK-01`)**: ditambahkan master **Template Patrol Check** (`Operasi\PatrolCheckTemplateController`, `operasi_patrol_check_templates`, `machines.patrol_check_template_id`) di menu Master Data untuk mengatur format bulanan N/T (`Cummins (Containerized)` tetap utuh) maupun format pemeriksaan per shift `FORM PATROL CHECK MESIN & ALAT BANTU` (`POA-OPR-CHK-01`, 25 item `MESIN`/`ALAT BANTU`, parameter `Getar/Bunyi/Suhu/Tek-Level/Bocor-Visual`, Shift & Operator otomatis dari data jadwal shift/pegawai user, status `N` tanpa input lanjutan vs `TN` yang langsung menampilkan input wajib uraian alasan/tindakan awal & unggah eviden foto, multi-entri per shift di `operasi_patrol_check_entries`, otomatis menyinkronkan poin 12 `#sec-4-12` di Laporan Project Operasi, header berlogo PLN & MKP tanpa form tanda tangan di input karena pengesahan digabung ke Laporan Project, plus tampilan mobile kartu) (§6.1, §8.2) |
+| 2026-11-27 | **Profil & Pengaturan di Layout Mobile (`SHELL_PAGES`), Informasi Akun Read-Only, Ubah Email & Password, serta Kanvas Tanda Tangan Digital (`SignaturePad`)**: menu hamburger akun pada seluruh shell HP kini menampilkan **Profil & Pengaturan** (`/settings/profile`) yang tetap berada di dalam shell HP (`MobileModuleLayout`). Halaman profil menampilkan **Informasi Akun & Kepegawaian (Read-Only / Tidak Dapat Diedit)** meliputi Nama Lengkap, NIP/NID, Jabatan, Role Akun, Unit Pembangkit, Unit Layanan, Divisi, dan Regu Shift; form **Ubah Email Akun**; form **Ubah Kata Sandi (Password)**; serta bagian **Tanda Tangan Digital** dengan kanvas interaktif (`SignaturePad`) untuk menggambar tanda tangan langsung (maupun unggah gambar / hapus tanda tangan) yang tersimpan ke `employees.signature_path` (§6.2, §7.1) |
+| 2026-11-27 | **Logsheet PLTD Poasia (Mirrlees): parameter Beban hanya pada lembar per jam**: parameter **Beban** (`L03_BEBAN` dan `CH_BEBAN`) dihapus dari lembar **Logsheet Lokal 03 (Setiap 2 Jam)** dan **Logsheet Lokal 04 Cylinder Head (Setiap 4 Jam)** sehingga inputan Beban hanya berada pada lembar **Setiap Jam** (`Logsheet Lokal 01` & `Logsheet Lokal 02`). **Banner pemberitahuan absen (`AttendanceAlertBanner`) ditampilkan langsung di beranda HP** tepat di bawah kartu header sapaan dengan tombol aksi penuh (**Absen Sekarang** / **Absen Pulang**), tidak lagi hanya berupa titik merah pada ikon Absensi (§7, §8.1) |
 | 2026-11-27 | **Master K3 berbasis per unit & penyesuaian penarikan data di Jadwal serta seluruh Inputan K3**: seluruh 10 resource **Master K3 & Keamanan** (`k3_activity_types`, `apd_categories`, `equipment_categories`, `patrol_locations`, `security_posts`, `emergency_equipments`, `apd_items`, `fire_extinguishers`, `p3k_boxes`, `inspection_checklists`) kini sepenuhnya berbasis per unit (`unit_scoped => true`, `unit_id`). Jadwal K3 (Time Frame Kinerja K3 & Lingkungan) dan seluruh inputan K3 Akses 1, Formulir K3, serta Akses 2 (Time Frame, Sertifikasi Peralatan, Daftar Inventaris APD, Kesiapan APD, Pemeriksaan Emergency Facility, Daftar Alat Tanggap Darurat, Kondisi APAR/APAB, Pemeriksaan P3K, Inspeksi Tempat Kerja, Patrol Check Security, Laporan Apel Keamanan, Metode Pengujian Peralatan, Evaluasi Hasil Pengujian Peralatan, serta `K3InputTables` & `K3ReportBuilder`) menarik data dari Master K3 masing-masing unit dengan fallback standar bila master unit kosong (§7.4, §8.6–8.7) |
 | 2026-11-27 | **Layout HP daftar → form untuk Pemeliharaan, K3, Logistik & PdM**: pola yang sama dengan menu operator (daftar kartu, Tambah kiri · Simpan kanan, form layar penuh, Simpan kembali ke daftar) kini juga di Pemeliharaan (Work Order, Service Request, Log Kegiatan, Foto, Rekap Gangguan, Abnormal, 5S 5R, Patrol Check, Material, Rencana, LH-05, Daily Meeting, Logbook Mutasi, 13 formulir teknis), input K3 (Kecelakaan, Inspeksi, APAR, Hydrant, CCTV, Fire Alarm, Rambu, Emergency Facility, Kesiapan APD, Inventaris APD, Air Limbah, Fasilitas Darurat, Patroli, Sertifikat, Lampiran, Kondisi K3) & 5 Formulir K3, serta Logistik & PdM (form input, Rekomendasi, Kesiapan APD, PTW, Sample Monitoring, lembar input). Komponen bersama: MobileEntryList/Card, MobileFormScreen, MobileRowFlow, MobileRowEditor `flow`, MobileCompactRows `onSave`. Desktop tidak berubah (§7) |
 | 2026-11-27 | **Time Frame K3 pindah ke Jadwal K3**: kartu Time Frame Kinerja K3 & Lingkungan kini di hub Jadwal K3 & Lingkungan (desktop & HP), tidak lagi di Input K3; tombol kembali & breadcrumb ke Jadwal K3. Akses tetap izin K3 Akses 1 (Koordinator K3; role Harlist tidak memiliki izin K3) (§8.3) |

@@ -32,7 +32,7 @@ const dismissKey = (alert: AttendanceAlert) =>
  * so it shows even when the reminder cron does not run; hidden on the Absen
  * page itself. "Tutup" hides it for this browser session only.
  */
-export function AttendanceAlertBanner() {
+export function AttendanceAlertBanner({ className }: { className?: string } = {}) {
     const { props, component } = usePage();
     const alert = (props.attendanceAlert ?? null) as AttendanceAlert | null;
     const [dismissed, setDismissed] = useState<string | null>(null);
@@ -86,29 +86,54 @@ export function AttendanceAlertBanner() {
         <div
             role="alert"
             className={cn(
-                'mx-4 mt-3 flex items-start gap-3 rounded-md border px-3 py-2.5 text-[13px] md:mx-6',
+                'mx-4 mt-3 flex flex-col gap-2.5 rounded-xl border px-3.5 py-3 text-[13px] shadow-xs sm:flex-row sm:items-center sm:gap-3 sm:rounded-md sm:px-3 sm:py-2.5 md:mx-6',
                 STYLE[alert.kind],
+                className,
             )}
         >
-            <Icon className="mt-0.5 size-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-                <p className="font-semibold">{alert.title}</p>
-                <p className="mt-0.5">{alert.message}</p>
+            <div className="flex items-start gap-3 sm:min-w-0 sm:flex-1">
+                <span
+                    className={cn(
+                        'flex size-8 shrink-0 items-center justify-center rounded-lg sm:mt-0.5 sm:size-auto sm:rounded-none sm:bg-transparent',
+                        alert.kind === 'terlambat'
+                            ? 'bg-red-500/15 text-red-700 dark:text-red-200'
+                            : 'bg-amber-500/15 text-amber-800 dark:text-amber-200',
+                    )}
+                >
+                    <Icon className="size-4 shrink-0" />
+                </span>
+                <div className="min-w-0 flex-1">
+                    <p className=" leading-snug font-semibold">{alert.title}</p>
+                    <p className="mt-0.5 leading-snug opacity-90">
+                        {alert.message}
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={dismiss}
+                    className="-mt-0.5 -mr-1 shrink-0 rounded-md p-1 opacity-70 hover:opacity-100 sm:hidden"
+                    aria-label="Tutup pemberitahuan absen"
+                >
+                    <X className="size-4" />
+                </button>
             </div>
-            <Link
-                href={alert.url}
-                className="shrink-0 rounded-md bg-primary px-3 py-1.5 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90"
-            >
-                {alert.kind === 'pulang' ? 'Absen Pulang' : 'Absen Sekarang'}
-            </Link>
-            <button
-                type="button"
-                onClick={dismiss}
-                className="shrink-0 rounded-md p-1 opacity-70 hover:opacity-100"
-                aria-label="Tutup pemberitahuan absen"
-            >
-                <X className="size-4" />
-            </button>
+            <div className="flex items-center gap-2 sm:shrink-0">
+                <Link
+                    href={alert.url}
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-[12.5px] font-semibold text-primary-foreground shadow-xs hover:bg-primary/90 active:scale-[0.99] sm:w-auto sm:rounded-md sm:px-3 sm:py-1.5 sm:text-[12px]"
+                >
+                    <Icon className="size-3.5 sm:hidden" />
+                    {alert.kind === 'pulang' ? 'Absen Pulang' : 'Absen Sekarang'}
+                </Link>
+                <button
+                    type="button"
+                    onClick={dismiss}
+                    className="hidden shrink-0 rounded-md p-1 opacity-70 hover:opacity-100 sm:inline-flex"
+                    aria-label="Tutup pemberitahuan absen"
+                >
+                    <X className="size-4" />
+                </button>
+            </div>
         </div>
     );
 }
