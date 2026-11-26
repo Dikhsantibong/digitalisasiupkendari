@@ -389,16 +389,21 @@ function pageGroups(root: Element): Element[] {
         current.appendChild(node);
     }
 
+    // Kept in the report (in order) so a laid-out page still measures them.
+    root.append(...groups);
+
     return groups.length > 0 ? groups : [root];
 }
 
-/** Split the report into its lembar (cover first, then every section). */
-function reportParts(html: string): SheetPart[] {
-    const doc = new DOMParser().parseFromString(
-        `<div id="__report">${html}</div>`,
-        'text/html',
-    );
-    const root = doc.getElementById('__report') ?? doc.body;
+/** A lembar of the report: its element, sheet name (before shortening) and whether it is the cover. */
+export type ReportBlock = { element: Element; name: string; isCover: boolean };
+
+/**
+ * The lembar of a report mounted under `root` (cover first, then every
+ * section, or every page of a report laid out with `break-before` pages).
+ * Shared by the grid book below and the true-to-PDF workbook (report-layout-workbook.ts).
+ */
+export function reportBlocks(root: Element): ReportBlock[] {
     const toc = tocTitles(root);
     const insideSection = (element: Element): boolean => {
         for (
@@ -458,19 +463,32 @@ function reportParts(html: string): SheetPart[] {
             Array.from(block.querySelectorAll('[class]')).some((element) =>
                 hasClass(element, COVER_CLASS),
             );
-        const rows: SheetRow[] = [];
-        collectRows(block, rows);
 
         return {
-            id: block.id,
+            element: block,
             name: isCover
                 ? 'Sampul'
                 : (toc.get(block.id) ??
                   headingOf(block) ??
                   `Lembar ${index + 1}`),
             isCover,
-            rows,
         };
+    });
+}
+
+/** Split the report into its lembar (cover first, then every section). */
+function reportParts(html: string): SheetPart[] {
+    const doc = new DOMParser().parseFromString(
+        `<div id="__report">${html}</div>`,
+        'text/html',
+    );
+    const root = doc.getElementById('__report') ?? doc.body;
+
+    return reportBlocks(root).map(({ element, name, isCover }) => {
+        const rows: SheetRow[] = [];
+        collectRows(element, rows);
+
+        return { id: element.id, name, isCover, rows };
     });
 }
 

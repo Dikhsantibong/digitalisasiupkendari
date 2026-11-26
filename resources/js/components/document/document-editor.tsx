@@ -310,22 +310,35 @@ function LoadedDocumentEditor({
         window.open(`${pdfUrl}${separator}v=${previewKey}`, '_blank');
     };
 
-    // Ekspor Excel: one workbook, Sampul + one sheet per lembar of the report (see report-workbook).
+    // Ekspor Excel: one workbook, Sampul + one sheet per lembar of the report. The text (PDF) document is laid
+    // out on the sheets exactly as it prints (report-layout-workbook); an edited / saved Excel version is
+    // written as it is in the sheet editor (report-workbook).
     const [exporting, setExporting] = useState(false);
+    const initialGrid = useRef(gridState);
     const downloadWorkbookXlsx = async () => {
         setExporting(true);
 
         try {
-            const { downloadReportWorkbook } =
-                await import('@/lib/report-workbook');
-            await downloadReportWorkbook(
-                mode === 'grid'
-                    ? gridState.sheets
-                        ? gridState
-                        : withExportHeader()
-                    : reportBook(mode === 'html' ? currentHtml() : html),
-                `${baseName}.xlsx`,
-            );
+            const useSheets =
+                mode === 'grid' &&
+                (savedFormat === 'grid' || gridState !== initialGrid.current);
+
+            if (useSheets) {
+                const { downloadReportWorkbook } =
+                    await import('@/lib/report-workbook');
+                await downloadReportWorkbook(
+                    gridState.sheets ? gridState : withExportHeader(),
+                    `${baseName}.xlsx`,
+                );
+            } else {
+                const { downloadReportLayoutWorkbook } =
+                    await import('@/lib/report-layout-workbook');
+                await downloadReportLayoutWorkbook(
+                    mode === 'html' ? currentHtml() : html,
+                    contentStyles,
+                    `${baseName}.xlsx`,
+                );
+            }
         } finally {
             setExporting(false);
         }

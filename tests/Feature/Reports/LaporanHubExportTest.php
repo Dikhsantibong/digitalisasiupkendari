@@ -15,7 +15,7 @@ use Tests\TestCase;
  * The PDF & Excel buttons beside "Buka Dokumen …" on every Laporan page
  * (components/laporan/laporan-export-buttons.tsx): Excel asks the document
  * page for just its deferred document (an Inertia partial reload) and builds
- * the book from that — the same document the PDF prints.
+ * the book from that — the same document (and styles) the PDF prints.
  */
 class LaporanHubExportTest extends TestCase
 {
@@ -58,11 +58,13 @@ class LaporanHubExportTest extends TestCase
             'X-Inertia' => 'true',
             'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(Request::create('/')),
             'X-Inertia-Partial-Component' => $component,
-            'X-Inertia-Partial-Data' => 'content,grid,format,has_saved',
+            'X-Inertia-Partial-Data' => 'content,content_styles,grid,format,has_saved',
         ])->assertOk();
 
         $props = $response->json('props');
         $this->assertIsString($props['content']);
+        // The document's own styles: the Excel lays the document out with them, as the PDF prints it.
+        $this->assertIsString($props['content_styles']);
         // The lembar the Excel book splits on (report-book.ts): *-section / section-box blocks or break-before pages.
         $this->assertMatchesRegularExpression('/class="[^"]*(-section|section-box|break-before)\b/', $props['content']);
         $this->assertArrayNotHasKey('filters', $props, 'only the document is sent, not the whole page');

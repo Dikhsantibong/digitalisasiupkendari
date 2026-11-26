@@ -5,6 +5,7 @@ import {
     Eraser,
     FileDown,
     FileSpreadsheet,
+    RotateCcw,
     Save,
     Sparkles,
 } from 'lucide-react';
@@ -176,6 +177,7 @@ function AbsensiSheet({
     const [brush, setBrush] = useState<string>('P');
     const [saving, setSaving] = useState(false);
     const [generateOpen, setGenerateOpen] = useState(false);
+    const [resetOpen, setResetOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
 
     const openPdf = () =>
@@ -340,9 +342,19 @@ function AbsensiSheet({
         );
     };
 
+    // The cells typed on screen go along (saved first): they are the start the rotation carries on from.
     const generate = () => {
         setGenerateOpen(false);
-        router.post(absensi.generate().url, filters, { preserveScroll: true });
+        router.post(
+            absensi.generate().url,
+            { ...filters, cells: changes },
+            { preserveScroll: true },
+        );
+    };
+
+    const reset = () => {
+        setResetOpen(false);
+        router.post(absensi.reset().url, filters, { preserveScroll: true });
     };
 
     const presenceOf = useMemo(
@@ -410,12 +422,17 @@ function AbsensiSheet({
                         Isi otomatis jadwal {period_label}?
                     </DialogTitle>
                     <DialogDescription>
-                        Operator mengikuti pola regunya (melanjutkan siklus
+                        Isi jadwal awal operator (mis. tanggal 1–2: Pagi, Pagi
+                        atau satu siklus penuh), lalu Isi Otomatis melanjutkan
+                        pola itu sampai akhir bulan. Anggota regu yang belum
+                        diisi mengikuti rekan seregunya; tanpa jadwal awal,
+                        operator mengikuti pola regunya (melanjutkan siklus
                         bulan lalu bila ada). Non Shift diisi Pagi pada hari
                         kerja dan OFF pada Sabtu, Minggu, dan libur nasional.
                         Kode Cuti, Sakit, Izin, dan Alpha yang sudah diisi tetap
                         dipertahankan.
-                        {dirty && ' Perubahan yang belum disimpan akan hilang.'}
+                        {dirty &&
+                            ' Isian yang belum disimpan ikut disimpan sebagai jadwal awal.'}
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
@@ -428,6 +445,34 @@ function AbsensiSheet({
                     <Button onClick={generate}>
                         <Sparkles className="size-4" />
                         Isi Otomatis
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+
+    const resetDialog = (
+        <Dialog open={resetOpen} onOpenChange={setResetOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Reset jadwal {period_label}?</DialogTitle>
+                    <DialogDescription>
+                        Semua kode di lembar ini (Kerja Shift dan Non Shift)
+                        dikosongkan agar jadwal bisa diisi ulang dari awal.
+                        Jadwal hasil pengajuan yang sudah disetujui tetap
+                        dipertahankan. Tindakan ini tidak bisa dibatalkan.
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                    <Button
+                        variant="secondary"
+                        onClick={() => setResetOpen(false)}
+                    >
+                        Batal
+                    </Button>
+                    <Button variant="destructive" onClick={reset}>
+                        <RotateCcw className="size-4" />
+                        Reset Jadwal
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -466,9 +511,15 @@ function AbsensiSheet({
                 saving={saving}
                 onSave={save}
                 onGenerate={() => setGenerateOpen(true)}
+                onReset={() => setResetOpen(true)}
                 onVisit={visit}
                 onShiftMonth={shiftMonth}
-                generateDialog={generateDialog}
+                generateDialog={
+                    <>
+                        {generateDialog}
+                        {resetDialog}
+                    </>
+                }
                 exportActions={
                     <div className="grid grid-cols-2 gap-2">
                         <Button
@@ -531,6 +582,13 @@ function AbsensiSheet({
                             </Button>
                             {can_write && (
                                 <>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setResetOpen(true)}
+                                    >
+                                        <RotateCcw className="size-4 text-rose-600" />
+                                        Reset
+                                    </Button>
                                     <Button
                                         variant="outline"
                                         onClick={() => setGenerateOpen(true)}
@@ -1142,6 +1200,7 @@ function AbsensiSheet({
             </div>
 
             {generateDialog}
+            {resetDialog}
         </>
     );
 }
@@ -1210,6 +1269,7 @@ function AbsensiMobile({
     saving,
     onSave,
     onGenerate,
+    onReset,
     onVisit,
     onShiftMonth,
     generateDialog,
@@ -1233,6 +1293,7 @@ function AbsensiMobile({
     saving: boolean;
     onSave: () => void;
     onGenerate: () => void;
+    onReset: () => void;
     onVisit: (patch: Partial<Props['filters']>) => void;
     onShiftMonth: (delta: number) => void;
     generateDialog: ReactNode;
@@ -1505,7 +1566,11 @@ function AbsensiMobile({
             </div>
 
             {can_write && (
-                <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-2 gap-2 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+                <div className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-3 gap-2 border-t border-border bg-background/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+                    <Button size="lg" variant="outline" onClick={onReset}>
+                        <RotateCcw className="size-4 text-rose-600" />
+                        Reset
+                    </Button>
                     <Button size="lg" variant="outline" onClick={onGenerate}>
                         <Sparkles className="size-4" />
                         Isi Otomatis

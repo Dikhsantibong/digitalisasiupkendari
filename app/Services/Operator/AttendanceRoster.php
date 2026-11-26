@@ -85,14 +85,137 @@ class AttendanceRoster
             ->mapWithKeys(fn (ShiftPattern $p): array => [$p->regu => $p->codes()])
             ->filter(fn (array $codes): bool => $codes !== []);
 
-        if ($patterns->isNotEmpty()) {
-            return $patterns;
+        if ($patterns->isEmpty()) {
+            return collect(self::DEFAULT_PHASES)->map(fn (int $offset): array => $this->rotate(self::DEFAULT_CYCLE, $offset));
         }
 
-        return collect(self::DEFAULT_PHASES)->map(fn (int $offset): array => array_merge(
-            array_slice(self::DEFAULT_CYCLE, $offset),
-            array_slice(self::DEFAULT_CYCLE, 0, $offset),
-        ));
+        // A regu missing from the master (e.g. only A–C set while regu D has operators) still rotates:
+        // the default cycle at the phase that spreads the shifts most evenly over the regu that have one.
+        foreach (self::REGU as $regu) {
+            if (! $patterns->has($regu)) {
+                $patterns->put($regu, $this->rotate(self::DEFAULT_CYCLE, $this->balancedPhase($patterns->values()->all())));
+            }
+        }
+
+        return $patterns->sortKeys();
+    }
+
+    /**
+     * @param  list<string>  $sequence
+     * @return list<string>
+     */
+    private function rotate(array $sequence, int $offset): array
+    {
+        return array_merge(array_slice($sequence, $offset), array_slice($sequence, 0, $offset));
+    }
+
+    /**
+     * The default-cycle phase that, added to the given sequences, least often
+     * puts two regu on the same shift on the same day.
+     *
+     * @param  list<list<string>>  $sequences
+     */
+    private function balancedPhase(array $sequences): int
+    {
+        $length = count(self::DEFAULT_CYCLE);
+        $best = 0;
+        $bestScore = PHP_INT_MAX;
+
+        foreach ([...array_values(self::DEFAULT_PHASES), ...range(0, $length - 1)] as $phase) {
+            $candidate = $this->rotate(self::DEFAULT_CYCLE, $phase);
+            $score = 0;
+
+            for ($day = 0; $day < $length; $day++) {
+                foreach ($sequences as $sequence) {
+                    if ($sequence !== [] && $sequence[$day % count($sequence)] === $candidate[$day] && $candidate[$day] !== 'OFF') {
+                        $score++;
+                    }
+                }
+            }
+
+            if ($score < $bestScore) {
+                [$best, $bestScore] = [$phase, $score];
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * The month's codes carrying on the schedule the user started (user,
+     * 2026-11-26: "isi jadwal awal saja, sistem menyesuaikan polanya"). The
+     * seed — days already filled for the employee — is matched against every
+     * rotation of the regu's sequence; when one fits, the whole month follows
+     * it. A seed that fits no rotation but is a run of at least two days
+     * (e.g. a custom P,S,M,OFF) repeats as its own cycle. Codes outside the
+     * cycle (Cuti, Sakit …) are ignored for the match. Null when the seed says
+     * nothing about the rotation.
+     *
+     * @param  list<string>  $sequence
+     * @param  array<int, string>  $seed  day => code
+     * @return list<string>|null
+     */
+    public function planFromSeed(array $sequence, array $seed, int $daysInMonth): ?array
+    {
+        $length = count($sequence);
+        $relevant = array_filter($seed, fn (string $code): bool => in_array($code, ['P', 'S', 'M', 'OFF'], true));
+        ksort($relevant);
+
+        if ($relevant === [] || $length === 0) {
+            return null;
+        }
+
+        for ($offset = 0; $offset < $length; $offset++) {
+            $fits = true;
+
+            foreach ($relevant as $day => $code) {
+                if ($sequence[($offset + $day - 1) % $length] !== $code) {
+                    $fits = false;
+                    break;
+                }
+            }
+
+            if ($fits) {
+                return array_map(fn (int $day): string => $sequence[($offset + $day - 1) % $length], range(1, $daysInMonth));
+            }
+        }
+
+        // Not the regu's rotation: the user's own run of days, repeated.
+        $first = array_key_first($relevant);
+        $run = [];
+
+        for ($day = $first; isset($relevant[$day]); $day++) {
+            $run[] = $relevant[$day];
+        }
+
+        if (count($run) < 2) {
+            return null;
+        }
+
+        $period = count($run);
+
+        for ($p = 1; $p < count($run); $p++) {
+            $repeats = true;
+
+            foreach ($run as $i => $code) {
+                if ($run[$i % $p] !== $code) {
+                    $repeats = false;
+                    break;
+                }
+            }
+
+            if ($repeats) {
+                $period = $p;
+                break;
+            }
+        }
+
+        $cycle = array_slice($run, 0, $period);
+
+        return array_map(
+            fn (int $day): string => $cycle[((($day - $first) % $period) + $period) % $period],
+            range(1, $daysInMonth),
+        );
     }
 
     /**

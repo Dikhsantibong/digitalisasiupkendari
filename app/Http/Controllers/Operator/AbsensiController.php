@@ -197,39 +197,9 @@ class AbsensiController extends Controller
 
         [$unit, $year, $month] = $this->resolveTarget($request);
 
-        $validated = $request->validate([
-            'cells' => ['array'],
-            'cells.*.employee_id' => ['required', 'integer'],
-            'cells.*.day' => ['required', 'integer', 'min:1', 'max:31'],
-            'cells.*.code' => ['nullable', 'string'],
-        ]);
+        $validated = $request->validate($this->cellRules());
 
-        $codes = AttendanceCode::query()->where('is_active', true)->pluck('id', 'code');
-        $groups = $this->rosterGroups($unit);
-        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
-
-        DB::transaction(function () use ($unit, $year, $month, $validated, $codes, $groups, $daysInMonth, $user): void {
-            $rows = [];
-
-            foreach ($validated['cells'] ?? [] as $cell) {
-                $member = $groups->get($cell['employee_id']);
-                if ($member === null || $cell['day'] > $daysInMonth) {
-                    continue;
-                }
-
-                $code = (string) ($cell['code'] ?? '');
-                $rows[$member['group']->value][] = [
-                    'employee_id' => $cell['employee_id'],
-                    'day' => $cell['day'],
-                    'attendance_code_id' => $code === '' ? null : ($codes[$code] ?? null),
-                    'regu' => $member['regu'],
-                ];
-            }
-
-            foreach ($rows as $group => $groupRows) {
-                $this->putEntries($this->schedule($unit, $year, $month, ScheduleGroupType::from($group), $user->id), $year, $month, $groupRows);
-            }
-        });
+        DB::transaction(fn () => $this->saveCells($unit, $year, $month, $validated['cells'] ?? [], $user->id));
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
@@ -243,11 +213,17 @@ class AbsensiController extends Controller
     }
 
     /**
-     * Fill the whole month from the patterns: operators follow their regu
-     * rotation (continuing from last month where possible), Non Shift staff get
-     * office hours. Absence codes already entered (Cuti, Sakit, Izin, Alpha) and
-     * the cells set by an approved Pengajuan Absensi (izin / sakit / cuti /
-     * tukar shift) are kept; everything stays editable afterwards.
+     * Fill the whole month. Operators carry on the schedule the user started
+     * (user, 2026-11-26): the cells typed on screen (sent along and saved
+     * first) or, in a month only partly filled, the saved cells are the seed,
+     * and the rotation that fits them fills the rest
+     * ({@see AttendanceRoster::planFromSeed}). A regu mate without a seed
+     * follows the seeded one, so a regu of any size moves together. Without
+     * any seed an operator follows the regu pattern, continuing from last
+     * month where possible. Non Shift staff get office hours. Seeded and typed
+     * cells, absence codes already entered (Cuti, Sakit, Izin, Alpha) and the
+     * cells set by an approved Pengajuan Absensi (izin / sakit / cuti / tukar
+     * shift) are kept; everything stays editable afterwards.
      */
     public function generate(Request $request): RedirectResponse
     {
@@ -255,36 +231,96 @@ class AbsensiController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperatorAbsensiWrite), 403);
 
         [$unit, $year, $month] = $this->resolveTarget($request);
+        $validated = $request->validate($this->cellRules());
 
         $codes = AttendanceCode::query()->where('is_active', true)->get(['id', 'code', 'type']);
         $codeIds = $codes->pluck('id', 'code');
+        $codeById = $codes->pluck('code', 'id');
         $absenceIds = $codes->where('type', AttendanceCodeType::Absence)->pluck('id')->all();
 
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
         $sequences = $this->roster->shiftSequences($unit);
-        $tails = $this->previousMonthTails($unit, $year, $month, $codes->pluck('code', 'id'));
+        $tails = $this->previousMonthTails($unit, $year, $month, $codeById);
         $holidayDays = Holiday::query()->whereYear('date', $year)->whereMonth('date', $month)->get(['date'])
             ->map(fn (Holiday $h): int => $h->date->day)->all();
         $officeHours = $this->roster->planNonShift($year, $month, $holidayDays);
 
-        DB::transaction(function () use ($unit, $year, $month, $user, $codeIds, $absenceIds, $daysInMonth, $sequences, $tails, $officeHours): void {
+        // The cells typed on screen: the start of the schedule, kept as typed.
+        $typed = [];
+
+        foreach ($validated['cells'] ?? [] as $cell) {
+            if ((string) ($cell['code'] ?? '') !== '' && $cell['day'] <= $daysInMonth) {
+                $typed[(int) $cell['employee_id']][(int) $cell['day']] = (string) $cell['code'];
+            }
+        }
+
+        DB::transaction(function () use ($unit, $year, $month, $user, $validated, $typed, $codeIds, $codeById, $absenceIds, $daysInMonth, $sequences, $tails, $officeHours): void {
+            $this->saveCells($unit, $year, $month, $validated['cells'] ?? [], $user->id);
+
             foreach (ScheduleGroupType::cases() as $group) {
                 $schedule = $this->schedule($unit, $year, $month, $group, $user->id);
                 $schedule->generated_at = now();
                 $schedule->save();
 
-                $kept = $schedule->entries()
-                    ->where(fn ($query) => $query->whereIn('attendance_code_id', $absenceIds)->orWhereNotNull('attendance_request_id'))
-                    ->get()
-                    ->map(fn ($entry): string => $entry->employee_id.':'.$entry->work_date->day)->flip();
+                $entries = $schedule->entries()->get();
+                $kept = $entries
+                    ->filter(fn ($entry): bool => in_array($entry->attendance_code_id, $absenceIds, true) || $entry->attendance_request_id !== null)
+                    ->map(fn ($entry): string => $entry->employee_id.':'.$entry->work_date->day)
+                    ->flip();
+                $saved = [];
+
+                foreach ($entries as $entry) {
+                    if ($entry->attendance_code_id !== null && $codeById->has($entry->attendance_code_id)) {
+                        $saved[$entry->employee_id][$entry->work_date->day] = $codeById->get($entry->attendance_code_id);
+                    }
+                }
+
+                $employees = $this->roster->employees($unit, $group);
+                $plans = [];
+
+                if ($group === ScheduleGroupType::Shift) {
+                    $seeded = [];
+                    $reguPlans = [];
+
+                    foreach ($employees as $employee) {
+                        $savedRow = $saved[$employee->id] ?? [];
+                        $seed = $typed[$employee->id] ?? (count($savedRow) < $daysInMonth ? $savedRow : []);
+
+                        if ($seed === []) {
+                            continue;
+                        }
+
+                        foreach (array_keys($seed) as $day) {
+                            $kept->put($employee->id.':'.$day, true);
+                        }
+
+                        $plan = $this->roster->planFromSeed($sequences->get($employee->regu, []), $seed, $daysInMonth);
+
+                        if ($plan !== null) {
+                            $seeded[$employee->id] = $plan;
+                            $reguPlans[$employee->regu] ??= $plan;
+                        }
+                    }
+
+                    foreach ($employees as $employee) {
+                        $plans[$employee->id] = $seeded[$employee->id]
+                            ?? $reguPlans[$employee->regu]
+                            ?? ($sequences->has($employee->regu) ? $this->roster->planShift($sequences->get($employee->regu), $tails[$employee->id] ?? [], $daysInMonth) : []);
+                    }
+                } else {
+                    foreach ($employees as $employee) {
+                        $plans[$employee->id] = $officeHours;
+
+                        foreach (array_keys($typed[$employee->id] ?? []) as $day) {
+                            $kept->put($employee->id.':'.$day, true);
+                        }
+                    }
+                }
+
                 $rows = [];
 
-                foreach ($this->roster->employees($unit, $group) as $employee) {
-                    $plan = $group === ScheduleGroupType::Shift
-                        ? ($sequences->has($employee->regu) ? $this->roster->planShift($sequences->get($employee->regu), $tails[$employee->id] ?? [], $daysInMonth) : [])
-                        : $officeHours;
-
-                    foreach ($plan as $index => $code) {
+                foreach ($employees as $employee) {
+                    foreach ($plans[$employee->id] as $index => $code) {
                         $day = $index + 1;
                         if ($kept->has($employee->id.':'.$day)) {
                             continue;
@@ -304,9 +340,86 @@ class AbsensiController extends Controller
             unit: $unit->id,
         );
 
-        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal terisi otomatis. Cuti/Sakit/Izin/Alpha dan hasil pengajuan (tukar shift) tetap dipertahankan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal terisi otomatis mengikuti pola awal. Cuti/Sakit/Izin/Alpha dan hasil pengajuan (tukar shift) tetap dipertahankan.']);
 
         return back();
+    }
+
+    /**
+     * Empty the month's sheet (both rosters) to start over. Cells set by an
+     * approved Pengajuan Absensi stay: cancelling the pengajuan reverts them.
+     */
+    public function reset(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorAbsensiWrite), 403);
+
+        [$unit, $year, $month] = $this->resolveTarget($request);
+
+        DB::transaction(function () use ($unit, $year, $month): void {
+            $schedules = WorkSchedule::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->get();
+
+            foreach ($schedules as $schedule) {
+                $schedule->entries()->whereNull('attendance_request_id')->delete();
+                $schedule->generated_at = null;
+                $schedule->save();
+            }
+        });
+
+        $this->activityLogger->log(
+            ActivityEvent::Updated,
+            "Reset jadwal shift {$unit->name} {$month}/{$year}",
+            unit: $unit->id,
+        );
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Jadwal dikosongkan. Hasil pengajuan yang disetujui tetap dipertahankan.']);
+
+        return back();
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function cellRules(): array
+    {
+        return [
+            'cells' => ['array'],
+            'cells.*.employee_id' => ['required', 'integer'],
+            'cells.*.day' => ['required', 'integer', 'min:1', 'max:31'],
+            'cells.*.code' => ['nullable', 'string'],
+        ];
+    }
+
+    /**
+     * Save edited cells, each to the roster (shift / non shift) of its employee.
+     *
+     * @param  list<array{employee_id: int, day: int, code?: string|null}>  $cells
+     */
+    private function saveCells(Unit $unit, int $year, int $month, array $cells, int $userId): void
+    {
+        $codes = AttendanceCode::query()->where('is_active', true)->pluck('id', 'code');
+        $groups = $this->rosterGroups($unit);
+        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+        $rows = [];
+
+        foreach ($cells as $cell) {
+            $member = $groups->get($cell['employee_id']);
+            if ($member === null || $cell['day'] > $daysInMonth) {
+                continue;
+            }
+
+            $code = (string) ($cell['code'] ?? '');
+            $rows[$member['group']->value][] = [
+                'employee_id' => $cell['employee_id'],
+                'day' => $cell['day'],
+                'attendance_code_id' => $code === '' ? null : ($codes[$code] ?? null),
+                'regu' => $member['regu'],
+            ];
+        }
+
+        foreach ($rows as $group => $groupRows) {
+            $this->putEntries($this->schedule($unit, $year, $month, ScheduleGroupType::from($group), $userId), $year, $month, $groupRows);
+        }
     }
 
     /**

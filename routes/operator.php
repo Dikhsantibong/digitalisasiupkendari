@@ -47,6 +47,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('absensi', [AbsensiController::class, 'index'])->name('absensi.index');
         Route::post('absensi', [AbsensiController::class, 'store'])->name('absensi.store');
         Route::post('absensi/generate', [AbsensiController::class, 'generate'])->name('absensi.generate');
+        Route::post('absensi/reset', [AbsensiController::class, 'reset'])->name('absensi.reset');
         Route::get('absensi/pdf', [AbsensiController::class, 'pdf'])->name('absensi.pdf');
 
         Route::get('mutasi', [MutasiController::class, 'index'])->name('mutasi.index');

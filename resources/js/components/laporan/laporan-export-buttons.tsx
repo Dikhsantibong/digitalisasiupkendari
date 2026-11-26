@@ -18,6 +18,7 @@ type Props = {
 
 type DocumentProps = {
     content?: string;
+    content_styles?: string;
     grid?: DocumentGrid;
     format?: 'html' | 'grid';
     has_saved?: boolean;
@@ -26,8 +27,9 @@ type DocumentProps = {
 /**
  * PDF & Excel of a laporan straight from the Laporan page, beside "Buka
  * Dokumen …" (user, 2026-11-25). Excel is the same book as the document
- * page's "Unduh Excel" — built from the PDF document (saved or generated):
- * Sampul, then one sheet per lembar (see report-book.ts).
+ * page's "Unduh Excel": the PDF document (saved or generated) laid out on the
+ * sheets exactly as it prints — Sampul, then one sheet per lembar (see
+ * report-layout-workbook.ts); a saved Excel version is written as edited.
  */
 export function LaporanExportButtons({
     editUrl,
@@ -55,7 +57,8 @@ export function LaporanExportButtons({
                     'X-Inertia': 'true',
                     'X-Inertia-Version': String(version ?? ''),
                     'X-Inertia-Partial-Component': component,
-                    'X-Inertia-Partial-Data': 'content,grid,format,has_saved',
+                    'X-Inertia-Partial-Data':
+                        'content,content_styles,grid,format,has_saved',
                 },
                 credentials: 'same-origin',
             });
@@ -66,17 +69,22 @@ export function LaporanExportButtons({
 
             const props = ((await response.json()).props ??
                 {}) as DocumentProps;
-            const [{ reportBook }, { downloadReportWorkbook }] =
-                await Promise.all([
-                    import('@/lib/report-book'),
-                    import('@/lib/report-workbook'),
-                ]);
-            const grid =
-                props.has_saved && props.format === 'grid' && props.grid
-                    ? props.grid
-                    : reportBook(props.content ?? '');
 
-            await downloadReportWorkbook(grid, `${baseName}.xlsx`);
+            if (props.has_saved && props.format === 'grid' && props.grid) {
+                // A saved Excel version: the sheets as they were edited.
+                const { downloadReportWorkbook } =
+                    await import('@/lib/report-workbook');
+                await downloadReportWorkbook(props.grid, `${baseName}.xlsx`);
+            } else {
+                // The PDF document, laid out on the sheets as it prints.
+                const { downloadReportLayoutWorkbook } =
+                    await import('@/lib/report-layout-workbook');
+                await downloadReportLayoutWorkbook(
+                    props.content ?? '',
+                    props.content_styles ?? '',
+                    `${baseName}.xlsx`,
+                );
+            }
         } catch {
             toast.error('Excel laporan gagal dibuat. Coba lagi.');
         } finally {

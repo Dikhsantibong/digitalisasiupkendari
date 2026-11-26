@@ -229,6 +229,115 @@ class AbsensiTest extends TestCase
         $this->assertNotNull(WorkSchedule::query()->where('unit_id', $unit->id)->where('group_type', 'shift')->first()->generated_at);
     }
 
+    public function test_generate_carries_on_the_start_typed_on_screen_for_the_whole_regu(): void
+    {
+        $unit = Unit::factory()->create();
+        $seeded = $this->shiftEmployee($unit, 'A');
+        $mate = $this->shiftEmployee($unit, 'A');
+        $user = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
+
+        // Only the first two days typed (not saved yet): Pagi, Pagi → Malam, Malam, Libur, Libur, Sore, Sore, Pagi …
+        $this->actingAs($user)->post(route('operator.absensi.generate'), $this->target($unit, [
+            'cells' => [['employee_id' => $seeded->id, 'day' => 1, 'code' => 'P'], ['employee_id' => $seeded->id, 'day' => 2, 'code' => 'P']],
+        ]))->assertRedirect();
+
+        $expected = ['P', 'P', 'M', 'M', 'OFF', 'OFF', 'S', 'S', 'P', 'P'];
+
+        foreach ($expected as $index => $code) {
+            $date = sprintf('2026-08-%02d', $index + 1);
+            $this->assertSame($code, $this->codeOn($unit, $seeded, $date), "seeded {$date}");
+            $this->assertSame($code, $this->codeOn($unit, $mate, $date), "regu mate {$date}");
+        }
+
+        $this->assertSame('OFF', $this->codeOn($unit, $seeded, '2026-08-29'));
+        $this->assertSame(31, WorkSchedule::query()->where('unit_id', $unit->id)->where('group_type', 'shift')->first()
+            ->entries()->where('employee_id', $mate->id)->count());
+    }
+
+    public function test_each_operator_carries_on_their_own_start_in_a_regu_of_four(): void
+    {
+        $unit = Unit::factory()->create();
+        $user = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
+        // The unit master has patterns for A–C only: regu D (four people) must still be filled.
+        foreach (['A' => 'OFF,OFF,S,S,P,P,M,M', 'B' => 'S,P,P,M,M,OFF,OFF,S', 'C' => 'M,M,OFF,OFF,S,S,P,P'] as $regu => $sequence) {
+            ShiftPattern::factory()->forUnit($unit)->create(['regu' => $regu, 'sequence' => $sequence]);
+        }
+        $team = collect(range(1, 4))->map(fn () => $this->shiftEmployee($unit, 'D'));
+        $starts = [['P', 'P'], ['M', 'M'], ['OFF', 'OFF'], ['S', 'S']];
+
+        // Saved first, then Isi Otomatis on the partly filled month.
+        $cells = [];
+        foreach ($team as $i => $employee) {
+            foreach ($starts[$i] as $d => $code) {
+                $cells[] = ['employee_id' => $employee->id, 'day' => $d + 1, 'code' => $code];
+            }
+        }
+        $this->actingAs($user)->post(route('operator.absensi.store'), $this->target($unit, ['cells' => $cells]));
+        $this->actingAs($user)->post(route('operator.absensi.generate'), $this->target($unit))->assertRedirect();
+
+        // Day 3 of each: the step after its start in P,P,M,M,OFF,OFF,S,S.
+        $this->assertSame('M', $this->codeOn($unit, $team[0], '2026-08-03'));
+        $this->assertSame('OFF', $this->codeOn($unit, $team[1], '2026-08-03'));
+        $this->assertSame('S', $this->codeOn($unit, $team[2], '2026-08-03'));
+        $this->assertSame('P', $this->codeOn($unit, $team[3], '2026-08-03'));
+        // …and the next cycle repeats the start.
+        $this->assertSame('P', $this->codeOn($unit, $team[0], '2026-08-09'));
+        $this->assertSame('M', $this->codeOn($unit, $team[1], '2026-08-10'));
+        $this->assertSame('OFF', $this->codeOn($unit, $team[2], '2026-08-09'));
+        $this->assertSame('S', $this->codeOn($unit, $team[3], '2026-08-10'));
+    }
+
+    public function test_a_regu_without_a_pattern_and_without_a_start_is_still_filled(): void
+    {
+        $unit = Unit::factory()->create();
+        ShiftPattern::factory()->forUnit($unit)->create(['regu' => 'A', 'sequence' => 'OFF,OFF,S,S,P,P,M,M']);
+        $reguD = $this->shiftEmployee($unit, 'D');
+
+        $this->actingAs($this->userWithRole(RoleName::ProjectLeaderOperasi, $unit))
+            ->post(route('operator.absensi.generate'), $this->target($unit))
+            ->assertRedirect();
+
+        $this->assertSame(31, WorkSchedule::query()->where('unit_id', $unit->id)->where('group_type', 'shift')->first()
+            ->entries()->where('employee_id', $reguD->id)->whereNotNull('attendance_code_id')->count());
+        $this->assertNotSame('OFF', $this->codeOn($unit, $reguD, '2026-08-01'), 'not off together with regu A');
+    }
+
+    public function test_a_start_outside_the_regu_rotation_repeats_as_its_own_cycle(): void
+    {
+        $unit = Unit::factory()->create();
+        $employee = $this->shiftEmployee($unit, 'A');
+
+        $this->actingAs($this->userWithRole(RoleName::ProjectLeaderOperasi, $unit))
+            ->post(route('operator.absensi.generate'), $this->target($unit, [
+                'cells' => collect(['P', 'S', 'M', 'OFF'])->map(fn ($code, $i) => ['employee_id' => $employee->id, 'day' => $i + 1, 'code' => $code])->all(),
+            ]))
+            ->assertRedirect();
+
+        $this->assertSame('P', $this->codeOn($unit, $employee, '2026-08-05'));
+        $this->assertSame('S', $this->codeOn($unit, $employee, '2026-08-06'));
+        $this->assertSame('OFF', $this->codeOn($unit, $employee, '2026-08-08'));
+    }
+
+    public function test_reset_empties_the_month_for_writers_only(): void
+    {
+        $unit = Unit::factory()->create();
+        $operator = $this->shiftEmployee($unit, 'A');
+        $leader = $this->nonShiftEmployee($unit);
+        $user = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
+        $this->actingAs($user)->post(route('operator.absensi.generate'), $this->target($unit));
+
+        $this->actingAs($this->userWithRole(RoleName::Operator, $unit))
+            ->post(route('operator.absensi.reset'), $this->target($unit))
+            ->assertForbidden();
+        $this->assertNotNull($this->codeOn($unit, $operator, '2026-08-01'));
+
+        $this->actingAs($user)->post(route('operator.absensi.reset'), $this->target($unit))->assertRedirect();
+
+        $this->assertNull($this->codeOn($unit, $operator, '2026-08-01'));
+        $this->assertNull($this->codeOn($unit, $leader, '2026-08-03', 'non_shift'));
+        $this->assertSame(0, WorkSchedule::query()->where('unit_id', $unit->id)->get()->sum(fn (WorkSchedule $s) => $s->entries()->count()));
+    }
+
     public function test_a_user_cannot_write_a_schedule_for_a_unit_they_cannot_access(): void
     {
         $ownUnit = Unit::factory()->create();

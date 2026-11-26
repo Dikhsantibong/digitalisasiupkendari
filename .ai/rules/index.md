@@ -27,6 +27,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/components/app-sidebar.tsx | .ai/rules/js-components.md |
 | resources/js/** | .ai/rules/js.md |
 | app/Services/K3/** | .ai/rules/k3.md |
+| resources/js/lib/report-layout-workbook.ts, resources/js/lib/report-book.ts, resources/js/components/laporan/laporan-export-buttons.tsx | .ai/rules/laporan.md |
 | resources/js/pages/*/laporan/index.tsx, resources/js/lib/report-book.ts | .ai/rules/lib.md |
 | app/Http/Controllers/Logistik/** | .ai/rules/logistik.md |
 | app/Http/Middleware/** | .ai/rules/middleware.md |
