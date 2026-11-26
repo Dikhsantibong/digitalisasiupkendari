@@ -47,20 +47,41 @@ class K3PengusahaanApelKeamanan extends Model
     ];
 
     /**
-     * Build the default rows array for every day of the given month and year.
+     * Build the default rows array for every day of the given month and year,
+     * pulling team/post names from the unit's SecurityPost master records when available.
      *
      * @return list<array{id: null, tanggal: string, hari_ke: int, tim_regu: string, shift: string, waktu_apel: string, jumlah_personil: int, kelengkapan_atribut: string, paraf_komandan_regu: ?string, keterangan: ?string, sort_order: int}>
      */
-    public static function buildDefaultRows(int $year, int $month): array
+    public static function buildDefaultRows(int $year, int $month, ?Unit $unit = null): array
     {
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
         $rows = [];
         $sortOrder = 0;
 
+        $posts = $unit
+            ? SecurityPost::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->pluck('name')
+                ->values()
+                ->all()
+            : [];
+
+        $shifts = self::SHIFTS;
+        if ($posts !== []) {
+            foreach ($shifts as $idx => &$shift) {
+                $postName = (string) ($posts[$idx % count($posts)] ?? $shift['tim_regu']);
+                $shift['tim_regu'] = preg_replace('/^Regu\s+/i', '', $postName) ?: $postName;
+            }
+            unset($shift);
+        }
+
         for ($day = 1; $day <= $daysInMonth; $day++) {
             $dateStr = sprintf('%04d-%02d-%02d', $year, $month, $day);
 
-            foreach (self::SHIFTS as $shift) {
+            foreach ($shifts as $shift) {
                 $rows[] = [
                     'id' => null,
                     'tanggal' => $dateStr,

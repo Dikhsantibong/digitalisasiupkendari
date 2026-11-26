@@ -282,64 +282,48 @@ class K3MasterDataSeeder extends Seeder
 
     public function run(): void
     {
+        foreach (Unit::query()->orderBy('id')->get() as $unit) {
+            $this->seedUnitMasters($unit);
+        }
+    }
+
+    /**
+     * Seed the full K3 master catalogue for a single unit.
+     */
+    private function seedUnitMasters(Unit $unit): void
+    {
         foreach (self::ACTIVITY_TYPES as $i => $a) {
             K3ActivityType::query()->updateOrCreate(
-                ['code' => 'K3A-'.str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT)],
-                ['name' => $a['name'], 'category' => 'Inspeksi & Keamanan', 'default_pic' => $a['pic'], 'sort_order' => $i, 'is_active' => true],
+                ['unit_id' => $unit->id, 'code' => 'K3A-'.str_pad((string) ($i + 1), 2, '0', STR_PAD_LEFT)],
+                [
+                    'name' => $a['name'],
+                    'category' => 'Inspeksi & Keamanan',
+                    'default_pic' => $a['pic'],
+                    'sort_order' => $i,
+                    'is_active' => true,
+                ],
             );
         }
 
         $apdCatIds = [];
         foreach (self::APD_CATEGORIES as $i => $c) {
             $model = ApdCategory::query()->updateOrCreate(
-                ['code' => Str::slug($c['name'])],
+                ['unit_id' => $unit->id, 'code' => Str::slug($c['name'])],
                 ['name' => $c['name'], 'sort_order' => $i, 'is_active' => true],
             );
             $apdCatIds[$c['name']] = $model->id;
         }
 
         $equipmentCatIds = [];
-        $equipmentCategories = collect(self::CERTIFICATES)->pluck('category')->unique()->values();
+        $equipmentCategories = ['Crane', 'Tangki Timbun', 'Bejana Tekan', 'Instalasi Penyalur Petir'];
         foreach ($equipmentCategories as $i => $name) {
             $model = EquipmentCategory::query()->updateOrCreate(
-                ['code' => Str::slug($name)],
+                ['unit_id' => $unit->id, 'code' => Str::slug($name)],
                 ['name' => $name, 'sort_order' => $i, 'is_active' => true],
             );
             $equipmentCatIds[$name] = $model->id;
         }
 
-        // The generic K3 catalogue (patrol points, posts, emergency facilities,
-        // APD items, P3K boxes, checklists) applies to every unit.
-        $poasia = null;
-        foreach (Unit::query()->get() as $unit) {
-            $this->seedUnitMasters($unit, $apdCatIds);
-            if ($unit->code === self::UNIT_CODE) {
-                $poasia = $unit;
-            }
-        }
-
-        // Seed equipment certificates for all units.
-        foreach (Unit::query()->get() as $unit) {
-            foreach (self::CERTIFICATES as $cert) {
-                EquipmentCertificate::query()->updateOrCreate(
-                    ['unit_id' => $unit->id, 'jenis' => $cert['jenis']],
-                    [
-                        'equipment_category_id' => $equipmentCatIds[$cert['category']] ?? null,
-                        'kapasitas' => $cert['kapasitas'],
-                        'lokasi' => $unit->code === self::UNIT_CODE ? $cert['lokasi'] : $unit->name,
-                    ],
-                );
-            }
-        }
-    }
-
-    /**
-     * Seed the shared K3 catalogue for one unit (patrol codes use the unit's prefix).
-     *
-     * @param  array<string, int>  $apdCatIds
-     */
-    private function seedUnitMasters(Unit $unit, array $apdCatIds): void
-    {
         $prefix = $this->patrolPrefix($unit);
         for ($i = 1; $i <= self::PATROL_COUNT; $i++) {
             PatrolLocation::query()->updateOrCreate(
@@ -358,14 +342,23 @@ class K3MasterDataSeeder extends Seeder
         foreach (self::EMERGENCY as $i => $name) {
             EmergencyEquipment::query()->updateOrCreate(
                 ['unit_id' => $unit->id, 'name' => $name],
-                ['group_name' => 'Fasilitas Darurat', 'sort_order' => $i, 'is_active' => true],
+                ['group_name' => 'Fasilitas Darurat', 'location' => $unit->name, 'sort_order' => $i, 'is_active' => true],
             );
         }
 
         foreach (self::APD_ITEMS as $i => $item) {
+            $location = $item['location'] === 'ULPLTD Poasia' && $unit->code !== self::UNIT_CODE
+                ? $unit->name
+                : $item['location'];
+
             ApdItem::query()->updateOrCreate(
                 ['unit_id' => $unit->id, 'name' => $item['item']],
-                ['apd_category_id' => $apdCatIds[$item['category']] ?? null, 'location' => $item['location'], 'sort_order' => $i, 'is_active' => true],
+                [
+                    'apd_category_id' => $apdCatIds[$item['category']] ?? null,
+                    'location' => $location,
+                    'sort_order' => $i,
+                    'is_active' => true,
+                ],
             );
         }
 
@@ -376,7 +369,13 @@ class K3MasterDataSeeder extends Seeder
             );
         }
 
-        foreach (self::FIRE_EXT as $i => $ext) {
+        $fireExtinguishers = $this->fireExtinguishersForUnit($unit, $prefix);
+        FireExtinguisher::query()
+            ->where('unit_id', $unit->id)
+            ->where('sort_order', '>=', count($fireExtinguishers))
+            ->delete();
+
+        foreach ($fireExtinguishers as $i => $ext) {
             FireExtinguisher::query()->updateOrCreate(
                 ['unit_id' => $unit->id, 'sort_order' => $i],
                 [
@@ -403,6 +402,93 @@ class K3MasterDataSeeder extends Seeder
                 ['item_text' => $item, 'is_active' => true],
             );
         }
+
+        foreach ($this->certificatesForUnit($unit) as $cert) {
+            EquipmentCertificate::query()->updateOrCreate(
+                ['unit_id' => $unit->id, 'jenis' => $cert['jenis']],
+                [
+                    'equipment_category_id' => $equipmentCatIds[$cert['category']] ?? null,
+                    'kapasitas' => $cert['kapasitas'],
+                    'lokasi' => $unit->code === self::UNIT_CODE ? $cert['lokasi'] : $unit->name,
+                ],
+            );
+        }
+    }
+
+    /**
+     * @return list<array{rfid: ?string, lokasi: ?string, merk: ?string, jenis: ?string, berat: ?float, ket: ?string}>
+     */
+    private function fireExtinguishersForUnit(Unit $unit, string $prefix): array
+    {
+        if ($unit->code === self::UNIT_CODE) {
+            return self::FIRE_EXT;
+        }
+
+        if ($unit->code === 'PLTD-POASIA-CONT') {
+            return [
+                ['rfid' => 'POAC-01', 'lokasi' => 'CCR Containerized', 'merk' => 'Fire Venom', 'jenis' => 'CO2', 'berat' => 5, 'ket' => 'Ex. 24/08/2027'],
+                ['rfid' => 'POAC-02', 'lokasi' => 'CCR Containerized', 'merk' => 'Fire Venom', 'jenis' => 'Gas Cair', 'berat' => 6, 'ket' => 'Ex. 10/11/2027'],
+                ['rfid' => 'POAC-03', 'lokasi' => 'Containerized Block 1', 'merk' => 'Fire Venom', 'jenis' => 'Foam', 'berat' => 6, 'ket' => 'Ex. 24/08/2027'],
+                ['rfid' => 'POAC-04', 'lokasi' => 'Containerized Block 1', 'merk' => 'Fire Venom', 'jenis' => 'Gas Cair', 'berat' => 6, 'ket' => 'Ex. 10/11/2027'],
+                ['rfid' => 'POAC-05', 'lokasi' => 'Containerized Block 2', 'merk' => 'Fire Venom', 'jenis' => 'Foam', 'berat' => 6, 'ket' => 'Ex. 24/08/2027'],
+                ['rfid' => 'POAC-06', 'lokasi' => 'Containerized Block 2', 'merk' => 'Fire Venom', 'jenis' => 'Foam', 'berat' => 6, 'ket' => 'Ex. 24/08/2027'],
+                ['rfid' => 'POAC-07', 'lokasi' => 'Containerized Block 3', 'merk' => 'Fire Venom', 'jenis' => 'Gas Cair', 'berat' => 9, 'ket' => 'Ex. 27/02/2027'],
+                ['rfid' => 'POAC-08', 'lokasi' => 'Containerized Block 3', 'merk' => 'Fire Venom', 'jenis' => 'Foam', 'berat' => 6, 'ket' => 'Ex. 24/08/2027'],
+                ['rfid' => 'POAC-09', 'lokasi' => 'Switch Gear Containerized', 'merk' => 'Garra Fire', 'jenis' => 'CO2', 'berat' => 7, 'ket' => 'Ex. 20/04/2027'],
+                ['rfid' => 'POAC-10', 'lokasi' => 'Tangki 25 KL Containerized', 'merk' => 'Fire Venom', 'jenis' => 'Foam', 'berat' => 9, 'ket' => 'Ex. 10/11/2027'],
+            ];
+        }
+
+        // For other units, exclude Poasia-only Containerized APAR rows and prefix RFID per unit
+        $nonContainerized = array_values(array_filter(
+            self::FIRE_EXT,
+            fn (array $row): bool => $row['lokasi'] !== 'Containerized',
+        ));
+
+        return array_map(
+            fn (array $row, int $idx): array => [
+                ...$row,
+                'rfid' => $row['rfid'] !== null ? sprintf('%s-%02d', $prefix, $idx + 1) : null,
+            ],
+            $nonContainerized,
+            array_keys($nonContainerized),
+        );
+    }
+
+    /**
+     * @return list<array{category: string, jenis: string, kapasitas: string, lokasi: string}>
+     */
+    private function certificatesForUnit(Unit $unit): array
+    {
+        if ($unit->code === self::UNIT_CODE) {
+            return self::CERTIFICATES;
+        }
+
+        if ($unit->code === 'PLTD-POASIA-CONT') {
+            return [
+                ['category' => 'Crane', 'jenis' => 'Overhead Traveling Crane Containerized', 'kapasitas' => '5 Ton', 'lokasi' => $unit->name],
+                ['category' => 'Tangki Timbun', 'jenis' => 'Unit Containerized', 'kapasitas' => '25.000 Liter', 'lokasi' => $unit->name],
+                ['category' => 'Bejana Tekan', 'jenis' => 'Bejana Tekan Air Receiver Containerized', 'kapasitas' => '500 Liter', 'lokasi' => $unit->name],
+                ['category' => 'Instalasi Penyalur Petir', 'jenis' => 'Area Sentral Containerized', 'kapasitas' => '-', 'lokasi' => $unit->name],
+            ];
+        }
+
+        if (Str::startsWith((string) $unit->code, 'PLTM-')) {
+            return [
+                ['category' => 'Crane', 'jenis' => 'Overhead Traveling Crane Power House', 'kapasitas' => '5 Ton', 'lokasi' => $unit->name],
+                ['category' => 'Bejana Tekan', 'jenis' => 'Governor Pressure Tank', 'kapasitas' => '500 Liter', 'lokasi' => $unit->name],
+                ['category' => 'Instalasi Penyalur Petir', 'jenis' => 'Power House & Switchyard', 'kapasitas' => '-', 'lokasi' => $unit->name],
+            ];
+        }
+
+        return [
+            ['category' => 'Crane', 'jenis' => 'Overhead Traveling Crane', 'kapasitas' => '5 Ton', 'lokasi' => $unit->name],
+            ['category' => 'Tangki Timbun', 'jenis' => 'Unit 1 HSD', 'kapasitas' => '100.000 Liter', 'lokasi' => $unit->name],
+            ['category' => 'Tangki Timbun', 'jenis' => 'Unit 2 HSD', 'kapasitas' => '250.000 Liter', 'lokasi' => $unit->name],
+            ['category' => 'Bejana Tekan', 'jenis' => 'Bejana Tekan Air Receiver Tank #1', 'kapasitas' => '1.000 Liter', 'lokasi' => $unit->name],
+            ['category' => 'Instalasi Penyalur Petir', 'jenis' => 'Power House', 'kapasitas' => '-', 'lokasi' => $unit->name],
+            ['category' => 'Instalasi Penyalur Petir', 'jenis' => 'Area Tangki HSD', 'kapasitas' => '-', 'lokasi' => $unit->name],
+        ];
     }
 
     /** Patrol code prefix for a unit — mapped where known, else derived from the name. */

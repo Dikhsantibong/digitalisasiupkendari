@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use App\Models\EquipmentCertificate;
+use App\Models\Unit;
+
 /**
  * Template defaults and options for Formulir Metode Pengujian Peralatan K3.
  * Matches the official PLN NP / MKP Formulir Metode Pengujian Peralatan sheet.
@@ -16,12 +19,42 @@ final class K3MetodePengujianPeralatanForm
     ];
 
     /**
-     * Builds default template rows matching the official template.
+     * Builds default template rows from the unit's EquipmentCertificate master records
+     * when available, falling back to the 4 official template rows.
      *
      * @return list<array<string, mixed>>
      */
-    public static function defaultRows(): array
+    public static function defaultRows(?Unit $unit = null): array
     {
+        if ($unit) {
+            $certs = EquipmentCertificate::query()
+                ->where('unit_id', $unit->id)
+                ->with('category')
+                ->orderBy('id')
+                ->get();
+
+            if ($certs->isNotEmpty()) {
+                return $certs->values()->map(fn (EquipmentCertificate $c, int $idx): array => [
+                    'id' => null,
+                    'no_urut' => (string) ($idx + 1),
+                    'nama_peralatan' => $c->category?->name ?? 'Peralatan K3',
+                    'no_pengesahan' => $c->uji_terakhir_nomor ?: ($c->ijin_awal_nomor ?: '-'),
+                    'nama_kategori_alat' => $c->jenis,
+                    'uji_visual' => 'Memenuhi',
+                    'uji_fungsi' => 'Memenuhi',
+                    'uji_beban' => 'Memenuhi',
+                    'uji_hydro' => '-',
+                    'ndt' => 'Memenuhi',
+                    'uji_ultrasonic_thickness' => '-',
+                    'uji_ketahanan' => '-',
+                    'sertifikasi_terakhir' => $c->uji_terakhir_tanggal?->format('Y-m-d') ?? '-',
+                    'sertifikasi_ulang' => $c->uji_ulang_tanggal?->format('Y-m-d') ?? '-',
+                    'keterangan' => $c->keterangan ?? '',
+                    'sort_order' => $idx,
+                ])->all();
+            }
+        }
+
         return [
             [
                 'id' => null,

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\InspectionChecklist;
 use App\Models\K3PengusahaanPemeriksaanP3k;
 use App\Models\K3PengusahaanPemeriksaanP3kItem;
+use App\Models\P3kBox;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
@@ -99,8 +101,43 @@ class PengusahaanPemeriksaanP3kController extends Controller
                 $tanggalDokumen = $previous->tanggal_dokumen;
                 $catatan = '';
             } else {
-                $locations = K3PengusahaanPemeriksaanP3k::DEFAULT_LOCATIONS;
-                $itemsData = K3PengusahaanPemeriksaanP3k::buildDefaultRows($locations);
+                $masterLocations = P3kBox::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('code')
+                    ->get()
+                    ->map(fn (P3kBox $b): string => $b->location ?: $b->code)
+                    ->values()
+                    ->all();
+
+                $locations = $masterLocations !== [] ? $masterLocations : K3PengusahaanPemeriksaanP3k::DEFAULT_LOCATIONS;
+
+                $masterP3kItems = InspectionChecklist::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('form_code', 'isi-p3k')
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->get();
+
+                if ($masterP3kItems->isNotEmpty()) {
+                    $emptyLocs = [];
+                    foreach ($locations as $loc) {
+                        $emptyLocs[$loc] = null;
+                    }
+                    $itemsData = $masterP3kItems->values()->map(fn (InspectionChecklist $chk, int $idx): array => [
+                        'id' => null,
+                        'no_urut' => $idx + 1,
+                        'nama_isi' => $chk->item_text,
+                        'standar_jumlah' => $idx === 0 ? 20 : ($idx <= 4 ? 2 : 1),
+                        'satuan' => 'buah',
+                        'kondisi_lokasi' => $emptyLocs,
+                        'keterangan' => '',
+                        'sort_order' => $idx,
+                    ])->all();
+                } else {
+                    $itemsData = K3PengusahaanPemeriksaanP3k::buildDefaultRows($locations);
+                }
                 $noDokumen = 'SMT-FM-AK3-10.01';
                 $revisi = '01';
                 $tanggalDokumen = '23 September 2019';

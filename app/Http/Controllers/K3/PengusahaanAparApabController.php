@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\FireExtinguisher;
 use App\Models\K3PengusahaanAparApab;
 use App\Models\K3PengusahaanAparApabItem;
 use App\Models\Unit;
@@ -109,7 +110,33 @@ class PengusahaanAparApabController extends Controller
                 $tanggalDokumen = $previous->tanggal_dokumen;
                 $catatan = '';
             } else {
-                $itemsData = K3PengusahaanAparApab::buildDefaultRows();
+                $masterExtinguishers = FireExtinguisher::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('location')
+                    ->get();
+
+                if ($masterExtinguishers->isNotEmpty()) {
+                    $itemsData = $masterExtinguishers->values()->map(fn (FireExtinguisher $ext, int $idx): array => [
+                        'id' => null,
+                        'no_urut' => $idx + 1,
+                        'no_rfid' => $ext->rfid ?? '',
+                        'lokasi' => $ext->location ?? $unit->name,
+                        'tgl_periksa' => '',
+                        'merk_apar' => $ext->merk ?? '',
+                        'jenis_apar' => $ext->jenis ?? '',
+                        'berat_kg' => $ext->berat_kg !== null ? (float) $ext->berat_kg : null,
+                        'kondisi_tabung' => 'baik',
+                        'kondisi_nozzle_selang' => 'baik',
+                        'indikator_tekanan' => 'ok',
+                        'kondisi_pin_segel' => 'baik',
+                        'keterangan' => '',
+                        'sort_order' => $idx,
+                    ])->all();
+                } else {
+                    $itemsData = K3PengusahaanAparApab::buildDefaultRows();
+                }
                 $noDokumen = 'SMT-FM-AK3-12.03';
                 $revisi = '01';
                 $tanggalDokumen = '23 SEPTEMBER 2019';

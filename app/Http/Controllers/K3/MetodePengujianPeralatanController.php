@@ -238,7 +238,7 @@ class MetodePengujianPeralatanController extends Controller
             ->get();
 
         if ($saved->isEmpty()) {
-            return [K3MetodePengujianPeralatanForm::defaultRows(), false];
+            return [K3MetodePengujianPeralatanForm::defaultRows($unit), false];
         }
 
         return [$saved->map(fn (K3MetodePengujianPeralatan $r, int $idx): array => [

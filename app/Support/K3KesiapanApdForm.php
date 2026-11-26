@@ -2,6 +2,12 @@
 
 namespace App\Support;
 
+use App\Models\ApdItem;
+use App\Models\EmergencyEquipment;
+use App\Models\P3kBox;
+use App\Models\SecurityPost;
+use App\Models\Unit;
+
 /**
  * Template defaults and options for Form Inspeksi K3 (Kesiapan APD).
  * Matches the official PLN NP UP Kendari Form Inspeksi K3 sheet.
@@ -98,16 +104,20 @@ final class K3KesiapanApdForm
     ];
 
     /**
-     * Builds default rows array for pre-filling.
+     * Builds default rows array for pre-filling, pulling from the unit's Master K3
+     * (`ApdItem`, `EmergencyEquipment`, `P3kBox`, `SecurityPost`) when available
+     * and falling back to `self::DEFAULTS` per group.
      *
      * @return list<array<string, mixed>>
      */
-    public static function defaultRows(): array
+    public static function defaultRows(?Unit $unit = null): array
     {
         $rows = [];
         $sortOrder = 0;
 
-        foreach (self::DEFAULTS as $group => $items) {
+        foreach (self::DEFAULTS as $group => $defaultItems) {
+            $items = self::resolveGroupItems($group, $defaultItems, $unit);
+
             foreach ($items as $item) {
                 $rows[] = [
                     'id' => null,
@@ -130,5 +140,101 @@ final class K3KesiapanApdForm
         }
 
         return $rows;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $defaultItems
+     * @return list<array<string, mixed>>
+     */
+    private static function resolveGroupItems(string $group, array $defaultItems, ?Unit $unit): array
+    {
+        if (! $unit) {
+            return $defaultItems;
+        }
+
+        if ($group === 'I. Alat Pelindung Diri (APD)') {
+            $apdItems = ApdItem::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get();
+
+            if ($apdItems->isNotEmpty()) {
+                return $apdItems->values()->map(fn (ApdItem $item, int $idx): array => [
+                    'no' => (string) ($idx + 1),
+                    'inspeksi' => $item->name,
+                    'apd_jumlah' => '10 buah',
+                    'kelayakan_apd' => 'Layak',
+                    'keterangan' => $item->location ?? '',
+                ])->all();
+            }
+        }
+
+        if ($group === 'II. Peralatan Kerja') {
+            $equipments = EmergencyEquipment::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
+            if ($equipments->isNotEmpty()) {
+                return $equipments->values()->map(fn (EmergencyEquipment $eq, int $idx): array => [
+                    'no' => (string) ($idx + 1),
+                    'inspeksi' => $eq->name,
+                    'peralatan_jumlah' => '2 buah',
+                    'peralatan_kelayakan' => 'Layak',
+                    'keterangan' => $eq->location ?? '',
+                ])->all();
+            }
+        }
+
+        if ($group === 'IV. P3K') {
+            $boxes = P3kBox::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('code')
+                ->get();
+
+            if ($boxes->isNotEmpty()) {
+                return $boxes->values()->map(fn (P3kBox $box, int $idx): array => [
+                    'no' => (string) ($idx + 1),
+                    'inspeksi' => $box->location ?: $box->code,
+                    'p3k_ada' => 'Ada',
+                    'p3k_memenuhi' => 'Memenuhi',
+                ])->all();
+            }
+        }
+
+        if ($group === 'V. Area Kerja') {
+            $posts = SecurityPost::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
+            if ($posts->isNotEmpty()) {
+                $areas = $posts->values()->map(fn (SecurityPost $post, int $idx): array => [
+                    'no' => (string) ($idx + 1),
+                    'inspeksi' => 'Pos Keamanan ('.$post->name.')',
+                    'peralatan_kelayakan' => 'Aman',
+                ])->all();
+                $nextNo = count($areas) + 1;
+                foreach (['Halaman Parkir', 'Ruang Kantor', 'Ruang Pembangkit'] as $areaName) {
+                    $areas[] = [
+                        'no' => (string) $nextNo++,
+                        'inspeksi' => $areaName,
+                        'peralatan_kelayakan' => 'Aman',
+                    ];
+                }
+
+                return $areas;
+            }
+        }
+
+        return $defaultItems;
     }
 }

@@ -68,7 +68,7 @@ class PengusahaanApelKeamananController extends Controller
             $tanggalDokumen = $record->tanggal_dokumen;
             $catatan = $record->catatan ?? '';
         } else {
-            $itemsData = K3PengusahaanApelKeamanan::buildDefaultRows($year, $month);
+            $itemsData = K3PengusahaanApelKeamanan::buildDefaultRows($year, $month, $unit);
             $noDokumen = 'SMT-FM-AK3-13.13';
             $revisi = '00';
             $tanggalDokumen = '23 SEPTEMBER 2019';

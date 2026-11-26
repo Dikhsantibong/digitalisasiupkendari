@@ -5,6 +5,8 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\EquipmentCertificate;
+use App\Models\K3PengusahaanCertificate;
 use App\Models\K3PengusahaanEvaluasiPengujian;
 use App\Models\K3PengusahaanEvaluasiPengujianMeta;
 use App\Models\Unit;
@@ -163,6 +165,34 @@ class PengusahaanEvaluasiPengujianController extends Controller
             ->get();
 
         if ($saved->isEmpty()) {
+            $certs = K3PengusahaanCertificate::query()
+                ->where('unit_id', $unit->id)
+                ->with('category')
+                ->orderBy('id')
+                ->get();
+
+            if ($certs->isEmpty()) {
+                $certs = EquipmentCertificate::query()
+                    ->where('unit_id', $unit->id)
+                    ->with('category')
+                    ->orderBy('id')
+                    ->get();
+            }
+
+            if ($certs->isNotEmpty()) {
+                return [$certs->values()->map(fn (K3PengusahaanCertificate|EquipmentCertificate $c, int $idx): array => [
+                    'id' => null,
+                    'no_urut' => (string) ($idx + 1),
+                    'nama_kategori_alat' => $c->category?->name ?? 'Peralatan K3',
+                    'jenis' => $c->jenis,
+                    'kapasitas' => $c->kapasitas ?? '-',
+                    'temuan_sertifikat' => '',
+                    'progres_bulan' => [],
+                    'keterangan' => $c->keterangan ?? '',
+                    'sort_order' => $idx,
+                ])->all(), false];
+            }
+
             return [$this->defaultRows(), false];
         }
 

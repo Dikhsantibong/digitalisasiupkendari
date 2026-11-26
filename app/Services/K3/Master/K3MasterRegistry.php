@@ -17,8 +17,8 @@ use App\Services\Master\MasterRegistry;
 
 /**
  * The catalogue of K3 & security master data managed through the shared generic
- * CRUD screen. Global lookups (activity types, APD/equipment categories) carry
- * no unit; the rest are per-unit. Adding a master means adding an entry here.
+ * CRUD screen. Every K3 master resource is scoped per unit (`unit_scoped => true`).
+ * Adding a master means adding an entry here.
  */
 class K3MasterRegistry implements MasterRegistry
 {
@@ -33,7 +33,7 @@ class K3MasterRegistry implements MasterRegistry
             'activity-types' => [
                 'label' => 'Jenis Kegiatan K3',
                 'model' => K3ActivityType::class,
-                'unit_scoped' => false,
+                'unit_scoped' => true,
                 'order' => ['sort_order', 'code'],
                 'fields' => [
                     self::text('code', 'Kode', required: true),
@@ -47,7 +47,7 @@ class K3MasterRegistry implements MasterRegistry
             'apd-categories' => [
                 'label' => 'Kategori APD',
                 'model' => ApdCategory::class,
-                'unit_scoped' => false,
+                'unit_scoped' => true,
                 'order' => ['sort_order', 'code'],
                 'fields' => [
                     self::text('code', 'Kode', required: true),
@@ -59,7 +59,7 @@ class K3MasterRegistry implements MasterRegistry
             'equipment-categories' => [
                 'label' => 'Kategori Alat Sertifikasi',
                 'model' => EquipmentCategory::class,
-                'unit_scoped' => false,
+                'unit_scoped' => true,
                 'order' => ['sort_order', 'code'],
                 'fields' => [
                     self::text('code', 'Kode', required: true),
@@ -110,7 +110,7 @@ class K3MasterRegistry implements MasterRegistry
                 'unit_scoped' => true,
                 'order' => ['sort_order', 'name'],
                 'fields' => [
-                    self::relation('apd_category_id', 'Kategori APD', 'apd_categories', unitScoped: false),
+                    self::relation('apd_category_id', 'Kategori APD', 'apd_categories'),
                     self::text('name', 'Nama', required: true),
                     self::text('location', 'Lokasi'),
                     self::number('sort_order', 'Urutan'),

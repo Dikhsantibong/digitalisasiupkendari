@@ -53,7 +53,7 @@ class KesiapanApdController extends Controller
             ->get();
 
         if ($saved->isEmpty()) {
-            $rows = K3KesiapanApdForm::defaultRows();
+            $rows = K3KesiapanApdForm::defaultRows($unit);
             $hasSaved = false;
         } else {
             $rows = $saved->map(fn (K3KesiapanApd $r, int $idx): array => [

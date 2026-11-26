@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\Holiday;
+use App\Models\K3ActivityType;
 use App\Models\K3PengusahaanTimeFrame;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -69,18 +70,38 @@ class PengusahaanTimeFrameController extends Controller
             ->get();
 
         if ($stored->isEmpty()) {
-            $rows = collect(self::DEFAULT_ITEMS)->map(function (array $item, int $index): array {
-                return [
+            $unitActivities = K3ActivityType::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('code')
+                ->get();
+
+            if ($unitActivities->isNotEmpty()) {
+                $rows = $unitActivities->values()->map(fn (K3ActivityType $type, int $index): array => [
                     'id' => null,
-                    'no_urut' => $item['no_urut'],
-                    'uraian_pelaporan' => $item['uraian_pelaporan'],
-                    'pic' => $item['pic'],
+                    'no_urut' => $index + 1,
+                    'uraian_pelaporan' => $type->name,
+                    'pic' => $type->default_pic ?? 'K3 & Keamanan',
                     'rencana' => [],
                     'realisasi' => [],
                     'keterangan' => '',
                     'sort_order' => $index + 1,
-                ];
-            })->all();
+                ])->all();
+            } else {
+                $rows = collect(self::DEFAULT_ITEMS)->map(function (array $item, int $index): array {
+                    return [
+                        'id' => null,
+                        'no_urut' => $item['no_urut'],
+                        'uraian_pelaporan' => $item['uraian_pelaporan'],
+                        'pic' => $item['pic'],
+                        'rencana' => [],
+                        'realisasi' => [],
+                        'keterangan' => '',
+                        'sort_order' => $index + 1,
+                    ];
+                })->all();
+            }
         } else {
             $rows = $stored->map(function (K3PengusahaanTimeFrame $r, int $index): array {
                 return [

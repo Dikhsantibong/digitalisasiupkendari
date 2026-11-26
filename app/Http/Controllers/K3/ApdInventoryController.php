@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\ApdItem;
 use App\Models\K3ApdInventory;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -100,10 +101,7 @@ class ApdInventoryController extends Controller
             ->orderBy('sort_order')->orderBy('id')->get();
 
         if ($saved->isEmpty()) {
-            $rows = collect(self::DEFAULTS)->map(fn (array $d, int $i): array => [
-                'id' => null, 'grup' => $d['grup'], 'subkategori' => $d['subkategori'], 'nama' => $d['nama'],
-                'jumlah' => 0, 'satuan' => $d['satuan'], 'lokasi' => '', 'keterangan' => '', 'foto' => '', 'sort_order' => $i,
-            ])->all();
+            $rows = self::defaultRowsForUnit($unit);
         } else {
             $rows = $saved->map(fn (K3ApdInventory $r): array => [
                 'id' => $r->id, 'grup' => $r->grup, 'subkategori' => $r->subkategori ?? '', 'nama' => $r->nama,
@@ -112,7 +110,7 @@ class ApdInventoryController extends Controller
             ])->all();
         }
 
-        $groups = collect(self::DEFAULTS)->pluck('grup')->unique()->values()->all();
+        $groups = collect($rows)->pluck('grup')->merge(collect(self::DEFAULTS)->pluck('grup'))->unique()->values()->all();
 
         return Inertia::render('k3/input/apd-inventory/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
@@ -122,6 +120,64 @@ class ApdInventoryController extends Controller
             'options' => ['units' => $units->all(), 'years' => range($now->year - 3, $now->year + 1)],
             'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite),
         ]);
+    }
+
+    /**
+     * Build default inventory rows from the unit's Master K3 (`ApdItem` & `ApdCategory`),
+     * falling back to `self::DEFAULTS` when the unit has no master items.
+     *
+     * @return list<array{id: null, grup: string, subkategori: string, nama: string, jumlah: int, satuan: string, lokasi: string, keterangan: string, foto: string, sort_order: int}>
+     */
+    public static function defaultRowsForUnit(Unit $unit): array
+    {
+        $masterItems = ApdItem::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->with('category')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        if ($masterItems->isEmpty()) {
+            return collect(self::DEFAULTS)->map(fn (array $d, int $i): array => [
+                'id' => null, 'grup' => $d['grup'], 'subkategori' => $d['subkategori'], 'nama' => $d['nama'],
+                'jumlah' => 0, 'satuan' => $d['satuan'], 'lokasi' => '', 'keterangan' => '', 'foto' => '', 'sort_order' => $i,
+            ])->all();
+        }
+
+        $pelengkapCategories = [
+            'Tangga',
+            'Lampu Penerangan',
+            'Sirkulator Udara/Kipas',
+            'TOA',
+            'Tongkat Rambu-Rambu',
+            'Rompi Nyala',
+            'Lampu Sorot',
+        ];
+        $defaultSatuanByName = collect(self::DEFAULTS)->pluck('satuan', 'nama');
+
+        return $masterItems->values()->map(function (ApdItem $item, int $i) use ($pelengkapCategories, $defaultSatuanByName): array {
+            $subkategori = $item->category?->name ?? '';
+            $grup = in_array($subkategori, $pelengkapCategories, true)
+                ? 'Peralatan Keselamatan Kerja Pelengkap'
+                : 'Peralatan Keselamatan Kerja Utama';
+            $lowerName = strtolower($item->name);
+            $satuan = $defaultSatuanByName[$item->name]
+                ?? (str_contains($lowerName, 'sarung tangan') || str_contains($lowerName, 'sepatu') ? 'pasang' : 'buah');
+
+            return [
+                'id' => null,
+                'grup' => $grup,
+                'subkategori' => $subkategori,
+                'nama' => $item->name,
+                'jumlah' => 0,
+                'satuan' => $satuan,
+                'lokasi' => $item->location ?? '',
+                'keterangan' => '',
+                'foto' => '',
+                'sort_order' => $i,
+            ];
+        })->all();
     }
 
     public function store(Request $request): RedirectResponse

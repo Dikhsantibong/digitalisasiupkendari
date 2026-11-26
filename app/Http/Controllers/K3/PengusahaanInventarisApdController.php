@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\ApdItem;
 use App\Models\K3PengusahaanInventarisApd;
 use App\Models\K3PengusahaanInventarisApdItem;
 use App\Models\Unit;
@@ -99,7 +100,48 @@ class PengusahaanInventarisApdController extends Controller
                 $tanggalDokumen = $previous->tanggal_dokumen;
                 $catatan = '';
             } else {
-                $itemsData = K3PengusahaanInventarisApd::buildDefaultRows();
+                $masterApdItems = ApdItem::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->with('category')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get();
+
+                if ($masterApdItems->isNotEmpty()) {
+                    $pelengkapCategories = [
+                        'Tangga',
+                        'Lampu Penerangan',
+                        'Sirkulator Udara/Kipas',
+                        'TOA',
+                        'Tongkat Rambu-Rambu',
+                        'Rompi Nyala',
+                        'Lampu Sorot',
+                    ];
+                    $seenGroups = ['I' => [], 'II' => []];
+                    $itemsData = [];
+                    foreach ($masterApdItems->values() as $idx => $item) {
+                        $catName = $item->category?->name ?? 'Perlengkapan K3';
+                        $kat = in_array($catName, $pelengkapCategories, true) ? 'II' : 'I';
+                        $isFirstInGroup = ! isset($seenGroups[$kat][$catName]);
+                        if ($isFirstInGroup) {
+                            $seenGroups[$kat][$catName] = count($seenGroups[$kat]) + 1;
+                        }
+                        $itemsData[] = [
+                            'id' => null,
+                            'kategori' => $kat,
+                            'no_grup' => $seenGroups[$kat][$catName],
+                            'nama_grup' => $isFirstInGroup ? $catName.' :' : null,
+                            'nama_alat' => $item->name,
+                            'jumlah' => null,
+                            'lokasi' => $item->location ?? '',
+                            'keterangan' => '',
+                            'sort_order' => $idx,
+                        ];
+                    }
+                } else {
+                    $itemsData = K3PengusahaanInventarisApd::buildDefaultRows();
+                }
                 $noDokumen = 'SMT-FM-AK3-01.01';
                 $revisi = '01';
                 $tanggalDokumen = '23 September 2019';

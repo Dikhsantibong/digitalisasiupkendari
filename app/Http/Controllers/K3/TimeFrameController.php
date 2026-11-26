@@ -50,7 +50,12 @@ class TimeFrameController extends Controller
 
         $days = $this->buildDays($year, $month);
 
-        $types = K3ActivityType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('code')->get();
+        $types = K3ActivityType::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
         $stored = K3ActivityPlan::query()
             ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
             ->get()->keyBy('k3_activity_type_id');
@@ -97,7 +102,7 @@ class TimeFrameController extends Controller
             'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'between:2000,2100'],
             'rows' => ['array'],
-            'rows.*.activity_type_id' => ['required', 'integer', Rule::exists('k3_activity_types', 'id')],
+            'rows.*.activity_type_id' => ['required', 'integer', Rule::exists('k3_activity_types', 'id')->where('unit_id', $unit->id)],
             'rows.*.pic' => ['nullable', 'string', 'max:255'],
             'rows.*.keterangan' => ['nullable', 'string', 'max:500'],
             'rows.*.rencana' => ['array'],

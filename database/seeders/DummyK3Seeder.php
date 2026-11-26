@@ -3,18 +3,22 @@
 namespace Database\Seeders;
 
 use App\Enums\EmployeePosition;
+use App\Models\ApdItem;
 use App\Models\EmergencyEquipment;
 use App\Models\Employee;
 use App\Models\EquipmentCategory;
+use App\Models\EquipmentCertificate;
 use App\Models\FireExtinguisher;
+use App\Models\InspectionChecklist;
 use App\Models\K3ActivityType;
+use App\Models\P3kBox;
 use App\Models\PatrolLocation;
+use App\Models\SecurityPost;
 use App\Models\Unit;
 use App\Models\User;
 use App\Support\K3FormulirRegistry;
 use App\Support\K3IkTemplates;
 use App\Support\K3KesiapanApdForm;
-use App\Support\K3MetodePengujianPeralatanForm;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -38,13 +42,22 @@ class DummyK3Seeder extends Seeder
         $prevYear = $curMonth === 1 ? $year - 1 : $year;
 
         $units = Unit::query()->where('is_active', true)->orderBy('id')->get();
-        $activityTypes = K3ActivityType::query()->where('is_active', true)->orderBy('sort_order')->get();
-        $eqCategories = EquipmentCategory::query()->orderBy('sort_order')->get();
         $fallbackUser = User::query()->first();
 
         foreach ($units as $unit) {
             // Ensure unit has master fire extinguishers, emergency equipments, and patrol locations
             $this->ensureUnitK3Masters($unit);
+
+            $activityTypes = K3ActivityType::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+            $eqCategories = EquipmentCategory::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
 
             $koordK3 = Employee::query()->where('unit_id', $unit->id)->where('position', EmployeePosition::KoordinatorK3->value)->first();
             $petugasK3 = Employee::query()->where('unit_id', $unit->id)->where('position', EmployeePosition::OfficeK3->value)->first();
@@ -191,7 +204,7 @@ class DummyK3Seeder extends Seeder
         }
         DB::table('accident_reports')->insert($accRows);
 
-        // 2. inspections + inspection_results
+        // 2. inspections + inspection_results (keyed by unit's InspectionChecklist & P3kBox masters)
         $existingInspIds = DB::table('inspections')
             ->where('unit_id', $unit->id)
             ->where('year', $year)
@@ -202,45 +215,92 @@ class DummyK3Seeder extends Seeder
             DB::table('inspections')->whereIn('id', $existingInspIds)->delete();
         }
 
-        foreach (['inspeksi_tempat_kerja', 'inspeksi_rambu_k3', 'inspeksi_fire_alarm'] as $formCode) {
-            $inspId = DB::table('inspections')->insertGetId([
-                'unit_id' => $unit->id,
-                'year' => $year,
-                'month' => $month,
-                'form_code' => $formCode,
-                'inspection_date' => $inspDate,
-                'inspector_team' => json_encode([$signers['tl_name'], $signers['koord_name'], $signers['petugas_name']]),
-                'ketua_tim' => $signers['tl_name'],
-                'keterangan' => 'Seluruh area memenuhi standar keselamatan kerja',
-                'input_by' => $userId,
+        $tempatKerjaItems = InspectionChecklist::query()
+            ->where('unit_id', $unit->id)
+            ->where('form_code', 'tempat-kerja')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+
+        $tkInspId = DB::table('inspections')->insertGetId([
+            'unit_id' => $unit->id,
+            'year' => $year,
+            'month' => $month,
+            'form_code' => 'tempat-kerja',
+            'inspection_date' => $inspDate,
+            'inspector_team' => json_encode([$signers['tl_name'], $signers['koord_name'], $signers['petugas_name']]),
+            'ketua_tim' => $signers['tl_name'],
+            'keterangan' => 'Seluruh area memenuhi standar keselamatan kerja',
+            'input_by' => $userId,
+            'created_at' => $nowTs,
+            'updated_at' => $nowTs,
+        ]);
+
+        $tkResults = [];
+        foreach ($tempatKerjaItems as $idx => $chk) {
+            $tkResults[] = [
+                'inspection_id' => $tkInspId,
+                'item_ref' => (string) $chk->id,
+                'kondisi' => 'Y',
+                'tindak_lanjut' => null,
+                'nilai' => null,
+                'catatan' => 'Sesuai standar K3L & 5S/5R',
+                'sort_order' => $idx + 1,
                 'created_at' => $nowTs,
                 'updated_at' => $nowTs,
-            ]);
+            ];
+        }
+        foreach (array_chunk($tkResults, 200) as $chunk) {
+            DB::table('inspection_results')->insert($chunk);
+        }
 
-            DB::table('inspection_results')->insert([
-                [
-                    'inspection_id' => $inspId,
-                    'item_ref' => 'Area Power House & Ruang Kontrol',
-                    'kondisi' => 'Baik',
-                    'tindak_lanjut' => 'Pertahankan kebersihan 5S/5R',
-                    'nilai' => '100%',
-                    'catatan' => 'Sesuai standar K3L',
-                    'sort_order' => 1,
-                    'created_at' => $nowTs,
-                    'updated_at' => $nowTs,
-                ],
-                [
-                    'inspection_id' => $inspId,
-                    'item_ref' => 'Area Tangki BBM & TPS LB3',
-                    'kondisi' => 'Baik',
-                    'tindak_lanjut' => 'Monitoring rutin mingguan',
-                    'nilai' => '100%',
-                    'catatan' => 'Normal & Aman',
-                    'sort_order' => 2,
-                    'created_at' => $nowTs,
-                    'updated_at' => $nowTs,
-                ],
-            ]);
+        $p3kItems = InspectionChecklist::query()
+            ->where('unit_id', $unit->id)
+            ->where('form_code', 'isi-p3k')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+        $p3kBoxes = P3kBox::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+        $boxQtyMap = [];
+        foreach ($p3kBoxes as $box) {
+            $boxQtyMap[$box->code] = '2';
+        }
+        $boxQtyJson = json_encode($boxQtyMap);
+
+        $p3kInspId = DB::table('inspections')->insertGetId([
+            'unit_id' => $unit->id,
+            'year' => $year,
+            'month' => $month,
+            'form_code' => 'isi-p3k',
+            'inspection_date' => $inspDate,
+            'inspector_team' => json_encode([$signers['koord_name'], $signers['petugas_name']]),
+            'ketua_tim' => $signers['koord_name'],
+            'keterangan' => 'Seluruh kotak P3K terisi lengkap',
+            'input_by' => $userId,
+            'created_at' => $nowTs,
+            'updated_at' => $nowTs,
+        ]);
+
+        $p3kResults = [];
+        foreach ($p3kItems as $idx => $chk) {
+            $p3kResults[] = [
+                'inspection_id' => $p3kInspId,
+                'item_ref' => (string) $chk->id,
+                'kondisi' => 'Ada',
+                'tindak_lanjut' => null,
+                'nilai' => $boxQtyJson,
+                'catatan' => 'Lengkap',
+                'sort_order' => $idx + 1,
+                'created_at' => $nowTs,
+                'updated_at' => $nowTs,
+            ];
+        }
+        if ($p3kResults !== []) {
+            DB::table('inspection_results')->insert($p3kResults);
         }
 
         // 3. k3_activity_plans
@@ -326,40 +386,76 @@ class DummyK3Seeder extends Seeder
             ]);
         }
 
-        // 2. equipment_certificates & k3_pengusahaan_certificates
-        DB::table('equipment_certificates')->where('unit_id', $unit->id)->delete();
+        // 2. equipment_certificates & k3_pengusahaan_certificates (aligned with unit's K3MasterDataSeeder certificates)
+        $existingCerts = EquipmentCertificate::query()
+            ->where('unit_id', $unit->id)
+            ->with('category')
+            ->orderBy('id')
+            ->get();
+
         DB::table('k3_pengusahaan_certificates')->where('unit_id', $unit->id)->delete();
 
-        $certs = [
-            ['Overhead Crane Power House', '5 Ton', 'Gedung Sentral', 'Konecranes', "CRN-{$unit->id}-01", 'Permenaker No. 8/2020', '2025-06-15', '2027-06-15'],
-            ['Bejana Tekan Air Receiver Tank #1', '1000 Liter / 30 Bar', 'Power House', 'Wärtsilä', "BT-{$unit->id}-01", 'Permenaker No. 37/2016', '2025-08-10', '2027-08-10'],
-            ['Instalasi Penyalur Petir Sentral', '25 Ohm (R < 5 Ohm)', 'Gedung Sentral', 'Kurn R-150', "IPP-{$unit->id}-01", 'Permenaker No. 2/1989', '2025-09-20', '2027-09-20'],
-        ];
-        foreach ($certs as $idx => [$jenis, $kap, $lok, $merk, $seri, $reg, $tglTerakhir, $tglUlang]) {
-            $catId = $eqCategories[$idx % max(1, $eqCategories->count())]->id ?? 1;
-            $payload = [
-                'unit_id' => $unit->id,
-                'equipment_category_id' => $catId,
-                'jenis' => $jenis,
-                'kapasitas' => $kap,
-                'lokasi' => $lok,
-                'merk_manufacture' => $merk,
-                'no_seri' => $seri,
-                'regulasi' => $reg,
-                'ijin_awal_nomor' => sprintf('SLO-AWAL/%s/%02d/2021', $unit->code, $idx + 1),
-                'ijin_awal_tanggal' => '2021-06-15',
-                'uji_terakhir_nomor' => sprintf('SUKET-K3/%s/%02d/2025', $unit->code, $idx + 1),
-                'uji_terakhir_tanggal' => $tglTerakhir,
-                'uji_ulang_tanggal' => $tglUlang,
-                'batasan_uji' => '2 Tahun',
-                'masa_berlaku_tahun' => 2,
-                'keterangan' => 'Sertifikat Laik Operasi (SLO / Suket K3) Aktif',
-                'input_by' => $inputUserId,
-                'created_at' => $nowTs,
-                'updated_at' => $nowTs,
-            ];
-            DB::table('equipment_certificates')->insert($payload);
-            DB::table('k3_pengusahaan_certificates')->insert([...$payload, 'input_by' => $pengusahaanUserId]);
+        $certsForEval = [];
+        if ($existingCerts->isNotEmpty()) {
+            foreach ($existingCerts as $idx => $cert) {
+                $catName = $cert->category?->name ?? 'Peralatan K3';
+                $reg = match ($catName) {
+                    'Crane' => 'Permenaker No. 8/2020',
+                    'Instalasi Penyalur Petir' => 'Permenaker No. 2/1989',
+                    default => 'Permenaker No. 37/2016',
+                };
+                $merk = match ($catName) {
+                    'Crane' => 'Konecranes',
+                    'Instalasi Penyalur Petir' => 'Kurn R-150',
+                    default => 'PT. Bukaka Teknik Utama',
+                };
+                $seri = sprintf('%s-%d-%02d', strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $catName), 0, 3) ?: 'EQ'), $unit->id, $idx + 1);
+                $ijinAwalNo = sprintf('SLO-AWAL/%s/%02d/2021', $unit->code, $idx + 1);
+                $ujiTerakhirNo = sprintf('SUKET-K3/%s/%02d/2025', $unit->code, $idx + 1);
+
+                $cert->update([
+                    'merk_manufacture' => $cert->merk_manufacture ?: $merk,
+                    'no_seri' => $cert->no_seri ?: $seri,
+                    'regulasi' => $cert->regulasi ?: $reg,
+                    'ijin_awal_nomor' => $cert->ijin_awal_nomor ?: $ijinAwalNo,
+                    'ijin_awal_tanggal' => $cert->ijin_awal_tanggal ?: '2021-06-15',
+                    'uji_terakhir_nomor' => $cert->uji_terakhir_nomor ?: $ujiTerakhirNo,
+                    'uji_terakhir_tanggal' => $cert->uji_terakhir_tanggal ?: '2025-06-15',
+                    'uji_ulang_tanggal' => $cert->uji_ulang_tanggal ?: '2027-06-15',
+                    'batasan_uji' => $cert->batasan_uji ?: '2 Tahun',
+                    'masa_berlaku_tahun' => $cert->masa_berlaku_tahun ?: 2,
+                    'keterangan' => $cert->keterangan ?: 'Sertifikat Laik Operasi (SLO / Suket K3) Aktif',
+                    'input_by' => $inputUserId,
+                ]);
+
+                DB::table('k3_pengusahaan_certificates')->insert([
+                    'unit_id' => $unit->id,
+                    'equipment_category_id' => $cert->equipment_category_id,
+                    'jenis' => $cert->jenis,
+                    'kapasitas' => $cert->kapasitas,
+                    'lokasi' => $cert->lokasi ?: $unit->name,
+                    'merk_manufacture' => $cert->merk_manufacture ?: $merk,
+                    'no_seri' => $cert->no_seri ?: $seri,
+                    'regulasi' => $cert->regulasi ?: $reg,
+                    'ijin_awal_nomor' => $cert->ijin_awal_nomor ?: $ijinAwalNo,
+                    'ijin_awal_tanggal' => '2021-06-15',
+                    'uji_terakhir_nomor' => $cert->uji_terakhir_nomor ?: $ujiTerakhirNo,
+                    'uji_terakhir_tanggal' => '2025-06-15',
+                    'uji_ulang_tanggal' => '2027-06-15',
+                    'batasan_uji' => '2 Tahun',
+                    'masa_berlaku_tahun' => 2,
+                    'keterangan' => 'Sertifikat Laik Operasi (SLO / Suket K3) Aktif',
+                    'input_by' => $pengusahaanUserId,
+                    'created_at' => $nowTs,
+                    'updated_at' => $nowTs,
+                ]);
+
+                $certsForEval[] = [
+                    'kategori' => $catName,
+                    'jenis' => $cert->jenis,
+                    'kapasitas' => $cert->kapasitas ?? '-',
+                ];
+            }
         }
 
         // 3. k3_pengusahaan_evaluasi_pengujians + meta (yearly)
@@ -376,15 +472,15 @@ class DummyK3Seeder extends Seeder
                 'created_at' => $nowTs,
             ],
         );
-        $progresBulan = json_encode(['1' => 'V', '2' => 'V', '3' => 'V', '4' => 'V', '5' => 'V', '6' => 'V', '7' => 'V', '8' => 'V', '9' => 'V', '10' => 'V', '11' => 'V']);
-        foreach ($certs as $idx => [$jenis, $kap]) {
+        $progresBulan = json_encode([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+        foreach ($certsForEval as $idx => $evalRow) {
             DB::table('k3_pengusahaan_evaluasi_pengujians')->insert([
                 'unit_id' => $unit->id,
                 'year' => $year,
-                'no_urut' => $idx + 1,
-                'nama_kategori_alat' => $idx === 0 ? 'Pesawat Angkat & Angkut' : ($idx === 1 ? 'Bejana Tekan' : 'Instalasi Penyalur Petir'),
-                'jenis' => $jenis,
-                'kapasitas' => $kap,
+                'no_urut' => (string) ($idx + 1),
+                'nama_kategori_alat' => $evalRow['kategori'],
+                'jenis' => $evalRow['jenis'],
+                'kapasitas' => $evalRow['kapasitas'],
                 'temuan_sertifikat' => 'Tidak ada temuan (Laik Operasi)',
                 'progres_bulan' => $progresBulan,
                 'keterangan' => 'Sertifikat masih berlaku hingga 2027',
@@ -586,26 +682,44 @@ class DummyK3Seeder extends Seeder
             ]);
         }
 
-        // 8. k3_apd_inventories
+        // 8. k3_apd_inventories (pulled from unit's ApdItem & ApdCategory master data)
         DB::table('k3_apd_inventories')->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
-        $apdRows = [
-            ['apd', 'Pelindung Kepala', 1, 'Safety Helmet MSA V-Gard', 18, 'Buah', 'Rak APD CCR'],
-            ['apd', 'Pelindung Pendengaran', 2, 'Earmuff Peltor 3M H10A', 12, 'Pasang', 'Rak APD Power House'],
-            ['apd', 'Pelindung Kaki', 3, 'Safety Shoes King\'s', 18, 'Pasang', 'Personil Unit'],
-            ['peralatan', 'Peralatan Keselamatan', 4, 'Full Body Harness Double Lanyard', 4, 'Set', 'Gudang K3'],
+        $pelengkapCategories = [
+            'Tangga',
+            'Lampu Penerangan',
+            'Sirkulator Udara/Kipas',
+            'TOA',
+            'Tongkat Rambu-Rambu',
+            'Rompi Nyala',
+            'Lampu Sorot',
         ];
-        foreach ($apdRows as $idx => [$grup, $sub, $no, $nama, $jml, $sat, $lok]) {
+        $unitApdItems = ApdItem::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->with('category')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+        foreach ($unitApdItems as $idx => $item) {
+            $catName = $item->category?->name ?? 'Perlengkapan K3';
+            $grup = in_array($catName, $pelengkapCategories, true)
+                ? 'Peralatan Keselamatan Kerja Pelengkap'
+                : 'Peralatan Keselamatan Kerja Utama';
+            $satuan = str_contains(strtolower($item->name), 'sarung tangan') || str_contains(strtolower($item->name), 'sepatu') || str_contains(strtolower($item->name), 'ear')
+                ? 'psg'
+                : 'buah';
+
             DB::table('k3_apd_inventories')->insert([
                 'unit_id' => $unit->id,
                 'year' => $year,
                 'month' => $month,
                 'grup' => $grup,
-                'subkategori' => $sub,
-                'no_urut' => $no,
-                'nama' => $nama,
-                'jumlah' => $jml,
-                'satuan' => $sat,
-                'lokasi' => $lok,
+                'subkategori' => $catName,
+                'no_urut' => (string) ($idx + 1),
+                'nama' => $item->name,
+                'jumlah' => 10,
+                'satuan' => $satuan,
+                'lokasi' => $item->location ?: $unit->name,
                 'keterangan' => 'Kondisi baik & layak pakai',
                 'sort_order' => $idx + 1,
                 'input_by' => $userId,
@@ -746,30 +860,30 @@ class DummyK3Seeder extends Seeder
             ]);
         }
 
-        // 14. k3_kesiapan_apds + meta
+        // 14. k3_kesiapan_apds + meta (pulled across all 5 groups from unit's masters)
         DB::table('k3_kesiapan_apds')->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
         DB::table('k3_kesiapan_apd_meta')->updateOrInsert(
             ['unit_id' => $unit->id, 'year' => $year, 'month' => $month],
             ['catatan' => 'Seluruh APD, peralatan kerja, SOP, dan kotak P3K dalam kondisi lengkap dan layak.', 'updated_at' => $nowTs, 'created_at' => $nowTs],
         );
-        foreach (array_slice(K3KesiapanApdForm::defaultRows(), 0, 8) as $idx => $r) {
+        foreach (K3KesiapanApdForm::defaultRows($unit) as $idx => $r) {
             DB::table('k3_kesiapan_apds')->insert([
                 'unit_id' => $unit->id,
                 'year' => $year,
                 'month' => $month,
-                'kelompok' => $r['kelompok'] ?? 'A. ALAT PELINDUNG DIRI (APD)',
-                'no_urut' => $r['no_urut'] ?? ($idx + 1),
-                'inspeksi' => $r['inspeksi'] ?? 'Safety Helmet',
-                'apd_jumlah' => '18 Bh',
-                'kelayakan_apd' => 'Layak',
-                'peralatan_jumlah' => '4 Set',
-                'peralatan_kelayakan' => 'Layak',
-                'sop_pnp' => 'Ada',
-                'sop_vendor' => 'Ada',
-                'p3k_ada' => 'Ada',
-                'p3k_memenuhi' => 'Memenuhi',
-                'cara_kerja' => 'Sesuai SOP',
-                'keterangan' => 'Lengkap & Baik',
+                'kelompok' => $r['kelompok'],
+                'no_urut' => $r['no_urut'] ?? (string) ($idx + 1),
+                'inspeksi' => $r['inspeksi'],
+                'apd_jumlah' => $r['apd_jumlah'] ?? '-',
+                'kelayakan_apd' => $r['kelayakan_apd'] ?? '-',
+                'peralatan_jumlah' => $r['peralatan_jumlah'] ?? '-',
+                'peralatan_kelayakan' => $r['peralatan_kelayakan'] ?? '-',
+                'sop_pnp' => $r['sop_pnp'] ?? '-',
+                'sop_vendor' => $r['sop_vendor'] ?? '-',
+                'p3k_ada' => $r['p3k_ada'] ?? '-',
+                'p3k_memenuhi' => $r['p3k_memenuhi'] ?? '-',
+                'cara_kerja' => $r['cara_kerja'] ?? '-',
+                'keterangan' => $r['keterangan'] ?? 'Lengkap & Baik',
                 'sort_order' => $idx + 1,
                 'input_by' => $userId,
                 'created_at' => $nowTs,
@@ -828,7 +942,7 @@ class DummyK3Seeder extends Seeder
             ]);
         }
 
-        // 17. k3_metode_pengujian_peralatans + meta
+        // 17. k3_metode_pengujian_peralatans + meta (pulled from unit's EquipmentCertificate master records)
         DB::table('k3_metode_pengujian_peralatans')->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
         DB::table('k3_metode_pengujian_peralatan_meta')->updateOrInsert(
             ['unit_id' => $unit->id, 'year' => $year, 'month' => $month],
@@ -847,29 +961,34 @@ class DummyK3Seeder extends Seeder
                 'staff_k3_name' => $signers['staf_name'],
                 'staff_k3_title' => 'Staf K3',
                 'sign_place_date' => "Kendari, {$checkDate}",
-                'format' => 'structured',
+                'format' => 'form',
                 'updated_at' => $nowTs,
                 'created_at' => $nowTs,
             ],
         );
-        foreach (array_slice(K3MetodePengujianPeralatanForm::defaultRows(), 0, 5) as $idx => $r) {
+        $unitCerts = EquipmentCertificate::query()
+            ->where('unit_id', $unit->id)
+            ->with('category')
+            ->orderBy('id')
+            ->get();
+        foreach ($unitCerts as $idx => $cert) {
             DB::table('k3_metode_pengujian_peralatans')->insert([
                 'unit_id' => $unit->id,
                 'year' => $year,
                 'month' => $month,
-                'no_urut' => $idx + 1,
-                'nama_peralatan' => $r['nama_peralatan'] ?? 'Overhead Crane 5 Ton',
-                'no_pengesahan' => sprintf('SUKET-K3/%s/%02d/2025', $unit->code, $idx + 1),
-                'nama_kategori_alat' => $r['nama_kategori_alat'] ?? 'Pesawat Angkat & Angkut',
-                'uji_visual' => 'Baik',
-                'uji_fungsi' => 'Baik',
-                'uji_beban' => 'Baik',
+                'no_urut' => (string) ($idx + 1),
+                'nama_peralatan' => $cert->category?->name ?? 'Peralatan K3',
+                'no_pengesahan' => $cert->uji_terakhir_nomor ?: sprintf('SUKET-K3/%s/%02d/2025', $unit->code, $idx + 1),
+                'nama_kategori_alat' => trim($cert->jenis.($cert->kapasitas && $cert->kapasitas !== '-' ? " ({$cert->kapasitas})" : '')),
+                'uji_visual' => 'Memenuhi',
+                'uji_fungsi' => 'Memenuhi',
+                'uji_beban' => 'Memenuhi',
                 'uji_hydro' => '-',
-                'ndt' => 'Baik',
-                'uji_ultrasonic_thickness' => 'Baik',
-                'uji_ketahanan' => 'Baik',
-                'sertifikasi_terakhir' => '2025-06-15',
-                'sertifikasi_ulang' => '2027-06-15',
+                'ndt' => 'Memenuhi',
+                'uji_ultrasonic_thickness' => 'Memenuhi',
+                'uji_ketahanan' => 'Memenuhi',
+                'sertifikasi_terakhir' => $cert->uji_terakhir_tanggal?->format('Y-m-d') ?? '2025-06-15',
+                'sertifikasi_ulang' => $cert->uji_ulang_tanggal?->format('Y-m-d') ?? '2027-06-15',
                 'keterangan' => 'Laik Operasi',
                 'sort_order' => $idx + 1,
                 'input_by' => $userId,
@@ -971,24 +1090,24 @@ class DummyK3Seeder extends Seeder
         $nowTs = now()->toDateTimeString();
         $docDate = sprintf('%04d-%02d-%02d', $year, $month, min($daysDue, 8));
 
-        // 1. k3_pengusahaan_time_frames
+        // 1. k3_pengusahaan_time_frames (pulled from unit's K3ActivityType master data)
         DB::table('k3_pengusahaan_time_frames')->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
-        $tfItems = [
-            'Laporan Jam Kerja Aman & Kinerja K3 Bulanan',
-            'Laporan Pemeriksaan APAR, APAB, Hydrant & Fire Alarm',
-            'Laporan Patroli Keamanan (Guard Tour) & Apel Security',
-            'Laporan Pengelolaan Limbah B3, TPS LB3 & Oil Trap',
-        ];
-        foreach ($tfItems as $idx => $uraian) {
+        $unitActivityTypes = K3ActivityType::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
+        foreach ($unitActivityTypes as $idx => $actType) {
             DB::table('k3_pengusahaan_time_frames')->insert([
                 'unit_id' => $unit->id,
                 'year' => $year,
                 'month' => $month,
                 'no_urut' => $idx + 1,
-                'uraian_pelaporan' => $uraian,
-                'pic' => $signers['tl_name'],
-                'rencana' => json_encode([5]),
-                'realisasi' => json_encode([5]),
+                'uraian_pelaporan' => $actType->name,
+                'pic' => $actType->default_pic ?: $signers['tl_name'],
+                'rencana' => json_encode([5, 19]),
+                'realisasi' => json_encode([5, 19]),
                 'keterangan' => 'Tepat Waktu (On Time)',
                 'sort_order' => $idx + 1,
                 'input_by' => $userId,
@@ -1108,42 +1227,69 @@ class DummyK3Seeder extends Seeder
             ]);
         }
 
-        // 6. k3_pengusahaan_emergency_facilities
+        // 6. k3_pengusahaan_emergency_facilities (pulled from unit's EmergencyEquipment master data)
         DB::table('k3_pengusahaan_emergency_facilities')->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
-        $emFacilities = [
-            ['APAR & APAB', 1, 'APAR Dry Chemical Powder & CO2', 8, 8, 'Power House & CCR'],
-            ['HYDRANT', 2, 'Hydrant Pillar & Box Outdoor', 4, 4, 'Halaman Sentral & Area BBM'],
-            ['FIRE ALARM', 3, 'Master Control Fire Alarm (MCFA) & Detector', 1, 1, 'Ruang Kontrol (CCR)'],
-            ['P3K & EYE WASH', 4, 'Kotak P3K & Emergency Eye Wash', 3, 3, 'CCR, Workshop & TPS LB3'],
-        ];
-        foreach ($emFacilities as $idx => [$grup, $no, $nama, $tot, $rdy, $lok]) {
-            DB::table('k3_pengusahaan_emergency_facilities')->insert([
-                'unit_id' => $unit->id,
-                'year' => $year,
-                'month' => $month,
-                'periode' => sprintf('%02d/%d', $month, $year),
-                'no_dokumen' => sprintf('FM-K3-EF/%s/%02d/%d', $unit->code, $month, $year),
-                'revisi' => '00',
-                'tanggal_dokumen' => $docDate,
-                'halaman' => '1 dari 1',
-                'grup' => $grup,
-                'no_urut' => $no,
-                'nama_peralatan' => $nama,
-                'jml_total' => $tot,
-                'jml_ready' => $rdy,
-                'jml_not_ready' => 0,
-                'persen_kesiapan' => 100.0,
-                'lokasi' => $lok,
-                'kendala' => 'Nihil',
-                'tindak_lanjut' => 'Inspeksi rutin bulanan',
-                'sort_order' => $idx + 1,
-                'input_by' => $userId,
-                'created_at' => $nowTs,
-                'updated_at' => $nowTs,
-            ]);
+        $unitEmergencyEquipments = EmergencyEquipment::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+        foreach (['M1', 'BULANAN'] as $periodeKey) {
+            foreach ($unitEmergencyEquipments as $idx => $eq) {
+                $tot = str_contains($eq->name, 'APAR') ? 10 : (str_contains($eq->name, 'P3K') ? 7 : 2);
+                DB::table('k3_pengusahaan_emergency_facilities')->insert([
+                    'unit_id' => $unit->id,
+                    'year' => $year,
+                    'month' => $month,
+                    'periode' => $periodeKey,
+                    'no_dokumen' => sprintf('FM-K3-EF/%s/%02d/%d', $unit->code, $month, $year),
+                    'revisi' => '00',
+                    'tanggal_dokumen' => $docDate,
+                    'halaman' => '1 dari 1',
+                    'grup' => $eq->group_name ?: 'Fasilitas Darurat',
+                    'no_urut' => $idx + 1,
+                    'nama_peralatan' => $eq->name,
+                    'jml_total' => (string) $tot,
+                    'jml_ready' => (string) $tot,
+                    'jml_not_ready' => '0',
+                    'persen_kesiapan' => '100%',
+                    'lokasi' => $eq->location ?: $unit->name,
+                    'kendala' => 'Nihil',
+                    'tindak_lanjut' => 'Inspeksi rutin bulanan',
+                    'sort_order' => $idx + 1,
+                    'input_by' => $userId,
+                    'created_at' => $nowTs,
+                    'updated_at' => $nowTs,
+                ]);
+            }
         }
 
-        // 7. k3_pengusahaan_apar_apabs + items
+        // 7. k3_pengusahaan_apar_apabs + items (pulled from unit's FireExtinguisher master data)
+        $unitApars = FireExtinguisher::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('location')
+            ->get();
+        $aparItemsPayload = [];
+        foreach ($unitApars as $idx => $apar) {
+            $aparItemsPayload[] = [
+                'no_urut' => $idx + 1,
+                'no_rfid' => $apar->rfid,
+                'lokasi' => $apar->location ?: $unit->name,
+                'tgl_periksa' => $docDate,
+                'merk_apar' => $apar->merk ?: 'Fire Venom',
+                'jenis_apar' => $apar->jenis ?: 'Powder',
+                'berat_kg' => (string) ($apar->berat_kg ?? 6),
+                'kondisi_tabung' => 'baik',
+                'kondisi_nozzle_selang' => 'baik',
+                'indikator_tekanan' => 'ok',
+                'kondisi_pin_segel' => 'baik',
+                'keterangan' => 'Ex. 10/11/2027',
+                'sort_order' => $idx + 1,
+            ];
+        }
         $this->replaceParentAndItems(
             'k3_pengusahaan_apar_apabs',
             'k3_pengusahaan_apar_apab_items',
@@ -1157,38 +1303,7 @@ class DummyK3Seeder extends Seeder
                 'catatan' => 'Seluruh APAR dan APAB dalam kondisi tekanan normal dan siap pakai.',
                 'input_by' => $userId,
             ],
-            [
-                [
-                    'no_urut' => 1,
-                    'no_rfid' => "RFID-{$unit->id}-01",
-                    'lokasi' => 'Ruang Kontrol (CCR)',
-                    'tgl_periksa' => $docDate,
-                    'merk_apar' => 'Servvo',
-                    'jenis_apar' => 'CO2',
-                    'berat_kg' => '5',
-                    'kondisi_tabung' => 'Baik',
-                    'kondisi_nozzle_selang' => 'Baik',
-                    'indikator_tekanan' => 'Normal',
-                    'kondisi_pin_segel' => 'Baik',
-                    'keterangan' => 'Siap Pakai',
-                    'sort_order' => 1,
-                ],
-                [
-                    'no_urut' => 2,
-                    'no_rfid' => "RFID-{$unit->id}-02",
-                    'lokasi' => 'Power House Mesin #1',
-                    'tgl_periksa' => $docDate,
-                    'merk_apar' => 'Protect',
-                    'jenis_apar' => 'Dry Chemical Powder',
-                    'berat_kg' => '9',
-                    'kondisi_tabung' => 'Baik',
-                    'kondisi_nozzle_selang' => 'Baik',
-                    'indikator_tekanan' => 'Normal',
-                    'kondisi_pin_segel' => 'Baik',
-                    'keterangan' => 'Siap Pakai',
-                    'sort_order' => 2,
-                ],
-            ],
+            $aparItemsPayload,
         );
 
         // 8. k3_pengusahaan_apats + items
@@ -1254,7 +1369,42 @@ class DummyK3Seeder extends Seeder
             ],
         );
 
-        // 11. k3_pengusahaan_pemeriksaan_p3ks + items
+        // 11. k3_pengusahaan_pemeriksaan_p3ks + items (pulled from unit's P3kBox & InspectionChecklist isi-p3k)
+        $unitP3kLocations = P3kBox::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get()
+            ->map(fn (P3kBox $b): string => $b->location ?: $b->code)
+            ->values()
+            ->all();
+        if ($unitP3kLocations === []) {
+            $unitP3kLocations = ['Ruang CCR', 'Workshop', 'Pos Security'];
+        }
+        $unitP3kChecklists = InspectionChecklist::query()
+            ->where('unit_id', $unit->id)
+            ->where('form_code', 'isi-p3k')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+        $p3kItemsPayload = [];
+        foreach ($unitP3kChecklists as $idx => $chk) {
+            $stdQty = $idx === 0 ? 20 : ($idx <= 4 ? 2 : 1);
+            $kondisiMap = [];
+            foreach ($unitP3kLocations as $locName) {
+                $kondisiMap[$locName] = $stdQty;
+            }
+            $p3kItemsPayload[] = [
+                'no_urut' => $idx + 1,
+                'nama_isi' => $chk->item_text,
+                'standar_jumlah' => $stdQty,
+                'satuan' => 'buah',
+                'kondisi_lokasi' => json_encode($kondisiMap),
+                'keterangan' => 'Lengkap',
+                'sort_order' => $idx + 1,
+            ];
+        }
         $this->replaceParentAndItems(
             'k3_pengusahaan_pemeriksaan_p3ks',
             'k3_pengusahaan_pemeriksaan_p3k_items',
@@ -1265,17 +1415,28 @@ class DummyK3Seeder extends Seeder
                 'no_dokumen' => sprintf('FM-K3-P3K/%s/%02d/%d', $unit->code, $month, $year),
                 'revisi' => '00',
                 'tanggal_dokumen' => $docDate,
-                'locations' => json_encode(['Ruang Kontrol (CCR)', 'Workshop HAR', 'Pos Security']),
+                'locations' => json_encode($unitP3kLocations),
                 'catatan' => 'Seluruh isi kotak P3K lengkap dan belum melewati masa kedaluwarsa.',
                 'input_by' => $userId,
             ],
-            [
-                ['no_urut' => 1, 'nama_isi' => 'Kasa Steril Terbungkus', 'standar_jumlah' => 20, 'satuan' => 'Bungkus', 'kondisi_lokasi' => json_encode(['CCR' => 20, 'Workshop' => 20, 'Security' => 20]), 'keterangan' => 'Lengkap', 'sort_order' => 1],
-                ['no_urut' => 2, 'nama_isi' => 'Povidone Iodine (Betadine 60 ml)', 'standar_jumlah' => 2, 'satuan' => 'Botol', 'kondisi_lokasi' => json_encode(['CCR' => 2, 'Workshop' => 2, 'Security' => 2]), 'keterangan' => 'Lengkap', 'sort_order' => 2],
-            ],
+            $p3kItemsPayload,
         );
 
-        // 12. k3_pengusahaan_alat_tanggap_darurats + items
+        // 12. k3_pengusahaan_alat_tanggap_darurats + items (pulled from unit's EmergencyEquipment master data)
+        $atdItemsPayload = [];
+        foreach ($unitEmergencyEquipments as $idx => $eq) {
+            $qty = str_contains($eq->name, 'APAR') ? count($aparItemsPayload) : (str_contains($eq->name, 'P3K') ? count($unitP3kLocations) : 2);
+            $atdItemsPayload[] = [
+                'no_urut' => $idx + 1,
+                'jenis' => $eq->name,
+                'siap_pakai' => $qty,
+                'kadaluarsa' => 0,
+                'kosong' => 0,
+                'tgl_diisi_kembali' => null,
+                'keterangan' => 'Siap Pakai',
+                'sort_order' => $idx + 1,
+            ];
+        }
         $this->replaceParentAndItems(
             'k3_pengusahaan_alat_tanggap_darurats',
             'k3_pengusahaan_alat_tanggap_darurat_items',
@@ -1286,16 +1447,49 @@ class DummyK3Seeder extends Seeder
                 'no_dokumen' => sprintf('FM-K3-ATD/%s/%02d/%d', $unit->code, $month, $year),
                 'revisi' => '00',
                 'tanggal_dokumen' => $docDate,
-                'catatan' => 'Peralatan tanggap darurat dan oil spill kit siap digunakan.',
+                'catatan' => 'Peralatan tanggap darurat siap digunakan.',
                 'input_by' => $userId,
             ],
-            [
-                ['no_urut' => 1, 'jenis' => 'Oil Spill Kit Set & Absorbent Pad', 'siap_pakai' => 2, 'kadaluarsa' => 0, 'kosong' => 0, 'tgl_diisi_kembali' => null, 'keterangan' => 'Lengkap di TPS LB3 & Area BBM', 'sort_order' => 1],
-                ['no_urut' => 2, 'jenis' => 'Emergency Stretcher (Tandu Darurat)', 'siap_pakai' => 1, 'kadaluarsa' => 0, 'kosong' => 0, 'tgl_diisi_kembali' => null, 'keterangan' => 'Siap Pakai di Ruang K3', 'sort_order' => 2],
-            ],
+            $atdItemsPayload,
         );
 
-        // 13. k3_pengusahaan_inventaris_apds + items
+        // 13. k3_pengusahaan_inventaris_apds + items (pulled from unit's ApdItem & ApdCategory master data)
+        $pelengkapCategories = [
+            'Tangga',
+            'Lampu Penerangan',
+            'Sirkulator Udara/Kipas',
+            'TOA',
+            'Tongkat Rambu-Rambu',
+            'Rompi Nyala',
+            'Lampu Sorot',
+        ];
+        $unitApdItems = ApdItem::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->with('category')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+        $invApdPayload = [];
+        $seenGroups = ['I' => [], 'II' => []];
+        foreach ($unitApdItems as $idx => $item) {
+            $catName = $item->category?->name ?? 'Perlengkapan K3';
+            $kat = in_array($catName, $pelengkapCategories, true) ? 'II' : 'I';
+            $isFirstInGroup = ! isset($seenGroups[$kat][$catName]);
+            if ($isFirstInGroup) {
+                $seenGroups[$kat][$catName] = count($seenGroups[$kat]) + 1;
+            }
+            $invApdPayload[] = [
+                'kategori' => $kat,
+                'no_grup' => $seenGroups[$kat][$catName],
+                'nama_grup' => $isFirstInGroup ? $catName.' :' : null,
+                'nama_alat' => $item->name,
+                'jumlah' => 10,
+                'lokasi' => $item->location ?: $unit->name,
+                'keterangan' => 'Baik',
+                'sort_order' => $idx + 1,
+            ];
+        }
         $this->replaceParentAndItems(
             'k3_pengusahaan_inventaris_apds',
             'k3_pengusahaan_inventaris_apd_items',
@@ -1309,13 +1503,32 @@ class DummyK3Seeder extends Seeder
                 'catatan' => 'Stok dan distribusi APD personil pembangkit mencukupi.',
                 'input_by' => $userId,
             ],
-            [
-                ['kategori' => 'APD', 'no_grup' => 1, 'nama_grup' => 'Pelindung Kepala & Pendengaran', 'nama_alat' => 'Safety Helmet & Earmuff', 'jumlah' => 18, 'lokasi' => 'CCR & Power House', 'keterangan' => 'Baik', 'sort_order' => 1],
-                ['kategori' => 'APD', 'no_grup' => 2, 'nama_grup' => 'Pelindung Kaki & Tubuh', 'nama_alat' => 'Safety Shoes & Wearpack', 'jumlah' => 18, 'lokasi' => 'Personil Unit', 'keterangan' => 'Baik', 'sort_order' => 2],
-            ],
+            $invApdPayload,
         );
 
-        // 14. k3_pengusahaan_inspeksi_tempat_kerjas + items
+        // 14. k3_pengusahaan_inspeksi_tempat_kerjas + items (pulled from unit's InspectionChecklist tempat-kerja)
+        $unitTkChecklists = InspectionChecklist::query()
+            ->where('unit_id', $unit->id)
+            ->where('form_code', 'tempat-kerja')
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->get();
+        $itkPayload = [];
+        $catCounters = [];
+        foreach ($unitTkChecklists as $idx => $chk) {
+            $parts = explode(' — ', (string) $chk->item_text, 2);
+            $cat = count($parts) === 2 ? trim($parts[0]) : 'UMUM';
+            $itemText = count($parts) === 2 ? trim($parts[1]) : trim((string) $chk->item_text);
+            $catCounters[$cat] = ($catCounters[$cat] ?? 0) + 1;
+            $itkPayload[] = [
+                'category' => $cat,
+                'no_urut' => $catCounters[$cat],
+                'item' => $itemText,
+                'status' => 'Y',
+                'comment' => 'Sesuai aturan 5R & SMK3',
+                'sort_order' => $idx + 1,
+            ];
+        }
         $this->replaceParentAndItems(
             'k3_pengusahaan_inspeksi_tempat_kerjas',
             'k3_pengusahaan_inspeksi_tempat_kerja_items',
@@ -1335,10 +1548,7 @@ class DummyK3Seeder extends Seeder
                 'catatan' => 'Lingkungan kerja aman, pencahayaan dan ventilasi memadai.',
                 'input_by' => $userId,
             ],
-            [
-                ['category' => 'Housekeeping & 5S', 'no_urut' => 1, 'item' => 'Kebersihan lantai Power House dari ceceran oli/BBM', 'status' => 'Memenuhi', 'comment' => 'Bersih & kering', 'sort_order' => 1],
-                ['category' => 'Kelistrikan & Panel', 'no_urut' => 2, 'item' => 'Pintu panel tertutup rapat dan dilengkapi tanda bahaya tegangan tinggi', 'status' => 'Memenuhi', 'comment' => 'Sesuai standar', 'sort_order' => 2],
-            ],
+            $itkPayload,
         );
 
         // 15. k3_pengusahaan_inspeksi_rambus + items
@@ -1362,7 +1572,7 @@ class DummyK3Seeder extends Seeder
             ],
         );
 
-        // 16. k3_pengusahaan_metode_pengujians + meta
+        // 16. k3_pengusahaan_metode_pengujians + meta (pulled from unit's EquipmentCertificate master data)
         DB::table('k3_pengusahaan_metode_pengujians')->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
         DB::table('k3_pengusahaan_metode_pengujian_meta')->updateOrInsert(
             ['unit_id' => $unit->id, 'year' => $year, 'month' => $month],
@@ -1376,34 +1586,58 @@ class DummyK3Seeder extends Seeder
                 'created_at' => $nowTs,
             ],
         );
-        DB::table('k3_pengusahaan_metode_pengujians')->insert([
-            'unit_id' => $unit->id,
-            'year' => $year,
-            'month' => $month,
-            'no_urut' => 1,
-            'nama_peralatan' => 'Overhead Crane Power House 5 Ton',
-            'no_pengesahan' => sprintf('SUKET-K3/%s/01/2025', $unit->code),
-            'nama_kategori_alat' => 'Pesawat Angkat & Angkut',
-            'uji_visual' => 'Baik',
-            'uji_fungsi' => 'Baik',
-            'uji_beban' => 'Baik',
-            'uji_hydro' => '-',
-            'ndt' => 'Baik',
-            'uji_ultrasonic_thickness' => 'Baik',
-            'uji_ketahanan' => 'Baik',
-            'sertifikasi_terakhir' => '2025-06-15',
-            'sertifikasi_ulang' => '2027-06-15',
-            'keterangan' => 'Laik Operasi',
-            'sort_order' => 1,
-            'input_by' => $userId,
-            'created_at' => $nowTs,
-            'updated_at' => $nowTs,
-        ]);
+        $unitCerts = EquipmentCertificate::query()
+            ->where('unit_id', $unit->id)
+            ->with('category')
+            ->orderBy('id')
+            ->get();
+        foreach ($unitCerts as $idx => $cert) {
+            DB::table('k3_pengusahaan_metode_pengujians')->insert([
+                'unit_id' => $unit->id,
+                'year' => $year,
+                'month' => $month,
+                'no_urut' => (string) ($idx + 1),
+                'nama_peralatan' => $cert->category?->name ?? 'Peralatan K3',
+                'no_pengesahan' => $cert->uji_terakhir_nomor ?: sprintf('SUKET-K3/%s/%02d/2025', $unit->code, $idx + 1),
+                'nama_kategori_alat' => trim($cert->jenis.($cert->kapasitas && $cert->kapasitas !== '-' ? " ({$cert->kapasitas})" : '')),
+                'uji_visual' => 'Memenuhi',
+                'uji_fungsi' => 'Memenuhi',
+                'uji_beban' => 'Memenuhi',
+                'uji_hydro' => '-',
+                'ndt' => 'Memenuhi',
+                'uji_ultrasonic_thickness' => 'Memenuhi',
+                'uji_ketahanan' => 'Memenuhi',
+                'sertifikasi_terakhir' => $cert->uji_terakhir_tanggal?->format('Y-m-d') ?? '2025-06-15',
+                'sertifikasi_ulang' => $cert->uji_ulang_tanggal?->format('Y-m-d') ?? '2027-06-15',
+                'keterangan' => 'Laik Operasi',
+                'sort_order' => $idx + 1,
+                'input_by' => $userId,
+                'created_at' => $nowTs,
+                'updated_at' => $nowTs,
+            ]);
+        }
 
-        // 17. k3_pengusahaan_patrol_securities + items
+        // 17. k3_pengusahaan_patrol_securities + items (pulled from unit's PatrolLocation master data)
         $scansMap = [];
-        for ($d = 1; $d <= $daysDue; $d++) {
-            $scansMap[(string) $d] = 4;
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $scansMap[(string) $d] = $d <= $daysDue ? 4 : 0;
+        }
+        $unitPatrolLocs = PatrolLocation::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
+        $patrolItemsPayload = [];
+        foreach ($unitPatrolLocs as $idx => $loc) {
+            $patrolItemsPayload[] = [
+                'lokasi_kode' => $loc->code,
+                'lokasi_nama' => $loc->name ?: $loc->code,
+                'scans' => json_encode($scansMap),
+                'total' => $daysDue * 4,
+                'persentase' => 100.0,
+                'sort_order' => $idx + 1,
+            ];
         }
         $this->replaceParentAndItems(
             'k3_pengusahaan_patrol_securities',
@@ -1416,14 +1650,46 @@ class DummyK3Seeder extends Seeder
                 'catatan' => 'Patroli keamanan dilaksanakan 4 kali sehari pada seluruh titik pos pantau.',
                 'input_by' => $userId,
             ],
-            [
-                ['lokasi_kode' => 'POS-01', 'lokasi_nama' => 'Gerbang Utama & Pos Jaga Security', 'scans' => json_encode($scansMap), 'total' => $daysDue * 4, 'persentase' => 100.0, 'sort_order' => 1],
-                ['lokasi_kode' => 'POS-02', 'lokasi_nama' => 'Gedung Sentral / Power House', 'scans' => json_encode($scansMap), 'total' => $daysDue * 4, 'persentase' => 100.0, 'sort_order' => 2],
-                ['lokasi_kode' => 'POS-03', 'lokasi_nama' => 'Area Tangki Timbun BBM & Rumah Pompa', 'scans' => json_encode($scansMap), 'total' => $daysDue * 4, 'persentase' => 100.0, 'sort_order' => 3],
-            ],
+            $patrolItemsPayload,
         );
 
-        // 18. k3_pengusahaan_apel_keamanans + items
+        // 18. k3_pengusahaan_apel_keamanans + items (pulled from unit's SecurityPost master data)
+        $unitSecurityPosts = SecurityPost::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
+        if ($unitSecurityPosts === []) {
+            $unitSecurityPosts = ['Regu A', 'Regu B', 'Regu C'];
+        }
+        $shiftTemplate = [
+            ['shift' => 'Pagi', 'waktu_apel' => '08:00'],
+            ['shift' => 'Sore', 'waktu_apel' => '16:00'],
+            ['shift' => 'Malam', 'waktu_apel' => '22:00'],
+        ];
+        $apelItemsPayload = [];
+        $apelOrder = 1;
+        for ($d = 1; $d <= $daysDue; $d++) {
+            $tglStr = sprintf('%04d-%02d-%02d', $year, $month, $d);
+            foreach ($shiftTemplate as $sIdx => $sh) {
+                $postName = $unitSecurityPosts[$sIdx % count($unitSecurityPosts)];
+                $timLabel = preg_replace('/^Regu\s+/i', '', $postName) ?: $postName;
+                $apelItemsPayload[] = [
+                    'tanggal' => $tglStr,
+                    'hari_ke' => $d,
+                    'tim_regu' => $timLabel,
+                    'shift' => $sh['shift'],
+                    'waktu_apel' => $sh['waktu_apel'],
+                    'jumlah_personil' => 2,
+                    'kelengkapan_atribut' => 'Lengkap',
+                    'paraf_komandan_regu' => '✓',
+                    'keterangan' => 'Aman & Kondusif',
+                    'sort_order' => $apelOrder++,
+                ];
+            }
+        }
         $this->replaceParentAndItems(
             'k3_pengusahaan_apel_keamanans',
             'k3_pengusahaan_apel_keamanan_items',
@@ -1437,10 +1703,7 @@ class DummyK3Seeder extends Seeder
                 'catatan' => 'Apel serah terima jaga regu satuan pengamanan terlaksana tertib.',
                 'input_by' => $userId,
             ],
-            [
-                ['tanggal' => $docDate, 'hari_ke' => 1, 'tim_regu' => 'Regu A', 'shift' => 'Pagi (08:00)', 'waktu_apel' => '07:45 WITA', 'jumlah_personil' => 3, 'kelengkapan_atribut' => 'Lengkap (PDL, Borgol, Tongkat, HT)', 'paraf_komandan_regu' => 'Hadir', 'keterangan' => 'Situasi kondusif', 'sort_order' => 1],
-                ['tanggal' => $docDate, 'hari_ke' => 1, 'tim_regu' => 'Regu B', 'shift' => 'Malam (20:00)', 'waktu_apel' => '19:45 WITA', 'jumlah_personil' => 3, 'kelengkapan_atribut' => 'Lengkap (PDL, Senter, Tongkat, HT)', 'paraf_komandan_regu' => 'Hadir', 'keterangan' => 'Situasi kondusif', 'sort_order' => 2],
-            ],
+            $apelItemsPayload,
         );
 
         // 19. k3_pengusahaan_laporan_cctvs + items

@@ -388,7 +388,7 @@ class K3ReportBuilder
             ...array_map(fn (array $p): array => $row('Jadwal Pekerjaan Rutin', (string) $p['uraian'], (int) $p['target'], array_map('intval', (array) $p['realisasi'])), $this->pekerjaanRutin($unitId, $month, $year)['rows']),
             ...array_map(fn (array $p): array => $row('Jadwal Patrol Check', (string) $p['uraian'], (int) $p['rencana_count'], $p['realisasi']), $this->patrolCheckJadwal($unitId, $month, $year)),
             ...array_map(fn (array $i): array => $row('Jadwal Instruksi Kerja', (string) $i['kegiatan'], (int) $i['rencana_count'], $i['realisasi']), $this->instruksiKerja($unitId, $month, $year)),
-            ...K3ActivityType::query()->where('is_active', true)->orderBy('sort_order')->get()
+            ...K3ActivityType::query()->where('unit_id', $unitId)->where('is_active', true)->orderBy('sort_order')->get()
                 ->map(fn (K3ActivityType $t): array => $row('Time Frame K3L', (string) $t->name, count($marked($plans->get($t->id)?->plan_days)), $marked($plans->get($t->id)?->real_days)))
                 ->all(),
         ];

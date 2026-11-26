@@ -19,7 +19,9 @@ class ApdItemFactory extends Factory
     {
         return [
             'unit_id' => Unit::factory(),
-            'apd_category_id' => ApdCategory::factory(),
+            'apd_category_id' => fn (array $attributes): int => ApdCategory::factory()->create([
+                'unit_id' => $attributes['unit_id'],
+            ])->getKey(),
             'name' => fake()->words(2, true),
             'location' => fake()->word(),
             'sort_order' => fake()->numberBetween(0, 20),

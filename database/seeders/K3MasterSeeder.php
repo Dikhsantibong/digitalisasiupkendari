@@ -5,14 +5,14 @@ namespace Database\Seeders;
 use App\Models\ApdCategory;
 use App\Models\EquipmentCategory;
 use App\Models\K3ActivityType;
+use App\Models\Unit;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 /**
- * Placeholder global K3 master data (activity types, APD & equipment
- * categories). The full lists are not final — users complete and correct these
- * via the CRUD. Per-unit masters (patrol locations, extinguishers, …) are seeded
- * per unit elsewhere.
+ * Per-unit K3 master data (activity types, APD & equipment categories).
+ * Every unit receives its own scoped catalogue so users can customize each unit
+ * independently via the Master K3 CRUD.
  */
 class K3MasterSeeder extends Seeder
 {
@@ -28,12 +28,6 @@ class K3MasterSeeder extends Seeder
             ['code' => 'PATROLI', 'name' => 'Patroli Keamanan', 'category' => 'Keamanan'],
             ['code' => 'APEL', 'name' => 'Apel Keamanan', 'category' => 'Keamanan'],
         ];
-        foreach ($activities as $i => $activity) {
-            K3ActivityType::query()->updateOrCreate(
-                ['code' => $activity['code']],
-                ['name' => $activity['name'], 'category' => $activity['category'], 'sort_order' => $i, 'is_active' => true],
-            );
-        }
 
         $apdCategories = [
             ['code' => 'HEAD', 'name' => 'Pelindung Kepala'],
@@ -42,23 +36,34 @@ class K3MasterSeeder extends Seeder
             ['code' => 'FOOT', 'name' => 'Pelindung Kaki'],
             ['code' => 'BODY', 'name' => 'Pelindung Badan'],
         ];
-        foreach ($apdCategories as $i => $category) {
-            ApdCategory::query()->updateOrCreate(
-                ['code' => $category['code']],
-                ['name' => $category['name'], 'sort_order' => $i, 'is_active' => true],
-            );
-        }
 
         $equipmentCategories = [
             ['code' => 'CRANE', 'name' => 'Crane'],
             ['code' => 'TANGKI', 'name' => 'Tangki Timbun'],
             ['code' => 'BEJANA', 'name' => 'Bejana Tekan'],
         ];
-        foreach ($equipmentCategories as $i => $category) {
-            EquipmentCategory::query()->updateOrCreate(
-                ['code' => $category['code']],
-                ['name' => $category['name'], 'sort_order' => $i, 'is_active' => true],
-            );
+
+        foreach (Unit::query()->orderBy('id')->get() as $unit) {
+            foreach ($activities as $i => $activity) {
+                K3ActivityType::query()->updateOrCreate(
+                    ['unit_id' => $unit->id, 'code' => $activity['code']],
+                    ['name' => $activity['name'], 'category' => $activity['category'], 'sort_order' => $i, 'is_active' => true],
+                );
+            }
+
+            foreach ($apdCategories as $i => $category) {
+                ApdCategory::query()->updateOrCreate(
+                    ['unit_id' => $unit->id, 'code' => $category['code']],
+                    ['name' => $category['name'], 'sort_order' => $i, 'is_active' => true],
+                );
+            }
+
+            foreach ($equipmentCategories as $i => $category) {
+                EquipmentCategory::query()->updateOrCreate(
+                    ['unit_id' => $unit->id, 'code' => $category['code']],
+                    ['name' => $category['name'], 'sort_order' => $i, 'is_active' => true],
+                );
+            }
         }
     }
 }

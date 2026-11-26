@@ -5,6 +5,8 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\EquipmentCertificate;
+use App\Models\K3PengusahaanCertificate;
 use App\Models\K3PengusahaanMetodePengujian;
 use App\Models\K3PengusahaanMetodePengujianMeta;
 use App\Models\Unit;
@@ -184,6 +186,41 @@ class PengusahaanMetodePengujianController extends Controller
             ->get();
 
         if ($saved->isEmpty()) {
+            $certs = K3PengusahaanCertificate::query()
+                ->where('unit_id', $unit->id)
+                ->with('category')
+                ->orderBy('id')
+                ->get();
+
+            if ($certs->isEmpty()) {
+                $certs = EquipmentCertificate::query()
+                    ->where('unit_id', $unit->id)
+                    ->with('category')
+                    ->orderBy('id')
+                    ->get();
+            }
+
+            if ($certs->isNotEmpty()) {
+                return [$certs->values()->map(fn (K3PengusahaanCertificate|EquipmentCertificate $c, int $idx): array => [
+                    'id' => null,
+                    'no_urut' => (string) ($idx + 1),
+                    'nama_peralatan' => $c->category?->name ?? 'Peralatan K3',
+                    'no_pengesahan' => $c->uji_terakhir_nomor ?: ($c->ijin_awal_nomor ?: '-'),
+                    'nama_kategori_alat' => $c->jenis,
+                    'uji_visual' => 'Memenuhi',
+                    'uji_fungsi' => '-',
+                    'uji_beban' => 'Memenuhi',
+                    'uji_hydro' => '-',
+                    'ndt' => 'Memenuhi',
+                    'uji_ultrasonic_thickness' => '-',
+                    'uji_ketahanan' => '-',
+                    'sertifikasi_terakhir' => $c->uji_terakhir_tanggal?->format('Y-m-d') ?? '-',
+                    'sertifikasi_ulang' => $c->uji_ulang_tanggal?->format('Y-m-d') ?? '-',
+                    'keterangan' => $c->keterangan ?? '',
+                    'sort_order' => $idx,
+                ])->all(), false];
+            }
+
             return [$this->defaultRows(), false];
         }
 

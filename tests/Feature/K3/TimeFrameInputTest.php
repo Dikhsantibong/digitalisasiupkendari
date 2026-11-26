@@ -31,7 +31,9 @@ class TimeFrameInputTest extends TestCase
     public function test_tl_sees_a_row_per_activity_type_with_day_columns(): void
     {
         $unit = Unit::factory()->create();
-        K3ActivityType::factory()->count(2)->create();
+        $otherUnit = Unit::factory()->create();
+        K3ActivityType::factory()->forUnit($unit)->count(2)->create();
+        K3ActivityType::factory()->forUnit($otherUnit)->count(3)->create();
 
         $this->actingAs($this->userWithRole(RoleName::KoordinatorK3, $unit))
             ->get(route('k3.input.time-frame.index', ['unit_id' => $unit->id, 'month' => 8, 'year' => 2026]))
@@ -46,7 +48,7 @@ class TimeFrameInputTest extends TestCase
     public function test_saving_stores_the_day_matrix_for_the_plan_type(): void
     {
         $unit = Unit::factory()->create();
-        $type = K3ActivityType::factory()->create();
+        $type = K3ActivityType::factory()->forUnit($unit)->create();
         $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 
         $this->actingAs($user)->post(route('k3.input.time-frame.store'), [

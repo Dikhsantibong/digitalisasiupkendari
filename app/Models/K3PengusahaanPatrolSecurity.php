@@ -34,26 +34,44 @@ class K3PengusahaanPatrolSecurity extends Model
     }
 
     /**
-     * Generate default 14 checkpoints for the unit (e.g. POA1..POA14 for Poasia).
+     * Generate default checkpoints for the unit from its PatrolLocation master records,
+     * falling back to 14 generated checkpoints (e.g. POA1..POA14 for Poasia) when none exist.
      *
      * @return list<array{lokasi_kode: string, lokasi_nama: string, scans: array<string, int>, total: int, persentase: float, sort_order: int}>
      */
     public static function defaultCheckpoints(Unit $unit, int $year, int $month): array
     {
-        $prefix = self::patrolPrefix($unit);
         $daysInMonth = Carbon::createFromDate($year, $month, 1)->daysInMonth;
+        $emptyScans = [];
+        for ($d = 1; $d <= $daysInMonth; $d++) {
+            $emptyScans[(string) $d] = 0;
+        }
 
+        $masterLocations = PatrolLocation::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
+
+        if ($masterLocations->isNotEmpty()) {
+            return $masterLocations->values()->map(fn (PatrolLocation $loc, int $idx): array => [
+                'lokasi_kode' => $loc->code,
+                'lokasi_nama' => $loc->name ?: $loc->code,
+                'scans' => $emptyScans,
+                'total' => 0,
+                'persentase' => 0.0,
+                'sort_order' => $idx,
+            ])->all();
+        }
+
+        $prefix = self::patrolPrefix($unit);
         $checkpoints = [];
         for ($i = 1; $i <= 14; $i++) {
-            $scans = [];
-            for ($d = 1; $d <= $daysInMonth; $d++) {
-                $scans[(string) $d] = 0;
-            }
-
             $checkpoints[] = [
                 'lokasi_kode' => $prefix.$i,
                 'lokasi_nama' => $prefix.$i,
-                'scans' => $scans,
+                'scans' => $emptyScans,
                 'total' => 0,
                 'persentase' => 0.0,
                 'sort_order' => $i - 1,

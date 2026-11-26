@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\EmergencyEquipment;
 use App\Models\K3PengusahaanAlatTanggapDarurat;
 use App\Models\K3PengusahaanAlatTanggapDaruratItem;
 use App\Models\Unit;
@@ -99,7 +100,28 @@ class PengusahaanAlatTanggapDaruratController extends Controller
                 $tanggalDokumen = $previous->tanggal_dokumen;
                 $catatan = '';
             } else {
-                $itemsData = K3PengusahaanAlatTanggapDarurat::buildDefaultRows();
+                $masterEquipments = EmergencyEquipment::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name')
+                    ->get();
+
+                if ($masterEquipments->isNotEmpty()) {
+                    $itemsData = $masterEquipments->values()->map(fn (EmergencyEquipment $eq, int $idx): array => [
+                        'id' => null,
+                        'no_urut' => $idx + 1,
+                        'jenis' => $eq->name,
+                        'siap_pakai' => 0,
+                        'kadaluarsa' => 0,
+                        'kosong' => 0,
+                        'tgl_diisi_kembali' => '',
+                        'keterangan' => $eq->location ?? '',
+                        'sort_order' => $idx,
+                    ])->all();
+                } else {
+                    $itemsData = K3PengusahaanAlatTanggapDarurat::buildDefaultRows();
+                }
                 $noDokumen = 'SMT-FM-AK3-03.03';
                 $revisi = '01';
                 $tanggalDokumen = '23 September 2019';

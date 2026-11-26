@@ -25,10 +25,9 @@ class PengusahaanCertificateTest extends TestCase
 
     public function test_tl_and_staf_k3_can_view_and_save_certificate_pengusahaan(): void
     {
-        $category = EquipmentCategory::factory()->create(['code' => 'PUBT', 'name' => 'Pesawat Uap dan Bejana Tekan']);
-
         foreach ([RoleName::TeamLeaderK3, RoleName::StafK3] as $role) {
             $unit = Unit::factory()->create(['is_active' => true]);
+            $category = EquipmentCategory::factory()->forUnit($unit)->create(['code' => 'PUBT', 'name' => 'Pesawat Uap dan Bejana Tekan']);
             $user = $this->userWithRole($role, $unit);
 
             $this->actingAs($user)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\InspectionChecklist;
 use App\Models\K3PengusahaanInspeksiTempatKerja;
 use App\Models\K3PengusahaanInspeksiTempatKerjaItem;
 use App\Models\Unit;
@@ -70,7 +71,34 @@ class PengusahaanInspeksiTempatKerjaController extends Controller
             $inspektur = $record->inspektur ?? '';
             $catatan = $record->catatan ?? '';
         } else {
-            $itemsData = K3PengusahaanInspeksiTempatKerja::buildDefaultRows();
+            $masterChecklist = InspectionChecklist::query()
+                ->where('unit_id', $unit->id)
+                ->where('form_code', 'tempat-kerja')
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+
+            if ($masterChecklist->isNotEmpty()) {
+                $catCounters = [];
+                $itemsData = [];
+                foreach ($masterChecklist->values() as $idx => $chk) {
+                    $parts = explode(' — ', (string) $chk->item_text, 2);
+                    $cat = count($parts) === 2 ? trim($parts[0]) : 'UMUM';
+                    $itemText = count($parts) === 2 ? trim($parts[1]) : trim((string) $chk->item_text);
+                    $catCounters[$cat] = ($catCounters[$cat] ?? 0) + 1;
+                    $itemsData[] = [
+                        'id' => null,
+                        'category' => $cat,
+                        'no_urut' => $catCounters[$cat],
+                        'item' => $itemText,
+                        'status' => null,
+                        'comment' => '',
+                        'sort_order' => $idx,
+                    ];
+                }
+            } else {
+                $itemsData = K3PengusahaanInspeksiTempatKerja::buildDefaultRows();
+            }
             $noDokumen = 'SMT-FM-AK3-12-01';
             $revisi = '01';
             $tanggalDokumen = '23 September 2019';

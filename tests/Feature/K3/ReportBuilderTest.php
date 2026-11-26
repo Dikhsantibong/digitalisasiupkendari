@@ -21,7 +21,7 @@ class ReportBuilderTest extends TestCase
     public function test_it_aggregates_the_month_across_every_input(): void
     {
         $unit = Unit::factory()->create();
-        $type = K3ActivityType::factory()->create();
+        $type = K3ActivityType::factory()->forUnit($unit)->create();
 
         K3ActivityPlan::query()->create([
             'unit_id' => $unit->id, 'year' => 2026, 'month' => 8, 'k3_activity_type_id' => $type->id,

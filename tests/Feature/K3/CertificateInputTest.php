@@ -45,7 +45,7 @@ class CertificateInputTest extends TestCase
     public function test_saving_replaces_rows_and_resolves_the_category_code(): void
     {
         $unit = Unit::factory()->create();
-        $category = EquipmentCategory::factory()->create(['code' => 'CRANE']);
+        $category = EquipmentCategory::factory()->forUnit($unit)->create(['code' => 'CRANE']);
         EquipmentCertificate::factory()->forUnit($unit)->create(['jenis' => 'Lama']);
         $user = $this->userWithRole(RoleName::KoordinatorK3, $unit);
 

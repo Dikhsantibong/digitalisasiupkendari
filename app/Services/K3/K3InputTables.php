@@ -171,7 +171,12 @@ class K3InputTables
         $plans = K3ActivityPlan::query()
             ->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)
             ->get()->keyBy('k3_activity_type_id');
-        $types = K3ActivityType::query()->where('is_active', true)->orderBy('sort_order')->orderBy('code')->get();
+        $types = K3ActivityType::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get();
 
         $columns = [$this->col('No', 4, 'c'), $this->col('Uraian Kegiatan K3 & Keamanan', 34), $this->col('PIC', 10, 'c'), $this->col('R/Rl', 5, 'c')];
         for ($d = 1; $d <= $days; $d++) {
@@ -253,13 +258,13 @@ class K3InputTables
 
             $items = InspectionChecklist::query()
                 ->where('unit_id', $unit->id)->where('form_code', $code)->where('is_active', true)
-                ->orderBy('sort_order')->orderBy('id')->pluck('item_text');
+                ->orderBy('sort_order')->orderBy('id')->get(['id', 'item_text']);
 
-            $rows = $items->values()->map(function (string $item, int $i) use ($stored): array {
-                $result = $stored->get($item);
+            $rows = $items->values()->map(function (InspectionChecklist $item, int $i) use ($stored): array {
+                $result = $stored->get((string) $item->id) ?? $stored->get($item->item_text);
 
                 return $this->row([
-                    (string) ($i + 1), $item, (string) ($result?->kondisi ?? ''), (string) ($result?->tindak_lanjut ?? ''),
+                    (string) ($i + 1), (string) $item->item_text, (string) ($result?->kondisi ?? ''), (string) ($result?->tindak_lanjut ?? ''),
                     (string) ($result?->nilai ?? ''), (string) ($result?->catatan ?? ''),
                 ]);
             })->all();
@@ -478,11 +483,8 @@ class K3InputTables
 
         $saved = $records->isNotEmpty();
         if (! $saved) {
-            $records = collect(EmergencyFacilityCheckController::DEFAULTS)
-                ->flatMap(fn (array $items, string $grup): array => array_map(fn (string $nama): object => (object) [
-                    'grup' => $grup, 'nama_peralatan' => $nama, 'lokasi' => '', 'jml_total' => 0, 'jml_ready' => 0,
-                    'jml_not_ready' => 0, 'kendala' => '', 'tindak_lanjut' => '',
-                ], $items));
+            $records = collect(EmergencyFacilityCheckController::defaultRowsForUnit($unit))
+                ->map(fn (array $d): object => (object) $d);
         }
 
         $rows = [];
@@ -518,9 +520,8 @@ class K3InputTables
 
         $saved = $records->isNotEmpty();
         if (! $saved) {
-            $records = collect(ApdInventoryController::DEFAULTS)->map(fn (array $d): object => (object) ($d + [
-                'jumlah' => 0, 'lokasi' => '', 'keterangan' => '',
-            ]));
+            $records = collect(ApdInventoryController::defaultRowsForUnit($unit))
+                ->map(fn (array $d): object => (object) $d);
         }
 
         $rows = [];

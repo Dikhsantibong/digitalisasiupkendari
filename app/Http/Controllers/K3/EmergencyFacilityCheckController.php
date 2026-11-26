@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\EmergencyEquipment;
 use App\Models\K3EmergencyFacilityCheck;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -96,17 +97,7 @@ class EmergencyFacilityCheckController extends Controller
             ->orderBy('sort_order')->orderBy('id')->get();
 
         if ($saved->isEmpty()) {
-            $rows = [];
-            $sort = 0;
-            foreach (self::DEFAULTS as $grup => $items) {
-                foreach ($items as $nama) {
-                    $rows[] = [
-                        'id' => null, 'grup' => $grup, 'nama_peralatan' => $nama,
-                        'jml_total' => 0, 'jml_ready' => 0, 'jml_not_ready' => 0,
-                        'lokasi' => '', 'kendala' => '', 'tindak_lanjut' => '', 'sort_order' => $sort++,
-                    ];
-                }
-            }
+            $rows = self::defaultRowsForUnit($unit);
         } else {
             $rows = $saved->map(fn (K3EmergencyFacilityCheck $r): array => [
                 'id' => $r->id, 'grup' => $r->grup, 'nama_peralatan' => $r->nama_peralatan,
@@ -116,14 +107,61 @@ class EmergencyFacilityCheckController extends Controller
             ])->all();
         }
 
+        $groups = collect($rows)->pluck('grup')->merge(array_keys(self::DEFAULTS))->unique()->values()->all();
+
         return Inertia::render('k3/input/emergency-facility/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
-            'groups' => array_keys(self::DEFAULTS),
+            'groups' => $groups,
             'rows' => $rows,
             'options' => ['units' => $units->all(), 'years' => range($now->year - 3, $now->year + 1)],
             'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite),
         ]);
+    }
+
+    /**
+     * Build default emergency facility rows from the unit's Master K3 (`EmergencyEquipment`),
+     * falling back to `self::DEFAULTS` when the unit has no master records.
+     *
+     * @return list<array{id: null, grup: string, nama_peralatan: string, jml_total: int, jml_ready: int, jml_not_ready: int, lokasi: string, kendala: string, tindak_lanjut: string, sort_order: int}>
+     */
+    public static function defaultRowsForUnit(Unit $unit): array
+    {
+        $masterEquipments = EmergencyEquipment::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        if ($masterEquipments->isNotEmpty()) {
+            return $masterEquipments->values()->map(fn (EmergencyEquipment $eq, int $i): array => [
+                'id' => null,
+                'grup' => $eq->group_name ?: 'Fasilitas Darurat',
+                'nama_peralatan' => $eq->name,
+                'jml_total' => 0,
+                'jml_ready' => 0,
+                'jml_not_ready' => 0,
+                'lokasi' => $eq->location ?? '',
+                'kendala' => '',
+                'tindak_lanjut' => '',
+                'sort_order' => $i,
+            ])->all();
+        }
+
+        $rows = [];
+        $sort = 0;
+        foreach (self::DEFAULTS as $grup => $items) {
+            foreach ($items as $nama) {
+                $rows[] = [
+                    'id' => null, 'grup' => $grup, 'nama_peralatan' => $nama,
+                    'jml_total' => 0, 'jml_ready' => 0, 'jml_not_ready' => 0,
+                    'lokasi' => '', 'kendala' => '', 'tindak_lanjut' => '', 'sort_order' => $sort++,
+                ];
+            }
+        }
+
+        return $rows;
     }
 
     public function store(Request $request): RedirectResponse

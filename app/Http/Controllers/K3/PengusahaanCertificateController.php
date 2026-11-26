@@ -6,6 +6,7 @@ use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
 use App\Models\EquipmentCategory;
+use App\Models\EquipmentCertificate;
 use App\Models\K3PengusahaanCertificate;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -34,12 +35,22 @@ class PengusahaanCertificateController extends Controller
             $unit = $units->first();
         }
 
-        $rows = K3PengusahaanCertificate::query()
+        $stored = K3PengusahaanCertificate::query()
             ->where('unit_id', $unit->id)
             ->with('category:id,code')
             ->orderBy('jenis')
-            ->get()
-            ->map(fn (K3PengusahaanCertificate $c): array => [
+            ->get();
+
+        if ($stored->isEmpty()) {
+            $stored = EquipmentCertificate::query()
+                ->where('unit_id', $unit->id)
+                ->with('category:id,code')
+                ->orderBy('jenis')
+                ->get();
+        }
+
+        $rows = $stored
+            ->map(fn (K3PengusahaanCertificate|EquipmentCertificate $c): array => [
                 'category_code' => $c->category?->code,
                 'jenis' => $c->jenis,
                 'kapasitas' => $c->kapasitas,
@@ -58,6 +69,13 @@ class PengusahaanCertificateController extends Controller
             ])
             ->all();
 
+        $categories = EquipmentCategory::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('code')
+            ->get(['code', 'name']);
+
         return Inertia::render('pengusahaan/k3/certificate/index', [
             'unit' => [
                 'id' => $unit->id,
@@ -67,7 +85,7 @@ class PengusahaanCertificateController extends Controller
             'rows' => $rows,
             'options' => [
                 'units' => $units->all(),
-                'categories' => EquipmentCategory::query()->orderBy('code')->get(['code', 'name'])
+                'categories' => $categories
                     ->map(fn (EquipmentCategory $c): array => ['code' => $c->code, 'name' => $c->name])->all(),
             ],
             'can_write' => $user->hasPermissionTo(PermissionName::K3PengusahaanWrite),
@@ -102,7 +120,12 @@ class PengusahaanCertificateController extends Controller
             'rows.*.keterangan' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $categories = EquipmentCategory::query()->pluck('id', 'code');
+        $categories = EquipmentCategory::query()
+            ->where('unit_id', $unit->id)
+            ->pluck('id', 'code');
+        if ($categories->isEmpty()) {
+            $categories = EquipmentCategory::query()->pluck('id', 'code');
+        }
 
         DB::transaction(function () use ($validated, $unit, $categories, $user): void {
             K3PengusahaanCertificate::query()->where('unit_id', $unit->id)->delete();

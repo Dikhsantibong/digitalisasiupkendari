@@ -5,6 +5,7 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\EmergencyEquipment;
 use App\Models\K3PengusahaanEmergencyFacility;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -57,8 +58,8 @@ class PengusahaanEmergencyFacilityController extends Controller
 
         $sampleRows = K3PengusahaanEmergencyFacility::buildSampleRows($periode);
 
-        $rows = $hasSaved
-            ? $savedRows->map(fn (K3PengusahaanEmergencyFacility $r): array => [
+        if ($hasSaved) {
+            $rows = $savedRows->map(fn (K3PengusahaanEmergencyFacility $r): array => [
                 'id' => $r->id,
                 'grup' => $r->grup,
                 'no_urut' => $r->no_urut,
@@ -71,8 +72,32 @@ class PengusahaanEmergencyFacilityController extends Controller
                 'kendala' => $r->kendala ?? '',
                 'tindak_lanjut' => $r->tindak_lanjut ?? '',
                 'sort_order' => $r->sort_order,
-            ])->all()
-            : $sampleRows;
+            ])->all();
+        } else {
+            $masterEquipments = EmergencyEquipment::query()
+                ->where('unit_id', $unit->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
+            $rows = $masterEquipments->isNotEmpty()
+                ? $masterEquipments->values()->map(fn (EmergencyEquipment $eq, int $idx): array => [
+                    'id' => null,
+                    'grup' => $eq->group_name ?: 'Fasilitas Darurat',
+                    'no_urut' => $idx + 1,
+                    'nama_peralatan' => $eq->name,
+                    'jml_total' => '1',
+                    'jml_ready' => '1',
+                    'jml_not_ready' => '0',
+                    'persen_kesiapan' => '100%',
+                    'lokasi' => $eq->location ?: $unit->name,
+                    'kendala' => '',
+                    'tindak_lanjut' => '',
+                    'sort_order' => $idx + 1,
+                ])->all()
+                : $sampleRows;
+        }
 
         $firstDoc = $savedRows->first();
         $metadata = [

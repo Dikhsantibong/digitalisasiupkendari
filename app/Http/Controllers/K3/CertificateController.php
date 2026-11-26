@@ -61,7 +61,12 @@ class CertificateController extends Controller
             'rows' => $rows,
             'options' => [
                 'units' => $units->all(),
-                'categories' => EquipmentCategory::query()->orderBy('code')->get(['code', 'name'])
+                'categories' => EquipmentCategory::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('code')
+                    ->get(['code', 'name'])
                     ->map(fn (EquipmentCategory $c): array => ['code' => $c->code, 'name' => $c->name])->all(),
             ],
             'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite),
@@ -95,7 +100,7 @@ class CertificateController extends Controller
             'rows.*.keterangan' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $categories = EquipmentCategory::query()->pluck('id', 'code');
+        $categories = EquipmentCategory::query()->where('unit_id', $unit->id)->pluck('id', 'code');
 
         DB::transaction(function () use ($validated, $unit, $categories, $user): void {
             EquipmentCertificate::query()->where('unit_id', $unit->id)->delete();
