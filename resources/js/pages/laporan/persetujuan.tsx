@@ -1,13 +1,21 @@
 import { Head } from '@inertiajs/react';
-import { BookOpenCheck, CheckCircle2, Inbox, UserCheck } from 'lucide-react';
+import {
+    BookOpenCheck,
+    CheckCircle2,
+    Handshake,
+    Inbox,
+    UserCheck,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
+    MutasiQueue,
     ReportQueue,
     RequestQueue,
     SignedList,
 } from '@/components/laporan/approval-inbox';
 import type {
     HistoryItem,
+    MutasiHandoverItem,
     QueueItem,
     RequestItem,
 } from '@/components/laporan/approval-inbox';
@@ -19,9 +27,12 @@ type Props = {
     employee: { name: string; position: string } | null;
     queue: QueueItem[];
     requests: RequestItem[];
+    mutasi_handovers?: MutasiHandoverItem[];
     history: HistoryItem[];
     acknowledgements: HistoryItem[];
+    is_signer?: boolean;
     decides_requests: boolean;
+    receives_mutasi?: boolean;
 };
 
 function Section({
@@ -54,20 +65,23 @@ function Section({
 }
 
 /**
- * Persetujuan: the Team Leader, Koordinator and Project Leader (who also input)
+ * Persetujuan: the Team Leader, Koordinator, Project Leader and Shift Leader
  * find here everything that waits for their decision — reports at their step,
- * the operators' pengajuan — plus what they signed and the Laporan Project
- * they sign "Mengetahui" in.
+ * the operators' pengajuan, and handed-over Lembar Mutasi — plus what they
+ * signed and the Laporan Project they sign "Mengetahui" in.
  */
 export default function Persetujuan({
     employee,
     queue,
     requests,
+    mutasi_handovers = [],
     history,
     acknowledgements,
+    is_signer = true,
     decides_requests,
+    receives_mutasi = false,
 }: Props) {
-    const waiting = queue.length + requests.length;
+    const waiting = queue.length + requests.length + mutasi_handovers.length;
 
     return (
         <>
@@ -78,16 +92,28 @@ export default function Persetujuan({
                     description={`${employee ? `${employee.name} · ${employee.position} · ` : ''}${waiting > 0 ? `${waiting} hal menunggu keputusan Anda.` : 'Tidak ada yang menunggu keputusan Anda.'}`}
                 />
 
-                <Section
-                    title="Laporan Menunggu Persetujuan Anda"
-                    icon={<Inbox className="size-5" />}
-                    count={queue.length}
-                >
-                    <ReportQueue
-                        items={queue}
-                        emptyHint="Laporan muncul di sini (dan lewat notifikasi) saat tiba giliran Anda di alur pengesahan."
-                    />
-                </Section>
+                {(receives_mutasi || mutasi_handovers.length > 0) && (
+                    <Section
+                        title="Serah Terima Lembar Mutasi"
+                        icon={<Handshake className="size-5" />}
+                        count={mutasi_handovers.length}
+                    >
+                        <MutasiQueue items={mutasi_handovers} />
+                    </Section>
+                )}
+
+                {(is_signer || queue.length > 0) && (
+                    <Section
+                        title="Laporan Menunggu Persetujuan Anda"
+                        icon={<Inbox className="size-5" />}
+                        count={queue.length}
+                    >
+                        <ReportQueue
+                            items={queue}
+                            emptyHint="Laporan muncul di sini (dan lewat notifikasi) saat tiba giliran Anda di alur pengesahan."
+                        />
+                    </Section>
+                )}
 
                 {decides_requests && (
                     <Section
@@ -99,33 +125,40 @@ export default function Persetujuan({
                     </Section>
                 )}
 
-                <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                    <Section
-                        title="Riwayat Tanda Tangan Anda"
-                        icon={<CheckCircle2 className="size-5" />}
-                        count={history.length}
-                    >
-                        <SignedList
-                            items={history}
-                            emptyText="Belum ada laporan yang Anda tanda tangani di alur pengesahan."
-                        />
-                    </Section>
+                {(is_signer || history.length > 0 || acknowledgements.length > 0) && (
+                    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                        {(is_signer || history.length > 0) && (
+                            <Section
+                                title="Riwayat Tanda Tangan Anda"
+                                icon={<CheckCircle2 className="size-5" />}
+                                count={history.length}
+                            >
+                                <SignedList
+                                    items={history}
+                                    emptyText="Belum ada laporan yang Anda tanda tangani di alur pengesahan."
+                                />
+                            </Section>
+                        )}
 
-                    {acknowledgements.length > 0 && (
-                        <Section
-                            title="Laporan Project yang Anda Ketahui"
-                            icon={<BookOpenCheck className="size-5" />}
-                            count={acknowledgements.length}
-                        >
-                            <p className="border-b border-border px-4 py-2 text-[12px] text-muted-foreground">
-                                Tanda tangan "Mengetahui" Anda tercetak otomatis
-                                saat laporan FINAL — tidak perlu aksi, buka PDF
-                                untuk mereview.
-                            </p>
-                            <SignedList items={acknowledgements} emptyText="" />
-                        </Section>
-                    )}
-                </div>
+                        {acknowledgements.length > 0 && (
+                            <Section
+                                title="Laporan Project yang Anda Ketahui"
+                                icon={<BookOpenCheck className="size-5" />}
+                                count={acknowledgements.length}
+                            >
+                                <p className="border-b border-border px-4 py-2 text-[12px] text-muted-foreground">
+                                    Tanda tangan "Mengetahui" Anda tercetak
+                                    otomatis saat laporan FINAL — tidak perlu
+                                    aksi, buka PDF untuk mereview.
+                                </p>
+                                <SignedList
+                                    items={acknowledgements}
+                                    emptyText=""
+                                />
+                            </Section>
+                        )}
+                    </div>
+                )}
             </div>
         </>
     );

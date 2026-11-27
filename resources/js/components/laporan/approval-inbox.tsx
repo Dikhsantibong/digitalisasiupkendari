@@ -7,6 +7,7 @@ import {
     Clock,
     Eye,
     FileText,
+    Handshake,
     PenLine,
     ShieldCheck,
     XCircle,
@@ -89,6 +90,25 @@ export type RequestItem = {
     reason: string | null;
     created_at: string | null;
     url: string;
+};
+
+export type MutasiHandoverItem = {
+    id: number;
+    unit_id: number;
+    unit: string;
+    tanggal: string;
+    shift: string;
+    shift_label: string;
+    shift_jam: string;
+    regu_penyerah: string | null;
+    penyerah_nama: string | null;
+    diserahkan_at: string | null;
+    default_regu_penerima: string | null;
+    default_penerima_nama: string;
+    has_signature: boolean;
+    regu_options: string[];
+    url: string;
+    terima_url: string;
 };
 
 const ACTION_TEXT: Record<
@@ -498,6 +518,191 @@ export function RequestQueue({ items }: { items: RequestItem[] }) {
                         );
                     }}
                 />
+            )}
+        </>
+    );
+}
+
+/** Handed-over Lembar Mutasi Operator waiting to be accepted: one-click Terima Tugas. */
+export function MutasiQueue({
+    items,
+    emptyText = 'Tidak ada lembar mutasi yang menunggu penerimaan.',
+}: {
+    items: MutasiHandoverItem[];
+    emptyText?: string;
+}) {
+    const [busyId, setBusyId] = useState<number | null>(null);
+    const [pickDialog, setPickDialog] = useState<{
+        item: MutasiHandoverItem;
+        regu: string;
+    } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const submitAccept = (
+        item: MutasiHandoverItem,
+        regu: string,
+        done?: () => void,
+    ) => {
+        setError(null);
+        setBusyId(item.id);
+        router.post(
+            item.terima_url,
+            {
+                regu_penerima: regu,
+                penerima_nama: item.default_penerima_nama,
+                from_inbox: 1,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => done?.(),
+                onError: (errors) => setError(firstError(errors)),
+                onFinish: () => setBusyId(null),
+            },
+        );
+    };
+
+    if (items.length === 0) {
+        return (
+            <p className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+                {emptyText}
+            </p>
+        );
+    }
+
+    return (
+        <>
+            {error && (
+                <p className="border-b border-border bg-destructive/10 px-4 py-2 text-xs text-destructive">
+                    {error}
+                </p>
+            )}
+            <ul className="divide-y divide-border">
+                {items.map((item) => (
+                    <li
+                        key={item.id}
+                        className="flex flex-col gap-3 px-4 py-3.5 lg:flex-row lg:items-center"
+                    >
+                        <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                                    <Handshake className="size-4 text-primary" />
+                                    Lembar Mutasi · Shift {item.shift_label}
+                                </p>
+                                <StatusBadge tone="info">
+                                    Menunggu Penerimaan
+                                </StatusBadge>
+                            </div>
+                            <p className="text-[13px] text-muted-foreground">
+                                {item.unit} · {dateLabel(item.tanggal)} ·
+                                diserahkan Regu {item.regu_penyerah ?? '-'}
+                                {item.penyerah_nama
+                                    ? ` (${item.penyerah_nama})`
+                                    : ''}
+                                {item.diserahkan_at
+                                    ? ` · ${formatStamp(item.diserahkan_at)}`
+                                    : ''}
+                            </p>
+                            <p className="text-[12px] text-muted-foreground">
+                                {item.has_signature
+                                    ? 'Tanda tangan otomatis diambil dari data profil Anda.'
+                                    : 'Tanda tangan profil belum diatur (dapat ditambahkan di Profil & Pengaturan).'}
+                            </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2">
+                            <Button size="sm" variant="outline" asChild>
+                                <Link href={item.url}>
+                                    <Eye className="size-4" /> Lihat Lembar
+                                </Link>
+                            </Button>
+                            <Button
+                                size="sm"
+                                disabled={busyId === item.id}
+                                onClick={() => {
+                                    if (item.default_regu_penerima) {
+                                        submitAccept(
+                                            item,
+                                            item.default_regu_penerima,
+                                        );
+                                    } else {
+                                        setPickDialog({
+                                            item,
+                                            regu: item.regu_options[0] ?? '',
+                                        });
+                                    }
+                                }}
+                            >
+                                <CheckCircle2 className="size-4" />
+                                {busyId === item.id
+                                    ? 'Menerima…'
+                                    : 'Terima Tugas'}
+                            </Button>
+                        </div>
+                    </li>
+                ))}
+            </ul>
+
+            {pickDialog && (
+                <Dialog
+                    open
+                    onOpenChange={(open) => !open && setPickDialog(null)}
+                >
+                    <DialogContent>
+                        <DialogTitle>Terima Serah Terima Mutasi</DialogTitle>
+                        <DialogDescription>
+                            Lembar Mutasi {pickDialog.item.unit} ·{' '}
+                            {dateLabel(pickDialog.item.tanggal)} Shift{' '}
+                            {pickDialog.item.shift_label} dari Regu{' '}
+                            {pickDialog.item.regu_penyerah ?? '-'}. Pilih regu
+                            penerima untuk mengonfirmasi penerimaan tugas.
+                        </DialogDescription>
+                        <div className="flex flex-wrap gap-2 py-2">
+                            {pickDialog.item.regu_options.map((regu) => (
+                                <button
+                                    key={regu}
+                                    type="button"
+                                    onClick={() =>
+                                        setPickDialog((prev) =>
+                                            prev ? { ...prev, regu } : null,
+                                        )
+                                    }
+                                    className={cn(
+                                        'rounded-md border px-3 py-1.5 text-sm font-medium transition',
+                                        pickDialog.regu === regu
+                                            ? 'border-primary bg-primary text-primary-foreground'
+                                            : 'border-border bg-card text-foreground hover:bg-muted',
+                                    )}
+                                >
+                                    Regu {regu}
+                                </button>
+                            ))}
+                        </div>
+                        <DialogFooter className="gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setPickDialog(null)}
+                                disabled={busyId === pickDialog.item.id}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                disabled={
+                                    busyId === pickDialog.item.id ||
+                                    !pickDialog.regu
+                                }
+                                onClick={() =>
+                                    submitAccept(
+                                        pickDialog.item,
+                                        pickDialog.regu,
+                                        () => setPickDialog(null),
+                                    )
+                                }
+                            >
+                                <CheckCircle2 className="size-4" />
+                                Terima Tugas
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             )}
         </>
     );

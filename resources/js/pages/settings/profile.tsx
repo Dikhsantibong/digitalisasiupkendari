@@ -538,7 +538,7 @@ export default function Profile({
                                     className="block w-full"
                                     autoComplete="new-password"
                                     placeholder="Masukkan kata sandi baru"
-                                    passwordRules={passwordRules}
+                                    passwordrules={passwordRules}
                                 />
 
                                 <InputError message={errors.password} />

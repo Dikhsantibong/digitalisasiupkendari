@@ -140,6 +140,7 @@ class DashboardController extends Controller
             'approvals' => ApprovalInbox::applies($user) ? [
                 'queue' => $this->inbox->queue($user, $units),
                 'requests' => $this->inbox->requests($user),
+                'mutasi_handovers' => $this->inbox->mutasiHandovers($user),
                 'acknowledgements' => array_slice($this->inbox->acknowledgements($user), 0, 5),
             ] : null,
             'inputTodo' => $this->inputTodo($completeness, $now),

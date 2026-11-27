@@ -104,10 +104,18 @@ export async function jsonRequest<T>(method: 'GET' | 'POST' | 'DELETE', url: str
     });
 
     if (!response.ok) {
-        throw new Error(`Request failed: ${response.status}`);
+        throw new RequestError(response.status);
     }
 
     return (await response.json()) as T;
+}
+
+/** A failed same-origin JSON request, with its HTTP status. */
+export class RequestError extends Error {
+    constructor(public status: number) {
+        super(`Request failed: ${status}`);
+        this.name = 'RequestError';
+    }
 }
 
 export function fetchFeed(): Promise<NotificationFeed> {
@@ -185,24 +193,179 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
+ * A step of "Izinkan notifikasi" that failed, with a message the user can act
+ * on (shown in the toast instead of a bare "gagal").
+ */
+export class PushSetupError extends Error {
+    constructor(
+        message: string,
+        public reason?: unknown,
+    ) {
+        super(message);
+        this.name = 'PushSetupError';
+    }
+}
+
+const SW_TIMEOUT_MS = 15000;
+
+/**
+ * This page's service worker, registered when missing and waited for until it
+ * is active, with a time limit: `navigator.serviceWorker.ready` never settles
+ * when the browser refuses service workers (in-app/embedded browsers, some
+ * private modes, blocked site data), which left the button spinning.
+ */
+async function activeRegistration(): Promise<ServiceWorkerRegistration> {
+    let registration: ServiceWorkerRegistration;
+
+    try {
+        registration = (await navigator.serviceWorker.getRegistration('/')) ?? (await navigator.serviceWorker.register('/sw.js', { scope: '/' }));
+    } catch (error) {
+        throw new PushSetupError(
+            'Browser ini menolak layanan notifikasi (service worker). Buka aplikasi langsung di Chrome/Edge/Firefox (bukan browser di dalam aplikasi lain atau mode penyamaran), lalu coba lagi.',
+            error,
+        );
+    }
+
+    if (registration.active) {
+        return registration;
+    }
+
+    const worker = registration.installing ?? registration.waiting;
+    const activated = new Promise<void>((resolve, reject) => {
+        if (!worker) {
+            resolve();
+
+            return;
+        }
+
+        worker.addEventListener('statechange', () => {
+            if (worker.state === 'activated') {
+                resolve();
+            } else if (worker.state === 'redundant') {
+                reject(new Error('service worker redundant'));
+            }
+        });
+    });
+    const timeout = new Promise<never>((_, reject) => window.setTimeout(() => reject(new Error('service worker timeout')), SW_TIMEOUT_MS));
+
+    try {
+        await Promise.race([activated, timeout]);
+    } catch (error) {
+        throw new PushSetupError('Layanan notifikasi di browser belum siap. Muat ulang halaman, lalu coba lagi.', error);
+    }
+
+    return registration;
+}
+
+function sameKey(subscription: PushSubscription, key: Uint8Array): boolean {
+    const current = subscription.options?.applicationServerKey;
+
+    if (!current) {
+        return true;
+    }
+
+    const bytes = new Uint8Array(current);
+
+    return bytes.length === key.length && bytes.every((byte, i) => byte === key[i]);
+}
+
+/**
+ * This device's subscription for the server's VAPID key. One made with an
+ * older key (the server's keys were regenerated) can receive nothing and
+ * blocks a new subscribe (InvalidStateError), so it is replaced.
+ */
+async function deviceSubscription(registration: ServiceWorkerRegistration, publicKey: string): Promise<PushSubscription> {
+    let key: Uint8Array<ArrayBuffer>;
+
+    try {
+        key = urlBase64ToUint8Array(publicKey);
+    } catch (error) {
+        throw new PushSetupError('Kunci notifikasi server tidak valid. Hubungi admin (VAPID_PUBLIC_KEY).', error);
+    }
+
+    const existing = await registration.pushManager.getSubscription();
+
+    if (existing && sameKey(existing, key)) {
+        return existing;
+    }
+
+    if (existing) {
+        await existing.unsubscribe().catch(() => false);
+    }
+
+    const subscribe = () => registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+    let failure: unknown;
+
+    try {
+        return await subscribe();
+    } catch (error) {
+        failure = error;
+    }
+
+    if (failure instanceof DOMException && failure.name === 'InvalidStateError') {
+        // A subscription left from another key: drop it and try once more.
+        const stale = await registration.pushManager.getSubscription();
+        await stale?.unsubscribe().catch(() => false);
+
+        try {
+            return await subscribe();
+        } catch (error) {
+            failure = error;
+        }
+    }
+
+    if (failure instanceof DOMException && failure.name === 'NotAllowedError') {
+        throw new PushSetupError('Izin notifikasi ditolak. Aktifkan dari pengaturan situs di browser Anda.', failure);
+    }
+
+    throw new PushSetupError(
+        'Layanan push browser tidak dapat dihubungi. Pastikan internet aktif; di Brave aktifkan "Gunakan layanan Google untuk pesan push", di HP pastikan layanan Google Play aktif. Lalu coba lagi.',
+        failure,
+    );
+}
+
+function storeFailureMessage(error: unknown): string {
+    const status = error instanceof RequestError ? error.status : 0;
+
+    if (status === 419 || status === 401) {
+        return 'Sesi login sudah berakhir. Muat ulang halaman (atau login lagi), lalu coba lagi.';
+    }
+
+    if (status === 0) {
+        return 'Tidak dapat terhubung ke server. Periksa koneksi internet, lalu coba lagi.';
+    }
+
+    return `Server gagal menyimpan perangkat ini (kode ${status}). Coba lagi atau hubungi admin.`;
+}
+
+/**
  * Asks the browser for permission (must run from a tap), subscribes this
- * device and stores the subscription for the signed-in account.
+ * device and stores the subscription for the signed-in account. Each failing
+ * step throws a PushSetupError that says what to do.
  */
 export async function enablePush(publicKey: string): Promise<PushState> {
+    if (!pushSupported()) {
+        throw new PushSetupError('Browser ini belum mendukung notifikasi push. Gunakan Chrome, Edge, atau Firefox terbaru.');
+    }
+
+    if (!window.isSecureContext) {
+        throw new PushSetupError('Notifikasi push hanya bisa diaktifkan saat aplikasi dibuka melalui HTTPS.');
+    }
+
     const permission = await Notification.requestPermission();
 
     if (permission !== 'granted') {
         return permission === 'denied' ? 'denied' : 'default';
     }
 
-    const registration = (await navigator.serviceWorker.getRegistration('/')) ?? (await navigator.serviceWorker.register('/sw.js', { scope: '/' }));
-    await navigator.serviceWorker.ready;
+    const registration = await activeRegistration();
+    const subscription = await deviceSubscription(registration, publicKey);
 
-    const subscription =
-        (await registration.pushManager.getSubscription()) ??
-        (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) }));
-
-    await storeSubscription(subscription);
+    try {
+        await storeSubscription(subscription);
+    } catch (error) {
+        throw new PushSetupError(storeFailureMessage(error), error);
+    }
 
     return 'subscribed';
 }
@@ -274,8 +437,18 @@ export async function disablePush(): Promise<PushState> {
     const subscription = await registration?.pushManager.getSubscription();
 
     if (subscription) {
-        await jsonRequest('DELETE', PushSubscriptionController.destroy().url, { endpoint: subscription.endpoint });
-        await subscription.unsubscribe();
+        try {
+            await jsonRequest('DELETE', PushSubscriptionController.destroy().url, { endpoint: subscription.endpoint });
+        } catch (error) {
+            throw new PushSetupError(
+                error instanceof RequestError && (error.status === 419 || error.status === 401)
+                    ? 'Sesi login sudah berakhir. Muat ulang halaman, lalu coba lagi.'
+                    : 'Tidak dapat menghubungi server untuk mematikan notifikasi. Coba lagi.',
+                error,
+            );
+        }
+
+        await subscription.unsubscribe().catch(() => false);
     }
 
     return 'granted';

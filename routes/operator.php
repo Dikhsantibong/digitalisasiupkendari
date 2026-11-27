@@ -53,6 +53,7 @@ Route::middleware(['auth', 'verified'])
         Route::get('mutasi', [MutasiController::class, 'index'])->name('mutasi.index');
         Route::post('mutasi', [MutasiController::class, 'store'])->name('mutasi.store');
         Route::post('mutasi/{mutasi}/terima', [MutasiController::class, 'terima'])->name('mutasi.terima');
+        Route::get('mutasi/{mutasi}/preview', [MutasiController::class, 'preview'])->name('mutasi.preview');
         Route::get('mutasi/{mutasi}/pdf', [MutasiController::class, 'pdf'])->name('mutasi.pdf');
 
         Route::get('presensi', [PresensiController::class, 'index'])->name('presensi.index');

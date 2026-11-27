@@ -27,9 +27,12 @@ class ApprovalController extends Controller
             'employee' => $user->employee?->only(['name', 'position']),
             'queue' => $this->inbox->queue($user),
             'requests' => $this->inbox->requests($user),
+            'mutasi_handovers' => $this->inbox->mutasiHandovers($user),
             'history' => $this->inbox->history($user),
             'acknowledgements' => $this->inbox->acknowledgements($user),
+            'is_signer' => ApprovalInbox::isSigner($user),
             'decides_requests' => ApprovalInbox::decidesRequests($user),
+            'receives_mutasi' => ApprovalInbox::receivesMutasi($user),
         ]);
     }
 }

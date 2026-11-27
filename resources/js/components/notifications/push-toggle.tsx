@@ -3,7 +3,7 @@ import { BellOff, BellRing, Loader2, Send, Smartphone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { currentPushState, disablePush, enablePush, sendTestNotification } from '@/lib/notifications';
+import { currentPushState, disablePush, enablePush, PushSetupError, sendTestNotification } from '@/lib/notifications';
 import type { PushState } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 
@@ -60,8 +60,11 @@ export function PushToggle({ compact = false }: { compact?: boolean }) {
             } else if (next === 'denied') {
                 toast.error('Izin notifikasi ditolak. Aktifkan dari pengaturan situs di browser Anda.');
             }
-        } catch {
-            toast.error('Gagal mengatur notifikasi di perangkat ini. Coba lagi.');
+        } catch (error) {
+            // The failing step says what to do; the raw cause stays in the console for support.
+            console.error('[notifikasi]', error instanceof PushSetupError ? (error.reason ?? error) : error);
+            toast.error(error instanceof PushSetupError ? error.message : 'Gagal mengatur notifikasi di perangkat ini. Coba lagi.');
+            void currentPushState().then(setState);
         } finally {
             setBusy(false);
         }

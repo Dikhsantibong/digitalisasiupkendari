@@ -11,6 +11,7 @@ use App\Models\OperatorMutasi;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Services\Operator\AttendanceRoster;
 use App\Services\Operator\MutasiPatrolFindings;
 use App\Services\Operator\MutasiStartStop;
@@ -48,6 +49,7 @@ class MutasiController extends Controller
         private readonly ActivityLogger $activityLogger,
         private readonly MutasiStartStop $startStop,
         private readonly MutasiPatrolFindings $patrolFindings,
+        private readonly EventNotifier $notifier,
     ) {}
 
     public function index(Request $request): Response
@@ -59,8 +61,35 @@ class MutasiController extends Controller
         [$tanggal, $shift] = $this->resolveSlot($request);
 
         $mutasi = OperatorMutasi::query()->where('unit_id', $unit->id)->whereDate('tanggal', $tanggal)->where('shift', $shift)->first();
-        $employee = $this->employeeOf($user, $unit);
+        $employee = $this->employeeOf($user, $unit) ?? $user->employee;
         $canWrite = $this->writes($user, $unit);
+        $isOwnHandover = $mutasi !== null
+            && ! $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite)
+            && ! empty($employee?->regu)
+            && $mutasi->regu_penyerah === $employee->regu;
+
+        $pendingReceive = $canWrite
+            ? OperatorMutasi::query()
+                ->where('unit_id', $unit->id)
+                ->whereNotNull('diserahkan_at')
+                ->whereNull('diterima_at')
+                ->when(
+                    ! $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite) && ! empty($employee?->regu),
+                    fn ($q) => $q->where(fn ($sub) => $sub->whereNull('regu_penyerah')->orWhere('regu_penyerah', '!=', $employee->regu)),
+                )
+                ->orderBy('diserahkan_at')
+                ->get()
+                ->map(fn (OperatorMutasi $m): array => [
+                    'id' => $m->id,
+                    'tanggal' => $m->tanggal->toDateString(),
+                    'shift' => $m->shift,
+                    'regu_penyerah' => $m->regu_penyerah,
+                    'penyerah_nama' => $m->penyerah_nama,
+                    'diserahkan_at' => $m->diserahkan_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all()
+            : [];
 
         return Inertia::render('operator/mutasi/index', [
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
@@ -87,9 +116,15 @@ class MutasiController extends Controller
                     'regu_penerima' => $m->regu_penerima,
                     'status' => $this->status($m),
                 ])->values()->all(),
-            'me' => ['nama' => $employee?->name ?? $user->name, 'regu' => $employee?->regu],
+            'pending_receive' => $pendingReceive,
+            'me' => [
+                'nama' => $employee?->name ?? $user->name,
+                'regu' => $employee?->regu,
+                'signature_url' => $employee?->signatureUrl(),
+                'has_signature' => ! empty($employee?->signature_path),
+            ],
             'can_write' => $canWrite && ! $mutasi?->isReceived(),
-            'can_receive' => $canWrite && $mutasi !== null && $mutasi->diserahkan_at !== null && ! $mutasi->isReceived(),
+            'can_receive' => $canWrite && $mutasi !== null && $mutasi->diserahkan_at !== null && ! $mutasi->isReceived() && ! $isOwnHandover,
             // An operator who is not the Leader Shift only reads the sheet.
             'leader_only' => $user->hasPermissionTo(PermissionName::OperatorMutasiWrite) && ! $canWrite,
         ]);
@@ -147,13 +182,12 @@ class MutasiController extends Controller
         }
 
         $serahkan = $request->boolean('serahkan');
-        if ($serahkan) {
-            if (empty($validated['regu_penyerah'])) {
-                throw ValidationException::withMessages(['regu_penyerah' => 'Pilih regu penyerah.']);
-            }
-            if (empty($validated['paraf']) && $mutasi->paraf_penyerah === null) {
-                throw ValidationException::withMessages(['paraf' => 'Paraf regu penyerah wajib dibuat.']);
-            }
+        $employee = $this->employeeOf($user, $unit) ?? $user->employee;
+        $reguPenyerah = $validated['regu_penyerah'] ?? $employee?->regu;
+        $penyerahNama = $this->text($validated['penyerah_nama'] ?? null) ?? ($employee?->name ?? $user->name);
+
+        if ($serahkan && empty($reguPenyerah)) {
+            throw ValidationException::withMessages(['regu_penyerah' => 'Pilih regu penyerah.']);
         }
 
         $mutasi->fill([
@@ -177,29 +211,36 @@ class MutasiController extends Controller
                 ->filter(fn (array $k): bool => $k['uraian'] !== '')->values()->all(),
             'gangguan_mesin' => $this->text($validated['gangguan_mesin'] ?? null),
             'catatan' => $this->text($validated['catatan'] ?? null),
-            'regu_penyerah' => $validated['regu_penyerah'] ?? null,
-            'penyerah_nama' => $this->text($validated['penyerah_nama'] ?? null),
+            'regu_penyerah' => $reguPenyerah,
+            'penyerah_nama' => $penyerahNama,
             'input_by' => $user->id,
         ]);
 
         if ($serahkan) {
             if (! empty($validated['paraf'])) {
                 $this->replaceParaf($mutasi, 'paraf_penyerah', $validated['paraf']);
+            } else {
+                $this->applyEmployeeSignature($mutasi, 'paraf_penyerah', $user, $unit);
             }
             $mutasi->diserahkan_at = now();
         }
 
         $mutasi->save();
 
+        if ($serahkan) {
+            $this->notifier->mutasiHandedOver($mutasi, $user);
+        }
+
         $label = $this->label($mutasi);
         $this->activityLogger->log(ActivityEvent::Updated, ($serahkan ? 'Menyerahkan' : 'Menyimpan')." Lembar Mutasi Operator {$unit->name} {$label}", $mutasi, unit: $unit->id);
-        Inertia::flash('toast', ['type' => 'success', 'message' => $serahkan ? 'Lembar mutasi diserahkan. Menunggu regu penerima.' : 'Lembar mutasi disimpan.']);
+        Inertia::flash('toast', ['type' => 'success', 'message' => $serahkan ? 'Lembar mutasi diserahkan. Pemberitahuan dikirim ke regu penerima.' : 'Lembar mutasi disimpan.']);
 
         return $this->backTo($mutasi);
     }
 
     /**
-     * The receiving regu signs; the sheet is then locked.
+     * The receiving regu accepts the handover; signature is pulled automatically
+     * from the user's employee profile and the sheet is then locked.
      */
     public function terima(Request $request, OperatorMutasi $mutasi): RedirectResponse
     {
@@ -207,13 +248,13 @@ class MutasiController extends Controller
         abort_unless($user->canAccessUnit($mutasi->unit_id) && $this->writes($user, $mutasi->unit), 403);
 
         $validated = $request->validate([
-            'regu_penerima' => ['required', Rule::in(AttendanceRoster::REGU)],
+            'regu_penerima' => ['nullable', Rule::in(AttendanceRoster::REGU)],
             'penerima_nama' => ['nullable', 'string', 'max:150'],
-            'paraf' => ['required', 'string', 'starts_with:data:image/png;base64,', 'max:2100000'],
-        ], [
-            'regu_penerima.required' => 'Pilih regu penerima.',
-            'paraf.required' => 'Paraf regu penerima wajib dibuat.',
+            'paraf' => ['nullable', 'string', 'starts_with:data:image/png;base64,', 'max:2100000'],
         ]);
+
+        $employee = $this->employeeOf($user, $mutasi->unit) ?? $user->employee;
+        $reguPenerima = $validated['regu_penerima'] ?? $employee?->regu;
 
         if ($mutasi->diserahkan_at === null) {
             throw ValidationException::withMessages(['regu_penerima' => 'Lembar mutasi belum diserahkan oleh regu penyerah.']);
@@ -221,21 +262,65 @@ class MutasiController extends Controller
         if ($mutasi->isReceived()) {
             throw ValidationException::withMessages(['regu_penerima' => 'Lembar mutasi ini sudah diterima.']);
         }
-        if ($validated['regu_penerima'] === $mutasi->regu_penyerah) {
+        if (empty($reguPenerima)) {
+            throw ValidationException::withMessages(['regu_penerima' => 'Pilih regu penerima.']);
+        }
+        if ($reguPenerima === $mutasi->regu_penyerah) {
             throw ValidationException::withMessages(['regu_penerima' => 'Regu penerima harus berbeda dengan regu penyerah.']);
         }
 
-        $this->replaceParaf($mutasi, 'paraf_penerima', $validated['paraf']);
+        if (! empty($validated['paraf'])) {
+            $this->replaceParaf($mutasi, 'paraf_penerima', $validated['paraf']);
+        } else {
+            $this->applyEmployeeSignature($mutasi, 'paraf_penerima', $user, $mutasi->unit);
+        }
+
         $mutasi->fill([
-            'regu_penerima' => $validated['regu_penerima'],
-            'penerima_nama' => $this->text($validated['penerima_nama'] ?? null),
+            'regu_penerima' => $reguPenerima,
+            'penerima_nama' => $this->text($validated['penerima_nama'] ?? null) ?? ($employee?->name ?? $user->name),
             'diterima_at' => now(),
         ])->save();
+
+        $this->notifier->mutasiAccepted($mutasi, $user);
 
         $this->activityLogger->log(ActivityEvent::Updated, 'Menerima Lembar Mutasi Operator '.$this->label($mutasi), $mutasi, unit: $mutasi->unit_id);
         Inertia::flash('toast', ['type' => 'success', 'message' => 'Tugas diterima. Lembar mutasi terkunci.']);
 
-        return $this->backTo($mutasi);
+        return $request->boolean('from_inbox') ? back() : $this->backTo($mutasi);
+    }
+
+    public function preview(Request $request, OperatorMutasi $mutasi): Response
+    {
+        $user = $request->user();
+        abort_unless($user->hasPermissionTo(PermissionName::OperatorMutasiView), 403);
+        abort_unless($user->canAccessUnit($mutasi->unit_id), 403);
+
+        $data = $this->pdfViewData($mutasi);
+        /** @var Unit $unit */
+        $unit = $data['unit'];
+
+        return Inertia::render('operator/mutasi/preview', [
+            'unit' => ['id' => $unit->id, 'name' => $unit->name],
+            'mutasi' => [
+                'id' => $mutasi->id,
+                'tanggal' => $mutasi->tanggal->toDateString(),
+                'shift' => $mutasi->shift,
+                'shift_label' => ucfirst($mutasi->shift),
+                'hari_tanggal' => $data['hariTanggal'],
+                'status' => $this->status($mutasi),
+                'regu_penyerah' => $mutasi->regu_penyerah,
+                'regu_penerima' => $mutasi->regu_penerima,
+            ],
+            'html' => view('operator.mutasi-pdf', $data)->render(),
+            'pdf_url' => route('operator.mutasi.pdf', $mutasi->id, false),
+            'download_url' => route('operator.mutasi.pdf', ['mutasi' => $mutasi->id, 'download' => 1], false),
+            'back_url' => route('operator.mutasi.index', [
+                'unit_id' => $mutasi->unit_id,
+                'tanggal' => $mutasi->tanggal->toDateString(),
+                'shift' => $mutasi->shift,
+                'form' => 1,
+            ], false),
+        ]);
     }
 
     public function pdf(Request $request, OperatorMutasi $mutasi): HttpResponse
@@ -244,10 +329,30 @@ class MutasiController extends Controller
         abort_unless($user->hasPermissionTo(PermissionName::OperatorMutasiView), 403);
         abort_unless($user->canAccessUnit($mutasi->unit_id), 403);
 
+        $data = $this->pdfViewData($mutasi);
+        /** @var Unit $unit */
+        $unit = $data['unit'];
+        $tanggal = Carbon::parse($mutasi->tanggal->toDateString());
+
+        $pdf = Pdf::loadView('operator.mutasi-pdf', $data)->setPaper('a4', 'portrait');
+
+        $filename = sprintf('Mutasi_Operator_%s_%s_%s.pdf', str_replace(' ', '_', $unit->name), $tanggal->format('Ymd'), $mutasi->shift);
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename="'.$filename.'"',
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function pdfViewData(OperatorMutasi $mutasi): array
+    {
         $unit = Unit::query()->findOrFail($mutasi->unit_id);
         $tanggal = Carbon::parse($mutasi->tanggal->toDateString());
 
-        $pdf = Pdf::loadView('operator.mutasi-pdf', [
+        return [
             'unit' => $unit,
             'mutasi' => $mutasi,
             'shifts' => OperatorMutasi::SHIFTS,
@@ -257,14 +362,7 @@ class MutasiController extends Controller
             'startStop' => $this->startStop->events($unit->id, $mutasi->tanggal->toDateString(), $mutasi->shift),
             'patrolFindings' => $this->patrolFindings->findings($unit->id, $mutasi->tanggal->toDateString(), $mutasi->shift),
             ...JadwalPdf::logos(),
-        ])->setPaper('a4', 'portrait');
-
-        $filename = sprintf('Mutasi_Operator_%s_%s_%s.pdf', str_replace(' ', '_', $unit->name), $tanggal->format('Ymd'), $mutasi->shift);
-
-        return response($pdf->output(), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => ($request->boolean('download') ? 'attachment' : 'inline').'; filename="'.$filename.'"',
-        ]);
+        ];
     }
 
     /**
@@ -363,10 +461,38 @@ class MutasiController extends Controller
         $path = "operator-mutasi/{$mutasi->unit_id}/paraf/".Str::random(40).'.png';
         Storage::disk('public')->put($path, $png);
 
-        if ($mutasi->{$column}) {
+        if ($mutasi->{$column} && str_starts_with($mutasi->{$column}, 'operator-mutasi/')) {
             Storage::disk('public')->delete($mutasi->{$column});
         }
         $mutasi->{$column} = $path;
+    }
+
+    /**
+     * Pull the signing user's digital signature automatically from their
+     * employee profile (`employees.signature_path`) and snapshot it for this sheet.
+     */
+    private function applyEmployeeSignature(OperatorMutasi $mutasi, string $column, User $user, Unit $unit): void
+    {
+        $employee = $this->employeeOf($user, $unit) ?? $user->employee;
+        $source = $employee?->signature_path;
+        if (empty($source)) {
+            return;
+        }
+
+        $disk = Storage::disk('public');
+        if ($disk->exists($source)) {
+            $ext = strtolower(pathinfo($source, PATHINFO_EXTENSION) ?: 'png');
+            $dest = "operator-mutasi/{$unit->id}/paraf/".Str::random(40).'.'.$ext;
+            $disk->put($dest, (string) $disk->get($source));
+
+            if ($mutasi->{$column} && str_starts_with($mutasi->{$column}, 'operator-mutasi/')) {
+                $disk->delete($mutasi->{$column});
+            }
+
+            $mutasi->{$column} = $dest;
+        } else {
+            $mutasi->{$column} = $source;
+        }
     }
 
     /**
@@ -450,6 +576,12 @@ class MutasiController extends Controller
     {
         $disk = Storage::disk('public');
 
-        return $path !== null && $disk->exists($path) ? 'data:image/png;base64,'.base64_encode((string) $disk->get($path)) : null;
+        if ($path === null || ! $disk->exists($path)) {
+            return null;
+        }
+
+        $mime = $disk->mimeType($path) ?: 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode((string) $disk->get($path));
     }
 }

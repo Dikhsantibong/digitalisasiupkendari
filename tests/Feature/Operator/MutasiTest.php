@@ -36,10 +36,17 @@ class MutasiTest extends TestCase
     }
 
     /** The Leader Shift of a regu on the unit: the one who fills the sheet. */
-    private function leader(Unit $unit, string $regu = 'D'): User
+    private function leader(Unit $unit, string $regu = 'D', ?string $signaturePath = null): User
     {
         $user = $this->userWithRole(RoleName::Operator, $unit);
-        Employee::factory()->create(['user_id' => $user->id, 'unit_id' => $unit->id, 'regu' => $regu, 'is_shift_leader' => true, 'is_active' => true]);
+        Employee::factory()->create([
+            'user_id' => $user->id,
+            'unit_id' => $unit->id,
+            'regu' => $regu,
+            'is_shift_leader' => true,
+            'is_active' => true,
+            'signature_path' => $signaturePath,
+        ]);
 
         return $user;
     }
@@ -201,21 +208,49 @@ class MutasiTest extends TestCase
         $this->assertSame('Update', $mutasi->fresh()->catatan);
     }
 
-    public function test_handing_over_needs_a_regu_and_a_paraf(): void
+    public function test_handing_over_pulls_employee_signature_automatically_and_notifies_receiving_leaders(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        $operator = $this->leader($unit);
+        Storage::disk('public')->put('signatures/leader-d.png', base64_decode(substr(self::PNG, strpos(self::PNG, ',') + 1)));
+        Storage::disk('public')->put('signatures/leader-a.png', base64_decode(substr(self::PNG, strpos(self::PNG, ',') + 1)));
 
-        $this->actingAs($operator)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true]))->assertSessionHasErrors('paraf');
-        $this->actingAs($operator)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true, 'regu_penyerah' => null, 'paraf' => self::PNG]))->assertSessionHasErrors('regu_penyerah');
-        $this->actingAs($operator)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true, 'paraf' => 'data:image/png;base64,'.base64_encode('x')]))->assertSessionHasErrors('paraf');
+        $leaderD = $this->leader($unit, 'D', 'signatures/leader-d.png');
+        $leaderA = $this->leader($unit, 'A', 'signatures/leader-a.png');
+
+        // Without regu on user or payload, handing over still requires regu_penyerah.
+        $projectLeader = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
+        $this->actingAs($projectLeader)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true, 'regu_penyerah' => null]))->assertSessionHasErrors('regu_penyerah');
         $this->assertSame(0, OperatorMutasi::query()->count());
 
-        $this->actingAs($operator)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true, 'paraf' => self::PNG]))->assertSessionHasNoErrors();
+        // Leader D hands over with one click (no canvas paraf needed): signature pulled automatically from profile.
+        $this->actingAs($leaderD)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true]))->assertSessionHasNoErrors();
 
         $mutasi = OperatorMutasi::query()->sole();
         $this->assertNotNull($mutasi->diserahkan_at);
+        $this->assertNotNull($mutasi->paraf_penyerah);
         Storage::disk('public')->assertExists($mutasi->paraf_penyerah);
+        // Original profile signature remains untouched.
+        Storage::disk('public')->assertExists('signatures/leader-d.png');
+
+        // Leader A sees the pending handover in Persetujuan (ApprovalInbox) and receives a notification.
+        $this->actingAs($leaderA)->get(route('approvals.index'))->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('receives_mutasi', true)
+                ->has('mutasi_handovers', 1)
+                ->where('mutasi_handovers.0.id', $mutasi->id)
+                ->where('mutasi_handovers.0.default_regu_penerima', 'A'));
+        $this->assertSame(1, $leaderA->fresh()->unreadNotifications()->count());
+
+        // Leader A accepts with one click (no canvas paraf needed): signature pulled automatically from profile.
+        $this->actingAs($leaderA)->post(route('operator.mutasi.terima', $mutasi))->assertSessionHasNoErrors();
+
+        $mutasi->refresh();
+        $this->assertTrue($mutasi->isReceived());
+        $this->assertSame('A', $mutasi->regu_penerima);
+        $this->assertNotNull($mutasi->paraf_penerima);
+        Storage::disk('public')->assertExists($mutasi->paraf_penerima);
+        Storage::disk('public')->assertExists('signatures/leader-a.png');
+        $this->assertSame(1, $leaderD->fresh()->unreadNotifications()->count());
     }
 
     public function test_the_next_regu_accepts_and_the_sheet_locks(): void
@@ -224,20 +259,19 @@ class MutasiTest extends TestCase
         $mutasi = OperatorMutasi::factory()->create(['unit_id' => $unit->id, 'diserahkan_at' => now(), 'regu_penyerah' => 'D']);
         $operator = $this->leader($unit);
 
-        $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'D', 'paraf' => self::PNG])->assertSessionHasErrors('regu_penerima');
-        $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'A', 'penerima_nama' => 'Operator A', 'paraf' => self::PNG])->assertSessionHasNoErrors();
+        $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'D'])->assertSessionHasErrors('regu_penerima');
+        $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'A', 'penerima_nama' => 'Operator A'])->assertSessionHasNoErrors();
 
         $mutasi->refresh();
         $this->assertTrue($mutasi->isReceived());
         $this->assertSame('A', $mutasi->regu_penerima);
-        Storage::disk('public')->assertExists($mutasi->paraf_penerima);
 
         $this->actingAs($operator)
             ->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => 'sore']))
             ->assertInertia(fn ($page) => $page->where('mutasi.status', 'diterima')->where('can_write', false)->where('can_receive', false));
 
         $this->actingAs($operator)->post(route('operator.mutasi.store'), $this->payload($unit))->assertSessionHasErrors('shift');
-        $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'B', 'paraf' => self::PNG])->assertSessionHasErrors('regu_penerima');
+        $this->actingAs($operator)->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'B'])->assertSessionHasErrors('regu_penerima');
     }
 
     public function test_a_sheet_not_handed_over_cannot_be_accepted(): void
@@ -246,7 +280,7 @@ class MutasiTest extends TestCase
         $mutasi = OperatorMutasi::factory()->create(['unit_id' => $unit->id]);
 
         $this->actingAs($this->leader($unit))
-            ->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'A', 'paraf' => self::PNG])
+            ->post(route('operator.mutasi.terima', $mutasi), ['regu_penerima' => 'A'])
             ->assertSessionHasErrors('regu_penerima');
     }
 
@@ -264,11 +298,12 @@ class MutasiTest extends TestCase
         $this->actingAs($this->userWithRole(RoleName::SiteLeader, $unit))->get(route('operator.mutasi.index'))->assertForbidden();
 
         $operator = $this->leader($unit);
-        $this->actingAs($operator)->post(route('operator.mutasi.terima', $foreign), ['regu_penerima' => 'A', 'paraf' => self::PNG])->assertForbidden();
+        $this->actingAs($operator)->post(route('operator.mutasi.terima', $foreign), ['regu_penerima' => 'A'])->assertForbidden();
         $this->actingAs($operator)->get(route('operator.mutasi.pdf', $foreign))->assertForbidden();
+        $this->actingAs($operator)->get(route('operator.mutasi.preview', $foreign))->assertForbidden();
     }
 
-    public function test_the_pdf_follows_the_paper_form(): void
+    public function test_the_pdf_and_preview_page_follow_the_paper_form(): void
     {
         $unit = Unit::factory()->create(['is_active' => true, 'name' => 'PLTD Poasia']);
         $mutasi = OperatorMutasi::factory()->received()->create(['unit_id' => $unit->id, 'diserahkan_at' => now()]);
@@ -285,7 +320,16 @@ class MutasiTest extends TestCase
         $this->assertStringContainsString('CM 7 kebocoran pada sisi lube hose', $html);
         $this->assertStringContainsString('alt="Paraf penyerah"', $html);
 
-        $this->actingAs($this->leader($unit))
+        $leader = $this->leader($unit);
+        $this->actingAs($leader)
+            ->get(route('operator.mutasi.preview', $mutasi))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('operator/mutasi/preview')
+                ->where('mutasi.id', $mutasi->id)
+                ->where('unit.name', 'PLTD Poasia'));
+
+        $this->actingAs($leader)
             ->get(route('operator.mutasi.pdf', $mutasi))
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');

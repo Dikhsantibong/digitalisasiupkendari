@@ -10,6 +10,7 @@ use App\Models\AccidentReport;
 use App\Models\AttendanceRequest;
 use App\Models\K3KondisiK3;
 use App\Models\KondisiAbnormal;
+use App\Models\OperatorMutasi;
 use App\Models\ReportWorkflow;
 use App\Models\ReportWorkflowStep;
 use App\Models\Unit;
@@ -240,6 +241,107 @@ class EventNotifier
         $this->later([$requester], fn (User $user): ReminderNotification => new ReminderNotification(
             NotificationCategory::Absensi, 'operator', $title, Str::limit($body, 220),
             route('operator.pengajuan.index', [], false), $key,
+        ));
+    }
+
+    /**
+     * A Lembar Mutasi Operator was handed over: notify the receiving shift
+     * leaders (and Project Leaders) of the unit so they can accept with one click.
+     */
+    public function mutasiHandedOver(OperatorMutasi $mutasi, User $actor): void
+    {
+        $mutasi->loadMissing('unit:id,name');
+        $unitName = $mutasi->unit?->name ?? 'Unit';
+        $tanggal = $mutasi->tanggal->locale('id')->isoFormat('D MMM YYYY');
+        $shift = ucfirst($mutasi->shift);
+        $from = 'Regu '.($mutasi->regu_penyerah ?: '-').($mutasi->penyerah_nama ? " ({$mutasi->penyerah_nama})" : '');
+        $url = route('operator.mutasi.index', [
+            'unit_id' => $mutasi->unit_id,
+            'tanggal' => $mutasi->tanggal->toDateString(),
+            'shift' => $mutasi->shift,
+            'form' => 1,
+        ], false);
+        $stamp = Carbon::now()->format('YmdHisv');
+
+        $recipients = User::query()
+            ->where('is_active', true)
+            ->whereKeyNot($actor->id)
+            ->with('employee')
+            ->get()
+            ->filter(function (User $user) use ($mutasi): bool {
+                if ($user->isSuperAdmin() || $user->isReadOnly() || ! $user->canAccessUnit($mutasi->unit_id)) {
+                    return false;
+                }
+                if (! $user->hasPermissionTo(PermissionName::OperatorMutasiWrite)) {
+                    return false;
+                }
+                if ($user->hasPermissionTo(PermissionName::OperatorAbsensiWrite)) {
+                    return true;
+                }
+
+                $employee = $user->employee;
+
+                return (bool) $employee?->is_shift_leader
+                    && $employee->unit_id === $mutasi->unit_id
+                    && ($mutasi->regu_penyerah === null || $employee->regu !== $mutasi->regu_penyerah);
+            })
+            ->values();
+
+        $this->later($recipients, fn (User $user): ReminderNotification => new ReminderNotification(
+            NotificationCategory::Absensi,
+            'operator',
+            "Serah terima mutasi menunggu penerimaan · {$unitName}",
+            Str::limit("Lembar Mutasi {$tanggal} Shift {$shift} diserahkan oleh {$from} — klik untuk menerima tugas.", 220),
+            $url,
+            "absensi:mutasi:{$mutasi->id}:diserahkan:{$stamp}",
+        ));
+    }
+
+    /**
+     * A Lembar Mutasi Operator was accepted by the receiving regu: notify the
+     * handing-over operator / shift leader.
+     */
+    public function mutasiAccepted(OperatorMutasi $mutasi, User $actor): void
+    {
+        $mutasi->loadMissing('unit:id,name');
+        $unitName = $mutasi->unit?->name ?? 'Unit';
+        $tanggal = $mutasi->tanggal->locale('id')->isoFormat('D MMM YYYY');
+        $shift = ucfirst($mutasi->shift);
+        $by = 'Regu '.($mutasi->regu_penerima ?: '-').($mutasi->penerima_nama ? " ({$mutasi->penerima_nama})" : '');
+        $url = route('operator.mutasi.index', [
+            'unit_id' => $mutasi->unit_id,
+            'tanggal' => $mutasi->tanggal->toDateString(),
+            'shift' => $mutasi->shift,
+            'form' => 1,
+        ], false);
+        $stamp = Carbon::now()->format('YmdHisv');
+
+        $recipients = User::query()
+            ->where('is_active', true)
+            ->whereKeyNot($actor->id)
+            ->where(function ($q) use ($mutasi): void {
+                if ($mutasi->input_by !== null) {
+                    $q->whereKey($mutasi->input_by);
+                }
+                if ($mutasi->regu_penyerah !== null) {
+                    $q->orWhereHas('employee', fn ($e) => $e
+                        ->where('unit_id', $mutasi->unit_id)
+                        ->where('regu', $mutasi->regu_penyerah)
+                        ->where('is_shift_leader', true)
+                        ->where('is_active', true));
+                }
+            })
+            ->get()
+            ->filter(fn (User $user): bool => ! $user->isSuperAdmin() && $user->canAccessUnit($mutasi->unit_id))
+            ->values();
+
+        $this->later($recipients, fn (User $user): ReminderNotification => new ReminderNotification(
+            NotificationCategory::Absensi,
+            'operator',
+            "Lembar mutasi telah diterima · {$unitName}",
+            Str::limit("Lembar Mutasi {$tanggal} Shift {$shift} telah diterima oleh {$by}.", 220),
+            $url,
+            "absensi:mutasi:{$mutasi->id}:diterima:{$stamp}",
         ));
     }
 

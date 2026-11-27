@@ -42,7 +42,8 @@ class NotificationController extends Controller
             ->through(fn (DatabaseNotification $n): array => $this->present($n));
 
         return Inertia::render('notifications/index', [
-            'notifications' => $notifications,
+            // Not "notifications": that name is the shared bell prop (unread count + push key) used on every page.
+            'items' => $notifications,
             'filters' => ['module' => $module, 'status' => $unreadOnly ? 'unread' : 'all'],
             'unread_by_module' => $user->unreadNotifications()->get(['data'])->countBy(fn (DatabaseNotification $n): string => (string) ($n->data['module'] ?? 'lainnya')),
             'settings' => [

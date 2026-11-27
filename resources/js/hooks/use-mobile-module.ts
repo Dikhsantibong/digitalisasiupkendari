@@ -79,7 +79,7 @@ const SUB_PAGE_TITLES: Record<string, string> = {
     monthly: 'Laporan Bulanan',
     spreadsheet: 'Spreadsheet Laporan',
     editor: 'Isi Berita Acara',
-    preview: 'Pratinjau Berita Acara',
+    preview: 'Pratinjau PDF',
 };
 
 /**

@@ -8,11 +8,13 @@ use App\Enums\PermissionName;
 use App\Enums\ReportModule;
 use App\Enums\ReportStatus;
 use App\Models\AttendanceRequest;
+use App\Models\OperatorMutasi;
 use App\Models\ReportWorkflow;
 use App\Models\ReportWorkflowStep;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\Operator\AttendanceRequestService;
+use App\Services\Operator\AttendanceRoster;
 use App\Support\Indonesian;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -57,10 +59,21 @@ class ApprovalInbox
         );
     }
 
+    /** Whether the user can accept handed-over Lembar Mutasi Operator sheets. */
+    public static function receivesMutasi(User $user): bool
+    {
+        if ($user->isReadOnly() || ! $user->hasPermissionTo(PermissionName::OperatorMutasiWrite)) {
+            return false;
+        }
+
+        return $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite)
+            || (bool) $user->employee?->is_shift_leader;
+    }
+
     /** Whether the account has an approval inbox at all. */
     public static function applies(User $user): bool
     {
-        return ! $user->isSuperAdmin() && (self::isSigner($user) || self::decidesRequests($user));
+        return ! $user->isSuperAdmin() && (self::isSigner($user) || self::decidesRequests($user) || self::receivesMutasi($user));
     }
 
     /** How many things wait for the user's decision (null when the account has no inbox). */
@@ -72,7 +85,56 @@ class ApprovalInbox
 
         $inbox = app(self::class);
 
-        return count($inbox->queue($user)) + count($inbox->requests($user));
+        return count($inbox->queue($user)) + count($inbox->requests($user)) + count($inbox->mutasiHandovers($user));
+    }
+
+    /**
+     * Handed-over Lembar Mutasi Operator sheets waiting for a receiving regu
+     * to accept, in the units the user can access (never their own regu's handover).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function mutasiHandovers(User $user): array
+    {
+        if (! self::receivesMutasi($user)) {
+            return [];
+        }
+
+        $employee = $user->employee;
+        $ownRegu = $employee?->regu;
+        $restrictOwnRegu = ! $user->hasPermissionTo(PermissionName::OperatorAbsensiWrite) && ! empty($ownRegu);
+
+        return OperatorMutasi::query()
+            ->whereIn('unit_id', $user->accessibleUnitIds())
+            ->whereNotNull('diserahkan_at')
+            ->whereNull('diterima_at')
+            ->when($restrictOwnRegu, fn ($q) => $q->where(fn ($sub) => $sub->whereNull('regu_penyerah')->orWhere('regu_penyerah', '!=', $ownRegu)))
+            ->with('unit:id,name')
+            ->orderBy('diserahkan_at')
+            ->get()
+            ->map(fn (OperatorMutasi $m): array => [
+                'id' => $m->id,
+                'unit_id' => $m->unit_id,
+                'unit' => $m->unit?->name ?? '-',
+                'tanggal' => $m->tanggal->toDateString(),
+                'shift' => $m->shift,
+                'shift_label' => ucfirst($m->shift),
+                'shift_jam' => OperatorMutasi::SHIFTS[$m->shift] ?? '',
+                'regu_penyerah' => $m->regu_penyerah,
+                'penyerah_nama' => $m->penyerah_nama,
+                'diserahkan_at' => $m->diserahkan_at?->toIso8601String(),
+                'default_regu_penerima' => ($ownRegu !== null && $ownRegu !== '' && $ownRegu !== $m->regu_penyerah) ? $ownRegu : null,
+                'default_penerima_nama' => $employee?->name ?? $user->name,
+                'has_signature' => ! empty($employee?->signature_path),
+                'regu_options' => array_values(array_filter(AttendanceRoster::REGU, fn (string $r): bool => $r !== $m->regu_penyerah)),
+                'url' => route('operator.mutasi.index', [
+                    'unit_id' => $m->unit_id,
+                    'tanggal' => $m->tanggal->toDateString(),
+                    'shift' => $m->shift,
+                    'form' => 1,
+                ], false),
+                'terima_url' => route('operator.mutasi.terima', $m->id, false),
+            ])->values()->all();
     }
 
     /**

@@ -787,7 +787,8 @@ export default function LogsheetInput({ filters, stats, header, parameters, rows
                                                             onChange={(e) => setForm((current) => ({ ...current, [`p_${m.id}`]: e.target.value }))}
                                                         />
                                                     )}
-                                                    {m.normal_value && <span className="text-[10px] text-muted-foreground">Normal {m.normal_value}</span>}
+                                                    {/* Numbered channels (A1…A8, B1…) show just their number (user, 2026-11-27); the normal-range text stays on single parameters. */}
+                                                    {m.normal_value && g.members.length === 1 && <span className="text-[10px] text-muted-foreground">Normal {m.normal_value}</span>}
                                                 </label>
                                             ))}
                                         </div>

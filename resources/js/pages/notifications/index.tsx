@@ -16,7 +16,7 @@ import { dashboard } from '@/routes';
 type Category = { key: string; label: string; description: string; allowed: boolean; enabled: boolean };
 
 type Props = {
-    notifications: {
+    items: {
         data: AppNotification[];
         current_page: number;
         last_page: number;
@@ -31,7 +31,7 @@ type Props = {
 
 const MODULE_FILTERS = ['operasi', 'operator', 'har', 'k3', 'pdm', 'logistik'] as const;
 
-export default function NotificationsIndex({ notifications, filters, unread_by_module, settings }: Props) {
+export default function NotificationsIndex({ items, filters, unread_by_module, settings }: Props) {
     const [now] = useState(() => Date.now());
     const [enabled, setEnabled] = useState(() => Object.fromEntries(settings.categories.map((c) => [c.key, c.enabled])));
     const [digestTime, setDigestTime] = useState(settings.digest_time);
@@ -117,7 +117,7 @@ export default function NotificationsIndex({ notifications, filters, unread_by_m
                         })}
                     </div>
 
-                    {notifications.data.length === 0 ? (
+                    {items.data.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 py-12 text-center">
                             <span className="flex size-12 items-center justify-center rounded-md bg-muted text-muted-foreground">
                                 <Bell className="size-6" />
@@ -128,17 +128,17 @@ export default function NotificationsIndex({ notifications, filters, unread_by_m
                         </div>
                     ) : (
                         <div className="-mx-1 flex flex-col gap-0.5">
-                            {notifications.data.map((notification) => (
+                            {items.data.map((notification) => (
                                 <NotificationItem key={notification.id} notification={notification} now={now} />
                             ))}
                         </div>
                     )}
 
-                    {notifications.last_page > 1 && (
+                    {items.last_page > 1 && (
                         <div className="flex items-center justify-between gap-2 border-t border-border pt-3 text-[13px] text-muted-foreground">
-                            <Button size="sm" variant="outline" disabled={!notifications.prev_page_url} asChild={!!notifications.prev_page_url}>
-                                {notifications.prev_page_url ? (
-                                    <Link href={notifications.prev_page_url} preserveScroll>
+                            <Button size="sm" variant="outline" disabled={!items.prev_page_url} asChild={!!items.prev_page_url}>
+                                {items.prev_page_url ? (
+                                    <Link href={items.prev_page_url} preserveScroll>
                                         <ChevronLeft className="size-4" />
                                         Sebelumnya
                                     </Link>
@@ -150,11 +150,11 @@ export default function NotificationsIndex({ notifications, filters, unread_by_m
                                 )}
                             </Button>
                             <span>
-                                Hal. {notifications.current_page} / {notifications.last_page}
+                                Hal. {items.current_page} / {items.last_page}
                             </span>
-                            <Button size="sm" variant="outline" disabled={!notifications.next_page_url} asChild={!!notifications.next_page_url}>
-                                {notifications.next_page_url ? (
-                                    <Link href={notifications.next_page_url} preserveScroll>
+                            <Button size="sm" variant="outline" disabled={!items.next_page_url} asChild={!!items.next_page_url}>
+                                {items.next_page_url ? (
+                                    <Link href={items.next_page_url} preserveScroll>
                                         Berikutnya
                                         <ChevronRight className="size-4" />
                                     </Link>

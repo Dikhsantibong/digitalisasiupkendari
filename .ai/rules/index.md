@@ -20,6 +20,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Enums/** | .ai/rules/enums.md |
 | resources/js/pages/har/jadwal/** | .ai/rules/har-jadwal.md |
 | app/Services/Har/** | .ai/rules/har.md |
+| resources/js/lib/notifications.ts, app/Http/Controllers/NotificationController.php, app/Http/Controllers/PushSubscriptionController.php | .ai/rules/http-controllers-http-controllers.md |
 | resources/js/components/instruksi-kerja/**, resources/js/pages/k3/input/dokumen-ik/**, app/Http/Controllers/BaseInstruksiKerjaController.php, app/Http/Controllers/K3/DokumenIkController.php | .ai/rules/http-controllers-k3.md |
 | app/Services/Reports/**, app/Http/Controllers/LaporanUlController.php | .ai/rules/http-controllers.md |
 | resources/js/pages/k3/input/** | .ai/rules/input.md |

@@ -1,6 +1,7 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import {
     AlertTriangle,
+    BellRing,
     CheckCircle2,
     Clock,
     Droplets,
@@ -11,6 +12,7 @@ import {
     History,
     Lock,
     NotebookPen,
+    PenLine,
     Plus,
     Power,
     Save,
@@ -25,7 +27,6 @@ import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { EntryBadge, MobileEntryCard, MobileEntryList, MobileFormScreen } from '@/components/mobile/entry-flow';
 import { OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
-import { SignaturePad } from '@/components/signature-pad';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -105,7 +106,20 @@ type Props = {
         regu_penerima: string | null;
         status: Status;
     }[];
-    me: { nama: string; regu: string | null };
+    pending_receive?: {
+        id: number;
+        tanggal: string;
+        shift: string;
+        regu_penyerah: string | null;
+        penyerah_nama: string | null;
+        diserahkan_at: string | null;
+    }[];
+    me: {
+        nama: string;
+        regu: string | null;
+        signature_url?: string | null;
+        has_signature?: boolean;
+    };
     can_write: boolean;
     can_receive: boolean;
     /** An operator who is not the Leader Shift: read only. */
@@ -224,6 +238,7 @@ function MutasiForm({
     options,
     mutasi,
     riwayat,
+    pending_receive = [],
     me,
     can_write,
     can_receive,
@@ -252,12 +267,12 @@ function MutasiForm({
     const [penyerahNama, setPenyerahNama] = useState(
         mutasi.penyerah_nama ?? me.nama,
     );
-    const [paraf, setParaf] = useState<string | null>(null);
     const [reguPenerima, setReguPenerima] = useState(
-        me.regu && me.regu !== mutasi.regu_penyerah ? me.regu : '',
+        me.regu && me.regu !== mutasi.regu_penyerah
+            ? me.regu
+            : (options.regu.find((r) => r !== mutasi.regu_penyerah) ?? ''),
     );
     const [penerimaNama, setPenerimaNama] = useState(me.nama);
-    const [parafPenerima, setParafPenerima] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -305,7 +320,6 @@ function MutasiForm({
                 regu_penyerah: reguPenyerah || null,
                 penyerah_nama: penyerahNama,
                 serahkan: serahkan ? 1 : 0,
-                paraf: serahkan ? paraf : null,
             },
             {
                 preserveScroll: true,
@@ -316,18 +330,19 @@ function MutasiForm({
         );
     };
 
-    const terima = () => {
-        if (mutasi.id === null) {
+    const terima = (targetId?: number, targetRegu?: string) => {
+        const id = targetId ?? mutasi.id;
+        const regu = targetRegu ?? reguPenerima;
+        if (id === null || !regu) {
             return;
         }
 
         setSaving(true);
         router.post(
-            mutasiRoutes.terima(mutasi.id).url,
+            mutasiRoutes.terima(id).url,
             {
-                regu_penerima: reguPenerima,
+                regu_penerima: regu,
                 penerima_nama: penerimaNama,
-                paraf: parafPenerima,
             },
             {
                 preserveScroll: true,
@@ -378,8 +393,7 @@ function MutasiForm({
             </span>
         ) : null;
 
-    const canHandOver =
-        !!reguPenyerah && (!!paraf || !!mutasi.paraf_penyerah_url);
+    const canHandOver = !!reguPenyerah;
 
     if (compact && !formOpen) {
         // Phone (user, 2026-11-26): the unit's sheets as cards; Tambah opens the current shift's sheet,
@@ -387,6 +401,75 @@ function MutasiForm({
         return (
             <>
                 <Head title={`Lembar Mutasi Operator - ${unit.name}`} />
+                {pending_receive.length > 0 && (
+                    <div className="flex flex-col gap-2 px-4 pt-3">
+                        {pending_receive.map((item) => {
+                            const quickRegu =
+                                me.regu && me.regu !== item.regu_penyerah
+                                    ? me.regu
+                                    : null;
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    className="flex flex-col gap-2.5 rounded-2xl border border-sky-300 bg-sky-50/90 p-3.5 text-sky-950 shadow-xs dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100"
+                                >
+                                    <div className="flex items-start gap-2.5">
+                                        <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-sky-600/15 text-sky-700 dark:text-sky-300">
+                                            <BellRing className="size-4" />
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[13px] font-semibold">
+                                                Serah terima menunggu penerimaan
+                                            </p>
+                                            <p className="text-[12px] opacity-85">
+                                                {dateLabel(item.tanggal)} ·
+                                                Shift{' '}
+                                                <span className="capitalize">
+                                                    {item.shift}
+                                                </span>{' '}
+                                                · dari Regu{' '}
+                                                {item.regu_penyerah ?? '-'}
+                                                {item.penyerah_nama
+                                                    ? ` (${item.penyerah_nama})`
+                                                    : ''}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="flex-1 bg-white/80 dark:bg-background"
+                                            onClick={() =>
+                                                go({
+                                                    tanggal: item.tanggal,
+                                                    shift: item.shift,
+                                                    form: 1,
+                                                })
+                                            }
+                                        >
+                                            Lihat Lembar
+                                        </Button>
+                                        {quickRegu && (
+                                            <Button
+                                                size="sm"
+                                                disabled={saving}
+                                                className="flex-1 gap-1.5"
+                                                onClick={() =>
+                                                    terima(item.id, quickRegu)
+                                                }
+                                            >
+                                                <CheckCircle2 className="size-4" />
+                                                Terima Tugas
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
                 <MobileEntryList
                     heading="Lembar mutasi"
                     count={riwayat.length}
@@ -424,7 +507,7 @@ function MutasiForm({
                 phone={compact}
                 className={cn(
                     'flex flex-1 flex-col gap-4 p-4 md:p-6',
-                    compact && can_write && 'pb-28',
+                    compact && (can_write || can_receive) && 'pb-28',
                 )}
                 screen={{
                     title: `Mutasi ${dateLabel(filters.tanggal)}`,
@@ -433,17 +516,28 @@ function MutasiForm({
                     canWrite: can_write,
                     onSave: () => save(false),
                     saving,
-                    extraAction: can_write ? (
-                        <Button
-                            size="lg"
-                            onClick={() => save(true)}
-                            disabled={saving || !canHandOver}
-                            className="gap-1.5"
-                        >
-                            <Send className="size-4" />
-                            Serahkan
-                        </Button>
-                    ) : undefined,
+                    extraAction:
+                        can_receive && mutasi.status === 'diserahkan' ? (
+                            <Button
+                                size="lg"
+                                onClick={() => terima()}
+                                disabled={saving || !reguPenerima || dirty}
+                                className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                            >
+                                <CheckCircle2 className="size-4" />
+                                Terima Tugas
+                            </Button>
+                        ) : can_write ? (
+                            <Button
+                                size="lg"
+                                onClick={() => save(true)}
+                                disabled={saving || !canHandOver}
+                                className="gap-1.5"
+                            >
+                                <Send className="size-4" />
+                                Serahkan
+                            </Button>
+                        ) : undefined,
                 }}
             >
                 <PageHeader
@@ -451,37 +545,52 @@ function MutasiForm({
                     description={`Logbook serah terima tugas antar regu — ${unit.name}.`}
                     actions={
                         mutasi.id !== null ? (
-                            <div className="flex flex-wrap gap-2">
+                            compact ? (
                                 <Button
                                     variant="outline"
+                                    size="lg"
                                     onClick={() =>
-                                        window.open(
-                                            mutasiRoutes.pdf(
-                                                mutasi.id as number,
-                                            ).url,
-                                            '_blank',
+                                        router.get(
+                                            `/operator/mutasi/${mutasi.id}/preview`,
                                         )
                                     }
-                                    className="gap-1.5"
+                                    className="w-full justify-center gap-2 border-rose-200 bg-rose-50/70 font-semibold text-rose-700 hover:bg-rose-100/80 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-300"
                                 >
-                                    <FileDown className="size-4 text-rose-600" />
-                                    Export PDF
+                                    <FileDown className="size-4 text-rose-600 dark:text-rose-400" />
+                                    Export PDF (Pratinjau)
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    onClick={exportExcel}
-                                    disabled={exporting}
-                                    className="gap-1.5"
-                                    title={
-                                        dirty
-                                            ? 'Excel memakai data yang sudah tersimpan'
-                                            : undefined
-                                    }
-                                >
-                                    <FileSpreadsheet className="size-4 text-emerald-600" />
-                                    {exporting ? 'Menyiapkan…' : 'Export Excel'}
-                                </Button>
-                            </div>
+                            ) : (
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                            router.get(
+                                                `/operator/mutasi/${mutasi.id}/preview`,
+                                            )
+                                        }
+                                        className="gap-1.5"
+                                    >
+                                        <FileDown className="size-4 text-rose-600" />
+                                        Export PDF
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        onClick={exportExcel}
+                                        disabled={exporting}
+                                        className="gap-1.5"
+                                        title={
+                                            dirty
+                                                ? 'Excel memakai data yang sudah tersimpan'
+                                                : undefined
+                                        }
+                                    >
+                                        <FileSpreadsheet className="size-4 text-emerald-600" />
+                                        {exporting
+                                            ? 'Menyiapkan…'
+                                            : 'Export Excel'}
+                                    </Button>
+                                </div>
+                            )
                         ) : undefined
                     }
                 />
@@ -582,6 +691,53 @@ function MutasiForm({
                         </p>
                     )}
                 </div>
+
+                {can_receive && mutasi.status === 'diserahkan' && (
+                    <div className="flex flex-col gap-3 rounded-xl border border-sky-300 bg-sky-50/90 p-3.5 text-sky-950 shadow-xs sm:flex-row sm:items-center sm:justify-between dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+                        <div className="flex items-start gap-2.5">
+                            <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-sky-600/15 text-sky-700 dark:text-sky-300">
+                                <BellRing className="size-4" />
+                            </span>
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold">
+                                    Menunggu Penerimaan Serah Terima Tugas
+                                </p>
+                                <p className="text-xs opacity-85">
+                                    Diserahkan oleh Regu{' '}
+                                    {mutasi.regu_penyerah ?? '-'}
+                                    {mutasi.penyerah_nama
+                                        ? ` (${mutasi.penyerah_nama})`
+                                        : ''}
+                                    {mutasi.diserahkan_at
+                                        ? ` · ${timeOf(mutasi.diserahkan_at)}`
+                                        : ''}
+                                    . Tanda tangan otomatis diambil dari profil
+                                    Anda.
+                                </p>
+                            </div>
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={() => terima()}
+                            disabled={saving || !reguPenerima || dirty}
+                            className="w-full shrink-0 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
+                            title={
+                                dirty
+                                    ? 'Simpan perubahan dulu'
+                                    : !reguPenerima
+                                      ? 'Pilih regu penerima di bagian Serah Terima'
+                                      : undefined
+                            }
+                        >
+                            <CheckCircle2 className="size-4" />
+                            {saving
+                                ? 'Menerima…'
+                                : reguPenerima
+                                  ? `Terima Tugas (Regu ${reguPenerima})`
+                                  : 'Terima Tugas'}
+                        </Button>
+                    </div>
+                )}
 
                 {compact ? (
                 <>
@@ -1516,7 +1672,7 @@ function MutasiForm({
                 <Section
                     icon={<Handshake className="size-4" />}
                     title="Serah Terima Tugas"
-                    hint="Regu penyerah paraf lalu serahkan; regu penerima paraf untuk menerima tugas."
+                    hint="Tanda tangan otomatis diambil dari data tanda tangan profil. Regu penyerah klik Serahkan, regu penerima cukup klik Terima Tugas."
                 >
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                         <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
@@ -1550,27 +1706,24 @@ function MutasiForm({
                                 placeholder="Nama operator"
                                 className="h-10"
                             />
-                            {mutasi.paraf_penyerah_url && (
-                                <Signed
-                                    url={mutasi.paraf_penyerah_url}
-                                    caption={`Diserahkan ${timeOf(mutasi.diserahkan_at)}`}
-                                />
-                            )}
-                            {!locked && (
-                                <>
-                                    {mutasi.paraf_penyerah_url && (
-                                        <p className="text-xs text-muted-foreground">
-                                            Buat paraf baru di bawah bila ingin
-                                            mengganti.
-                                        </p>
-                                    )}
-                                    <SignaturePad onChange={setParaf} />
-                                    {errors.paraf && (
-                                        <p className="text-sm text-destructive">
-                                            {errors.paraf}
-                                        </p>
-                                    )}
-                                </>
+                            {mutasi.diserahkan_at ? (
+                                mutasi.paraf_penyerah_url ? (
+                                    <Signed
+                                        url={mutasi.paraf_penyerah_url}
+                                        caption={`Diserahkan ${timeOf(mutasi.diserahkan_at)}`}
+                                    />
+                                ) : (
+                                    <p className="text-xs text-muted-foreground">
+                                        Diserahkan {timeOf(mutasi.diserahkan_at)}
+                                    </p>
+                                )
+                            ) : (
+                                !locked && (
+                                    <ProfileSignaturePreview
+                                        signatureUrl={me.signature_url}
+                                        hasSignature={me.has_signature}
+                                    />
+                                )
                             )}
                         </div>
 
@@ -1589,11 +1742,15 @@ function MutasiForm({
                                             ? ` · ${mutasi.penerima_nama}`
                                             : ''}
                                     </p>
-                                    {mutasi.paraf_penerima_url && (
+                                    {mutasi.paraf_penerima_url ? (
                                         <Signed
                                             url={mutasi.paraf_penerima_url}
                                             caption={`Diterima ${timeOf(mutasi.diterima_at)}`}
                                         />
+                                    ) : (
+                                        <p className="text-xs text-muted-foreground">
+                                            Diterima {timeOf(mutasi.diterima_at)}
+                                        </p>
                                     )}
                                 </>
                             ) : can_receive ? (
@@ -1624,16 +1781,16 @@ function MutasiForm({
                                         placeholder="Nama operator penerima"
                                         className="h-10"
                                     />
-                                    <SignaturePad onChange={setParafPenerima} />
+                                    <ProfileSignaturePreview
+                                        signatureUrl={me.signature_url}
+                                        hasSignature={me.has_signature}
+                                    />
                                     <Button
-                                        onClick={terima}
+                                        onClick={() => terima()}
                                         disabled={
-                                            saving ||
-                                            !reguPenerima ||
-                                            !parafPenerima ||
-                                            dirty
+                                            saving || !reguPenerima || dirty
                                         }
-                                        className="gap-1.5"
+                                        className="gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
                                         title={
                                             dirty
                                                 ? 'Simpan perubahan dulu'
@@ -1647,8 +1804,8 @@ function MutasiForm({
                             ) : (
                                 <p className="text-sm text-muted-foreground">
                                     {mutasi.status === 'diserahkan'
-                                        ? 'Menunggu regu penerima.'
-                                        : 'Dapat diisi setelah regu penyerah menyerahkan lembar ini.'}
+                                        ? 'Menunggu regu penerima mengonfirmasi penerimaan tugas.'
+                                        : 'Dapat diterima setelah regu penyerah menyerahkan lembar ini.'}
                                 </p>
                             )}
                         </div>
@@ -1673,7 +1830,7 @@ function MutasiForm({
                             title={
                                 canHandOver
                                     ? undefined
-                                    : 'Pilih regu penyerah dan buat paraf'
+                                    : 'Pilih regu penyerah terlebih dahulu'
                             }
                         >
                             <Send className="size-4" />
@@ -1942,6 +2099,48 @@ function MachineList({
                     </p>
                 ))
             )}
+        </div>
+    );
+}
+
+function ProfileSignaturePreview({
+    signatureUrl,
+    hasSignature,
+}: {
+    signatureUrl?: string | null;
+    hasSignature?: boolean;
+}) {
+    if (hasSignature && signatureUrl) {
+        return (
+            <div className="flex items-center gap-3 rounded-lg border border-border/80 bg-muted/30 p-2.5">
+                <div className="flex h-12 w-28 shrink-0 items-center justify-center rounded border border-border bg-white p-1">
+                    <img
+                        src={signatureUrl}
+                        alt="Tanda tangan profil"
+                        className="max-h-10 max-w-[6.5rem] object-contain"
+                    />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                    Tanda tangan otomatis diambil dari data tanda tangan profil
+                    Anda.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex items-start gap-2 rounded-lg border border-dashed border-amber-400/70 bg-amber-50/70 p-2.5 text-xs text-amber-900 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-200">
+            <PenLine className="mt-0.5 size-3.5 shrink-0" />
+            <span>
+                Tanda tangan profil belum diatur.{' '}
+                <Link
+                    href="/settings/profile"
+                    className="font-semibold underline underline-offset-2"
+                >
+                    Atur di Profil & Pengaturan
+                </Link>{' '}
+                agar otomatis tampil saat serah terima.
+            </span>
         </div>
     );
 }

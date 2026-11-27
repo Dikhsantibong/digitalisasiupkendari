@@ -32,12 +32,14 @@ import type {
 } from '@/components/dashboard/charts';
 import { EmptyState } from '@/components/empty-state';
 import {
+    MutasiQueue,
     ReportQueue,
     RequestQueue,
     SignedList,
 } from '@/components/laporan/approval-inbox';
 import type {
     HistoryItem,
+    MutasiHandoverItem,
     QueueItem,
     RequestItem,
 } from '@/components/laporan/approval-inbox';
@@ -209,10 +211,11 @@ type Props = {
         service_unit: string | null;
         installed_capacity_mw: string | null;
     }[];
-    /** Team Leader / Koordinator / Project Leader: their approval inbox (null = approves nothing). */
+    /** Team Leader / Koordinator / Project Leader / Leader Shift: their approval inbox (null = approves nothing). */
     approvals: {
         queue: QueueItem[];
         requests: RequestItem[];
+        mutasi_handovers?: MutasiHandoverItem[];
         acknowledgements: HistoryItem[];
     } | null;
     /** Input menus of the viewer's modules still incomplete this month. */
@@ -948,6 +951,19 @@ export default function Dashboard(props: Props) {
                                     items={approvals.queue}
                                     emptyText="Tidak ada laporan yang menunggu persetujuan Anda."
                                 />
+                                {approvals.mutasi_handovers &&
+                                    approvals.mutasi_handovers.length > 0 && (
+                                        <div className="border-t border-border">
+                                            <p className="px-4 pt-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                                Serah terima lembar mutasi
+                                            </p>
+                                            <MutasiQueue
+                                                items={
+                                                    approvals.mutasi_handovers
+                                                }
+                                            />
+                                        </div>
+                                    )}
                                 {approvals.requests.length > 0 && (
                                     <div className="border-t border-border">
                                         <p className="px-4 pt-3 text-xs font-semibold tracking-wide text-muted-foreground uppercase">

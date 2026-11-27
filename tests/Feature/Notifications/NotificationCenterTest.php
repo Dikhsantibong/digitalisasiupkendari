@@ -40,9 +40,9 @@ class NotificationCenterTest extends TestCase
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('notifications/index')
-                ->has('notifications.data', 1)
-                ->where('notifications.data.0.title', 'Milik saya')
-                ->where('notifications.data.0.read', false)
+                ->has('items.data', 1)
+                ->where('items.data.0.title', 'Milik saya')
+                ->where('items.data.0.read', false)
                 ->where('unread_by_module.operator', 1)
                 ->where('settings.digest_time', '06:30')
                 ->has('settings.categories', count(NotificationCategory::cases())));
@@ -56,11 +56,25 @@ class NotificationCenterTest extends TestCase
 
         $this->actingAs($this->user)
             ->get(route('notifications.index', ['module' => 'operasi']))
-            ->assertInertia(fn ($page) => $page->has('notifications.data', 1)->where('notifications.data.0.title', 'Jadwal'));
+            ->assertInertia(fn ($page) => $page->has('items.data', 1)->where('items.data.0.title', 'Jadwal'));
 
         $this->actingAs($this->user)
             ->get(route('notifications.index', ['status' => 'unread']))
-            ->assertInertia(fn ($page) => $page->has('notifications.data', 1)->where('notifications.data.0.title', 'Absen'));
+            ->assertInertia(fn ($page) => $page->has('items.data', 1)->where('items.data.0.title', 'Absen'));
+    }
+
+    public function test_the_notifications_page_keeps_the_shared_bell_and_push_key(): void
+    {
+        // The page's list must not shadow the shared prop: the "Izinkan notifikasi" button needs the push key.
+        config(['webpush.vapid.public_key' => 'BTestPublicKey']);
+        $this->notify($this->user, 'operator', 'Satu');
+
+        $this->actingAs($this->user)
+            ->get(route('notifications.index'))
+            ->assertInertia(fn ($page) => $page
+                ->where('notifications.push_public_key', 'BTestPublicKey')
+                ->where('notifications.unread', 1)
+                ->has('items.data', 1));
     }
 
     public function test_the_bell_shares_the_unread_count_and_the_feed(): void
@@ -156,6 +170,32 @@ class NotificationCenterTest extends TestCase
 
         $this->actingAs($this->other)->deleteJson(route('notifications.push.destroy'), ['endpoint' => $subscription['endpoint']])->assertOk();
         $this->assertSame(0, $this->other->pushSubscriptions()->count());
+    }
+
+    public function test_a_long_edge_windows_endpoint_is_accepted(): void
+    {
+        // Edge on Windows subscribes through WNS with endpoints longer than 500 characters.
+        $endpoint = 'https://wns2-sg2p.notify.windows.com/w/?token='.str_repeat('BQYAAADx', 90);
+        $this->assertGreaterThan(500, strlen($endpoint));
+
+        $this->actingAs($this->user)->postJson(route('notifications.push.store'), [
+            'endpoint' => $endpoint,
+            'keys' => ['p256dh' => 'BPublicKey', 'auth' => 'AuthSecret'],
+            'contentEncoding' => 'aes128gcm',
+        ])->assertOk()->assertJsonPath('subscribed', true);
+        $this->assertSame($endpoint, $this->user->pushSubscriptions()->value('endpoint'));
+
+        $this->actingAs($this->user)->deleteJson(route('notifications.push.destroy'), ['endpoint' => $endpoint])->assertOk();
+        $this->assertSame(0, $this->user->pushSubscriptions()->count());
+    }
+
+    public function test_an_invalid_subscription_is_rejected(): void
+    {
+        $this->actingAs($this->user)->postJson(route('notifications.push.store'), [
+            'endpoint' => 'bukan-url',
+            'keys' => ['p256dh' => 'BPublicKey'],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['endpoint', 'keys.auth']);
+        $this->assertSame(0, $this->user->pushSubscriptions()->count());
     }
 
     public function test_the_test_notification_reaches_the_bell(): void
