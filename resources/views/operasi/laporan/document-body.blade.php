@@ -84,7 +84,7 @@
         ['num' => '', 'title' => '- Jadwal pemeriksaan instalasi blackstart', 'anchor' => 'sec-4-8', 'indent' => true],
         ['num' => '', 'title' => '- Jadwal pelaksanaan performance test mesin pembangkit', 'anchor' => 'sec-4-9', 'indent' => true],
         ['num' => '', 'title' => '- Pembuatan data teknis', 'anchor' => 'sec-4-10', 'indent' => true],
-        ['num' => '', 'title' => '- Checklist commissioning test mesin pembangkit', 'anchor' => 'sec-4-11', 'indent' => true],
+        ['num' => '', 'title' => '- Jadwal pelaksanaan commissioning test mesin pembangkit', 'anchor' => 'sec-4-11', 'indent' => true],
         ['num' => '', 'title' => '- Pembuatan patrol check', 'anchor' => 'sec-4-12', 'indent' => true],
         ['num' => '', 'title' => '- Laporan Unsafe Action & Unsafe Condition', 'anchor' => 'sec-4-13', 'indent' => true],
         ['num' => '', 'title' => '- Laporan 5S5R', 'anchor' => 'sec-4-14', 'indent' => true],
@@ -451,7 +451,7 @@
 
 <div class="page-break"></div>
 
-{{-- 11. Checklist commissioning test mesin pembangkit --}}
+{{-- 11. Jadwal pelaksanaan commissioning test mesin pembangkit --}}
 <div class="op-section op-landscape" id="sec-4-11">
     @include('operasi.laporan.partials.table-fragment', ['part' => $table('commissioning')])
 </div>

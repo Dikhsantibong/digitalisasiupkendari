@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Operasi;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
-use App\Models\Employee;
+use App\Models\Machine;
 use App\Models\OperasiCommissioningTest;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
@@ -14,37 +14,29 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class JadwalCommissioningTestController extends Controller
 {
-    private const DEFAULT_SECTIONS = [
-        [
-            'section' => 'PERSIAPAN',
-            'items' => [
-                'Periksa dan pastikan semua PMT Feeder, Generator dan coupling dalam posisi OPEN',
-                'Pastikan Kompresor diesel dan elektrik dlaam posisi standby',
-                'Periksa dan pastikan saklar alat bantu semua mesin pada posisi OFF atau AUTO',
-                'Pastikan kondisi PMT Trafo dan PMT Generator dalam kondisi OPEN',
-                'Pastikan Tabung udara terisi dan cukup untuk BLACK START mesin Daihatsu 1.',
-                'Pastikan sistem penunjang Mesin Daihatsu kondisi siap dioperasikan',
-                'Operasikan salah satu mesin Daihatsu untuk suplai PS',
-                'Pastikan parameter operasi mesin Daihatsu (suplay PS) dalam kondisi aman',
-            ],
-        ],
-        [
-            'section' => 'PARAREL GENERATOR',
-            'items' => [
-                'Operasikan salah satu mesin MaK',
-                'Tegangan nominal generator terpenuhi dan bisa diatur melalui voltage regulator',
-                'Pararel generator',
-                'Atur beban dasar',
-                'Atur cos phi',
-                'UPB Kendari Koordinasi dengan piket GI Kolaka agar ON PMT salah satu Feeder',
-            ],
-        ],
+    private const DEFAULT_SECTION = 'A. PEMBUATAN DATA TEKNIKS';
+
+    private const MONTHS = [
+        'JANUARY',
+        'FEBRUARY',
+        'MARCH',
+        'APRIL',
+        'MAY',
+        'JUNE',
+        'JULY',
+        'AUGUST',
+        'SEPTEMBER',
+        'OCTOBER',
+        'NOVEMBER',
+        'DECEMBER',
     ];
 
     public function __construct(private readonly ActivityLogger $activityLogger) {}
@@ -66,59 +58,35 @@ class JadwalCommissioningTestController extends Controller
         abort_unless($user->canAccessUnit($unit), 403);
 
         $now = Carbon::now();
-        $month = (int) ($request->integer('month') ?: $now->month);
-        $month = max(1, min(12, $month));
         $year = (int) ($request->integer('year') ?: $now->year);
 
-        // Personil unit untuk rekomendasi PIC
-        $employees = Employee::query()
-            ->where('unit_id', $unit->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->pluck('name')
-            ->all();
+        $machineList = $this->machinesOf($unit)->map(fn (Machine $m): array => [
+            'id' => $m->id,
+            'name' => mb_strtoupper($m->name),
+        ])->all();
 
         $savedRecords = OperasiCommissioningTest::query()
+            ->with('machine:id,name')
             ->where('unit_id', $unit->id)
             ->where('year', $year)
-            ->where('month', $month)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
 
-        $catatan = 'disesuaikan dengan kondisi peralatan unit/sentral kit';
-
         if ($savedRecords->isEmpty()) {
-            $rows = [];
-            $runningIdx = 0;
-            foreach (self::DEFAULT_SECTIONS as $sec) {
-                foreach ($sec['items'] as $itemIdx => $kegiatan) {
-                    $rows[] = [
-                        'id' => null,
-                        'section' => $sec['section'],
-                        'no_urut' => $itemIdx + 1,
-                        'kegiatan' => $kegiatan,
-                        'status' => null,
-                        'pic' => '',
-                        'paraf' => '',
-                    ];
-                    $runningIdx++;
-                }
-            }
+            $rows = array_map(fn (array $row): array => ['id' => null, ...$row], $this->rowsFromMaster($unit));
         } else {
-            $firstWithCatatan = $savedRecords->first(fn ($r) => ! empty($r->catatan));
-            if ($firstWithCatatan) {
-                $catatan = $firstWithCatatan->catatan;
-            }
-
-            $rows = $savedRecords->map(fn (OperasiCommissioningTest $r): array => [
+            $rows = $savedRecords->map(fn (OperasiCommissioningTest $r, int $idx): array => [
                 'id' => $r->id,
-                'section' => $r->section,
-                'no_urut' => $r->no_urut,
-                'kegiatan' => $r->kegiatan,
-                'status' => $r->status,
-                'pic' => $r->pic ?? '',
-                'paraf' => $r->paraf ?? '',
+                'machine_id' => $r->machine_id,
+                'no_urut' => $r->no_urut ?: ($idx + 1),
+                'nama_mesin' => $r->displayMachineName(),
+                'section' => $r->section ?: self::DEFAULT_SECTION,
+                'beban_50' => array_values((array) ($r->beban_50 ?? [])),
+                'beban_75' => array_values((array) ($r->beban_75 ?? [])),
+                'beban_100' => array_values((array) ($r->beban_100 ?? [])),
+                'realisasi' => array_values((array) ($r->realisasi ?? [])),
+                'keterangan' => $r->keterangan ?? '',
             ])->all();
         }
 
@@ -131,16 +99,14 @@ class JadwalCommissioningTestController extends Controller
             ],
             'filters' => [
                 'unit_id' => $unit->id,
-                'month' => $month,
                 'year' => $year,
             ],
             'options' => [
                 'units' => $units->map(fn (Unit $u): array => ['id' => $u->id, 'name' => $u->name])->all(),
                 'years' => range($now->year - 3, $now->year + 1),
             ],
-            'employees' => $employees,
+            'machines' => $machineList,
             'rows' => $rows,
-            'catatan' => $catatan,
             'can_write' => $user->hasPermissionTo(PermissionName::OperasiInputWrite),
         ]);
     }
@@ -156,88 +122,83 @@ class JadwalCommissioningTestController extends Controller
 
         $validated = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
-            'month' => ['required', 'integer', 'between:1,12'],
             'year' => ['required', 'integer', 'between:2000,2100'],
-            'catatan' => ['nullable', 'string', 'max:1000'],
             'rows' => ['array'],
             'rows.*.id' => ['nullable', 'integer'],
-            'rows.*.section' => ['required', 'string', 'max:100'],
+            'rows.*.machine_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('machines', 'id')->where('unit_id', $unit->id),
+            ],
             'rows.*.no_urut' => ['nullable', 'integer'],
-            'rows.*.kegiatan' => ['required', 'string', 'max:500'],
-            'rows.*.status' => ['nullable', 'string', 'max:50'],
-            'rows.*.pic' => ['nullable', 'string', 'max:255'],
-            'rows.*.paraf' => ['nullable', 'string', 'max:50'],
+            'rows.*.nama_mesin' => ['required', 'string', 'max:255'],
+            'rows.*.section' => ['nullable', 'string', 'max:255'],
+            'rows.*.beban_50' => ['nullable', 'array'],
+            'rows.*.beban_50.*' => ['string', 'regex:/^(?:[1-9]|1[0-2])-[1-4]$/'],
+            'rows.*.beban_75' => ['nullable', 'array'],
+            'rows.*.beban_75.*' => ['string', 'regex:/^(?:[1-9]|1[0-2])-[1-4]$/'],
+            'rows.*.beban_100' => ['nullable', 'array'],
+            'rows.*.beban_100.*' => ['string', 'regex:/^(?:[1-9]|1[0-2])-[1-4]$/'],
+            'rows.*.realisasi' => ['nullable', 'array'],
+            'rows.*.realisasi.*' => ['string', 'regex:/^(?:[1-9]|1[0-2])-[1-4]$/'],
+            'rows.*.keterangan' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $month = (int) $validated['month'];
         $year = (int) $validated['year'];
-        $catatan = $validated['catatan'] ?? 'disesuaikan dengan kondisi peralatan unit/sentral kit';
+        $cleanWeeks = static fn ($arr): array => is_array($arr)
+            ? array_values(array_unique(array_filter($arr, static fn ($v): bool => is_string($v) && trim($v) !== '')))
+            : [];
 
-        DB::transaction(function () use ($validated, $user, $unitId, $month, $year, $catatan): void {
-            $existingIds = [];
+        $machineNames = Machine::query()
+            ->where('unit_id', $unit->id)
+            ->pluck('name', 'id')
+            ->map(fn (string $name): string => mb_strtoupper($name))
+            ->all();
+
+        DB::transaction(function () use ($validated, $unit, $year, $user, $cleanWeeks, $machineNames): void {
+            OperasiCommissioningTest::query()
+                ->where('unit_id', $unit->id)
+                ->where('year', $year)
+                ->delete();
 
             foreach ($validated['rows'] ?? [] as $index => $row) {
-                if (! empty($row['id'])) {
-                    $record = OperasiCommissioningTest::query()
-                        ->where('id', $row['id'])
-                        ->where('unit_id', $unitId)
-                        ->first();
+                $machineId = ! empty($row['machine_id']) ? (int) $row['machine_id'] : null;
+                $namaMesin = $machineId && isset($machineNames[$machineId])
+                    ? $machineNames[$machineId]
+                    : mb_strtoupper(trim((string) ($row['nama_mesin'] ?? '')));
 
-                    if ($record) {
-                        $record->update([
-                            'section' => $row['section'],
-                            'no_urut' => $row['no_urut'] ?? ($index + 1),
-                            'kegiatan' => $row['kegiatan'],
-                            'status' => $row['status'] ?? null,
-                            'pic' => $row['pic'] ?? null,
-                            'paraf' => $row['paraf'] ?? null,
-                            'catatan' => $catatan,
-                            'sort_order' => $index,
-                            'input_by' => $user->id,
-                        ]);
-                        $existingIds[] = $record->id;
-
-                        continue;
-                    }
+                if ($namaMesin === '') {
+                    continue;
                 }
 
-                $newRecord = OperasiCommissioningTest::create([
-                    'unit_id' => $unitId,
+                OperasiCommissioningTest::create([
+                    'unit_id' => $unit->id,
+                    'machine_id' => $machineId,
                     'year' => $year,
-                    'month' => $month,
-                    'section' => $row['section'],
                     'no_urut' => $row['no_urut'] ?? ($index + 1),
-                    'kegiatan' => $row['kegiatan'],
-                    'status' => $row['status'] ?? null,
-                    'pic' => $row['pic'] ?? null,
-                    'paraf' => $row['paraf'] ?? null,
-                    'catatan' => $catatan,
+                    'nama_mesin' => $namaMesin,
+                    'section' => trim((string) ($row['section'] ?? '')) ?: self::DEFAULT_SECTION,
+                    'beban_50' => $cleanWeeks($row['beban_50'] ?? []),
+                    'beban_75' => $cleanWeeks($row['beban_75'] ?? []),
+                    'beban_100' => $cleanWeeks($row['beban_100'] ?? []),
+                    'realisasi' => $cleanWeeks($row['realisasi'] ?? []),
+                    'keterangan' => $row['keterangan'] ?? null,
                     'sort_order' => $index,
                     'input_by' => $user->id,
                 ]);
-                $existingIds[] = $newRecord->id;
-            }
-
-            if (! empty($existingIds)) {
-                OperasiCommissioningTest::query()
-                    ->where('unit_id', $unitId)
-                    ->where('year', $year)
-                    ->where('month', $month)
-                    ->whereNotIn('id', $existingIds)
-                    ->delete();
             }
         });
 
         $this->activityLogger->log(
             ActivityEvent::Updated,
-            "Menyimpan Jadwal Pelaksanaan Commissioning Test Mesin Pembangkit {$unit->name} {$month}/{$year}",
+            "Menyimpan Jadwal Pelaksanaan Commissioning Test Mesin {$unit->name} {$year}",
             $unit,
             unit: $unit->id,
         );
 
         return back()->with('toast', [
             'type' => 'success',
-            'message' => 'Jadwal Pelaksanaan Commissioning Test berhasil disimpan.',
+            'message' => 'Jadwal Pelaksanaan Commissioning Test Mesin berhasil disimpan.',
         ]);
     }
 
@@ -255,82 +216,71 @@ class JadwalCommissioningTestController extends Controller
         abort_unless($user->canAccessUnit($unit), 403);
 
         $now = Carbon::now();
-        $month = (int) ($request->integer('month') ?: $now->month);
-        $month = max(1, min(12, $month));
         $year = (int) ($request->integer('year') ?: $now->year);
 
-        [$view, $data] = $this->pdfView($unit, $month, $year);
+        [$view, $data] = $this->pdfView($unit, $year);
         $pdf = Pdf::loadView($view, $data)->setPaper('a4', 'landscape');
 
         $safeUnitName = str_replace(' ', '_', $unit->name);
 
-        return $pdf->download("Jadwal_Commissioning_Test_{$safeUnitName}_{$month}_{$year}.pdf");
+        return $pdf->download("Jadwal_Commissioning_Test_Mesin_{$safeUnitName}_{$year}.pdf");
     }
 
     /**
-     * The PDF view and its data for one unit & period — shared by the PDF and
-     * the Laporan Operasi Pembangkit document.
+     * The PDF view and its data for one unit & year — shared by PDF export
+     * and the Laporan Operasi Pembangkit document.
      *
      * @return array{0: string, 1: array<string, mixed>}
      */
-    public function pdfView(Unit $unit, int $month, int $year): array
+    public function pdfView(Unit $unit, int $monthOrYear, ?int $year = null): array
     {
+        $resolvedYear = $year ?? $monthOrYear;
+
         $records = OperasiCommissioningTest::query()
+            ->with('machine:id,name')
             ->where('unit_id', $unit->id)
-            ->where('year', $year)
-            ->where('month', $month)
+            ->where('year', $resolvedYear)
             ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
 
-        $catatan = 'disesuaikan dengan kondisi peralatan unit/sentral kit';
-
         if ($records->isEmpty()) {
-            $sections = [];
-            foreach (self::DEFAULT_SECTIONS as $sec) {
-                $items = [];
-                foreach ($sec['items'] as $idx => $kegiatan) {
-                    $items[] = [
-                        'no_urut' => $idx + 1,
-                        'kegiatan' => $kegiatan,
-                        'status' => null,
-                        'pic' => '',
-                        'paraf' => '',
-                    ];
-                }
-                $sections[] = [
-                    'section' => $sec['section'],
-                    'items' => $items,
-                ];
-            }
+            $rows = $this->rowsFromMaster($unit);
         } else {
-            $firstWithCatatan = $records->first(fn ($r) => ! empty($r->catatan));
-            if ($firstWithCatatan) {
-                $catatan = $firstWithCatatan->catatan;
-            }
+            $rows = $records->map(fn (OperasiCommissioningTest $r, int $idx): array => [
+                'machine_id' => $r->machine_id,
+                'no_urut' => $r->no_urut ?: ($idx + 1),
+                'nama_mesin' => $r->displayMachineName(),
+                'section' => $r->section ?: self::DEFAULT_SECTION,
+                'beban_50' => array_values((array) ($r->beban_50 ?? [])),
+                'beban_75' => array_values((array) ($r->beban_75 ?? [])),
+                'beban_100' => array_values((array) ($r->beban_100 ?? [])),
+                'realisasi' => array_values((array) ($r->realisasi ?? [])),
+                'keterangan' => $r->keterangan ?? '',
+            ])->all();
+        }
 
-            $grouped = $records->groupBy('section');
-            $sections = [];
-            foreach ($grouped as $secTitle => $groupRecords) {
-                $sections[] = [
-                    'section' => $secTitle,
-                    'items' => $groupRecords->map(fn ($r) => [
-                        'no_urut' => $r->no_urut,
-                        'kegiatan' => $r->kegiatan,
-                        'status' => $r->status,
-                        'pic' => $r->pic ?? '',
-                        'paraf' => $r->paraf ?? '',
-                    ])->all(),
-                ];
+        $columnTotals = [];
+        for ($m = 1; $m <= 12; $m++) {
+            for ($w = 1; $w <= 4; $w++) {
+                $key = "{$m}-{$w}";
+                $count = 0;
+                foreach ($rows as $row) {
+                    if (in_array($key, (array) ($row['beban_50'] ?? []), true)) {
+                        $count++;
+                    }
+                    if (in_array($key, (array) ($row['beban_75'] ?? []), true)) {
+                        $count++;
+                    }
+                    if (in_array($key, (array) ($row['beban_100'] ?? []), true)) {
+                        $count++;
+                    }
+                }
+                $columnTotals[$key] = $count;
             }
         }
 
-        $monthNames = [
-            1 => 'JANUARI', 2 => 'FEBRUARI', 3 => 'MARET', 4 => 'APRIL',
-            5 => 'MEI', 6 => 'JUNI', 7 => 'JULI', 8 => 'AGUSTUS',
-            9 => 'SEPTEMBER', 10 => 'OKTOBER', 11 => 'NOVEMBER', 12 => 'DESEMBER',
-        ];
-        $monthName = $monthNames[$month] ?? '';
+        $grandTotal = array_sum($columnTotals);
 
         $logoLeftPath = public_path('logo/sidebar-logo.png');
         $logoRightPath = public_path('logo/mkp.jpg');
@@ -339,13 +289,48 @@ class JadwalCommissioningTestController extends Controller
 
         return ['operasi.jadwal.commissioning-test-pdf', [
             'unit' => $unit,
-            'month' => $month,
-            'year' => $year,
-            'monthName' => $monthName,
-            'sections' => $sections,
-            'catatan' => $catatan,
+            'year' => $resolvedYear,
+            'months' => self::MONTHS,
+            'rows' => $rows,
+            'has_saved' => $records->isNotEmpty(),
+            'columnTotals' => $columnTotals,
+            'grandTotal' => $grandTotal,
             'logoLeft' => $logoLeft,
             'logoRight' => $logoRight,
         ]];
+    }
+
+    /**
+     * Active generating machines for the unit from Master Data Mesin.
+     *
+     * @return Collection<int, Machine>
+     */
+    private function machinesOf(Unit $unit): Collection
+    {
+        return Machine::query()
+            ->where('unit_id', $unit->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+    }
+
+    /**
+     * Default rows pulled automatically from Master Data Mesin for unsaved unit-year schedules.
+     *
+     * @return list<array{machine_id: int, no_urut: int, nama_mesin: string, section: string, beban_50: list<string>, beban_75: list<string>, beban_100: list<string>, realisasi: list<string>, keterangan: string}>
+     */
+    private function rowsFromMaster(Unit $unit): array
+    {
+        return $this->machinesOf($unit)->values()->map(fn (Machine $machine, int $idx): array => [
+            'machine_id' => $machine->id,
+            'no_urut' => $idx + 1,
+            'nama_mesin' => mb_strtoupper($machine->name),
+            'section' => self::DEFAULT_SECTION,
+            'beban_50' => [],
+            'beban_75' => [],
+            'beban_100' => [],
+            'realisasi' => [],
+            'keterangan' => '',
+        ])->all();
     }
 }

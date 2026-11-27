@@ -27,6 +27,9 @@ Route::get('verifikasi-ttd/{ref}/{token}', [SignatureVerificationController::cla
     ->where('token', '[a-f0-9]+')
     ->name('signature.verify');
 
+// Lightweight session heartbeat check (returns 200 when active, 401 JSON when expired).
+Route::middleware(['auth'])->get('session/check', fn () => response()->json(['authenticated' => true]))->name('session.check');
+
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 

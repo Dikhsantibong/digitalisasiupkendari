@@ -1,23 +1,26 @@
 import { Head, router } from '@inertiajs/react';
 import {
+    Activity,
     ArrowLeft,
-    Check,
-    CheckCircle2,
     Download,
     FileSpreadsheet,
     Info,
     Plus,
     Printer,
+    RefreshCw,
     RotateCcw,
     Save,
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
-import { ChoiceChips } from '@/components/mobile/choice-chips';
 import {
-    OPERASI_MONTHS,
-    OperasiSelect,
-} from '@/components/operasi/filter-select';
+    MobileTimelineForm,
+    TimelineField,
+    weekColumnOf,
+    weekKeyOf,
+    YEAR_WEEK_DAYS,
+} from '@/components/mobile/timeline-form';
+import { OperasiSelect } from '@/components/operasi/filter-select';
 import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,7 +34,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import type { StyleSpec } from '@/lib/jadwal-excel';
 import {
@@ -44,18 +53,27 @@ import {
     SPECS,
     XLSX_COLORS,
 } from '@/lib/jadwal-excel';
+import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import commissioningTest from '@/routes/operasi/jadwal/commissioning-test';
 import type { IdName } from '@/types';
 
 type CommissioningRow = {
     id: number | null;
-    section: string;
+    machine_id: number | null;
     no_urut: number;
-    kegiatan: string;
-    status: string | null; // 'ON' | 'OF' | 'SIAP OPERASI' | 'ABNORMAL' | 'TIDAK SIAP OPERASI' | null
-    pic: string;
-    paraf: string;
+    nama_mesin: string;
+    section: string;
+    beban_50: string[];
+    beban_75: string[];
+    beban_100: string[];
+    realisasi?: string[];
+    keterangan?: string;
+};
+
+type MachineItem = {
+    id: number;
+    name: string;
 };
 
 type Props = {
@@ -67,32 +85,58 @@ type Props = {
     };
     filters: {
         unit_id: number;
-        month: number;
         year: number;
     };
     options: {
         units: IdName[];
         years: number[];
     };
-    employees: string[];
+    machines: MachineItem[];
     rows: CommissioningRow[];
-    catatan: string;
     can_write: boolean;
 };
 
-const STATUS_COLUMNS = [
-    { key: 'ON', label: 'ON', width: 'w-12' },
-    { key: 'OF', label: 'OF', width: 'w-12' },
-    { key: 'SIAP OPERASI', label: 'SIAP OPERASI', width: 'w-24' },
-    { key: 'ABNORMAL', label: 'ABNORMAL', width: 'w-20' },
-    { key: 'TIDAK SIAP OPERASI', label: 'TIDAK SIAP OPERASI', width: 'w-28' },
+const DEFAULT_SECTION = 'A. PEMBUATAN DATA TEKNIKS';
+const CUSTOM_MACHINE_OPTION = '__custom__';
+
+const BEBAN_CATEGORIES = [
+    {
+        key: '50',
+        label: 'Beban 50%',
+        onClass: 'border-amber-500 bg-amber-300 text-black',
+    },
+    {
+        key: '75',
+        label: 'Beban 75%',
+        onClass: 'border-orange-500 bg-orange-400 text-black',
+    },
+    {
+        key: '100',
+        label: 'Beban 100%',
+        onClass: 'border-emerald-600 bg-emerald-500 text-black',
+    },
+];
+
+const MONTH_NAMES = [
+    'JANUARY',
+    'FEBRUARY',
+    'MARCH',
+    'APRIL',
+    'MAY',
+    'JUNE',
+    'JULY',
+    'AUGUST',
+    'SEPTEMBER',
+    'OCTOBER',
+    'NOVEMBER',
+    'DECEMBER',
 ];
 
 const PRINT_CSS = `
 @media print {
     @page {
         size: A4 landscape;
-        margin: 6mm;
+        margin: 5mm;
     }
     body * {
         visibility: hidden !important;
@@ -116,11 +160,11 @@ const PRINT_CSS = `
     .print-table {
         width: 100% !important;
         border-collapse: collapse !important;
-        font-size: 8px !important;
+        font-size: 6.5px !important;
     }
     .print-table th, .print-table td {
         border: 1px solid #000 !important;
-        padding: 3px 2px !important;
+        padding: 1.5px 0.5px !important;
         text-align: center !important;
         vertical-align: middle !important;
     }
@@ -131,147 +175,257 @@ const PRINT_CSS = `
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    .print-section-header {
-        background-color: #f3f4f6 !important;
-        color: #000000 !important;
+    .print-marked-cell {
+        background-color: #fef08a !important;
         font-weight: bold !important;
-        text-align: left !important;
-        padding-left: 6px !important;
+        color: #000000 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .print-grand-total {
+        background-color: #00b0f0 !important;
+        font-weight: bold !important;
+        color: #000000 !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
 }
 `;
 
-export default function HarJadwalCommissioningTestPage({
+function splitSectionTitle(section: string): { prefix: string; label: string } {
+    const trimmed = section.trim();
+    const match = trimmed.match(/^([A-Z]+\.)\s+(.*)$/);
+
+    if (match) {
+        return { prefix: match[1], label: match[2] };
+    }
+
+    return { prefix: '', label: trimmed || 'PEMBUATAN DATA TEKNIKS' };
+}
+
+export default function JadwalCommissioningTestIndex({
     unit,
     filters,
     options,
-    employees,
+    machines,
     rows: initialRows,
-    catatan: initialCatatan,
     can_write,
 }: Props) {
     const [rows, setRows] = useState<CommissioningRow[]>(initialRows);
     const compact = useCompactLayout();
-    const [catatan, setCatatan] = useState(initialCatatan);
+    const [mobileEditing, setMobileEditing] = useState(false);
+    const [initialWeek] = useState(() => weekColumnOf(new Date()));
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
-    // Dialog state
+    // Dialog state for adding machine from Master Data Mesin or custom name
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [newKegiatan, setNewKegiatan] = useState('');
-    const [newSection, setNewSection] = useState('PERSIAPAN');
+    const [selectedMachineOption, setSelectedMachineOption] = useState<string>(
+        machines.length > 0 ? String(machines[0].id) : CUSTOM_MACHINE_OPTION,
+    );
+    const [newNamaMesin, setNewNamaMesin] = useState('');
+    const [newSection, setNewSection] = useState(DEFAULT_SECTION);
 
-    const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
-    const [lastSignature, setLastSignature] = useState(signature);
+    const machineById = useMemo(() => {
+        const map = new Map<number, string>();
+        machines.forEach((m) => map.set(m.id, m.name.toUpperCase()));
 
-    if (signature !== lastSignature) {
-        setLastSignature(signature);
-        setRows(initialRows);
-        setCatatan(initialCatatan);
-        setDirty(false);
-    }
+        return map;
+    }, [machines]);
 
-    const monthName = useMemo(() => {
-        return OPERASI_MONTHS[filters.month - 1] ?? '';
-    }, [filters.month]);
+    const missingMasterMachines = useMemo(() => {
+        const existingIds = new Set(
+            rows.map((r) => r.machine_id).filter((id): id is number => id !== null),
+        );
+
+        return machines.filter((m) => !existingIds.has(m.id));
+    }, [machines, rows]);
 
     const visit = (patch: Partial<Props['filters']>) => {
         router.get(
             commissioningTest.index().url,
             { ...filters, ...patch },
-            { preserveState: true, preserveScroll: true, replace: true },
+            { preserveState: false, preserveScroll: true },
         );
     };
 
-    // Toggle status column
-    const toggleStatus = (rowIndex: number, statusVal: string) => {
-        if (!can_write) {
-return;
-}
-
-        setRows((prev) =>
-            prev.map((r, idx) => {
-                if (idx !== rowIndex) {
-return r;
-}
-
-                const newStatus = r.status === statusVal ? null : statusVal;
-
-                return { ...r, status: newStatus };
-            }),
-        );
-        setDirty(true);
-    };
-
-    // Update text fields (kegiatan, pic, paraf)
-    const updateField = (
+    const handleToggleCell = (
         rowIndex: number,
-        field: keyof CommissioningRow,
-        value: string,
+        type: '50' | '75' | '100',
+        weekKey: string,
     ) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
+
+        setRows((prev) => {
+            const updated = [...prev];
+            const targetRow = { ...updated[rowIndex] };
+            const propName =
+                type === '50'
+                    ? 'beban_50'
+                    : type === '75'
+                      ? 'beban_75'
+                      : 'beban_100';
+            const currentArr = [...(targetRow[propName] || [])];
+            const existsIdx = currentArr.indexOf(weekKey);
+
+            if (existsIdx >= 0) {
+                currentArr.splice(existsIdx, 1);
+            } else {
+                currentArr.push(weekKey);
+            }
+
+            targetRow[propName] = currentArr;
+            updated[rowIndex] = targetRow;
+
+            return updated;
+        });
+        setDirty(true);
+    };
+
+    const handleUpdateName = (rowIndex: number, newName: string) => {
+        if (!can_write) {
+            return;
+        }
+
+        setRows((prev) => {
+            const updated = [...prev];
+            const existing = updated[rowIndex];
+            const linkedMasterName = existing.machine_id
+                ? machineById.get(existing.machine_id)
+                : undefined;
+            const matchesMaster =
+                linkedMasterName !== undefined &&
+                linkedMasterName === newName.trim().toUpperCase();
+
+            updated[rowIndex] = {
+                ...existing,
+                machine_id: matchesMaster ? existing.machine_id : null,
+                nama_mesin: newName,
+            };
+
+            return updated;
+        });
+        setDirty(true);
+    };
+
+    const handleSyncMasterMachines = () => {
+        if (!can_write || machines.length === 0) {
+            return;
+        }
+
+        setRows((prev) => {
+            const refreshed = prev.map((row) => {
+                if (row.machine_id !== null) {
+                    const masterName = machineById.get(row.machine_id);
+                    if (masterName) {
+                        return { ...row, nama_mesin: masterName };
+                    }
+                }
+
+                return row;
+            });
+
+            const existingIds = new Set(
+                refreshed
+                    .map((r) => r.machine_id)
+                    .filter((id): id is number => id !== null),
+            );
+
+            const additions: CommissioningRow[] = machines
+                .filter((m) => !existingIds.has(m.id))
+                .map((m, idx) => ({
+                    id: null,
+                    machine_id: m.id,
+                    no_urut: refreshed.length + idx + 1,
+                    nama_mesin: m.name.toUpperCase(),
+                    section: DEFAULT_SECTION,
+                    beban_50: [],
+                    beban_75: [],
+                    beban_100: [],
+                    realisasi: [],
+                    keterangan: '',
+                }));
+
+            return [...refreshed, ...additions].map((r, idx) => ({
+                ...r,
+                no_urut: idx + 1,
+            }));
+        });
+        setDirty(true);
+    };
+
+    const openAddDialog = () => {
+        const defaultTarget =
+            missingMasterMachines[0]?.id ??
+            machines[0]?.id ??
+            null;
+        setSelectedMachineOption(
+            defaultTarget !== null
+                ? String(defaultTarget)
+                : CUSTOM_MACHINE_OPTION,
+        );
+        setNewNamaMesin('');
+        setNewSection(DEFAULT_SECTION);
+        setIsAddOpen(true);
+    };
+
+    const handleAddMesin = () => {
+        const isCustom = selectedMachineOption === CUSTOM_MACHINE_OPTION;
+        const selectedMaster = !isCustom
+            ? machines.find((m) => String(m.id) === selectedMachineOption)
+            : undefined;
+        const finalName = selectedMaster
+            ? selectedMaster.name.toUpperCase()
+            : newNamaMesin.trim().toUpperCase();
+
+        if (!finalName) {
+            return;
+        }
+
+        setRows((prev) => [
+            ...prev,
+            {
+                id: null,
+                machine_id: selectedMaster ? selectedMaster.id : null,
+                no_urut: prev.length + 1,
+                nama_mesin: finalName,
+                section: newSection.trim().toUpperCase() || DEFAULT_SECTION,
+                beban_50: [],
+                beban_75: [],
+                beban_100: [],
+                realisasi: [],
+                keterangan: '',
+            },
+        ]);
+        setNewNamaMesin('');
+        setIsAddOpen(false);
+        setDirty(true);
+    };
+
+    const handleRemoveRow = (rowIndex: number) => {
+        if (!can_write) {
+            return;
+        }
 
         setRows((prev) =>
-            prev.map((r, idx) =>
-                idx === rowIndex ? { ...r, [field]: value } : r,
-            ),
+            prev
+                .filter((_, idx) => idx !== rowIndex)
+                .map((r, idx) => ({ ...r, no_urut: idx + 1 })),
         );
         setDirty(true);
     };
 
-    // Add activity
-    const handleAddRow = () => {
-        if (!newKegiatan.trim()) {
-return;
-}
-
-        setRows((prev) => {
-            const sectionItems = prev.filter((r) => r.section === newSection);
-
-            return [
-                ...prev,
-                {
-                    id: null,
-                    section: newSection,
-                    no_urut: sectionItems.length + 1,
-                    kegiatan: newKegiatan.trim(),
-                    status: null,
-                    pic: '',
-                    paraf: '',
-                },
-            ];
-        });
-        setDirty(true);
-        setIsAddOpen(false);
-        setNewKegiatan('');
-    };
-
-    // Remove row
-    const handleRemoveRow = (rowIndex: number) => {
-        if (!can_write) {
-return;
-}
-
-        setRows((prev) => prev.filter((_, idx) => idx !== rowIndex));
-        setDirty(true);
-    };
-
-    // Reset
     const handleReset = () => {
         setRows(initialRows);
-        setCatatan(initialCatatan);
         setDirty(false);
     };
 
-    // Save
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
 
@@ -279,17 +433,18 @@ return;
             commissioningTest.store().url,
             {
                 unit_id: filters.unit_id,
-                month: filters.month,
                 year: filters.year,
-                catatan: catatan,
                 rows: rows.map((r, idx) => ({
                     id: r.id,
-                    section: r.section,
-                    no_urut: r.no_urut || idx + 1,
-                    kegiatan: r.kegiatan,
-                    status: r.status,
-                    pic: r.pic,
-                    paraf: r.paraf,
+                    machine_id: r.machine_id,
+                    no_urut: idx + 1,
+                    nama_mesin: r.nama_mesin,
+                    section: r.section || DEFAULT_SECTION,
+                    beban_50: r.beban_50 || [],
+                    beban_75: r.beban_75 || [],
+                    beban_100: r.beban_100 || [],
+                    realisasi: r.realisasi || [],
+                    keterangan: r.keterangan || '',
                 })),
             },
             {
@@ -300,115 +455,148 @@ return;
         );
     };
 
-    // Print
-    const handlePrint = () => {
-        window.print();
-    };
-
-    // Grouping by section
-    const groupedSections = useMemo(() => {
-        const secMap = new Map<
-            string,
-            { row: CommissioningRow; originalIndex: number }[]
-        >();
-
-        rows.forEach((r, originalIndex) => {
-            const sec = r.section || 'PERSIAPAN';
-
-            if (!secMap.has(sec)) {
-                secMap.set(sec, []);
-            }
-
-            secMap.get(sec)!.push({ row: r, originalIndex });
-        });
-
-        const list: {
-            section: string;
-            items: { row: CommissioningRow; originalIndex: number }[];
-        }[] = [];
-
-        for (const [section, items] of secMap.entries()) {
-            list.push({ section, items });
-        }
-
-        return list;
+    const grandTotal = useMemo(() => {
+        return rows.reduce(
+            (sum, r) =>
+                sum +
+                (r.beban_50?.length || 0) +
+                (r.beban_75?.length || 0) +
+                (r.beban_100?.length || 0),
+            0,
+        );
     }, [rows]);
 
-    // Export Excel
     const handleExportExcel = async () => {
-        const headerRows: (string | number)[][] = [[], [], [], []];
+        const weekStart = 3;
+        const weekEnd = 50; // cols 3..50 (48 week columns)
+        const colJumlah = 51;
+        const totalCols = 52;
+        const headerTop = 4;
+        const headerMid = 5;
+        const headerBottom = 6;
+        const dataStart = 7;
 
-        // Column Titles
-        const rowH1: (string | number)[] = [
-            'NO',
-            'KEGIATAN',
-            'STATUS KESIAPAN PERALATAN',
-            '',
-            '',
-            '',
-            '',
-            'PARAF',
-            '',
-        ];
-        headerRows.push(rowH1);
+        const sheetData: (string | number)[][] = [[], [], [], []];
 
-        const rowH2: (string | number)[] = [
-            '',
-            '',
-            'ON',
-            'OF',
-            'SIAP OPERASI',
-            'ABNORMAL',
-            'TIDAK SIAP OPERASI',
-            'PIC',
-            'PARAF',
-        ];
-        headerRows.push(rowH2);
+        // Header Row 1: NO | MESIN PEMBANGKIT | BULAN (spanning col 2..51)
+        const rowH1: (string | number)[] = ['NO', 'MESIN PEMBANGKIT', 'BULAN'];
+        for (let c = 3; c < totalCols; c++) {
+            rowH1.push('');
+        }
+        sheetData.push(rowH1);
 
-        // Sections & Items
-        const sectionRowIdx = new Set<number>();
-        groupedSections.forEach((group) => {
-            sectionRowIdx.add(headerRows.length);
-            headerRows.push([group.section, '', '', '', '', '', '', '', '']);
+        // Header Row 2: [blank, blank, blank] + Months x4 + JUMLAH
+        const rowH2: (string | number)[] = ['', '', ''];
+        MONTH_NAMES.forEach((m) => {
+            rowH2.push(m, '', '', '');
+        });
+        rowH2.push('JUMLAH');
+        sheetData.push(rowH2);
 
-            group.items.forEach(({ row }) => {
-                const st = (row.status || '').toUpperCase();
-                const rowData: (string | number)[] = [
-                    row.no_urut,
-                    row.kegiatan,
-                    st === 'ON' ? '✓' : '',
-                    st === 'OF' || st === 'OFF' ? '✓' : '',
-                    st === 'SIAP OPERASI' ? '✓' : '',
-                    st === 'ABNORMAL' ? '✓' : '',
-                    st === 'TIDAK SIAP OPERASI' ? '✓' : '',
-                    row.pic || '',
-                    row.paraf || (row.pic ? '✓' : ''),
-                ];
-                headerRows.push(rowData);
-            });
+        // Header Row 3: [blank, blank, UJI BEBAN] + Weeks 1..4 + blank under JUMLAH
+        const rowH3: (string | number)[] = ['', '', 'UJI BEBAN'];
+        for (let m = 1; m <= 12; m++) {
+            rowH3.push(1, 2, 3, 4);
+        }
+        rowH3.push('');
+        sheetData.push(rowH3);
+
+        let currentRowIndex = dataStart;
+        const sectionRowIndices: number[] = [];
+        let currentSection: string | null = null;
+
+        rows.forEach((r, idx) => {
+            const section = r.section || DEFAULT_SECTION;
+
+            if (section !== currentSection) {
+                currentSection = section;
+                const { prefix, label } = splitSectionTitle(section);
+                const secRow: (string | number)[] = [prefix, label];
+                for (let c = 2; c < totalCols; c++) {
+                    secRow.push('');
+                }
+                sheetData.push(secRow);
+                sectionRowIndices.push(currentRowIndex);
+                currentRowIndex++;
+            }
+
+            const b50 = r.beban_50 || [];
+            const b75 = r.beban_75 || [];
+            const b100 = r.beban_100 || [];
+
+            const r50: (string | number)[] = [
+                r.no_urut || idx + 1,
+                r.nama_mesin,
+                '50%',
+            ];
+            for (let m = 1; m <= 12; m++) {
+                for (let w = 1; w <= 4; w++) {
+                    r50.push(b50.includes(`${m}-${w}`) ? 1 : '');
+                }
+            }
+            r50.push(b50.length);
+            sheetData.push(r50);
+            currentRowIndex++;
+
+            const r75: (string | number)[] = ['', '', '75%'];
+            for (let m = 1; m <= 12; m++) {
+                for (let w = 1; w <= 4; w++) {
+                    r75.push(b75.includes(`${m}-${w}`) ? 1 : '');
+                }
+            }
+            r75.push(b75.length);
+            sheetData.push(r75);
+            currentRowIndex++;
+
+            const r100: (string | number)[] = ['', '', '100%'];
+            for (let m = 1; m <= 12; m++) {
+                for (let w = 1; w <= 4; w++) {
+                    r100.push(b100.includes(`${m}-${w}`) ? 1 : '');
+                }
+            }
+            r100.push(b100.length);
+            sheetData.push(r100);
+            currentRowIndex++;
         });
 
-        headerRows.push([]);
-        const catatanHeaderIdx = headerRows.length;
-        headerRows.push(['CATATAN']);
-        const catatanTextIdx = headerRows.length;
-        headerRows.push([
-            catatan || 'disesuaikan dengan kondisi peralatan unit/sentral kit',
-        ]);
+        // TOTAL row (merged cols 0..50, grandTotal in col 51)
+        const totRow: (string | number)[] = ['TOTAL'];
+        for (let c = 1; c < colJumlah; c++) {
+            totRow.push('');
+        }
+        totRow.push(grandTotal);
+        sheetData.push(totRow);
+        const totalRowIdx = currentRowIndex;
+        currentRowIndex++;
+
+        // Blank separator + bottom-left Recap Table
+        sheetData.push([]);
+        currentRowIndex++;
+        const recapHeaderIdx = currentRowIndex;
+        sheetData.push(['NO', 'NAMA MESIN PEMBANGKIT', 'UJI BBN', 'DATA']);
+        currentRowIndex++;
+
+        rows.forEach((r, rIdx) => {
+            sheetData.push([
+                r.no_urut || rIdx + 1,
+                r.nama_mesin,
+                '50%',
+                (r.beban_50 || []).length,
+            ]);
+            currentRowIndex++;
+            sheetData.push(['', '', '75%', (r.beban_75 || []).length]);
+            currentRowIndex++;
+            sheetData.push(['', '', '100%', (r.beban_100 || []).length]);
+            currentRowIndex++;
+        });
 
         const { workbook, worksheet: ws } = createSheet(
-            'Commissioning_Test',
-            headerRows,
+            'Commissioning Test',
+            sheetData,
         );
 
-        const totalCols = 9;
-        const headerTop = 4;
-        const headerBottom = 5;
-        const dataStart = 6;
-        const dataEnd = catatanHeaderIdx - 2; // last item row before the spacer
-
-        const checkCell: StyleSpec = {
-            fill: XLSX_COLORS.emeraldSoft,
+        const markedCell: StyleSpec = {
+            fill: XLSX_COLORS.amber,
             bold: true,
             color: XLSX_COLORS.black,
             align: 'center',
@@ -416,57 +604,107 @@ return;
             border: true,
         };
 
-        paintSheet(ws, headerRows.length, totalCols, (r, c) => {
+        const grandTotalCell: StyleSpec = {
+            fill: XLSX_COLORS.blue,
+            bold: true,
+            color: XLSX_COLORS.black,
+            align: 'center',
+            valign: 'center',
+            border: true,
+        };
+
+        paintSheet(ws, sheetData.length, totalCols, (r, c) => {
             if (r < 4) {
-                return null; // document header is drawn separately
+                return null;
             }
 
-            if (r === headerTop || r === headerBottom) {
+            if (r === headerTop || r === headerMid || r === headerBottom) {
                 return SPECS.headerOrange;
             }
 
-            if (sectionRowIdx.has(r)) {
-                return SPECS.category;
+            if (sectionRowIndices.includes(r)) {
+                return c === 0 ? SPECS.labelCenter : SPECS.category;
             }
 
-            if (r >= dataStart && r <= dataEnd) {
-                if (c === 1) {
-                    return SPECS.cellLeft;
+            if (r >= dataStart && r < totalRowIdx) {
+                if (c === 0 || c === 2) {
+                    return SPECS.labelCenter;
                 }
 
-                if (c >= 2 && c <= 6) {
-                    return String(headerRows[r]?.[c] ?? '') === '✓'
-                        ? checkCell
+                if (c === 1) {
+                    return SPECS.label;
+                }
+
+                if (c >= weekStart && c <= weekEnd) {
+                    return String(sheetData[r]?.[c] ?? '') === '1'
+                        ? markedCell
                         : SPECS.cell;
                 }
 
-                if (c === 7) {
-                    return SPECS.cellLeft;
+                return { ...SPECS.cell, bold: true };
+            }
+
+            if (r === totalRowIdx) {
+                if (c === colJumlah) {
+                    return grandTotalCell;
+                }
+
+                return SPECS.total;
+            }
+
+            if (r >= recapHeaderIdx && c < 4) {
+                if (r === recapHeaderIdx) {
+                    return SPECS.headerOrange;
+                }
+
+                if (c === 1) {
+                    return SPECS.label;
+                }
+
+                if (c === 0 || c === 2) {
+                    return SPECS.labelCenter;
                 }
 
                 return SPECS.cell;
-            }
-
-            if (r === catatanHeaderIdx) {
-                return c === 0 ? SPECS.category : null;
-            }
-
-            if (r === catatanTextIdx) {
-                return c === 0 ? SPECS.cellLeft : null;
             }
 
             return null;
         });
 
         mergeCells(ws, headerTop, 0, headerBottom, 0); // NO
-        mergeCells(ws, headerTop, 1, headerBottom, 1); // KEGIATAN
-        mergeCells(ws, headerTop, 2, headerTop, 6); // STATUS KESIAPAN PERALATAN
-        mergeCells(ws, headerTop, 7, headerTop, 8); // PARAF
-        sectionRowIdx.forEach((r) => mergeCells(ws, r, 0, r, totalCols - 1));
-        mergeCells(ws, catatanHeaderIdx, 0, catatanHeaderIdx, totalCols - 1);
-        mergeCells(ws, catatanTextIdx, 0, catatanTextIdx, totalCols - 1);
+        mergeCells(ws, headerTop, 1, headerBottom, 1); // MESIN PEMBANGKIT
+        mergeCells(ws, headerTop, 2, headerTop, colJumlah); // BULAN
+        mergeCells(ws, headerMid, colJumlah, headerBottom, colJumlah); // JUMLAH
 
-        const colWidths = [5, 34, 6, 6, 12, 11, 16, 12, 8];
+        for (let m = 0; m < 12; m++) {
+            const c = weekStart + m * 4;
+            mergeCells(ws, headerMid, c, headerMid, c + 3);
+        }
+
+        sectionRowIndices.forEach((sIdx) => {
+            mergeCells(ws, sIdx, 1, sIdx, totalCols - 1);
+        });
+
+        let rowTracker = dataStart;
+        rows.forEach(() => {
+            if (sectionRowIndices.includes(rowTracker)) {
+                rowTracker++;
+            }
+            mergeCells(ws, rowTracker, 0, rowTracker + 2, 0);
+            mergeCells(ws, rowTracker, 1, rowTracker + 2, 1);
+            rowTracker += 3;
+        });
+
+        mergeCells(ws, totalRowIdx, 0, totalRowIdx, weekEnd);
+
+        let recapRowTracker = recapHeaderIdx + 1;
+        rows.forEach(() => {
+            mergeCells(ws, recapRowTracker, 0, recapRowTracker + 2, 0);
+            mergeCells(ws, recapRowTracker, 1, recapRowTracker + 2, 1);
+            recapRowTracker += 3;
+        });
+
+        const colWidths = [4, 26, 9, ...Array(48).fill(2.6), 8];
         setColWidths(ws, colWidths);
 
         await buildDocumentHeader(
@@ -475,89 +713,116 @@ return;
                 totalCols,
                 colWidths,
                 titleLines: [
-                    'JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE & 6 SITE -KIT',
+                    'JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE & 6 SITE - KIT',
                     `LAPORAN PROJECT ${unit.name.toUpperCase()}`,
-                    'LAPORAN COMMISSIONING TEST MESIN PEMBANGKIT',
+                    'JADWAL PELAKSANAAN COMMISSIONING TEST MESIN PEMBANGKIT',
                 ],
                 barTitle:
                     'JADWAL PELAKSANAAN COMMISSIONING TEST MESIN PEMBANGKIT',
             },
         );
-        await downloadWorkbook(
-            workbook,
-            `Jadwal_Commissioning_Test_${unit.name.replace(/\s+/g, '_')}_${filters.month}_${filters.year}.xlsx`,
-        );
+
+        const filename = `Jadwal_Commissioning_Test_Mesin_${unit.name.replace(/\s+/g, '_')}_${filters.year}.xlsx`;
+        await downloadWorkbook(workbook, filename);
     };
+
+    const selectedMachineAlreadyAdded =
+        selectedMachineOption !== CUSTOM_MACHINE_OPTION &&
+        rows.some((r) => String(r.machine_id) === selectedMachineOption);
+
+    const canSubmitAdd =
+        selectedMachineOption === CUSTOM_MACHINE_OPTION
+            ? newNamaMesin.trim() !== ''
+            : selectedMachineOption !== '';
 
     return (
         <>
-            <Head title={`Jadwal Commissioning Test — ${unit.name}`} />
+            <Head
+                title={`Jadwal Pelaksanaan Commissioning Test Mesin - ${unit.name}`}
+            />
             <style>{PRINT_CSS}</style>
 
             <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-                {/* Screen Header Bar */}
-                <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {/* Top Action Bar */}
+                <div className="no-print flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <Button
                             variant="outline"
-                            size="icon"
+                            size="sm"
                             onClick={() => router.get(jadwal.index().url)}
-                            title="Kembali ke Daftar Jadwal"
+                            className="gap-2"
                         >
                             <ArrowLeft className="size-4" />
+                            Kembali ke Jadwal
                         </Button>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold text-foreground">
-                                    Jadwal Commissioning Test Mesin
-                                </h1>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-xl font-bold tracking-tight text-foreground">
+                                Jadwal Pelaksanaan Commissioning Test Mesin
+                            </h1>
+                            <Badge variant="secondary" className="font-semibold">
+                                {unit.name}
+                            </Badge>
+                            <Badge variant="outline">{filters.year}</Badge>
+                            {dirty && (
                                 <Badge
-                                    variant="outline"
-                                    className="border-primary/30 bg-primary/10 text-primary"
+                                    variant="destructive"
+                                    className="animate-pulse"
                                 >
-                                    {unit.name}
+                                    Belum Disimpan
                                 </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Jadwal dan checklist pengujian kesiapan
-                                peralatan, persiapan, dan paralel generator
-                                mesin pembangkit.
-                            </p>
+                            )}
                         </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {dirty && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleReset}
-                                disabled={saving}
-                                className="gap-1.5 text-xs text-muted-foreground"
-                            >
-                                <RotateCcw className="size-3.5" />
-                                Reset
-                            </Button>
-                        )}
                         {can_write && (
                             <>
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setIsAddOpen(true)}
-                                    className="gap-1.5 text-xs"
+                                    onClick={handleSyncMasterMachines}
+                                    disabled={machines.length === 0 || saving}
+                                    className="gap-1.5"
+                                    title="Muat & sinkronkan daftar mesin dari Master Data Mesin unit ini"
                                 >
-                                    <Plus className="size-3.5" />
-                                    Tambah Kegiatan
+                                    <RefreshCw className="size-4" />
+                                    Muat Master Mesin
+                                    {missingMasterMachines.length > 0 && (
+                                        <Badge
+                                            variant="secondary"
+                                            className="ml-0.5 px-1.5 py-0 text-[10px]"
+                                        >
+                                            +{missingMasterMachines.length}
+                                        </Badge>
+                                    )}
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleReset}
+                                    disabled={!dirty || saving}
+                                    className="gap-1.5"
+                                >
+                                    <RotateCcw className="size-4" />
+                                    Reset
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={openAddDialog}
+                                    className="gap-1.5"
+                                >
+                                    <Plus className="size-4" />
+                                    Tambah Mesin
                                 </Button>
                                 <Button
                                     size="sm"
                                     onClick={handleSave}
-                                    disabled={saving || !dirty}
-                                    className="gap-1.5 text-xs"
+                                    disabled={!dirty || saving}
+                                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
                                 >
-                                    <Save className="size-3.5" />
-                                    {saving ? 'Menyimpan…' : 'Simpan Jadwal'}
+                                    <Save className="size-4" />
+                                    {saving ? 'Menyimpan...' : 'Simpan Jadwal'}
                                 </Button>
                             </>
                         )}
@@ -565,58 +830,51 @@ return;
                             variant="outline"
                             size="sm"
                             onClick={handleExportExcel}
-                            className="gap-1.5 text-xs"
-                            title="Unduh format Excel (.xlsx)"
+                            className="gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/20"
                         >
-                            <FileSpreadsheet className="size-3.5 text-emerald-600" />
+                            <FileSpreadsheet className="size-4" />
                             Excel
                         </Button>
-                        <a
-                            href={`${commissioningTest.pdf().url}?unit_id=${filters.unit_id}&month=${filters.month}&year=${filters.year}`}
-                            target="_blank"
-                            rel="noreferrer"
-                        >
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="gap-1.5 text-xs"
-                                title="Unduh format PDF resmi"
-                            >
-                                <Download className="size-3.5 text-rose-600" />
-                                PDF
-                            </Button>
-                        </a>
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={handlePrint}
-                            className="gap-1.5 text-xs"
-                            title="Cetak Lanskap"
+                            onClick={() =>
+                                window.open(
+                                    commissioningTest.pdf({
+                                        query: {
+                                            unit_id: filters.unit_id,
+                                            year: filters.year,
+                                        },
+                                    }).url,
+                                    '_blank',
+                                )
+                            }
+                            className="gap-1.5 border-red-600/30 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/20"
                         >
-                            <Printer className="size-3.5" />
+                            <Download className="size-4" />
+                            PDF
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.print()}
+                            className="gap-1.5"
+                        >
+                            <Printer className="size-4" />
                             Cetak
                         </Button>
                     </div>
                 </div>
 
-                {/* Filters Row */}
+                {/* Filter Selector */}
                 <div className="no-print flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-3 shadow-xs">
                     <OperasiSelect
-                        label="Unit Pembangkit"
+                        label="Unit Layanan"
                         value={String(filters.unit_id)}
                         onChange={(value) => visit({ unit_id: Number(value) })}
                         options={options.units.map((u) => ({
                             value: String(u.id),
                             label: u.name,
-                        }))}
-                    />
-                    <OperasiSelect
-                        label="Bulan"
-                        value={String(filters.month)}
-                        onChange={(value) => visit({ month: Number(value) })}
-                        options={OPERASI_MONTHS.map((label, index) => ({
-                            value: String(index + 1),
-                            label,
                         }))}
                     />
                     <OperasiSelect
@@ -628,429 +886,660 @@ return;
                             label: String(y),
                         }))}
                     />
-
-                    {dirty && (
-                        <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-                            <span className="size-2 animate-pulse rounded-full bg-amber-500" />
-                            Ada perubahan belum disimpan
-                        </div>
-                    )}
-                </div>
-
-                {/* Main Printable Card */}
-                <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
-                    {/* Official Document Header matching media_1789474426713.png */}
-                    <div className="border-b border-border p-4">
-                        <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
-                            {/* Left Logo: PLN */}
-                            <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/sidebar-logo.png"
-                                    alt="PLN Nusantara Power"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (
-                                            e.target as HTMLElement
-                                        ).style.display = 'none';
-                                    }}
-                                />
-                            </div>
-
-                            {/* Center Title Box (3 rows) */}
-                            <div className="col-span-6 text-center text-xs font-bold text-foreground">
-                                <div className="border-b border-black py-1.5 tracking-wide uppercase dark:border-border">
-                                    JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE
-                                    &amp; 6 SITE -KIT
-                                </div>
-                                <div className="border-b border-black py-1.5 uppercase dark:border-border">
-                                    LAPORAN PROJECT {unit.name.toUpperCase()}
-                                </div>
-                                <div className="py-1.5 uppercase">
-                                    JADWAL PELAKSANAAN COMMISSIONING TEST MESIN
-                                    PEMBANGKIT
-                                </div>
-                            </div>
-
-                            {/* Right Logo: MKP */}
-                            <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border">
-                                <img
-                                    src="/logo/mkp.jpg"
-                                    alt="Mitra Karya Prima"
-                                    className="max-h-12 object-contain"
-                                    onError={(e) => {
-                                        (
-                                            e.target as HTMLElement
-                                        ).style.display = 'none';
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Table Container */}
-                    {compact ? (
-                        <div className="flex flex-col gap-3 p-3">
-                            {rows.length === 0 && <p className="rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground">Belum ada kegiatan.</p>}
-                            {groupedSections.map(({ section, items }) => (
-                                <Fragment key={section}>
-                                    <p className="mt-1 text-[12px] font-semibold tracking-wide text-muted-foreground uppercase">{section}</p>
-                                    {items.map(({ row, originalIndex }, position) => (
-                                        <div key={row.id ?? `new-${originalIndex}`} className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3">
-                                            <div className="flex items-start gap-2">
-                                                <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-[12px] font-bold text-primary">{position + 1}</span>
-                                                {can_write ? (
-                                                    <Input value={row.kegiatan} onChange={(e) => updateField(originalIndex, 'kegiatan', e.target.value)} className="h-10 min-w-0 flex-1 text-sm" />
-                                                ) : (
-                                                    <div className="min-w-0 flex-1 pt-1 text-[14px] font-medium text-foreground">{row.kegiatan}</div>
-                                                )}
-                                                {can_write && (
-                                                    <Button variant="ghost" size="icon" onClick={() => handleRemoveRow(originalIndex)} className="size-9 shrink-0 text-muted-foreground hover:text-destructive" aria-label="Hapus kegiatan">
-                                                        <Trash2 className="size-4" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                            <ChoiceChips
-                                                options={STATUS_COLUMNS.map((column) => column.key)}
-                                                value={row.status ?? ''}
-                                                onChange={(value) => toggleStatus(originalIndex, value || (row.status ?? ''))}
-                                                disabled={!can_write}
-                                            />
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                                    PIC
-                                                    <Select value={row.pic || '__none__'} onValueChange={(value) => updateField(originalIndex, 'pic', value === '__none__' ? '' : value)} disabled={!can_write}>
-                                                        <SelectTrigger className="h-10 w-full text-sm text-foreground">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="__none__" className="text-muted-foreground">—</SelectItem>
-                                                            {row.pic && !employees.includes(row.pic) && <SelectItem value={row.pic}>{row.pic}</SelectItem>}
-                                                            {employees.map((name) => (
-                                                                <SelectItem key={name} value={name}>
-                                                                    {name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </label>
-                                                <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
-                                                    Paraf
-                                                    <Input value={row.paraf} onChange={(e) => updateField(originalIndex, 'paraf', e.target.value)} disabled={!can_write} className="h-10 text-sm" />
-                                                </label>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </Fragment>
-                            ))}
-                        </div>
-                    ) : (
-                    <div className="overflow-x-auto">
-                        <table className="excel-sheet print-table w-full border-collapse text-xs">
-                            <thead className="print-orange-header bg-[#ed7d31] text-black">
-                                <tr>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-12 border border-black p-2 text-center font-bold"
-                                    >
-                                        NO
-                                    </th>
-                                    <th
-                                        rowSpan={2}
-                                        className="w-96 min-w-80 border border-black p-2 text-left font-bold"
-                                    >
-                                        KEGIATAN
-                                    </th>
-                                    <th
-                                        colSpan={5}
-                                        className="border border-black p-1.5 text-center font-bold tracking-wider"
-                                    >
-                                        STATUS KESIAPAN PERALATAN
-                                    </th>
-                                    <th
-                                        colSpan={2}
-                                        className="border border-black p-1.5 text-center font-bold tracking-wider"
-                                    >
-                                        PARAF
-                                    </th>
-                                    {can_write && (
-                                        <th
-                                            rowSpan={2}
-                                            className="no-print w-10 border border-black p-2 text-center font-bold"
-                                        >
-                                            Aksi
-                                        </th>
-                                    )}
-                                </tr>
-                                <tr>
-                                    {STATUS_COLUMNS.map((col) => (
-                                        <th
-                                            key={col.key}
-                                            className={`${col.width} border border-black p-1 text-center text-[11px] font-bold`}
-                                        >
-                                            {col.label}
-                                        </th>
-                                    ))}
-                                    <th className="w-24 border border-black p-1 text-center font-bold">
-                                        PIC
-                                    </th>
-                                    <th className="w-16 border border-black p-1 text-center font-bold">
-                                        PARAF
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {groupedSections.map((group) => (
-                                    <Fragment key={group.section}>
-                                        {/* Section Header */}
-                                        <tr className="print-section-header bg-muted/40 font-extrabold text-foreground">
-                                            <td
-                                                colSpan={can_write ? 10 : 9}
-                                                className="border border-black p-1.5 pl-3 text-left tracking-wider uppercase"
-                                            >
-                                                {group.section}
-                                            </td>
-                                        </tr>
-
-                                        {/* Item Rows */}
-                                        {group.items.map(
-                                            ({ row, originalIndex }) => (
-                                                <tr
-                                                    key={originalIndex}
-                                                    className="transition-colors hover:bg-muted/10"
-                                                >
-                                                    {/* NO */}
-                                                    <td className="border border-black p-1 text-center font-medium">
-                                                        {row.no_urut}
-                                                    </td>
-
-                                                    {/* KEGIATAN */}
-                                                <td className="min-w-80 border border-black p-1 align-middle whitespace-normal text-foreground">
-                                                    <AutoWrapCellInput
-                                                        value={row.kegiatan}
-                                                        onChange={(val) => updateField(originalIndex, 'kegiatan', val)}
-                                                        readOnly={!can_write}
-                                                    />
-                                                </td>
-
-                                                    {/* 5 Status Check Columns */}
-                                                    {STATUS_COLUMNS.map(
-                                                        (col) => {
-                                                            const isChecked =
-                                                                row.status ===
-                                                                col.key;
-
-                                                            return (
-                                                                <td
-                                                                    key={
-                                                                        col.key
-                                                                    }
-                                                                    onClick={() =>
-                                                                        toggleStatus(
-                                                                            originalIndex,
-                                                                            col.key,
-                                                                        )
-                                                                    }
-                                                                    className={`border border-black text-center text-sm font-bold transition-colors select-none ${
-                                                                        isChecked
-                                                                            ? 'bg-emerald-50 font-extrabold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300'
-                                                                            : 'hover:bg-muted/40'
-                                                                    } ${
-                                                                        can_write
-                                                                            ? 'cursor-pointer'
-                                                                            : ''
-                                                                    }`}
-                                                                    title={`Status: ${col.label} (Klik untuk pilih)`}
-                                                                >
-                                                                    {isChecked ? (
-                                                                        <span className="text-base font-extrabold text-black">
-                                                                            &#10003;
-                                                                        </span>
-                                                                    ) : (
-                                                                        ''
-                                                                    )}
-                                                                </td>
-                                                            );
-                                                        },
-                                                    )}
-
-                                                    {/* PIC */}
-                                                    <td className="border border-black p-0.5">
-                                                        {can_write ? (
-                                                            <>
-                                                                <input
-                                                                    type="text"
-                                                                    list={`pic-list-${originalIndex}`}
-                                                                    value={
-                                                                        row.pic
-                                                                    }
-                                                                    onChange={(
-                                                                        e,
-                                                                    ) =>
-                                                                        updateField(
-                                                                            originalIndex,
-                                                                            'pic',
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                        )
-                                                                    }
-                                                                    placeholder="PIC"
-                                                                    className="w-full bg-transparent px-1 py-0.5 text-center text-xs uppercase focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                                                />
-                                                                <datalist
-                                                                    id={`pic-list-${originalIndex}`}
-                                                                >
-                                                                    {employees.map(
-                                                                        (
-                                                                            emp,
-                                                                        ) => (
-                                                                            <option
-                                                                                key={
-                                                                                    emp
-                                                                                }
-                                                                                value={
-                                                                                    emp
-                                                                                }
-                                                                            />
-                                                                        ),
-                                                                    )}
-                                                                </datalist>
-                                                            </>
-                                                        ) : (
-                                                            <span className="block px-1 text-center text-xs uppercase">
-                                                                {row.pic || '-'}
-                                                            </span>
-                                                        )}
-                                                    </td>
-
-                                                    {/* PARAF */}
-                                                <td className="min-w-20 border border-black p-1 text-center align-middle whitespace-normal text-foreground">
-                                                    <AutoWrapCellInput
-                                                        value={row.paraf}
-                                                        onChange={(val) => updateField(originalIndex, 'paraf', val)}
-                                                        className="text-center"
-                                                        emptyFallback="-"
-                                                        readOnly={!can_write}
-                                                    />
-                                                </td>
-
-                                                    {/* Action (No-Print) */}
-                                                    {can_write && (
-                                                        <td className="no-print border border-black p-0.5 text-center">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-6 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                                                                onClick={() =>
-                                                                    handleRemoveRow(
-                                                                        originalIndex,
-                                                                    )
-                                                                }
-                                                                title="Hapus Kegiatan"
-                                                            >
-                                                                <Trash2 className="size-3.5" />
-                                                            </Button>
-                                                        </td>
-                                                    )}
-                                                </tr>
-                                            ),
-                                        )}
-                                    </Fragment>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    )}
-
-                    {/* CATATAN Box matching media_1789474426713.png */}
-                    <div className="border-t border-black">
-                        <div className="border-b border-black bg-muted/40 px-3 py-1.5 text-xs font-bold tracking-wider text-foreground uppercase">
-                            CATATAN
-                        </div>
-                        <div className="p-3">
-                            {can_write ? (
-                                <textarea
-                                    value={catatan}
-                                    onChange={(e) => {
-                                        setCatatan(e.target.value);
-                                        setDirty(true);
-                                    }}
-                                    rows={2}
-                                    className="w-full bg-transparent text-center text-xs focus:rounded focus:bg-background focus:ring-1 focus:ring-primary focus:outline-none"
-                                    placeholder="disesuaikan dengan kondisi peralatan unit/sentral kit"
-                                />
-                            ) : (
-                                <div className="py-1 text-center text-xs text-muted-foreground">
-                                    {catatan ||
-                                        'disesuaikan dengan kondisi peralatan unit/sentral kit'}
-                                </div>
-                            )}
-                        </div>
+                    <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+                        <Info className="size-4 shrink-0" />
+                        <span>
+                            Data mesin diambil dari Master Data Mesin. Klik sel
+                            minggu untuk menandai &apos;1&apos; pada UJI BEBAN
+                            50%, 75%, atau 100%.
+                        </span>
                     </div>
                 </div>
-            </div>
 
-            {/* Modal Tambah Kegiatan */}
-            <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <CheckCircle2 className="size-5 text-primary" />
-                            Tambah Kegiatan Commissioning Test
-                        </DialogTitle>
-                        <DialogDescription>
-                            Tambahkan poin checklist pengujian baru untuk unit{' '}
-                            {unit.name}.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="grid gap-3 py-2 text-sm">
-                        <div className="grid gap-1.5">
-                            <Label htmlFor="section-select">
-                                Bagian / Kategori
-                            </Label>
-                            <Select value={newSection} onValueChange={(value) => setNewSection(value)}>
-                                <SelectTrigger className="h-9 w-full text-sm">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="PERSIAPAN">PERSIAPAN</SelectItem>
-                                    <SelectItem value="PARAREL GENERATOR">PARAREL GENERATOR</SelectItem>
-                                    <SelectItem value="PENGUJIAN LAINNYA">PENGUJIAN LAINNYA</SelectItem>
-                                </SelectContent>
-                            </Select>
+                {/* Main Schedule Container */}
+                <div className="print-container overflow-hidden rounded-lg border border-border bg-card p-4 shadow-sm">
+                    {/* Official Document Header */}
+                    <div className="mb-4 grid grid-cols-12 items-stretch border-2 border-black dark:border-white">
+                        <div className="col-span-2 flex items-center justify-center border-r-2 border-black p-2 dark:border-white">
+                            <img
+                                src="/logo/sidebar-logo.png"
+                                alt="PLN Nusantara Power"
+                                className="max-h-12 w-auto object-contain"
+                            />
                         </div>
 
-                        <div className="grid gap-1.5">
-                            <Label htmlFor="kegiatan-input">
-                                Uraian Kegiatan
-                            </Label>
-                            <Input
-                                id="kegiatan-input"
-                                placeholder="Contoh: Periksa sistem governor dan proteksi overspeed"
-                                value={newKegiatan}
-                                onChange={(e) => setNewKegiatan(e.target.value)}
-                                autoFocus
+                        <div className="col-span-8 flex flex-col justify-center text-center">
+                            <div className="border-b border-black py-1 text-xs font-bold tracking-wide uppercase dark:border-white">
+                                JASA PENDUKUNG TEKNIS UP KENDARI 11 SITE &amp; 6
+                                SITE - KIT
+                            </div>
+                            <div className="border-b border-black py-1 text-xs font-bold tracking-wide uppercase dark:border-white">
+                                LAPORAN PROJECT {unit.name}
+                            </div>
+                            <div className="py-1 text-xs font-bold tracking-wide text-foreground uppercase">
+                                JADWAL PELAKSANAAN COMMISSIONING TEST MESIN
+                                PEMBANGKIT
+                            </div>
+                        </div>
+
+                        <div className="col-span-2 flex items-center justify-center border-l-2 border-black p-2 dark:border-white">
+                            <img
+                                src="/logo/mkp.jpg"
+                                alt="MKP"
+                                className="max-h-12 w-auto object-contain"
                             />
                         </div>
                     </div>
 
-                    <DialogFooter>
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsAddOpen(false)}
-                        >
-                            Batal
-                        </Button>
-                        <Button
-                            onClick={handleAddRow}
-                            disabled={!newKegiatan.trim()}
-                        >
-                            Tambahkan
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+                    {/* Table 1: Matrix 12 Bulan x 4 Minggu = 48 Kolom */}
+                    {compact ? (
+                        <div className="py-3">
+                            <MobileTimelineForm<CommissioningRow>
+                                days={YEAR_WEEK_DAYS}
+                                rows={rows}
+                                rowKey={(row, index) => row.id ?? `new-${index}`}
+                                title={(row) => row.nama_mesin || 'Baris baru'}
+                                categories={BEBAN_CATEGORIES}
+                                isOn={(row, category, week) =>
+                                    row[
+                                        `beban_${category}` as
+                                            | 'beban_50'
+                                            | 'beban_75'
+                                            | 'beban_100'
+                                    ].includes(weekKeyOf(week))
+                                }
+                                onToggle={(row, category, week) =>
+                                    handleToggleCell(
+                                        rows.indexOf(row),
+                                        category as '50' | '75' | '100',
+                                        weekKeyOf(week),
+                                    )
+                                }
+                                details={(row, index) => (
+                                    <TimelineField
+                                        label="Mesin Pembangkit"
+                                        value={row.nama_mesin}
+                                        onChange={(v) =>
+                                            handleUpdateName(index, v)
+                                        }
+                                        readOnly={!can_write}
+                                    />
+                                )}
+                                summary={(row) =>
+                                    `50%: ${row.beban_50.length} · 75%: ${row.beban_75.length} · 100%: ${row.beban_100.length}`
+                                }
+                                onRemove={(_row, index) =>
+                                    handleRemoveRow(index)
+                                }
+                                sectionOf={(row) =>
+                                    row.section || DEFAULT_SECTION
+                                }
+                                dayLabel={(week) =>
+                                    `${week.dow} ${filters.year} · minggu ${week.label}`
+                                }
+                                initialDay={initialWeek}
+                                readOnly={!can_write}
+                                editing={mobileEditing}
+                                onEditingChange={setMobileEditing}
+                                empty="Belum ada mesin aktif di Master Data Mesin."
+                            />
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="excel-sheet print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                                <thead>
+                                    <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
+                                        <th
+                                            rowSpan={3}
+                                            className="border border-black px-2 py-1.5 text-[11px] dark:border-white"
+                                            style={{ width: '32px' }}
+                                        >
+                                            NO
+                                        </th>
+                                        <th
+                                            rowSpan={3}
+                                            className="border border-black px-3 py-1.5 text-[11px] dark:border-white"
+                                            style={{ minWidth: '210px' }}
+                                        >
+                                            MESIN PEMBANGKIT
+                                        </th>
+                                        <th
+                                            colSpan={50}
+                                            className="border border-black px-1 py-1 text-[11px] tracking-wide uppercase dark:border-white"
+                                        >
+                                            BULAN
+                                        </th>
+                                        <th
+                                            rowSpan={3}
+                                            className="no-print border border-black px-2 py-1.5 text-[11px] dark:border-white"
+                                            style={{ width: '40px' }}
+                                        >
+                                            AKSI
+                                        </th>
+                                    </tr>
+                                    <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
+                                        <th
+                                            className="border border-black px-1.5 py-1 text-[10px] dark:border-white"
+                                            style={{ width: '64px' }}
+                                        />
+                                        {MONTH_NAMES.map((m) => (
+                                            <th
+                                                key={m}
+                                                colSpan={4}
+                                                className="border border-black px-1 py-1 text-[10px] uppercase dark:border-white"
+                                            >
+                                                {m}
+                                            </th>
+                                        ))}
+                                        <th
+                                            rowSpan={2}
+                                            className="border border-black px-2 py-1.5 text-[11px] dark:border-white"
+                                            style={{ width: '52px' }}
+                                        >
+                                            JUMLAH
+                                        </th>
+                                    </tr>
+                                    <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
+                                        <th
+                                            className="border border-black px-1.5 py-0.5 text-[10px] whitespace-nowrap dark:border-white"
+                                            style={{ width: '64px' }}
+                                        >
+                                            UJI BEBAN
+                                        </th>
+                                        {Array.from({ length: 12 }).map(
+                                            (_, mIdx) => (
+                                                <Fragment key={mIdx}>
+                                                    <th className="border border-black px-1 py-0.5 text-[10px] dark:border-white">
+                                                        1
+                                                    </th>
+                                                    <th className="border border-black px-1 py-0.5 text-[10px] dark:border-white">
+                                                        2
+                                                    </th>
+                                                    <th className="border border-black px-1 py-0.5 text-[10px] dark:border-white">
+                                                        3
+                                                    </th>
+                                                    <th className="border border-black px-1 py-0.5 text-[10px] dark:border-white">
+                                                        4
+                                                    </th>
+                                                </Fragment>
+                                            ),
+                                        )}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={53}
+                                                className="border border-black px-4 py-6 text-center text-muted-foreground dark:border-white"
+                                            >
+                                                Belum ada mesin aktif pada Master
+                                                Data Mesin untuk unit ini.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        (() => {
+                                            let currentSection: string | null =
+                                                null;
+
+                                            return rows.map((row, rIdx) => {
+                                                const section =
+                                                    row.section ||
+                                                    DEFAULT_SECTION;
+                                                const renderSectionHeader =
+                                                    section !== currentSection;
+
+                                                if (renderSectionHeader) {
+                                                    currentSection = section;
+                                                }
+
+                                                const { prefix, label } =
+                                                    splitSectionTitle(section);
+                                                const b50 = row.beban_50 || [];
+                                                const b75 = row.beban_75 || [];
+                                                const b100 = row.beban_100 || [];
+
+                                                return (
+                                                    <Fragment
+                                                        key={
+                                                            row.id ??
+                                                            `row-${rIdx}`
+                                                        }
+                                                    >
+                                                        {renderSectionHeader && (
+                                                            <tr className="bg-muted/20 font-bold text-foreground">
+                                                                <td className="border border-black px-1 py-1 text-center text-xs font-bold dark:border-white">
+                                                                    {prefix}
+                                                                </td>
+                                                                <td
+                                                                    colSpan={51}
+                                                                    className="border border-black px-3 py-1 text-left text-xs font-bold dark:border-white"
+                                                                >
+                                                                    {label}
+                                                                </td>
+                                                                <td className="no-print border border-black dark:border-white" />
+                                                            </tr>
+                                                        )}
+
+                                                        {/* Sub-row 1: 50% */}
+                                                        <tr className="hover:bg-muted/30">
+                                                            <td
+                                                                rowSpan={3}
+                                                                className="border border-black px-1 py-1 font-medium dark:border-white"
+                                                            >
+                                                                {row.no_urut ||
+                                                                    rIdx + 1}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={3}
+                                                                className="min-w-[210px] border border-black p-1 text-left align-middle whitespace-normal dark:border-white"
+                                                            >
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.nama_mesin
+                                                                    }
+                                                                    onChange={(
+                                                                        val,
+                                                                    ) =>
+                                                                        handleUpdateName(
+                                                                            rIdx,
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    className="font-semibold uppercase"
+                                                                    readOnly={
+                                                                        !can_write
+                                                                    }
+                                                                />
+                                                            </td>
+                                                            <td className="border border-black bg-muted/20 px-1 py-1 font-semibold dark:border-white">
+                                                                50%
+                                                            </td>
+                                                            {Array.from({
+                                                                length: 12,
+                                                            }).map((_, mIdx) =>
+                                                                [1, 2, 3, 4].map(
+                                                                    (w) => {
+                                                                        const key = `${mIdx + 1}-${w}`;
+                                                                        const isMarked =
+                                                                            b50.includes(
+                                                                                key,
+                                                                            );
+
+                                                                        return (
+                                                                            <td
+                                                                                key={`50-${key}`}
+                                                                                onClick={() =>
+                                                                                    handleToggleCell(
+                                                                                        rIdx,
+                                                                                        '50',
+                                                                                        key,
+                                                                                    )
+                                                                                }
+                                                                                className={`cursor-pointer border border-black px-0.5 py-1 text-center font-bold transition-colors dark:border-white ${
+                                                                                    isMarked
+                                                                                        ? 'print-marked-cell bg-amber-100 text-black dark:bg-amber-900/60 dark:text-amber-100'
+                                                                                        : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20'
+                                                                                }`}
+                                                                                title={`Klik untuk ubah 50% Bln ${mIdx + 1} M${w}`}
+                                                                            >
+                                                                                {isMarked
+                                                                                    ? '1'
+                                                                                    : ''}
+                                                                            </td>
+                                                                        );
+                                                                    },
+                                                                ),
+                                                            )}
+                                                            <td className="border border-black bg-muted/20 px-1 py-1 font-bold dark:border-white">
+                                                                {b50.length}
+                                                            </td>
+                                                            <td
+                                                                rowSpan={3}
+                                                                className="no-print border border-black px-1 py-1 dark:border-white"
+                                                            >
+                                                                {can_write && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="icon"
+                                                                        onClick={() =>
+                                                                            handleRemoveRow(
+                                                                                rIdx,
+                                                                            )
+                                                                        }
+                                                                        className="size-7 text-destructive hover:bg-destructive/10"
+                                                                        title="Hapus Mesin"
+                                                                    >
+                                                                        <Trash2 className="size-3.5" />
+                                                                    </Button>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+
+                                                        {/* Sub-row 2: 75% */}
+                                                        <tr className="hover:bg-muted/30">
+                                                            <td className="border border-black bg-muted/20 px-1 py-1 font-semibold dark:border-white">
+                                                                75%
+                                                            </td>
+                                                            {Array.from({
+                                                                length: 12,
+                                                            }).map((_, mIdx) =>
+                                                                [1, 2, 3, 4].map(
+                                                                    (w) => {
+                                                                        const key = `${mIdx + 1}-${w}`;
+                                                                        const isMarked =
+                                                                            b75.includes(
+                                                                                key,
+                                                                            );
+
+                                                                        return (
+                                                                            <td
+                                                                                key={`75-${key}`}
+                                                                                onClick={() =>
+                                                                                    handleToggleCell(
+                                                                                        rIdx,
+                                                                                        '75',
+                                                                                        key,
+                                                                                    )
+                                                                                }
+                                                                                className={`cursor-pointer border border-black px-0.5 py-1 text-center font-bold transition-colors dark:border-white ${
+                                                                                    isMarked
+                                                                                        ? 'print-marked-cell bg-amber-100 text-black dark:bg-amber-900/60 dark:text-amber-100'
+                                                                                        : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20'
+                                                                                }`}
+                                                                                title={`Klik untuk ubah 75% Bln ${mIdx + 1} M${w}`}
+                                                                            >
+                                                                                {isMarked
+                                                                                    ? '1'
+                                                                                    : ''}
+                                                                            </td>
+                                                                        );
+                                                                    },
+                                                                ),
+                                                            )}
+                                                            <td className="border border-black bg-muted/20 px-1 py-1 font-bold dark:border-white">
+                                                                {b75.length}
+                                                            </td>
+                                                        </tr>
+
+                                                        {/* Sub-row 3: 100% */}
+                                                        <tr className="hover:bg-muted/30">
+                                                            <td className="border border-black bg-muted/20 px-1 py-1 font-semibold dark:border-white">
+                                                                100%
+                                                            </td>
+                                                            {Array.from({
+                                                                length: 12,
+                                                            }).map((_, mIdx) =>
+                                                                [1, 2, 3, 4].map(
+                                                                    (w) => {
+                                                                        const key = `${mIdx + 1}-${w}`;
+                                                                        const isMarked =
+                                                                            b100.includes(
+                                                                                key,
+                                                                            );
+
+                                                                        return (
+                                                                            <td
+                                                                                key={`100-${key}`}
+                                                                                onClick={() =>
+                                                                                    handleToggleCell(
+                                                                                        rIdx,
+                                                                                        '100',
+                                                                                        key,
+                                                                                    )
+                                                                                }
+                                                                                className={`cursor-pointer border border-black px-0.5 py-1 text-center font-bold transition-colors dark:border-white ${
+                                                                                    isMarked
+                                                                                        ? 'print-marked-cell bg-amber-100 text-black dark:bg-amber-900/60 dark:text-amber-100'
+                                                                                        : 'hover:bg-amber-50/50 dark:hover:bg-amber-950/20'
+                                                                                }`}
+                                                                                title={`Klik untuk ubah 100% Bln ${mIdx + 1} M${w}`}
+                                                                            >
+                                                                                {isMarked
+                                                                                    ? '1'
+                                                                                    : ''}
+                                                                            </td>
+                                                                        );
+                                                                    },
+                                                                ),
+                                                            )}
+                                                            <td className="border border-black bg-muted/20 px-1 py-1 font-bold dark:border-white">
+                                                                {b100.length}
+                                                            </td>
+                                                        </tr>
+                                                    </Fragment>
+                                                );
+                                            });
+                                        })()
+                                    )}
+
+                                    {/* Total Row */}
+                                    <tr className="bg-muted/40 font-bold text-foreground">
+                                        <td
+                                            colSpan={51}
+                                            className="border border-black px-2 py-1.5 text-center text-[11px] font-bold uppercase dark:border-white"
+                                        >
+                                            TOTAL
+                                        </td>
+                                        <td className="print-grand-total border border-black bg-[#00b0f0] px-1 py-1 text-center font-bold text-black dark:border-white">
+                                            {grandTotal}
+                                        </td>
+                                        <td className="no-print border border-black dark:border-white" />
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {/* Table 2: Recap Table Bawah Kiri */}
+                    <div className="mt-6 w-full max-w-md">
+                        <table className="excel-sheet print-table w-full border-collapse border-2 border-black text-center text-xs dark:border-white">
+                            <thead>
+                                <tr className="print-orange-header bg-[#ed7d31] font-bold text-black">
+                                    <th
+                                        className="border border-black px-2 py-1 text-[11px] dark:border-white"
+                                        style={{ width: '35px' }}
+                                    >
+                                        NO
+                                    </th>
+                                    <th className="border border-black px-2 py-1 text-center text-[11px] dark:border-white">
+                                        NAMA MESIN PEMBANGKIT
+                                    </th>
+                                    <th
+                                        className="border border-black px-2 py-1 text-[11px] dark:border-white"
+                                        style={{ width: '70px' }}
+                                    >
+                                        UJI BBN
+                                    </th>
+                                    <th
+                                        className="border border-black px-2 py-1 text-[11px] dark:border-white"
+                                        style={{ width: '70px' }}
+                                    >
+                                        DATA
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rows.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={4}
+                                            className="border border-black px-3 py-3 text-center text-muted-foreground dark:border-white"
+                                        >
+                                            Belum ada data mesin.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    rows.map((r, rIdx) => {
+                                        const cnt50 = (r.beban_50 || []).length;
+                                        const cnt75 = (r.beban_75 || []).length;
+                                        const cnt100 = (r.beban_100 || [])
+                                            .length;
+
+                                        return (
+                                            <Fragment
+                                                key={`recap-${r.id ?? rIdx}`}
+                                            >
+                                                <tr>
+                                                    <td
+                                                        rowSpan={3}
+                                                        className="border border-black px-1 py-1 font-medium dark:border-white"
+                                                    >
+                                                        {r.no_urut || rIdx + 1}
+                                                    </td>
+                                                    <td
+                                                        rowSpan={3}
+                                                        className="border border-black px-2 py-1 text-left font-semibold uppercase dark:border-white"
+                                                    >
+                                                        {r.nama_mesin}
+                                                    </td>
+                                                    <td className="border border-black px-1 py-1 font-semibold dark:border-white">
+                                                        50%
+                                                    </td>
+                                                    <td className="border border-black px-1 py-1 font-bold dark:border-white">
+                                                        {cnt50}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-black px-1 py-1 font-semibold dark:border-white">
+                                                        75%
+                                                    </td>
+                                                    <td className="border border-black px-1 py-1 font-bold dark:border-white">
+                                                        {cnt75}
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="border border-black px-1 py-1 font-semibold dark:border-white">
+                                                        100%
+                                                    </td>
+                                                    <td className="border border-black px-1 py-1 font-bold dark:border-white">
+                                                        {cnt100}
+                                                    </td>
+                                                </tr>
+                                            </Fragment>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Dialog Tambah Mesin */}
+                <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <Activity className="size-5 text-primary" />
+                                Tambah Mesin Pembangkit
+                            </DialogTitle>
+                            <DialogDescription>
+                                Pilih mesin dari Master Data Mesin unit{' '}
+                                {unit.name} atau masukkan nama mesin khusus.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <Label htmlFor="master_machine_select">
+                                    Sumber Mesin
+                                </Label>
+                                <Select
+                                    value={selectedMachineOption}
+                                    onValueChange={setSelectedMachineOption}
+                                >
+                                    <SelectTrigger id="master_machine_select">
+                                        <SelectValue placeholder="Pilih mesin dari Master Data" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {machines.map((m) => (
+                                            <SelectItem
+                                                key={m.id}
+                                                value={String(m.id)}
+                                            >
+                                                {m.name}
+                                            </SelectItem>
+                                        ))}
+                                        <SelectItem
+                                            value={CUSTOM_MACHINE_OPTION}
+                                        >
+                                            + Ketik Nama Mesin Custom...
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {selectedMachineAlreadyAdded && (
+                                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                                        Mesin ini sudah ada di tabel. Anda tetap
+                                        dapat menambahkannya lagi jika
+                                        diperlukan.
+                                    </p>
+                                )}
+                            </div>
+
+                            {selectedMachineOption === CUSTOM_MACHINE_OPTION && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="nama_mesin_custom">
+                                        Nama Mesin Pembangkit (Custom)
+                                    </Label>
+                                    <Input
+                                        id="nama_mesin_custom"
+                                        placeholder="Contoh: MESIN#04 / CUMM #9"
+                                        value={newNamaMesin}
+                                        onChange={(e) =>
+                                            setNewNamaMesin(e.target.value)
+                                        }
+                                        className="uppercase"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleAddMesin();
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="section">
+                                    Bagian / Kategori Form
+                                </Label>
+                                <Input
+                                    id="section"
+                                    placeholder={DEFAULT_SECTION}
+                                    value={newSection}
+                                    onChange={(e) =>
+                                        setNewSection(e.target.value)
+                                    }
+                                    className="uppercase"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsAddOpen(false)}
+                            >
+                                Batal
+                            </Button>
+                            <Button
+                                onClick={handleAddMesin}
+                                disabled={!canSubmitAdd}
+                                className="gap-1.5"
+                            >
+                                <Plus className="size-4" />
+                                Tambahkan
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
         </>
     );
 }
+
+JadwalCommissioningTestIndex.layout = {
+    breadcrumbs: [
+        { title: 'Dashboard', href: dashboard() },
+        { title: 'Jadwal Operasi', href: jadwal.index() },
+        { title: 'Commissioning Test Mesin', href: '#' },
+    ],
+};

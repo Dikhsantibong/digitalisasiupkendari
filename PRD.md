@@ -406,6 +406,15 @@ Aturan tambahan:
   dan diarahkan ke akun yang sama. Akun kantor induk (`manager-up@…` dst.) & e-mail pribadi
   tidak berubah.
 - Akun nonaktif ditolak; login terakhir (waktu & IP) dicatat.
+- **Pemberitahuan sesi berakhir & pengalihan ke login (desktop & HP)** (keputusan user 2026-11-27):
+  saat sesi login pengguna berakhir (mis. melewati batas waktu sesi, keluar di tab/perangkat lain,
+  atau token halaman 419 kedaluwarsa), aplikasi (`SessionMonitor` di `app.tsx` + endpoint
+  `GET /session/check` + exception handler 419/`AuthenticationException` di `bootstrap/app.php`)
+  menampilkan **pemberitahuan "Sesi Anda Telah Berakhir"** (modal responsif dengan hitung mundur
+  5 detik & tombol **Masuk Kembali Sekarang** di semua layout desktop, portal, dan HP) lalu
+  mengarahkan pengguna ke `/login` dengan banner peringatan di halaman login. Pengunjung tamu baru,
+  pengguna yang sengaja menekan **Log out**, dan gangguan jaringan sementara (`ConnectionStatus`)
+  tidak memicu pemberitahuan palsu.
 - Profil (`/settings/profile`, desktop & shell HP):
   - **Informasi Akun & Kepegawaian (Read-Only / Tidak Dapat Diedit)**: menampilkan Nama Lengkap, NIP / NID, Jabatan, Role Akun, Unit Pembangkit, Unit Layanan, Divisi, dan Regu Shift sesuai akun pengguna (`accountInfo`).
   - **Ubah Email & Kata Sandi**: pengguna dapat memperbarui alamat email (`PATCH /settings/profile`) dan kata sandi (`PUT /settings/password`) secara mandiri langsung pada halaman profil.
@@ -640,6 +649,35 @@ Pelaksanaan Performance Test Mesin) · Program 5S 5R Pengoperasian KIT.
   mengganti filter unit/tahun memuat ulang mesinnya (tidak lagi nama contoh
   statis "MESIN#01 / CUMM #6"). Jadwal yang sudah disimpan tetap memakai baris
   tersimpannya.
+- **Jadwal Pelaksanaan Commissioning Test Mesin Pembangkit** (`operasi/jadwal/commissioning-test`, `operasi_commissioning_tests`) —
+  dirombak menjadi **matriks tahunan per minggu** (12 bulan × 4 minggu = 48 minggu,
+  kolom `NO`, `MESIN PEMBANGKIT`, `BULAN` → `UJI BEBAN` 50% / 75% / 100%, `JUMLAH`,
+  baris `TOTAL` sorotan biru, serta tabel rekap bawah kiri `NO | NAMA MESIN PEMBANGKIT | UJI BBN | DATA`).
+  Struktur tabel `operasi_commissioning_tests` diperbarui (`unit_id`, `machine_id`,
+  `year`, `no_urut`, `nama_mesin`, `section`, `beban_50`, `beban_75`, `beban_100`,
+  `realisasi`, `keterangan`, `sort_order`, `input_by`); data mesin ditarik
+  **otomatis dari Master Data Mesin** aktif unit (`machine_id` → `machines`, lengkap
+  dengan tombol **Muat Master Mesin** & pilihan mesin di dialog tambah, tetap
+  mendukung baris custom). Terintegrasi penuh dengan PDF landscape, Excel berlogo
+  PLN/MKP, Monitoring Kelengkapan Tahunan (`InputCatalog`), Pengingat Jadwal
+  (`ScheduleCatalog`), serta Laporan Project Operasi (`#sec-4-11` &
+  `OperasiReportSections`). Input terpisah **Checklist Commissioning Test Mesin**
+  (`operasi/input/checklist-commissioning-mesin`, `operasi_checklist_commissioning_mesins`)
+  tetap utuh.
+- **Jadwal First Line Maintenance (FLM) Operator** (`operasi/jadwal/flm`, `operasi_flm_jadwals`) —
+  matriks harian `FLM RUTIN` dan `FLM NON RUTIN` (`mark`, `minutes`, `shift`);
+  khusus baris jadwal shift (`row_type = shift`) memakai mekanisme **kuas kode Shift
+  `A–D` / `Hapus`** lengkap dengan klik/geser (*drag-paint*) sel tanggal & pintasan
+  keyboard `A/B/C/D`/`Backspace` (selaras dengan Jadwal Shift Operator) serta
+  chip pilih cepat `Shift A–D` pada tampilan mobile (`MobileDayValuesForm`).
+- **Jadwal Pelaksanaan 5S5R** (`operasi/jadwal/program-5s-5r`, `operasi_5s5r_jadwals`) —
+  pelaksana bawaan ditarik otomatis dari **operator aktif tiap shift (Regu A–D)**
+  pada unit terpilih (`employee_id`, `shift`, Leader Shift lebih dulu), dan
+  **dapat di-custom** per baris (pilih operator shift / pegawai unit lainnya
+  maupun ketik pelaksana custom bebas, plus tombol **Muat Operator Shift** dan
+  **Tambah Custom** di desktop & HP), **tanpa kolom `Shift` terpisah** di tabel,
+  PDF, maupun Excel karena sudah diwakili oleh kolom **Pelaksana**. Terintegrasi
+  ke PDF, Excel, pengingat jadwal personal (`ScheduleCatalog`), dan Laporan Operasi/K3.
 
 Detail penting:
 - **Kondisi Abnormal & Gangguan** — indikasi, tanggal, abnormal/gangguan + durasi
@@ -1554,6 +1592,10 @@ Aturan data:
 
 | Tanggal | Keputusan |
 |---|---|
+| 2026-11-28 | **Tombol `+ Tambah Kegiatan` inline per kategori di tabel Jadwal Kegiatan (HAR, Operasi, K3L, & PdM) selaras Logistik**: pada `KegiatanJadwalPage` (`/har/jadwal/harian`, `/operasi/jadwal/kegiatan`, `/k3/jadwal/kegiatan-rutin`) dan `PdmJadwalHarianIndex` (`/pdm/jadwal/harian`), tombol `+ Tambah Kegiatan` desktop dipindahkan dari toolbar atas ke tiap baris kategori (`I Harian`, `II Mingguan`, `III Bulanan`, `IV Non Rutin`) di dalam tabel — persis seperti `Jadwal Kegiatan Logistik & Gudang` — sehingga klik langsung menyisipkan baris kosong siap ketik di kategori tersebut (§8.2, §8.4, §8.6) |
+| 2026-11-27 | **Jadwal Pelaksanaan 5S5R Operasi: penghapusan kolom `Shift` terpisah**: kolom `Shift` pada tabel desktop, ekspor Excel, PDF (`program-5s-5r-pdf`), serta dropdown Shift di layout mobile **Jadwal Pelaksanaan 5S5R Pembangkit** (`operasi/jadwal/program-5s-5r`) dihapus karena sudah diwakili oleh kolom **Pelaksana**, sementara penarikan otomatis operator per shift, pemilih operator/pegawai unit, input pelaksana custom, serta metadata `employee_id`/`shift` di backend tetap aktif (§8.2) |
+| 2026-11-27 | **Jadwal FLM Operator: pengisian huruf shift `A–D` dengan mekanisme kuas klik & geser (*drag-paint*) selaras Jadwal Shift**: sel jadwal shift (`row_type = shift`) pada `operasi/jadwal/flm` kini diisi langsung melalui bilah **Kode Shift (`A`, `B`, `C`, `D`, `Hapus`)** dengan klik atau klik-tahan-geser (*pointer drag*), pewarnaan tiap shift, serta pintasan keyboard `A/B/C/D` & `Backspace`/`Delete` (menggantikan input ketik manual), dilengkapi chip pilihan `Shift A–D` di layout mobile (`MobileDayValuesForm`) serta normalisasi huruf kapital di `FlmController::store()` (§8.2) |
+| 2026-11-27 | **Jadwal Pelaksanaan Commissioning Test Mesin Pembangkit: layout tahunan uji beban 50/75/100%, struktur DB baru, & tarik mesin dari Master Data Mesin**: tabel `operasi_commissioning_tests` direstrukturisasi dari checklist bulanan menjadi matriks tahunan (`unit_id`, `machine_id` FK ke `machines`, `year`, `no_urut`, `nama_mesin`, `section`, `beban_50`, `beban_75`, `beban_100`, `realisasi`, `keterangan`) via migrasi `2026_11_27_233000_restructure_operasi_commissioning_tests_table.php`. Halaman web (`operasi/jadwal/commissioning-test`), PDF, & Excel mengikuti layout terbaru (`NO | MESIN PEMBANGKIT | BULAN [JANUARY–DECEMBER × 1–4, UJI BEBAN 50%/75%/100%] | JUMLAH`, baris `TOTAL` biru, dan tabel rekap bawah kiri `NO | NAMA MESIN PEMBANGKIT | UJI BBN | DATA`); daftar mesin otomatis ditarik dari **Master Data Mesin** aktif per unit (plus tombol **Muat Master Mesin** & pemilih master di dialog tambah); diperbarui pula di `InputCatalog` (kategori tahunan), `ScheduleCatalog`, `OperasiReportSections`, Laporan Project Operasi (`#sec-4-11`), & `DummyOperatorAndOperasiSeeder`. Input terpisah **Checklist Commissioning Test Mesin** tetap tidak berubah (§8.2) |
 | 2026-11-24 | **Konsolidasi input Unsafe Action & Condition hanya ke modul K3 (`Kondisi K3`)**: menu, rute, izin lapangan (`operasi.lapangan.unsafe_condition`, `har.lapangan.unsafe_condition`), form Logistik `unsafe`, dan halaman input Unsafe Action & Condition di Operasi, Pemeliharaan (HAR), serta Logistik & Gudang dihapus sehingga pencatatan hanya ada di `K3 → Kondisi K3` (`k3/input/kondisi-k3`, tabel `k3_kondisi_k3s`). Migrasi data menyalin temuan & foto lama dari `har_unsafe_conditions` serta `logistik_form_rows` (`unsafe`) ke `k3_kondisi_k3s` dan membersihkan permission terkait; `K3Dashboard`, `InputCatalog`, `SlaCatalog` (`k3:k3_kondisi_k3s`), `OperasiReportSections` (`sec-4-13`), dan `EventNotifier` disesuaikan untuk membaca & memberi notifikasi langsung dari `K3KondisiK3` (§5.3, §7.2–7.3, §8.2, §8.4, §8.6, §8.8) |
 | 2026-09 (Fase 1–4) | Fondasi akses permission-driven; modul Operasi, HAR, K3 dibangun sejajar memakai ulang RBAC, registry, document engine, dan grid |
 | 2026-09-19 | Input PdM tanpa tanda tangan (menyusul fitur verifikasi); dropdown memakai komponen React |
@@ -1572,6 +1614,8 @@ Aturan data:
 | 2026-11-09 | Role **TL Logistik & Gudang** dan **TL PdM & Maturity Level** dihapus → diganti nama menjadi **Koordinator Logistik** / **Koordinator PdM** (migrasi rename, akun & izin tetap); laporan Logistik & PdM: verifikasi Koordinator → setujui TL Pemeliharaan; Jadwal Harian PdM: Menyetujui TL Pemeliharaan, Dibuat Koordinator PDM |
 | 2026-11-09 | Team Leader, Koordinator & Project Leader (input + approve): menu **Persetujuan** dan panel Perlu Persetujuan + Lanjutkan Input di Dashboard (§8.10) |
 | 2026-11-23 | **Patrol Check Mesin per jenis mesin / unit (PLTD Poasia `POA-OPR-CHK-01`)**: ditambahkan master **Template Patrol Check** (`Operasi\PatrolCheckTemplateController`, `operasi_patrol_check_templates`, `machines.patrol_check_template_id`) di menu Master Data untuk mengatur format bulanan N/T (`Cummins (Containerized)` tetap utuh) maupun format pemeriksaan per shift `FORM PATROL CHECK MESIN & ALAT BANTU` (`POA-OPR-CHK-01`, 25 item `MESIN`/`ALAT BANTU`, parameter `Getar/Bunyi/Suhu/Tek-Level/Bocor-Visual`, Shift & Operator otomatis dari data jadwal shift/pegawai user, status `N` tanpa input lanjutan vs `TN` yang langsung menampilkan input wajib uraian alasan/tindakan awal & unggah eviden foto, multi-entri per shift di `operasi_patrol_check_entries`, otomatis menyinkronkan poin 12 `#sec-4-12` di Laporan Project Operasi, header berlogo PLN & MKP tanpa form tanda tangan di input karena pengesahan digabung ke Laporan Project, plus tampilan mobile kartu) (§6.1, §8.2) |
+| 2026-11-27 | **Jadwal Pelaksanaan 5S5R Operasi: pelaksana otomatis dari operator per shift & dapat di-custom**: ditambahkan kolom opsional `employee_id` (FK ke `employees`) dan `shift` pada `operasi_5s5r_jadwals` (`Operasi5s5rJadwal`). Pelaksana bawaan kini ditarik otomatis dari seluruh operator aktif unit per shift/regu (Shift A–D, Leader Shift lebih dulu) menggantikan daftar hardcode lama (`OFFICER FUELFACILITY` / `OPERATOR SHIFT A–D`), dengan migrasi data yang memperbarui jadwal placeholder lama tanpa kehilangan tanggal rencana/realisasi maupun menimpa jadwal custom. Di halaman Jadwal 5S5R (desktop & HP), setiap baris memiliki kolom **Shift** (`Shift A–D` / `Custom`), input **Pelaksana** yang dapat diketik bebas (*custom*) maupun dipilih dari daftar operator shift / pegawai unit, tombol **Muat Operator Shift**, serta tombol **Tambah Custom**; ikut tercetak di PDF, Excel, pengingat jadwal personal (`ScheduleCatalog`), dan Laporan Operasi/K3 (§7.3, §8.2) |
+| 2026-11-27 | **Pemberitahuan sesi berakhir & pengalihan otomatis ke login (layout mobile & desktop)**: ditambahkan endpoint ringan `GET /session/check` (`session.check`), penanganan `AuthenticationException` (request Inertia) & HTTP `419` (`TokenMismatchException`) pada `bootstrap/app.php` yang mengalihkan ke `/login` dengan pesan `session_expired` (tanpa modal error 419 mentah), serta komponen global `SessionMonitor` + `session-guard.ts` di `app.tsx` yang memantau status sesi saat tab/HP kembali aktif (`visibilitychange`/`focus`/`online`), kegagalan 401/419 pada `jsonRequest` maupun kunjungan Inertia, lalu menampilkan modal **"Sesi Anda Telah Berakhir"** (hitung mundur 5 detik + tombol **Masuk Kembali Sekarang**) sebelum mengarahkan ke `/login` yang juga menampilkan banner peringatan sesi berakhir di mobile maupun desktop. Keluar manual (`Log out`), pengunjung tamu baru, dan gangguan internet sementara tidak memicu notifikasi palsu (§7.1) |
 | 2026-11-27 | **Penyederhanaan Serah Terima Lembar Mutasi Operator (tanda tangan otomatis dari profil, 1-klik Terima, notifikasi & kotak Persetujuan, serta pratinjau PDF di HP)**: canvas tanda tangan (`SignaturePad`) pada bagian Serah Terima Tugas Lembar Mutasi dihapus — tanda tangan penyerah & penerima kini ditarik **otomatis dari data tanda tangan profil pegawai (`employees.signature_path`)** dan disimpan sebagai snapshot saat klik **Serahkan** / **Terima Tugas**; saat lembar diserahkan, sistem mengirim notifikasi in-app/Web Push (`EventNotifier::mutasiHandedOver` / `mutasiAccepted`) dan memasukkannya ke kotak **Persetujuan** (`ApprovalInbox::mutasiHandovers`, kartu Persetujuan beranda HP, sidebar, Dashboard, dan banner di halaman Lembar Mutasi) bagi Leader Shift regu penerima / Project Leader sehingga cukup 1 klik **Terima Tugas**. Di **layout mobile**, tombol ekspor hanya menampilkan satu tombol penuh **Export PDF (Pratinjau)** (tanpa Export Excel) yang membuka halaman pratinjau render PDF (`/operator/mutasi/{mutasi}/preview`) lengkap dengan tampilan dokumen A4 responsif dan tombol Unduh PDF (§6.2, §7.3, §8.1, §8.10) |
 | 2026-11-27 | **Profil & Pengaturan di Layout Mobile (`SHELL_PAGES`), Informasi Akun Read-Only, Ubah Email & Password, serta Kanvas Tanda Tangan Digital (`SignaturePad`)**: menu hamburger akun pada seluruh shell HP kini menampilkan **Profil & Pengaturan** (`/settings/profile`) yang tetap berada di dalam shell HP (`MobileModuleLayout`). Halaman profil menampilkan **Informasi Akun & Kepegawaian (Read-Only / Tidak Dapat Diedit)** meliputi Nama Lengkap, NIP/NID, Jabatan, Role Akun, Unit Pembangkit, Unit Layanan, Divisi, dan Regu Shift; form **Ubah Email Akun**; form **Ubah Kata Sandi (Password)**; serta bagian **Tanda Tangan Digital** dengan kanvas interaktif (`SignaturePad`) untuk menggambar tanda tangan langsung (maupun unggah gambar / hapus tanda tangan) yang tersimpan ke `employees.signature_path` (§6.2, §7.1) |
 | 2026-11-27 | **Logsheet PLTD Poasia (Mirrlees): parameter Beban hanya pada lembar per jam**: parameter **Beban** (`L03_BEBAN` dan `CH_BEBAN`) dihapus dari lembar **Logsheet Lokal 03 (Setiap 2 Jam)** dan **Logsheet Lokal 04 Cylinder Head (Setiap 4 Jam)** sehingga inputan Beban hanya berada pada lembar **Setiap Jam** (`Logsheet Lokal 01` & `Logsheet Lokal 02`). **Banner pemberitahuan absen (`AttendanceAlertBanner`) ditampilkan langsung di beranda HP** tepat di bawah kartu header sapaan dengan tombol aksi penuh (**Absen Sekarang** / **Absen Pulang**), tidak lagi hanya berupa titik merah pada ikon Absensi (§7, §8.1) |

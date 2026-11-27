@@ -12,6 +12,7 @@ import { UserInfo } from '@/components/user-info';
 import { useMobileNavigation } from '@/hooks/use-mobile-navigation';
 import { openAccountSwitcher } from '@/lib/impersonation';
 import { detachPushForLogout } from '@/lib/notifications';
+import { markIntentionalLogout } from '@/lib/session-guard';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import type { Auth, User } from '@/types';
@@ -35,6 +36,7 @@ export function UserMenuContent({
     // Unlink this device's push first (needs the session), then log out.
     const handleLogout = (event: MouseEvent) => {
         event.preventDefault();
+        markIntentionalLogout();
         void detachPushForLogout().finally(() => {
             cleanup();
             router.flushAll();

@@ -42,7 +42,7 @@ class OperasiReportSections
         $daysInMonth = (int) Carbon::create($year, $month, 1)->daysInMonth;
 
         $flm = $this->flm($unit->id, $month, $year, $daysInMonth);
-        $program5s5r = $this->dayPlanRows(Operasi5s5rJadwal::query(), $unit->id, $month, $year, fn (Operasi5s5rJadwal $r): string => (string) $r->pelaksana);
+        $program5s5r = $this->dayPlanRows(Operasi5s5rJadwal::query(), $unit->id, $month, $year, fn (Operasi5s5rJadwal $r): string => $r->displayPelaksana());
         $meetingShift = $this->meetingShift($unit->id, $month, $year);
         $inventarisasi = $this->dayPlanRows(
             OperasiInventarisJadwal::query(), $unit->id, $month, $year,
@@ -291,24 +291,36 @@ class OperasiReportSections
     }
 
     /**
-     * @return list<array{section: string, items: list<array<string, mixed>>}>
+     * Commissioning tests per machine at 50/75/100% load for this month's weeks.
+     *
+     * @return list<array<string, mixed>>
      */
     private function commissioning(int $unitId, int $month, int $year): array
     {
         return OperasiCommissioningTest::query()
-            ->where('unit_id', $unitId)->where('year', $year)->where('month', $month)
+            ->with('machine:id,name')
+            ->where('unit_id', $unitId)->where('year', $year)
             ->orderBy('sort_order')->orderBy('id')->get()
-            ->groupBy('section')
-            ->map(fn ($items, $section): array => [
-                'section' => (string) $section,
-                'items' => $items->map(fn (OperasiCommissioningTest $r): array => [
-                    'no' => $r->no_urut,
-                    'kegiatan' => (string) $r->kegiatan,
-                    'status' => $r->status,
-                    'pic' => (string) ($r->pic ?? ''),
-                    'paraf' => (string) ($r->paraf ?? ''),
-                ])->values()->all(),
-            ])->values()->all();
+            ->map(function (OperasiCommissioningTest $r, int $index) use ($month): array {
+                $weeks = [];
+                for ($week = 1; $week <= 4; $week++) {
+                    foreach (['50', '75', '100'] as $load) {
+                        $weeks[$week][$load] = in_array("{$month}-{$week}", (array) ($r->{'beban_'.$load} ?? []), true);
+                    }
+                }
+
+                return [
+                    'no' => $r->no_urut ?: $index + 1,
+                    'section' => (string) ($r->section ?: 'A. PEMBUATAN DATA TEKNIKS'),
+                    'nama' => $r->displayMachineName(),
+                    'weeks' => $weeks,
+                    'jumlah_50' => count((array) ($r->beban_50 ?? [])),
+                    'jumlah_75' => count((array) ($r->beban_75 ?? [])),
+                    'jumlah_100' => count((array) ($r->beban_100 ?? [])),
+                    'jumlah_tahun' => count((array) ($r->beban_50 ?? [])) + count((array) ($r->beban_75 ?? [])) + count((array) ($r->beban_100 ?? [])),
+                    'keterangan' => (string) ($r->keterangan ?? ''),
+                ];
+            })->all();
     }
 
     /**

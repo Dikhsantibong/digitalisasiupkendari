@@ -1,11 +1,10 @@
 import { Head, router } from '@inertiajs/react';
-import { ArrowLeft, Download, FileSpreadsheet, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
-import { Fragment, useMemo, useState } from 'react';
+import { ArrowLeft, Download, Eraser, FileSpreadsheet, Plus, Printer, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { MobileDayValuesForm } from '@/components/mobile/day-values-form';
 import type { DayValueField } from '@/components/mobile/day-values-form';
 import { monthTimelineDays, TimelineField } from '@/components/mobile/timeline-form';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
-import { PageHeader } from '@/components/page-header';
 import { AutoWrapCellInput } from '@/components/ui/auto-wrap-input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useCompactLayout } from '@/hooks/use-mobile-module';
 import type { StyleSpec } from '@/lib/jadwal-excel';
 import { buildDocumentHeader, createSheet, downloadWorkbook, mergeCells, paintSheet, setColWidths, SPECS, XLSX_COLORS } from '@/lib/jadwal-excel';
+import { cn } from '@/lib/utils';
 import { dashboard } from '@/routes';
 import jadwal from '@/routes/operasi/jadwal';
 import flm from '@/routes/operasi/jadwal/flm';
@@ -52,6 +52,25 @@ const SECTIONS: { key: Section; label: string }[] = [
     { key: 'non_rutin', label: 'FLM Non Rutin' },
 ];
 
+const SHIFT_CODES = ['A', 'B', 'C', 'D'] as const;
+
+const SHIFT_STYLE: Record<string, string> = {
+    A: 'border-sky-300 bg-sky-100 text-sky-900 dark:border-sky-700 dark:bg-sky-900/50 dark:text-sky-100',
+    B: 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-900/50 dark:text-amber-100',
+    C: 'border-violet-300 bg-violet-100 text-violet-900 dark:border-violet-700 dark:bg-violet-900/50 dark:text-violet-100',
+    D: 'border-emerald-300 bg-emerald-100 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-100',
+};
+
+const SHIFT_SHORTCUT: Record<string, string> = {
+    a: 'A',
+    b: 'B',
+    c: 'C',
+    d: 'D',
+};
+
+const shiftTone = (val: string): string =>
+    SHIFT_STYLE[val] ?? 'border-border bg-muted text-foreground';
+
 const PRINT_CSS = `
 @media print {
     @page { size: A4 landscape; margin: 6mm; }
@@ -63,6 +82,7 @@ const PRINT_CSS = `
     .flm-table th, .flm-table td { border: 1px solid #000 !important; }
     .flm-th { background-color: #ea7315 !important; color: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .flm-done { background-color: #cbd5e1 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .flm-shift-cell { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
 `;
 
@@ -70,7 +90,13 @@ const PRINT_CSS = `
 const FIELDS: Record<RowType, DayValueField[]> = {
     mark: [{ key: 'v', label: 'Realisasi', options: ['1'], labels: { '1': '✓ Terlaksana' }, tone: () => 'border-slate-500 bg-slate-300 text-black' }],
     minutes: [{ key: 'v', label: 'Waktu (menit)', numeric: true }],
-    shift: [{ key: 'v', label: 'Kode shift tanggal ini' }],
+    shift: [{
+        key: 'v',
+        label: 'Kode shift tanggal ini',
+        options: [...SHIFT_CODES],
+        labels: { A: 'Shift A', B: 'Shift B', C: 'Shift C', D: 'Shift D' },
+        tone: (v) => SHIFT_STYLE[v] ?? 'border-border bg-muted text-foreground',
+    }],
 };
 
 const hydrate = (rows: ServerRow[]): Row[] => rows.map((r, i) => ({ ...r, _key: i, days: { ...r.days } }));
@@ -81,6 +107,9 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
     const [dirty, setDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    const [shiftBrush, setShiftBrush] = useState<string>('A');
+    const painting = useRef(false);
+
     const compact = useCompactLayout();
     const [mobileEditing, setMobileEditing] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -90,63 +119,149 @@ export default function OperasiFlmPage({ unit, filters, options, days_in_month, 
     const [sig, setSig] = useState(signature);
 
     if (sig !== signature) {
- setSig(signature); setRows(hydrate(initialRows)); setNextKey(initialRows.length); setDirty(false); 
-}
+        setSig(signature);
+        setRows(hydrate(initialRows));
+        setNextKey(initialRows.length);
+        setDirty(false);
+    }
+
+    useEffect(() => {
+        const stop = () => {
+            painting.current = false;
+        };
+        window.addEventListener('pointerup', stop);
+
+        return () => window.removeEventListener('pointerup', stop);
+    }, []);
+
+    useEffect(() => {
+        if (!can_write) {
+            return;
+        }
+
+        const onKey = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement;
+
+            if (
+                e.ctrlKey ||
+                e.metaKey ||
+                e.altKey ||
+                ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+                target.isContentEditable
+            ) {
+                return;
+            }
+
+            const key = e.key.toLowerCase();
+
+            if (key === 'backspace' || key === 'delete') {
+                setShiftBrush('');
+            } else if (SHIFT_SHORTCUT[key]) {
+                setShiftBrush(SHIFT_SHORTCUT[key]);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+
+        return () => window.removeEventListener('keydown', onKey);
+    }, [can_write]);
 
     const monthName = useMemo(() => OPERASI_MONTHS[filters.month - 1] ?? '', [filters.month]);
     const days = useMemo(() => Array.from({ length: days_in_month }, (_, i) => i + 1), [days_in_month]);
     const timelineDays = useMemo(() => monthTimelineDays(filters.year, filters.month, days_in_month), [filters.year, filters.month, days_in_month]);
     const orderedRows = useMemo(() => SECTIONS.flatMap((s) => rows.filter((r) => r.section === s.key)), [rows]);
+    const hasShiftRows = useMemo(() => rows.some((r) => r.row_type === 'shift'), [rows]);
 
     const visit = (patch: Partial<Props['filters']>) => router.get(flm.index().url, { ...filters, ...patch }, { preserveState: true, preserveScroll: true, replace: true });
 
     const setDay = (key: number, day: number, value: string) => {
         setRows((p) => p.map((r) => {
             if (r._key !== key) {
-return r;
-}
+                return r;
+            }
 
             const d = { ...r.days };
 
             if (value.trim() === '') {
-delete d[String(day)];
-} else {
-d[String(day)] = value;
-}
+                delete d[String(day)];
+            } else {
+                d[String(day)] = value;
+            }
 
             return { ...r, days: d };
         }));
         setDirty(true);
     };
+
+    const paintShift = (rowKey: number, day: number) => {
+        if (!can_write) {
+            return;
+        }
+
+        setRows((p) => {
+            let changed = false;
+            const next = p.map((r) => {
+                if (r._key !== rowKey) {
+                    return r;
+                }
+
+                const existing = r.days[String(day)] ?? '';
+
+                if (existing === shiftBrush) {
+                    return r;
+                }
+
+                changed = true;
+                const d = { ...r.days };
+
+                if (shiftBrush === '') {
+                    delete d[String(day)];
+                } else {
+                    d[String(day)] = shiftBrush;
+                }
+
+                return { ...r, days: d };
+            });
+
+            if (changed) {
+                setDirty(true);
+            }
+
+            return changed ? next : p;
+        });
+    };
+
     const toggleMark = (key: number, day: number) => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setRows((p) => p.map((r) => {
             if (r._key !== key) {
-return r;
-}
+                return r;
+            }
 
             const d = { ...r.days };
 
             if (d[String(day)]) {
-delete d[String(day)];
-} else {
-d[String(day)] = '1';
-}
+                delete d[String(day)];
+            } else {
+                d[String(day)] = '1';
+            }
 
             return { ...r, days: d };
         }));
         setDirty(true);
     };
+
     const updateMeta = (key: number, field: 'label' | 'shift' | 'target', value: string) => {
         setRows((p) => p.map((r) => (r._key === key ? { ...r, [field]: field === 'target' ? Math.max(0, parseInt(value, 10) || 0) : value } : r)));
         setDirty(true);
     };
+
     const remove = (key: number) => {
- setRows((p) => p.filter((r) => r._key !== key)); setDirty(true); 
-};
+        setRows((p) => p.filter((r) => r._key !== key));
+        setDirty(true);
+    };
 
     const addRow = () => {
         setRows((p) => [...p, { _key: nextKey, id: null, section: form.section, shift: form.shift, label: form.label, row_type: form.row_type, days: {}, target: Number(form.target) || 0 }]);
@@ -157,25 +272,27 @@ d[String(day)] = '1';
 
     const realisasiOf = (r: Row): number | null => {
         if (r.row_type === 'shift') {
-return null;
-}
+            return null;
+        }
 
         const vals = Object.values(r.days).filter((v) => String(v).trim() !== '');
 
         if (r.row_type === 'minutes') {
-return vals.reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
-}
+            return vals.reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
+        }
 
         return vals.length;
     };
 
     const handleReset = () => {
- setRows(hydrate(initialRows)); setDirty(false); 
-};
+        setRows(hydrate(initialRows));
+        setDirty(false);
+    };
+
     const handleSave = () => {
         if (!can_write) {
-return;
-}
+            return;
+        }
 
         setSaving(true);
         const ordered = SECTIONS.flatMap((s) => rows.filter((r) => r.section === s.key));
@@ -200,53 +317,52 @@ return;
             const pct = r.row_type === 'shift' ? '' : (r.target > 0 ? `${Math.round(((realisasiOf(r) ?? 0) / r.target) * 100)}%` : '0%');
             const label = SECTIONS.find((s) => s.key === r.section)?.label ?? '';
             H.push([label, r.label, r.shift, ...days.map((d) => {
- const v = r.days[String(d)] ?? '';
+                const v = r.days[String(d)] ?? '';
 
- if (r.row_type === 'mark') {
-return v !== '' ? 1 : '';
-}
+                if (r.row_type === 'mark') {
+                    return v !== '' ? 1 : '';
+                }
 
- if (r.row_type === 'minutes') {
-return v !== '' ? Number(v) : '';
-}
+                if (r.row_type === 'minutes') {
+                    return v !== '' ? Number(v) : '';
+                }
 
- return v; 
-}), r.row_type === 'shift' ? '' : realisasi, r.row_type === 'shift' ? '' : r.target, pct]);
+                return v;
+            }), r.row_type === 'shift' ? '' : realisasi, r.row_type === 'shift' ? '' : r.target, pct]);
         });
         const { workbook, worksheet: ws } = createSheet('FLM', H);
         const dayStart = 3; const dayEnd = dayStart + days.length - 1; const totalCols = 3 + days.length + 3;
         const done: StyleSpec = { fill: XLSX_COLORS.slate, bold: true, align: 'center', valign: 'center', border: true };
         paintSheet(ws, H.length, totalCols, (r, c) => {
             if (r < 4) {
-return null;
-}
+                return null;
+            }
 
             if (r === 4) {
-return SPECS.headerOrange;
-}
+                return SPECS.headerOrange;
+            }
 
             if (c === 0) {
-return SPECS.label;
-}
+                return SPECS.label;
+            }
 
             if (c === 1) {
-return SPECS.cellLeft;
-}
+                return SPECS.cellLeft;
+            }
 
             if (c >= dayStart && c <= dayEnd) {
-return H[r]?.[c] === 1 ? done : SPECS.cell;
-}
+                return H[r]?.[c] === 1 ? done : SPECS.cell;
+            }
 
             return { ...SPECS.cell, bold: true };
         });
-        // Merge the category column across each section's rows.
         let cursor = 5;
         SECTIONS.forEach((s) => {
             const n = ordered.filter((r) => r.section === s.key).length;
 
             if (n > 1) {
-mergeCells(ws, cursor, 0, cursor + n - 1, 0);
-}
+                mergeCells(ws, cursor, 0, cursor + n - 1, 0);
+            }
 
             cursor += n;
         });
@@ -277,9 +393,39 @@ mergeCells(ws, cursor, 0, cursor + n - 1, 0);
             );
         }
 
+        const upperVal = val.trim().toUpperCase();
+
         return (
-            <td key={day} className="border border-black p-0 text-center">
-                {can_write ? <input type="text" maxLength={2} value={val} onChange={(e) => setDay(r._key, day, e.target.value.toUpperCase())} className="h-6 w-7 bg-transparent text-center text-[10px] font-semibold uppercase focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary" /> : <span className="text-[10px] font-semibold">{val}</span>}
+            <td
+                key={day}
+                onPointerDown={(e) => {
+                    if (!can_write) {
+                        return;
+                    }
+
+                    e.preventDefault();
+                    painting.current = true;
+                    paintShift(r._key, day);
+                }}
+                onPointerEnter={() => {
+                    if (can_write && painting.current) {
+                        paintShift(r._key, day);
+                    }
+                }}
+                title={
+                    can_write
+                        ? shiftBrush === ''
+                            ? `Klik / geser untuk menghapus shift tanggal ${day}`
+                            : `Klik / geser untuk mengisi Shift ${shiftBrush} pada tanggal ${day}`
+                        : undefined
+                }
+                className={cn(
+                    'flm-shift-cell h-6 w-7 border border-black p-0 text-center text-[11px] font-bold uppercase select-none transition-colors',
+                    upperVal ? shiftTone(upperVal) : can_write ? 'hover:bg-muted/40' : '',
+                    can_write ? 'cursor-pointer' : '',
+                )}
+            >
+                {upperVal}
             </td>
         );
     };
@@ -297,7 +443,7 @@ mergeCells(ws, cursor, 0, cursor + n - 1, 0);
                                 <h1 className="text-xl font-bold text-foreground">Jadwal First Line Maintenance (FLM) Operator</h1>
                                 <Badge variant="outline" className="border-primary/30 bg-primary/10 text-primary">{unit.name}</Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground">Klik sel pada baris REALISASI untuk mengisi 1; baris "Waktu tentatif" diisi menit; baris jadwal diisi huruf shift. Realisasi &amp; persentase otomatis.</p>
+                            <p className="text-xs text-muted-foreground">Pilih kuas Shift A–D lalu klik/geser pada sel jadwal; klik sel REALISASI untuk mengisi 1; baris &quot;Waktu tentatif&quot; diisi menit. Realisasi &amp; persentase otomatis.</p>
                         </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -323,20 +469,69 @@ mergeCells(ws, cursor, 0, cursor + n - 1, 0);
                     {dirty && <div className="flex items-center gap-1.5 pb-1 text-xs font-medium text-amber-600 dark:text-amber-400"><span className="size-2 animate-pulse rounded-full bg-amber-500" />Belum disimpan</div>}
                 </div>
 
+                {can_write && !compact && hasShiftRows && (
+                    <div className="no-print flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card p-2">
+                        <span className="px-1.5 text-[12px] font-medium text-muted-foreground">
+                            Kode Shift:
+                        </span>
+                        {SHIFT_CODES.map((code) => (
+                            <button
+                                key={code}
+                                type="button"
+                                onClick={() => setShiftBrush(code)}
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[12px] transition',
+                                    shiftBrush === code
+                                        ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                                        : 'border-border hover:bg-muted',
+                                )}
+                                title={`Shortcut: ${code}`}
+                            >
+                                <span
+                                    className={cn(
+                                        'inline-flex h-5 min-w-6 items-center justify-center rounded border px-1 text-[10px] font-bold',
+                                        shiftTone(code),
+                                    )}
+                                >
+                                    {code}
+                                </span>
+                                Shift {code}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={() => setShiftBrush('')}
+                            className={cn(
+                                'inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[12px] transition',
+                                shiftBrush === ''
+                                    ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                                    : 'border-border hover:bg-muted',
+                            )}
+                            title="Shortcut: Backspace / Delete"
+                        >
+                            <Eraser className="size-3.5" />
+                            Hapus
+                        </button>
+                        <span className="ml-auto hidden px-1.5 text-[11px] text-muted-foreground lg:inline">
+                            Tip: klik atau geser sel jadwal; tekan A/B/C/D atau Backspace untuk hapus
+                        </span>
+                    </div>
+                )}
+
                 <div className="print-container overflow-hidden rounded-md border border-border bg-card shadow-xs">
                     <div className="border-b border-border p-4">
                         <div className="grid grid-cols-12 items-stretch border border-black dark:border-border">
                             <div className="col-span-3 flex items-center justify-center border-r border-black p-2 dark:border-border"><img src="/logo/sidebar-logo.png" alt="PLN" className="max-h-12 object-contain" onError={(e) => {
- (e.target as HTMLElement).style.display = 'none'; 
-}} /></div>
+                                (e.target as HTMLElement).style.display = 'none';
+                            }} /></div>
                             <div className="col-span-6 flex flex-col justify-center p-2 text-center">
                                 <div className="text-xs font-bold text-foreground uppercase">JASA PENDUKUNG TEKNIS 11 SITE KIT</div>
                                 <div className="text-[11px] font-semibold text-foreground uppercase">LAPORAN PROJECT — {unit.name.toUpperCase()}</div>
                                 <div className="text-[11px] font-bold text-foreground uppercase">JADWAL FIRST LINE MAINTENANCE (FLM) OPERATOR — {monthName.toUpperCase()} {filters.year}</div>
                             </div>
                             <div className="col-span-3 flex items-center justify-center border-l border-black p-2 dark:border-border"><img src="/logo/mkp.jpg" alt="MKP" className="max-h-12 object-contain" onError={(e) => {
- (e.target as HTMLElement).style.display = 'none'; 
-}} /></div>
+                                (e.target as HTMLElement).style.display = 'none';
+                            }} /></div>
                         </div>
                     </div>
 
@@ -400,8 +595,8 @@ mergeCells(ws, cursor, 0, cursor + n - 1, 0);
                                     const items = rows.filter((r) => r.section === section.key);
 
                                     if (items.length === 0) {
-return null;
-}
+                                        return null;
+                                    }
 
                                     return (
                                         <Fragment key={section.key}>
@@ -479,7 +674,7 @@ return null;
                                 <SelectContent>
                                     <SelectItem value="mark">Realisasi (klik isi 1)</SelectItem>
                                     <SelectItem value="minutes">Waktu tentatif (menit)</SelectItem>
-                                    <SelectItem value="shift">Jadwal shift (huruf)</SelectItem>
+                                    <SelectItem value="shift">Jadwal shift (huruf A–D)</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

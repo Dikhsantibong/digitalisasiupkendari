@@ -15,6 +15,7 @@ use App\Enums\PersediaanJenis;
 use App\Enums\ScheduleGroupType;
 use App\Enums\TankJenis;
 use App\Enums\TugJenis;
+use App\Http\Controllers\Operasi\Program5s5rController;
 use App\Models\AttendanceCode;
 use App\Models\AttendanceRequest;
 use App\Models\AuxiliarySource;
@@ -266,6 +267,26 @@ class DummyOperatorAndOperasiSeeder extends Seeder
                 'beban_75' => ['3-2', '9-2', '10-2'],
                 'beban_100' => ['3-3', '9-3', '11-1'],
                 'keterangan' => 'Beroperasi normal sesuai standar',
+                'sort_order' => $idx + 1,
+                'input_by' => $userId,
+            ]);
+        }
+
+        OperasiCommissioningTest::query()->where('unit_id', $unit->id)->where('year', $year)->delete();
+        foreach ($machines->values() as $idx => $machine) {
+            $mSlot = ($idx % 12) + 1;
+            $wSlot = ($idx % 4) + 1;
+            OperasiCommissioningTest::query()->create([
+                'unit_id' => $unit->id,
+                'machine_id' => $machine->id,
+                'year' => $year,
+                'no_urut' => $idx + 1,
+                'nama_mesin' => mb_strtoupper($machine->name),
+                'section' => 'A. PEMBUATAN DATA TEKNIKS',
+                'beban_50' => ["{$mSlot}-{$wSlot}"],
+                'beban_75' => ["{$mSlot}-{$wSlot}"],
+                'beban_100' => ["{$mSlot}-{$wSlot}"],
+                'keterangan' => 'Commissioning test mesin pembangkit sesuai jadwal',
                 'sort_order' => $idx + 1,
                 'input_by' => $userId,
             ]);
@@ -815,20 +836,22 @@ class DummyOperatorAndOperasiSeeder extends Seeder
             OperasiFlmJadwal::query()->create(['unit_id' => $unit->id, 'year' => $year, 'month' => $month, 'input_by' => $userId, ...$r]);
         }
 
-        // 2. operasi_5s5r_jadwals
+        // 2. operasi_5s5r_jadwals — ditarik dari operator aktif masing-masing shift (Regu A–D)
         Operasi5s5rJadwal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
-        $pelaksana5s = ['OFFICER FUELFACILITY', 'OPERATOR SHIFT A', 'OPERATOR SHIFT B', 'OPERATOR SHIFT C', 'OPERATOR SHIFT D'];
-        foreach ($pelaksana5s as $idx => $p) {
+        $default5sRows = Program5s5rController::defaultRowsFor($unit->id);
+        foreach ($default5sRows as $idx => $row) {
             Operasi5s5rJadwal::query()->create([
                 'unit_id' => $unit->id,
                 'year' => $year,
                 'month' => $month,
                 'no_urut' => $idx + 1,
-                'pelaksana' => $p,
+                'employee_id' => $row['employee_id'],
+                'shift' => $row['shift'],
+                'pelaksana' => $row['pelaksana'],
                 'rencana' => $weeklyDays,
                 'realisasi' => $weeklyReal,
                 'target' => count($weeklyDays),
-                'sort_order' => $idx + 1,
+                'sort_order' => $idx,
                 'input_by' => $userId,
             ]);
         }
@@ -862,28 +885,6 @@ class DummyOperatorAndOperasiSeeder extends Seeder
             'sort_order' => 1,
             'input_by' => $userId,
         ]);
-
-        // 5. operasi_commissioning_tests
-        OperasiCommissioningTest::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
-        $commTests = [
-            ['section' => 'PERSIAPAN', 'no_urut' => 1, 'kegiatan' => 'Pemeriksaan level oli carter, governor, dan air radiator', 'status' => 'SIAP OPERASI'],
-            ['section' => 'PERSIAPAN', 'no_urut' => 2, 'kegiatan' => 'Pemeriksaan tekanan udara start (min. 25 Bar) & tegangan baterai 24/110 VDC', 'status' => 'SIAP OPERASI'],
-            ['section' => 'PARAREL GENERATOR', 'no_urut' => 1, 'kegiatan' => 'Sinkronisasi tegangan, frekuensi (50 Hz), dan sudut fasa (Synchroscope)', 'status' => 'ON'],
-            ['section' => 'PARAREL GENERATOR', 'no_urut' => 2, 'kegiatan' => 'Pembebanan bertahap 25%, 50%, 75%, hingga beban nominal DMP', 'status' => 'ON'],
-        ];
-        foreach ($commTests as $idx => $ct) {
-            OperasiCommissioningTest::query()->create([
-                'unit_id' => $unit->id,
-                'year' => $year,
-                'month' => $month,
-                ...$ct,
-                'pic' => 'Operator Shift & Koord Operasi',
-                'paraf' => 'OK',
-                'catatan' => 'Sesuai SOP Pengoperasian',
-                'sort_order' => $idx + 1,
-                'input_by' => $userId,
-            ]);
-        }
 
         // 6. kondisi_abnormals
         KondisiAbnormal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();

@@ -905,13 +905,16 @@ class K3ReportBuilder
             ->get();
 
         if ($records->isEmpty()) {
-            return array_map(fn (string $pelaksana): array => [
-                'pelaksana' => $pelaksana, 'target' => 4, 'rencana_count' => 0, 'realisasi_count' => 0,
-            ], Program5s5rController::DEFAULT_PELAKSANA);
+            return array_map(fn (array $row): array => [
+                'pelaksana' => trim($row['pelaksana'].($row['shift'] ? " (Shift {$row['shift']})" : '')),
+                'target' => $row['target'],
+                'rencana_count' => 0,
+                'realisasi_count' => 0,
+            ], Program5s5rController::defaultRowsFor($unitId));
         }
 
         return $records->map(fn (Operasi5s5rJadwal $s): array => [
-            'pelaksana' => $s->pelaksana,
+            'pelaksana' => $s->displayPelaksana(),
             'target' => $s->target,
             'rencana_count' => is_array($s->rencana) ? count($s->rencana) : 0,
             'realisasi_count' => is_array($s->realisasi) ? count($s->realisasi) : 0,

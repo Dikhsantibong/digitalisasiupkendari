@@ -1,4 +1,5 @@
 import { usePage } from '@inertiajs/react';
+import { useEffect } from 'react';
 import { AccountSwitcher } from '@/components/impersonation/account-switcher';
 import { ImpersonationBanner } from '@/components/impersonation/impersonation-banner';
 import { MobileTableCards } from '@/components/mobile/table-cards';
@@ -10,6 +11,7 @@ import MobileModuleLayout, {
     MobileSplash,
 } from '@/layouts/mobile/mobile-module-layout';
 import PortalLayout from '@/layouts/portal/portal-layout';
+import { syncAuthState } from '@/lib/session-guard';
 import type { Auth, BreadcrumbItem } from '@/types';
 
 /** Pages whose hand-built input tables become cards on a phone (MobileTableCards). */
@@ -42,6 +44,11 @@ function AppLayoutContent({
     const candidate = useMobileModuleCandidate(breadcrumbs);
     const isMobile = useIsMobile();
     const { component, props } = usePage();
+    const isAuthenticated = Boolean((props.auth as Auth | undefined)?.user);
+
+    useEffect(() => {
+        syncAuthState(isAuthenticated, component);
+    }, [isAuthenticated, component]);
     const page = (
         <>
             {/* The absen still owed by the user's Jadwal Shift (operators & project leader). */}

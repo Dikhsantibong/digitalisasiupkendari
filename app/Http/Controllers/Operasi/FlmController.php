@@ -97,9 +97,14 @@ class FlmController extends Controller
             OperasiFlmJadwal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
 
             foreach ($validated['rows'] ?? [] as $index => $row) {
+                $isShiftRow = $row['row_type'] === 'shift';
                 $days = collect($row['days'] ?? [])
                     ->filter(fn ($v): bool => $v !== null && trim((string) $v) !== '')
-                    ->mapWithKeys(fn ($v, $k): array => [(string) $k => trim((string) $v)])
+                    ->mapWithKeys(function ($v, $k) use ($isShiftRow): array {
+                        $val = trim((string) $v);
+
+                        return [(string) $k => $isShiftRow ? mb_strtoupper($val) : $val];
+                    })
                     ->all();
 
                 OperasiFlmJadwal::query()->create([

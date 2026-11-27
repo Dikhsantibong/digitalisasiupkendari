@@ -164,7 +164,17 @@ class LaporanDocumentStructureTest extends TestCase
         OperasiDataTeknis::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'nama' => 'Data Teknis Genset', 'pic' => 'Budi', 'months' => ['8' => '1']]);
         OperasiBlackstartJadwal::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'uraian' => 'Cek Baterai Blackstart', 'rencana' => ['8-1'], 'realisasi' => ['8-1']]);
         OperasiCommPeralatan::query()->create(['unit_id' => $unit->id, 'year' => 2026, 'nama_peralatan' => 'COMPRESOR 1', 'beban_50' => ['8-2']]);
-        OperasiCommissioningTest::query()->create($period + ['section' => 'PERSIAPAN', 'no_urut' => 1, 'kegiatan' => 'Periksa PMT Feeder', 'status' => 'ok']);
+        OperasiCommissioningTest::query()->create([
+            'unit_id' => $unit->id,
+            'machine_id' => $engine->id,
+            'year' => 2026,
+            'no_urut' => 1,
+            'nama_mesin' => mb_strtoupper($engine->name),
+            'section' => 'A. PEMBUATAN DATA TEKNIKS',
+            'beban_50' => ['8-2'],
+            'beban_75' => ['8-2'],
+            'beban_100' => ['8-2'],
+        ]);
         K3KondisiK3::query()->create($period + ['kategori' => 'Unsafe Condition', 'temuan' => 'Kabel terkelupas', 'lokasi' => 'Ruang Panel', 'keterangan' => 'Open']);
         OperasiFlmMonitoring::factory()->create($period + ['mesin' => 'Sensor Coolant Temp']);
 
@@ -180,7 +190,7 @@ class LaporanDocumentStructureTest extends TestCase
             'sec-4-8' => 'Cek Baterai Blackstart',
             'sec-4-9' => 'COMPRESOR 1',
             'sec-4-10' => 'Data Teknis Genset',
-            'sec-4-11' => 'Periksa PMT Feeder',
+            'sec-4-11' => mb_strtoupper($engine->name),
             'sec-4-13' => 'Kabel terkelupas',
         ];
 

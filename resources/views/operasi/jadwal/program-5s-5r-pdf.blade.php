@@ -39,7 +39,7 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 120px;">Pelaksana</th>
+                <th rowspan="2" style="width: 145px;">Pelaksana</th>
                 <th rowspan="2" style="width: 55px;">Rencana / Realisasi</th>
                 <th colspan="{{ $daysInMonth }}">Bulan {{ $monthName }}</th>
                 <th rowspan="2" style="width: 34px;">Rencana</th>

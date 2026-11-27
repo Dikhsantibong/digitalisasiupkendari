@@ -18,6 +18,7 @@ use App\Models\K3PekerjaanRutin;
 use App\Models\LogistikJadwalRow;
 use App\Models\Operasi5s5rJadwal;
 use App\Models\OperasiBlackstartJadwal;
+use App\Models\OperasiCommissioningTest;
 use App\Models\OperasiCommPeralatan;
 use App\Models\OperasiDataTeknis;
 use App\Models\OperasiFlmJadwal;
@@ -80,13 +81,14 @@ class ScheduleCatalog
         $tables = [
             // Operasi
             ['module' => 'operasi', 'label' => 'Kegiatan Operasi', 'model' => OperasiJadwalKegiatan::class, 'route' => 'operasi.jadwal.kegiatan.index', 'period' => 'month', 'cells' => ['jadwal'], 'title' => fn ($r): string => (string) $r->kegiatan],
-            ['module' => 'operasi', 'label' => '5S 5R', 'model' => Operasi5s5rJadwal::class, 'route' => 'operasi.jadwal.program-5s-5r.index', 'period' => 'month', 'cells' => ['rencana'], 'title' => fn ($r): string => (string) $r->pelaksana],
+            ['module' => 'operasi', 'label' => '5S 5R', 'model' => Operasi5s5rJadwal::class, 'route' => 'operasi.jadwal.program-5s-5r.index', 'period' => 'month', 'cells' => ['rencana'], 'person' => 'employee_id', 'title' => fn ($r): string => $r->displayPelaksana()],
             ['module' => 'operasi', 'label' => 'Inventarisasi Tools', 'model' => OperasiInventarisJadwal::class, 'route' => 'operasi.jadwal.inventarisasi-tools.index', 'period' => 'month', 'cells' => ['rencana'], 'title' => fn ($r): string => (string) $r->uraian],
             ['module' => 'operasi', 'label' => 'FLM', 'model' => OperasiFlmJadwal::class, 'route' => 'operasi.jadwal.flm.index', 'period' => 'month', 'cells' => ['days'], 'where' => fn (Builder $q) => $q->where('row_type', 'shift'), 'title' => fn ($r): string => (string) $r->label],
             ['module' => 'operasi', 'label' => 'Meeting Shift', 'model' => OperasiMeetingShiftJadwal::class, 'route' => 'operasi.jadwal.meeting-shift.index', 'period' => 'month', 'cells' => ['days'], 'where' => fn (Builder $q) => $q->where('row_type', 'shift'), 'title' => fn ($r): string => (string) $r->label],
             ['module' => 'operasi', 'label' => 'Pembuatan IK', 'model' => OperasiPembuatanIk::class, 'route' => 'operasi.jadwal.pembuatan-ik.index', 'period' => 'year', 'match' => 'month', 'cells' => ['months'], 'title' => fn ($r): string => (string) $r->nama],
             ['module' => 'operasi', 'label' => 'Data Teknis', 'model' => OperasiDataTeknis::class, 'route' => 'operasi.jadwal.pembuatan-data-teknis.index', 'period' => 'year', 'match' => 'month', 'cells' => ['months'], 'title' => fn ($r): string => (string) $r->nama],
             ['module' => 'operasi', 'label' => 'Blackstart', 'model' => OperasiBlackstartJadwal::class, 'route' => 'operasi.jadwal.blackstart.index', 'period' => 'year', 'match' => 'week', 'cells' => ['rencana'], 'title' => fn ($r): string => (string) $r->uraian],
+            ['module' => 'operasi', 'label' => 'Commissioning Test Mesin', 'model' => OperasiCommissioningTest::class, 'route' => 'operasi.jadwal.commissioning-test.index', 'period' => 'year', 'match' => 'week', 'cells' => ['beban_50', 'beban_75', 'beban_100'], 'with' => ['machine'], 'title' => fn ($r): string => $r->displayMachineName()],
             ['module' => 'operasi', 'label' => 'Commissioning Peralatan', 'model' => OperasiCommPeralatan::class, 'route' => 'operasi.jadwal.commissioning-test-peralatan.index', 'period' => 'year', 'match' => 'week', 'cells' => ['beban_50', 'beban_75', 'beban_100'], 'title' => fn ($r): string => (string) $r->nama_peralatan],
             ['module' => 'operasi', 'label' => 'Performance Test', 'model' => OperasiPerformanceTestMesin::class, 'route' => 'operasi.jadwal.performance-test.index', 'period' => 'year', 'match' => 'week', 'cells' => ['beban_50', 'beban_75', 'beban_100'], 'title' => fn ($r): string => (string) $r->nama_mesin],
 

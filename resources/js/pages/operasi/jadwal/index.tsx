@@ -101,7 +101,7 @@ const JADWAL_LIST: JadwalCard[] = [
     },
     {
         title: 'Jadwal Commissioning Test Mesin',
-        description: 'Jadwal uji unjuk kerja (performance test) dan komisioning mesin pembangkit pasca pemeliharaan.',
+        description: 'Jadwal pelaksanaan commissioning test pembebanan mesin pembangkit 50%, 75%, dan 100% dari Master Data Mesin — matriks tahunan per minggu.',
         icon: Activity,
         target: '/operasi/jadwal/commissioning-test',
     },

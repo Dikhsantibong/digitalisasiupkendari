@@ -1,5 +1,6 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { ConnectionStatus } from '@/components/connection-status';
+import { SessionMonitor } from '@/components/session-monitor';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -34,6 +35,8 @@ createInertiaApp({
                 <Toaster />
                 {/* "Tidak ada koneksi internet" — only after real requests fail. */}
                 <ConnectionStatus />
+                {/* "Sesi Anda Telah Berakhir" — notifies desktop & mobile users and returns to /login. */}
+                <SessionMonitor />
             </TooltipProvider>
         );
     },

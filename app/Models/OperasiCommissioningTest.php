@@ -14,33 +14,36 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $unit_id
+ * @property int|null $machine_id
  * @property int $year
- * @property int $month
- * @property string $section
  * @property int|null $no_urut
- * @property string $kegiatan
- * @property string|null $status
- * @property string|null $pic
- * @property string|null $paraf
- * @property string|null $catatan
+ * @property string $nama_mesin
+ * @property string $section
+ * @property array<int, string>|null $beban_50
+ * @property array<int, string>|null $beban_75
+ * @property array<int, string>|null $beban_100
+ * @property array<int, string>|null $realisasi
+ * @property string|null $keterangan
  * @property int $sort_order
  * @property int|null $input_by
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
+ * @property-read Machine|null $machine
  * @property-read User|null $inputUser
  */
 #[Fillable([
     'unit_id',
+    'machine_id',
     'year',
-    'month',
-    'section',
     'no_urut',
-    'kegiatan',
-    'status',
-    'pic',
-    'paraf',
-    'catatan',
+    'nama_mesin',
+    'section',
+    'beban_50',
+    'beban_75',
+    'beban_100',
+    'realisasi',
+    'keterangan',
     'sort_order',
     'input_by',
 ])]
@@ -57,11 +60,24 @@ class OperasiCommissioningTest extends Model
     {
         return [
             'unit_id' => 'integer',
+            'machine_id' => 'integer',
             'year' => 'integer',
-            'month' => 'integer',
             'no_urut' => 'integer',
+            'beban_50' => 'array',
+            'beban_75' => 'array',
+            'beban_100' => 'array',
+            'realisasi' => 'array',
             'sort_order' => 'integer',
+            'input_by' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Machine, $this>
+     */
+    public function machine(): BelongsTo
+    {
+        return $this->belongsTo(Machine::class);
     }
 
     /**
@@ -70,5 +86,13 @@ class OperasiCommissioningTest extends Model
     public function inputUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'input_by');
+    }
+
+    /**
+     * Prefer the live Master Data Mesin name when linked, falling back to stored text.
+     */
+    public function displayMachineName(): string
+    {
+        return $this->machine ? mb_strtoupper($this->machine->name) : (string) $this->nama_mesin;
     }
 }

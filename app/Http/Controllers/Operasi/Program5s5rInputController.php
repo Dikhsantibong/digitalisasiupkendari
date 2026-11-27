@@ -467,7 +467,7 @@ class Program5s5rInputController extends Controller
                 $realisasi = array_map('intval', (array) ($r->realisasi ?? []));
 
                 return [
-                    'pelaksana' => (string) $r->pelaksana,
+                    'pelaksana' => $r->displayPelaksana(),
                     'rencana' => $rencana,
                     'realisasi' => $realisasi,
                     'rencana_count' => count($rencana),

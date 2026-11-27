@@ -13,6 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import NotificationController from '@/actions/App/Http/Controllers/NotificationController';
 import PushSubscriptionController from '@/actions/App/Http/Controllers/PushSubscriptionController';
+import { notifySessionExpired } from '@/lib/session-guard';
 
 export type AppNotification = {
     id: string;
@@ -104,6 +105,10 @@ export async function jsonRequest<T>(method: 'GET' | 'POST' | 'DELETE', url: str
     });
 
     if (!response.ok) {
+        if (response.status === 401 || response.status === 419) {
+            notifySessionExpired();
+        }
+
         throw new RequestError(response.status);
     }
 

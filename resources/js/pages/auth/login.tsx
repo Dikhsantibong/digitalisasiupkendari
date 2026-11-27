@@ -1,5 +1,14 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Building2, HardHat, Lock, Mail, Wrench, Zap } from 'lucide-react';
+import {
+    Building2,
+    ClockAlert,
+    HardHat,
+    Lock,
+    Mail,
+    Wrench,
+    Zap,
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
 import InputError from '@/components/input-error';
 import { InstallAppLink } from '@/components/install-app-link';
 import PasswordInput from '@/components/password-input';
@@ -9,12 +18,17 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import {
+    consumeSessionExpiredNotice,
+    syncAuthState,
+} from '@/lib/session-guard';
 import { home } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 
 type Props = {
     status?: string;
+    sessionExpired?: string | null;
     canResetPassword: boolean;
     serviceUnits?: string[];
 };
@@ -43,10 +57,19 @@ const MODULES = [
 
 export default function Login({
     status,
+    sessionExpired,
     canResetPassword,
     serviceUnits = [],
 }: Props) {
     const currentYear = new Date().getFullYear();
+    const [storedExpiredNotice] = useState<string | null>(() =>
+        consumeSessionExpiredNotice(),
+    );
+    const expiredNotice = sessionExpired ?? storedExpiredNotice;
+
+    useEffect(() => {
+        syncAuthState(false, 'auth/login');
+    }, []);
 
     return (
         <div className="flex min-h-dvh w-full flex-col bg-background text-foreground lg:grid lg:grid-cols-12">
@@ -85,6 +108,24 @@ export default function Login({
                                 Masukkan email dan kata sandi akun Anda.
                             </p>
                         </div>
+
+                        {expiredNotice && (
+                            <div
+                                role="alert"
+                                className="mb-5 flex items-start gap-2.5 rounded-lg border border-amber-400/70 bg-amber-50 px-3.5 py-3 text-[13px] text-amber-950 dark:border-amber-700/70 dark:bg-amber-950/40 dark:text-amber-100"
+                                data-test="session-expired-alert"
+                            >
+                                <ClockAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                                <div className="min-w-0">
+                                    <p className="font-semibold">
+                                        Sesi Anda Telah Berakhir
+                                    </p>
+                                    <p className="mt-0.5 text-[12.5px] opacity-90">
+                                        {expiredNotice}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {status && (
                             <div className="mb-5 rounded-md border border-primary/30 bg-secondary px-3 py-2 text-[13px] text-secondary-foreground">

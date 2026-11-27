@@ -308,7 +308,72 @@ return;
         toast.info('Baris kegiatan dihapus.');
     };
 
-    // Add new task
+    const defaultTargetForCategory = (kategori: string): number => {
+        if (/mingguan/i.test(kategori)) {
+            return 4;
+        }
+
+        if (/bulanan/i.test(kategori)) {
+            return 1;
+        }
+
+        if (/non\s*rutin/i.test(kategori)) {
+            return 0;
+        }
+
+        return target_working_days;
+    };
+
+    const handleAddInlineRow = (kategori: string) => {
+        if (!can_write) {
+            return;
+        }
+
+        const defaultTarget = defaultTargetForCategory(kategori);
+
+        setRows((prev) => {
+            const next = [...prev];
+            let insertAt = -1;
+
+            for (let i = next.length - 1; i >= 0; i--) {
+                if (next[i].kategori === kategori) {
+                    insertAt = i + 1;
+                    break;
+                }
+            }
+
+            if (insertAt === -1) {
+                insertAt = next.length;
+            }
+
+            next.splice(insertAt, 0, {
+                id: null,
+                kategori,
+                is_category_header: false,
+                no_urut: '1',
+                kegiatan: '',
+                target: defaultTarget,
+                rencana_count: defaultTarget,
+                realisasi_count: 0,
+                jadwal: [],
+                keterangan: '',
+                sort_order: insertAt,
+            });
+
+            let counter = 1;
+
+            return next.map((row, idx) => {
+                if (!row.is_category_header && row.kategori === kategori) {
+                    return { ...row, no_urut: String(counter++), sort_order: idx };
+                }
+
+                return { ...row, sort_order: idx };
+            });
+        });
+        setDirty(true);
+    };
+
+    // Add new task (mobile dialog)
     const handleAddRow = () => {
         if (!newKegiatan.trim()) {
 return;
@@ -397,6 +462,22 @@ return;
 
     // Save rows and meta to server
     const handleSave = () => {
+        const cleaned = rows.filter(
+            (r) =>
+                r.is_category_header ||
+                !(
+                    r.kegiatan.trim() === '' &&
+                    (r.jadwal || []).length === 0 &&
+                    !(r.keterangan || '').trim()
+                ),
+        );
+
+        if (cleaned.some((r) => !r.is_category_header && r.kegiatan.trim() === '')) {
+            toast.error('Nama kegiatan tidak boleh kosong. Isi nama kegiatan atau hapus baris kosong.');
+
+            return;
+        }
+
         setIsSaving(true);
         router.post(
             '/pdm/jadwal/harian',
@@ -405,8 +486,9 @@ return;
                 month: filters.month,
                 year: filters.year,
                 meta,
-                rows: rows.map((r, idx) => ({
+                rows: cleaned.map((r, idx) => ({
                     ...r,
+                    kegiatan: r.is_category_header ? r.kegiatan : r.kegiatan.trim(),
                     sort_order: idx,
                 })),
             },
@@ -707,19 +789,6 @@ return { ...SPECS.cellLeft, fill: baseBg };
                             label: String(y),
                         }))}
                     />
-                    <div className="ml-auto flex items-center gap-2">
-                        {can_write && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setAddDialogOpen(true)}
-                                className="h-9 gap-1.5 text-xs font-medium"
-                            >
-                                <Plus className="size-3.5" />
-                                Tambah Kegiatan
-                            </Button>
-                        )}
-                    </div>
                 </div>
 
                 {/* KPI Cards */}
@@ -861,27 +930,26 @@ return { ...SPECS.cellLeft, fill: baseBg };
                                             </td>
                                             <td
                                                 colSpan={1 + days_in_month + 4}
-                                                className="border-r border-border px-3 py-2 uppercase tracking-wide text-xs font-bold"
+                                                className="border-r border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wide"
                                             >
-                                                {row.kegiatan}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span>{row.kegiatan}</span>
+                                                    {can_write && (
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => handleAddInlineRow(row.kategori)}
+                                                            className="no-print h-6 gap-1 px-2 text-xs font-medium normal-case text-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                            title="Tambah kegiatan di kategori ini"
+                                                        >
+                                                            <Plus className="size-3.5" />
+                                                            Tambah Kegiatan
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="px-2 py-1 text-center no-print">
-                                                {can_write && (
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => {
-                                                            setNewCategory(row.kategori);
-                                                            setAddDialogOpen(true);
-                                                        }}
-                                                        className="h-6 gap-1 px-2 text-[11px] text-primary"
-                                                        title="Tambah kegiatan di kategori ini"
-                                                    >
-                                                        <Plus className="size-3" />
-                                                        Tambah
-                                                    </Button>
-                                                )}
-                                            </td>
+                                            <td className="px-2 py-1 no-print" />
                                         </tr>
                                     );
                                 }
@@ -1033,8 +1101,8 @@ return { ...SPECS.cellLeft, fill: baseBg };
                     )}
                 </div>
 
-                {/* Table Bottom Action: Tambah Kegiatan */}
-                {can_write && (
+                {/* Mobile Bottom Action: Tambah Kegiatan */}
+                {can_write && compact && (
                     <div className="flex items-center justify-between no-print">
                         <Button
                             variant="outline"

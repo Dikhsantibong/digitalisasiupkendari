@@ -12,6 +12,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import {
     K3MobileFilterCard,
     K3MobileHeader,
@@ -236,6 +237,46 @@ export function KegiatanJadwalPage({
         setDirty(true);
     };
 
+    const defaultTargetFor = (grup: Grup): number => {
+        if (grup === 'mingguan') {
+            return 4;
+        }
+
+        if (grup === 'bulanan') {
+            return 1;
+        }
+
+        if (grup === 'non_rutin') {
+            return 0;
+        }
+
+        return target_working_days;
+    };
+
+    const handleAddInlineRow = (grup: Grup) => {
+        if (!can_write) {
+            return;
+        }
+
+        setRows((prev) => [
+            ...prev,
+            {
+                _key: nextKey,
+                id: null,
+                grup,
+                no_urut: null,
+                kegiatan: '',
+                target: defaultTargetFor(grup),
+                realisasi_count: 0,
+                jadwal: [],
+                keterangan: '',
+                sort_order: prev.length,
+            },
+        ]);
+        setNextKey((k) => k + 1);
+        setDirty(true);
+    };
+
     const handleAddActivity = () => {
         if (!newKegiatan.trim()) {
             return;
@@ -281,11 +322,28 @@ export function KegiatanJadwalPage({
             return;
         }
 
+        const cleaned = rows.filter(
+            (r) =>
+                !(
+                    r.kegiatan.trim() === '' &&
+                    (r.jadwal || []).length === 0 &&
+                    !(r.keterangan || '').trim()
+                ),
+        );
+
+        if (cleaned.some((r) => r.kegiatan.trim() === '')) {
+            toast.error(
+                'Nama kegiatan tidak boleh kosong. Isi nama kegiatan atau hapus baris kosong.',
+            );
+
+            return;
+        }
+
         setSaving(true);
 
         // Persist grouped and in display order so the stored sequence is stable.
         const ordered = GROUPS.flatMap((g) =>
-            rows.filter((r) => r.grup === g.key),
+            cleaned.filter((r) => r.grup === g.key),
         );
 
         router.post(
@@ -298,7 +356,7 @@ export function KegiatanJadwalPage({
                     id: r.id,
                     grup: r.grup,
                     no_urut: idx + 1,
-                    kegiatan: r.kegiatan,
+                    kegiatan: r.kegiatan.trim(),
                     target: r.target,
                     jadwal: r.jadwal,
                     keterangan: r.keterangan,
@@ -311,8 +369,6 @@ export function KegiatanJadwalPage({
             },
         );
     };
-
-    const totalColsAfterNo = 1 + days.length + 3 + (can_write ? 1 : 0);
 
     return (
         <>
@@ -424,7 +480,7 @@ export function KegiatanJadwalPage({
                             </>
                         )}
                         summary={(row) => {
-                            const target = row.target || target_working_days;
+                            const target = row.target ?? target_working_days;
                             const realisasi = (row.jadwal || []).length;
 
                             return `Target ${target} · Realisasi ${realisasi} · Kinerja ${target > 0 ? Math.round((realisasi / target) * 100) : 0}%`;
@@ -535,15 +591,6 @@ export function KegiatanJadwalPage({
                                         >
                                             <CheckCheck className="size-3.5 text-primary" />
                                             Tandai Semua Hari Kerja
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setIsAddOpen(true)}
-                                            className="gap-1.5 text-xs"
-                                        >
-                                            <Plus className="size-3.5" />
-                                            Tambah Kegiatan
                                         </Button>
                                         <Button
                                             size="sm"
@@ -759,7 +806,7 @@ export function KegiatanJadwalPage({
                                     )}
                                     summary={(row) => {
                                         const target =
-                                            row.target || target_working_days;
+                                            row.target ?? target_working_days;
                                         const realisasi = (row.jadwal || [])
                                             .length;
 
@@ -856,12 +903,40 @@ export function KegiatanJadwalPage({
                                                         </td>
                                                         <td
                                                             colSpan={
-                                                                totalColsAfterNo
+                                                                1 +
+                                                                days.length +
+                                                                4
                                                             }
                                                             className="border border-black p-1 text-left text-sm font-bold text-foreground italic"
                                                         >
-                                                            {group.label}
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span>
+                                                                    {
+                                                                        group.label
+                                                                    }
+                                                                </span>
+                                                                {can_write && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="no-print h-6 gap-1 text-xs font-medium not-italic text-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                                                        onClick={() =>
+                                                                            handleAddInlineRow(
+                                                                                group.key,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <Plus className="size-3.5" />
+                                                                        Tambah
+                                                                        Kegiatan
+                                                                    </Button>
+                                                                )}
+                                                            </div>
                                                         </td>
+                                                        {can_write && (
+                                                            <td className="no-print border border-black" />
+                                                        )}
                                                     </tr>
 
                                                     {groupRows.map(
@@ -870,7 +945,7 @@ export function KegiatanJadwalPage({
                                                                 row.jadwal || []
                                                             ).length;
                                                             const target =
-                                                                row.target ||
+                                                                row.target ??
                                                                 target_working_days;
                                                             const kinerja =
                                                                 target > 0
@@ -904,6 +979,9 @@ export function KegiatanJadwalPage({
                                                                                     'kegiatan',
                                                                                     val,
                                                                                 )
+                                                                            }
+                                                                            placeholder={
+                                                                                config.placeholder
                                                                             }
                                                                             readOnly={
                                                                                 !can_write
