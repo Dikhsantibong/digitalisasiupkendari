@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { EmployeePicPicker, type EmployeeOption } from '@/components/jadwal/employee-picker';
 import { ChoiceChips } from '@/components/mobile/choice-chips';
 import { DayStrip } from '@/components/mobile/day-strip';
 import { MobileFormScreen } from '@/components/mobile/entry-screen';
@@ -48,7 +49,7 @@ export type LogistikSheetMobileProps = {
     rows: JadwalRow[];
     unit: IdName;
     filters: Filters;
-    options: { units: IdName[]; years: number[] };
+    options: { units: IdName[]; years: number[]; employees?: EmployeeOption[] };
     periodLabel: string;
     hasSaved: boolean;
     canWrite: boolean;
@@ -458,15 +459,42 @@ export function LogistikSheetMobile(props: LogistikSheetMobileProps) {
                             >
                                 <div className="flex flex-col gap-3">
                                 <Field label={sheet.row_label || 'Nama'}>
-                                    <Input
-                                        value={row.nama}
-                                        onChange={(e) =>
-                                            props.onUpdateRow(index, {
-                                                nama: e.target.value,
-                                            })
-                                        }
-                                        className="h-10"
-                                    />
+                                    <div className="flex flex-col gap-1.5">
+                                        <Input
+                                            value={row.nama}
+                                            onChange={(e) =>
+                                                props.onUpdateRow(index, {
+                                                    nama: e.target.value,
+                                                    ...(layout === 'pelaksana' ||
+                                                    layout === 'shift'
+                                                        ? { employee_id: null }
+                                                        : {}),
+                                                })
+                                            }
+                                            className="h-10"
+                                        />
+                                        {(layout === 'pelaksana' ||
+                                            layout === 'shift') && (
+                                            <EmployeePicPicker
+                                                employees={
+                                                    props.options.employees
+                                                }
+                                                employeeId={row.employee_id}
+                                                labelText={row.nama}
+                                                onSelect={(id, name) =>
+                                                    props.onUpdateRow(index, {
+                                                        employee_id: id,
+                                                        nama: id
+                                                            ? name
+                                                            : row.nama,
+                                                    })
+                                                }
+                                                disabled={!canWrite}
+                                                variant="badge"
+                                                placeholder="Pilih pegawai dari Master"
+                                            />
+                                        )}
+                                    </div>
                                 </Field>
                                 {hasPic && (
                                     <Field label="PIC">

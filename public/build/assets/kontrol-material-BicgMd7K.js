@@ -1,0 +1,1 @@
+import{n as e,t}from"./compiler-runtime-ClhKmC5T.js";import{n,t as r}from"./form-input-page-l7wgnzM1.js";var i=t(),a=e();function o(e){let t=(0,i.c)(2),n;return t[0]===e?n=t[1]:(n=(0,a.jsx)(r,{...e}),t[0]=e,t[1]=n),n}o.layout={breadcrumbs:n(`kontrol-material`,`Form Kontrol Material, Peralatan & Tools PdM`)};export{o as default};

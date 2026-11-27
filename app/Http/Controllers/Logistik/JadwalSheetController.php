@@ -11,6 +11,7 @@ use App\Models\Employee;
 use App\Models\LogistikJadwalRow;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
 use App\Support\LogistikJadwal;
@@ -40,7 +41,10 @@ class JadwalSheetController extends Controller
     use HandlesLogistikInput;
     use RendersReportPdf;
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request, string $jadwal): Response
     {
@@ -56,7 +60,15 @@ class JadwalSheetController extends Controller
             'codes' => LogistikJadwal::codes($jadwal),
             'unit' => ['id' => $unit->id, 'name' => $unit->name],
             'filters' => ['unit_id' => $unit->id, 'month' => $month, 'year' => $year],
-            'options' => $this->logistikFilterOptions($units),
+            'options' => [
+                ...$this->logistikFilterOptions($units),
+                'employees' => Employee::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'position'])
+                    ->all(),
+            ],
             'columns' => LogistikJadwal::columns($jadwal, $month, $year),
             'rows' => $this->rows($jadwal, $unit, $month, $year),
             'has_saved' => $this->saved($jadwal, $unit, $month, $year)->isNotEmpty(),
@@ -74,6 +86,7 @@ class JadwalSheetController extends Controller
             'rows.*.section' => ['nullable', Rule::in(array_column(LogistikJadwal::sections($jadwal), 'key'))],
             'rows.*.nama' => ['nullable', 'string', 'max:255'],
             'rows.*.pic' => ['nullable', 'string', 'max:150'],
+            'rows.*.employee_id' => ['nullable', 'integer', Rule::exists('employees', 'id')->where('unit_id', $unit->id)],
             'rows.*.days' => ['nullable', 'array'],
             'rows.*.days.*' => ['nullable', Rule::in(array_keys(LogistikJadwal::codes($jadwal)))],
             'rows.*.target' => ['nullable', 'integer', 'min:0', 'max:999'],
@@ -87,6 +100,11 @@ class JadwalSheetController extends Controller
         $validColumns = array_map(fn (array $c): string => (string) $c['col'], LogistikJadwal::columns($jadwal, $month, $year));
         $maturity = LogistikJadwal::layout($jadwal) === 'maturity';
         $withEvidence = LogistikJadwal::hasEvidence($jadwal);
+        $shouldNotify = LogistikJadwal::sheet($jadwal)['menu'] === 'jadwal'
+            && in_array(LogistikJadwal::layout($jadwal), ['pelaksana', 'shift'], true);
+        $before = $shouldNotify
+            ? $this->notifier->todayScheduleRecipientKeys("logistik:{$jadwal}", $unit->id, $month, $year)
+            : [];
 
         DB::transaction(function () use ($validated, $request, $jadwal, $unit, $month, $year, $validColumns, $maturity, $withEvidence): void {
             $this->periodQuery($jadwal, $unit, $month, $year)->delete();
@@ -103,6 +121,7 @@ class JadwalSheetController extends Controller
                 $nama = trim((string) ($row['nama'] ?? ''));
                 $pic = trim((string) ($row['pic'] ?? ''));
                 $keterangan = trim((string) ($row['keterangan'] ?? ''));
+                $employeeId = isset($row['employee_id']) && $row['employee_id'] !== '' ? (int) $row['employee_id'] : null;
 
                 if ($nama === '' && $pic === '' && $keterangan === '' && $days === [] && $evidence === []) {
                     continue;
@@ -116,6 +135,7 @@ class JadwalSheetController extends Controller
                     'section' => $row['section'] ?? null,
                     'nama' => $nama ?: null,
                     'pic' => $pic ?: null,
+                    'employee_id' => $employeeId,
                     'days' => $days,
                     'target' => $row['target'] ?? null,
                     'keterangan' => $keterangan ?: null,
@@ -125,6 +145,10 @@ class JadwalSheetController extends Controller
                 ]);
             }
         });
+
+        if ($shouldNotify) {
+            $this->notifier->scheduleUpdated($unit, "logistik:{$jadwal}", $month, $year, $request->user(), $before);
+        }
 
         $title = LogistikJadwal::sheet($jadwal)['title'];
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan {$title} {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
@@ -186,12 +210,17 @@ class JadwalSheetController extends Controller
     {
         $columns = LogistikJadwal::columns($jadwal, $month, $year);
         $saved = $this->saved($jadwal, $unit, $month, $year);
+        $officer = $this->officerEmployee($unit);
         $rows = $saved->isEmpty()
-            ? LogistikJadwal::defaultRows($jadwal, $columns, $this->officerName($unit))
+            ? array_map(fn (array $row, int $index): array => [
+                ...$row,
+                'employee_id' => $jadwal === 'shift' && $index === 0 ? $officer?->id : null,
+            ], LogistikJadwal::defaultRows($jadwal, $columns, (string) ($officer?->name ?? '')), array_keys(LogistikJadwal::defaultRows($jadwal, $columns, (string) ($officer?->name ?? ''))))
             : $saved->map(fn (LogistikJadwalRow $r): array => [
                 'section' => $r->section,
                 'nama' => (string) ($r->nama ?? ''),
                 'pic' => (string) ($r->pic ?? ''),
+                'employee_id' => $r->employee_id,
                 'days' => (array) ($r->days ?? []),
                 'target' => $r->target,
                 'keterangan' => (string) ($r->keterangan ?? ''),
@@ -200,7 +229,7 @@ class JadwalSheetController extends Controller
 
         if (LogistikJadwal::yearly($jadwal)) {
             for ($n = count($rows); $n < LogistikJadwal::IK_ROWS; $n++) {
-                $rows[] = ['section' => null, 'nama' => '', 'pic' => '', 'days' => [], 'target' => null, 'keterangan' => '', 'evidence' => []];
+                $rows[] = ['section' => null, 'nama' => '', 'pic' => '', 'employee_id' => null, 'days' => [], 'target' => null, 'keterangan' => '', 'evidence' => []];
             }
         }
 
@@ -267,11 +296,11 @@ class JadwalSheetController extends Controller
     }
 
     /**
-     * The unit's logistics officer, the default name on the shift sheet.
+     * The unit's logistics officer, the default name & employee_id on the shift sheet.
      */
-    private function officerName(Unit $unit): string
+    private function officerEmployee(Unit $unit): ?Employee
     {
-        return (string) Employee::query()->where('unit_id', $unit->id)->where('is_active', true)
-            ->where('position', 'like', '%logistik%')->orderBy('name')->value('name');
+        return Employee::query()->where('unit_id', $unit->id)->where('is_active', true)
+            ->where('position', 'like', '%logistik%')->orderBy('name')->first(['id', 'name']);
     }
 }

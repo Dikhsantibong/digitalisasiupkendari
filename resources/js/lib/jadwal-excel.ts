@@ -226,6 +226,12 @@ const base64FromBuffer = (buffer: ArrayBuffer): string => {
 };
 
 export const loadImageBase64 = async (url: string): Promise<string | null> => {
+    if (url.startsWith('data:image/')) {
+        const commaIndex = url.indexOf(',');
+
+        return commaIndex >= 0 ? url.slice(commaIndex + 1) : null;
+    }
+
     try {
         const response = await fetch(url);
 

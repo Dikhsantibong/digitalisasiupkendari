@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AccessControl;
 use App\Services\Impersonation;
 use App\Services\Notifications\AttendanceReminders;
+use App\Services\Notifications\ScheduleTaskTracker;
 use App\Services\Reports\ApprovalInbox;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -67,6 +68,8 @@ class HandleInertiaRequests extends Middleware
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             // The absen the user still owes by their Jadwal Shift (banner on every page; null when none).
             'attendanceAlert' => fn (): ?array => $user === null ? null : app(AttendanceReminders::class)->pendingFor($user, now()),
+            // Today's personal / regu schedule duties for the logged-in user (real-time, independent of cron).
+            'scheduleTasks' => fn (): array => $user === null ? [] : app(ScheduleTaskTracker::class)->forUser($user, now()),
             // The bell's first count; it then refreshes itself from notifications.feed.
             'notifications' => fn (): array => [
                 'unread' => $user?->unreadNotifications()->count() ?? 0,

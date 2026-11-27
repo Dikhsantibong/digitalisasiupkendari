@@ -17,6 +17,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Notifications\ReminderNotification;
 use App\Services\Operator\AttendanceRequestService;
+use App\Services\Operator\PresenceRecorder;
 use App\Support\Indonesian;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
@@ -42,6 +43,8 @@ class EventNotifier
     public function __construct(
         private ReminderSender $sender,
         private AttendanceRequestService $attendanceRequests,
+        private ScheduleCatalog $catalog,
+        private ScheduleTaskTracker $tracker,
     ) {}
 
     /**
@@ -474,6 +477,82 @@ class EventNotifier
             $body = "{$what} — oleh {$actor->name}".($reason ? ": {$reason}" : '.');
             $this->later([$submitter], fn (User $user): ReminderNotification => new ReminderNotification(
                 NotificationCategory::Laporan, $module->base()->value, $submitterTitle, Str::limit($body, 240), $url, "laporan:{$workflow->id}:{$action}:submitter:{$stamp}",
+            ));
+        }
+    }
+
+    /**
+     * Snapshot today's assigned "{user_id}:{title}" keys for a jadwal table before saving,
+     * so re-saving without changing today's duty will not send duplicate notifications.
+     *
+     * @return list<string>
+     */
+    public function todayScheduleRecipientKeys(string $tableKey, int $unitId, ?int $month = null, ?int $year = null): array
+    {
+        $table = $this->catalog->findByKey($tableKey);
+        if ($table === null) {
+            return [];
+        }
+
+        $today = Carbon::now(PresenceRecorder::TIMEZONE)->startOfDay();
+        if ($month !== null && $year !== null) {
+            ['year' => $expectedYear, 'month' => $expectedMonth] = ScheduleTaskTracker::periodFor($table, $today);
+            if ($expectedYear !== $year || $expectedMonth !== $month) {
+                return [];
+            }
+        }
+
+        return collect($this->tracker->dutiesForTableOnDate($table, $today, $unitId))
+            ->map(fn (array $pair): string => $pair[0]->id.':'.$pair[1]['title'])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Notify newly assigned (or newly changed) users immediately when a jadwal
+     * covering today is saved.
+     *
+     * @param  list<string>  $previousKeys  from {@see todayScheduleRecipientKeys()}
+     */
+    public function scheduleUpdated(Unit $unit, string $tableKey, int $month, int $year, User $actor, array $previousKeys = []): void
+    {
+        $table = $this->catalog->findByKey($tableKey);
+        if ($table === null) {
+            return;
+        }
+
+        $today = Carbon::now(PresenceRecorder::TIMEZONE)->startOfDay();
+        ['year' => $expectedYear, 'month' => $expectedMonth] = ScheduleTaskTracker::periodFor($table, $today);
+        if ($expectedYear !== $year || $expectedMonth !== $month) {
+            return;
+        }
+
+        $stamp = Carbon::now()->format('YmdHisv');
+        $dateString = $today->toDateString();
+
+        foreach ($this->tracker->dutiesForTableOnDate($table, $today, $unit->id) as [$recipient, $task]) {
+            if ($recipient->is($actor) || $task['completed']) {
+                continue;
+            }
+
+            if (in_array($recipient->id.':'.$task['title'], $previousKeys, true)) {
+                continue;
+            }
+
+            $title = $task['assignment_type'] === 'regu'
+                ? "Jadwal baru Regu {$task['regu']} hari ini: {$task['label']}"
+                : "Jadwal baru hari ini: {$task['label']}";
+            $leaderInfo = $task['leader_name'] ? " Leader Shift: {$task['leader_name']}." : '';
+            $body = Str::limit("{$task['module_label']} · {$unit->name} — {$task['title']}.{$leaderInfo} Diatur oleh {$actor->name}.", 220);
+            $key = "jadwal-baru:{$tableKey}:{$unit->id}:{$dateString}:".substr(md5($task['title']), 0, 8).":{$stamp}";
+
+            $this->later([$recipient], fn (User $user): ReminderNotification => new ReminderNotification(
+                NotificationCategory::Jadwal,
+                $task['module'],
+                $title,
+                $body,
+                $task['url'],
+                $key,
             ));
         }
     }

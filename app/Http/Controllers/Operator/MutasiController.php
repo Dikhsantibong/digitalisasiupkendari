@@ -15,6 +15,7 @@ use App\Services\Notifications\EventNotifier;
 use App\Services\Operator\AttendanceRoster;
 use App\Services\Operator\MutasiPatrolFindings;
 use App\Services\Operator\MutasiStartStop;
+use App\Services\Reports\SignatureQrService;
 use App\Support\Indonesian;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -23,7 +24,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -42,14 +42,12 @@ class MutasiController extends Controller
 {
     private const TIMEZONE = 'Asia/Makassar';
 
-    /** Largest accepted paraf PNG (decoded bytes). */
-    private const MAX_PARAF_BYTES = 1_500_000;
-
     public function __construct(
         private readonly ActivityLogger $activityLogger,
         private readonly MutasiStartStop $startStop,
         private readonly MutasiPatrolFindings $patrolFindings,
         private readonly EventNotifier $notifier,
+        private readonly SignatureQrService $signatureQr,
     ) {}
 
     public function index(Request $request): Response
@@ -217,11 +215,6 @@ class MutasiController extends Controller
         ]);
 
         if ($serahkan) {
-            if (! empty($validated['paraf'])) {
-                $this->replaceParaf($mutasi, 'paraf_penyerah', $validated['paraf']);
-            } else {
-                $this->applyEmployeeSignature($mutasi, 'paraf_penyerah', $user, $unit);
-            }
             $mutasi->diserahkan_at = now();
         }
 
@@ -267,12 +260,6 @@ class MutasiController extends Controller
         }
         if ($reguPenerima === $mutasi->regu_penyerah) {
             throw ValidationException::withMessages(['regu_penerima' => 'Regu penerima harus berbeda dengan regu penyerah.']);
-        }
-
-        if (! empty($validated['paraf'])) {
-            $this->replaceParaf($mutasi, 'paraf_penerima', $validated['paraf']);
-        } else {
-            $this->applyEmployeeSignature($mutasi, 'paraf_penerima', $user, $mutasi->unit);
         }
 
         $mutasi->fill([
@@ -351,14 +338,18 @@ class MutasiController extends Controller
     {
         $unit = Unit::query()->findOrFail($mutasi->unit_id);
         $tanggal = Carbon::parse($mutasi->tanggal->toDateString());
+        $signerPenyerah = $this->signatureMark($mutasi, 'penyerah');
+        $signerPenerima = $this->signatureMark($mutasi, 'penerima');
 
         return [
             'unit' => $unit,
             'mutasi' => $mutasi,
             'shifts' => OperatorMutasi::SHIFTS,
             'hariTanggal' => Indonesian::dayName($tanggal).', '.Indonesian::longDate($tanggal),
-            'parafPenyerah' => $this->embed($mutasi->paraf_penyerah),
-            'parafPenerima' => $this->embed($mutasi->paraf_penerima),
+            'signerPenyerah' => $signerPenyerah,
+            'signerPenerima' => $signerPenerima,
+            'parafPenyerah' => $signerPenyerah['qr'],
+            'parafPenerima' => $signerPenerima['qr'],
             'startStop' => $this->startStop->events($unit->id, $mutasi->tanggal->toDateString(), $mutasi->shift),
             'patrolFindings' => $this->patrolFindings->findings($unit->id, $mutasi->tanggal->toDateString(), $mutasi->shift),
             ...JadwalPdf::logos(),
@@ -402,10 +393,12 @@ class MutasiController extends Controller
             'regu_penyerah' => null,
             'penyerah_nama' => null,
             'paraf_penyerah_url' => null,
+            'verify_penyerah_url' => null,
             'diserahkan_at' => null,
             'regu_penerima' => null,
             'penerima_nama' => null,
             'paraf_penerima_url' => null,
+            'verify_penerima_url' => null,
             'diterima_at' => null,
             'status' => 'baru',
             'carried_from' => $previous ? $this->label($previous) : null,
@@ -417,7 +410,8 @@ class MutasiController extends Controller
      */
     private function present(OperatorMutasi $mutasi): array
     {
-        $disk = Storage::disk('public');
+        $penyerahSig = $this->signatureMark($mutasi, 'penyerah');
+        $penerimaSig = $this->signatureMark($mutasi, 'penerima');
 
         return [
             'id' => $mutasi->id,
@@ -431,14 +425,49 @@ class MutasiController extends Controller
             'catatan' => $mutasi->catatan,
             'regu_penyerah' => $mutasi->regu_penyerah,
             'penyerah_nama' => $mutasi->penyerah_nama,
-            'paraf_penyerah_url' => $mutasi->paraf_penyerah ? $disk->url($mutasi->paraf_penyerah) : null,
+            'paraf_penyerah_url' => $penyerahSig['qr'],
+            'verify_penyerah_url' => $penyerahSig['verify_url'],
             'diserahkan_at' => $mutasi->diserahkan_at?->toIso8601String(),
             'regu_penerima' => $mutasi->regu_penerima,
             'penerima_nama' => $mutasi->penerima_nama,
-            'paraf_penerima_url' => $mutasi->paraf_penerima ? $disk->url($mutasi->paraf_penerima) : null,
+            'paraf_penerima_url' => $penerimaSig['qr'],
+            'verify_penerima_url' => $penerimaSig['verify_url'],
             'diterima_at' => $mutasi->diterima_at?->toIso8601String(),
             'status' => $this->status($mutasi),
             'carried_from' => null,
+        ];
+    }
+
+    /**
+     * Build a verifiable QR barcode signature mark for penyerah or penerima,
+     * matching the verified QR mechanism of project & division reports.
+     *
+     * @return array{mode: string, qr: ?string, verify_url: ?string, signed_at: ?string, position: string}
+     */
+    private function signatureMark(OperatorMutasi $mutasi, string $role): array
+    {
+        $isPenerima = $role === 'penerima';
+        $signedAt = $isPenerima ? $mutasi->diterima_at : $mutasi->diserahkan_at;
+        $position = $isPenerima ? 'Regu Penerima' : 'Regu Penyerah';
+
+        if ($signedAt === null) {
+            return [
+                'mode' => 'qr',
+                'qr' => null,
+                'verify_url' => null,
+                'signed_at' => null,
+                'position' => $position,
+            ];
+        }
+
+        $verifyUrl = $this->signatureQr->verifyUrlForMutasi($mutasi, $role);
+
+        return [
+            'mode' => 'qr',
+            'qr' => $this->signatureQr->pngDataUri($verifyUrl),
+            'verify_url' => $verifyUrl,
+            'signed_at' => $signedAt->toIso8601String(),
+            'position' => $position,
         ];
     }
 
@@ -449,50 +478,6 @@ class MutasiController extends Controller
             $mutasi->diserahkan_at !== null => 'diserahkan',
             default => 'draft',
         };
-    }
-
-    private function replaceParaf(OperatorMutasi $mutasi, string $column, string $dataUrl): void
-    {
-        $png = base64_decode(Str::after($dataUrl, 'base64,'), true);
-        if ($png === false || ! str_starts_with($png, "\x89PNG") || strlen($png) > self::MAX_PARAF_BYTES) {
-            throw ValidationException::withMessages(['paraf' => 'Paraf tidak valid, silakan ulangi.']);
-        }
-
-        $path = "operator-mutasi/{$mutasi->unit_id}/paraf/".Str::random(40).'.png';
-        Storage::disk('public')->put($path, $png);
-
-        if ($mutasi->{$column} && str_starts_with($mutasi->{$column}, 'operator-mutasi/')) {
-            Storage::disk('public')->delete($mutasi->{$column});
-        }
-        $mutasi->{$column} = $path;
-    }
-
-    /**
-     * Pull the signing user's digital signature automatically from their
-     * employee profile (`employees.signature_path`) and snapshot it for this sheet.
-     */
-    private function applyEmployeeSignature(OperatorMutasi $mutasi, string $column, User $user, Unit $unit): void
-    {
-        $employee = $this->employeeOf($user, $unit) ?? $user->employee;
-        $source = $employee?->signature_path;
-        if (empty($source)) {
-            return;
-        }
-
-        $disk = Storage::disk('public');
-        if ($disk->exists($source)) {
-            $ext = strtolower(pathinfo($source, PATHINFO_EXTENSION) ?: 'png');
-            $dest = "operator-mutasi/{$unit->id}/paraf/".Str::random(40).'.'.$ext;
-            $disk->put($dest, (string) $disk->get($source));
-
-            if ($mutasi->{$column} && str_starts_with($mutasi->{$column}, 'operator-mutasi/')) {
-                $disk->delete($mutasi->{$column});
-            }
-
-            $mutasi->{$column} = $dest;
-        } else {
-            $mutasi->{$column} = $source;
-        }
     }
 
     /**
@@ -570,18 +555,5 @@ class MutasiController extends Controller
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
-    }
-
-    private function embed(?string $path): ?string
-    {
-        $disk = Storage::disk('public');
-
-        if ($path === null || ! $disk->exists($path)) {
-            return null;
-        }
-
-        $mime = $disk->mimeType($path) ?: 'image/png';
-
-        return 'data:'.$mime.';base64,'.base64_encode((string) $disk->get($path));
     }
 }

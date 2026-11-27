@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $status
  */
 #[Fillable([
-    'unit_id', 'year', 'month', 'k3_activity_type_id', 'pic',
+    'unit_id', 'year', 'month', 'k3_activity_type_id', 'employee_id', 'pic',
     'plan_days', 'real_days', 'status', 'keterangan', 'input_by',
 ])]
 class K3ActivityPlan extends Model
@@ -35,9 +35,18 @@ class K3ActivityPlan extends Model
     protected function casts(): array
     {
         return [
+            'employee_id' => 'integer',
             'plan_days' => 'array',
             'real_days' => 'array',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Employee, $this>
+     */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
     }
 
     /**

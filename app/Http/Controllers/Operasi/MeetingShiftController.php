@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OperasiMeetingShiftJadwal;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,10 @@ use Inertia\Response;
  */
 class MeetingShiftController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -83,6 +87,7 @@ class MeetingShiftController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('operasi:meeting-shift', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $unit, $month, $year, $user): void {
             OperasiMeetingShiftJadwal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
@@ -96,6 +101,7 @@ class MeetingShiftController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'operasi:meeting-shift', $month, $year, $user, $before);
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan Jadwal Meeting Shift {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
 
         return back()->with('toast', ['type' => 'success', 'message' => 'Jadwal Meeting Shift berhasil disimpan.']);

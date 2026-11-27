@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ReportStatus;
+use App\Models\OperatorMutasi;
 use App\Models\ReportWorkflow;
 use App\Models\ReportWorkflowStep;
 use App\Services\Reports\SignatureQrService;
 use App\Support\Indonesian;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 
 /**
  * Public QR signature verification endpoint. No login required so scanning a
@@ -18,11 +20,80 @@ class SignatureVerificationController extends Controller
 {
     public function show(string $ref, string $token, SignatureQrService $qr): View
     {
+        if (str_starts_with($ref, 'ms')) {
+            return $this->verifyMutasi((int) substr($ref, 2), 'penyerah', $ref, $token, $qr);
+        }
+
+        if (str_starts_with($ref, 'mt')) {
+            return $this->verifyMutasi((int) substr($ref, 2), 'penerima', $ref, $token, $qr);
+        }
+
         if (str_starts_with($ref, 'w')) {
             return $this->verifySubmission((int) substr($ref, 1), $ref, $token, $qr);
         }
 
         return $this->verifyStep((int) $ref, $ref, $token, $qr);
+    }
+
+    private function verifyMutasi(int $mutasiId, string $role, string $ref, string $token, SignatureQrService $qr): View
+    {
+        $mutasi = OperatorMutasi::query()->with('unit')->find($mutasiId);
+
+        if ($mutasi === null || ! $qr->verifyToken($ref, $mutasi->id, $token)) {
+            return view('reports.signature-verify', $this->invalidPayload());
+        }
+
+        $isPenerima = $role === 'penerima';
+        $signedAt = $isPenerima ? $mutasi->diterima_at : $mutasi->diserahkan_at;
+        $valid = $signedAt !== null;
+
+        $tanggal = Carbon::parse($mutasi->tanggal->toDateString());
+        $shiftLabel = ucfirst($mutasi->shift);
+        $shiftHours = OperatorMutasi::SHIFTS[$mutasi->shift] ?? '';
+        $reguPenyerah = $mutasi->regu_penyerah ?: '—';
+        $reguPenerima = $mutasi->regu_penerima ?: '—';
+
+        $chain = [
+            [
+                'caption' => 'Menyerahkan',
+                'position' => "Leader Shift (Regu {$reguPenyerah})",
+                'name' => $mutasi->penyerah_nama ?: '—',
+                'signed' => $mutasi->diserahkan_at !== null,
+                'signed_at' => $mutasi->diserahkan_at?->timezone(config('app.timezone'))->format('d M Y, H:i'),
+            ],
+            [
+                'caption' => 'Menerima',
+                'position' => "Leader Shift (Regu {$reguPenerima})",
+                'name' => $mutasi->penerima_nama ?: '—',
+                'signed' => $mutasi->diterima_at !== null,
+                'signed_at' => $mutasi->diterima_at?->timezone(config('app.timezone'))->format('d M Y, H:i'),
+            ],
+        ];
+
+        $workflowStatus = match (true) {
+            $mutasi->diterima_at !== null => 'Diterima & Terkunci',
+            $mutasi->diserahkan_at !== null => 'Diserahkan — Menunggu Penerima',
+            default => 'Draft',
+        };
+
+        return view('reports.signature-verify', [
+            'found' => true,
+            'valid' => $valid,
+            'statusBadge' => $valid ? 'SAH & TERVERIFIKASI' : 'BELUM DISAHKAN',
+            'reason' => $valid
+                ? 'Tanda tangan elektronik serah terima shift tercatat sah di sistem KIT-SIPP.'
+                : 'Tahap tanda tangan serah terima shift ini belum diselesaikan.',
+            'documentTitle' => 'Lembar Mutasi Operator',
+            'unitName' => $mutasi->unit?->name ?? '—',
+            'period' => Indonesian::dayName($tanggal).', '.Indonesian::longDate($tanggal)." · Shift {$shiftLabel}".($shiftHours ? " ({$shiftHours})" : ''),
+            'workflowStatus' => $workflowStatus,
+            'signerName' => $isPenerima ? ($mutasi->penerima_nama ?: '—') : ($mutasi->penyerah_nama ?: '—'),
+            'signerPosition' => 'Operator / Leader Shift (Regu '.($isPenerima ? $reguPenerima : $reguPenyerah).')',
+            'signerRole' => $isPenerima ? 'Regu Penerima' : 'Regu Penyerah',
+            'signedAt' => $signedAt?->timezone(config('app.timezone'))->format('d M Y, H:i \W\I\T\A'),
+            'note' => null,
+            'chain' => $chain,
+        ]);
     }
 
     private function verifyStep(int $stepId, string $ref, string $token, SignatureQrService $qr): View

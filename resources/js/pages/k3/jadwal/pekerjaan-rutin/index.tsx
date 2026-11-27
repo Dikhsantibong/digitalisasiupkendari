@@ -19,6 +19,10 @@ import {
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import { MobileTimelineForm } from '@/components/mobile/timeline-form';
 import {
+    EmployeePicPicker,
+    type EmployeeOption,
+} from '@/components/jadwal/employee-picker';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -49,6 +53,7 @@ type DayInfo = {
 
 type ServerRow = {
     id: number | null;
+    employee_id?: number | null;
     no_urut: number | null;
     uraian: string;
     rencana: number[];
@@ -67,7 +72,7 @@ type Props = {
         service_unit_name: string | null;
     };
     filters: { unit_id: number; month: number; year: number };
-    options: { units: IdName[]; years: number[] };
+    options: { units: IdName[]; years: number[]; employees?: EmployeeOption[] };
     days: DayInfo[];
     rows: ServerRow[];
     can_write: boolean;
@@ -114,7 +119,11 @@ export default function K3PekerjaanRutinPage({
     // Modal state for Add & Edit
     const [modalOpen, setModalOpen] = useState(false);
     const [editingKey, setEditingKey] = useState<number | null>(null);
-    const [form, setForm] = useState({ uraian: '', paraf: 'Empty' });
+    const [form, setForm] = useState<{
+        uraian: string;
+        paraf: string;
+        employee_id: number | null;
+    }>({ uraian: '', paraf: 'Empty', employee_id: null });
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -183,15 +192,32 @@ export default function K3PekerjaanRutinPage({
         toast.success('Rencana seluruh hari kerja telah ditandai.');
     };
 
+    const updateEmployeeId = (key: number, employeeId: number | null) => {
+        if (!can_write) {
+            return;
+        }
+
+        setRows((prev) =>
+            prev.map((r) =>
+                r._key === key ? { ...r, employee_id: employeeId } : r,
+            ),
+        );
+        setDirty(true);
+    };
+
     const openCreateModal = () => {
         setEditingKey(null);
-        setForm({ uraian: '', paraf: 'Empty' });
+        setForm({ uraian: '', paraf: 'Empty', employee_id: null });
         setModalOpen(true);
     };
 
     const openEditModal = (row: Row) => {
         setEditingKey(row._key);
-        setForm({ uraian: row.uraian, paraf: row.paraf || 'Empty' });
+        setForm({
+            uraian: row.uraian,
+            paraf: row.paraf || 'Empty',
+            employee_id: row.employee_id ?? null,
+        });
         setModalOpen(true);
     };
 
@@ -213,6 +239,7 @@ export default function K3PekerjaanRutinPage({
                               ...r,
                               uraian: trimmedUraian,
                               paraf: form.paraf.trim() || 'Empty',
+                              employee_id: form.employee_id,
                           }
                         : r,
                 ),
@@ -223,6 +250,7 @@ export default function K3PekerjaanRutinPage({
                 {
                     _key: nextKey,
                     id: null,
+                    employee_id: form.employee_id,
                     no_urut: prev.length + 1,
                     uraian: trimmedUraian,
                     rencana: [],
@@ -272,6 +300,7 @@ export default function K3PekerjaanRutinPage({
                 year: filters.year,
                 rows: rows.map((r, idx) => ({
                     id: r.id,
+                    employee_id: r.employee_id ?? null,
                     no_urut: idx + 1,
                     uraian: r.uraian,
                     rencana: r.rencana,
@@ -734,6 +763,29 @@ export default function K3PekerjaanRutinPage({
                                         )
                                     }
                                     lockRedDays
+                                    details={(row) => (
+                                        <div className="space-y-1">
+                                            <span className="text-[11px] font-medium text-muted-foreground">
+                                                PIC Pegawai
+                                            </span>
+                                            <div>
+                                                <EmployeePicPicker
+                                                    employees={
+                                                        options.employees
+                                                    }
+                                                    employeeId={row.employee_id}
+                                                    onSelect={(id) =>
+                                                        updateEmployeeId(
+                                                            row._key,
+                                                            id,
+                                                        )
+                                                    }
+                                                    disabled={!can_write}
+                                                    variant="badge"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                     summary={(row) =>
                                         `Target ${row.rencana.length} · Realisasi ${row.realisasi.length} · Kinerja ${row.rencana.length > 0 ? Math.round((row.realisasi.length / row.rencana.length) * 100) : 0}% · Paraf ${row.paraf || 'Empty'}`
                                     }
@@ -847,7 +899,29 @@ export default function K3PekerjaanRutinPage({
                                                             rowSpan={2}
                                                             className="min-w-60 border border-black px-2 py-1 text-left align-middle font-semibold [overflow-wrap:anywhere] whitespace-normal text-foreground"
                                                         >
-                                                            {row.uraian}
+                                                            <div>{row.uraian}</div>
+                                                            <div className="no-print mt-1 font-normal">
+                                                                <EmployeePicPicker
+                                                                    employees={
+                                                                        options.employees
+                                                                    }
+                                                                    employeeId={
+                                                                        row.employee_id
+                                                                    }
+                                                                    onSelect={(
+                                                                        id,
+                                                                    ) =>
+                                                                        updateEmployeeId(
+                                                                            row._key,
+                                                                            id,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        !can_write
+                                                                    }
+                                                                    variant="badge"
+                                                                />
+                                                            </div>
                                                         </td>
                                                         <td className="border border-black bg-muted/40 text-center text-[10px] font-bold">
                                                             RENC
@@ -1004,6 +1078,23 @@ export default function K3PekerjaanRutinPage({
                                     }))
                                 }
                             />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label>PIC Pegawai (Opsional)</Label>
+                            <div>
+                                <EmployeePicPicker
+                                    employees={options.employees}
+                                    employeeId={form.employee_id}
+                                    onSelect={(id) =>
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            employee_id: id,
+                                        }))
+                                    }
+                                    variant="badge"
+                                />
+                            </div>
                         </div>
 
                         <DialogFooter className="gap-2 pt-2 sm:gap-0">

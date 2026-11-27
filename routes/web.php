@@ -23,7 +23,7 @@ Route::get('/', fn () => redirect()->route(auth()->check() ? 'dashboard' : 'logi
 
 // Public QR barcode signature verification (no authentication needed when scanned on paper/PDF).
 Route::get('verifikasi-ttd/{ref}/{token}', [SignatureVerificationController::class, 'show'])
-    ->where('ref', 'w?[0-9]+')
+    ->where('ref', '(?:w|ms|mt)?[0-9]+')
     ->where('token', '[a-f0-9]+')
     ->name('signature.verify');
 

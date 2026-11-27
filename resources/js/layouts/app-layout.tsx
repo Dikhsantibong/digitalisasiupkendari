@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { AccountSwitcher } from '@/components/impersonation/account-switcher';
 import { ImpersonationBanner } from '@/components/impersonation/impersonation-banner';
 import { MobileTableCards } from '@/components/mobile/table-cards';
+import { ScheduleTaskBanner } from '@/components/notifications/schedule-tasks';
 import { AttendanceAlertBanner } from '@/components/operator/attendance-alert-banner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMobileModuleCandidate } from '@/hooks/use-mobile-module';
@@ -53,6 +54,8 @@ function AppLayoutContent({
         <>
             {/* The absen still owed by the user's Jadwal Shift (operators & project leader). */}
             <AttendanceAlertBanner />
+            {/* Today's scheduled input duties still waiting for the user / their regu. */}
+            <ScheduleTaskBanner />
             <MobileTableCards
                 enabled={isMobile && TABLE_CARD_PAGES.test(component)}
             >

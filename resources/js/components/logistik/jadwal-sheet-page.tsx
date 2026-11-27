@@ -4,6 +4,7 @@ import { Fragment, useState } from 'react';
 import type { ReactNode } from 'react';
 import { toast } from 'sonner';
 import { LogistikSheetMobile } from '@/components/logistik/jadwal-sheet-mobile';
+import { EmployeePicPicker, type EmployeeOption } from '@/components/jadwal/employee-picker';
 import { OPERASI_MONTHS, OperasiSelect } from '@/components/operasi/filter-select';
 import { PageHeader } from '@/components/page-header';
 import { PdmCellSelect } from '@/components/pdm/cell-select';
@@ -28,7 +29,7 @@ export type LogistikJadwalSheetPageProps = {
     codes: Record<string, string>;
     unit: IdName;
     filters: Filters;
-    options: { units: IdName[]; years: number[] };
+    options: { units: IdName[]; years: number[]; employees?: EmployeeOption[] };
     columns: JadwalColumn[];
     rows: JadwalRow[];
     has_saved: boolean;
@@ -48,7 +49,7 @@ const NEXT_CODE: Record<string, Record<string, string>> = {
 /** PHP sends an empty `days` map as a JSON array. */
 const normalize = (list: JadwalRow[]): JadwalRow[] => list.map((row) => ({ ...row, days: Array.isArray(row.days) ? {} : row.days }));
 
-const blankRow = (section: string | null = null): JadwalRow => ({ section, nama: '', pic: '', days: {}, target: null, keterangan: '', evidence: [], evidence_urls: [] });
+const blankRow = (section: string | null = null): JadwalRow => ({ section, employee_id: null, nama: '', pic: '', days: {}, target: null, keterangan: '', evidence: [], evidence_urls: [] });
 
 /**
  * One Logistik & Gudang grid sheet (App\Support\LogistikJadwal) — the jadwal
@@ -138,8 +139,9 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
 
     const save = (onSaved?: () => void) => {
         const hasFiles = Object.values(uploads).some((files) => files.length > 0);
-        const payload = rows.map(({ section, nama, pic, days, target, keterangan, evidence }, index) => ({
+        const payload = rows.map(({ section, employee_id, nama, pic, days, target, keterangan, evidence }, index) => ({
             section,
+            employee_id: employee_id ?? null,
             nama,
             pic,
             days,
@@ -221,15 +223,47 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
             </td>
         );
 
-    const namaInput = (index: number, placeholder = '') => (
-        <AutoWrapCellInput
-            value={rows[index].nama}
-            onChange={(value) => updateRow(index, { nama: value })}
-            className="px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
-            placeholder={placeholder}
-            disabled={!can_write}
-        />
-    );
+    const namaInput = (index: number, placeholder = '', withEmployeePicker = false) => {
+        const input = (
+            <AutoWrapCellInput
+                value={rows[index].nama}
+                onChange={(value) =>
+                    updateRow(index, {
+                        nama: value,
+                        ...(withEmployeePicker ? { employee_id: null } : {}),
+                    })
+                }
+                wrapperClassName={withEmployeePicker ? 'min-w-0 flex-1' : undefined}
+                className="px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40"
+                placeholder={placeholder}
+                disabled={!can_write}
+            />
+        );
+
+        if (!withEmployeePicker) {
+            return input;
+        }
+
+        return (
+            <div className="flex items-center gap-0.5 pr-1">
+                {input}
+                {can_write && (
+                    <EmployeePicPicker
+                        employees={options.employees}
+                        employeeId={rows[index].employee_id}
+                        labelText={rows[index].nama}
+                        onSelect={(id, name) =>
+                            updateRow(index, {
+                                employee_id: id,
+                                nama: id ? name : rows[index].nama,
+                            })
+                        }
+                        variant="icon"
+                    />
+                )}
+            </div>
+        );
+    };
 
     const targetInput = (index: number, fallback: number) => (
         <Input
@@ -329,7 +363,7 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                     return (
                         <Fragment key={index}>
                             <tr>
-                                <td rowSpan={2} className={`${td} p-0`}>{namaInput(index)}</td>
+                                <td rowSpan={2} className={`${td} p-0`}>{namaInput(index, '', true)}</td>
                                 <td className={`${td} bg-sky-500 p-1 text-center text-[10px] font-bold text-white`}>RENCANA</td>
                                 {columns.map((column) => {
                                     const value = code(row, column.col);
@@ -418,7 +452,7 @@ export function LogistikJadwalSheetPage({ sheet, sections, codes, unit, filters,
                             <td className={`${td} p-0 align-middle whitespace-normal`}>
                                 <AutoWrapCellInput value={row.pic} onChange={(value) => updateRow(index, { pic: value })} className="px-1.5 py-1 text-xs focus:bg-yellow-50 dark:focus:bg-yellow-950/40" disabled={!can_write} />
                             </td>
-                            <td className={`${td} p-0`}>{namaInput(index, 'Nama personil')}</td>
+                            <td className={`${td} p-0`}>{namaInput(index, 'Nama personil', true)}</td>
                             {columns.map((column) => {
                                 const value = code(row, column.col);
 

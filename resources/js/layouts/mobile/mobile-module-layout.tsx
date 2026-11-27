@@ -3,6 +3,7 @@ import { ArrowLeft, BadgeCheck, ChevronRight, Menu, Search, X } from 'lucide-rea
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { TodayScheduleCard } from '@/components/notifications/schedule-tasks';
 import { AttendanceAlertBanner } from '@/components/operator/attendance-alert-banner';
 import {
     FingerprintPending,
@@ -197,6 +198,9 @@ function MobileHome({ resolved }: { resolved: ResolvedMobileModule }) {
 
             {/* The absen still owed by the user's Jadwal Shift: visible right on the mobile home screen. */}
             <AttendanceAlertBanner className="mx-0 mt-0 rounded-2xl p-3.5 shadow-sm" />
+
+            {/* Today's personal / regu schedule tasks for the signed-in user. */}
+            <TodayScheduleCard variant="mobile" />
 
             {/* Approvers (Team Leader, Koordinator, Project Leader): what waits for their decision. */}
             {auth.approvals != null && (

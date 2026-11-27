@@ -35,6 +35,7 @@ use Illuminate\Support\Carbon;
     'year',
     'month',
     'no_urut',
+    'employee_id',
     'uraian',
     'rencana',
     'realisasi',
@@ -59,11 +60,20 @@ class PdmJadwal5s5r extends Model
             'year' => 'integer',
             'month' => 'integer',
             'no_urut' => 'integer',
+            'employee_id' => 'integer',
             'rencana' => DayList::class,
             'realisasi' => DayList::class,
             'target' => 'integer',
             'sort_order' => 'integer',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Employee, $this>
+     */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
     }
 
     /**

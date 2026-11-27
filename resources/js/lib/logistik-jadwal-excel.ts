@@ -12,7 +12,7 @@ export type JadwalLayout = 'kegiatan' | 'pelaksana' | 'shift' | 'ik' | 'patrol' 
 export type JadwalSheetDef = { key: string; title: string; kop: string; layout: JadwalLayout; row_label: string; menu: 'jadwal' | 'input'; description: string; yearly: boolean; evidence: number };
 export type JadwalColumn = { col: number; label: string; dow: string; dow_en: string; is_weekend: boolean; is_holiday: boolean; is_red: boolean };
 export type JadwalSection = { key: string; number: string; title: string; note: string };
-export type JadwalRow = { section: string | null; nama: string; pic: string; days: Record<string, string>; target: number | null; keterangan: string; evidence: string[]; evidence_urls: string[] };
+export type JadwalRow = { section: string | null; employee_id?: number | null; nama: string; pic: string; days: Record<string, string>; target: number | null; keterangan: string; evidence: string[]; evidence_urls: string[] };
 
 /** Rencana (R or D), realisasi (D), target (default rencana) and kinerja of a R/D row. */
 export const jadwalProgress = (row: JadwalRow) => {

@@ -11,6 +11,7 @@ use App\Models\PdmJadwalMeeting;
 use App\Models\PdmJadwalMeta;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Services\Pdm\PdmJadwalSigners;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -20,6 +21,7 @@ use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,7 +33,10 @@ class JadwalMeetingController extends Controller
 
     private const DEFAULT_CATATAN = "Ditambahkan eviden dan daftar hadir\nMinimal pelaksanaan meeting evaluasi berkala\nDapat menggunakan eviden yang sama dengan serah terima tugas, aplikasi tersedia\nAngka realisasi dan kinerja dijadikan rekomendasi laporan operasi dan project";
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -125,6 +130,7 @@ class JadwalMeetingController extends Controller
             $rows = collect(self::DEFAULT_URAIAN)->map(fn (string $uraian, int $idx): array => [
                 'id' => null,
                 'no_urut' => $idx + 1,
+                'employee_id' => null,
                 'uraian' => $uraian,
                 'rencana' => [],
                 'realisasi' => [],
@@ -137,6 +143,7 @@ class JadwalMeetingController extends Controller
             $rows = $savedRecords->map(fn (PdmJadwalMeeting $r, int $idx): array => [
                 'id' => $r->id,
                 'no_urut' => $r->no_urut ?? ($idx + 1),
+                'employee_id' => $r->employee_id,
                 'uraian' => $r->uraian,
                 'rencana' => $r->rencana ?? [],
                 'realisasi' => $r->realisasi ?? [],
@@ -233,6 +240,7 @@ class JadwalMeetingController extends Controller
             'meta.dibuat_jabatan' => ['nullable', 'string', 'max:150'],
             'rows' => ['present', 'array'],
             'rows.*.no_urut' => ['nullable', 'integer'],
+            'rows.*.employee_id' => ['nullable', 'integer', Rule::exists('employees', 'id')->where('unit_id', $unit->id)],
             'rows.*.uraian' => ['required', 'string', 'max:255'],
             'rows.*.rencana' => ['nullable', 'array'],
             'rows.*.realisasi' => ['nullable', 'array'],
@@ -244,6 +252,7 @@ class JadwalMeetingController extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
         $catatan = $validated['catatan'] ?? self::DEFAULT_CATATAN;
+        $before = $this->notifier->todayScheduleRecipientKeys('pdm:meeting', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $user, $unitId, $month, $year, $catatan): void {
             if (! empty($validated['meta'])) {
@@ -292,6 +301,7 @@ class JadwalMeetingController extends Controller
                     'year' => $year,
                     'month' => $month,
                     'no_urut' => $r['no_urut'] ?? ($idx + 1),
+                    'employee_id' => isset($r['employee_id']) && $r['employee_id'] !== '' ? (int) $r['employee_id'] : null,
                     'uraian' => $r['uraian'],
                     'rencana' => $cleanDays($r['rencana'] ?? []),
                     'realisasi' => $cleanDays($r['realisasi'] ?? []),
@@ -304,6 +314,7 @@ class JadwalMeetingController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'pdm:meeting', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal Meeting PdM {$unit->name} {$month}/{$year}",

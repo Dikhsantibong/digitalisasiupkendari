@@ -10,6 +10,7 @@ use App\Models\HarJadwalPatrolCheck;
 use App\Models\Holiday;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,10 @@ use Inertia\Response;
 
 class JadwalPatrolCheckController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -161,6 +165,7 @@ class JadwalPatrolCheckController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('har:patrol-check', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $user, $unitId, $month, $year): void {
             foreach ($validated['rows'] ?? [] as $row) {
@@ -188,6 +193,7 @@ class JadwalPatrolCheckController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'har:patrol-check', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal Piket Patrol Check Harian {$unit->name} {$month}/{$year}",

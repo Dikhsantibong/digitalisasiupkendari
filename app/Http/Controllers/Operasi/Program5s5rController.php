@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\Operasi5s5rJadwal;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Services\Operator\AttendanceRoster;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -37,7 +38,10 @@ class Program5s5rController extends Controller
         'OPERATOR SHIFT D',
     ];
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -133,6 +137,7 @@ class Program5s5rController extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
         $clean = fn ($d) => collect($d ?? [])->map(fn ($x) => (int) $x)->filter(fn ($x) => $x >= 1 && $x <= 31)->unique()->values()->all();
+        $before = $this->notifier->todayScheduleRecipientKeys('operasi:5s-5r', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $unit, $month, $year, $user, $clean): void {
             Operasi5s5rJadwal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
@@ -155,6 +160,7 @@ class Program5s5rController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'operasi:5s-5r', $month, $year, $user, $before);
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan Jadwal 5S5R {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
 
         return back()->with('toast', ['type' => 'success', 'message' => 'Jadwal Pelaksanaan 5S5R berhasil disimpan.']);

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 import { MobileTimelineForm, TimelineField } from '@/components/mobile/timeline-form';
+import { EmployeePicPicker, type EmployeeOption } from '@/components/jadwal/employee-picker';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -49,6 +50,7 @@ type DayInfo = {
 
 type MeetingRow = {
     id: number | null;
+    employee_id?: number | null;
     uraian: string;
     target: number;
     rencana: Record<string, string | number>;
@@ -71,6 +73,7 @@ type Props = {
     options: {
         units: IdName[];
         years: number[];
+        employees?: EmployeeOption[];
     };
     days: DayInfo[];
     rows: MeetingRow[];
@@ -226,6 +229,19 @@ return;
         setDirty(true);
     };
 
+    const handleEmployeeChange = (rowIndex: number, employeeId: number | null) => {
+        if (!can_write) {
+return;
+}
+
+        setRows((prev) =>
+            prev.map((r, idx) =>
+                idx === rowIndex ? { ...r, employee_id: employeeId } : r,
+            ),
+        );
+        setDirty(true);
+    };
+
     // Add row
     const handleAddRow = () => {
         if (!can_write) {
@@ -236,6 +252,7 @@ return;
             ...prev,
             {
                 id: null,
+                employee_id: null,
                 uraian: 'Meeting Koordinasi Tambahan',
                 target: 1,
                 rencana: {},
@@ -292,6 +309,7 @@ return;
                 year: filters.year,
                 rows: rows.map((r) => ({
                     id: r.id,
+                    employee_id: r.employee_id ?? null,
                     uraian: r.uraian,
                     target: r.target,
                     rencana: r.rencana,
@@ -743,6 +761,18 @@ return;
                                     <>
                                         <TimelineField label="Uraian Meeting" value={row.uraian} onChange={(v) => handleUraianChange(index, v)} readOnly={!can_write} />
                                         <TimelineField label="Target (kali / bulan)" type="number" value={row.target} onChange={(v) => handleTargetChange(index, Number(v))} readOnly={!can_write} />
+                                        <div className="space-y-1">
+                                            <span className="text-[11px] font-medium text-muted-foreground">PIC Pegawai</span>
+                                            <div>
+                                                <EmployeePicPicker
+                                                    employees={options.employees}
+                                                    employeeId={row.employee_id}
+                                                    onSelect={(id) => handleEmployeeChange(index, id)}
+                                                    disabled={!can_write}
+                                                    variant="badge"
+                                                />
+                                            </div>
+                                        </div>
                                     </>
                                 )}
                                 summary={(row) => {
@@ -859,45 +889,67 @@ return;
                                                     rowSpan={2}
                                                     className="min-w-60 border-r border-border bg-background p-2 text-left align-middle whitespace-normal"
                                                 >
-                                                    {can_write &&
-                                                    calculatedRows.length > 1 ? (
-                                                        <div className="flex items-center gap-1.5">
-                                                            <AutoWrapCellInput
-                                                                value={
-                                                                    row.uraian
-                                                                }
-                                                                onChange={(
-                                                                    val,
-                                                                ) =>
-                                                                    handleUraianChange(
-                                                                        rIndex,
+                                                    <div className="space-y-1">
+                                                        {can_write &&
+                                                        calculatedRows.length > 1 ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <AutoWrapCellInput
+                                                                    value={
+                                                                        row.uraian
+                                                                    }
+                                                                    onChange={(
                                                                         val,
-                                                                    )
-                                                                }
-                                                                wrapperClassName="flex-1"
-                                                                className="rounded border border-border px-2 py-1 font-semibold"
+                                                                    ) =>
+                                                                        handleUraianChange(
+                                                                            rIndex,
+                                                                            val,
+                                                                        )
+                                                                    }
+                                                                    wrapperClassName="flex-1"
+                                                                    className="rounded border border-border px-2 py-1 font-semibold"
+                                                                />
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() =>
+                                                                        handleRemoveRow(
+                                                                            rIndex,
+                                                                        )
+                                                                    }
+                                                                    className="no-print size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                                                                    title="Hapus baris"
+                                                                >
+                                                                    <Trash2 className="size-3.5" />
+                                                                </Button>
+                                                            </div>
+                                                        ) : (
+                                                            <AutoWrapCellInput
+                                                                value={row.uraian}
+                                                                readOnly
+                                                                className="font-semibold"
                                                             />
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() =>
-                                                                    handleRemoveRow(
+                                                        )}
+                                                        <div className="no-print">
+                                                            <EmployeePicPicker
+                                                                employees={
+                                                                    options.employees
+                                                                }
+                                                                employeeId={
+                                                                    row.employee_id
+                                                                }
+                                                                onSelect={(id) =>
+                                                                    handleEmployeeChange(
                                                                         rIndex,
+                                                                        id,
                                                                     )
                                                                 }
-                                                                className="no-print size-7 shrink-0 text-muted-foreground hover:text-destructive"
-                                                                title="Hapus baris"
-                                                            >
-                                                                <Trash2 className="size-3.5" />
-                                                            </Button>
+                                                                disabled={
+                                                                    !can_write
+                                                                }
+                                                                variant="badge"
+                                                            />
                                                         </div>
-                                                    ) : (
-                                                        <AutoWrapCellInput
-                                                            value={row.uraian}
-                                                            readOnly
-                                                            className="font-semibold"
-                                                        />
-                                                    )}
+                                                    </div>
                                                 </td>
                                                 <td className="border-r border-border bg-muted/10 p-1.5 text-center font-semibold text-muted-foreground">
                                                     RENCANA

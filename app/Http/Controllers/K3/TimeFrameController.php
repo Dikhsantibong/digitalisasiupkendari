@@ -5,11 +5,13 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\Holiday;
 use App\Models\K3ActivityPlan;
 use App\Models\K3ActivityType;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -28,7 +30,10 @@ use Inertia\Response;
  */
 class TimeFrameController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -65,6 +70,7 @@ class TimeFrameController extends Controller
 
             return [
                 'activity_type_id' => $type->id,
+                'employee_id' => $plan?->employee_id,
                 'uraian' => $type->name,
                 'pic' => $plan?->pic ?? $type->default_pic ?? '',
                 'rencana' => $this->mapToDays($plan?->plan_days),
@@ -84,6 +90,12 @@ class TimeFrameController extends Controller
             'options' => [
                 'units' => $units->all(),
                 'years' => range($year - 3, $year + 1),
+                'employees' => Employee::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'position'])
+                    ->all(),
             ],
             'can_write' => $user->hasPermissionTo(PermissionName::K3InputWrite),
         ]);
@@ -103,6 +115,7 @@ class TimeFrameController extends Controller
             'year' => ['required', 'integer', 'between:2000,2100'],
             'rows' => ['array'],
             'rows.*.activity_type_id' => ['required', 'integer', Rule::exists('k3_activity_types', 'id')->where('unit_id', $unit->id)],
+            'rows.*.employee_id' => ['nullable', 'integer', Rule::exists('employees', 'id')->where('unit_id', $unit->id)],
             'rows.*.pic' => ['nullable', 'string', 'max:255'],
             'rows.*.keterangan' => ['nullable', 'string', 'max:500'],
             'rows.*.rencana' => ['array'],
@@ -111,6 +124,7 @@ class TimeFrameController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('k3:time-frame', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $unit, $month, $year, $user): void {
             foreach ($validated['rows'] ?? [] as $row) {
@@ -119,6 +133,7 @@ class TimeFrameController extends Controller
                     [
                         'plan_days' => $this->daysToMap($row['rencana'] ?? []),
                         'real_days' => $this->daysToMap($row['realisasi'] ?? []),
+                        'employee_id' => isset($row['employee_id']) && $row['employee_id'] !== '' ? (int) $row['employee_id'] : null,
                         'pic' => $row['pic'] ?? null,
                         'keterangan' => $row['keterangan'] ?? null,
                         'input_by' => $user->id,
@@ -127,6 +142,7 @@ class TimeFrameController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'k3:time-frame', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Time Frame K3 & Lingkungan {$unit->name} {$month}/{$year}",

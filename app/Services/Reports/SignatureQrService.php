@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use App\Models\OperatorMutasi;
 use App\Models\ReportWorkflow;
 use App\Models\ReportWorkflowStep;
 use BaconQrCode\Common\ErrorCorrectionLevel;
@@ -26,6 +27,11 @@ class SignatureQrService
     public function submissionRef(ReportWorkflow $workflow): string
     {
         return 'w'.$workflow->id;
+    }
+
+    public function mutasiRef(OperatorMutasi $mutasi, string $role): string
+    {
+        return ($role === 'penerima' ? 'mt' : 'ms').$mutasi->id;
     }
 
     public function tokenForRef(string $ref, int $workflowId): string
@@ -55,6 +61,16 @@ class SignatureQrService
         return route('signature.verify', [
             'ref' => $ref,
             'token' => $this->tokenForRef($ref, $workflow->id),
+        ]);
+    }
+
+    public function verifyUrlForMutasi(OperatorMutasi $mutasi, string $role): string
+    {
+        $ref = $this->mutasiRef($mutasi, $role);
+
+        return route('signature.verify', [
+            'ref' => $ref,
+            'token' => $this->tokenForRef($ref, $mutasi->id),
         ]);
     }
 

@@ -11,6 +11,7 @@ use App\Models\PdmJadwal5s5r;
 use App\Models\PdmJadwalMeta;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Services\Pdm\PdmJadwalSigners;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -20,6 +21,7 @@ use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,7 +35,10 @@ class Program5s5rController extends Controller
         'RAJIN (SHITSUKE)',
     ];
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -128,6 +133,7 @@ class Program5s5rController extends Controller
             $rows = collect(self::DEFAULT_URAIAN)->map(fn (string $uraian, int $idx): array => [
                 'id' => null,
                 'no_urut' => $idx + 1,
+                'employee_id' => null,
                 'uraian' => $uraian,
                 'rencana' => [],
                 'realisasi' => [],
@@ -139,6 +145,7 @@ class Program5s5rController extends Controller
             $rows = $savedRecords->map(fn (PdmJadwal5s5r $r, int $idx): array => [
                 'id' => $r->id,
                 'no_urut' => $r->no_urut ?? ($idx + 1),
+                'employee_id' => $r->employee_id,
                 'uraian' => $r->uraian,
                 'rencana' => $r->rencana ?? [],
                 'realisasi' => $r->realisasi ?? [],
@@ -230,6 +237,7 @@ class Program5s5rController extends Controller
             'meta.dibuat_jabatan' => ['nullable', 'string', 'max:150'],
             'rows' => ['present', 'array'],
             'rows.*.no_urut' => ['nullable', 'integer'],
+            'rows.*.employee_id' => ['nullable', 'integer', Rule::exists('employees', 'id')->where('unit_id', $unit->id)],
             'rows.*.uraian' => ['required', 'string', 'max:255'],
             'rows.*.rencana' => ['nullable', 'array'],
             'rows.*.realisasi' => ['nullable', 'array'],
@@ -240,6 +248,7 @@ class Program5s5rController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('pdm:5s-5r', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $user, $unitId, $month, $year): void {
             if (! empty($validated['meta'])) {
@@ -288,6 +297,7 @@ class Program5s5rController extends Controller
                     'year' => $year,
                     'month' => $month,
                     'no_urut' => $r['no_urut'] ?? ($idx + 1),
+                    'employee_id' => isset($r['employee_id']) && $r['employee_id'] !== '' ? (int) $r['employee_id'] : null,
                     'uraian' => $r['uraian'],
                     'rencana' => $cleanDays($r['rencana'] ?? []),
                     'realisasi' => $cleanDays($r['realisasi'] ?? []),
@@ -299,6 +309,7 @@ class Program5s5rController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'pdm:5s-5r', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal Pelaksanaan 5S5R PdM {$unit->name} {$month}/{$year}",

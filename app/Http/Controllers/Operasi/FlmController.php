@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OperasiFlmJadwal;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,10 @@ use Inertia\Response;
  */
 class FlmController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -92,6 +96,7 @@ class FlmController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('operasi:flm', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $unit, $month, $year, $user): void {
             OperasiFlmJadwal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
@@ -116,6 +121,7 @@ class FlmController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'operasi:flm', $month, $year, $user, $before);
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan Jadwal FLM Operator {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
 
         return back()->with('toast', ['type' => 'success', 'message' => 'Jadwal FLM Operator berhasil disimpan.']);

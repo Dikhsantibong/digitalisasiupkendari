@@ -365,7 +365,10 @@ Aturan tambahan:
   bagian sekali tampil), status laporan per unit sebagai kartu (bukan tabel lebar). Tampilan
   desktop tidak berubah.
 - Beranda HP: header biru ringkas → pencarian → chip grup → kartu menu per grup
-  (tanpa Akses Cepat — dihapus 2026-11-05).
+  (tanpa Akses Cepat — dihapus 2026-11-05), ditambah banner absensi (`AttendanceAlertBanner`)
+  serta kartu real-time **"Tugas Jadwal Hari Ini"** (`TodayScheduleCard`) bagi user yang memiliki
+  penugasan jadwal aktif pada hari tersebut (status *Belum Dikerjakan / Siaga / Sudah Diinput*
+  dan tombol langsung ke form input terkait).
 - Halaman input, jadwal, dan formulir di HP **langsung bisa diisi** (semua modul):
   tanpa deskripsi halaman, kartu ringkasan, maupun filter Unit/Bulan/Tahun — unit
   dari akun, periode = sekarang, shift logsheet otomatis dari regu. Pilihan yang
@@ -425,6 +428,12 @@ Aturan tambahan:
 
 - Satu bagian grafik per modul (Operasi, Pemeliharaan, K3, Logistik, PdM), tampil
   sesuai permission; Super Admin melihat semua.
+- Kartu **"Tugas Jadwal Hari Ini"** (`TodayScheduleCard` dari prop `scheduleTasks` oleh `ScheduleTaskTracker`)
+  di bagian atas Dashboard untuk user yang memiliki penugasan jadwal aktif hari ini (personal
+  `employee_id` maupun regu `A–D`), lengkap dengan status otomatis *Belum Dikerjakan / Siaga /
+  Sudah Diinput* dan tombol 1-klik ke form input terkait. Di halaman aplikasi lain, pengingat berkala
+  (`ScheduleTaskBanner`) terus tampil (dapat ditunda 30 menit lalu muncul kembali secara berkala)
+  selama tugas wajib input hari ini belum diselesaikan.
 - Ringkasan nyata: jumlah unit, user, status unit, aktivitas, dan **kelengkapan
   input** per modul/menu, dibatasi unit yang terlihat user.
 - **Semua angka nyata** (tanpa data contoh), dibaca dari input unit yang terlihat
@@ -462,15 +471,41 @@ Aturan tambahan:
   cron `schedule:run`):
   - Absensi — dari Jadwal Shift + presensi (zona WITA), hanya akun
     `operator.presensi`.
-  - Jadwal — ringkasan pagi per modul & unit untuk pemegang `{m}.input.write`
-    yang dapat mengakses unit; baris tugas personal ke akun pegawai itu.
+  - Jadwal terpadu (**Fase 1 & Fase 2**, 2026-11-28, `ScheduleCatalog` + `ScheduleTaskTracker` +
+    `ScheduleReminders`):
+    - **Ringkasan pagi modul**: 1x per hari per modul & unit mulai `digest_time` (default 06:30
+      s/d 18:00 WITA) ke pemegang `{m}.input.write` yang mengakses unit.
+    - **Penugasan personal & regu ke akun pelaksana langsung**:
+      - **Fase 1**: penargetan perorangan (`employee_id`: 5S5R Operasi, Patrol Check & Piket On Call HAR,
+        On Call K3L dengan perbaikan cut-off tanggal 16–15 `YYYY-MM-DD`, Patrol Check PdM), **seluruh anggota
+        regu `A–D`** (`regu_cell` pada **Jadwal FLM** & **Meeting Shift** serta fallback
+        `regu_column` pada **5S5R Operasi** & **Inventarisasi Tools**).
+      - **Fase 2**: penyeragaman kolom opsional `employee_id` (`employees.id`, `nullOnDelete`) & komponen
+        picker `EmployeePicPicker` (`variant="icon"` / `variant="badge"`) pada `logistik_jadwal_rows`,
+        `pdm_jadwal_5s5rs`, `pdm_jadwal_meetings`, `k3_patrol_check_jadwals`, `k3_pekerjaan_rutins`,
+        `k3_activity_plans` (Time Frame), dan `har_jadwal_meeting_pemeliharaans`, serta pendaftaran
+        penugasan & pelacakan realisasi/kegiatan minggu pada `har:inventarisasi-tools` (`w_week`),
+        `har:blackstart` (`mw_week`), `k3:time-frame`, `logistik:shift` (`P`), dan sheet `pelaksana` Logistik.
+    - **Tautan aksi langsung (*actionable deep-link*)**: notifikasi untuk Operator, Harmes/Harlist,
+      PdM, K3, & Logistik langsung membuka form input lapangan atau sheet terkait (mis. `/operasi/input/program-5s5r`,
+      `/operasi/input/monitoring-flm`, `/har/input/lembar/patrol-check-pemeliharaan`, `/pdm/input/forms/checklist-5s5r`,
+      `/logistik/input/lembar/inspeksi-5s5r`, `/logistik/input/lembar/patrol-check`), bukan halaman matriks jadwal yang diblokir `*.input.view`.
+    - **Pengingat berkala terus-menerus & *shift-aware***: tugas wajib input (`requires_input`)
+      mulai mengingatkan **30 menit sebelum shift aktif user** (atau `digest_time` untuk non-shift)
+      dan **mengulang setiap 2 jam (`REPEAT_INTERVAL_MINUTES = 120`) secara berkala** selama
+      penginputan/realisasi hari itu belum diisi, serta berhenti otomatis begitu penginputan selesai;
+      tugas siaga (*On Call / Piket On Call / Shift Logistik*) mengingatkan 1x per hari (`requires_input => false`).
   - Dedup per user lewat `reminder_logs`.
 - **Notifikasi kejadian** setelah simpan: Kondisi Abnormal baru/berubah, Unsafe
   Action & Condition (temuan baru di **Kondisi K3** → tim K3; ditutup → pelapor awal), WO/SR baru atau
   status berubah, kecelakaan K3, setiap langkah alur laporan (ke penanda tangan
-  berikutnya + pengaju). Penerima = user aktif yang berhak & dapat mengakses unit,
-  bukan pelaku dan bukan Super Admin. Tautan hanya diberikan bila penerima boleh
-  membuka halamannya.
+  berikutnya + pengaju), serta **perubahan jadwal hari ini (`EventNotifier::scheduleUpdated`)**
+  yang langsung mengirim notifikasi in-app & Web Push ke pegawai/regu yang baru dijadwalkan pada
+  8 controller Fase 1 + 7 controller Fase 2 (`Logistik\JadwalSheetController`, `Pdm\Program5s5rController`,
+  `Pdm\JadwalMeetingController`, `K3\PatrolCheckController`, `K3\PekerjaanRutinController`,
+  `K3\TimeFrameController`, `Har\JadwalMeetingPemeliharaanController`). Penerima = user aktif
+  yang berhak & dapat mengakses unit, bukan pelaku dan bukan Super Admin. Tautan hanya diberikan bila
+  penerima boleh membuka halamannya.
 
 ### 7.4 Master Data
 
@@ -551,7 +586,7 @@ Layer input lapangan operator — modul tersendiri (bukan sub-Operasi).
 | **Opname BBM** | Per unit + tanggal: **Opname Fisik** (tangki Storage & Setlink: cm, liter) dan **Opname Administrasi** (tangki Service: cm, liter; Flowmeter BBM per mesin: stand awal, stand akhir, pemakaian) | Operator & PL tulis; TL/Koordinator/Manager UL lihat |
 | **Opname Pelumas** | Per unit + tanggal, tiap jenis pelumas unit: stand awal, stand akhir, sub total | idem |
 | **Opname kWh** | Per unit + tanggal: kWh Produksi, kWh PS, Susut Trafo (nama kWh, stand awal, stand akhir, sub total) + ringkasan kWh PSST, kWh netto, SFC bruto & netto (§10.2) | idem |
-| **Lembar Mutasi** | Lembar serah terima shift: mesin (**level tangki bahan bakar dalam cm** dan **tambah pelumas dalam liter** — angka, tanpa centang ✓ sejak 2026-11-24; level pelumas, status operasi/standby/gangguan); bagian **Gangguan Feeder / Start-Stop Mesin** menampilkan start/stop mesin pada jam shift itu **otomatis dari menu Start Stop Engine** (pagi 08–16, sore 16–22, malam 22–08; `MutasiStartStop`), ikut tercetak di PDF & Excel, di samping kejadian lain yang diketik; bagian **Gangguan Mesin** memuat otomatis **temuan abnormal (TN) Patrol Check Mesin** pada jam shift itu (mesin, peralatan, catatan, operator pemeriksa; `MutasiPatrolFindings`) agar ikut diserahterimakan, juga di PDF & Excel, tangki, peralatan, kejadian; **Serah Terima Tugas disederhanakan tanpa canvas tanda tangan** (2026-11-27): tanda tangan penyerah & penerima ditarik **otomatis dari data tanda tangan profil (`employees.signature_path`)**, penyerah klik **Serahkan** (mengirim notifikasi in-app/push + masuk kotak **Persetujuan** regu penerima) dan regu penerima cukup klik **Terima Tugas** sekali untuk mengunci lembar; di **layout HP** hanya tampil tombol penuh **Export PDF (Pratinjau)** yang membuka halaman pratinjau render PDF (`/operator/mutasi/{mutasi}/preview`) | Leader Shift / PL / TL tulis; operator biasa lihat |
+| **Lembar Mutasi** | Lembar serah terima shift: mesin (**level tangki bahan bakar dalam cm** dan **tambah pelumas dalam liter** — angka, tanpa centang ✓ sejak 2026-11-24; level pelumas, status operasi/standby/gangguan); bagian **Gangguan Feeder / Start-Stop Mesin** menampilkan start/stop mesin pada jam shift itu **otomatis dari menu Start Stop Engine** (pagi 08–16, sore 16–22, malam 22–08; `MutasiStartStop`), ikut tercetak di PDF & Excel, di samping kejadian lain yang diketik; bagian **Gangguan Mesin** memuat otomatis **temuan abnormal (TN) Patrol Check Mesin** pada jam shift itu (mesin, peralatan, catatan, operator pemeriksa; `MutasiPatrolFindings`) agar ikut diserahterimakan, juga di PDF & Excel, tangki, peralatan, kejadian; **Serah Terima Tugas disederhanakan memakai tanda tangan barcode QR terverifikasi** (2026-11-28): tanda tangan penyerah (`ms{id}`) & penerima (`mt{id}`) digenerate **otomatis sebagai QR barcode berlogo PLN (`SignatureQrService`)** yang tertaut ke halaman verifikasi publik `/verifikasi-ttd/{ref}/{token}` (tampil inline di web, PDF, pratinjau mobile, & Excel tanpa bergantung URL storage lokal), penyerah klik **Serahkan** (mengirim notifikasi in-app/push + masuk kotak **Persetujuan** regu penerima) dan regu penerima cukup klik **Terima Tugas** sekali untuk mengunci lembar; di **layout HP** hanya tampil tombol penuh **Export PDF (Pratinjau)** yang membuka halaman pratinjau render PDF (`/operator/mutasi/{mutasi}/preview`) | Leader Shift / PL / TL tulis; operator biasa lihat |
 | **Jadwal Shift** | Satu lembar per unit + bulan: Kerja Shift (regu A–D) & Non Shift; kuas kode + klik/geser sel; **Isi Otomatis** | Koordinator Operasi, PL (tulis); Operator, TL, Manager UL (lihat) |
 | **Pengajuan Absensi** | Izin (maks. **1 kali per bulan** per pegawai; yang ditolak/dibatalkan tidak menghabiskan kuota), sakit, cuti, **tukar shift** (2026-11-24: cukup pilih tanggal & rekan yang ditukar — tanpa batasan jadwal, tanpa tanggal balasan, alasan opsional; pengajuan masuk ke akun rekan untuk dikonfirmasi lalu disetujui TL; setelah disetujui **shift keduanya pada tanggal itu ditukar**, mis. Pagi ⇄ Sore), lampiran; pengajuan operator disetujui **TL Operasi** (`operator.pengajuan.approve_operasi`, juga PL & Koordinator Operasi), pengajuan role HAR (Harmes, Harlist, ASME / Asmec / Aslist) disetujui **TL Pemeliharaan** (`operator.pengajuan.approve_har`; unit TL Ophar oleh **TL Ophar**, containerized oleh **Project Leader**) | Operator, PL, Harmes, Harlist, ASME ajukan |
 | **Resume Statistik** | Kehadiran, tukar shift, dan pekerjaan per pegawai (operator hanya melihat dirinya) | Operator, PL, pengawas |
@@ -1592,6 +1627,8 @@ Aturan data:
 
 | Tanggal | Keputusan |
 |---|---|
+| 2026-11-28 | **Sistem notifikasi & tugas jadwal terpadu Fase 2 (Logistik, PdM, K3 & Keamanan, HAR) + penyeragaman `employee_id` & picker pegawai**: menambahkan kolom opsional `employee_id` (FK ke `employees`, `nullOnDelete`) pada 7 tabel jadwal (`logistik_jadwal_rows`, `pdm_jadwal_5s5rs`, `pdm_jadwal_meetings`, `k3_patrol_check_jadwals`, `k3_pekerjaan_rutins`, `k3_activity_plans`, `har_jadwal_meeting_pemeliharaans`) beserta komponen UI `EmployeePicPicker` (desktop inline/urean badge tanpa menggeser kolom cetak PDF/Excel + dialog/form HP); memperbarui 7 controller terkait agar memuat daftar pegawai unit aktif, menyimpan `employee_id`, dan memicu `EventNotifier::scheduleUpdated` saat ada jadwal hari ini; mendaftarkan sisa jadwal mingguan/shift (`har:inventarisasi-tools` via `w_week`, `har:blackstart` via `mw_week`, `k3:time-frame`, `logistik:shift` kode `P`, serta sheet `pelaksana` Logistik) pada `ScheduleCatalog`, `ScheduleTaskTracker` (pelacakan realisasi/kegiatan otomatis lintas modul), dan `ScheduleReminders` (§7.3, §8.4, §8.6, §8.8, §8.9) |
+| 2026-11-28 | **Tanda tangan barcode QR terverifikasi pada Lembar Mutasi Shift Operator (`REGU PENYERAH` & `REGU PENERIMA`)**: mekanisme tanda tangan serah terima shift disamakan dengan pengesahan Laporan Project & laporan masing-masing bidang memakai barcode QR berlogo PLN (`SignatureQrService::verifyUrlForMutasi`, referensi `ms{id}` / `mt{id}` dengan HMAC token pada route publik `/verifikasi-ttd/{ref}/{token}` di `SignatureVerificationController`). QR digenerate otomatis sebagai PNG base64 inline saat **Serahkan** dan **Terima Tugas** sehingga langsung tampil di halaman desktop/mobile, PDF (`mutasi-pdf.blade.php` via `reports.partials.signature-mark`), pratinjau mobile (`operator/mutasi/preview`), dan Excel (`operator-mutasi-excel.ts`), sekaligus menghilangkan risiko *mixed-content* / gambar kosong apabila operator belum mengunggah paraf profil (§8.1, §17) |
 | 2026-11-28 | **Tombol `+ Tambah Kegiatan` inline per kategori di tabel Jadwal Kegiatan (HAR, Operasi, K3L, & PdM) selaras Logistik**: pada `KegiatanJadwalPage` (`/har/jadwal/harian`, `/operasi/jadwal/kegiatan`, `/k3/jadwal/kegiatan-rutin`) dan `PdmJadwalHarianIndex` (`/pdm/jadwal/harian`), tombol `+ Tambah Kegiatan` desktop dipindahkan dari toolbar atas ke tiap baris kategori (`I Harian`, `II Mingguan`, `III Bulanan`, `IV Non Rutin`) di dalam tabel — persis seperti `Jadwal Kegiatan Logistik & Gudang` — sehingga klik langsung menyisipkan baris kosong siap ketik di kategori tersebut (§8.2, §8.4, §8.6) |
 | 2026-11-27 | **Jadwal Pelaksanaan 5S5R Operasi: penghapusan kolom `Shift` terpisah**: kolom `Shift` pada tabel desktop, ekspor Excel, PDF (`program-5s-5r-pdf`), serta dropdown Shift di layout mobile **Jadwal Pelaksanaan 5S5R Pembangkit** (`operasi/jadwal/program-5s-5r`) dihapus karena sudah diwakili oleh kolom **Pelaksana**, sementara penarikan otomatis operator per shift, pemilih operator/pegawai unit, input pelaksana custom, serta metadata `employee_id`/`shift` di backend tetap aktif (§8.2) |
 | 2026-11-27 | **Jadwal FLM Operator: pengisian huruf shift `A–D` dengan mekanisme kuas klik & geser (*drag-paint*) selaras Jadwal Shift**: sel jadwal shift (`row_type = shift`) pada `operasi/jadwal/flm` kini diisi langsung melalui bilah **Kode Shift (`A`, `B`, `C`, `D`, `Hapus`)** dengan klik atau klik-tahan-geser (*pointer drag*), pewarnaan tiap shift, serta pintasan keyboard `A/B/C/D` & `Backspace`/`Delete` (menggantikan input ketik manual), dilengkapi chip pilihan `Shift A–D` di layout mobile (`MobileDayValuesForm`) serta normalisasi huruf kapital di `FlmController::store()` (§8.2) |
@@ -1697,7 +1734,7 @@ Aturan data:
 | Grid | `react-data-grid` + hook paste dari Excel |
 | PDF | `barryvdh/laravel-dompdf` + penggabung PDF orientasi campuran |
 | Editor dokumen | TinyMCE (self-host) + x-data-spreadsheet; SheetJS & ExcelJS untuk .xlsx |
-| QR | bacon/bacon-qr-code (absensi Daily Meeting) |
+| QR | bacon/bacon-qr-code (absensi Daily Meeting & tanda tangan QR terverifikasi laporan / Lembar Mutasi via `SignatureQrService`) |
 | Grafik 3D | GD + FreeType (`Chart3d`), font DejaVu dari dompdf |
 | Presentasi | pptxgenjs (PPT bulanan Laporan UL, dibuat di browser) |
 | Notifikasi | Database + Web Push (VAPID), PWA |

@@ -22,6 +22,10 @@ import {
     TimelineField,
 } from '@/components/mobile/timeline-form';
 import {
+    EmployeePicPicker,
+    type EmployeeOption,
+} from '@/components/jadwal/employee-picker';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -53,6 +57,7 @@ type DayInfo = {
 
 type ServerRow = {
     id: number | null;
+    employee_id?: number | null;
     no_urut: number | null;
     uraian: string;
     rencana: number[];
@@ -71,7 +76,7 @@ type Props = {
         service_unit_name: string | null;
     };
     filters: { unit_id: number; month: number; year: number };
-    options: { units: IdName[]; years: number[] };
+    options: { units: IdName[]; years: number[]; employees?: EmployeeOption[] };
     days: DayInfo[];
     rows: ServerRow[];
     can_write: boolean;
@@ -116,7 +121,7 @@ export default function K3PatrolCheckPage({
     const [mobileEditing, setMobileEditing] = useState(false);
 
     const [isAddOpen, setIsAddOpen] = useState(false);
-    const [form, setForm] = useState({ uraian: '', bobot_sla: 0 });
+    const [form, setForm] = useState<{ uraian: string; bobot_sla: number; employee_id: number | null }>({ uraian: '', bobot_sla: 0, employee_id: null });
 
     const signature = `${filters.unit_id}-${filters.month}-${filters.year}`;
     const [lastSignature, setLastSignature] = useState(signature);
@@ -188,6 +193,19 @@ export default function K3PatrolCheckPage({
         setDirty(true);
     };
 
+    const updateEmployeeId = (key: number, employeeId: number | null) => {
+        if (!can_write) {
+            return;
+        }
+
+        setRows((prev) =>
+            prev.map((r) =>
+                r._key === key ? { ...r, employee_id: employeeId } : r,
+            ),
+        );
+        setDirty(true);
+    };
+
     const handleMarkPlanWorkingDays = () => {
         if (!can_write) {
             return;
@@ -209,6 +227,7 @@ export default function K3PatrolCheckPage({
             {
                 _key: nextKey,
                 id: null,
+                employee_id: form.employee_id,
                 no_urut: null,
                 uraian: form.uraian.trim(),
                 rencana: [],
@@ -220,7 +239,7 @@ export default function K3PatrolCheckPage({
         setNextKey((k) => k + 1);
         setDirty(true);
         setIsAddOpen(false);
-        setForm({ uraian: '', bobot_sla: 0 });
+        setForm({ uraian: '', bobot_sla: 0, employee_id: null });
     };
 
     const handleRemove = (key: number) => {
@@ -251,6 +270,7 @@ export default function K3PatrolCheckPage({
                 year: filters.year,
                 rows: rows.map((r, idx) => ({
                     id: r.id,
+                    employee_id: r.employee_id ?? null,
                     no_urut: idx + 1,
                     uraian: r.uraian,
                     rencana: r.rencana,
@@ -714,6 +734,29 @@ export default function K3PatrolCheckPage({
                                                 }
                                                 readOnly={!can_write}
                                             />
+                                            <div className="space-y-1">
+                                                <span className="text-[11px] font-medium text-muted-foreground">
+                                                    PIC Pegawai
+                                                </span>
+                                                <div>
+                                                    <EmployeePicPicker
+                                                        employees={
+                                                            options.employees
+                                                        }
+                                                        employeeId={
+                                                            row.employee_id
+                                                        }
+                                                        onSelect={(id) =>
+                                                            updateEmployeeId(
+                                                                row._key,
+                                                                id,
+                                                            )
+                                                        }
+                                                        disabled={!can_write}
+                                                        variant="badge"
+                                                    />
+                                                </div>
+                                            </div>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <TimelineField
                                                     label="Bobot SLA"
@@ -889,6 +932,28 @@ export default function K3PatrolCheckPage({
                                                                     !can_write
                                                                 }
                                                             />
+                                                            <div className="no-print mt-1">
+                                                                <EmployeePicPicker
+                                                                    employees={
+                                                                        options.employees
+                                                                    }
+                                                                    employeeId={
+                                                                        row.employee_id
+                                                                    }
+                                                                    onSelect={(
+                                                                        id,
+                                                                    ) =>
+                                                                        updateEmployeeId(
+                                                                            row._key,
+                                                                            id,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        !can_write
+                                                                    }
+                                                                    variant="badge"
+                                                                />
+                                                            </div>
                                                         </td>
                                                         <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">
                                                             RENC
@@ -1105,6 +1170,17 @@ export default function K3PatrolCheckPage({
                                         bobot_sla: Number(e.target.value),
                                     }))
                                 }
+                            />
+                        </div>
+                        <div className="grid gap-1.5">
+                            <Label>PIC Pegawai (Opsional)</Label>
+                            <EmployeePicPicker
+                                employees={options.employees}
+                                employeeId={form.employee_id}
+                                onSelect={(id) =>
+                                    setForm((f) => ({ ...f, employee_id: id }))
+                                }
+                                variant="badge"
                             />
                         </div>
                     </div>

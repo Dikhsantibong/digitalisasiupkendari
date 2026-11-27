@@ -210,7 +210,7 @@ export default function OperatorMutasiPreviewPage({
                                 <iframe
                                     title={`Pratinjau PDF Lembar Mutasi ${mutasi.hari_tanggal}`}
                                     srcDoc={previewHtml}
-                                    sandbox="allow-same-origin"
+                                    sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
                                     className="origin-top-left border-0 bg-white"
                                     style={{
                                         width: `${A4_WIDTH}px`,
@@ -223,7 +223,7 @@ export default function OperatorMutasiPreviewPage({
                             <iframe
                                 title={`Pratinjau PDF Lembar Mutasi ${mutasi.hari_tanggal}`}
                                 srcDoc={previewHtml}
-                                sandbox="allow-same-origin"
+                                sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
                                 className="block border-0 bg-white"
                                 style={{
                                     width: `${A4_WIDTH}px`,

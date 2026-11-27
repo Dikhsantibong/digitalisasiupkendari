@@ -11,6 +11,7 @@ use App\Models\PdmJadwalMeta;
 use App\Models\PdmJadwalPatrolCheck;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Services\Pdm\PdmJadwalSigners;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -46,7 +47,10 @@ class JadwalPatrolCheckController extends Controller
         ],
     ];
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -283,6 +287,7 @@ class JadwalPatrolCheckController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('pdm:patrol-check', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $user, $unitId, $month, $year): void {
             // Update or create metadata
@@ -346,6 +351,7 @@ class JadwalPatrolCheckController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'pdm:patrol-check', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal Piket Patrol Check PdM KIT {$unit->name} {$month}/{$year}",

@@ -10,6 +10,7 @@ use App\Models\Holiday;
 use App\Models\K3JadwalOnCall;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,10 @@ use Inertia\Response;
  */
 class JadwalOnCallController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -168,6 +172,7 @@ class JadwalOnCallController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('k3:on-call', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $user, $unitId, $month, $year): void {
             $existingIds = [];
@@ -233,6 +238,7 @@ class JadwalOnCallController extends Controller
                 ->delete();
         });
 
+        $this->notifier->scheduleUpdated($unit, 'k3:on-call', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal On Call K3L {$unit->name} {$month}/{$year}",

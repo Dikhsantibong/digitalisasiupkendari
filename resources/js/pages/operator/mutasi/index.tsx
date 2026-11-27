@@ -1,10 +1,11 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import {
     AlertTriangle,
     BellRing,
     CheckCircle2,
     Clock,
     Droplets,
+    ExternalLink,
     FileDown,
     FileSpreadsheet,
     Fuel,
@@ -12,9 +13,9 @@ import {
     History,
     Lock,
     NotebookPen,
-    PenLine,
     Plus,
     Power,
+    QrCode,
     Save,
     Send,
     Trash2,
@@ -74,10 +75,12 @@ type Mutasi = {
     regu_penyerah: string | null;
     penyerah_nama: string | null;
     paraf_penyerah_url: string | null;
+    verify_penyerah_url?: string | null;
     diserahkan_at: string | null;
     regu_penerima: string | null;
     penerima_nama: string | null;
     paraf_penerima_url: string | null;
+    verify_penerima_url?: string | null;
     diterima_at: string | null;
     status: Status;
     carried_from: string | null;
@@ -711,8 +714,8 @@ function MutasiForm({
                                     {mutasi.diserahkan_at
                                         ? ` · ${timeOf(mutasi.diserahkan_at)}`
                                         : ''}
-                                    . Tanda tangan otomatis diambil dari profil
-                                    Anda.
+                                    . Tanda tangan barcode QR terverifikasi
+                                    dibuat otomatis saat menerima.
                                 </p>
                             </div>
                         </div>
@@ -1646,13 +1649,45 @@ function MutasiForm({
                             <tbody>
                                 <tr>
                                     <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-28 text-center text-2xl font-bold')}>{reguPenyerah || '–'}</td>
-                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-40 text-center')}>
-                                        {mutasi.paraf_penyerah_url ? <img src={mutasi.paraf_penyerah_url} alt="Paraf penyerah" className="mx-auto h-12 object-contain" /> : <span className="text-muted-foreground">Paraf</span>}
+                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-40 p-1 text-center')}>
+                                        {mutasi.paraf_penyerah_url ? (
+                                            mutasi.verify_penyerah_url ? (
+                                                <a
+                                                    href={mutasi.verify_penyerah_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title="Verifikasi tanda tangan QR Regu Penyerah"
+                                                    className="inline-block"
+                                                >
+                                                    <img src={mutasi.paraf_penyerah_url} alt="QR Verifikasi Regu Penyerah" className="mx-auto h-14 w-14 object-contain" />
+                                                </a>
+                                            ) : (
+                                                <img src={mutasi.paraf_penyerah_url} alt="QR Verifikasi Regu Penyerah" className="mx-auto h-14 w-14 object-contain" />
+                                            )
+                                        ) : (
+                                            <span className="text-muted-foreground">QR TTD</span>
+                                        )}
                                     </td>
                                     <td className={cn(paperTd, 'px-2')}>{shiftRow(options.shifts[0])}</td>
                                     <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-28 text-center text-2xl font-bold')}>{mutasi.regu_penerima || '–'}</td>
-                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-40 text-center')}>
-                                        {mutasi.paraf_penerima_url ? <img src={mutasi.paraf_penerima_url} alt="Paraf penerima" className="mx-auto h-12 object-contain" /> : <span className="text-muted-foreground">Paraf</span>}
+                                    <td rowSpan={options.shifts.length} className={cn(paperTd, 'w-40 p-1 text-center')}>
+                                        {mutasi.paraf_penerima_url ? (
+                                            mutasi.verify_penerima_url ? (
+                                                <a
+                                                    href={mutasi.verify_penerima_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    title="Verifikasi tanda tangan QR Regu Penerima"
+                                                    className="inline-block"
+                                                >
+                                                    <img src={mutasi.paraf_penerima_url} alt="QR Verifikasi Regu Penerima" className="mx-auto h-14 w-14 object-contain" />
+                                                </a>
+                                            ) : (
+                                                <img src={mutasi.paraf_penerima_url} alt="QR Verifikasi Regu Penerima" className="mx-auto h-14 w-14 object-contain" />
+                                            )
+                                        ) : (
+                                            <span className="text-muted-foreground">QR TTD</span>
+                                        )}
                                     </td>
                                 </tr>
                                 {options.shifts.slice(1).map((sh) => (
@@ -1672,7 +1707,7 @@ function MutasiForm({
                 <Section
                     icon={<Handshake className="size-4" />}
                     title="Serah Terima Tugas"
-                    hint="Tanda tangan otomatis diambil dari data tanda tangan profil. Regu penyerah klik Serahkan, regu penerima cukup klik Terima Tugas."
+                    hint="Tanda tangan menggunakan barcode QR terverifikasi (sama seperti Laporan Project & laporan bidang) yang otomatis dibuat saat klik Serahkan dan Terima Tugas."
                 >
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                         <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
@@ -1710,6 +1745,7 @@ function MutasiForm({
                                 mutasi.paraf_penyerah_url ? (
                                     <Signed
                                         url={mutasi.paraf_penyerah_url}
+                                        verifyUrl={mutasi.verify_penyerah_url}
                                         caption={`Diserahkan ${timeOf(mutasi.diserahkan_at)}`}
                                     />
                                 ) : (
@@ -1718,12 +1754,7 @@ function MutasiForm({
                                     </p>
                                 )
                             ) : (
-                                !locked && (
-                                    <ProfileSignaturePreview
-                                        signatureUrl={me.signature_url}
-                                        hasSignature={me.has_signature}
-                                    />
-                                )
+                                !locked && <QrSignatureNotice />
                             )}
                         </div>
 
@@ -1745,6 +1776,9 @@ function MutasiForm({
                                     {mutasi.paraf_penerima_url ? (
                                         <Signed
                                             url={mutasi.paraf_penerima_url}
+                                            verifyUrl={
+                                                mutasi.verify_penerima_url
+                                            }
                                             caption={`Diterima ${timeOf(mutasi.diterima_at)}`}
                                         />
                                     ) : (
@@ -1781,10 +1815,7 @@ function MutasiForm({
                                         placeholder="Nama operator penerima"
                                         className="h-10"
                                     />
-                                    <ProfileSignaturePreview
-                                        signatureUrl={me.signature_url}
-                                        hasSignature={me.has_signature}
-                                    />
+                                    <QrSignatureNotice />
                                     <Button
                                         onClick={() => terima()}
                                         disabled={
@@ -2103,59 +2134,51 @@ function MachineList({
     );
 }
 
-function ProfileSignaturePreview({
-    signatureUrl,
-    hasSignature,
-}: {
-    signatureUrl?: string | null;
-    hasSignature?: boolean;
-}) {
-    if (hasSignature && signatureUrl) {
-        return (
-            <div className="flex items-center gap-3 rounded-lg border border-border/80 bg-muted/30 p-2.5">
-                <div className="flex h-12 w-28 shrink-0 items-center justify-center rounded border border-border bg-white p-1">
-                    <img
-                        src={signatureUrl}
-                        alt="Tanda tangan profil"
-                        className="max-h-10 max-w-[6.5rem] object-contain"
-                    />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                    Tanda tangan otomatis diambil dari data tanda tangan profil
-                    Anda.
-                </p>
-            </div>
-        );
-    }
-
+function QrSignatureNotice() {
     return (
-        <div className="flex items-start gap-2 rounded-lg border border-dashed border-amber-400/70 bg-amber-50/70 p-2.5 text-xs text-amber-900 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-200">
-            <PenLine className="mt-0.5 size-3.5 shrink-0" />
+        <div className="flex items-start gap-2.5 rounded-lg border border-border/80 bg-muted/30 p-2.5 text-xs text-muted-foreground">
+            <QrCode className="mt-0.5 size-4 shrink-0 text-primary" />
             <span>
-                Tanda tangan profil belum diatur.{' '}
-                <Link
-                    href="/settings/profile"
-                    className="font-semibold underline underline-offset-2"
-                >
-                    Atur di Profil & Pengaturan
-                </Link>{' '}
-                agar otomatis tampil saat serah terima.
+                Barcode QR tanda tangan terverifikasi otomatis dibuat dan
+                disematkan ke lembar mutasi &amp; PDF saat tombol serah terima
+                diklik.
             </span>
         </div>
     );
 }
 
-function Signed({ url, caption }: { url: string; caption: string }) {
+function Signed({
+    url,
+    verifyUrl,
+    caption,
+}: {
+    url: string;
+    verifyUrl?: string | null;
+    caption: string;
+}) {
     return (
         <div className="flex items-center gap-3">
-            <div className="flex h-14 w-32 items-center justify-center rounded border border-border bg-white">
+            <div className="flex size-16 shrink-0 items-center justify-center rounded border border-border bg-white p-1">
                 <img
                     src={url}
-                    alt="Paraf"
-                    className="max-h-12 max-w-[7.5rem] object-contain"
+                    alt="QR Verifikasi Tanda Tangan"
+                    className="size-14 object-contain"
                 />
             </div>
-            <span className="text-xs text-muted-foreground">{caption}</span>
+            <div className="flex min-w-0 flex-col gap-1">
+                <span className="text-xs text-muted-foreground">{caption}</span>
+                {verifyUrl && (
+                    <a
+                        href={verifyUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex w-fit items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                        <ExternalLink className="size-3" />
+                        Verifikasi TTD
+                    </a>
+                )}
+            </div>
         </div>
     );
 }

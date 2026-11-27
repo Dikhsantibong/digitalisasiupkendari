@@ -32,6 +32,7 @@ use Illuminate\Support\Carbon;
     'unit_id',
     'year',
     'month',
+    'employee_id',
     'uraian',
     'target',
     'rencana',
@@ -54,11 +55,20 @@ class HarJadwalMeetingPemeliharaan extends Model
         return [
             'year' => 'integer',
             'month' => 'integer',
+            'employee_id' => 'integer',
             'target' => 'integer',
             'sort_order' => 'integer',
             'rencana' => 'array',
             'realisasi' => 'array',
         ];
+    }
+
+    /**
+     * @return BelongsTo<Employee, $this>
+     */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
     }
 
     /**

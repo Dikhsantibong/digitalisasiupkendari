@@ -5,16 +5,19 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\Holiday;
 use App\Models\K3PatrolCheckJadwal;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,7 +44,10 @@ class PatrolCheckController extends Controller
         'Bersihkan saluran air hujan dan oil trap dari gedung pembangkit hingga outlet oil trap',
     ];
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -78,6 +84,7 @@ class PatrolCheckController extends Controller
             $rows = collect(self::DEFAULT_URAIAN)->map(fn (string $uraian, int $idx): array => [
                 'id' => null,
                 'no_urut' => $idx + 1,
+                'employee_id' => null,
                 'uraian' => $uraian,
                 'rencana' => [],
                 'realisasi' => [],
@@ -88,6 +95,7 @@ class PatrolCheckController extends Controller
             $rows = $savedRecords->map(fn (K3PatrolCheckJadwal $r, int $idx): array => [
                 'id' => $r->id,
                 'no_urut' => $r->no_urut ?: ($idx + 1),
+                'employee_id' => $r->employee_id,
                 'uraian' => $r->uraian,
                 'rencana' => $r->rencana ?? [],
                 'realisasi' => $r->realisasi ?? [],
@@ -107,6 +115,12 @@ class PatrolCheckController extends Controller
             'options' => [
                 'units' => $units->map(fn (Unit $u): array => ['id' => $u->id, 'name' => $u->name])->all(),
                 'years' => range($now->year - 3, $now->year + 1),
+                'employees' => Employee::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'position'])
+                    ->all(),
             ],
             'days' => $days,
             'rows' => $rows,
@@ -130,6 +144,7 @@ class PatrolCheckController extends Controller
             'rows' => ['array'],
             'rows.*.id' => ['nullable', 'integer'],
             'rows.*.no_urut' => ['nullable', 'integer'],
+            'rows.*.employee_id' => ['nullable', 'integer', Rule::exists('employees', 'id')->where('unit_id', $unit->id)],
             'rows.*.uraian' => ['required', 'string', 'max:500'],
             'rows.*.rencana' => ['nullable', 'array'],
             'rows.*.realisasi' => ['nullable', 'array'],
@@ -147,12 +162,15 @@ class PatrolCheckController extends Controller
             ->values()
             ->all();
 
+        $before = $this->notifier->todayScheduleRecipientKeys('k3:patrol-check', $unit->id, $month, $year);
+
         DB::transaction(function () use ($validated, $user, $unitId, $month, $year, $cleanDays): void {
             $existingIds = [];
 
             foreach ($validated['rows'] ?? [] as $index => $row) {
                 $attributes = [
                     'no_urut' => $row['no_urut'] ?? ($index + 1),
+                    'employee_id' => isset($row['employee_id']) && $row['employee_id'] !== '' ? (int) $row['employee_id'] : null,
                     'uraian' => $row['uraian'],
                     'rencana' => $cleanDays($row['rencana'] ?? []),
                     'realisasi' => $cleanDays($row['realisasi'] ?? []),
@@ -193,6 +211,7 @@ class PatrolCheckController extends Controller
                 ->delete();
         });
 
+        $this->notifier->scheduleUpdated($unit, 'k3:patrol-check', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal Patrol Check Harian K3L {$unit->name} {$month}/{$year}",

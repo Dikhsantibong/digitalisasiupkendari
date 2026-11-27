@@ -208,29 +208,47 @@ class MutasiTest extends TestCase
         $this->assertSame('Update', $mutasi->fresh()->catatan);
     }
 
-    public function test_handing_over_pulls_employee_signature_automatically_and_notifies_receiving_leaders(): void
+    public function test_handing_over_generates_verifiable_qr_signatures_and_notifies_receiving_leaders(): void
     {
         $unit = Unit::factory()->create(['is_active' => true]);
-        Storage::disk('public')->put('signatures/leader-d.png', base64_decode(substr(self::PNG, strpos(self::PNG, ',') + 1)));
-        Storage::disk('public')->put('signatures/leader-a.png', base64_decode(substr(self::PNG, strpos(self::PNG, ',') + 1)));
 
-        $leaderD = $this->leader($unit, 'D', 'signatures/leader-d.png');
-        $leaderA = $this->leader($unit, 'A', 'signatures/leader-a.png');
+        // Even without a hand-drawn profile signature image, QR barcode signatures are generated automatically.
+        $leaderD = $this->leader($unit, 'D');
+        $leaderA = $this->leader($unit, 'A');
 
         // Without regu on user or payload, handing over still requires regu_penyerah.
         $projectLeader = $this->userWithRole(RoleName::ProjectLeaderOperasi, $unit);
         $this->actingAs($projectLeader)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true, 'regu_penyerah' => null]))->assertSessionHasErrors('regu_penyerah');
         $this->assertSame(0, OperatorMutasi::query()->count());
 
-        // Leader D hands over with one click (no canvas paraf needed): signature pulled automatically from profile.
+        // Leader D hands over with one click: verifiable QR barcode generated for Regu Penyerah.
         $this->actingAs($leaderD)->post(route('operator.mutasi.store'), $this->payload($unit, ['serahkan' => true]))->assertSessionHasNoErrors();
 
         $mutasi = OperatorMutasi::query()->sole();
         $this->assertNotNull($mutasi->diserahkan_at);
-        $this->assertNotNull($mutasi->paraf_penyerah);
-        Storage::disk('public')->assertExists($mutasi->paraf_penyerah);
-        // Original profile signature remains untouched.
-        Storage::disk('public')->assertExists('signatures/leader-d.png');
+
+        $propsAfterHandover = $this->actingAs($leaderD)
+            ->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => 'sore']))
+            ->assertOk()
+            ->viewData('page')['props']['mutasi'];
+
+        $this->assertStringStartsWith('data:image/png;base64,', (string) $propsAfterHandover['paraf_penyerah_url']);
+        $this->assertStringContainsString('/verifikasi-ttd/ms'.$mutasi->id.'/', (string) $propsAfterHandover['verify_penyerah_url']);
+        $this->assertNull($propsAfterHandover['paraf_penerima_url']);
+        $this->assertNull($propsAfterHandover['verify_penerima_url']);
+
+        // Unauthenticated scan validates the penyerah signature; tampered token returns invalid.
+        auth()->logout();
+        $this->get((string) $propsAfterHandover['verify_penyerah_url'])
+            ->assertOk()
+            ->assertSee('SAH &amp; TERVERIFIKASI', false)
+            ->assertSee('Lembar Mutasi Operator')
+            ->assertSee('Operator D')
+            ->assertSee('Regu Penyerah')
+            ->assertSee($unit->name);
+
+        $tampered = preg_replace('/\/[a-f0-9]+$/', '/0000000000000000', (string) $propsAfterHandover['verify_penyerah_url']);
+        $this->get((string) $tampered)->assertOk()->assertSee('TIDAK VALID');
 
         // Leader A sees the pending handover in Persetujuan (ApprovalInbox) and receives a notification.
         $this->actingAs($leaderA)->get(route('approvals.index'))->assertOk()
@@ -241,16 +259,29 @@ class MutasiTest extends TestCase
                 ->where('mutasi_handovers.0.default_regu_penerima', 'A'));
         $this->assertSame(1, $leaderA->fresh()->unreadNotifications()->count());
 
-        // Leader A accepts with one click (no canvas paraf needed): signature pulled automatically from profile.
+        // Leader A accepts with one click: verifiable QR barcode generated for Regu Penerima.
         $this->actingAs($leaderA)->post(route('operator.mutasi.terima', $mutasi))->assertSessionHasNoErrors();
 
         $mutasi->refresh();
         $this->assertTrue($mutasi->isReceived());
         $this->assertSame('A', $mutasi->regu_penerima);
-        $this->assertNotNull($mutasi->paraf_penerima);
-        Storage::disk('public')->assertExists($mutasi->paraf_penerima);
-        Storage::disk('public')->assertExists('signatures/leader-a.png');
         $this->assertSame(1, $leaderD->fresh()->unreadNotifications()->count());
+
+        $propsAfterAccept = $this->actingAs($leaderA)
+            ->get(route('operator.mutasi.index', ['unit_id' => $unit->id, 'tanggal' => '2026-09-09', 'shift' => 'sore']))
+            ->assertOk()
+            ->viewData('page')['props']['mutasi'];
+
+        $this->assertStringStartsWith('data:image/png;base64,', (string) $propsAfterAccept['paraf_penerima_url']);
+        $this->assertStringContainsString('/verifikasi-ttd/mt'.$mutasi->id.'/', (string) $propsAfterAccept['verify_penerima_url']);
+
+        auth()->logout();
+        $this->get((string) $propsAfterAccept['verify_penerima_url'])
+            ->assertOk()
+            ->assertSee('SAH &amp; TERVERIFIKASI', false)
+            ->assertSee('Regu Penerima')
+            ->assertSee('Diterima &amp; Terkunci', false)
+            ->assertSee('Operator D');
     }
 
     public function test_the_next_regu_accepts_and_the_sheet_locks(): void
@@ -318,16 +349,20 @@ class MutasiTest extends TestCase
         $this->assertStringContainsString('Radio HT', $html);
         $this->assertStringContainsString('Terima tugas dari shift B', $html);
         $this->assertStringContainsString('CM 7 kebocoran pada sisi lube hose', $html);
-        $this->assertStringContainsString('alt="Paraf penyerah"', $html);
+        $this->assertStringContainsString('alt="QR Verifikasi Regu Penyerah"', $html);
 
         $leader = $this->leader($unit);
-        $this->actingAs($leader)
+        $previewHtml = $this->actingAs($leader)
             ->get(route('operator.mutasi.preview', $mutasi))
             ->assertOk()
             ->assertInertia(fn ($page) => $page
                 ->component('operator/mutasi/preview')
                 ->where('mutasi.id', $mutasi->id)
-                ->where('unit.name', 'PLTD Poasia'));
+                ->where('unit.name', 'PLTD Poasia'))
+            ->viewData('page')['props']['html'];
+
+        $this->assertStringContainsString('alt="QR Verifikasi Regu Penyerah"', (string) $previewHtml);
+        $this->assertStringContainsString('alt="QR Verifikasi Regu Penerima"', (string) $previewHtml);
 
         $this->actingAs($leader)
             ->get(route('operator.mutasi.pdf', $mutasi))

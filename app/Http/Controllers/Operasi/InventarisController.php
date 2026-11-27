@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\OperasiInventarisJadwal;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use App\Support\JadwalPdf;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,10 @@ use Inertia\Response;
  */
 class InventarisController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -78,6 +82,7 @@ class InventarisController extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
         $clean = fn ($d) => collect($d ?? [])->map(fn ($x) => (int) $x)->filter(fn ($x) => $x >= 1 && $x <= 31)->unique()->values()->all();
+        $before = $this->notifier->todayScheduleRecipientKeys('operasi:inventarisasi-tools', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $unit, $month, $year, $user, $clean): void {
             OperasiInventarisJadwal::query()->where('unit_id', $unit->id)->where('year', $year)->where('month', $month)->delete();
@@ -90,6 +95,7 @@ class InventarisController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'operasi:inventarisasi-tools', $month, $year, $user, $before);
         $this->activityLogger->log(ActivityEvent::Updated, "Menyimpan Jadwal Inventarisasi Tools & Material {$unit->name} {$month}/{$year}", $unit, unit: $unit->id);
 
         return back()->with('toast', ['type' => 'success', 'message' => 'Jadwal Inventarisasi Tools & Material berhasil disimpan.']);

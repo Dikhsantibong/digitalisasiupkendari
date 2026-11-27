@@ -19,6 +19,10 @@ import {
 import { DayStrip } from '@/components/mobile/day-strip';
 import { StickyActionBar } from '@/components/mobile/sticky-action-bar';
 import {
+    EmployeePicPicker,
+    type EmployeeOption,
+} from '@/components/jadwal/employee-picker';
+import {
     OPERASI_MONTHS,
     OperasiSelect,
 } from '@/components/operasi/filter-select';
@@ -41,6 +45,7 @@ type DayInfo = {
 
 type ServerRow = {
     activity_type_id: number;
+    employee_id?: number | null;
     uraian: string;
     pic: string;
     rencana: number[];
@@ -53,7 +58,7 @@ type Props = {
     filters: { unit_id: number; month: number; year: number };
     days: DayInfo[];
     rows: ServerRow[];
-    options: { units: IdName[]; years: number[] };
+    options: { units: IdName[]; years: number[]; employees?: EmployeeOption[] };
     can_write: boolean;
 };
 
@@ -164,7 +169,34 @@ export default function TimeFrameInput({
         setRows((prev) =>
             prev.map((r) =>
                 r.activity_type_id === activityId
-                    ? { ...r, [field]: value }
+                    ? {
+                          ...r,
+                          [field]: value,
+                          ...(field === 'pic' ? { employee_id: null } : {}),
+                      }
+                    : r,
+            ),
+        );
+        setDirty(true);
+    };
+
+    const updateEmployee = (
+        activityId: number,
+        employeeId: number | null,
+        employeeName: string,
+    ) => {
+        if (!can_write) {
+            return;
+        }
+
+        setRows((prev) =>
+            prev.map((r) =>
+                r.activity_type_id === activityId
+                    ? {
+                          ...r,
+                          employee_id: employeeId,
+                          pic: employeeId ? employeeName : r.pic,
+                      }
                     : r,
             ),
         );
@@ -201,6 +233,7 @@ export default function TimeFrameInput({
                 year: filters.year,
                 rows: rows.map((r) => ({
                     activity_type_id: r.activity_type_id,
+                    employee_id: r.employee_id ?? null,
                     pic: r.pic,
                     keterangan: r.keterangan,
                     rencana: r.rencana,
@@ -661,17 +694,41 @@ export default function TimeFrameInput({
                                         <div className="grid grid-cols-1 gap-2">
                                             <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                                 PIC
-                                                <Input
-                                                    value={row.pic}
-                                                    onChange={(e) =>
-                                                        updateField(
-                                                            row.activity_type_id,
-                                                            'pic',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    disabled={!can_write}
-                                                />
+                                                <div className="flex items-center gap-1.5">
+                                                    <Input
+                                                        value={row.pic}
+                                                        onChange={(e) =>
+                                                            updateField(
+                                                                row.activity_type_id,
+                                                                'pic',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        disabled={!can_write}
+                                                    />
+                                                    {can_write && (
+                                                        <EmployeePicPicker
+                                                            employees={
+                                                                options.employees
+                                                            }
+                                                            employeeId={
+                                                                row.employee_id
+                                                            }
+                                                            labelText={row.pic}
+                                                            onSelect={(
+                                                                id,
+                                                                name,
+                                                            ) =>
+                                                                updateEmployee(
+                                                                    row.activity_type_id,
+                                                                    id,
+                                                                    name,
+                                                                )
+                                                            }
+                                                            variant="icon"
+                                                        />
+                                                    )}
+                                                </div>
                                             </label>
                                             <label className="flex flex-col gap-1 text-[12px] text-muted-foreground">
                                                 Keterangan
@@ -821,26 +878,54 @@ export default function TimeFrameInput({
                                                                 rowSpan={2}
                                                                 className="border border-black p-1 text-center align-middle whitespace-normal"
                                                             >
-                                                                <AutoWrapCellInput
-                                                                    value={
-                                                                        row.pic ||
-                                                                        ''
-                                                                    }
-                                                                    onChange={(
-                                                                        val,
-                                                                    ) =>
-                                                                        updateField(
-                                                                            row.activity_type_id,
-                                                                            'pic',
+                                                                <div className="flex items-center justify-center gap-0.5">
+                                                                    <AutoWrapCellInput
+                                                                        value={
+                                                                            row.pic ||
+                                                                            ''
+                                                                        }
+                                                                        onChange={(
                                                                             val,
-                                                                        )
-                                                                    }
-                                                                    className="text-center"
-                                                                    emptyFallback="-"
-                                                                    readOnly={
-                                                                        !can_write
-                                                                    }
-                                                                />
+                                                                        ) =>
+                                                                            updateField(
+                                                                                row.activity_type_id,
+                                                                                'pic',
+                                                                                val,
+                                                                            )
+                                                                        }
+                                                                        wrapperClassName="min-w-0 flex-1"
+                                                                        className="text-center"
+                                                                        emptyFallback="-"
+                                                                        readOnly={
+                                                                            !can_write
+                                                                        }
+                                                                    />
+                                                                    {can_write && (
+                                                                        <EmployeePicPicker
+                                                                            employees={
+                                                                                options.employees
+                                                                            }
+                                                                            employeeId={
+                                                                                row.employee_id
+                                                                            }
+                                                                            labelText={
+                                                                                row.pic
+                                                                            }
+                                                                            onSelect={(
+                                                                                id,
+                                                                                name,
+                                                                            ) =>
+                                                                                updateEmployee(
+                                                                                    row.activity_type_id,
+                                                                                    id,
+                                                                                    name,
+                                                                                )
+                                                                            }
+                                                                            variant="icon"
+                                                                            className="no-print"
+                                                                        />
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                             <td className="border border-black bg-muted/20 p-0.5 text-center text-[10px] font-bold text-foreground">
                                                                 RENC

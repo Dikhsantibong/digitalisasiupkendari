@@ -31,6 +31,7 @@ import type {
     ValueFormat,
 } from '@/components/dashboard/charts';
 import { EmptyState } from '@/components/empty-state';
+import { TodayScheduleCard } from '@/components/notifications/schedule-tasks';
 import {
     MutasiQueue,
     ReportQueue,
@@ -929,6 +930,9 @@ export default function Dashboard(props: Props) {
                         palette={SUMMARY_CARD_PALETTES.users}
                     />
                 </div>
+
+                {/* Today's scheduled duties for the signed-in user (personal or regu). */}
+                <TodayScheduleCard variant="desktop" />
 
                 {/* Team Leader / Koordinator / Project Leader: approve and input. */}
                 {approvals && (

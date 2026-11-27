@@ -18,6 +18,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { normalizeRencRealRows, toDayList } from '@/lib/day-list';
 import { MobileTimelineForm, RENC_REAL, TimelineField } from '@/components/mobile/timeline-form';
+import { EmployeePicPicker, type EmployeeOption } from '@/components/jadwal/employee-picker';
 import {
     OPERASI_MONTHS,
     OperasiSelect,
@@ -61,6 +62,7 @@ type DayInfo = {
 
 type JadwalMeetingRow = {
     id: number | null;
+    employee_id?: number | null;
     no_urut: number;
     uraian: string;
     rencana: number[];
@@ -86,6 +88,7 @@ type Props = {
     options: {
         units: IdName[];
         years: number[];
+        employees?: EmployeeOption[];
     };
     days: DayInfo[];
     rows: JadwalMeetingRow[];
@@ -133,12 +136,19 @@ export default function PdmJadwalMeetingIndex({
     // Add Form State
     const [newUraian, setNewUraian] = useState('');
     const [newTarget, setNewTarget] = useState(4);
+    const [newEmployeeId, setNewEmployeeId] = useState<number | null>(null);
 
     // Edit Form State
-    const [editForm, setEditForm] = useState({
+    const [editForm, setEditForm] = useState<{
+        no_urut: number;
+        uraian: string;
+        target: number;
+        employee_id: number | null;
+    }>({
         no_urut: 1,
         uraian: '',
         target: 4,
+        employee_id: null,
     });
 
     const month_name = OPERASI_MONTHS[filters.month - 1] ?? `Bulan ${filters.month}`;
@@ -266,6 +276,18 @@ return;
         toast.success(`Agenda ${targetRow.uraian} berhasil dihapus.`);
     };
 
+    // Update employee PIC inline
+    const handleUpdateEmployeeId = (rowIndex: number, employeeId: number | null) => {
+        if (!can_write) {
+            return;
+        }
+
+        setRows((prev) =>
+            prev.map((r, idx) => (idx === rowIndex ? { ...r, employee_id: employeeId } : r)),
+        );
+        setDirty(true);
+    };
+
     // Open Edit Modal
     const openEditRowModal = (rowIndex: number) => {
         const row = rows[rowIndex];
@@ -279,6 +301,7 @@ return;
             no_urut: row.no_urut,
             uraian: row.uraian,
             target: row.target,
+            employee_id: row.employee_id ?? null,
         });
         setEditDialogOpen(true);
     };
@@ -297,6 +320,7 @@ return;
                           no_urut: editForm.no_urut,
                           uraian: editForm.uraian.trim(),
                           target: Math.max(0, editForm.target),
+                          employee_id: editForm.employee_id,
                       }
                     : r,
             ),
@@ -316,6 +340,7 @@ return;
 
         const newRow: JadwalMeetingRow = {
             id: null,
+            employee_id: newEmployeeId,
             no_urut: rows.length + 1,
             uraian: newUraian.trim(),
             rencana: [],
@@ -328,6 +353,7 @@ return;
         setAddDialogOpen(false);
         setNewUraian('');
         setNewTarget(4);
+        setNewEmployeeId(null);
         setDirty(true);
         toast.success(`Agenda meeting "${newUraian}" berhasil ditambahkan.`);
     };
@@ -756,6 +782,18 @@ return null;
                                     <>
                                         <TimelineField label="Uraian" value={row.uraian} onChange={(v) => handleUpdateUraian(index, v)} readOnly={!can_write} />
                                         <TimelineField label="Target" type="number" value={row.target} onChange={(v) => handleUpdateTarget(index, Number(v))} readOnly={!can_write} />
+                                        <div className="space-y-1">
+                                            <span className="text-[11px] font-medium text-muted-foreground">PIC Pegawai</span>
+                                            <div>
+                                                <EmployeePicPicker
+                                                    employees={options.employees}
+                                                    employeeId={row.employee_id}
+                                                    onSelect={(id) => handleUpdateEmployeeId(index, id)}
+                                                    disabled={!can_write}
+                                                    variant="badge"
+                                                />
+                                            </div>
+                                        </div>
                                     </>
                                 )}
                                 summary={(row) => `Target ${row.target} · Rencana ${toDayList(row.rencana).length} · Realisasi ${toDayList(row.realisasi).length}`}
@@ -833,6 +871,15 @@ return null;
                                                         className="font-semibold"
                                                         readOnly={!can_write}
                                                     />
+                                                    <div className="no-print mt-1">
+                                                        <EmployeePicPicker
+                                                            employees={options.employees}
+                                                            employeeId={row.employee_id}
+                                                            onSelect={(id) => handleUpdateEmployeeId(rIdx, id)}
+                                                            disabled={!can_write}
+                                                            variant="badge"
+                                                        />
+                                                    </div>
                                                 </td>
 
                                                 {/* Label RENCANA */}
@@ -1074,6 +1121,17 @@ return null;
                                 className="mt-1 h-8 text-xs"
                             />
                         </div>
+                        <div>
+                            <Label className="text-xs">PIC Pegawai (Opsional)</Label>
+                            <div className="mt-1">
+                                <EmployeePicPicker
+                                    employees={options.employees}
+                                    employeeId={newEmployeeId}
+                                    onSelect={(id) => setNewEmployeeId(id)}
+                                    variant="badge"
+                                />
+                            </div>
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(false)}>
@@ -1139,6 +1197,19 @@ return null;
                                 placeholder="Uraian agenda meeting..."
                                 className="mt-1 h-8 text-xs"
                             />
+                        </div>
+                        <div>
+                            <Label className="text-xs">PIC Pegawai (Opsional)</Label>
+                            <div className="mt-1">
+                                <EmployeePicPicker
+                                    employees={options.employees}
+                                    employeeId={editForm.employee_id}
+                                    onSelect={(id) =>
+                                        setEditForm((prev) => ({ ...prev, employee_id: id }))
+                                    }
+                                    variant="badge"
+                                />
+                            </div>
                         </div>
                     </div>
                     <DialogFooter>

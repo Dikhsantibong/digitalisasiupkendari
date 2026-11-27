@@ -5,16 +5,19 @@ namespace App\Http\Controllers\K3;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\Holiday;
 use App\Models\K3PekerjaanRutin;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,7 +44,10 @@ class PekerjaanRutinController extends Controller
         'PENGECEKKAN DAN PEMANTAUAN APAR',
     ];
 
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -78,6 +84,7 @@ class PekerjaanRutinController extends Controller
             $rows = collect(self::DEFAULT_URAIAN)->map(fn (string $uraian, int $idx): array => [
                 'id' => null,
                 'no_urut' => $idx + 1,
+                'employee_id' => null,
                 'uraian' => $uraian,
                 'rencana' => [],
                 'realisasi' => [],
@@ -88,6 +95,7 @@ class PekerjaanRutinController extends Controller
             $rows = $savedRecords->map(fn (K3PekerjaanRutin $r, int $idx): array => [
                 'id' => $r->id,
                 'no_urut' => $r->no_urut ?: ($idx + 1),
+                'employee_id' => $r->employee_id,
                 'uraian' => $r->uraian,
                 'rencana' => $r->rencana ?? [],
                 'realisasi' => $r->realisasi ?? [],
@@ -111,6 +119,12 @@ class PekerjaanRutinController extends Controller
             'options' => [
                 'units' => $units->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->all(),
                 'years' => range($now->year - 3, $now->year + 1),
+                'employees' => Employee::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'position'])
+                    ->all(),
             ],
             'days' => $days,
             'rows' => $rows,
@@ -130,6 +144,7 @@ class PekerjaanRutinController extends Controller
             'rows' => ['array'],
             'rows.*.id' => ['nullable', 'integer'],
             'rows.*.no_urut' => ['nullable', 'integer'],
+            'rows.*.employee_id' => ['nullable', 'integer', Rule::exists('employees', 'id')->where('unit_id', $request->integer('unit_id'))],
             'rows.*.uraian' => ['required', 'string', 'max:500'],
             'rows.*.rencana' => ['nullable', 'array'],
             'rows.*.rencana.*' => ['integer', 'between:1,31'],
@@ -145,6 +160,7 @@ class PekerjaanRutinController extends Controller
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
         $rowsData = $validated['rows'] ?? [];
+        $before = $this->notifier->todayScheduleRecipientKeys('k3:pekerjaan-rutin', $unit->id, $month, $year);
 
         DB::transaction(function () use ($unit, $year, $month, $rowsData, $user): void {
             $retainedIds = [];
@@ -157,6 +173,7 @@ class PekerjaanRutinController extends Controller
                     'year' => $year,
                     'month' => $month,
                     'no_urut' => $rowData['no_urut'] ?? ($index + 1),
+                    'employee_id' => isset($rowData['employee_id']) && $rowData['employee_id'] !== '' ? (int) $rowData['employee_id'] : null,
                     'uraian' => $rowData['uraian'],
                     'rencana' => array_values(array_unique($rowData['rencana'] ?? [])),
                     'realisasi' => array_values(array_unique($rowData['realisasi'] ?? [])),
@@ -193,6 +210,7 @@ class PekerjaanRutinController extends Controller
                 ->delete();
         });
 
+        $this->notifier->scheduleUpdated($unit, 'k3:pekerjaan-rutin', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal Pekerjaan Rutin K3L & Lingkungan 11 KIT {$unit->name} periode {$month}/{$year}",

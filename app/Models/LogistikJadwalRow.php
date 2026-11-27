@@ -8,6 +8,7 @@ use Database\Factories\LogistikJadwalRowFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 /**
@@ -21,6 +22,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $section
  * @property string|null $nama
  * @property string|null $pic
+ * @property int|null $employee_id
  * @property array<string, string>|null $days day of month => code
  * @property int|null $target
  * @property string|null $keterangan
@@ -30,12 +32,21 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Unit $unit
+ * @property-read Employee|null $employee
  */
-#[Fillable(['unit_id', 'jadwal', 'year', 'month', 'section', 'nama', 'pic', 'days', 'target', 'keterangan', 'evidence', 'sort_order', 'input_by'])]
+#[Fillable(['unit_id', 'jadwal', 'year', 'month', 'section', 'nama', 'pic', 'employee_id', 'days', 'target', 'keterangan', 'evidence', 'sort_order', 'input_by'])]
 class LogistikJadwalRow extends Model
 {
     /** @use HasFactory<LogistikJadwalRowFactory> */
     use BelongsToUnit, HasFactory;
+
+    /**
+     * @return BelongsTo<Employee, $this>
+     */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class, 'employee_id');
+    }
 
     /**
      * @return array<string, string>
@@ -46,6 +57,7 @@ class LogistikJadwalRow extends Model
             'unit_id' => 'integer',
             'year' => 'integer',
             'month' => 'integer',
+            'employee_id' => 'integer',
             'days' => 'array',
             'evidence' => 'array',
             'target' => 'integer',

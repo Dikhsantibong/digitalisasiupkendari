@@ -31,8 +31,7 @@
         .gap { height: 6px; }
         .label { font-weight: bold; }
         .row td { height: 13px; }
-        .sign { height: 38px; text-align: center; }
-        .sign img { max-height: 34px; max-width: 120px; }
+        .sign { height: 50px; text-align: center; vertical-align: middle; padding: 1px 2px; }
         .muted { color: #444; font-size: 7.5px; }
     </style>
 </head>
@@ -165,11 +164,11 @@
         </tr>
         <tr>
             <td rowspan="3" class="c" style="font-size: 16px; font-weight: bold; width: 12%;">{{ $mutasi->regu_penyerah }}</td>
-            <td rowspan="3" class="sign">@if($parafPenyerah)<img src="{{ $parafPenyerah }}" alt="Paraf penyerah">@endif</td>
+            <td rowspan="3" class="sign">@include('reports.partials.signature-mark', ['signer' => $signerPenyerah ?? ['mode' => 'qr', 'qr' => $parafPenyerah ?? null, 'position' => 'Regu Penyerah'], 'height' => 50, 'qrSize' => 46])</td>
             @php $shiftKeys = array_keys($shifts); @endphp
             <td>Pukul {{ $shifts[$shiftKeys[0]] }} ( {!! $mutasi->shift === $shiftKeys[0] ? $check : '&nbsp;&nbsp;' !!} )</td>
             <td rowspan="3" class="c" style="font-size: 16px; font-weight: bold; width: 12%;">{{ $mutasi->regu_penerima }}</td>
-            <td rowspan="3" class="sign">@if($parafPenerima)<img src="{{ $parafPenerima }}" alt="Paraf penerima">@endif</td>
+            <td rowspan="3" class="sign">@include('reports.partials.signature-mark', ['signer' => $signerPenerima ?? ['mode' => 'qr', 'qr' => $parafPenerima ?? null, 'position' => 'Regu Penerima'], 'height' => 50, 'qrSize' => 46])</td>
         </tr>
         <tr><td>Pukul {{ $shifts[$shiftKeys[1]] }} ( {!! $mutasi->shift === $shiftKeys[1] ? $check : '&nbsp;&nbsp;' !!} )</td></tr>
         <tr><td>Pukul {{ $shifts[$shiftKeys[2]] }} ( {!! $mutasi->shift === $shiftKeys[2] ? $check : '&nbsp;&nbsp;' !!} )</td></tr>

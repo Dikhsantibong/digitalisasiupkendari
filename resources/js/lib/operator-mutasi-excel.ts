@@ -311,24 +311,24 @@ export async function downloadMutasiWorkbook(
             LEFT,
         ),
     );
-    [r, r + 1, r + 2].forEach((row) => (sheet.getRow(row).height = 18));
+    [r, r + 1, r + 2].forEach((row) => (sheet.getRow(row).height = 20));
     await addImage(
         workbook,
         sheet,
         data.paraf_penyerah_url,
-        1.15,
-        r - 1 + 0.2,
-        100,
-        44,
+        1.35,
+        r - 1 + 0.08,
+        54,
+        54,
     );
     await addImage(
         workbook,
         sheet,
         data.paraf_penerima_url,
-        6.1,
-        r - 1 + 0.2,
-        100,
-        44,
+        6.45,
+        r - 1 + 0.08,
+        54,
+        54,
     );
     r += 3;
     put(sheet, r, 1, 'Regu', { ...CELL, size: 8 });

@@ -5,22 +5,28 @@ namespace App\Http\Controllers\Har;
 use App\Enums\ActivityEvent;
 use App\Enums\PermissionName;
 use App\Http\Controllers\Controller;
+use App\Models\Employee;
 use App\Models\HarJadwalMeetingPemeliharaan;
 use App\Models\Holiday;
 use App\Models\Unit;
 use App\Services\ActivityLogger;
+use App\Services\Notifications\EventNotifier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class JadwalMeetingPemeliharaanController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly EventNotifier $notifier,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -87,6 +93,7 @@ class JadwalMeetingPemeliharaanController extends Controller
             $rows = [
                 [
                     'id' => null,
+                    'employee_id' => null,
                     'uraian' => 'Jadwal Meeting Pemeliharaan',
                     'target' => 1,
                     'rencana' => [],
@@ -97,6 +104,7 @@ class JadwalMeetingPemeliharaanController extends Controller
         } else {
             $rows = $savedRecords->map(fn (HarJadwalMeetingPemeliharaan $item): array => [
                 'id' => $item->id,
+                'employee_id' => $item->employee_id,
                 'uraian' => $item->uraian,
                 'target' => $item->target ?? 1,
                 'rencana' => $item->rencana ?? [],
@@ -120,6 +128,12 @@ class JadwalMeetingPemeliharaanController extends Controller
             'options' => [
                 'units' => $units->map(fn (Unit $u): array => ['id' => $u->id, 'name' => $u->name])->all(),
                 'years' => range($now->year - 3, $now->year + 1),
+                'employees' => Employee::query()
+                    ->where('unit_id', $unit->id)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'position'])
+                    ->all(),
             ],
             'days' => $days,
             'rows' => $rows,
@@ -142,6 +156,7 @@ class JadwalMeetingPemeliharaanController extends Controller
             'year' => ['required', 'integer', 'between:2000,2100'],
             'rows' => ['required', 'array', 'min:1'],
             'rows.*.id' => ['nullable', 'integer'],
+            'rows.*.employee_id' => ['nullable', 'integer', Rule::exists('employees', 'id')->where('unit_id', $unit->id)],
             'rows.*.uraian' => ['required', 'string', 'max:255'],
             'rows.*.target' => ['required', 'integer', 'min:0'],
             'rows.*.rencana' => ['nullable', 'array'],
@@ -151,6 +166,7 @@ class JadwalMeetingPemeliharaanController extends Controller
 
         $month = (int) $validated['month'];
         $year = (int) $validated['year'];
+        $before = $this->notifier->todayScheduleRecipientKeys('har:meeting-pemeliharaan', $unit->id, $month, $year);
 
         DB::transaction(function () use ($validated, $user, $unitId, $month, $year): void {
             $existingIds = [];
@@ -165,6 +181,7 @@ class JadwalMeetingPemeliharaanController extends Controller
                     ->all();
 
                 $target = (int) ($rowData['target'] ?? 1);
+                $employeeId = isset($rowData['employee_id']) && $rowData['employee_id'] !== '' ? (int) $rowData['employee_id'] : null;
 
                 if (! empty($rowData['id'])) {
                     $record = HarJadwalMeetingPemeliharaan::query()
@@ -174,6 +191,7 @@ class JadwalMeetingPemeliharaanController extends Controller
 
                     if ($record) {
                         $record->update([
+                            'employee_id' => $employeeId,
                             'uraian' => $rowData['uraian'],
                             'target' => $target,
                             'rencana' => $rencana,
@@ -192,6 +210,7 @@ class JadwalMeetingPemeliharaanController extends Controller
                     'unit_id' => $unitId,
                     'year' => $year,
                     'month' => $month,
+                    'employee_id' => $employeeId,
                     'uraian' => $rowData['uraian'],
                     'target' => $target,
                     'rencana' => $rencana,
@@ -214,6 +233,7 @@ class JadwalMeetingPemeliharaanController extends Controller
             }
         });
 
+        $this->notifier->scheduleUpdated($unit, 'har:meeting-pemeliharaan', $month, $year, $user, $before);
         $this->activityLogger->log(
             ActivityEvent::Updated,
             "Menyimpan Jadwal Meeting Pemeliharaan {$unit->name} {$month}/{$year}",
